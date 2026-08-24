@@ -1,14 +1,15 @@
 import BaeKit
 import SwiftUI
 
-/// One row of the mapping table: what the folder offers on the left, and what
-/// committing makes of it on the right.
+/// One of the release's tracks: its number, what it will be called, who it is
+/// by, how long it runs, and the file behind it.
 ///
-/// The two lengths are the point of a track row. Counting cannot see a pairing
-/// that is complete but wrong — thirteen files against thirteen tracks in the
-/// wrong order counts perfectly — and reading the file's own length against the
-/// release's is what catches it.
-struct ImportMappingRowView: View {
+/// The title and artist are edited in place — this is the release being
+/// written, not a report of it. The control that re-points the row at another
+/// file is not a column: it appears over the Source cell when the pointer is
+/// on the row, and stays put on a row that has no file, which is the one row
+/// that has to be answered.
+struct ImportMappingTrackRow: View {
     let unit: BridgeMappingUnit
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
@@ -24,6 +25,9 @@ struct ImportMappingRowView: View {
     var evidence: BridgeFileEvidence?
     let actions: ImportMappingActions
 
+    @State
+    private var hovering = false
+
     /// Whether the folder and the release disagree about how long this row
     /// runs. Core decides how far apart is far enough — it is a judgement about
     /// how much two rips of one track may legitimately differ, and the other
@@ -35,30 +39,22 @@ struct ImportMappingRowView: View {
         )
     }
 
-    var body: some View {
-        HStack(spacing: ImportMappingColumns.spacing) {
-            ImportMappingSourceCell(
-                source: unit.source,
-                previewingPath: previewingPath,
-                lengthsDiverge: lengthsDiverge,
-                isMeasuring: isMeasuring,
-                evidence: evidence,
-                actions: actions,
-            )
-            .sourceColumn(columns)
-            ImportMappingRoleCell(source: unit.source, actions: actions)
-                .frame(width: columns.role, alignment: .leading)
-            becomesCells
-        }
+    /// The track this row writes, where a release has named one.
+    private var track: BridgeRawTrackEdit? {
+        if case .track(let track, _, _) = unit.becomes { return track }
+        return nil
     }
 
-    /// What committing makes of this row. A track is edited in place; anything
-    /// else states what it becomes and has nothing to edit.
-    @ViewBuilder
-    private var becomesCells: some View {
-        switch unit.becomes {
-        case .track(let track, let position, let sourceMs):
-            Text(position ?? "")
+    /// A row with no file behind it is the one that has to be answered, so its
+    /// picker does not wait to be hovered.
+    private var needsAnswer: Bool {
+        if case .missing = unit.source { return true }
+        return track?.file == nil
+    }
+
+    var body: some View {
+        HStack(spacing: ImportMappingColumns.spacing) {
+            Text(position)
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundStyle(.tertiary)
@@ -66,21 +62,9 @@ struct ImportMappingRowView: View {
                     width: ImportMappingColumns.position,
                     alignment: .leading
                 )
-            CommittedTextField(
-                placeholder: coreString("ui.import.slots.untitled"),
-                value: track.title,
-                boxed: false,
-                onCommit: { commit(track, \.title, $0) },
-            )
-            .frame(width: columns.title)
-            CommittedTextField(
-                placeholder: String(localized: "Artist"),
-                value: track.artistText,
-                boxed: false,
-                onCommit: { commit(track, \.artistText, $0) },
-            )
-            .frame(width: columns.artist)
-            Text(importDurationText(sourceMs))
+            titleCell
+            artistCell
+            Text(importDurationText(unit.sourceDurationMs))
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .foregroundStyle(
@@ -92,32 +76,75 @@ struct ImportMappingRowView: View {
                     width: ImportMappingColumns.length,
                     alignment: .trailing
                 )
-            rowActions(track)
-                .frame(
-                    width: ImportMappingColumns.actions,
-                    alignment: .trailing
-                )
-        case .kept:
-            becomesText(coreString("ui.import.becomes.kept"))
-        case .awaitingPick:
-            becomesText(coreString("ui.import.becomes.awaiting_pick"))
+            sourceCell
+        }
+        .onHover { hovering = $0 }
+    }
+
+    private var position: String {
+        if case .track(_, let position, _) = unit.becomes {
+            return position ?? ""
+        }
+        return ""
+    }
+
+    /// The title, editable where there is a track to edit. Before a release is
+    /// picked there is none, and the cell says what the row is waiting for.
+    @ViewBuilder
+    private var titleCell: some View {
+        if let track {
+            CommittedTextField(
+                placeholder: coreString("ui.import.slots.untitled"),
+                value: track.title,
+                boxed: false,
+                onCommit: { commit(track, \.title, $0) },
+            )
+            .frame(width: columns.title)
+        }
+        else {
+            Text(coreString("ui.import.becomes.awaiting_pick"))
+                .font(.system(size: 12))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .frame(width: columns.title, alignment: .leading)
         }
     }
 
-    /// What a row that commits no track becomes, laid out over the same columns
-    /// the editable rows use so the two line up: the position column, the
-    /// statement across the title field, and the space the artist field, the
-    /// length and the actions leave.
     @ViewBuilder
-    private func becomesText(_ text: String) -> some View {
-        Spacer().frame(width: ImportMappingColumns.position)
-        Text(text)
-            .font(.system(size: 12))
-            .foregroundStyle(.tertiary)
-            .lineLimit(1)
-            .frame(width: columns.title, alignment: .leading)
-        Spacer().frame(width: columns.artist)
-        Spacer().frame(width: ImportMappingColumns.trailingColumns)
+    private var artistCell: some View {
+        if let track {
+            CommittedTextField(
+                placeholder: coreString("ui.import.mapping.column.artist"),
+                value: track.artistText,
+                boxed: false,
+                onCommit: { commit(track, \.artistText, $0) },
+            )
+            .frame(width: columns.artist)
+        }
+        else {
+            Spacer().frame(width: columns.artist)
+        }
+    }
+
+    /// What the folder offers for this track, and — while the pointer is here,
+    /// or while the row has nothing — the controls that change it.
+    private var sourceCell: some View {
+        ImportMappingSourceCell(
+            source: unit.source,
+            previewingPath: previewingPath,
+            lengthsDiverge: lengthsDiverge,
+            isMeasuring: isMeasuring,
+            evidence: evidence,
+            actions: actions,
+        )
+        .frame(width: columns.source, alignment: .leading)
+        .overlay(alignment: .trailing) {
+            if hovering || needsAnswer, let track {
+                rowActions(track)
+                    .padding(.leading, 8)
+                    .background(Theme.surfaceElevated.opacity(0.94))
+            }
+        }
     }
 
     /// Pick the audio this row writes, and the one action that belongs to the
@@ -148,6 +175,7 @@ struct ImportMappingRowView: View {
                 .font(.system(size: 11.5))
             }
         }
+        .fixedSize()
     }
 
     @ViewBuilder

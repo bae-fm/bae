@@ -68,35 +68,93 @@ internal sealed class ImportMappingTable
     {
         _rowHosts.Clear();
         _grids.Clear();
-        var column = new StackPanel { Spacing = 0, MinWidth = ImportMappingColumns.MinimumWidth };
-        column.Children.Add(HeaderRow());
+        var sections = new StackPanel { Spacing = 18 };
+        sections.Children.Add(Section(
+            Loc.Core("ui.import.mapping.tracks_title"),
+            _table.Reconciliation is { } reconciliation
+                ? MappingTableReading.ReconciliationLine(reconciliation)
+                : null,
+            TrackHeaderRow(),
+            TrackRows()));
+        var files = FileRows();
+        if (files.Count > 0)
+        {
+            sections.Children.Add(Section(
+                Loc.Core("ui.import.mapping.files_title"),
+                null,
+                FileHeaderRow(),
+                files));
+        }
+        ApplyPreviewAccent();
+        return sections;
+    }
+
+    /// <summary>The rows that become tracks. A sheet heads the run of slices it
+    /// carves; the slices are tracks like any other and carry no sheet controls
+    /// of their own.</summary>
+    private List<Control> TrackRows()
+    {
+        var rows = new List<Control>();
         foreach (var row in _table.Rows)
         {
             switch (row)
             {
-                case BridgeMappingRow.Unit unit:
-                    column.Children.Add(UnitRow(unit.UnitValue));
+                case BridgeMappingRow.Unit unit when IsTrack(unit.UnitValue):
+                    rows.Add(TrackRow(unit.UnitValue));
                     break;
                 case BridgeMappingRow.Sheet sheet:
-                    column.Children.Add(SheetRow(sheet.SheetValue));
-                    foreach (var entry in sheet.Entries)
+                    rows.Add(SheetRow(sheet.SheetValue));
+                    foreach (var entry in sheet.Entries.Where(IsTrack))
                     {
-                        column.Children.Add(UnitRow(entry));
+                        rows.Add(TrackRow(entry));
                     }
                     break;
-                case BridgeMappingRow.Directory directory:
-                    column.Children.Add(DirectoryRow(directory.DirectoryValue));
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown mapping row");
             }
         }
-        ApplyPreviewAccent();
+        return rows;
+    }
 
-        // A pane too narrow for the columns scrolls the table sideways. The
-        // alternative is squeezing a column past the point it says anything —
-        // or, as it stood, running the last two off the pane's right edge where
-        // there is no way to reach them at all.
+    /// <summary>The rows carried with the release that are not its tracks.
+    /// Being listed here with a role is the whole statement — there is no
+    /// sentence saying they are kept, because the section they are in says
+    /// it.</summary>
+    private List<Control> FileRows()
+    {
+        var rows = new List<Control>();
+        foreach (var row in _table.Rows)
+        {
+            switch (row)
+            {
+                case BridgeMappingRow.Unit unit when !IsTrack(unit.UnitValue):
+                    rows.Add(FileRow(unit.UnitValue));
+                    break;
+                case BridgeMappingRow.Directory directory:
+                    rows.Add(DirectoryRow(directory.DirectoryValue));
+                    break;
+            }
+        }
+        return rows;
+    }
+
+    /// <summary>Whether this unit is one of the release's tracks — settled as
+    /// one, or audio waiting for a release to name it. Both belong in the
+    /// Tracks section: the table is the same table before and after a pick, and
+    /// a folder's audio does not move sections when one lands.</summary>
+    private static bool IsTrack(BridgeMappingUnit unit) =>
+        unit.Becomes is BridgeMappingBecomes.Track or BridgeMappingBecomes.AwaitingPick;
+
+    /// <summary>One titled card of rows. A pane too narrow for the columns
+    /// scrolls sideways rather than squeezing a column past the point it says
+    /// anything, and both sections resolve against the same width so their
+    /// columns stay aligned.</summary>
+    private Control Section(string title, string? trailing, Control header, List<Control> rows)
+    {
+        var column = new StackPanel { Spacing = 0, MinWidth = ImportMappingColumns.MinimumWidth };
+        column.Children.Add(header);
+        foreach (var row in rows)
+        {
+            column.Children.Add(row);
+        }
         var scroller = new ScrollViewer
         {
             Content = column,
@@ -105,7 +163,10 @@ internal sealed class ImportMappingTable
         };
         scroller.SizeChanged += (_, e) => ApplyColumns(e.NewSize.Width);
         ApplyColumns(scroller.Bounds.Width);
-        return scroller;
+        var section = new StackPanel { Spacing = 8 };
+        section.Children.Add(ImportPaneUi.ZoneTitle(title, trailing));
+        section.Children.Add(scroller);
+        return section;
     }
 
     /// <summary>Resolve the columns against the width the pane leaves the table
@@ -118,25 +179,15 @@ internal sealed class ImportMappingTable
         var columns = ImportMappingColumns.Resolve(paneWidth);
         foreach (var grid in _grids)
         {
-            grid.ColumnDefinitions[0].Width = new GridLength(columns.Source);
-            grid.ColumnDefinitions[1].Width = new GridLength(columns.Role);
-            grid.ColumnDefinitions[3].Width = new GridLength(columns.Title);
-            grid.ColumnDefinitions[4].Width = new GridLength(columns.Artist);
+            grid.ColumnDefinitions[1].Width = new GridLength(columns.Title);
+            grid.ColumnDefinitions[2].Width = new GridLength(columns.Artist);
+            grid.ColumnDefinitions[4].Width = new GridLength(columns.Source);
         }
     }
 
-    /// <summary>The heading above the table, with the tally beside it. Absent for
-    /// a folder there is nothing to reconcile against — no release is picked, or
-    /// the tracklist was read off the folder's own files.</summary>
-    internal Control Title() => ImportPaneUi.ZoneTitle(
-        Loc.Core("ui.import.mapping.title"),
-        _table.Reconciliation is { } reconciliation
-            ? MappingTableReading.ReconciliationLine(reconciliation)
-            : null);
-
-    /// <summary>Move the accent onto whichever row the preview transport is
-    /// playing. Called on every preview event; it touches only the row
-    /// backgrounds, so a field mid-edit keeps its focus and its caret.</summary>
+    /// <summary>Accent the row whose audio is auditioning, and clear every
+    /// other. Applied in place rather than by rebuilding, so a preview starting
+    /// does not take the focus out of a field being typed in.</summary>
     internal void ApplyPreviewAccent()
     {
         var playing = _previewingPath();
@@ -170,13 +221,11 @@ internal sealed class ImportMappingTable
         {
             ColumnDefinitions = new ColumnDefinitions
             {
-                new ColumnDefinition(new GridLength(start.Source)),
-                new ColumnDefinition(new GridLength(start.Role)),
                 new ColumnDefinition(new GridLength(ImportMappingColumns.Position)),
                 new ColumnDefinition(new GridLength(start.Title)),
                 new ColumnDefinition(new GridLength(start.Artist)),
                 new ColumnDefinition(new GridLength(ImportMappingColumns.Length)),
-                new ColumnDefinition(new GridLength(ImportMappingColumns.Actions)),
+                new ColumnDefinition(new GridLength(start.Source)),
             },
             ColumnSpacing = ImportMappingColumns.Spacing,
         };
@@ -184,15 +233,26 @@ internal sealed class ImportMappingTable
         return grid;
     }
 
-    private Control HeaderRow()
+    private Control TrackHeaderRow()
     {
         var grid = Grid();
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.source"), 0));
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.roles.column.role"), 1));
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Chrome("edit.tracks.col_number"), 2));
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.roles.column.becomes"), 3));
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Chrome("edit.tracks.col_artist"), 4));
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.slots.column.length"), 5));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Chrome("edit.tracks.col_number"), 0));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.title"), 1));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.artist"), 2));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.slots.column.length"), 3));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.source"), 4));
+        grid.Margin = new Thickness(0, 0, 0, 4);
+        return grid;
+    }
+
+    private Control FileHeaderRow()
+    {
+        var grid = Grid();
+        var name = ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.name"), 0);
+        Avalonia.Controls.Grid.SetColumnSpan(name, 3);
+        grid.Children.Add(name);
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.slots.column.length"), 3));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.roles.column.role"), 4));
         grid.Margin = new Thickness(0, 0, 0, 4);
         return grid;
     }
@@ -200,7 +260,7 @@ internal sealed class ImportMappingTable
     // What every row sits in: one leading edge, one height, and a separator over
     // it. No striping — the columns are what a reader follows across a row, and a
     // tinted band under half of them is a second, competing grouping.
-    private Border Host(Grid grid, string? audioPath)
+    private Border HostOf(Grid grid, string? audioPath)
     {
         var host = new Border
         {
@@ -214,41 +274,78 @@ internal sealed class ImportMappingTable
         return host;
     }
 
-    // ── One source unit and what it becomes ──────────────────────────────────
+    // ── One of the release's tracks ──────────────────────────────────────────
 
-    private Control UnitRow(BridgeMappingUnit unit)
+    // The track's number, what it will be called, who it is by, how long it
+    // runs, and the file behind it. The control that re-points the row at
+    // another file is not a column: it appears over the Source cell when the
+    // pointer is on the row, and stays put on a row that has no file, which is
+    // the one row that has to be answered.
+    private Control TrackRow(BridgeMappingUnit unit)
     {
         var grid = Grid();
-
         var lengthsDiverge = LengthsDiverge(unit);
+        var track = (unit.Becomes as BridgeMappingBecomes.Track)?.TrackValue;
+
+        if (unit.Becomes is BridgeMappingBecomes.Track becomes)
+        {
+            AddTrackCells(grid, becomes, lengthsDiverge);
+        }
+        else
+        {
+            var waiting = ImportPaneUi.Cell(
+                Loc.Core("ui.import.becomes.awaiting_pick"), secondary: true);
+            Avalonia.Controls.Grid.SetColumn(waiting, 1);
+            grid.Children.Add(waiting);
+        }
 
         var source = SourceCell(unit.Source, lengthsDiverge, IsMeasuring(unit.Source));
-        Avalonia.Controls.Grid.SetColumn(source, 0);
-        grid.Children.Add(source);
+        var cell = new Panel();
+        cell.Children.Add(source);
+        if (track is { } editable)
+        {
+            var actions = RowActions(unit, editable);
+            actions.HorizontalAlignment = HorizontalAlignment.Right;
+            actions.VerticalAlignment = VerticalAlignment.Center;
+            // A row with no file behind it is the one that has to be answered,
+            // so its picker does not wait to be hovered.
+            actions.IsVisible = NeedsAnswer(unit, editable);
+            cell.Children.Add(actions);
+            var host = HostOf(grid, unit.Source.AudioPath());
+            host.PointerEntered += (_, _) => actions.IsVisible = true;
+            host.PointerExited += (_, _) =>
+                actions.IsVisible = NeedsAnswer(unit, editable);
+            Avalonia.Controls.Grid.SetColumn(cell, 4);
+            grid.Children.Add(cell);
+            return host;
+        }
+        Avalonia.Controls.Grid.SetColumn(cell, 4);
+        grid.Children.Add(cell);
+        return HostOf(grid, unit.Source.AudioPath());
+    }
 
+    private static bool NeedsAnswer(BridgeMappingUnit unit, BridgeRawTrackEdit track) =>
+        unit.Source is BridgeMappingSource.Missing || track.File is null;
+
+    // ── One file carried with the release ────────────────────────────────────
+
+    // A rip log, a text file, audio somebody took out of the tracklist: its
+    // name, how big it is, and the job it has. Nothing says it is kept — it is
+    // listed under a heading that says Files, which is the same statement
+    // without the sentence.
+    private Control FileRow(BridgeMappingUnit unit)
+    {
+        var grid = Grid();
+        var source = SourceCell(unit.Source, lengthsDiverge: false, IsMeasuring(unit.Source));
+        Avalonia.Controls.Grid.SetColumn(source, 0);
+        Avalonia.Controls.Grid.SetColumnSpan(source, 3);
+        grid.Children.Add(source);
         if (RoleCell(unit.Source) is { } role)
         {
-            Avalonia.Controls.Grid.SetColumn(role, 1);
+            Avalonia.Controls.Grid.SetColumn(role, 4);
             grid.Children.Add(role);
         }
-
-        switch (unit.Becomes)
-        {
-            case BridgeMappingBecomes.Track track:
-                AddTrackCells(grid, unit, track, lengthsDiverge);
-                break;
-            case BridgeMappingBecomes.Kept:
-                AddBecomesText(grid, Loc.Core("ui.import.becomes.kept"));
-                break;
-            case BridgeMappingBecomes.AwaitingPick:
-                AddBecomesText(grid, Loc.Core("ui.import.becomes.awaiting_pick"));
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(unit), unit.Becomes, "Unknown mapping becomes");
-        }
-
-        return Host(grid, unit.Source.AudioPath());
+        return HostOf(grid, unit.Source.AudioPath());
     }
 
     /// <summary>Whether the folder and the release disagree about how long this
@@ -264,18 +361,17 @@ internal sealed class ImportMappingTable
     // the row's own disagreement leaves to take.
     private void AddTrackCells(
         Grid grid,
-        BridgeMappingUnit unit,
         BridgeMappingBecomes.Track becomes,
         bool lengthsDiverge)
     {
         var track = becomes.TrackValue;
 
         var position = ImportPaneUi.Cell(becomes.SourcePosition, secondary: true);
-        Avalonia.Controls.Grid.SetColumn(position, 2);
+        Avalonia.Controls.Grid.SetColumn(position, 0);
         grid.Children.Add(position);
 
         var title = Field(track.Title, Loc.Core("ui.import.slots.untitled"));
-        var artist = Field(track.ArtistText, Loc.Chrome("edit.tracks.artist_placeholder"));
+        var artist = Field(track.ArtistText, Loc.Core("ui.import.mapping.column.artist"));
         // Both fields write the row back whole. A keystroke does not rebuild the
         // table — the field being typed in has to keep its focus and its caret —
         // so each handler reads what its sibling currently holds rather than
@@ -288,9 +384,9 @@ internal sealed class ImportMappingTable
         });
         title.TextChanged += (_, _) => WriteBack();
         artist.TextChanged += (_, _) => WriteBack();
-        Avalonia.Controls.Grid.SetColumn(title, 3);
+        Avalonia.Controls.Grid.SetColumn(title, 1);
         grid.Children.Add(title);
-        Avalonia.Controls.Grid.SetColumn(artist, 4);
+        Avalonia.Controls.Grid.SetColumn(artist, 2);
         grid.Children.Add(artist);
 
         var length = new TextBlock
@@ -307,12 +403,8 @@ internal sealed class ImportMappingTable
         {
             ToolTip.SetTip(length, Loc.Chrome("import.pane.lengths_differ"));
         }
-        Avalonia.Controls.Grid.SetColumn(length, 5);
+        Avalonia.Controls.Grid.SetColumn(length, 3);
         grid.Children.Add(length);
-
-        var actions = RowActions(unit, track);
-        Avalonia.Controls.Grid.SetColumn(actions, 6);
-        grid.Children.Add(actions);
     }
 
     private static TextBox Field(string text, string watermark) => new()
@@ -323,15 +415,6 @@ internal sealed class ImportMappingTable
         VerticalAlignment = VerticalAlignment.Center,
     };
 
-    // What a row that commits no track becomes, stated across the column the
-    // editable rows put their title in so the two line up.
-    private static void AddBecomesText(Grid grid, string text)
-    {
-        var cell = ImportPaneUi.Cell(text, secondary: true);
-        Avalonia.Controls.Grid.SetColumn(cell, 3);
-        grid.Children.Add(cell);
-    }
-
     // Pick the audio this row writes, and the one action that belongs to the
     // row's own disagreement — Exclude for audio the release does not name, Drop
     // for a track this folder has nothing for.
@@ -340,7 +423,7 @@ internal sealed class ImportMappingTable
     // second interaction design per toolkit, has no keyboard or accessibility
     // path, and buys nothing over picking from the folder's audio by name —
     // which is what re-pointing a row and swapping two rows both come down to.
-    private Control RowActions(BridgeMappingUnit unit, BridgeRawTrackEdit track)
+    private StackPanel RowActions(BridgeMappingUnit unit, BridgeRawTrackEdit track)
     {
         var actions = new StackPanel
         {
@@ -537,8 +620,31 @@ internal sealed class ImportMappingTable
         {
             return null;
         }
-        return RoleControl(file.FileValue)
-            ?? ImportPaneUi.Cell(Loc.Core(BaeBridgeMethods.BridgeFileRoleKey(file.FileValue.Role.FileRole())));
+        return RoleControl(file.FileValue) ?? RoleChip(file.FileValue.Role.FileRole());
+    }
+
+    /// <summary>The job one file has, as a chip: what the Role column holds
+    /// where the role is nobody's choice to make.</summary>
+    private static Control RoleChip(BridgeFileRole role)
+    {
+        var text = new TextBlock
+        {
+            Text = Loc.Core(BaeBridgeMethods.BridgeFileRoleKey(role)),
+            FontSize = 11,
+            FontWeight = FontWeight.Medium,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var chip = new Border
+        {
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(6, 1),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = text,
+        };
+        chip[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
+        return chip;
     }
 
     // Present only where core offered alternatives, which is every file the scan
@@ -627,15 +733,15 @@ internal sealed class ImportMappingTable
             line.Children.Add(ImportEvidence.Chip(found));
         }
         Avalonia.Controls.Grid.SetColumn(line, 0);
+        Avalonia.Controls.Grid.SetColumnSpan(line, 3);
         grid.Children.Add(line);
 
+        // The slices below fill the length; the header only holds the column
+        // open so the group and its rows line up.
         var disc = DiscControl(sheet);
-        Avalonia.Controls.Grid.SetColumn(disc, 1);
+        Avalonia.Controls.Grid.SetColumn(disc, 4);
         grid.Children.Add(disc);
-
-        // The becomes half is the entries' to fill; the header only holds its
-        // columns open so the group and its rows line up.
-        return Host(grid, audioPath: null);
+        return HostOf(grid, audioPath: null);
     }
 
     /// <summary>Which of the release's discs a sheet's entries are, or that it
@@ -766,6 +872,7 @@ internal sealed class ImportMappingTable
         var name = ImportPaneUi.FileName(
             null, directory.DirPrefix, checked((long)directory.TotalSize));
         Avalonia.Controls.Grid.SetColumn(name, 0);
+        Avalonia.Controls.Grid.SetColumnSpan(name, 3);
         grid.Children.Add(name);
         var kind = ImportPaneUi.Cell(
             Loc.Core(
@@ -773,9 +880,8 @@ internal sealed class ImportMappingTable
                 "count",
                 (long)directory.Count),
             secondary: true);
-        Avalonia.Controls.Grid.SetColumn(kind, 1);
+        Avalonia.Controls.Grid.SetColumn(kind, 4);
         grid.Children.Add(kind);
-        AddBecomesText(grid, Loc.Core("ui.import.becomes.kept"));
-        return Host(grid, audioPath: null);
+        return HostOf(grid, audioPath: null);
     }
 }

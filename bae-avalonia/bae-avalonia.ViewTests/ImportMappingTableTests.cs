@@ -28,6 +28,37 @@ public sealed class ImportMappingTableTests
 
     // ── The table, rendered ──────────────────────────────────────────────────
 
+    // Tracks and files are two questions, so they are two sections. A file the
+    // release does not name is not a track with an empty title — it is a file,
+    // and it is listed as one, with the job it has and no sentence saying it is
+    // kept.
+    [AvaloniaFact]
+    public void TracksAndFilesAreListedApart()
+    {
+        var table = Build(new BridgeMappingTable(
+            Array.Empty<BridgeMappingImage>(),
+            new[]
+            {
+                Unit(FileSource("01.flac"), TrackBecomes("t1", "Track One", Standalone("01.flac"))),
+                Unit(FileSource("rip.log"), new BridgeMappingBecomes.Kept()),
+            },
+            Reconciliation: null));
+
+        // The header plus the one track; the log is not among them.
+        Assert.Equal(2, Rows(table).Count);
+        var files = FileRows(table);
+        Assert.Equal(2, files.Count);
+        Assert.Contains(
+            files[1].GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "rip.log");
+        Assert.Contains(
+            table.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("ui.import.mapping.tracks_title"));
+        Assert.Contains(
+            table.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("ui.import.mapping.files_title"));
+    }
+
     // The sheet a disc ID was computed from wears the chip on its own row, and
     // that row hovers to the sentence naming the ID. Nothing else does.
     [AvaloniaFact]
@@ -109,8 +140,8 @@ public sealed class ImportMappingTableTests
             width => Assert.Equal(GridUnitType.Pixel, width.GridUnitType));
     }
 
-    // The whole row has to fit the pane. Seven columns at a width the pane never
-    // had is what ran the length and the row's actions off its right edge.
+    // The whole row has to fit the pane. Columns resolved at a width the pane
+    // never had is what ran the last of them off its right edge.
     [Theory]
     [InlineData(400)]
     [InlineData(ImportMappingColumns.MinimumWidth)]
@@ -122,9 +153,9 @@ public sealed class ImportMappingTableTests
     {
         var columns = ImportMappingColumns.Resolve(paneWidth);
 
-        var row = columns.Source + columns.Role + columns.Title + columns.Artist
+        var row = columns.Title + columns.Artist + columns.Source
             + ImportMappingColumns.Position + ImportMappingColumns.Length
-            + ImportMappingColumns.Actions + ImportMappingColumns.Spacing * 6;
+            + (ImportMappingColumns.Spacing * 4);
 
         // Under its minimum the table stops shrinking; the pane scrolls it
         // sideways from there rather than squeezing a column out of the row.
@@ -132,20 +163,19 @@ public sealed class ImportMappingTableTests
     }
 
     // Wide enough and every column has the width it asks for, with the surplus
-    // going to the file names and nowhere else — the layout a wide window has
-    // always drawn, unchanged. The same four numbers the macOS table resolves.
+    // going to the file names and nowhere else. The same three numbers the
+    // macOS table resolves.
     [Fact]
     public void TheSurplusAboveTheIdealWidthIsAllTheSource()
     {
         var columns = ImportMappingColumns.Resolve(ImportMappingColumns.IdealWidth + 300);
 
-        Assert.Equal(118, columns.Role);
         Assert.Equal(220, columns.Title);
         Assert.Equal(180, columns.Artist);
-        Assert.Equal(540, columns.Source);
+        Assert.Equal(560, columns.Source);
     }
 
-    // Narrowing takes from all four at once. A column that kept its width while
+    // Narrowing takes from all three at once. A column that kept its width while
     // its neighbour collapsed would be the same bug in miniature: the row still
     // fits, and one cell has stopped saying anything.
     [Fact]
@@ -157,11 +187,9 @@ public sealed class ImportMappingTableTests
         var narrow = ImportMappingColumns.Resolve(ImportMappingColumns.MinimumWidth);
 
         Assert.True(middle.Source < wide.Source);
-        Assert.True(middle.Role < wide.Role);
         Assert.True(middle.Title < wide.Title);
         Assert.True(middle.Artist < wide.Artist);
         Assert.True(narrow.Source < middle.Source);
-        Assert.True(narrow.Role < middle.Role);
         Assert.True(narrow.Title < middle.Title);
         Assert.True(narrow.Artist < middle.Artist);
     }
@@ -365,12 +393,25 @@ public sealed class ImportMappingTableTests
             unprobed: null,
             evidence: evidence).Build();
 
-    /// <summary>The table's children: the column header, then one per rendered
-    /// row — a sheet's own row and each of its entries. The table hangs inside
-    /// the scroller that carries it sideways in a pane too narrow for its
-    /// columns.</summary>
-    private static IReadOnlyList<Control> Rows(Control table) =>
-        ((StackPanel)((ScrollViewer)table).Content!).Children.OfType<Control>().ToList();
+    /// <summary>The Tracks section's children: the column header, then one per
+    /// rendered row — a sheet's own row and each of its slices. Each section is
+    /// its heading over a scroller that carries the rows sideways in a pane too
+    /// narrow for the columns.</summary>
+    private static IReadOnlyList<Control> Rows(Control table) => SectionRows(table, 0);
+
+    /// <summary>The Files section's children. Absent, and so empty, for a
+    /// folder whose every row becomes a track.</summary>
+    private static IReadOnlyList<Control> FileRows(Control table) =>
+        ((StackPanel)table).Children.Count > 1
+            ? SectionRows(table, 1)
+            : Array.Empty<Control>();
+
+    private static IReadOnlyList<Control> SectionRows(Control table, int index)
+    {
+        var section = (StackPanel)((StackPanel)table).Children[index];
+        var scroller = (ScrollViewer)section.Children[1];
+        return ((StackPanel)scroller.Content!).Children.OfType<Control>().ToList();
+    }
 
     /// <summary>A row's left half, which is the first cell of its grid.</summary>
     private static Control SourceCell(Control row) =>

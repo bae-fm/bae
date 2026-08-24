@@ -64,18 +64,15 @@ struct ImportMappingSheetRow: View {
                 }
                 Spacer(minLength: 0)
             }
-            .sourceColumn(columns)
+            .frame(width: columns.name, alignment: .leading)
+            // The slices below fill the length; the header only holds the
+            // column open so the group and its rows line up.
+            Spacer().frame(width: ImportMappingColumns.length)
             ImportSheetDiscMenu(
                 sheet: sheet,
                 onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
             )
-            .frame(width: columns.role, alignment: .leading)
-            // The becomes half is the entries' to fill; the header only holds
-            // its columns open so the group and its rows line up.
-            Spacer().frame(width: ImportMappingColumns.position)
-            Spacer().frame(width: columns.title)
-            Spacer().frame(width: columns.artist)
-            Spacer().frame(width: ImportMappingColumns.trailingColumns)
+            .frame(width: columns.source, alignment: .leading)
         }
     }
 }

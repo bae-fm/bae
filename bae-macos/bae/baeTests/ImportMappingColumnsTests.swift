@@ -14,10 +14,9 @@ struct ImportMappingColumnsTests {
     /// Every column, the gaps between them and the row's two leading edges, as
     /// the row lays them out.
     private func rowWidth(_ columns: ImportMappingColumns) -> CGFloat {
-        columns.source + columns.role + columns.title + columns.artist
+        columns.title + columns.artist + columns.source
             + ImportMappingColumns.position + ImportMappingColumns.length
-            + ImportMappingColumns.actions
-            + ImportMappingColumns.spacing * 6
+            + ImportMappingColumns.spacing * 4
             + ImportMappingColumns.rowPadding * 2
     }
 
@@ -47,7 +46,6 @@ struct ImportMappingColumnsTests {
 
         #expect(rowWidth(columns) == ImportMappingColumns.minimumTableWidth)
         #expect(columns.source == atMinimum.source)
-        #expect(columns.role == atMinimum.role)
         #expect(columns.title == atMinimum.title)
         #expect(columns.artist == atMinimum.artist)
     }
@@ -61,10 +59,9 @@ struct ImportMappingColumnsTests {
             tableWidth: ImportMappingColumns.idealTableWidth + surplus
         )
 
-        #expect(columns.role == 118)
         #expect(columns.title == 220)
         #expect(columns.artist == 180)
-        #expect(columns.source == 240 + surplus)
+        #expect(columns.source == 260 + surplus)
     }
 
     /// Narrowing takes from all four at once. A column that kept its width
@@ -84,11 +81,9 @@ struct ImportMappingColumnsTests {
         )
 
         #expect(middle.source < wide.source)
-        #expect(middle.role < wide.role)
         #expect(middle.title < wide.title)
         #expect(middle.artist < wide.artist)
         #expect(narrow.source < middle.source)
-        #expect(narrow.role < middle.role)
         #expect(narrow.title < middle.title)
         #expect(narrow.artist < middle.artist)
     }
@@ -102,7 +97,6 @@ struct ImportMappingColumnsTests {
         for width in stride(from: 301.0, through: 2000.0, by: 1) {
             let columns = ImportMappingColumns.resolved(tableWidth: width)
             #expect(columns.source >= previous.source)
-            #expect(columns.role >= previous.role)
             #expect(columns.title >= previous.title)
             #expect(columns.artist >= previous.artist)
             previous = columns

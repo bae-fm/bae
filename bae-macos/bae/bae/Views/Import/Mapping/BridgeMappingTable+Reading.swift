@@ -229,3 +229,31 @@ func importDurationText(_ ms: UInt64?) -> String {
     let label = DurationClock.text(Int64(ms))
     return label.isEmpty ? "\u{2014}" : label
 }
+
+extension BridgeMappingUnit {
+    /// Whether this unit is one of the release's tracks — settled as one, or
+    /// audio waiting for a release to name it. Both belong in the Tracks
+    /// section: the table is the same table before and after a pick, and a
+    /// folder's audio does not move sections when one lands.
+    var isTrack: Bool {
+        switch becomes {
+        case .track, .awaitingPick: return true
+        case .kept: return false
+        }
+    }
+}
+
+extension BridgeMappingTable {
+    /// The rows carried with the release that are not its tracks: the files
+    /// with a role and nothing to become, and the directories that collapse to
+    /// one row. What the Files section lists.
+    var keptRows: [BridgeMappingRow] {
+        rows.filter { row in
+            switch row {
+            case .unit(let unit): return !unit.isTrack
+            case .directory: return true
+            case .sheet: return false
+            }
+        }
+    }
+}

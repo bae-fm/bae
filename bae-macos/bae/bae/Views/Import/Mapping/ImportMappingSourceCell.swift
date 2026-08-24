@@ -165,9 +165,7 @@ struct ImportMappingRoleCell: View {
     var body: some View {
         if case .file(let file) = source {
             if file.alternatives.isEmpty {
-                Text(coreString(bridgeFileRoleKey(role: file.role.fileRole)))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                ImportRoleChip(role: file.role.fileRole)
             }
             else {
                 ImportRoleChoiceControl(

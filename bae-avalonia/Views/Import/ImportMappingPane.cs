@@ -371,9 +371,8 @@ internal sealed partial class ImportMappingPane : UserControl
                 actions,
                 _candidate.Detail!.Unprobed,
                 _candidate.FileEvidence);
-            var table = _table.Build();
-            sections.Children.Add(_table.Title());
-            sections.Children.Add(table);
+            // Both sections and their headings, as one block.
+            sections.Children.Add(_table.Build());
         }
 
         _content.Content = new ScrollViewer { Content = sections };
