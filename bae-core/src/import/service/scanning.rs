@@ -1,6 +1,12 @@
 use super::*;
 
 impl ImportService {
+    /// Mark `root`'s scan generation failed and say so. The stored status is
+    /// what the import list's live query reads for the folder's mark; the
+    /// event is the moment it happened, which the desktops raise as an alert.
+    ///
+    /// Returns `false` when the generation is no longer the root's — a newer
+    /// scan owns the status and this one's failure is not the root's state.
     pub(super) async fn record_scan_failure(
         root: &Path,
         generation: u64,
@@ -17,6 +23,20 @@ impl ImportService {
         {
             return Ok(false);
         }
+        Self::announce_scan_failure(root, message, event_tx);
+        Ok(true)
+    }
+
+    /// Say a scan of `root` failed, without a stored status behind it. Only
+    /// [`Self::begin_scan`] reaches this: the generation row is what a status
+    /// would be written against, so a root whose generation could not be
+    /// written has nowhere durable to record the failure — and the user still
+    /// has to hear that the folder they just added was not read.
+    fn announce_scan_failure(
+        root: &Path,
+        message: String,
+        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+    ) {
         let watched_folder =
             crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
         send_event(
@@ -29,14 +49,12 @@ impl ImportService {
                 },
             }),
         );
-        Ok(true)
     }
 
     pub(super) async fn persist_scan_item(
         root: &Path,
         generation: u64,
         item: &ScanItem,
-        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
     ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
@@ -50,39 +68,14 @@ impl ImportService {
             candidate.files.apply_candidate_file_edits(&edits)?;
             candidate.file_edit_revision = edits.revision;
         }
-        match library_manager
+        let superseded = library_manager
             .save_folder_scan_item(&root.to_string_lossy(), generation, &item)
-            .await
-        {
-            Ok(Some(superseded_keys)) => Ok(Some(PersistedScanItem {
-                commit,
-                item,
-                superseded_keys,
-            })),
-            Ok(None) => Ok(None),
-            Err(write_error) => {
-                drop(commit);
-                let message = format!("Could not store folder scan result: {write_error}");
-                match Self::record_scan_failure(
-                    root,
-                    generation,
-                    message,
-                    event_tx,
-                    library_manager,
-                    folder_state_commit,
-                )
-                .await
-                {
-                    Ok(_) => Err(write_error.into()),
-                    Err(status_error) => Err(crate::import::ImportError::Internal {
-                        detail: format!(
-                            "folder scan result write failed: {write_error}; \
-                             recording the scan failure also failed: {status_error}"
-                        ),
-                    }),
-                }
-            }
-        }
+            .await?;
+        Ok(superseded.map(|superseded_keys| PersistedScanItem {
+            commit,
+            item,
+            superseded_keys,
+        }))
     }
 
     pub(super) async fn cancel_and_join_folder_walk(
@@ -673,6 +666,12 @@ impl ImportService {
     /// answers — a network share is orders of magnitude slower than a local disk
     /// — and a batch at the end leaves the import list empty for that whole
     /// span, which is indistinguishable from a scan that found nothing.
+    ///
+    /// Every way this can fail lands in the root's stored status: the walk
+    /// runs in [`Self::walk_and_reconcile`] and this records whatever error it
+    /// returns, so no failure between opening a generation and finishing it
+    /// can leave the root reading `scanning` forever with only a log line to
+    /// say otherwise.
     pub(super) async fn rescan_and_reconcile(
         root: &Path,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
@@ -683,62 +682,107 @@ impl ImportService {
         cancellation: &crate::import::folder_scanner::ScanCancellation,
     ) -> Result<(), crate::import::ImportError> {
         let root_key = root.to_string_lossy().into_owned();
-        let generation = {
-            let _commit = folder_state_commit.lock().await;
-            let generation = library_manager.begin_folder_scan(&root_key).await?;
-            let watched_folder = crate::import::WatchedFolder::from_path(root_key.clone());
-            send_event(
-                event_tx,
-                crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
-                    status: crate::import::WatchedFolderScanStatus {
-                        watched_folder_path: watched_folder.path,
-                        watched_folder_name: watched_folder.name,
-                        status: crate::import::FolderScanStatus::Scanning,
-                    },
-                }),
-            );
-            generation
+        let generation = match Self::begin_scan(
+            root,
+            &root_key,
+            event_tx,
+            library_manager,
+            folder_state_commit,
+        )
+        .await
+        {
+            Ok(generation) => generation,
+            Err(error) => {
+                error!("folder scan of {} could not start: {error}", root.display());
+                Self::announce_scan_failure(root, error.to_string(), event_tx);
+                return Err(error);
+            }
         };
+        let outcome = Self::walk_and_reconcile(
+            root,
+            &root_key,
+            generation,
+            event_tx,
+            library_manager,
+            folder_registry,
+            folder_state_commit,
+            folder_watcher,
+            cancellation,
+        )
+        .await;
+        let Err(error) = outcome else {
+            return Ok(());
+        };
+        // A cancelled scan is the coordinator taking the root away — a newer
+        // scan or a removal — not a failure of this one.
+        if cancellation.is_cancelled() {
+            return Ok(());
+        }
+        warn!(
+            "scan of {} failed ({error}); keeping previous candidates",
+            root.display()
+        );
+        Self::record_scan_failure(
+            root,
+            generation,
+            error.to_string(),
+            event_tx,
+            library_manager,
+            folder_state_commit,
+        )
+        .await?;
+        Err(error)
+    }
+
+    /// Open a durable scan generation for `root` and say the walk has started.
+    async fn begin_scan(
+        root: &Path,
+        root_key: &str,
+        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        library_manager: &LibraryManager,
+        folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
+    ) -> Result<u64, crate::import::ImportError> {
+        let _commit = folder_state_commit.lock().await;
+        let generation = library_manager.begin_folder_scan(root_key).await?;
+        let watched_folder =
+            crate::import::WatchedFolder::from_path(root.to_string_lossy().into_owned());
+        send_event(
+            event_tx,
+            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderScanStatusChanged {
+                status: crate::import::WatchedFolderScanStatus {
+                    watched_folder_path: watched_folder.path,
+                    watched_folder_name: watched_folder.name,
+                    status: crate::import::FolderScanStatus::Scanning,
+                },
+            }),
+        );
+        Ok(generation)
+    }
+
+    /// The walk itself, under an open generation. Every error it returns is
+    /// recorded as the root's failure by its caller, so nothing in here has to
+    /// record its own.
+    #[allow(clippy::too_many_arguments)]
+    async fn walk_and_reconcile(
+        root: &Path,
+        root_key: &str,
+        generation: u64,
+        event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
+        library_manager: &LibraryManager,
+        folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
+        folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
+        folder_watcher: &Arc<FolderWatcher>,
+        cancellation: &crate::import::folder_scanner::ScanCancellation,
+    ) -> Result<(), crate::import::ImportError> {
         // What the user has decided about each candidate's files — which audio
         // each sheet describes, and which files are the release's tracks — read
         // once for the whole walk. A folder's roles are only what its filenames
         // propose until these land on top, so the walk takes them with it
         // rather than having every candidate corrected afterwards.
-        let stored_edits = match library_manager.load_stored_candidate_edits().await {
-            Ok(stored) => stored,
-            Err(e) => {
-                warn!("stored file decisions could not be read; scan failed: {e}");
-                Self::record_scan_failure(
-                    root,
-                    generation,
-                    e.to_string(),
-                    event_tx,
-                    library_manager,
-                    folder_state_commit,
-                )
-                .await?;
-                return Err(e.into());
-            }
-        };
-        let decisions = match library_manager
-            .load_folder_release_decisions(&root.to_string_lossy())
-            .await
-        {
-            Ok(decisions) => decisions,
-            Err(e) => {
-                let message = format!("Folder release decisions could not be read: {e}");
-                Self::record_scan_failure(
-                    root,
-                    generation,
-                    message,
-                    event_tx,
-                    library_manager,
-                    folder_state_commit,
-                )
-                .await?;
-                return Err(e.into());
-            }
-        };
+        let stored_edits = library_manager.load_stored_candidate_edits().await?;
+        let decisions = library_manager
+            .load_folder_release_decisions(root_key)
+            .await?;
         let root_buf = root.to_path_buf();
         let dropped_item_root = root.to_path_buf();
         let walk_cancellation = cancellation.clone();
@@ -830,7 +874,6 @@ impl ImportService {
                         root,
                         generation,
                         &persisted_item,
-                        event_tx,
                         library_manager,
                         folder_state_commit,
                     )
@@ -889,7 +932,6 @@ impl ImportService {
                         root,
                         generation,
                         &persisted_item,
-                        event_tx,
                         library_manager,
                         folder_state_commit,
                     )
@@ -924,7 +966,6 @@ impl ImportService {
                         root,
                         generation,
                         &persisted_item,
-                        event_tx,
                         library_manager,
                         folder_state_commit,
                     )
@@ -955,15 +996,9 @@ impl ImportService {
                 // scan reads the folder the same way even if the naming rule
                 // changes under it.
                 ScanItem::Decided { key, decision } => {
-                    if let Err(e) = library_manager
+                    library_manager
                         .record_scanned_folder_release_decision(&key, decision)
-                        .await
-                    {
-                        warn!(
-                            "folder reading for {} could not be stored: {e}",
-                            key.relative_folder_path
-                        );
-                    }
+                        .await?;
                 }
             }
         }
@@ -974,42 +1009,11 @@ impl ImportService {
         // explicitly replaced.
         let seen_directories = match walk.await {
             Ok((Ok(()), seen_directories)) => seen_directories,
-            Ok((Err(e), _)) => {
-                if cancellation.is_cancelled() {
-                    return Ok(());
-                }
-                warn!(
-                    "re-scan of {} failed ({e}); keeping previous candidates",
-                    root.display()
-                );
-                Self::record_scan_failure(
-                    root,
-                    generation,
-                    e.to_string(),
-                    event_tx,
-                    library_manager,
-                    folder_state_commit,
-                )
-                .await?;
-                return Err(e.into());
-            }
+            Ok((Err(e), _)) => return Err(e.into()),
             Err(e) => {
-                if cancellation.is_cancelled() {
-                    return Ok(());
-                }
-                error!("folder scan task panicked for {}: {e}", root.display());
-                Self::record_scan_failure(
-                    root,
-                    generation,
-                    e.to_string(),
-                    event_tx,
-                    library_manager,
-                    folder_state_commit,
-                )
-                .await?;
                 return Err(crate::import::ImportError::Internal {
-                    detail: format!("folder scan task failed: {e}"),
-                });
+                    detail: format!("folder scan task panicked: {e}"),
+                })
             }
         };
 
@@ -1019,35 +1023,10 @@ impl ImportService {
         // transaction: a newer decision or scan cannot be pruned by this
         // completed write, and `None` says one took the root first.
         let commit = folder_state_commit.clone().lock_owned().await;
-        let pruned = match library_manager
-            .finish_folder_scan(&root_key, generation, None)
-            .await
-        {
-            Ok(pruned) => pruned,
-            Err(write_error) => {
-                drop(commit);
-                let message = format!("Could not finish folder scan: {write_error}");
-                if let Err(status_error) = Self::record_scan_failure(
-                    root,
-                    generation,
-                    message,
-                    event_tx,
-                    library_manager,
-                    folder_state_commit,
-                )
-                .await
-                {
-                    return Err(crate::import::ImportError::Internal {
-                        detail: format!(
-                            "folder scan completion write failed: {write_error}; \
-                             recording the scan failure also failed: {status_error}"
-                        ),
-                    });
-                }
-                return Err(write_error.into());
-            }
-        };
-        let Some(pruned) = pruned else {
+        let Some(pruned) = library_manager
+            .finish_folder_scan(root_key, generation, None)
+            .await?
+        else {
             return Ok(());
         };
         for candidate_key in pruned {

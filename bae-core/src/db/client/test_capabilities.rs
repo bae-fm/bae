@@ -72,6 +72,18 @@ impl Database {
             .await
     }
 
+    /// Take away the table a folder scan reads the user's stored file
+    /// decisions from, the way a database left behind by an older build is
+    /// missing what the current one reads.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn rename_candidate_file_edit_table_for_test(&self) -> Result<(), DbError> {
+        self.rename_host_table_for_test(
+            "import_candidate_file_edit",
+            "import_candidate_file_edit_unavailable",
+        )
+        .await
+    }
+
     async fn rename_host_table_for_test(&self, from: &str, to: &str) -> Result<(), DbError> {
         let statement = format!("ALTER TABLE {from} RENAME TO {to}");
         self.call_sql(move |sql| {

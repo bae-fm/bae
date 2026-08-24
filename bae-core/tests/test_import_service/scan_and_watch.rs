@@ -352,6 +352,54 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
     assert_eq!(f.handle.watched_folders().len(), 1);
 }
 
+/// A scan reads the user's stored file decisions before it walks anything. When
+/// that read fails — a database an older build left behind, missing what this
+/// one reads — the root lands on the failed status carrying the error, so the
+/// import list has something to show instead of staying silent.
+#[tokio::test]
+async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let root = f.temp_path().join("Collection");
+    let album = root.join("Artist - Album");
+    fs::create_dir_all(&album).unwrap();
+    generate_album_files(&album, &["01 Track.flac"]);
+    let root_key = root.to_string_lossy().into_owned();
+
+    f.db.rename_candidate_file_edit_table_for_test()
+        .await
+        .unwrap();
+    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+
+    let projection = wait_for_candidates(
+        &f,
+        "the unreadable file decisions leave the root failed",
+        |projection| {
+            projection.summary.folder_scan_statuses.iter().any(|status| {
+                status.watched_folder_path == root_key
+                    && matches!(
+                        status.status,
+                        bae_core::import::FolderScanStatus::Failed { .. }
+                    )
+            })
+        },
+    )
+    .await;
+    let status = projection
+        .summary
+        .folder_scan_statuses
+        .iter()
+        .find(|status| status.watched_folder_path == root_key)
+        .expect("the added root reports a scan status");
+    let bae_core::import::FolderScanStatus::Failed { error } = &status.status else {
+        panic!("expected a failed scan, got {:?}", status.status);
+    };
+    assert!(
+        error.contains("import_candidate_file_edit"),
+        "the failed status carries what went wrong, got {error:?}"
+    );
+}
+
 /// A refresh is the awaited scan operation. If a watched root disappears, it
 /// reports the failure, records the failed status, and preserves the last
 /// candidate snapshot rather than turning an unavailable filesystem into
