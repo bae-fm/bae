@@ -8,6 +8,9 @@ import SwiftUI
 /// what is in the file — so the images are shown rather than listed.
 struct ImportMappingGallery: View {
     let images: [BridgeMappingImage]
+    /// What identified the release, by the file each piece was read off. A
+    /// tile whose image is one of them says so.
+    var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
 
     static let tileSize: CGFloat = 96
@@ -33,7 +36,8 @@ struct ImportMappingGallery: View {
     }
 
     private func tile(_ image: BridgeMappingImage) -> some View {
-        Button {
+        let found = ImportEvidence.of(image.fileId, in: evidence)
+        return Button {
             actions.openImages(images, image.localPath)
         } label: {
             VStack(spacing: 3) {
@@ -43,6 +47,11 @@ struct ImportMappingGallery: View {
                 )
                 .frame(width: Self.tileSize, height: Self.tileSize)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(alignment: .topTrailing) {
+                    if let found {
+                        ImportEvidenceMark(signal: found.signal)
+                    }
+                }
                 Text(image.name)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
@@ -53,5 +62,6 @@ struct ImportMappingGallery: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .help(found.map(ImportEvidence.hoverText) ?? "")
     }
 }

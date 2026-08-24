@@ -82,6 +82,7 @@ struct ImportMappingPane: View {
                 if !mapping.images.isEmpty {
                     ImportMappingGallery(
                         images: mapping.images,
+                        evidence: candidate.fileEvidence,
                         actions: mappingActions
                     )
                 }
@@ -90,6 +91,7 @@ struct ImportMappingPane: View {
                     bindingOptions: bindingOptions,
                     previewingPath: previewingPath,
                     unprobed: Set(candidate.detail?.unprobed ?? []),
+                    evidence: candidate.fileEvidence,
                     actions: mappingActions,
                 )
             }

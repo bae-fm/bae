@@ -18,6 +18,9 @@ struct ImportMappingSheetRow: View {
     /// core. `nil` until it has been asked for; empty means there is nothing to
     /// offer, so no menu appears.
     let options: [BridgeSheetBindingOption]?
+    /// What identified the release, where this sheet is what it was read off —
+    /// a cue the disc ID was computed from. `nil` otherwise.
+    var evidence: BridgeFileEvidence?
     let actions: ImportMappingActions
 
     var body: some View {
@@ -53,6 +56,11 @@ struct ImportMappingSheetRow: View {
                     Text(size)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                }
+                if let evidence {
+                    ImportEvidenceChip(signal: evidence.signal)
+                        .fixedSize()
+                        .help(ImportEvidence.hoverText(evidence))
                 }
                 Spacer(minLength: 0)
             }

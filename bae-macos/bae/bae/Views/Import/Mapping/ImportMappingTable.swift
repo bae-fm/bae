@@ -20,6 +20,9 @@ struct ImportMappingTable: View {
     /// The audio units nothing has read yet. Their rows say so while the read
     /// runs; every other length on the pane is already stored.
     var unprobed: Set<BridgeAudioFile> = []
+    /// What identified the release, by the file each piece was read off. The
+    /// row for that file carries the chip.
+    var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
 
     /// The width the pane leaves the table. The columns are resolved against
@@ -77,6 +80,7 @@ struct ImportMappingTable: View {
                 sheet: sheet,
                 columns: columns,
                 options: bindingOptions[sheet.sheetId],
+                evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
                 actions: actions,
             )
             .rowChrome()
@@ -100,12 +104,19 @@ struct ImportMappingTable: View {
             audioChoices: table.audioChoices,
             previewingPath: previewingPath,
             isMeasuring: unit.source.audio.map(unprobed.contains) ?? false,
+            evidence: evidenceFor(unit),
             actions: actions,
         )
         .rowChrome(
             background: unit.source.audioPath == previewingPath
                 ? Theme.accentSoft : .clear
         )
+    }
+
+    /// The evidence this row's own file is the source of, if it is any.
+    private func evidenceFor(_ unit: BridgeMappingUnit) -> BridgeFileEvidence? {
+        guard case .file(let file) = unit.source else { return nil }
+        return ImportEvidence.of(file.fileId, in: evidence)
     }
 
     private var headerRow: some View {

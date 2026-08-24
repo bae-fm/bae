@@ -225,6 +225,12 @@ struct Candidate: Equatable, Identifiable {
         detail?.release
     }
 
+    /// What identified the picked release, each entry naming the file it was
+    /// read off — the chip that file's gallery tile or table row carries.
+    var fileEvidence: [BridgeFileEvidence] {
+        detail?.fileEvidence ?? []
+    }
+
     /// The metadata form: the pick's own values with whatever has been typed
     /// over them. `nil` while nothing is picked — there is nothing to edit.
     var edit: BridgeRawReleaseEdit? {
