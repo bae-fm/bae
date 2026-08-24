@@ -328,6 +328,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             by_barcode: false,
             by_catalog: false,
         }],
+        matched_barcode: None,
     }
 }
 

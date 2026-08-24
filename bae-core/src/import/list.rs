@@ -27,7 +27,7 @@ use super::triage::{
     TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{AudioFile, IdentityChoice, IdentityPick, RawReleaseEdit};
-use super::{ClaimEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
+use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
@@ -276,21 +276,25 @@ impl ImportCandidateDetailProjection {
             signals,
             failure,
         } = self;
-        let evidence = picked.as_ref().and_then(|pick| match pick {
-            IdentityPick::Release {
-                source, release_id, ..
-            } => {
+        let file_evidence = match (picked.as_ref(), signals.as_ref()) {
+            (
+                Some(IdentityPick::Release {
+                    source, release_id, ..
+                }),
+                Some(signals),
+            ) => {
                 let state = match live_identify {
                     IdentifyState::Idle => &resumed_identify_state,
                     live => live,
                 };
-                Some(crate::import::claim::evidence_for(
+                crate::import::claim::file_evidence(
                     state,
                     &crate::import::MetadataRef::new(release_id.clone(), *source),
-                ))
+                    signals,
+                )
             }
-            IdentityPick::Unknown => None,
-        });
+            _ => Vec::new(),
+        };
         let import_status = import_status_of(
             facts.importing,
             imported_release.as_ref(),
@@ -335,7 +339,7 @@ impl ImportCandidateDetailProjection {
             row,
             release,
             picked_library_status,
-            evidence,
+            file_evidence,
             edit,
             mapping,
             unprobed,
@@ -359,9 +363,11 @@ pub struct ImportCandidateDetail {
     pub row: TriageRow,
     pub release: Option<ImportSearchReleaseDetail>,
     pub picked_library_status: Option<LibraryStatus>,
-    /// What identified the picked release — the badge the header draws.
-    /// `None` with no pick, and for a folder read as its own tags.
-    pub evidence: Option<ClaimEvidence>,
+    /// What identified the picked release, pinned to the candidate file each
+    /// piece of evidence was read off — the chip that file's gallery tile or
+    /// table row carries. Empty with no pick, for a folder read as its own
+    /// tags, and where nothing identification matched on came from a file.
+    pub file_evidence: Vec<FileEvidence>,
     pub edit: Option<RawReleaseEdit>,
     pub mapping: MappingTable,
     pub unprobed: Vec<AudioFile>,

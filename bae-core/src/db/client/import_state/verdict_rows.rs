@@ -21,24 +21,33 @@ fn source_of(stored: &str) -> Result<MetadataSource, DbError> {
 
 /// The identify columns of one verdict. `track_count` is absent for
 /// `not_found`, which counts nothing, mirroring the table's CHECKs.
-pub(super) struct VerdictColumns {
+pub(super) struct VerdictColumns<'a> {
     pub(super) kind: &'static str,
     pub(super) track_count: Option<u32>,
+    /// The barcode the match was found through, where one was.
+    pub(super) matched_barcode: Option<&'a str>,
 }
 
-pub(super) fn verdict_columns(verdict: &TerminalVerdict) -> VerdictColumns {
+pub(super) fn verdict_columns(verdict: &TerminalVerdict) -> VerdictColumns<'_> {
     match verdict {
-        TerminalVerdict::Found { track_count, .. } => VerdictColumns {
+        TerminalVerdict::Found {
+            track_count,
+            matched_barcode,
+            ..
+        } => VerdictColumns {
             kind: "found",
             track_count: Some(*track_count),
+            matched_barcode: matched_barcode.as_deref(),
         },
         TerminalVerdict::NotFoundAnywhere => VerdictColumns {
             kind: "not_found",
             track_count: None,
+            matched_barcode: None,
         },
         TerminalVerdict::ManualOnly { track_count } => VerdictColumns {
             kind: "manual_only",
             track_count: Some(*track_count),
+            matched_barcode: None,
         },
     }
 }
@@ -235,6 +244,7 @@ pub(super) fn verdict_of(
     content_hash: &str,
     kind: &str,
     track_count: Option<i64>,
+    matched_barcode: Option<String>,
     lists: MatchLists,
 ) -> Result<TerminalVerdict, DbError> {
     let count_of = || {
@@ -259,6 +269,7 @@ pub(super) fn verdict_of(
                 matches,
                 track_count: count_of()?,
                 provenance,
+                matched_barcode,
             })
         }
         "not_found" => Ok(TerminalVerdict::NotFoundAnywhere),

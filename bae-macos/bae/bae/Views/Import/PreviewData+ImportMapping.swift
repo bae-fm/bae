@@ -371,7 +371,6 @@
             edit: BridgeRawReleaseEdit? = nil,
             mapping: BridgeMappingTable,
             cover: BridgeCoverChoice? = nil,
-            evidence: BridgeClaimEvidence? = nil,
             failure: BridgeImportFailure? = nil,
             unprobed: [BridgeAudioFile] = []
         ) -> Candidate {
@@ -403,7 +402,7 @@
                     ),
                     release: release,
                     pickedLibraryStatus: nil,
-                    evidence: evidence,
+                    fileEvidence: [],
                     edit: edit,
                     mapping: mapping,
                     unprobed: unprobed,
@@ -431,7 +430,6 @@
             edit: confirmEditValues,
             mapping: mappingTable,
             cover: releaseDetailBridge.defaultCover,
-            evidence: .discIdAlone,
         )
 
         /// Nothing picked yet: the identity card offers to find the release,
@@ -476,7 +474,6 @@
             edit: confirmEditValues,
             mapping: sheetMappingTable,
             cover: releaseDetailBridge.defaultCover,
-            evidence: .discIdAlone,
         )
 
         /// A settled ten-track release against a folder containing one audio
@@ -500,7 +497,6 @@
             edit: moreTracksEditValues,
             mapping: moreTracksMappingTable,
             cover: moreTracksReleaseDetail.defaultCover,
-            evidence: .discIdAlone,
         )
 
         /// The candidate the Import-tab preview selects: the settled release
@@ -521,7 +517,6 @@
             edit: confirmEditValues,
             mapping: everyRowKindMappingTable,
             cover: releaseDetailBridge.defaultCover,
-            evidence: .discIdAlone,
         )
 
         /// The folder read as its own file tags: no release, and a table with

@@ -63,9 +63,10 @@ pub enum AutomationCandidate {
         /// the pick archived. `None` while nothing is picked, and for a folder
         /// read as its own tags.
         picked_release: Option<AutomationReleaseDetail>,
-        /// What identified the picked release — the same evidence the pane's
-        /// badge names.
-        evidence: Option<AutomationClaimEvidence>,
+        /// What identified the picked release, pinned to the candidate file
+        /// each piece of evidence was read off — the same chips the pane puts
+        /// on that image's tile or that file's row.
+        file_evidence: Vec<AutomationFileEvidence>,
         /// The metadata this candidate will commit with: the pick's own values
         /// with whatever has been typed over them. `None` while nothing is
         /// picked.
@@ -425,15 +426,24 @@ pub struct AutomationRemoteCover {
     pub source: AutomationMetadataSource,
 }
 
-/// What identified the picked release. It explains the pick and decides
-/// nothing: a pick claims the pressing whatever turned it up.
+/// One signal that identified the picked release, and the candidate file it
+/// was read off. It explains the pick and decides nothing: a pick claims the
+/// pressing whatever turned it up.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationClaimEvidence {
-    DiscIdAlone,
-    DiscIdShared { match_count: u32 },
+pub struct AutomationFileEvidence {
+    pub signal: AutomationEvidenceSignal,
+    /// The value itself — the barcode digits, the disc ID.
+    pub value: String,
+    /// The file's identity within the release: its candidate-relative path.
+    pub file_id: String,
+}
+
+/// A signal that can name the file it was read off.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationEvidenceSignal {
     Barcode,
-    Search,
+    DiscId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

@@ -100,6 +100,7 @@ fn verdict(release_id: &str) -> TerminalVerdict {
             by_barcode: false,
             by_catalog: false,
         }],
+        matched_barcode: None,
     }
 }
 

@@ -117,7 +117,7 @@ pub use candidates::{
     ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use claim::{evidence_for, ClaimEvidence};
+pub use claim::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

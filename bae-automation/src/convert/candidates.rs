@@ -46,7 +46,12 @@ pub(crate) fn automation_candidate_from_folder(
             ),
         },
         picked_release: folder.release.clone().map(automation_release_detail),
-        evidence: folder.evidence.map(automation_claim_evidence),
+        file_evidence: folder
+            .file_evidence
+            .iter()
+            .cloned()
+            .map(automation_file_evidence)
+            .collect(),
         edit: folder
             .edit
             .as_ref()

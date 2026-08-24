@@ -121,6 +121,22 @@ fn produced_keys() -> Vec<String> {
         keys.push(expected.to_string());
     }
 
+    // bridge_file_evidence_key — each signal that can name a file words its
+    // own hover.
+    for signal in [BridgeEvidenceSignal::Barcode, BridgeEvidenceSignal::DiscId] {
+        let expected = match signal {
+            BridgeEvidenceSignal::Barcode => "core.import.evidence.barcode_in_image",
+            BridgeEvidenceSignal::DiscId => "core.import.evidence.disc_id_from_file",
+        };
+        let evidence = BridgeFileEvidence {
+            signal,
+            value: "5099969394522".to_string(),
+            file_id: "Back.jpg".to_string(),
+        };
+        assert_eq!(bridge_file_evidence_key(&evidence), expected);
+        keys.push(expected.to_string());
+    }
+
     // bridge_file_role_key — every role the scan can propose has a name.
     for role in [
         BridgeFileRole::Audio,

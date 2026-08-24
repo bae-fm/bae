@@ -205,7 +205,7 @@ public sealed class ImportMappingPaneTests
             Row: Row(),
             Release: null,
             PickedLibraryStatus: null,
-            Evidence: new BridgeClaimEvidence.DiscIdAlone(),
+            FileEvidence: Array.Empty<BridgeFileEvidence>(),
             Edit: new BridgeRawReleaseEdit(
                 "Typed Over The Release",
                 "Artist Name",

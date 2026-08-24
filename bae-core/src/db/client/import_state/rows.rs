@@ -59,6 +59,7 @@ struct StateRow {
     folder_path: String,
     verdict_kind: Option<String>,
     verdict_track_count: Option<i64>,
+    verdict_matched_barcode: Option<String>,
     probed_total_duration_ms: Option<i64>,
     identified_at: Option<DateTime<Utc>>,
     pick: Option<IdentityPick>,
@@ -72,6 +73,7 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         folder_path: row.get("folder_path")?,
         verdict_kind: row.get("verdict_kind")?,
         verdict_track_count: row.get("verdict_track_count")?,
+        verdict_matched_barcode: row.get("verdict_matched_barcode")?,
         probed_total_duration_ms: row.get("probed_total_duration_ms")?,
         identified_at: identified_at
             .map(|_| rfc3339_column(row, "identified_at"))
@@ -86,8 +88,8 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
 }
 
 const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_track_count, \
-     probed_total_duration_ms, identified_at, pick_kind, pick_source, pick_release_id, \
-     edit_revision";
+     verdict_matched_barcode, probed_total_duration_ms, identified_at, pick_kind, pick_source, \
+     pick_release_id, edit_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
@@ -142,6 +144,7 @@ pub(crate) fn load_states_on(
                     &state.content_hash,
                     &kind,
                     state.verdict_track_count,
+                    state.verdict_matched_barcode,
                     lists.remove(&state.content_hash).unwrap_or_default(),
                 )?,
                 probed_total_duration_ms: u64::try_from(probed).map_err(|_| {

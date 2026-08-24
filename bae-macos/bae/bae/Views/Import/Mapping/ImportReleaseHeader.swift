@@ -32,11 +32,6 @@ struct ImportReleaseHeader: View {
     /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
     /// fetched.
     let metaLine: String
-    /// What identified the picked release, drawn as the badge the pressing
-    /// rows carry. `nil` before a pick, for a folder read as its own tags, and
-    /// for a release nothing about the disc turned up — a search found it, and
-    /// a badge saying so would claim evidence there is none of.
-    let evidence: BridgeClaimEvidence?
     /// Whether a release has been picked.
     let hasPick: Bool
     /// Which service the picked release came from. `nil` before a pick and for
@@ -78,9 +73,6 @@ struct ImportReleaseHeader: View {
                 summary
                 changeControl
             }
-            if let evidence {
-                evidenceBadge(evidence)
-            }
             if let editValues {
                 details(editValues)
             }
@@ -95,22 +87,6 @@ struct ImportReleaseHeader: View {
     /// The card's own fold: the release's fields, under a row that is the
     /// control end to end — a caret is a target the width of a glyph, and the
     /// line beside it says what opens.
-    /// What turned this release up, in the same chip the pressing rows use.
-    /// A search is not evidence about the disc, so it draws nothing.
-    @ViewBuilder
-    private func evidenceBadge(
-        _ evidence: BridgeClaimEvidence
-    ) -> some View {
-        switch evidence {
-        case .discIdAlone, .discIdShared:
-            badge("Disc ID", icon: "opticaldiscdrive")
-        case .barcode:
-            badge("Barcode", icon: "barcode")
-        case .search:
-            EmptyView()
-        }
-    }
-
     /// Where the picked release came from. The service's own name, never a
     /// code and never translated — it is a brand, and the name is what the
     /// person recognises.
@@ -122,21 +98,6 @@ struct ImportReleaseHeader: View {
             .background(Color.secondary.opacity(0.15), in: Capsule())
             .foregroundStyle(.secondary)
             .lineLimit(1)
-    }
-
-    private func badge(
-        _ label: LocalizedStringKey,
-        icon: String
-    ) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: icon)
-            Text(label)
-        }
-        .font(.caption2.weight(.medium))
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(Color.accentColor.opacity(0.15), in: Capsule())
-        .foregroundStyle(Color.accentColor)
     }
 
     private func details(

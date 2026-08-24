@@ -163,6 +163,7 @@ fn multi_match_verdict(release_ids: &[&str], group_id: &str) -> TerminalVerdict 
                 by_catalog: false,
             })
             .collect(),
+        matched_barcode: None,
     }
 }
 
@@ -531,9 +532,13 @@ async fn a_pick_reads_back_as_the_same_answer() {
     assert_eq!(release.release_id, "mb-answer-1");
     assert_eq!(release.tracks.len(), 2);
     assert_eq!(
-        resumed.evidence,
-        Some(crate::import::ClaimEvidence::DiscIdAlone),
-        "the badge says which signal turned the release up"
+        resumed.file_evidence,
+        vec![crate::import::FileEvidence {
+            signal: crate::import::EvidenceSignal::DiscId,
+            value: SEEDED_DISC_ID.to_string(),
+            file_id: SEEDED_DISC_ID_FILE.to_string(),
+        }],
+        "the chip says which signal turned the release up, on the file it came from"
     );
 
     // The row carries the same decision for the sidebar's resume trigger.
@@ -562,7 +567,11 @@ async fn a_pick_reads_back_as_the_same_answer() {
         resumed.edit.is_some(),
         "and still draws a form, seeded from the folder's own tags"
     );
-    assert_eq!(resumed.evidence, None, "there is no release to have found");
+    assert_eq!(
+        resumed.file_evidence,
+        vec![],
+        "there is no release to have found"
+    );
     assert!(
         fixture.provider.requests().is_empty(),
         "every answer came from the archive: {:?}",
@@ -691,8 +700,12 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     // change.
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
-        pane.evidence,
-        Some(crate::import::ClaimEvidence::DiscIdAlone)
+        pane.file_evidence,
+        vec![crate::import::FileEvidence {
+            signal: crate::import::EvidenceSignal::DiscId,
+            value: SEEDED_DISC_ID.to_string(),
+            file_id: SEEDED_DISC_ID_FILE.to_string(),
+        }]
     );
 
     // And the row carries it both ways: the pick the pane reopens on, and the

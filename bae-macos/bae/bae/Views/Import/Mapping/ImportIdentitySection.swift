@@ -29,9 +29,6 @@ struct ImportIdentitySection: View {
     /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
     /// fetched.
     let metaLine: String
-    /// What identified the picked release. `nil` before a pick, and for a
-    /// folder read as its own tags, which nothing looked up.
-    let evidence: BridgeClaimEvidence?
     /// Whether a release has been picked — what the change control reads as.
     let hasPick: Bool
     /// Which service the picked release came from, for the card's chip.
@@ -92,7 +89,6 @@ struct ImportIdentitySection: View {
                         title: title,
                         artist: artist,
                         metaLine: metaLine,
-                        evidence: evidence,
                         hasPick: hasPick,
                         pickedSource: pickedSource,
                         isReading: isReading,

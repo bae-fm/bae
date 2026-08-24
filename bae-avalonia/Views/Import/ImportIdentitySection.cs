@@ -51,12 +51,6 @@ internal sealed class ImportIdentitySection
     /// what was fetched.</summary>
     internal required string MetaLine { get; init; }
 
-    /// <summary>What identified the picked release, drawn as the badge the
-    /// pressing rows carry. Null before a pick, for a folder read as its own
-    /// tags, and for a release a typed search found — a badge there would claim
-    /// evidence about the disc there is none of.</summary>
-    internal required BridgeClaimEvidence? Evidence { get; init; }
-
     /// <summary>Whether a release has been picked — what the change control
     /// reads as.</summary>
     internal required bool HasPick { get; init; }
@@ -160,10 +154,6 @@ internal sealed class ImportIdentitySection
             facts.Children.Add(source);
         }
         summary.Children.Add(facts);
-        if (EvidenceBadge() is { } badge)
-        {
-            summary.Children.Add(badge);
-        }
         Grid.SetColumn(summary, 1);
         grid.Children.Add(summary);
 
@@ -275,17 +265,6 @@ internal sealed class ImportIdentitySection
         chip[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
         return chip;
     }
-
-    /// <summary>What turned this release up, in the same chip the pressing rows
-    /// carry. A typed search is not evidence about the disc, so it draws
-    /// nothing.</summary>
-    private Control? EvidenceBadge() => Evidence switch
-    {
-        BridgeClaimEvidence.DiscIdAlone or BridgeClaimEvidence.DiscIdShared =>
-            SignalBadgeRow.Chip(Loc.Chrome("signal.kind.disc_id")),
-        BridgeClaimEvidence.Barcode => SignalBadgeRow.Chip(Loc.Chrome("signal.kind.barcode")),
-        _ => null,
-    };
 
     // The release's own fields: the album line the card states, and the pressing
     // this import records. Each field is a row under the candidate, so leaving

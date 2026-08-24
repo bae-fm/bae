@@ -36,6 +36,7 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
         matches,
         track_count,
         provenance,
+        matched_barcode: None,
     }
 }
 

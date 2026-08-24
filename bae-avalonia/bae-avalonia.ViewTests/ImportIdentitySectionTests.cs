@@ -80,34 +80,16 @@ public sealed class ImportIdentitySectionTests
         Assert.Contains(expander, card.GetLogicalDescendants());
     }
 
-    // The card says what identified the release, as a badge — a statement, not
-    // a control. A release a typed search turned up has no evidence about the
-    // disc, so it draws no badge rather than an empty one.
+    // The card names the service the pick came from — the brand's own name,
+    // never a code and never translated. No pick, no chip.
     [AvaloniaFact]
-    public void TheCardBadgesWhatIdentifiedTheRelease()
+    public void TheCardNamesTheServiceThePickCameFrom()
     {
-        var discId = Build(
-            ImportIdentity.Release,
-            edit: Edit(),
-            evidence: new BridgeClaimEvidence.DiscIdAlone());
-        Assert.Contains(Texts(discId), text => text == Loc.Chrome("signal.kind.disc_id"));
+        var picked = Build(ImportIdentity.Release, edit: Edit(), hasPick: true);
+        Assert.Contains(Texts(picked), text => text == "MusicBrainz");
 
-        var barcode = Build(
-            ImportIdentity.Release,
-            edit: Edit(),
-            evidence: new BridgeClaimEvidence.Barcode());
-        Assert.Contains(Texts(barcode), text => text == Loc.Chrome("signal.kind.barcode"));
-
-        var searched = Build(
-            ImportIdentity.Release,
-            edit: Edit(),
-            evidence: new BridgeClaimEvidence.Search());
-        Assert.DoesNotContain(Texts(searched), text => text == Loc.Chrome("signal.kind.disc_id"));
-        Assert.DoesNotContain(Texts(searched), text => text == Loc.Chrome("signal.kind.barcode"));
-
-        // Nothing in the card sets what identified the release: it is a fact
-        // about the lookup, not a choice.
-        Assert.Empty(discId.GetLogicalDescendants().OfType<CheckBox>());
+        var unpicked = Build(ImportIdentity.Release, edit: Edit());
+        Assert.DoesNotContain(Texts(unpicked), text => text == "MusicBrainz");
     }
 
     // Leaving a release field writes that one field, once, with what was typed.
@@ -144,7 +126,7 @@ public sealed class ImportIdentitySectionTests
         ImportIdentity identity,
         bool isReading = false,
         BridgeRawReleaseEdit? edit = null,
-        BridgeClaimEvidence? evidence = null,
+        bool hasPick = false,
         System.Action<ImportIdentity>? onSetIdentity = null,
         System.Action<BridgeCandidateEditField, string>? onEditField = null) =>
         new ImportIdentitySection
@@ -155,9 +137,8 @@ public sealed class ImportIdentitySectionTests
             Title = "Album Title",
             Edit = edit,
             MetaLine = "CD · 1996",
-            Evidence = evidence,
-            HasPick = evidence is not null,
-            PickedSource = evidence is not null ? BridgeMetadataSource.MusicBrainz : null,
+            HasPick = hasPick,
+            PickedSource = hasPick ? BridgeMetadataSource.MusicBrainz : null,
             IsReading = isReading,
             LoadCover = null,
             HasCoverOptions = false,

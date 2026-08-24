@@ -118,8 +118,11 @@ pub struct BridgeImportCandidateDetail {
     pub release: Option<BridgeReleaseDetail>,
     /// Whether the picked release is already in the library.
     pub picked_library_status: Option<BridgeLibraryStatus>,
-    /// What identified the picked release — the badge the header draws.
-    pub evidence: Option<BridgeClaimEvidence>,
+    /// What identified the picked release, pinned to the candidate file each
+    /// piece of evidence was read off — the chip that file's gallery tile or
+    /// table row carries. Empty with no pick, for a folder read as its own
+    /// tags, and where nothing identification matched on came from a file.
+    pub file_evidence: Vec<BridgeFileEvidence>,
     /// The metadata form, seeded from the pick with the stored edits applied.
     /// `None` with no pick.
     pub edit: Option<BridgeRawReleaseEdit>,

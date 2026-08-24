@@ -516,7 +516,6 @@ internal sealed partial class ImportMappingPane : UserControl
             : _candidate?.Name ?? string.Empty,
         Edit = _candidate?.Edit,
         MetaLine = MetaLine(),
-        Evidence = _candidate?.Evidence,
         HasPick = _candidate?.PickedRelease is not null,
         PickedSource = _candidate?.PickedRelease?.Source,
         IsReading = _pickInFlight,

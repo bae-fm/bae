@@ -461,6 +461,10 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
     -- verdict; cleared when a file decision changes what the folder is.
     verdict_kind             TEXT CHECK (verdict_kind IN ('found', 'not_found', 'manual_only')),
     verdict_track_count      INTEGER CHECK (verdict_track_count IS NULL OR verdict_track_count >= 0),
+    -- Which of the candidate's barcodes the lookup that matched ran against.
+    -- The barcode rows carry the image each was read off, so this names which
+    -- of them is the evidence a chip belongs on. NULL when no barcode matched.
+    verdict_matched_barcode  TEXT,
     probed_total_duration_ms INTEGER,
     identified_at            TEXT,
     -- The identity decided for this candidate: a pressing, or the folder's own
@@ -480,6 +484,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_state (
             AND probed_total_duration_ms >= 0 AND identified_at IS NOT NULL)
     ),
     CHECK (verdict_kind IN ('found', 'manual_only') = (verdict_track_count IS NOT NULL)),
+    -- A matched barcode with no found verdict behind it is not a provenance.
+    CHECK (verdict_matched_barcode IS NULL OR verdict_kind = 'found'),
     CHECK ((pick_kind IS NULL) = (identity_pick_author IS NULL)),
     CHECK ((pick_kind = 'release') = (pick_source IS NOT NULL AND pick_release_id IS NOT NULL))
 ) STRICT;

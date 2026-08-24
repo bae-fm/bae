@@ -50,6 +50,15 @@ pub enum TerminalVerdict {
         /// each one, for the sidebar's "matched on disc ID / barcode / text"
         /// evidence line.
         provenance: Vec<ResultProvenance>,
+        /// Which of the candidate's barcodes the lookup that produced the
+        /// barcode matches ran against. `None` when no barcode matched.
+        ///
+        /// The one lookup input the verdict keeps. The rest are recomputable
+        /// facts a re-run re-extracts, but this one names *which* of several
+        /// stored barcodes is the one that found the release — and the stored
+        /// barcode rows carry the file each was read off, so this pointer is
+        /// what puts a chip on that image and no other.
+        matched_barcode: Option<String>,
     },
     /// Both signals ran and settled on zero results. Distinct from a transport
     /// failure — nothing about this candidate's row goes unwritten; "we looked
@@ -105,11 +114,12 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 // A live per-release check at read time, not a stored copy —
                 // see the module doc.
                 library_statuses: _,
-                context: _,
+                context,
             } => Ok(Self::Found {
                 matches,
                 track_count,
                 provenance,
+                matched_barcode: context.matched_barcode,
             }),
 
             IdentifyState::NotFoundAnywhere { context: _ } => Ok(Self::NotFoundAnywhere),
@@ -137,10 +147,12 @@ impl TerminalVerdict {
     /// The identify state this stored verdict stands back up as — what opening
     /// an answered candidate shows without running anything.
     ///
-    /// The matches and their provenance are the stored ones. The raw signal inputs (the disc ID value, barcode codes, catalog
-    /// candidates) are deliberately not: they are local, recomputable facts a
-    /// re-run re-extracts, and the verdict never stored them — so the context
-    /// carries none, and a resumed state has no signals toolbar. `status_of`
+    /// The matches and their provenance are the stored ones, and so is the
+    /// barcode that matched. The raw signal inputs (the disc ID value, the
+    /// barcode codes, the catalog candidates) are deliberately not: they are
+    /// local, recomputable facts a re-run re-extracts, and the verdict never
+    /// stored them — so the context carries none of those, and a resumed state
+    /// has no signals toolbar. `status_of`
     /// is the live library check for a release id the verdict names, never a
     /// stored copy (see the module doc).
     pub fn resume_state(
@@ -173,6 +185,7 @@ impl TerminalVerdict {
                 matches,
                 track_count,
                 provenance,
+                matched_barcode,
             } => {
                 let library_statuses = matches.iter().map(status_of).collect();
                 IdentifyState::Found {
@@ -180,7 +193,10 @@ impl TerminalVerdict {
                     library_statuses,
                     track_count,
                     provenance,
-                    context: empty_context(track_count),
+                    context: SignalsContext {
+                        matched_barcode,
+                        ..empty_context(track_count)
+                    },
                 }
             }
             Self::NotFoundAnywhere => IdentifyState::NotFoundAnywhere {
@@ -313,8 +329,36 @@ mod tests {
                     by_barcode: false,
                     by_catalog: false,
                 }],
+                matched_barcode: None,
             }
         );
+    }
+
+    /// A stored verdict stands back up with its matches, and with the barcode
+    /// that found them: the barcode rows say which image each was read off, so
+    /// without this pointer a resumed candidate could not tell which of several
+    /// images the release was identified from.
+    #[test]
+    fn a_resumed_found_keeps_the_barcode_that_matched() {
+        let verdict = TerminalVerdict::Found {
+            matches: vec![mk_result("rel-1")],
+            track_count: 11,
+            provenance: vec![ResultProvenance {
+                by_disc_id: false,
+                by_barcode: true,
+                by_catalog: false,
+            }],
+            matched_barcode: Some("5099969394522".to_string()),
+        };
+        let IdentifyState::Found { context, .. } =
+            verdict.resume_state(&|result| mk_status(&result.release_id))
+        else {
+            panic!("a found verdict resumes as Found");
+        };
+        assert_eq!(context.matched_barcode.as_deref(), Some("5099969394522"));
+        // The signal inputs themselves are not retained — a re-run re-extracts
+        // them, and the resumed state draws no signals toolbar.
+        assert!(context.barcode_codes.is_empty());
     }
 
     /// A `Found` reached with the barcode side surviving alone because the
@@ -382,6 +426,7 @@ mod tests {
                         by_catalog: false,
                     },
                 ],
+                matched_barcode: Some("012345".to_string()),
             }
         );
     }

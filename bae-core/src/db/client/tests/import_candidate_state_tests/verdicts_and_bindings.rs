@@ -64,9 +64,10 @@ fn sample_verdict() -> TerminalVerdict {
         track_count: 11,
         provenance: vec![ResultProvenance {
             by_disc_id: true,
-            by_barcode: false,
+            by_barcode: true,
             by_catalog: true,
         }],
+        matched_barcode: Some("5099969394522".to_string()),
     }
 }
 

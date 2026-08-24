@@ -27,6 +27,11 @@ use tempfile::TempDir;
 
 /// Settled signals carrying `durations` and nothing found — what a verdict a
 /// test seeds stores beside itself.
+/// The disc ID `store_settled_verdict` seeds, and the candidate file it names
+/// — what the resumed pane's evidence points at.
+const SEEDED_DISC_ID: &str = "XwqRcz4RhAqRTfhE5nRxRKF4iFY-";
+const SEEDED_DISC_ID_FILE: &str = "Album.log";
+
 fn settled_signals(durations: crate::import::probe::ProbedDurations) -> Signals {
     Signals {
         disc_id: DiscIdSignal::Absent { track_count: 0 },
@@ -629,6 +634,7 @@ impl Fixture {
                 by_barcode: false,
                 by_catalog: false,
             }],
+            matched_barcode: None,
         };
         let wrote = self
             .import
@@ -638,9 +644,19 @@ impl Fixture {
                     content_hash: self.content_hash(dir),
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict,
-                    signals: settled_signals(crate::import::probe::ProbedDurations::totalling(
-                        probed_total_ms,
-                    )),
+                    // A computed disc ID that names the log it came from, so
+                    // what reads this row back has a file to put the evidence
+                    // chip on.
+                    signals: Signals {
+                        disc_id: DiscIdSignal::Computed {
+                            disc_id: SEEDED_DISC_ID.to_string(),
+                            track_count: 2,
+                            source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
+                        },
+                        ..settled_signals(crate::import::probe::ProbedDurations::totalling(
+                            probed_total_ms,
+                        ))
+                    },
                     expected_edit_revision: 0,
                     identity_pick: Some(crate::import::IdentityPick::Release {
                         source: crate::import::MetadataSource::MusicBrainz,

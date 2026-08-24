@@ -132,7 +132,7 @@ struct Candidate: Equatable, Identifiable {
     var resumedIdentifyState: IdentifyState = .idle
     /// Everything the pane draws, as core reads it back for this key: the
     /// picked release, the metadata form, the mapping table, the cover, the
-    /// evidence badge, the last failed import. `nil` until the per-candidate
+    /// last failed import. `nil` until the per-candidate
     /// read has answered, and for a re-identify session, which has no folder.
     ///
     /// The pane keeps no copy of any of it. A control writes through the
@@ -223,11 +223,6 @@ struct Candidate: Equatable, Identifiable {
     /// The picked release as its archived documents describe it.
     var release: BridgeReleaseDetail? {
         detail?.release
-    }
-
-    /// What identified the picked release — the header's badge.
-    var evidence: BridgeClaimEvidence? {
-        detail?.evidence
     }
 
     /// The metadata form: the pick's own values with whatever has been typed

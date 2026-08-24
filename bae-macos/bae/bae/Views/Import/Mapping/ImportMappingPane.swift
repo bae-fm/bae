@@ -122,7 +122,6 @@ struct ImportMappingPane: View {
             title: headerTitle,
             artist: candidate.edit?.albumArtistText ?? "",
             metaLine: headerMetaLine,
-            evidence: candidate.evidence,
             hasPick: candidate.pickedRelease != nil,
             pickedSource: candidate.pickedRelease?.source,
             isReading: candidate.pickInFlight,

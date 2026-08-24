@@ -588,7 +588,7 @@ impl crate::types::BridgeImportCandidateDetail {
             row,
             release,
             picked_library_status,
-            evidence,
+            file_evidence,
             edit,
             mapping,
             unprobed,
@@ -609,7 +609,10 @@ impl crate::types::BridgeImportCandidateDetail {
             release: release.map(crate::types::BridgeReleaseDetail::from_core),
             picked_library_status: picked_library_status
                 .map(crate::types::BridgeLibraryStatus::from_core),
-            evidence: evidence.map(crate::types::BridgeClaimEvidence::from_core),
+            file_evidence: file_evidence
+                .into_iter()
+                .map(crate::types::BridgeFileEvidence::from_core)
+                .collect(),
             edit: edit.map(crate::types::BridgeRawReleaseEdit::from_core),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             unprobed: unprobed

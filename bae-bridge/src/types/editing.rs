@@ -62,22 +62,46 @@ pub struct BridgeReleaseTrack {
     pub side: u32,
 }
 
-/// What identified the picked release. Mirrors
-/// `bae_core::import::ClaimEvidence`. It explains the pick and decides nothing:
-/// the header renders it as a badge beside the release, and the claim itself
-/// is the user's, carried on the pick.
+/// One signal that identified the picked release, and the candidate file it
+/// was read off. Mirrors `bae_core::import::FileEvidence`.
+///
+/// It explains the pick and decides nothing. The chip goes on the file: the
+/// gallery tile for the image a barcode was read off, the table row for the
+/// log or cue a disc ID was computed from. Nothing is said beside the release
+/// itself.
 #[cfg(feature = "desktop")]
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeClaimEvidence {
-    /// The disc's table of contents matched this release and no other.
-    DiscIdAlone,
-    /// The disc's table of contents matched, and `match_count` releases came
-    /// back for it.
-    DiscIdShared { match_count: u32 },
-    /// A barcode read off the packaging matched.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeFileEvidence {
+    pub signal: BridgeEvidenceSignal,
+    /// The value itself — the barcode digits, the disc ID — which the chip's
+    /// wording names.
+    pub value: String,
+    /// The file's identity within the release (its relative path): the same id
+    /// `BridgeMappingImage` and `BridgeMappingFile` carry.
+    pub file_id: String,
+}
+
+/// A signal that can name the file it was read off. Mirrors
+/// `bae_core::import::EvidenceSignal`.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeEvidenceSignal {
+    /// A barcode read off one of the folder's images.
     Barcode,
-    /// A catalog number, or a search the user typed, found it.
-    Search,
+    /// A disc ID computed from a rip log or a cue sheet.
+    DiscId,
+}
+
+/// The catalog key wording one piece of evidence, for the hover the file's
+/// tile or row carries. Each message takes the value as its one argument.
+#[cfg(feature = "desktop")]
+#[uniffi::export]
+pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
+    match evidence.signal {
+        BridgeEvidenceSignal::Barcode => "core.import.evidence.barcode_in_image",
+        BridgeEvidenceSignal::DiscId => "core.import.evidence.disc_id_from_file",
+    }
+    .to_string()
 }
 
 /// Mirror of `bae_core::import::ReleaseUserEdit` — a normalized, validated

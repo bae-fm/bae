@@ -188,16 +188,21 @@ fn cover_image_source(source: bae_core::import::CoverImageSource) -> BridgeCover
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeClaimEvidence {
-    pub(crate) fn from_core(evidence: bae_core::import::ClaimEvidence) -> Self {
-        use bae_core::import::ClaimEvidence;
-        match evidence {
-            ClaimEvidence::DiscIdAlone => BridgeClaimEvidence::DiscIdAlone,
-            ClaimEvidence::DiscIdShared { match_count } => {
-                BridgeClaimEvidence::DiscIdShared { match_count }
-            }
-            ClaimEvidence::Barcode => BridgeClaimEvidence::Barcode,
-            ClaimEvidence::Search => BridgeClaimEvidence::Search,
+impl BridgeFileEvidence {
+    pub(crate) fn from_core(evidence: bae_core::import::FileEvidence) -> Self {
+        use bae_core::import::EvidenceSignal;
+        let bae_core::import::FileEvidence {
+            signal,
+            value,
+            file_id,
+        } = evidence;
+        BridgeFileEvidence {
+            signal: match signal {
+                EvidenceSignal::Barcode => BridgeEvidenceSignal::Barcode,
+                EvidenceSignal::DiscId => BridgeEvidenceSignal::DiscId,
+            },
+            value,
+            file_id,
         }
     }
 }

@@ -197,16 +197,21 @@ pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> Candi
     }
 }
 
-pub(super) fn automation_claim_evidence(
-    evidence: bae_core::import::ClaimEvidence,
-) -> AutomationClaimEvidence {
-    match evidence {
-        bae_core::import::ClaimEvidence::DiscIdAlone => AutomationClaimEvidence::DiscIdAlone,
-        bae_core::import::ClaimEvidence::DiscIdShared { match_count } => {
-            AutomationClaimEvidence::DiscIdShared { match_count }
-        }
-        bae_core::import::ClaimEvidence::Barcode => AutomationClaimEvidence::Barcode,
-        bae_core::import::ClaimEvidence::Search => AutomationClaimEvidence::Search,
+pub(super) fn automation_file_evidence(
+    evidence: bae_core::import::FileEvidence,
+) -> AutomationFileEvidence {
+    let bae_core::import::FileEvidence {
+        signal,
+        value,
+        file_id,
+    } = evidence;
+    AutomationFileEvidence {
+        signal: match signal {
+            bae_core::import::EvidenceSignal::Barcode => AutomationEvidenceSignal::Barcode,
+            bae_core::import::EvidenceSignal::DiscId => AutomationEvidenceSignal::DiscId,
+        },
+        value,
+        file_id,
     }
 }
 
