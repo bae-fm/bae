@@ -274,6 +274,19 @@ impl BridgeError {
     pub(crate) fn database(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Database, detail)
     }
+
+    /// A failed database read or write, carrying the fault alone.
+    ///
+    /// Both layers a database failure crosses on its way up prefix themselves
+    /// onto it — `CovenError::Database` and `LibraryError::Database` each
+    /// render as "database error: {inner}", and the `DbError::Message` inside
+    /// does too — so what a person was shown read "database error: database
+    /// error: …". Neither prefix belongs in the detail: the `Database`
+    /// category beside it is what says which kind of failure this is, and each
+    /// UI renders that as its own localized line.
+    pub(crate) fn database_query(error: impl DatabaseFault) -> Self {
+        Self::database(error.database_fault())
+    }
     pub(crate) fn config(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Config, detail)
     }
@@ -377,6 +390,43 @@ pub fn bridge_entity_not_found_key(entity: BridgeEntityKind) -> String {
         BridgeEntityKind::File => "core.error.not_found.file",
     }
     .to_string()
+}
+
+/// An error that carries a database failure behind a prefix of its own.
+///
+/// Implemented for the two wrappers a failed read crosses on its way to a
+/// person, so the detail they are shown names the fault once.
+pub(crate) trait DatabaseFault {
+    fn database_fault(self) -> String;
+}
+
+/// The message a `DbError` carries, without its own "database error:" prefix.
+///
+/// A catch-all arm rather than an exhaustive match on purpose: `DbError` is
+/// coven's, and a variant added there must not stop this from rendering.
+fn db_fault(error: coven::DbError) -> String {
+    match error {
+        coven::DbError::Message(message) => message,
+        other => other.to_string(),
+    }
+}
+
+impl DatabaseFault for coven::CovenError {
+    fn database_fault(self) -> String {
+        match self {
+            coven::CovenError::Database(inner) => db_fault(*inner),
+            other => other.to_string(),
+        }
+    }
+}
+
+impl DatabaseFault for bae_core::library::LibraryError {
+    fn database_fault(self) -> String {
+        match self {
+            bae_core::library::LibraryError::Database(inner) => db_fault(inner),
+            other => other.to_string(),
+        }
+    }
 }
 
 /// The catalog key for an error's user-facing line, or `None` when the error has

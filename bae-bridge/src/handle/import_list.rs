@@ -43,7 +43,7 @@ impl AppHandle {
                 match value {
                     Ok(value) => callback
                         .on_value(value.map(crate::types::BridgeImportCandidateDetail::from_core)),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -156,6 +156,8 @@ impl ImportListSubscription {
 fn list_error(error: bae_core::import::ImportListSubscriptionError) -> BridgeError {
     match error {
         bae_core::import::ImportListSubscriptionError::Cancelled => BridgeError::Cancelled,
-        bae_core::import::ImportListSubscriptionError::Query(error) => BridgeError::database(error),
+        bae_core::import::ImportListSubscriptionError::Query(error) => {
+            BridgeError::database_query(error)
+        }
     }
 }

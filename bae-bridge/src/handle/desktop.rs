@@ -269,7 +269,7 @@ impl AppHandle {
                     Ok(value) => {
                         callback.on_value(crate::types::BridgeLibraryStatus::from_core(value))
                     }
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });

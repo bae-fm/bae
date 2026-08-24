@@ -974,3 +974,48 @@ mod conversion_roundtrip {
         assert_eq!(bridge.barcode, core.barcode);
     }
 }
+
+/// A database failure crosses two wrappers that each prefix themselves onto it,
+/// and the `DbError` inside prefixes itself too, so what a person was shown read
+/// "database error: database error: …". The category beside the detail is what
+/// names the kind of failure; the detail names the fault, once.
+#[test]
+fn a_database_fault_is_not_prefixed_twice() {
+    let inner =
+        coven::DbError::Message("folder scan column verdict_kind holds \"conflict\"".to_string());
+    // Both wrappers, rendered the way the UI receives them.
+    for detail in [
+        match BridgeError::database_query(coven::CovenError::Database(Box::new(
+            coven::DbError::Message(
+                "folder scan column verdict_kind holds \"conflict\"".to_string(),
+            ),
+        ))) {
+            BridgeError::Diagnostic { detail, .. } => detail,
+            other => panic!("expected a diagnostic, got {other:?}"),
+        },
+        match BridgeError::database_query(bae_core::library::LibraryError::Database(inner)) {
+            BridgeError::Diagnostic { detail, .. } => detail,
+            other => panic!("expected a diagnostic, got {other:?}"),
+        },
+    ] {
+        assert_eq!(
+            detail, "folder scan column verdict_kind holds \"conflict\"",
+            "the fault crosses without either wrapper's prefix"
+        );
+    }
+}
+
+/// A failure that is not a wrapped database error still renders whole.
+#[test]
+fn a_non_database_coven_error_keeps_its_own_text() {
+    let detail = match BridgeError::database_query(coven::CovenError::Sqlite(
+        coven::rusqlite::Error::QueryReturnedNoRows,
+    )) {
+        BridgeError::Diagnostic { detail, .. } => detail,
+        other => panic!("expected a diagnostic, got {other:?}"),
+    };
+    assert!(
+        detail.contains("sqlite error"),
+        "an unwrapped variant keeps its own rendering, got {detail:?}"
+    );
+}

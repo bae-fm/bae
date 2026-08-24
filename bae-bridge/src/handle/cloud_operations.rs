@@ -10,7 +10,7 @@ impl AppHandle {
             this.services
                 .read_image_blob(&image.into_core())
                 .await
-                .map_err(|error| BridgeError::database(format!("{error}")))
+                .map_err(BridgeError::database_query)
         })
         .await
     }
@@ -24,7 +24,7 @@ impl AppHandle {
             this.services
                 .read_gallery_bytes(&release_id, &source.into_core())
                 .await
-                .map_err(|error| BridgeError::database(format!("{error}")))
+                .map_err(BridgeError::database_query)
         })
         .await
     }

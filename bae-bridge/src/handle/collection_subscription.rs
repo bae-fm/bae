@@ -118,7 +118,7 @@ fn browse_error(error: bae_core::library::LibraryBrowseSubscriptionError) -> Bri
     match error {
         bae_core::library::LibraryBrowseSubscriptionError::Cancelled => BridgeError::Cancelled,
         bae_core::library::LibraryBrowseSubscriptionError::Query(error) => {
-            BridgeError::database(error)
+            BridgeError::database_query(error)
         }
     }
 }

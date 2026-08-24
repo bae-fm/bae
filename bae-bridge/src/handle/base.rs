@@ -30,7 +30,7 @@ impl AppHandle {
                             total_count,
                         });
                     }
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -86,7 +86,7 @@ impl AppHandle {
                             total_count,
                         });
                     }
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -109,7 +109,7 @@ impl AppHandle {
                             .resolve_composer_detail_projection(projection)
                             .map(BridgeComposerDetail::from_core),
                     ),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -132,7 +132,7 @@ impl AppHandle {
                             .resolve_work_detail_projection(projection)
                             .map(BridgeWorkDetail::from_core),
                     ),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -166,7 +166,7 @@ impl AppHandle {
                             total_count,
                         });
                     }
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -189,7 +189,7 @@ impl AppHandle {
                             .resolve_artist_detail_projection(projection)
                             .map(BridgeArtistDetail::from_core),
                     ),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -229,7 +229,7 @@ impl AppHandle {
             while let Some(value) = values.recv().await {
                 match value {
                     Ok(value) => callback.on_value(value.map(BridgeAlbumDetail::from_core)),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -249,7 +249,7 @@ impl AppHandle {
             while let Some(value) = values.recv().await {
                 match value {
                     Ok(value) => callback.on_value(value.map(BridgeRelease::from_core)),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -281,7 +281,7 @@ impl AppHandle {
                         page: BridgeStoragePage::from_core(value.page),
                         total_size: value.total_size,
                     }),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
@@ -310,7 +310,7 @@ impl AppHandle {
                     Ok(projection) => callback.on_value(BridgeSearchResults::from_core(
                         services.resolve_library_search_projection(projection),
                     )),
-                    Err(error) => callback.on_error(BridgeError::database(error)),
+                    Err(error) => callback.on_error(BridgeError::database_query(error)),
                 }
             }
         });
