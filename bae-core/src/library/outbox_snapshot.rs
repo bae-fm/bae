@@ -51,6 +51,31 @@ pub enum UploadFileLabel {
     ArtistImage,
 }
 
+impl UploadFileLabel {
+    /// The order a release's files are listed in: the release's own artwork
+    /// leads, then the files by name. The artwork's name is localized by each
+    /// platform and core has no locale to sort it by, so its place is fixed;
+    /// the filenames sort the way every other list of names in the app does,
+    /// naturally and ignoring case, so "Disc 1/05" precedes "Disc 1/18".
+    fn display_order(&self, other: &Self) -> std::cmp::Ordering {
+        fn rank(label: &UploadFileLabel) -> u8 {
+            match label {
+                UploadFileLabel::Cover => 0,
+                UploadFileLabel::ArtistImage => 1,
+                UploadFileLabel::Filename(_) => 2,
+            }
+        }
+        rank(self)
+            .cmp(&rank(other))
+            .then_with(|| match (self, other) {
+                (Self::Filename(left), Self::Filename(right)) => {
+                    natord::compare_ignore_case(left, right)
+                }
+                _ => std::cmp::Ordering::Equal,
+            })
+    }
+}
+
 /// What an upload is doing right now, derived from coven's durable phase and
 /// buffer-cadence callbacks. Preparation counts plaintext source bytes; upload
 /// counts encrypted provider bytes, so each active phase carries its own exact
@@ -521,7 +546,9 @@ pub struct UploadFileOp {
 /// A release's uploads, grouped so the queue pane renders one expandable row per
 /// release (matching the storage table) with the files inside. Every durable
 /// upload is rooted at a live release; missing release/title context fails the
-/// database projection before this value can exist. Files retain queue order.
+/// database projection before this value can exist. Files are in
+/// [`UploadFileLabel::display_order`], not the order the queue happened to
+/// enqueue them.
 #[derive(Debug, Clone)]
 pub struct UploadReleaseGroup {
     pub release_id: String,
@@ -766,11 +793,15 @@ pub(crate) fn build_outbox_snapshot(
     let upload_groups: Vec<UploadReleaseGroup> = groups
         .into_iter()
         .filter(|group| group.progress.has_transition())
-        .map(|group| UploadReleaseGroup {
-            release_id: group.release_id,
-            display_title: group.display_title,
-            files: group.files,
-            progress: group.progress,
+        .map(|group| {
+            let mut files = group.files;
+            files.sort_by(|left, right| left.label.display_order(&right.label));
+            UploadReleaseGroup {
+                release_id: group.release_id,
+                display_title: group.display_title,
+                files,
+                progress: group.progress,
+            }
         })
         .collect();
 

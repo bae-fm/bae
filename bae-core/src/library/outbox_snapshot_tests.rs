@@ -163,6 +163,57 @@ fn a_provider_transient_on_a_pending_row_is_a_stale_straggler() {
     }
 }
 
+/// The queue enqueues in whatever order the walk produced. A release's files
+/// are listed by name instead, naturally and ignoring case, with the release's
+/// own artwork ahead of them — core cannot sort the artwork's name, which each
+/// platform localizes.
+#[test]
+fn a_releases_files_are_listed_by_name_with_the_cover_first() {
+    let names = [
+        "disc 2/09 Track.flac",
+        "Disc 1/18 Track.flac",
+        "Disc 1/05 Track.flac",
+    ];
+    let mut uploads: Vec<DbOutboxUpload> = names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| queued_upload(&format!("file-{i}"), name, 100))
+        .collect();
+    uploads.push(DbOutboxUpload {
+        blob: row_blob(
+            crate::sync::COVERS_NAMESPACE,
+            "cover-row",
+            crate::sync::COVERS_NAMESPACE,
+            "cover-blob",
+            20,
+        ),
+        label: UploadFileLabel::Cover,
+        ..queued_upload("cover-row", "unused", 0)
+    });
+    let snapshot = build(
+        DbOutboxQueue {
+            uploads,
+            deletes: Vec::new(),
+            make_remotes: Vec::new(),
+        },
+        &HashMap::new(),
+    );
+
+    assert_eq!(
+        snapshot.upload_groups[0]
+            .files
+            .iter()
+            .map(|file| file.label.clone())
+            .collect::<Vec<_>>(),
+        vec![
+            UploadFileLabel::Cover,
+            UploadFileLabel::Filename("Disc 1/05 Track.flac".to_string()),
+            UploadFileLabel::Filename("Disc 1/18 Track.flac".to_string()),
+            UploadFileLabel::Filename("disc 2/09 Track.flac".to_string()),
+        ]
+    );
+}
+
 #[test]
 fn upload_groups_group_a_releases_files_with_aggregate_progress() {
     let snapshot = build(two_queued_uploads(), &HashMap::new());
