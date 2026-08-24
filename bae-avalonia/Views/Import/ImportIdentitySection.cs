@@ -123,7 +123,11 @@ internal sealed class ImportIdentitySection
     // and the control that opens the search to change which release it is.
     private Control Card()
     {
-        var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("80,*,Auto"), ColumnSpacing = 14 };
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions($"{CoverSize},*,Auto"),
+            ColumnSpacing = 14,
+        };
 
         var cover = CoverTile();
         Grid.SetColumn(cover, 0);
@@ -187,14 +191,24 @@ internal sealed class ImportIdentitySection
         return card;
     }
 
+    /// <summary>The cover the card leads with. Big enough to read the artwork
+    /// as artwork — at a thumbnail's size it was an icon beside the title, and
+    /// the cover is the thing being confirmed.</summary>
+    private const double CoverSize = 240;
+
     private Control CoverTile()
     {
-        var image = new Image { Width = 80, Height = 80, Stretch = Stretch.UniformToFill };
+        var image = new Image
+        {
+            Width = CoverSize,
+            Height = CoverSize,
+            Stretch = Stretch.UniformToFill,
+        };
         LoadCover?.Invoke(image);
         var tile = new Border
         {
-            Width = 80,
-            Height = 80,
+            Width = CoverSize,
+            Height = CoverSize,
             CornerRadius = new CornerRadius(6),
             ClipToBounds = true,
             Child = image,

@@ -58,6 +58,11 @@ struct ImportReleaseHeader: View {
     let onEditCover: () -> Void
     let onFindRelease: () -> Void
 
+    /// The cover the card leads with. Big enough to read the artwork as
+    /// artwork — at a thumbnail's size it was an icon beside the title, and
+    /// the cover is the thing being confirmed.
+    private static let coverSize: CGFloat = 240
+
     @Environment(ConfigStore.self)
     private var configStore
     @State
@@ -240,13 +245,13 @@ struct ImportReleaseHeader: View {
     private var cover: some View {
         Group {
             if let coverContent {
-                ImageView(content: coverContent, pointSize: 80)
+                ImageView(content: coverContent, pointSize: Self.coverSize)
             }
             else {
                 Theme.placeholder
             }
         }
-        .frame(width: 80, height: 80)
+        .frame(width: Self.coverSize, height: Self.coverSize)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(alignment: .topTrailing) {
             if hasCoverOptions {
