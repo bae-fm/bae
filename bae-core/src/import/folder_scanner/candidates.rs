@@ -125,20 +125,25 @@ pub enum FolderReleaseDecisionAuthor {
 /// stored for it.
 ///
 /// A multi-disc release names its parts: `Disc 1`, `CD2`, `Vol. 3`. So when
-/// every child folder's name carries a number and those numbers are exactly
-/// `1..=N` for `N` children, the children are the parts of one release.
-/// Anything else — a child with no number, a gap, a run that doesn't start at
-/// one, audio sitting directly in the folder beside its children — is a folder
-/// that happens to hold several releases.
+/// every part's name carries a number and those numbers are exactly `1..=N`
+/// for `N` parts, the parts are one release. Anything else — a part with no
+/// number, a gap, a run that doesn't start at one, audio sitting directly in
+/// the folder beside its parts — is a folder that happens to hold several
+/// releases.
+///
+/// The parts are the child folders that hold audio, and only those. A `covers`
+/// or `Scans` folder alongside `CD1` and `CD2` is a sidecar the release
+/// carries, not a third part that failed to number itself, and the caller
+/// leaves it out (`audio_bearing_child_names`).
 pub fn heuristic_folder_release_decision(
     holds_audio_directly: bool,
-    child_folder_names: &[String],
+    part_folder_names: &[String],
 ) -> FolderReleaseDecision {
-    if holds_audio_directly || child_folder_names.len() < 2 {
+    if holds_audio_directly || part_folder_names.len() < 2 {
         return FolderReleaseDecision::KeepAsSeparateReleases;
     }
-    let mut numbers: Vec<u32> = Vec::with_capacity(child_folder_names.len());
-    for name in child_folder_names {
+    let mut numbers: Vec<u32> = Vec::with_capacity(part_folder_names.len());
+    for name in part_folder_names {
         match folder_part_number(name) {
             Some(number) => numbers.push(number),
             None => return FolderReleaseDecision::KeepAsSeparateReleases,
@@ -156,7 +161,7 @@ pub fn heuristic_folder_release_decision(
 /// The one number in a folder's name, or `None` when it holds none or several.
 /// Several is as unusable as none: `1994 CD2` names a year and a disc, and
 /// nothing in the name says which is which.
-fn folder_part_number(name: &str) -> Option<u32> {
+pub(super) fn folder_part_number(name: &str) -> Option<u32> {
     let mut found: Option<u32> = None;
     let mut digits = String::new();
     for character in name.chars().chain(std::iter::once(' ')) {

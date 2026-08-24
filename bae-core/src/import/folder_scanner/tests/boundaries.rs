@@ -639,8 +639,12 @@ fn keep_separate_context_survives_when_every_descendant_is_invalid() {
     }));
 }
 
+/// A folder of scans beside the numbered parts is a sidecar the release
+/// carries, not a third part that failed to number itself. It yields no
+/// candidate, so it is not read as one of the parts and the parts still number
+/// themselves 1..=N.
 #[test]
-fn a_child_folder_with_no_number_makes_it_several_releases() {
+fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path().join("Queue");
     let wrapper = root.join("Collection").join("Release Wrapper");
@@ -654,12 +658,41 @@ fn a_child_folder_with_no_number_makes_it_several_releases() {
     std::fs::write(scans.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
     std::fs::write(scans.join("Booklet").join("notes.txt"), "notes").unwrap();
 
-    // `Scans` carries no number, so the children are not the numbered parts
-    // of one release and each stays its own.
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(!items
         .iter()
         .any(|item| matches!(item, ScanItem::Boundary(_))));
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Decided {
+            key,
+            decision: FolderReleaseDecision::CombineAsOneRelease,
+        } if key.relative_folder_path == "Collection/Release Wrapper"
+    )));
+    let releases: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(releases, vec!["Collection/Release Wrapper"]);
+}
+
+/// A child that does hold audio and carries no number still breaks the run:
+/// the folder holds several releases, not one release's parts.
+#[test]
+fn a_part_with_no_number_makes_it_several_releases() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let wrapper = root.join("Collection").join("Release Wrapper");
+    for child in ["Release 01", "Release 02", "Bonus"] {
+        let child = wrapper.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
     assert!(items.iter().any(|item| matches!(
         item,
         ScanItem::Decided {
@@ -675,7 +708,44 @@ fn a_child_folder_with_no_number_makes_it_several_releases() {
         })
         .collect();
     assert!(releases.contains(&"Collection/Release Wrapper/Release 01"));
-    assert!(releases.contains(&"Collection/Release Wrapper/Release 02"));
+    assert!(releases.contains(&"Collection/Release Wrapper/Bonus"));
+}
+
+/// An album folder whose only subfolder is artwork yields one release, so
+/// there is nothing to combine it with and no decision to record — the pane
+/// used to offer the album a choice between itself and its own artwork.
+#[test]
+fn a_folder_that_yields_one_release_decides_nothing() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let album = root.join("Artist - Album");
+    std::fs::create_dir_all(album.join("Artwork")).unwrap();
+    std::fs::write(album.join("track.flac"), fake_flac()).unwrap();
+    std::fs::write(album.join("Artwork").join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+
+    let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
+    assert!(
+        !items
+            .iter()
+            .any(|item| matches!(item, ScanItem::Decided { .. })),
+        "one release is nothing to decide about: {items:?}"
+    );
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Boundary(_))));
+    let releases: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(releases, vec!["Artist - Album"]);
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Valid(candidate)
+            if candidate.resolved_boundaries.is_empty()
+    )));
 }
 
 /// A box of numbered parts inside a collection of albums: the box is one

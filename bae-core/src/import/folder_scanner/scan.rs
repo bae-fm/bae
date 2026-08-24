@@ -128,18 +128,72 @@ pub(super) struct ScannedDirectory {
     nodes_emitted: bool,
 }
 
-/// The child folders' own names, in listing order — what the scan reads a
-/// folder's parts from when nothing is stored for it.
-fn child_folder_names(directories: &[PathBuf]) -> Vec<String> {
-    directories
+/// The child folders that are this folder's parts, in listing order — what the
+/// scan reads its decision from when nothing is stored for it.
+///
+/// A folder whose name carries a part number is taken at its word. An
+/// unnumbered one is a part only if it holds audio: `Disc 1`, `Disc 2` and
+/// `covers` are two parts and a sidecar the release carries, not three parts
+/// one of which forgot to number itself, while a `Bonus` folder with tracks in
+/// it is a third release however it is named.
+///
+/// The name is read first because looking is what costs: answering "does this
+/// hold audio" means reading the subtree, and doing that for every child
+/// before deciding would hold every release below this folder back until the
+/// slowest of them had been walked. A sidecar folder is small and holds no
+/// audio, which is exactly the walk that ends quickly.
+fn part_folder_names<R>(
+    reader: &R,
+    root: &Path,
+    directories: &[PathBuf],
+    cancellation: &ScanCancellation,
+) -> Result<Vec<String>, FolderScanError>
+where
+    R: DirectoryReader,
+{
+    let mut names = Vec::with_capacity(directories.len());
+    for directory in directories {
+        let name = directory.file_name().map_or_else(
+            || directory.to_string_lossy().into_owned(),
+            |name| name.to_string_lossy().into_owned(),
+        );
+        if folder_part_number(&name).is_none()
+            && !holds_audio_below(reader, root, directory, cancellation)?
+        {
+            continue;
+        }
+        names.push(name);
+    }
+    Ok(names)
+}
+
+/// Whether this folder or anything below it holds audio — whether it yields a
+/// candidate at all.
+///
+/// Stops at the first audio file, so only an audio-free tree is walked whole.
+fn holds_audio_below<R>(
+    reader: &R,
+    root: &Path,
+    relative: &Path,
+    cancellation: &ScanCancellation,
+) -> Result<bool, FolderScanError>
+where
+    R: DirectoryReader,
+{
+    let listing = reader.read(root, relative, cancellation)?;
+    if listing
+        .files
         .iter()
-        .map(|path| {
-            path.file_name().map_or_else(
-                || path.to_string_lossy().into_owned(),
-                |name| name.to_string_lossy().into_owned(),
-            )
-        })
-        .collect()
+        .any(|file| file.size > 0 && is_audio_file(&file.path))
+    {
+        return Ok(true);
+    }
+    for child in listing.directories {
+        if holds_audio_below(reader, root, &child, cancellation)? {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub(super) fn relative_path_string(path: &Path) -> String {
@@ -466,25 +520,31 @@ where
     let mut child_nodes_emitted = false;
     let mut contains_audio = direct_audio;
     let relative_string = relative_path_string(relative);
-    // Whether this folder is one that holds several releases' worth of audio:
-    // a wrapper over child folders, or a folder with its own tracks and child
-    // folders beside them. The watched root is never one — it is where the
-    // folders live, not a release.
-    let holds_several = allow_unresolved_boundary
-        && (listing_dirs.len() > 1 || (direct_audio && !listing_dirs.is_empty()));
     // How this folder is read. A stored decision — the user's, or the one an
     // earlier scan settled on — stands. With nothing stored, the scan decides
-    // for itself from the child folders' names and says so, so the queue gets
+    // for itself from the parts' names and says so, so the queue gets
     // candidates to work on rather than a card to answer.
+    //
+    // A decision exists only where it changes something: this folder has to
+    // yield two releases or more for combining them to mean anything. Its own
+    // tracks are one, and each of its parts is another — which is why the
+    // parts are read ahead of the decision and the sidecar folders that yield
+    // nothing are left out of both counts. The watched root is never a release
+    // itself, so it never decides.
     let (decision, decided_here) = match decisions.get(&relative_string) {
         Some((decision, _)) => (Some(decision), false),
-        None if holds_several => (
-            Some(heuristic_folder_release_decision(
-                direct_audio,
-                &child_folder_names(&listing_dirs),
-            )),
-            true,
-        ),
+        None if allow_unresolved_boundary && !listing_dirs.is_empty() => {
+            let parts = part_folder_names(reader, root, &listing_dirs, cancellation)?;
+            let yields_several = parts.len() > 1 || (direct_audio && !parts.is_empty());
+            if yields_several {
+                (
+                    Some(heuristic_folder_release_decision(direct_audio, &parts)),
+                    true,
+                )
+            } else {
+                (None, false)
+            }
+        }
         None => (None, false),
     };
     if decided_here {
