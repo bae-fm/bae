@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Bae.Desktop;
@@ -17,22 +17,57 @@ public sealed class ImportListPageSourceFailureTests
 {
     private sealed class FailingSubscription : IImportListSubscription
     {
-        private readonly TaskCompletionSource _attempted = new();
-
-        public Task FirstReadAttempted => _attempted.Task;
-
         public Task Cancel() => Task.CompletedTask;
 
-        public Task<BridgeImportListSnapshot> Next()
-        {
-            _attempted.TrySetResult();
+        public Task<BridgeImportListSnapshot> Next() =>
             throw new BridgeException.Diagnostic(
                 new BridgeErrorCategory.Database(), "no such column: by_catalog");
-        }
 
         public void SetView(BridgeImportListView view) { }
 
         public void SetWindows(BridgeLibraryPageWindow[] windows) { }
+    }
+
+    /// The dispatcher the source marshals through, which is also how the test
+    /// knows the consume loop has reached it — awaited rather than polled, so a
+    /// loaded machine cannot turn this into a timeout.
+    private sealed class RecordingDispatcher
+    {
+        private readonly object _gate = new();
+        private readonly List<Action> _queued = new();
+        private TaskCompletionSource _arrived = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Arrived
+        {
+            get { lock (_gate) { return _arrived.Task; } }
+        }
+
+        public void Dispatch(Action action)
+        {
+            lock (_gate)
+            {
+                _queued.Add(action);
+                _arrived.TrySetResult();
+            }
+        }
+
+        /// Run what the source queued, the way the UI thread would.
+        public void RunQueued()
+        {
+            Action[] queued;
+            lock (_gate)
+            {
+                queued = _queued.ToArray();
+                _queued.Clear();
+                _arrived = new TaskCompletionSource(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+            foreach (var action in queued)
+            {
+                action();
+            }
+        }
     }
 
     private static BridgeImportListView AnyView() => new(
@@ -44,46 +79,22 @@ public sealed class ImportListPageSourceFailureTests
     [Fact]
     public async Task APageRegisteredAfterTheReadFailedIsTold()
     {
-        var pending = new List<Action>();
-        var subscription = new FailingSubscription();
+        var dispatcher = new RecordingDispatcher();
         var source = new ImportListPageSource(
             AnyView(),
-            _ => subscription,
-            action => pending.Add(action),
+            _ => new FailingSubscription(),
+            dispatcher.Dispatch,
             _ => { });
 
         // The read fails before anything subscribes, which is the launch race.
-        await subscription.FirstReadAttempted;
-        // The consume loop hands its failure over the dispatcher; run what it
-        // queued, the way the UI thread would.
-        await WaitForDispatch(pending);
-        RunQueued(pending);
+        await dispatcher.Arrived;
+        dispatcher.RunQueued();
 
         var failures = new List<Exception>();
         source.Subscribe(0, 10, (_, _) => { }, failures.Add);
-        RunQueued(pending);
+        dispatcher.RunQueued();
 
         var failure = Assert.Single(failures);
         Assert.IsType<PageLoadException>(failure);
-    }
-
-    /// The consume loop runs on a thread pool task; give it a moment to reach
-    /// the dispatcher rather than assuming it already has.
-    private static async Task WaitForDispatch(List<Action> pending)
-    {
-        for (var attempt = 0; attempt < 200 && pending.Count == 0; attempt++)
-        {
-            await Task.Delay(10);
-        }
-    }
-
-    private static void RunQueued(List<Action> pending)
-    {
-        var queued = pending.ToArray();
-        pending.Clear();
-        foreach (var action in queued)
-        {
-            action();
-        }
     }
 }
