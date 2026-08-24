@@ -7,7 +7,14 @@ struct TriageFootBar: View {
     let selectedCount: Int
     let readyCount: Int
     let onSelectAll: () -> Void
+    let onSelectNone: () -> Void
     let onImport: () -> Void
+
+    /// Every selectable row is already selected, so the control has nothing
+    /// left to add and becomes the way to clear.
+    private var allSelected: Bool {
+        readyCount > 0 && selectedCount >= readyCount
+    }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -15,14 +22,18 @@ struct TriageFootBar: View {
                 .font(.system(size: 12.5))
                 .foregroundStyle(.secondary)
             Spacer()
-            Button(action: onSelectAll) {
-                Text(String(localized: "Select All"))
-                    .font(.system(size: 12.5, weight: .medium))
-                    .padding(.horizontal, 13)
-                    .padding(.vertical, 6)
-                    .overlay(
-                        Capsule().strokeBorder(Color.secondary.opacity(0.35))
-                    )
+            Button(action: allSelected ? onSelectNone : onSelectAll) {
+                Text(
+                    allSelected
+                        ? String(localized: "Select None")
+                        : String(localized: "Select All")
+                )
+                .font(.system(size: 12.5, weight: .medium))
+                .padding(.horizontal, 13)
+                .padding(.vertical, 6)
+                .overlay(
+                    Capsule().strokeBorder(Color.secondary.opacity(0.35))
+                )
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -60,6 +71,7 @@ struct TriageFootBar: View {
             selectedCount: 3,
             readyCount: 18,
             onSelectAll: {},
+            onSelectNone: {},
             onImport: {}
         )
         .frame(width: 320)

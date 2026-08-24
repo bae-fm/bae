@@ -376,6 +376,7 @@
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>아직 식별 중인 항목으로 이동</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count}개 선택됨</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>전체 선택</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>선택 해제</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count}개 가져오기</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>그래도 가져오기</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>다시 시도</value></data>

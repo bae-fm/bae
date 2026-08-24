@@ -208,6 +208,7 @@ struct ImportCandidateListContent: View {
                                 summary.ready.map(\.candidateKey)
                             )
                         },
+                        onSelectNone: { uiStore.clearReadySelection() },
                         onImport: {
                             onImportSelected(Array(selectedReadyKeys))
                         }

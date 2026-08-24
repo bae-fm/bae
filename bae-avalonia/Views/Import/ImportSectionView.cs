@@ -600,9 +600,13 @@ internal sealed partial class ImportSectionView : UserControl
         };
         selectedText[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
 
+        // Every selectable row already selected leaves the control nothing to
+        // add, so it becomes the way to clear.
+        var allSelected = readyKeys.Count > 0 && selectedCount >= readyKeys.Count;
         var selectAll = new Button
         {
-            Content = Loc.Chrome("import.footbar.select_all"),
+            Content = Loc.Chrome(
+                allSelected ? "import.footbar.select_none" : "import.footbar.select_all"),
             Padding = new Thickness(13, 6),
             CornerRadius = new CornerRadius(999),
             BorderThickness = new Thickness(1),
@@ -611,7 +615,17 @@ internal sealed partial class ImportSectionView : UserControl
         };
         selectAll[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         selectAll[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        selectAll.Click += (_, _) => _import.SelectAllReady(readyKeys);
+        selectAll.Click += (_, _) =>
+        {
+            if (allSelected)
+            {
+                _import.ClearReadySelection();
+            }
+            else
+            {
+                _import.SelectAllReady(readyKeys);
+            }
+        };
 
         var import = new Button
         {

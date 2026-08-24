@@ -401,6 +401,7 @@
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Go to a candidate still being identified</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} selected</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Select All</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>Select None</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Import {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Import Anyway</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Retry</value></data>

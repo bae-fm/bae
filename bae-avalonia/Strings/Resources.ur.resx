@@ -376,6 +376,7 @@
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ابھی شناخت ہونے والے امیدوار پر جائیں</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} منتخب</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>سب منتخب کریں</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>انتخاب ہٹائیں</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} درآمد کریں</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>پھر بھی درآمد کریں</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>دوبارہ کوشش کریں</value></data>

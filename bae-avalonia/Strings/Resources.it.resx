@@ -376,6 +376,7 @@
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Vai a un candidato ancora in identificazione</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} selezionati</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Seleziona tutto</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>Deseleziona tutto</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>Importa {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Importa comunque</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Riprova</value></data>

@@ -376,6 +376,7 @@
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>હજુ ઓળખાઈ રહેલા ઉમેદવાર પર જાઓ</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} પસંદ કરેલા</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>બધા પસંદ કરો</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>પસંદગી હટાવો</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} આયાત કરો</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>તો પણ આયાત કરો</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>ફરી પ્રયાસ કરો</value></data>

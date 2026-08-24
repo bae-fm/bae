@@ -376,6 +376,7 @@
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>الانتقال إلى مرشَّح ما زال قيد التعرّف</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} محدد</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>تحديد الكل</value></data>
+  <data name="import.footbar.select_none" xml:space="preserve"><value>إلغاء التحديد</value></data>
   <data name="import.footbar.import_count" xml:space="preserve"><value>استيراد {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>استيراد على أي حال</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
