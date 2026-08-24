@@ -10,7 +10,6 @@ import Foundation
             switch self {
             case .groupHeader(let stableKey, _, _, _, _),
                 .candidate(let stableKey, _),
-                .boundary(let stableKey, _),
                 .invalid(let stableKey, _):
                 return stableKey
             }

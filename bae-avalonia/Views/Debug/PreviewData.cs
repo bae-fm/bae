@@ -44,48 +44,6 @@ internal static class PreviewData
         ImportCandidateItem("Release 01", "Collection/Release 01"),
         ImportCandidateItem("Release 02", "Collection/Release 02"),
         ImportCandidateItem("Release 03", "Release 03"),
-        new BridgeImportListItem.Boundary(
-            BoundaryStableKey(ImportRoot, "Archive/Box"),
-            new BridgeFolderReleaseBoundary(
-                new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box"),
-                "Box",
-                "Archive/Box",
-                2,
-                new[]
-                {
-                    new BridgeFolderReleaseTreeRow(
-                        "Part 01",
-                        "Part 01",
-                        0,
-                        new BridgeFolderReleaseTreeRowKind.Candidate(9, "FLAC"),
-                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Part 01"),
-                        new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
-                    new BridgeFolderReleaseTreeRow(
-                        "Part 02",
-                        "Part 02",
-                        0,
-                        new BridgeFolderReleaseTreeRowKind.Candidate(11, "FLAC"),
-                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Part 02"),
-                        new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
-                    new BridgeFolderReleaseTreeRow(
-                        "Scans",
-                        "Scans",
-                        0,
-                        new BridgeFolderReleaseTreeRowKind.Folder(),
-                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans"),
-                        new[] { new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box") }),
-                    new BridgeFolderReleaseTreeRow(
-                        "Booklet",
-                        "Scans/Booklet",
-                        1,
-                        new BridgeFolderReleaseTreeRowKind.Folder(),
-                        new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans/Booklet"),
-                        new[]
-                        {
-                            new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box"),
-                            new BridgeFolderReleaseDecisionKey(ImportRoot, "Archive/Box/Scans"),
-                        }),
-                })),
     };
 
     internal static BridgeImportQueueSummary ImportSummary { get; } = Summary(
@@ -171,9 +129,6 @@ internal static class PreviewData
 
     internal static string GroupStableKey(BridgeFolderReleaseDecisionKey key) =>
         $"group:{key.WatchedFolderPath.Length}{key.WatchedFolderPath}{key.RelativeFolderPath}";
-
-    internal static string BoundaryStableKey(string watchedRoot, string relativePath) =>
-        $"boundary:{watchedRoot.Length}:{watchedRoot}{relativePath}";
 
     private static BridgeImportListItem ImportCandidateItem(string name, string displayPath) =>
         new BridgeImportListItem.Candidate(

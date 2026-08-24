@@ -9,8 +9,7 @@ pub use client::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use client::{
-    CandidateStateListRow, ImportQueueRows, ScanBoundaryListRow, ScanCandidateKind,
-    ScanCandidateListRow, ScanItemWrite,
+    CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow, ScanItemWrite,
 };
 pub use client::{Database, DeleteCleanupPlan, ImportReplacementDelete, ImportReplacementOutcome};
 pub use models::*;

@@ -1,7 +1,6 @@
 use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{
-    FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
-    InvalidCandidate,
+    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
 use crate::import::types::{ImportCommand, ImportProgress, MetadataSource, StorageMode};
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
@@ -184,7 +183,6 @@ pub enum ScanEvent {
     /// The reducer surfaces it under the Skipped tab with its reason. The key is
     /// the folder path, shared with `CandidateRemoved` for reconciliation.
     InvalidCandidate(InvalidCandidate),
-    FolderReleaseBoundary(FolderReleaseBoundary),
     /// A candidate is gone: the watcher re-scanned its folder and the release
     /// no longer resolves on disk, or the folder it belonged to stopped being
     /// watched (one event per candidate the folder held). The reducer removes
@@ -513,11 +511,7 @@ impl ImportServiceHandle {
             Some(crate::import::folder_scanner::ScanItem::Invalid(candidate)) => {
                 return Ok(Some(ImportCandidateSnapshot::Invalid(candidate)))
             }
-            Some(
-                crate::import::folder_scanner::ScanItem::Boundary(_)
-                | crate::import::folder_scanner::ScanItem::Decided { .. },
-            )
-            | None => None,
+            Some(crate::import::folder_scanner::ScanItem::Decided { .. }) | None => None,
         };
         if let Some((candidate, actionable)) = candidate {
             let skipped = self
@@ -560,7 +554,6 @@ impl ImportServiceHandle {
                 Some(
                     crate::import::folder_scanner::ScanItem::Discovered(_)
                     | crate::import::folder_scanner::ScanItem::Invalid(_)
-                    | crate::import::folder_scanner::ScanItem::Boundary(_)
                     | crate::import::folder_scanner::ScanItem::Decided { .. },
                 )
                 | None => None,

@@ -42,37 +42,6 @@ pub struct BridgeResolvedFolderReleaseBoundary {
     pub display_path: String,
 }
 
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeFolderReleaseTreeRow {
-    pub name: String,
-    pub display_path: String,
-    pub depth: u32,
-    pub kind: BridgeFolderReleaseTreeRowKind,
-    pub decision_key: BridgeFolderReleaseDecisionKey,
-    pub ancestor_decision_keys: Vec<BridgeFolderReleaseDecisionKey>,
-}
-
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeFolderReleaseTreeRowKind {
-    Folder,
-    Candidate {
-        track_count: u32,
-        format_label: String,
-    },
-    Invalid {
-        reason: BridgeInvalidReason,
-    },
-}
-
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeFolderReleaseBoundary {
-    pub key: BridgeFolderReleaseDecisionKey,
-    pub name: String,
-    pub display_path: String,
-    pub shared_file_count: u32,
-    pub tree_rows: Vec<BridgeFolderReleaseTreeRow>,
-}
-
 /// Mirror of bae-core's `InvalidReason`. The UI localizes each variant via its
 /// catalog key (`bridge_invalid_reason_key`), interpolating the path where set.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

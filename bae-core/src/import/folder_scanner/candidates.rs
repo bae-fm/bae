@@ -51,11 +51,6 @@ pub enum ScanItem {
     Discovered(FolderCandidate),
     Valid(FolderCandidate),
     Invalid(InvalidCandidate),
-    /// A folder whose parts the scan could not read: it holds several
-    /// releases' worth of audio in a shape the naming does not settle, so the
-    /// user says how to read it. Reached only where a folder's own children
-    /// did not name its parts.
-    Boundary(FolderReleaseBoundary),
     /// The scan read a folder its own way, because nothing was stored for it.
     /// The caller stores it, so the flip control on each resulting candidate
     /// has a decision to rewrite.
@@ -78,12 +73,6 @@ impl ScanItem {
                 Some(candidate.path.to_string_lossy().into_owned())
             }
             Self::Invalid(candidate) => Some(candidate.path.to_string_lossy().into_owned()),
-            Self::Boundary(boundary) => Some(
-                Path::new(&boundary.key.watched_folder_path)
-                    .join(&boundary.key.relative_folder_path)
-                    .to_string_lossy()
-                    .into_owned(),
-            ),
             Self::Decided { .. } => None,
         }
     }
@@ -241,52 +230,9 @@ impl FolderReleaseDecisions {
     }
 }
 
-/// A folder row in an unresolved boundary's compact tree.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct FolderReleaseTreeRow {
-    pub name: String,
-    pub display_path: String,
-    pub depth: u32,
-    pub kind: FolderReleaseTreeRowKind,
-    pub decision_key: FolderReleaseDecisionKey,
-    /// Enclosing unresolved boundaries that become separate when this row is
-    /// resolved. The UI submits only `decision_key`; core persists these with
-    /// it in one transaction.
-    pub ancestor_decision_keys: Vec<FolderReleaseDecisionKey>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub enum FolderReleaseTreeRowKind {
-    Folder,
-    Candidate {
-        summary: FolderReleaseCandidateSummary,
-    },
-    Invalid {
-        reason: InvalidReason,
-    },
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct FolderReleaseCandidateSummary {
-    pub track_count: u32,
-    pub format_label: String,
-}
-
-/// A folder whose structure admits both one recursive release and several
-/// direct release approximations.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct FolderReleaseBoundary {
-    pub key: FolderReleaseDecisionKey,
-    pub name: String,
-    pub display_path: String,
-    pub shared_file_count: u32,
-    pub tree_rows: Vec<FolderReleaseTreeRow>,
-    /// Tentative candidate paths hidden by this boundary.
-    pub candidate_keys: Vec<String>,
-}
-
-/// A resolved boundary retained on a row so its context menu can set the
-/// opposite interpretation without reconstructing a path.
+/// How a folder was settled, retained on every row below it so the control
+/// that reads it the other way has the key to rewrite without rebuilding a
+/// path.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct ResolvedFolderReleaseBoundary {
     pub key: FolderReleaseDecisionKey,

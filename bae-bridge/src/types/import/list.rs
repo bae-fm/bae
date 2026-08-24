@@ -43,10 +43,6 @@ pub enum BridgeImportListItem {
         stable_key: String,
         row: BridgeTriageRow,
     },
-    Boundary {
-        stable_key: String,
-        boundary: BridgeFolderReleaseBoundary,
-    },
     Invalid {
         stable_key: String,
         invalid_candidate: BridgeInvalidCandidate,

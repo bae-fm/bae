@@ -6,18 +6,11 @@ import Testing
 @Suite("Import preview data")
 struct ImportPreviewDataTests {
     @MainActor
-    @Test("smoke preview combines every queue state and boundary tree")
+    @Test("smoke preview combines every queue state")
     func smokePreviewCombinesProductionShapes() {
         let base = PreviewData.importTabScene()
         let smoke = PreviewData.importSmokeTestScene()
-        let items = smoke.itemsByTab.values.flatMap { $0 }
-        let boundaryCount = items.count {
-            if case .boundary = $0 { return true }
-            return false
-        }
-
         #expect(smoke.store.watchedFolders.count == 2)
-        #expect(boundaryCount == 5)
         #expect(smoke.store.queueIdentifyProgress?.identified == 20)
         #expect(
             smoke.store.queueIdentifyProgress?.total
@@ -100,49 +93,6 @@ struct ImportPreviewDataTests {
     }
 
     @MainActor
-    @Test("boundary preview covers several trees and every child kind")
-    func boundaryPreviewCoversProductionShapes() {
-        let items = PreviewData.releaseBoundaryScene()
-            .itemsByTab[.pending] ?? []
-        let boundaries = items.compactMap {
-            item -> BridgeFolderReleaseBoundary? in
-            guard case .boundary(_, let boundary) = item else {
-                return nil
-            }
-            return boundary
-        }
-        let kinds = boundaries.flatMap(\.treeRows).map(\.kind)
-        let invalidReasons = kinds.compactMap {
-            kind -> BridgeInvalidReason? in
-            guard case .invalid(let reason) = kind else { return nil }
-            return reason
-        }
-
-        #expect(boundaries.count == 4)
-        #expect(boundaries.contains { $0.sharedFileCount > 0 })
-        #expect(boundaries.flatMap(\.treeRows).contains { $0.depth == 2 })
-        #expect(
-            kinds.contains {
-                if case .folder = $0 { return true }
-                return false
-            }
-        )
-        #expect(
-            kinds.contains {
-                if case .candidate = $0 { return true }
-                return false
-            }
-        )
-        #expect(
-            invalidReasons.contains(
-                .corruptAudioFile(path: "Album 02.flac")
-            )
-        )
-        #expect(invalidReasons.contains(.corruptImage(path: "Front.png")))
-        #expect(invalidReasons.contains(.noValidAudio))
-    }
-
-    @MainActor
     @Test("every preview queue row opens its production candidate")
     func everyCandidateRowResolves() {
         let scenes = [
@@ -194,12 +144,6 @@ struct ImportPreviewDataTests {
         #expect(needsYouGroups.contains(.alreadyInLibrary))
         #expect(needsYouGroups.contains(.noMatch))
         #expect(needsYouGroups.contains(.stillIdentifying))
-        #expect(
-            entries.contains {
-                if case .boundary = $0 { return true }
-                return false
-            }
-        )
         #expect(
             entries.filter {
                 if case .invalid = $0 { return true }

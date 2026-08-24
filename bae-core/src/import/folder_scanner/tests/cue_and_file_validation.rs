@@ -271,7 +271,7 @@ FILE "album.ape" WAVE
             );
         }
         ScanItem::Valid(_) => panic!("corrupt-audio folder must not be a valid candidate"),
-        ScanItem::Discovered(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
+        ScanItem::Discovered(_) | ScanItem::Decided { .. } => {
             panic!("terminal scan helper returned a progress item")
         }
     }
@@ -666,7 +666,7 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
                 invalid.reason
             )
         }
-        ScanItem::Discovered(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
+        ScanItem::Discovered(_) | ScanItem::Decided { .. } => {
             panic!("terminal scan helper returned a progress item")
         }
     }

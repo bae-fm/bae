@@ -212,9 +212,10 @@ impl ImportService {
                                         continue;
                                     }
                                 };
-                                let Some(ancestor_separate_keys) =
-                                    crate::import::candidates::release_boundary_ancestor_keys(&stored_items, &target.0)
-                                else {
+                                if !crate::import::candidates::names_a_current_folder_reading(
+                                    &stored_items,
+                                    &target.0,
+                                ) {
                                     if completion
                                         .send(Err(format!(
                                             "{} is not a current release boundary",
@@ -226,13 +227,7 @@ impl ImportService {
                                     }
                                     continue;
                                 };
-                                let mut decisions = vec![target];
-                                decisions.extend(ancestor_separate_keys.into_iter().map(|key| {
-                                    (
-                                        key,
-                                        crate::import::folder_scanner::FolderReleaseDecision::KeepAsSeparateReleases,
-                                    )
-                                }));
+                                let decisions = vec![target];
                                 match library_manager
                                     .set_folder_release_decisions(&decisions)
                                     .await

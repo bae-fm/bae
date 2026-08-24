@@ -273,7 +273,7 @@ fn scanner_recognizes_cue_alac_pair() {
                     c.reason
                 )
             }
-            ScanItem::Discovered(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {}
+            ScanItem::Discovered(_) | ScanItem::Decided { .. } => {}
         }
     })
     .expect("scan folder");

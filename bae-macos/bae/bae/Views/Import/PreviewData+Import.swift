@@ -210,65 +210,6 @@
             ),
         ]
 
-        static let folderReleaseBoundaryKey = BridgeFolderReleaseDecisionKey(
-            watchedFolderPath: "/Music/Downloads",
-            relativeFolderPath: "Collection"
-        )
-
-        static let folderReleaseBoundary = BridgeFolderReleaseBoundary(
-            key: folderReleaseBoundaryKey,
-            name: "Collection",
-            displayPath: "Collection",
-            sharedFileCount: 2,
-            treeRows: [
-                BridgeFolderReleaseTreeRow(
-                    name: "Release One",
-                    displayPath: "Release One",
-                    depth: 0,
-                    kind: .candidate(
-                        trackCount: 9,
-                        formatLabel: "FLAC"
-                    ),
-                    decisionKey: BridgeFolderReleaseDecisionKey(
-                        watchedFolderPath: "/Music/Downloads",
-                        relativeFolderPath: "Collection/Release One"
-                    ),
-                    ancestorDecisionKeys: [folderReleaseBoundaryKey]
-                ),
-                BridgeFolderReleaseTreeRow(
-                    name: "Wrapper",
-                    displayPath: "Wrapper",
-                    depth: 0,
-                    kind: .folder,
-                    decisionKey: BridgeFolderReleaseDecisionKey(
-                        watchedFolderPath: "/Music/Downloads",
-                        relativeFolderPath: "Collection/Wrapper"
-                    ),
-                    ancestorDecisionKeys: [folderReleaseBoundaryKey]
-                ),
-                BridgeFolderReleaseTreeRow(
-                    name: "Release Two",
-                    displayPath: "Wrapper/Release Two",
-                    depth: 1,
-                    kind: .candidate(
-                        trackCount: 12,
-                        formatLabel: "FLAC"
-                    ),
-                    decisionKey: BridgeFolderReleaseDecisionKey(
-                        watchedFolderPath: "/Music/Downloads",
-                        relativeFolderPath: "Collection/Wrapper/Release Two"
-                    ),
-                    ancestorDecisionKeys: [
-                        folderReleaseBoundaryKey,
-                        BridgeFolderReleaseDecisionKey(
-                            watchedFolderPath: "/Music/Downloads",
-                            relativeFolderPath: "Collection/Wrapper"
-                        ),
-                    ]
-                ),
-            ]
-        )
-
         private static let releaseQueueRoot = "/Music/Incoming"
 
         static let releaseQueueWatchedFolder = BridgeWatchedFolder(
@@ -289,254 +230,6 @@
                 relativeFolderPath: relativePath
             )
         }
-
-        private static func releaseQueueTreeRow(
-            boundaryPath: String,
-            displayPath: String,
-            depth: UInt32,
-            kind: BridgeFolderReleaseTreeRowKind,
-            ancestorPaths: [String]
-        ) -> BridgeFolderReleaseTreeRow {
-            BridgeFolderReleaseTreeRow(
-                name: URL(fileURLWithPath: displayPath).lastPathComponent,
-                displayPath: displayPath,
-                depth: depth,
-                kind: kind,
-                decisionKey: releaseQueueKey(
-                    "\(boundaryPath)/\(displayPath)"
-                ),
-                ancestorDecisionKeys: ancestorPaths.map(releaseQueueKey)
-            )
-        }
-
-        private static let releaseQueueBoundary = BridgeFolderReleaseBoundary(
-            key: releaseQueueKey("Archive/Box"),
-            name: "Box",
-            displayPath: "Archive/Box",
-            sharedFileCount: 2,
-            treeRows: [
-                releaseQueueTreeRow(
-                    boundaryPath: "Archive/Box",
-                    displayPath: "Part 01",
-                    depth: 0,
-                    kind: .candidate(trackCount: 9, formatLabel: "FLAC"),
-                    ancestorPaths: ["Archive/Box"]
-                ),
-                releaseQueueTreeRow(
-                    boundaryPath: "Archive/Box",
-                    displayPath: "Part 02",
-                    depth: 0,
-                    kind: .candidate(trackCount: 11, formatLabel: "FLAC"),
-                    ancestorPaths: ["Archive/Box"]
-                ),
-                releaseQueueTreeRow(
-                    boundaryPath: "Archive/Box",
-                    displayPath: "Scans",
-                    depth: 0,
-                    kind: .folder,
-                    ancestorPaths: ["Archive/Box"]
-                ),
-                releaseQueueTreeRow(
-                    boundaryPath: "Archive/Box",
-                    displayPath: "Scans/Booklet",
-                    depth: 1,
-                    kind: .folder,
-                    ancestorPaths: ["Archive/Box", "Archive/Box/Scans"]
-                ),
-            ]
-        )
-
-        /// Several unresolved folder shapes in one sidebar. Each card is a
-        /// complete production boundary value: flat multi-disc folders, deep
-        /// collections, shared files, and invalid releases mixed with valid
-        /// siblings all take the same two explicit decisions.
-        private static let releaseBoundaryPreviewBoundaries:
-            [BridgeFolderReleaseBoundary] = [
-                BridgeFolderReleaseBoundary(
-                    key: releaseQueueKey("Archive/Box"),
-                    name: "Box",
-                    displayPath: "Archive/Box",
-                    sharedFileCount: 2,
-                    treeRows: [
-                        releaseQueueTreeRow(
-                            boundaryPath: "Archive/Box",
-                            displayPath: "Part 01",
-                            depth: 0,
-                            kind: .candidate(
-                                trackCount: 9,
-                                formatLabel: "FLAC"
-                            ),
-                            ancestorPaths: ["Archive/Box"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Archive/Box",
-                            displayPath: "Part 02",
-                            depth: 0,
-                            kind: .candidate(
-                                trackCount: 11,
-                                formatLabel: "CUE+FLAC"
-                            ),
-                            ancestorPaths: ["Archive/Box"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Archive/Box",
-                            displayPath: "Damaged Disc",
-                            depth: 0,
-                            kind: .invalid(
-                                reason: .corruptAudioFile(path: "Track 04.flac")
-                            ),
-                            ancestorPaths: ["Archive/Box"]
-                        ),
-                    ]
-                ),
-                BridgeFolderReleaseBoundary(
-                    key: releaseQueueKey("Discography/Studio"),
-                    name: "Studio",
-                    displayPath: "Discography/Studio",
-                    sharedFileCount: 0,
-                    treeRows: [
-                        releaseQueueTreeRow(
-                            boundaryPath: "Discography/Studio",
-                            displayPath: "Era One",
-                            depth: 0,
-                            kind: .folder,
-                            ancestorPaths: ["Discography/Studio"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Discography/Studio",
-                            displayPath: "Era One/Album 01",
-                            depth: 1,
-                            kind: .candidate(
-                                trackCount: 12,
-                                formatLabel: "FLAC"
-                            ),
-                            ancestorPaths: [
-                                "Discography/Studio",
-                                "Discography/Studio/Era One",
-                            ]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Discography/Studio",
-                            displayPath: "Era One/Album 02",
-                            depth: 1,
-                            kind: .invalid(
-                                reason: .corruptAudioFile(path: "Album 02.flac")
-                            ),
-                            ancestorPaths: [
-                                "Discography/Studio",
-                                "Discography/Studio/Era One",
-                            ]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Discography/Studio",
-                            displayPath: "Era Two",
-                            depth: 0,
-                            kind: .folder,
-                            ancestorPaths: ["Discography/Studio"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Discography/Studio",
-                            displayPath: "Era Two/Album 03",
-                            depth: 1,
-                            kind: .candidate(
-                                trackCount: 10,
-                                formatLabel: "CUE+APE"
-                            ),
-                            ancestorPaths: [
-                                "Discography/Studio",
-                                "Discography/Studio/Era Two",
-                            ]
-                        ),
-                    ]
-                ),
-                BridgeFolderReleaseBoundary(
-                    key: releaseQueueKey("Anthology"),
-                    name: "Anthology",
-                    displayPath: "Anthology",
-                    sharedFileCount: 8,
-                    treeRows: [
-                        releaseQueueTreeRow(
-                            boundaryPath: "Anthology",
-                            displayPath: "Volume 1",
-                            depth: 0,
-                            kind: .candidate(
-                                trackCount: 18,
-                                formatLabel: "MP3"
-                            ),
-                            ancestorPaths: ["Anthology"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Anthology",
-                            displayPath: "Volume 2",
-                            depth: 0,
-                            kind: .candidate(
-                                trackCount: 20,
-                                formatLabel: "FLAC"
-                            ),
-                            ancestorPaths: ["Anthology"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Anthology",
-                            displayPath: "Unreadable Artwork",
-                            depth: 0,
-                            kind: .invalid(
-                                reason: .corruptImage(path: "Front.png")
-                            ),
-                            ancestorPaths: ["Anthology"]
-                        ),
-                    ]
-                ),
-                BridgeFolderReleaseBoundary(
-                    key: releaseQueueKey("Loose Archive"),
-                    name: "Loose Archive",
-                    displayPath: "Loose Archive",
-                    sharedFileCount: 3,
-                    treeRows: [
-                        releaseQueueTreeRow(
-                            boundaryPath: "Loose Archive",
-                            displayPath: "Live",
-                            depth: 0,
-                            kind: .folder,
-                            ancestorPaths: ["Loose Archive"]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Loose Archive",
-                            displayPath: "Live/Year One",
-                            depth: 1,
-                            kind: .folder,
-                            ancestorPaths: [
-                                "Loose Archive",
-                                "Loose Archive/Live",
-                            ]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Loose Archive",
-                            displayPath: "Live/Year One/Set A",
-                            depth: 2,
-                            kind: .candidate(
-                                trackCount: 14,
-                                formatLabel: "FLAC"
-                            ),
-                            ancestorPaths: [
-                                "Loose Archive",
-                                "Loose Archive/Live",
-                                "Loose Archive/Live/Year One",
-                            ]
-                        ),
-                        releaseQueueTreeRow(
-                            boundaryPath: "Loose Archive",
-                            displayPath: "Live/Year One/Notes Only",
-                            depth: 2,
-                            kind: .invalid(reason: .noValidAudio),
-                            ancestorPaths: [
-                                "Loose Archive",
-                                "Loose Archive/Live",
-                                "Loose Archive/Live/Year One",
-                            ]
-                        ),
-                    ]
-                ),
-            ]
 
         private static func releaseQueueRow(
             name: String,
@@ -601,20 +294,13 @@
             entryCount: 2
         )
 
-        /// The boundary card of the release-queue fixture as a list item — the
-        /// one row a queue narrowed to that folder holds.
-        static let releaseQueueBoundaryItem = boundaryItem(releaseQueueBoundary)
-
         private static let releaseQueueItems =
             [releaseQueueGroupHeader]
             + releaseQueueRows[0...1].map(candidateItem)
-            + [
-                candidateItem(releaseQueueRows[2]),
-                releaseQueueBoundaryItem,
-            ]
+            + [candidateItem(releaseQueueRows[2])]
 
         private static let releaseQueueSummary = importQueueSummary(
-            pending: 4,
+            pending: 3,
             done: 0,
             skipped: 0,
             watchedFolders: [releaseQueueWatchedFolder],
@@ -664,7 +350,7 @@
             let scene = releaseQueueScene(
                 items: releaseQueueItems,
                 summary: importQueueSummary(
-                    pending: 4,
+                    pending: 3,
                     done: 0,
                     skipped: 0,
                     watchedFolders: [releaseQueueWatchedFolder],
@@ -698,30 +384,15 @@
             )
         }
 
-        @MainActor
-        static func releaseBoundaryScene() -> ImportPreviewFixture {
-            releaseQueueScene(
-                items: releaseBoundaryPreviewBoundaries.map(boundaryItem),
-                summary: importQueueSummary(
-                    pending: UInt32(releaseBoundaryPreviewBoundaries.count),
-                    done: 0,
-                    skipped: 0,
-                    watchedFolders: [releaseQueueWatchedFolder]
-                )
-            )
-        }
-
         /// Every Import-tab state in one production-backed fixture: the
         /// candidate questions and terminal tabs, plus the mixed folder trees.
         @MainActor
         static func importSmokeTestScene() -> ImportPreviewFixture {
             let scene = importTabScene()
-            let boundaries = releaseBoundaryPreviewBoundaries.map(boundaryItem)
             let base = scene.store.summary
             scene.store.applySummary(
                 importQueueSummary(
-                    pending: base.counts.pending
-                        + UInt32(releaseBoundaryPreviewBoundaries.count),
+                    pending: base.counts.pending,
                     done: base.counts.done,
                     skipped: base.counts.skipped,
                     watchedFolders: base.watchedFolders
@@ -733,11 +404,9 @@
                 )
             )
             scene.store.queueIdentifyProgress = (identified: 20, total: 21)
-            var itemsByTab = scene.itemsByTab
-            itemsByTab[.pending] = (itemsByTab[.pending] ?? []) + boundaries
             return ImportPreviewFixture(
                 store: scene.store,
-                itemsByTab: itemsByTab
+                itemsByTab: scene.itemsByTab
             )
         }
 

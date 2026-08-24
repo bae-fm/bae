@@ -53,20 +53,6 @@ async fn setup_test_manager() -> (LibraryManager, TempDir) {
     (manager, temp_dir)
 }
 
-fn unresolved_boundary(root: &Path, relative_path: &str) -> FolderReleaseBoundary {
-    FolderReleaseBoundary {
-        key: FolderReleaseDecisionKey {
-            watched_folder_path: root.to_string_lossy().into_owned(),
-            relative_folder_path: relative_path.to_string(),
-        },
-        name: "Collection".to_string(),
-        display_path: relative_path.to_string(),
-        shared_file_count: 0,
-        tree_rows: Vec::new(),
-        candidate_keys: Vec::new(),
-    }
-}
-
 fn make_artist(name: &str, discogs_id: Option<&str>, mb_id: Option<&str>) -> DbArtist {
     let now = Utc::now();
     DbArtist {

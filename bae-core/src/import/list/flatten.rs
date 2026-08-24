@@ -32,8 +32,6 @@ pub(crate) enum ItemRef {
     Header(usize),
     /// Into [`Flattened::rows`].
     Candidate(usize),
-    /// Into [`ImportQueueRows::boundaries`].
-    Boundary(usize),
     /// Into [`ImportQueueRows::candidates`] — a row the scan found invalid.
     Invalid(usize),
 }
@@ -64,7 +62,7 @@ pub(crate) fn flatten(
     let idle = TriageRuntimeFacts::default();
     let mut placed = Vec::new();
     let mut counts = TriageTabCounts::default();
-    let mut ordered = Vec::with_capacity(rows.candidates.len() + rows.boundaries.len());
+    let mut ordered = Vec::with_capacity(rows.candidates.len());
 
     for (index, row) in rows.candidates.iter().enumerate() {
         match row.kind {
@@ -119,20 +117,6 @@ pub(crate) fn flatten(
                 });
             }
         }
-    }
-
-    for (index, boundary) in rows.boundaries.iter().enumerate() {
-        counts.pending += 1;
-        let mut haystack = vec![boundary.name.as_str(), boundary.display_path.as_str()];
-        haystack.extend(boundary.tree_row_display_paths.iter().map(String::as_str));
-        ordered.push(OrderedEntry {
-            watched_folder_path: boundary.watched_folder_path.clone(),
-            display_path: boundary.display_path.clone(),
-            tab: TriageTab::Pending,
-            group: None,
-            matches_filter: matches_text(view, haystack),
-            item: ItemRef::Boundary(index),
-        });
     }
 
     let grouped_roots = grouped_roots(rows);
@@ -272,13 +256,6 @@ fn grouped_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
             continue;
         }
         note(&row.watched_folder_path, &row.display_path, false);
-    }
-    for boundary in &rows.boundaries {
-        note(
-            &boundary.watched_folder_path,
-            &boundary.display_path,
-            !boundary.tree_row_display_paths.is_empty(),
-        );
     }
     grouped
 }

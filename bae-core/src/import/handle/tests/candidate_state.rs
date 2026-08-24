@@ -155,7 +155,9 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .lock()
         .unwrap()
         .apply_added(root.to_string_lossy().into_owned());
-    let boundary = unresolved_boundary(&root, "Collection");
+    // A row under `Collection`, so the decision the removal races is one the
+    // list really offers: a header over rows can be read as one release.
+    let folder = root.join("Collection").join("Album");
     let generation = manager
         .begin_folder_scan(&root.to_string_lossy())
         .await
@@ -164,17 +166,37 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .save_folder_scan_item(
             &root.to_string_lossy(),
             generation,
-            &crate::import::folder_scanner::ScanItem::Boundary(boundary.clone()),
+            &crate::import::folder_scanner::ScanItem::Valid(
+                crate::import::folder_scanner::FolderCandidate {
+                    path: folder.clone(),
+                    file_root: folder.clone(),
+                    name: "Album".to_string(),
+                    files: crate::import::folder_scanner::CategorizedFiles {
+                        files: Vec::new(),
+                        format_label: "FLAC".to_string(),
+                    },
+                    watched_folder_path: root.to_string_lossy().into_owned(),
+                    scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+                    file_edit_revision: 0,
+                    display_path: "Collection/Album".to_string(),
+                    resolved_boundaries: Vec::new(),
+                    combine_ancestor_key: None,
+                },
+            ),
         )
         .await
         .unwrap()
         .expect("the scan generation is current");
+    let key = FolderReleaseDecisionKey {
+        watched_folder_path: root.to_string_lossy().into_owned(),
+        relative_folder_path: "Collection".to_string(),
+    };
 
     let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
     handle
         .watcher_tx
         .send(WatcherCommand::SetFolderReleaseDecision {
-            target: (boundary.key, FolderReleaseDecision::CombineAsOneRelease),
+            target: (key, FolderReleaseDecision::CombineAsOneRelease),
             completion: decision_completion,
         })
         .unwrap();

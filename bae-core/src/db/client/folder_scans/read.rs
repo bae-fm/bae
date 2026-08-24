@@ -9,10 +9,8 @@ use super::write::StoredEntry;
 use super::*;
 use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
 use crate::import::folder_scanner::{
-    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseBoundary,
-    FolderReleaseCandidateSummary, FolderReleaseDecisionKey, FolderReleaseTreeRow,
-    FolderReleaseTreeRowKind, InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem,
-    ScannedFile,
+    CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseDecisionKey,
+    InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem, ScannedFile,
 };
 
 /// One stored entry: the key it is addressed by, the scan generation that
@@ -32,7 +30,6 @@ pub(super) fn load_items(
     watched_folder_path: &str,
 ) -> Result<Vec<StoredScanItem>, DbError> {
     let mut items = load_candidate_items(sql, watched_folder_path, None)?;
-    items.extend(load_boundary_items(sql, watched_folder_path, None)?);
     items.sort_by(|left, right| left.key.cmp(&right.key));
     let root_generation = sql
         .query(
@@ -83,24 +80,7 @@ pub(crate) fn load_item_by_key(
             ))),
         };
     }
-    let boundaries = sql.query(
-        "SELECT watched_folder_path, relative_folder_path FROM scan_boundary",
-        [],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?;
-    let Some((root, relative)) = boundaries
-        .into_iter()
-        .find(|(root, relative)| super::boundary_key(root, relative) == entry_key)
-    else {
-        return Ok(None);
-    };
-    let mut items = load_boundary_items(sql, &root, Some(&relative))?;
-    match items.pop() {
-        Some(item) => Ok(Some((root, item))),
-        None => Err(DbError::Message(format!(
-            "folder scan boundary {entry_key} vanished between its two reads"
-        ))),
-    }
+    Ok(None)
 }
 
 /// Every stored entry under one root, as the key it is addressed by and the
@@ -141,22 +121,6 @@ pub(crate) fn stored_entries(
         .into_iter()
         .map(|(path, whole_folder)| (path.clone(), StoredEntry::Candidate { path, whole_folder }))
         .collect();
-    entries.extend(
-        sql.query(
-            "SELECT relative_folder_path FROM scan_boundary WHERE watched_folder_path = ?",
-            [watched_folder_path],
-            |row| row.get::<_, String>(0),
-        )?
-        .into_iter()
-        .map(|relative_folder_path| {
-            (
-                super::boundary_key(watched_folder_path, &relative_folder_path),
-                StoredEntry::Boundary {
-                    relative_folder_path,
-                },
-            )
-        }),
-    );
     entries.sort_by(|left, right| left.0.cmp(&right.0));
     Ok(entries)
 }
@@ -627,199 +591,3 @@ fn load_cue_indexes(
 }
 
 // ── Boundaries ──────────────────────────────────────────────────────────────
-
-struct TreeRow {
-    boundary: String,
-    position: i64,
-    name: String,
-    display_path: String,
-    depth: i64,
-    kind: String,
-    track_count: Option<i64>,
-    format_label: Option<String>,
-    invalid_reason: Option<String>,
-    invalid_reason_path: Option<String>,
-    decision_relative_folder_path: String,
-}
-
-pub(crate) fn load_boundary_items(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
-) -> Result<Vec<StoredScanItem>, DbError> {
-    let rows = sql.query(
-        "SELECT relative_folder_path, generation, name, display_path, shared_file_count \
-         FROM scan_boundary \
-         WHERE watched_folder_path = :root \
-           AND (:only IS NULL OR relative_folder_path = :only) \
-         ORDER BY relative_folder_path",
-        named_params! { ":root": watched_folder_path, ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, i64>(4)?,
-            ))
-        },
-    )?;
-    let mut tree_rows = load_tree_rows(sql, watched_folder_path, only)?;
-    let mut hidden = load_hidden_candidates(sql, watched_folder_path, only)?;
-    let mut items = Vec::with_capacity(rows.len());
-    for (relative_folder_path, generation, name, display_path, shared_file_count) in rows {
-        let key = super::boundary_key(watched_folder_path, &relative_folder_path);
-        items.push(StoredScanItem {
-            key,
-            generation: to_u64(generation, "a scan boundary's generation")?,
-            item: ScanItem::Boundary(FolderReleaseBoundary {
-                tree_rows: tree_rows.remove(&relative_folder_path).unwrap_or_default(),
-                candidate_keys: hidden.remove(&relative_folder_path).unwrap_or_default(),
-                key: FolderReleaseDecisionKey {
-                    watched_folder_path: watched_folder_path.to_string(),
-                    relative_folder_path,
-                },
-                name,
-                display_path,
-                shared_file_count: to_u32(shared_file_count, "a boundary's shared file count")?,
-            }),
-        });
-    }
-    Ok(items)
-}
-
-fn load_tree_rows(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
-) -> Result<HashMap<String, Vec<FolderReleaseTreeRow>>, DbError> {
-    let rows = sql.query(
-        "SELECT boundary_relative_folder_path, position, name, display_path, depth, kind, \
-                track_count, format_label, invalid_reason, invalid_reason_path, \
-                decision_relative_folder_path \
-         FROM scan_boundary_tree_row \
-         WHERE watched_folder_path = :root \
-           AND (:only IS NULL OR boundary_relative_folder_path = :only) \
-         ORDER BY boundary_relative_folder_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
-        |row| {
-            Ok(TreeRow {
-                boundary: row.get(0)?,
-                position: row.get(1)?,
-                name: row.get(2)?,
-                display_path: row.get(3)?,
-                depth: row.get(4)?,
-                kind: row.get(5)?,
-                track_count: row.get(6)?,
-                format_label: row.get(7)?,
-                invalid_reason: row.get(8)?,
-                invalid_reason_path: row.get(9)?,
-                decision_relative_folder_path: row.get(10)?,
-            })
-        },
-    )?;
-    let mut ancestors = load_tree_row_ancestors(sql, watched_folder_path, only)?;
-    let mut tree_rows: HashMap<String, Vec<FolderReleaseTreeRow>> = HashMap::new();
-    for row in rows {
-        let missing = |what: &str| {
-            DbError::Message(format!(
-                "boundary tree row {} of {} has no {what}",
-                row.position, row.boundary
-            ))
-        };
-        let kind = match row.kind.as_str() {
-            "folder" => FolderReleaseTreeRowKind::Folder,
-            "candidate" => FolderReleaseTreeRowKind::Candidate {
-                summary: FolderReleaseCandidateSummary {
-                    track_count: to_u32(
-                        row.track_count.ok_or_else(|| missing("track count"))?,
-                        "a boundary row's track count",
-                    )?,
-                    format_label: row.format_label.ok_or_else(|| missing("format label"))?,
-                },
-            },
-            "invalid" => FolderReleaseTreeRowKind::Invalid {
-                reason: invalid_reason_of(
-                    &row.invalid_reason.ok_or_else(|| missing("reason"))?,
-                    row.invalid_reason_path,
-                )?,
-            },
-            other => return Err(unreadable("kind", other)),
-        };
-        let ancestor_decision_keys = ancestors
-            .remove(&(row.boundary.clone(), row.position))
-            .unwrap_or_default()
-            .into_iter()
-            .map(|relative_folder_path| FolderReleaseDecisionKey {
-                watched_folder_path: watched_folder_path.to_string(),
-                relative_folder_path,
-            })
-            .collect();
-        tree_rows
-            .entry(row.boundary)
-            .or_default()
-            .push(FolderReleaseTreeRow {
-                name: row.name,
-                display_path: row.display_path,
-                depth: to_u32(row.depth, "a boundary row's depth")?,
-                kind,
-                decision_key: FolderReleaseDecisionKey {
-                    watched_folder_path: watched_folder_path.to_string(),
-                    relative_folder_path: row.decision_relative_folder_path,
-                },
-                ancestor_decision_keys,
-            });
-    }
-    Ok(tree_rows)
-}
-
-fn load_tree_row_ancestors(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
-) -> Result<HashMap<(String, i64), Vec<String>>, DbError> {
-    let rows = sql.query(
-        "SELECT boundary_relative_folder_path, row_position, ancestor_relative_folder_path \
-         FROM scan_boundary_tree_row_ancestor \
-         WHERE watched_folder_path = :root \
-           AND (:only IS NULL OR boundary_relative_folder_path = :only) \
-         ORDER BY boundary_relative_folder_path, row_position, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )?;
-    let mut ancestors: HashMap<(String, i64), Vec<String>> = HashMap::new();
-    for (boundary, row_position, ancestor) in rows {
-        ancestors
-            .entry((boundary, row_position))
-            .or_default()
-            .push(ancestor);
-    }
-    Ok(ancestors)
-}
-
-fn load_hidden_candidates(
-    sql: &(impl QueryOne + QueryRows),
-    watched_folder_path: &str,
-    only: Option<&str>,
-) -> Result<HashMap<String, Vec<String>>, DbError> {
-    let rows = sql.query(
-        "SELECT boundary_relative_folder_path, candidate_path \
-         FROM scan_boundary_hidden_candidate \
-         WHERE watched_folder_path = :root \
-           AND (:only IS NULL OR boundary_relative_folder_path = :only) \
-         ORDER BY boundary_relative_folder_path, position",
-        named_params! { ":root": watched_folder_path, ":only": only },
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-    )?;
-    let mut hidden: HashMap<String, Vec<String>> = HashMap::new();
-    for (boundary, candidate_path) in rows {
-        hidden.entry(boundary).or_default().push(candidate_path);
-    }
-    Ok(hidden)
-}

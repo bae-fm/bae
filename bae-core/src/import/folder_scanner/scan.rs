@@ -1,4 +1,4 @@
-use super::boundary::{apply_resolved_boundary, boundary_tree_rows, candidate_keys};
+use super::boundary::apply_resolved_boundary;
 use super::*;
 
 // ── Progressive directory walker ───────────────────────────────────────────
@@ -118,7 +118,6 @@ impl ScanCancellation {
 pub(super) enum ProjectedScanNode {
     Candidate(FolderCandidate),
     Invalid(InvalidCandidate),
-    Boundary(FolderReleaseBoundary),
 }
 
 #[derive(Debug)]
@@ -433,11 +432,6 @@ where
             }
         }
     }
-    let shared_file_count = if direct_audio {
-        0
-    } else {
-        direct_scope_files.len() as u32
-    };
     let owns_wrapper_files = !direct_audio && !direct_scope_files.is_empty();
 
     if combine && contains_audio {
@@ -536,27 +530,13 @@ where
         if child_nodes_emitted && holds_its_own_node {
             emit_projected_nodes(nodes[..1].to_vec(), on_item);
         }
-    } else if allow_unresolved_boundary && nodes.len() > 1 && (direct_audio || owns_wrapper_files) {
-        let absolute = root.join(relative);
-        let candidate_keys = candidate_keys(&nodes);
-        let key = FolderReleaseDecisionKey {
-            watched_folder_path: watched_folder_path.to_string(),
-            relative_folder_path: relative_string.clone(),
-        };
-        let tree_rows = boundary_tree_rows(root, &absolute, watched_folder_path, &nodes);
-        let boundary = FolderReleaseBoundary {
-            key,
-            name: directory_name(root, relative),
-            display_path: relative_string,
-            shared_file_count,
-            tree_rows,
-            candidate_keys,
-        };
-        if child_nodes_emitted {
-            on_item(ScanItem::Boundary(boundary.clone()));
-        }
-        nodes = vec![ProjectedScanNode::Boundary(boundary)];
     } else if allow_unresolved_boundary && nodes.len() > 1 {
+        // Several releases below and nothing settled about this folder: it is
+        // a wrapper the releases happen to sit under — one child folder holding
+        // them all, loose files beside it, or both. There is nothing to ask.
+        // The folder that yields the several releases has already decided how
+        // it reads, and this one is where reading them as one is offered, so
+        // every candidate names it and the header above them carries the flip.
         let key = FolderReleaseDecisionKey {
             watched_folder_path: watched_folder_path.to_string(),
             relative_folder_path: relative_string,
@@ -587,7 +567,6 @@ where
         match node {
             ProjectedScanNode::Candidate(candidate) => on_item(ScanItem::Valid(candidate)),
             ProjectedScanNode::Invalid(candidate) => on_item(ScanItem::Invalid(candidate)),
-            ProjectedScanNode::Boundary(boundary) => on_item(ScanItem::Boundary(boundary)),
         }
     }
 }

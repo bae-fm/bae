@@ -21,8 +21,7 @@ use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use std::path::{Path, PathBuf};
 
 pub(super) use read::{
-    load_boundary_items, load_candidate_items, load_item_by_key, load_resolved_boundaries,
-    stored_entries,
+    load_candidate_items, load_item_by_key, load_resolved_boundaries, stored_entries,
 };
 pub(super) use write::{delete_entry, insert_candidate_files, StoredEntry};
 
@@ -68,17 +67,6 @@ impl ScanItemWrite {
             Self::Stored { superseded_keys } => superseded_keys,
         }
     }
-}
-
-/// The key a boundary is addressed by — its watched root joined with the
-/// folder it asks about, which is what
-/// [`ScanItem::persisted_key`](crate::import::folder_scanner::ScanItem) builds
-/// from the same two fields.
-pub(super) fn boundary_key(watched_folder_path: &str, relative_folder_path: &str) -> String {
-    Path::new(watched_folder_path)
-        .join(relative_folder_path)
-        .to_string_lossy()
-        .into_owned()
 }
 
 /// Refuse to write under a generation the root has moved past. Read inside the
@@ -207,15 +195,7 @@ impl Database {
             // not change. So the row keeps its place and takes only this
             // generation's stamp, which is all the completion prune asks of it.
             if load_scan_item_on(sql, &entry_key)?.as_ref() == Some(&item) {
-                match &item {
-                    ScanItem::Boundary(boundary) => write::touch_boundary(
-                        sql,
-                        &watched_folder_path,
-                        &boundary.key.relative_folder_path,
-                        generation,
-                    )?,
-                    _ => write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?,
-                }
+                write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
                 return Ok(Some(ScanItemWrite::Unchanged));
             }
             let stored = stored_entries(sql, &watched_folder_path)?;
@@ -223,14 +203,12 @@ impl Database {
                 .iter()
                 .map(|(key, entry)| StoredEntryKey {
                     key: key.clone(),
-                    is_boundary: matches!(entry, StoredEntry::Boundary { .. }),
                     covers_whole_folder: matches!(
                         entry,
-                        StoredEntry::Boundary { .. }
-                            | StoredEntry::Candidate {
-                                whole_folder: true,
-                                ..
-                            }
+                        StoredEntry::Candidate {
+                            whole_folder: true,
+                            ..
+                        }
                     ),
                 })
                 .collect();
@@ -465,10 +443,6 @@ pub(super) fn validate_scan_item_ownership(
             candidate.watched_folder_path.as_str(),
             candidate.path.as_path(),
         ),
-        ScanItem::Boundary(boundary) => (
-            boundary.key.watched_folder_path.as_str(),
-            Path::new(entry_key),
-        ),
         ScanItem::Decided { key, .. } => (key.watched_folder_path.as_str(), Path::new(entry_key)),
     };
     if item_root != watched_folder_path || !item_path.starts_with(root) {
@@ -497,25 +471,6 @@ pub(super) fn validate_scan_item_ownership(
         }
         ScanItem::Decided { key, .. } => {
             validate_decision_key_ownership(watched_folder_path, key)?;
-        }
-        ScanItem::Boundary(boundary) => {
-            validate_decision_key_ownership(watched_folder_path, &boundary.key)?;
-            for row in &boundary.tree_rows {
-                validate_decision_key_ownership(watched_folder_path, &row.decision_key)?;
-                for ancestor in &row.ancestor_decision_keys {
-                    validate_decision_key_ownership(watched_folder_path, ancestor)?;
-                }
-            }
-            if boundary
-                .candidate_keys
-                .iter()
-                .any(|key| !Path::new(key).starts_with(root))
-            {
-                return Err(DbError::Message(format!(
-                    "folder scan boundary {entry_key} contains a candidate outside \
-                     its watched folder"
-                )));
-            }
         }
     }
     Ok(())

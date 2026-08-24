@@ -16,8 +16,6 @@ use super::folder_scanner::{
     InvalidCandidate, ScanItem,
 };
 use super::types::ImportStep;
-use std::collections::HashSet;
-use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WatchedFolderScanStatus {
@@ -93,12 +91,10 @@ pub struct ImportedRelease {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StoredEntryKey {
     pub key: String,
-    pub is_boundary: bool,
     /// Whether the entry at this key is the folder itself rather than
-    /// something inside it: the card asking how to read it, or the candidate
-    /// that reads the whole folder as one release. A folder that holds tracks
-    /// of its own has a candidate under the same key which is *not* this — it
-    /// is one of the releases inside the folder.
+    /// something inside it: the candidate that reads the whole folder as one
+    /// release. A folder that holds tracks of its own has a candidate under the
+    /// same key which is *not* this — it is one of the releases inside it.
     pub covers_whole_folder: bool,
 }
 
@@ -128,24 +124,9 @@ pub(crate) fn superseded_entry_keys(existing: &[StoredEntryKey], item: &ScanItem
                 .collect();
             super::folder_scanner::release_decision_removed_keys(&others, &decisions)
         }
-        ScanItem::Invalid(candidate) => {
-            let boundary_keys: HashSet<String> = candidate
-                .resolved_boundaries
-                .iter()
-                .map(|resolved| {
-                    Path::new(&resolved.key.watched_folder_path)
-                        .join(&resolved.key.relative_folder_path)
-                        .to_string_lossy()
-                        .into_owned()
-                })
-                .collect();
-            existing
-                .iter()
-                .filter(|entry| entry.is_boundary && boundary_keys.contains(&entry.key))
-                .map(|entry| entry.key.clone())
-                .collect()
-        }
-        ScanItem::Boundary(boundary) => boundary.candidate_keys.clone(),
+        // A folder that failed validation replaces nothing: what stood at its
+        // key is its own prior row, which the write deletes anyway.
+        ScanItem::Invalid(_) => Vec::new(),
         // Not a scan entry: it stores as the folder's decision.
         ScanItem::Decided { .. } => Vec::new(),
     };
@@ -155,35 +136,34 @@ pub(crate) fn superseded_entry_keys(existing: &[StoredEntryKey], item: &ScanItem
     removed
 }
 
-/// The enclosing unresolved boundaries that become separate when `key` is
-/// decided, or `None` when `key` is not a boundary the stored scan of its
-/// root currently exposes.
+/// Whether `key` names a folder the stored scan currently offers a reading
+/// for — the one a group header's control or a combined row's menu points at.
 ///
-/// `Some(empty)` covers a key that is already a boundary or a resolved one on
-/// a row, and a first-level folder that groups rows today: deciding it needs
-/// no ancestors. Deeper keys are looked up in the boundary tree rows, which
-/// carry their ancestors.
-pub(crate) fn release_boundary_ancestor_keys(
+/// A key that names nothing is a stale control acting on a folder this scan no
+/// longer reads that way, and writing its decision would settle a folder that
+/// is not there. Three things make a key current: a row settled by it, a row
+/// that names it as the folder its releases could be read as one, and a first
+/// path component with rows under it, which is what a group header stands for.
+pub(crate) fn names_a_current_folder_reading(
     items: &[ScanItem],
     key: &FolderReleaseDecisionKey,
-) -> Option<Vec<FolderReleaseDecisionKey>> {
-    let boundaries = items.iter().filter_map(|item| match item {
-        ScanItem::Boundary(boundary) => Some(boundary),
-        _ => None,
-    });
+) -> bool {
     let resolved_on_row = items.iter().any(|item| match item {
-        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate
-            .resolved_boundaries
-            .iter()
-            .any(|resolved| resolved.key == *key),
+        ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
+            candidate
+                .resolved_boundaries
+                .iter()
+                .any(|resolved| resolved.key == *key)
+                || candidate.combine_ancestor_key.as_ref() == Some(key)
+        }
         ScanItem::Invalid(candidate) => candidate
             .resolved_boundaries
             .iter()
             .any(|resolved| resolved.key == *key),
-        ScanItem::Boundary(_) | ScanItem::Decided { .. } => false,
+        ScanItem::Decided { .. } => false,
     });
-    if resolved_on_row || boundaries.clone().any(|boundary| boundary.key == *key) {
-        return Some(Vec::new());
+    if resolved_on_row {
+        return true;
     }
     let first_component_matches = |watched_folder_path: &str, display_path: &str| {
         watched_folder_path == key.watched_folder_path
@@ -192,28 +172,16 @@ pub(crate) fn release_boundary_ancestor_keys(
                 .next()
                 .is_some_and(|first| first == key.relative_folder_path)
     };
-    let grouped_candidates = items
-        .iter()
-        .filter(|item| match item {
+    !key.relative_folder_path.contains('/')
+        && items.iter().any(|item| match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
                 first_component_matches(&candidate.watched_folder_path, &candidate.display_path)
             }
             ScanItem::Invalid(candidate) => {
                 first_component_matches(&candidate.watched_folder_path, &candidate.display_path)
             }
-            ScanItem::Boundary(_) | ScanItem::Decided { .. } => false,
+            ScanItem::Decided { .. } => false,
         })
-        .count();
-    let grouped_boundaries = boundaries.clone().any(|boundary| {
-        first_component_matches(&boundary.key.watched_folder_path, &boundary.display_path)
-    });
-    if !key.relative_folder_path.contains('/') && (grouped_candidates >= 1 || grouped_boundaries) {
-        return Some(Vec::new());
-    }
-    let row = boundaries
-        .flat_map(|boundary| &boundary.tree_rows)
-        .find(|row| row.decision_key == *key)?;
-    Some(row.ancestor_decision_keys.clone())
 }
 
 /// Every stored folder candidate that shares one file-decision identity, with

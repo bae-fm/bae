@@ -17,9 +17,7 @@
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_registry::WatchedFolder;
-use super::folder_scanner::{
-    FolderCandidate, FolderReleaseBoundary, FolderReleaseDecisionKey, InvalidCandidate,
-};
+use super::folder_scanner::{FolderCandidate, FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
@@ -98,7 +96,6 @@ pub enum ImportListItem {
         entry_count: u32,
     },
     Candidate(TriageRow),
-    Boundary(FolderReleaseBoundary),
     Invalid(InvalidCandidate),
 }
 
@@ -115,12 +112,6 @@ impl ImportListItem {
                 group.key.relative_folder_path
             ),
             Self::Candidate(row) => format!("candidate:{}", row.candidate_key),
-            Self::Boundary(boundary) => format!(
-                "boundary:{}:{}{}",
-                boundary.key.watched_folder_path.len(),
-                boundary.key.watched_folder_path,
-                boundary.key.relative_folder_path
-            ),
             Self::Invalid(candidate) => format!("invalid:{}", candidate.path.display()),
         }
     }

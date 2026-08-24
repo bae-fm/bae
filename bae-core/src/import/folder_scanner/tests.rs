@@ -44,9 +44,7 @@ fn scan_projected_items_with_decisions(
             .iter()
             .map(|(key, item)| crate::import::candidates::StoredEntryKey {
                 key: key.clone(),
-                is_boundary: matches!(item, ScanItem::Boundary(_)),
                 covers_whole_folder: match item {
-                    ScanItem::Boundary(_) => true,
                     ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => {
                         candidate.scope == ReleaseFileScope::Recursive
                     }
@@ -62,16 +60,13 @@ fn scan_projected_items_with_decisions(
     .unwrap();
     let _ = &watched_folder;
     // The order the import tab shows them in: valid releases first in natural
-    // path order, then the folders that failed validation, then the boundaries
-    // still waiting on a decision.
+    // path order, then the folders that failed validation.
     let mut valid = Vec::new();
     let mut invalid = Vec::new();
-    let mut boundaries = Vec::new();
     for item in stored.into_values() {
         match item {
             ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => valid.push(candidate),
             ScanItem::Invalid(candidate) => invalid.push(candidate),
-            ScanItem::Boundary(boundary) => boundaries.push(boundary),
             ScanItem::Decided { .. } => {}
         }
     }
@@ -81,16 +76,10 @@ fn scan_projected_items_with_decisions(
     invalid.sort_by(|left, right| {
         natord::compare_ignore_case(&left.display_path, &right.display_path)
     });
-    boundaries.sort_by(|left, right| {
-        left.key
-            .relative_folder_path
-            .cmp(&right.key.relative_folder_path)
-    });
     valid
         .into_iter()
         .map(ScanItem::Valid)
         .chain(invalid.into_iter().map(ScanItem::Invalid))
-        .chain(boundaries.into_iter().map(ScanItem::Boundary))
         .collect()
 }
 
@@ -102,7 +91,7 @@ fn scan_valid(root: impl Into<PathBuf>) -> Vec<FolderCandidate> {
         .filter_map(|item| match item {
             ScanItem::Valid(c) => Some(c),
             ScanItem::Invalid(_) => None,
-            ScanItem::Discovered(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => None,
+            ScanItem::Discovered(_) | ScanItem::Decided { .. } => None,
         })
         .collect()
 }

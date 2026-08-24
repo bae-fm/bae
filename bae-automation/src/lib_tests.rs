@@ -440,8 +440,8 @@ mod identify_mirrors {
 mod import_queue {
     use super::*;
     use bae_core::import::folder_scanner::{
-        CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseBoundary,
-        FolderReleaseDecisionKey, ReleaseFileScope, ScanItem, ScannedFile,
+        CandidateFile, CategorizedFiles, FileRole, FolderCandidate, ReleaseFileScope, ScanItem,
+        ScannedFile,
     };
     use bae_core::import::{ImportEvent, ImportProgress};
     use bae_core::library::LibraryManager;
@@ -604,52 +604,6 @@ mod import_queue {
                 import_id: "import-1".to_string(),
             },
         }
-    }
-
-    /// The listing is what the import tab holds, in path order. A path a
-    /// boundary withdrew is not a candidate: the boundary's write deleted the
-    /// tentative row, so nothing this surface can act on stands at that key.
-    #[tokio::test]
-    async fn a_boundary_s_hidden_keys_are_absent_rather_than_a_contradiction() {
-        let fixture = automation_over().await;
-        let root = fixture.root();
-        let hidden = format!("{root}/Box/CD1");
-        write_scan(&fixture, &root, |items| {
-            items.push(ScanItem::Valid(candidate(&root, "A")));
-            items.push(ScanItem::Valid(candidate(&root, "B")));
-            items.push(ScanItem::Discovered(candidate(&root, "Box/CD1")));
-            items.push(ScanItem::Boundary(FolderReleaseBoundary {
-                key: FolderReleaseDecisionKey {
-                    watched_folder_path: root.clone(),
-                    relative_folder_path: "Box".to_string(),
-                },
-                name: "Box".to_string(),
-                display_path: "Box".to_string(),
-                shared_file_count: 2,
-                tree_rows: Vec::new(),
-                candidate_keys: vec![hidden.clone()],
-            }));
-        })
-        .await;
-
-        let listed = fixture.list_candidates().await;
-        assert_eq!(
-            keys(&listed),
-            [format!("{root}/A"), format!("{root}/B")]
-                .iter()
-                .map(String::as_str)
-                .collect::<Vec<_>>()
-        );
-        let error = fixture
-            .get_candidate(&hidden)
-            .await
-            .expect_err("a hidden path names no candidate a caller can act on");
-        assert_eq!(error.kind(), "not_found");
-        assert_eq!(
-            fixture.list_candidates().await.len(),
-            2,
-            "the refused request left nothing latched"
-        );
     }
 
     /// `reidentify:` runtime entries name releases, not scanned folders. They

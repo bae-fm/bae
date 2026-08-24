@@ -164,7 +164,6 @@ public sealed class ImportSectionViewTests
         var tags = RowTags(view);
         Assert.Contains(PreviewData.GroupStableKey(PreviewData.ImportGroupKey), tags);
         Assert.Contains(PreviewData.CandidateStableKey(CandidateKey), tags);
-        Assert.Contains(PreviewData.BoundaryStableKey(PreviewData.ImportRoot, "Archive/Box"), tags);
         Assert.Contains($"invalid:{PreviewData.ImportRoot}/Broken", tags);
 
         var badges = view
@@ -428,14 +427,6 @@ public sealed class ImportSectionViewTests
                 1),
         };
         items.AddRange(MatchedItems(new BridgeTriagePlacement.Ready(), BridgeTriageSkipAction.Skip));
-        items.Add(new BridgeImportListItem.Boundary(
-            PreviewData.BoundaryStableKey(PreviewData.ImportRoot, "Archive/Box"),
-            new BridgeFolderReleaseBoundary(
-                new BridgeFolderReleaseDecisionKey(PreviewData.ImportRoot, "Archive/Box"),
-                "Box",
-                "Archive/Box",
-                2,
-                Array.Empty<BridgeFolderReleaseTreeRow>())));
         items.Add(new BridgeImportListItem.Invalid(
             $"invalid:{PreviewData.ImportRoot}/Broken",
             new BridgeInvalidCandidate(

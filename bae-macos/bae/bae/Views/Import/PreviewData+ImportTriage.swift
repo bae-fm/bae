@@ -441,14 +441,6 @@
                         )
                     ]
                     + triageGroupedRows.map(candidateItem)
-                    + [
-                        groupHeaderItem(
-                            key: folderReleaseBoundary.key,
-                            name: folderReleaseBoundary.name,
-                            entryCount: 1
-                        ),
-                        boundaryItem(folderReleaseBoundary),
-                    ]
             case .done:
                 return importTabDoneRows.map(candidateItem)
             case .skipped:
@@ -459,11 +451,11 @@
 
         @MainActor
         private static let importTabSummary = importQueueSummary(
-            pending: 11,
+            pending: 10,
             done: 2,
             skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
-            groupKeys: [importTabGroupKey, folderReleaseBoundary.key],
+            groupKeys: [importTabGroupKey],
             ready: readyRows(importTabPendingRows),
             firstUnidentifiedKey: triageRowStillIdentifying.candidateKey
         )

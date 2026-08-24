@@ -184,7 +184,6 @@ internal sealed class ImportStore : IDisposable
     {
         BridgeImportListItem.GroupHeader header => header.StableKey,
         BridgeImportListItem.Candidate candidate => candidate.StableKey,
-        BridgeImportListItem.Boundary boundary => boundary.StableKey,
         BridgeImportListItem.Invalid invalid => invalid.StableKey,
         _ => throw new ArgumentOutOfRangeException(nameof(item), item, "Unknown list item"),
     };

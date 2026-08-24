@@ -56,8 +56,7 @@ mod import_list;
 mod import_state;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use import_list::{
-    CandidateStateListRow, ImportQueueRows, ScanBoundaryListRow, ScanCandidateKind,
-    ScanCandidateListRow,
+    CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod payloads;

@@ -329,7 +329,7 @@ impl ImportService {
                     let (candidate, actionable) = match item {
                         ScanItem::Discovered(candidate) => (candidate, false),
                         ScanItem::Valid(candidate) => (candidate, true),
-                        ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
+                        ScanItem::Invalid(_) | ScanItem::Decided { .. } => {
                             unreachable!("matched candidate scan item")
                         }
                     };
@@ -361,7 +361,7 @@ impl ImportService {
                     } = persisted;
                     let candidate = match persisted_item {
                         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate,
-                        ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
+                        ScanItem::Invalid(_) | ScanItem::Decided { .. } => {
                             unreachable!("persisted candidate scan item changed variant")
                         }
                     };
@@ -442,47 +442,6 @@ impl ImportService {
                         event_tx,
                         crate::import::handle::ImportEvent::Scan(ScanEvent::InvalidCandidate(
                             candidate,
-                        )),
-                    );
-                }
-                ScanItem::Boundary(boundary) => {
-                    let persisted_item = ScanItem::Boundary(boundary.clone());
-                    let Some(persisted) = Self::persist_scan_item(
-                        root,
-                        generation,
-                        &persisted_item,
-                        library_manager,
-                        folder_state_commit,
-                    )
-                    .await?
-                    else {
-                        Self::cancel_and_join_folder_walk(root, cancellation, &mut item_rx, walk)
-                            .await?;
-                        return Ok(());
-                    };
-                    let PersistedScanItem {
-                        commit: _commit,
-                        item: _,
-                        write,
-                    } = persisted;
-                    if !write.changed() {
-                        continue;
-                    }
-                    written_keys.push(boundary.display_path.clone());
-                    let superseded_keys = write.superseded_keys().to_vec();
-                    for candidate_key in superseded_keys {
-                        displaced_keys.push(candidate_key.clone());
-                        send_event(
-                            event_tx,
-                            crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
-                                candidate_key,
-                            }),
-                        );
-                    }
-                    send_event(
-                        event_tx,
-                        crate::import::handle::ImportEvent::Scan(ScanEvent::FolderReleaseBoundary(
-                            boundary,
                         )),
                     );
                 }

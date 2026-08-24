@@ -53,51 +53,6 @@ impl crate::types::BridgeResolvedFolderReleaseBoundary {
 }
 
 #[cfg(feature = "desktop")]
-impl crate::types::BridgeFolderReleaseBoundary {
-    pub(super) fn from_core(boundary: bae_core::import::FolderReleaseBoundary) -> Self {
-        Self {
-            key: crate::types::BridgeFolderReleaseDecisionKey::from_core(boundary.key),
-            name: boundary.name,
-            display_path: boundary.display_path,
-            shared_file_count: boundary.shared_file_count,
-            tree_rows: boundary
-                .tree_rows
-                .into_iter()
-                .map(|row| crate::types::BridgeFolderReleaseTreeRow {
-                    name: row.name,
-                    display_path: row.display_path,
-                    depth: row.depth,
-                    kind: match row.kind {
-                        bae_core::import::FolderReleaseTreeRowKind::Folder => {
-                            crate::types::BridgeFolderReleaseTreeRowKind::Folder
-                        }
-                        bae_core::import::FolderReleaseTreeRowKind::Candidate { summary } => {
-                            crate::types::BridgeFolderReleaseTreeRowKind::Candidate {
-                                track_count: summary.track_count,
-                                format_label: summary.format_label,
-                            }
-                        }
-                        bae_core::import::FolderReleaseTreeRowKind::Invalid { reason } => {
-                            crate::types::BridgeFolderReleaseTreeRowKind::Invalid {
-                                reason: crate::types::BridgeInvalidReason::from_core(reason),
-                            }
-                        }
-                    },
-                    decision_key: crate::types::BridgeFolderReleaseDecisionKey::from_core(
-                        row.decision_key,
-                    ),
-                    ancestor_decision_keys: row
-                        .ancestor_decision_keys
-                        .into_iter()
-                        .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)
-                        .collect(),
-                })
-                .collect(),
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
 impl crate::types::BridgeWatchedFolderScanStatus {
     pub(super) fn from_core(status: bae_core::import::WatchedFolderScanStatus) -> Self {
         Self {
@@ -494,10 +449,6 @@ impl crate::types::BridgeImportListItem {
             bae_core::import::ImportListItem::Candidate(row) => Self::Candidate {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row),
-            },
-            bae_core::import::ImportListItem::Boundary(boundary) => Self::Boundary {
-                stable_key,
-                boundary: crate::types::BridgeFolderReleaseBoundary::from_core(boundary),
             },
             bae_core::import::ImportListItem::Invalid(candidate) => Self::Invalid {
                 stable_key,

@@ -134,9 +134,8 @@ pub use error::ImportError;
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_scanner::{
-    FolderCandidate, FolderReleaseBoundary, FolderReleaseDecision, FolderReleaseDecisionKey,
-    FolderReleaseTreeRow, FolderReleaseTreeRowKind, InvalidCandidate, InvalidReason,
-    ReleaseFileScope, ResolvedFolderReleaseBoundary,
+    FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
+    InvalidReason, ReleaseFileScope, ResolvedFolderReleaseBoundary,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{

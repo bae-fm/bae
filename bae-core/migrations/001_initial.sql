@@ -896,20 +896,6 @@ CREATE TABLE IF NOT EXISTS scan_candidate_resolved_boundary (
     FOREIGN KEY (watched_folder_path, candidate_path) REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
 ) STRICT;
 
--- A folder whose structure admits both one recursive release and several
--- direct ones: a question for the user, with the compact tree the pane shows
--- and the tentative candidates it hides.
-CREATE TABLE IF NOT EXISTS scan_boundary (
-    watched_folder_path  TEXT NOT NULL,
-    relative_folder_path TEXT NOT NULL,
-    generation           INTEGER NOT NULL CHECK (generation >= 0),
-    name                 TEXT NOT NULL,
-    display_path         TEXT NOT NULL,
-    shared_file_count    INTEGER NOT NULL CHECK (shared_file_count >= 0),
-    PRIMARY KEY (watched_folder_path, relative_folder_path),
-    FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
-) STRICT;
-
 -- Every directory a completed walk of this root read, and when it was last
 -- modified. What lets a folder on a network volume be asked "has anything
 -- moved?" without walking it: a directory's mtime changes when a file in it is
@@ -924,48 +910,6 @@ CREATE TABLE IF NOT EXISTS folder_scan_directory (
     modified_at         INTEGER NOT NULL,
     PRIMARY KEY (watched_folder_path, path),
     FOREIGN KEY (watched_folder_path) REFERENCES folder_scan_roots (watched_folder_path) ON DELETE CASCADE
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS scan_boundary_tree_row (
-    watched_folder_path           TEXT NOT NULL,
-    boundary_relative_folder_path TEXT NOT NULL,
-    position                      INTEGER NOT NULL CHECK (position >= 0),
-    name                          TEXT NOT NULL,
-    display_path                  TEXT NOT NULL,
-    depth                         INTEGER NOT NULL CHECK (depth >= 0),
-    kind                          TEXT NOT NULL CHECK (kind IN ('folder', 'candidate', 'invalid')),
-    track_count                   INTEGER CHECK (track_count IS NULL OR track_count >= 0),
-    format_label                  TEXT,
-    invalid_reason                TEXT CHECK (invalid_reason IS NULL OR invalid_reason IN ('corrupt_audio', 'corrupt_image', 'no_valid_audio')),
-    invalid_reason_path           TEXT,
-    decision_relative_folder_path TEXT NOT NULL,
-    PRIMARY KEY (watched_folder_path, boundary_relative_folder_path, position),
-    FOREIGN KEY (watched_folder_path, boundary_relative_folder_path)
-        REFERENCES scan_boundary (watched_folder_path, relative_folder_path) ON DELETE CASCADE,
-    CHECK ((kind = 'candidate') = (track_count IS NOT NULL AND format_label IS NOT NULL)),
-    CHECK ((kind = 'invalid') = (invalid_reason IS NOT NULL)),
-    CHECK ((invalid_reason IN ('corrupt_audio', 'corrupt_image')) = (invalid_reason_path IS NOT NULL))
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS scan_boundary_tree_row_ancestor (
-    watched_folder_path           TEXT NOT NULL,
-    boundary_relative_folder_path TEXT NOT NULL,
-    row_position                  INTEGER NOT NULL,
-    position                      INTEGER NOT NULL CHECK (position >= 0),
-    ancestor_relative_folder_path TEXT NOT NULL,
-    PRIMARY KEY (watched_folder_path, boundary_relative_folder_path, row_position, position),
-    FOREIGN KEY (watched_folder_path, boundary_relative_folder_path, row_position)
-        REFERENCES scan_boundary_tree_row (watched_folder_path, boundary_relative_folder_path, position) ON DELETE CASCADE
-) STRICT;
-
-CREATE TABLE IF NOT EXISTS scan_boundary_hidden_candidate (
-    watched_folder_path           TEXT NOT NULL,
-    boundary_relative_folder_path TEXT NOT NULL,
-    position                      INTEGER NOT NULL CHECK (position >= 0),
-    candidate_path                TEXT NOT NULL,
-    PRIMARY KEY (watched_folder_path, boundary_relative_folder_path, position),
-    FOREIGN KEY (watched_folder_path, boundary_relative_folder_path)
-        REFERENCES scan_boundary (watched_folder_path, relative_folder_path) ON DELETE CASCADE
 ) STRICT;
 
 -- A candidate is addressed by its path alone (the key a selection carries)

@@ -5,10 +5,7 @@
 //! the fixtures are the columns the read gathers rather than a database.
 
 use super::*;
-use crate::db::{
-    CandidateStateListRow, ImportQueueRows, ScanBoundaryListRow, ScanCandidateKind,
-    ScanCandidateListRow,
-};
+use crate::db::{CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::InvalidReason;
@@ -74,20 +71,6 @@ fn invalid(display_path: &str) -> ScanCandidateListRow {
         content_hash: None,
         invalid_reason: Some(InvalidReason::NoValidAudio),
         ..candidate(display_path)
-    }
-}
-
-fn boundary(display_path: &str, tree_row_display_paths: Vec<String>) -> ScanBoundaryListRow {
-    ScanBoundaryListRow {
-        watched_folder_path: root(),
-        relative_folder_path: display_path.to_string(),
-        name: display_path
-            .rsplit('/')
-            .next()
-            .expect("a display path has a last component")
-            .to_string(),
-        display_path: display_path.to_string(),
-        tree_row_display_paths,
     }
 }
 
@@ -190,9 +173,6 @@ fn sequence(rows: &ImportQueueRows, flat: &Flattened) -> Vec<String> {
             ItemRef::Header(index) => format!("group {}", flat.headers[*index].group.name),
             ItemRef::Candidate(index) => {
                 format!("candidate {}", flat.rows[*index].row.display_path)
-            }
-            ItemRef::Boundary(index) => {
-                format!("boundary {}", rows.boundaries[*index].display_path)
             }
             ItemRef::Invalid(index) => format!("invalid {}", rows.candidates[*index].display_path),
         })

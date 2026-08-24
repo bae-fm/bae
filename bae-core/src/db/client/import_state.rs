@@ -267,14 +267,12 @@ impl Database {
                 .iter()
                 .map(|(key, entry)| crate::import::candidates::StoredEntryKey {
                     key: key.clone(),
-                    is_boundary: matches!(entry, StoredEntry::Boundary { .. }),
                     covers_whole_folder: matches!(
                         entry,
-                        StoredEntry::Boundary { .. }
-                            | StoredEntry::Candidate {
-                                whole_folder: true,
-                                ..
-                            }
+                        StoredEntry::Candidate {
+                            whole_folder: true,
+                            ..
+                        }
                     ),
                 })
                 .collect();

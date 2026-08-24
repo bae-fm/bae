@@ -25,7 +25,6 @@ internal sealed partial class ImportSectionView
                 header.Group,
                 header.Expanded),
             BridgeImportListItem.Candidate candidate => BuildRow(candidate.Row),
-            BridgeImportListItem.Boundary boundary => BuildBoundaryRow(boundary.BoundaryValue),
             BridgeImportListItem.Invalid invalid => BuildInvalidRow(invalid.InvalidCandidate),
             _ => new Panel(),
         };
@@ -92,109 +91,6 @@ internal sealed partial class ImportSectionView
         host.Children.Add(button);
         host.Children.Add(combine);
         return host;
-    }
-
-    private Control BuildBoundaryRow(BridgeFolderReleaseBoundary boundary)
-    {
-        var content = new StackPanel { Spacing = 5, Margin = new Thickness(14, 9) };
-        var title = new TextBlock
-        {
-            Text = boundary.Name,
-            FontSize = 14,
-            FontWeight = FontWeight.SemiBold,
-        };
-        var tree = new StackPanel { Spacing = 3 };
-        var displayPath = new TextBlock
-        {
-            Text = boundary.DisplayPath,
-            FontFamily = new FontFamily("monospace"),
-            FontSize = 11.5,
-        };
-        displayPath[!TextBlock.ForegroundProperty] =
-            new DynamicResourceExtension("BaeTextSecondaryBrush");
-        tree.Children.Add(displayPath);
-        if (boundary.SharedFileCount > 0)
-        {
-            var sharedFiles = new TextBlock
-            {
-                Text = Loc.Chrome("storage.files", "count", (long)boundary.SharedFileCount),
-                FontSize = 11.5,
-            };
-            sharedFiles[!TextBlock.ForegroundProperty] =
-                new DynamicResourceExtension("BaeTextSecondaryBrush");
-            tree.Children.Add(sharedFiles);
-        }
-        foreach (var row in boundary.TreeRows)
-        {
-            var detail = row.Kind switch
-            {
-                BridgeFolderReleaseTreeRowKind.Candidate candidate =>
-                    $"{candidate.TrackCount.ToString(CultureInfo.CurrentCulture)} · {candidate.FormatLabel}",
-                BridgeFolderReleaseTreeRowKind.Invalid invalid =>
-                    BridgeDisplay.LocalizedLine(invalid.Reason),
-                _ => null,
-            };
-            var text = new TextBlock
-            {
-                Text = detail is null ? row.Name : $"{row.Name}  {detail}",
-                FontSize = 11.5,
-                Margin = new Thickness(row.Depth * 12, 0, 0, 0),
-            };
-            text[!TextBlock.ForegroundProperty] =
-                new DynamicResourceExtension(
-                    row.Kind is BridgeFolderReleaseTreeRowKind.Invalid
-                        ? "BaeDangerBrush"
-                        : "BaeTextSecondaryBrush");
-            text.ContextMenu = BuildDecisionMenu(row.DecisionKey);
-            tree.Children.Add(text);
-        }
-        content.Children.Insert(0, title);
-        content.Children.Insert(1, tree);
-        var one = new Button
-        {
-            Content = Loc.Chrome("import.release.one"),
-            Padding = new Thickness(10, 4),
-        };
-        one.Click += (_, _) => ApplyFolderReleaseDecision(
-            boundary.Key,
-            BridgeFolderReleaseDecision.CombineAsOneRelease);
-        var separate = new Button
-        {
-            Content = Loc.Chrome("import.release.separate"),
-            Padding = new Thickness(10, 4),
-        };
-        separate.Click += (_, _) => ApplyFolderReleaseDecision(
-            boundary.Key,
-            BridgeFolderReleaseDecision.KeepAsSeparateReleases);
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Vertical,
-            Spacing = 6,
-            Children = { one, separate },
-        };
-        one.HorizontalAlignment = HorizontalAlignment.Stretch;
-        separate.HorizontalAlignment = HorizontalAlignment.Stretch;
-        content.Children.Add(actions);
-        return new Border { Child = content };
-    }
-
-    private ContextMenu BuildDecisionMenu(BridgeFolderReleaseDecisionKey key)
-    {
-        var combine = new MenuItem
-        {
-            Header = Loc.Chrome("import.release.one"),
-        };
-        combine.Click += (_, _) => ApplyFolderReleaseDecision(
-            key,
-            BridgeFolderReleaseDecision.CombineAsOneRelease);
-        var separate = new MenuItem
-        {
-            Header = Loc.Chrome("import.release.separate"),
-        };
-        separate.Click += (_, _) => ApplyFolderReleaseDecision(
-            key,
-            BridgeFolderReleaseDecision.KeepAsSeparateReleases);
-        return new ContextMenu { ItemsSource = new[] { combine, separate } };
     }
 
     // ── Rows ──────────────────────────────────────────────────────────────────

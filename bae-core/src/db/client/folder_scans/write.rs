@@ -7,8 +7,8 @@ use super::columns::*;
 use super::*;
 use crate::cue_flac::{CuePregap, CueSheet};
 use crate::import::folder_scanner::{
-    CandidateFile, FileRole, FolderCandidate, FolderReleaseBoundary, FolderReleaseTreeRowKind,
-    InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem,
+    CandidateFile, FileRole, FolderCandidate, InvalidCandidate, ResolvedFolderReleaseBoundary,
+    ScanItem,
 };
 
 /// Where one stored entry lives, so the writer that supersedes it can name
@@ -20,9 +20,6 @@ pub(crate) enum StoredEntry {
         /// Whether this candidate's files are the whole folder at `path` —
         /// the shape a combined folder stores as.
         whole_folder: bool,
-    },
-    Boundary {
-        relative_folder_path: String,
     },
 }
 
@@ -36,15 +33,6 @@ pub(crate) fn delete_entry(
             sql.execute(
                 "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND path = ?",
                 params![watched_folder_path, path],
-            )?;
-        }
-        StoredEntry::Boundary {
-            relative_folder_path,
-        } => {
-            sql.execute(
-                "DELETE FROM scan_boundary \
-                 WHERE watched_folder_path = ? AND relative_folder_path = ?",
-                params![watched_folder_path, relative_folder_path],
             )?;
         }
     }
@@ -63,23 +51,8 @@ pub(super) fn prune_other_generations(
         params![watched_folder_path, generation],
         |row| row.get::<_, String>(0),
     )?;
-    for relative_folder_path in sql.query(
-        "SELECT relative_folder_path FROM scan_boundary \
-         WHERE watched_folder_path = ? AND generation != ?",
-        params![watched_folder_path, generation],
-        |row| row.get::<_, String>(0),
-    )? {
-        pruned.push(super::boundary_key(
-            watched_folder_path,
-            &relative_folder_path,
-        ));
-    }
     sql.execute(
         "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND generation != ?",
-        params![watched_folder_path, generation],
-    )?;
-    sql.execute(
-        "DELETE FROM scan_boundary WHERE watched_folder_path = ? AND generation != ?",
         params![watched_folder_path, generation],
     )?;
     pruned.sort();
@@ -101,22 +74,6 @@ pub(crate) fn touch_candidate(
     Ok(())
 }
 
-/// Stamp the stored boundary at this key with the current generation, so a
-/// pass that found it unchanged keeps it through the completion prune.
-pub(crate) fn touch_boundary(
-    sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    relative_folder_path: &str,
-    generation: i64,
-) -> Result<(), DbError> {
-    sql.execute(
-        "UPDATE scan_boundary SET generation = ? \
-         WHERE watched_folder_path = ? AND relative_folder_path = ?",
-        params![generation, watched_folder_path, relative_folder_path],
-    )?;
-    Ok(())
-}
-
 pub(super) fn insert_item(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -132,9 +89,6 @@ pub(super) fn insert_item(
         }
         ScanItem::Invalid(candidate) => {
             insert_invalid(sql, watched_folder_path, generation, candidate)
-        }
-        ScanItem::Boundary(boundary) => {
-            insert_boundary(sql, watched_folder_path, generation, boundary)
         }
         ScanItem::Decided { .. } => Err(DbError::Message(
             "a folder reading is stored as a decision, not as a scan entry".to_string(),
@@ -392,100 +346,6 @@ fn insert_resolved_boundaries(
                 decision_text(boundary.decision),
                 boundary.name,
                 boundary.display_path,
-            ],
-        )?;
-    }
-    Ok(())
-}
-
-fn insert_boundary(
-    sql: &SqlContext<'_, '_>,
-    watched_folder_path: &str,
-    generation: i64,
-    boundary: &FolderReleaseBoundary,
-) -> Result<(), DbError> {
-    let relative = boundary.key.relative_folder_path.as_str();
-    sql.execute(
-        "INSERT INTO scan_boundary \
-             (watched_folder_path, relative_folder_path, generation, name, display_path, \
-              shared_file_count) \
-         VALUES (?, ?, ?, ?, ?, ?)",
-        params![
-            watched_folder_path,
-            relative,
-            generation,
-            boundary.name,
-            boundary.display_path,
-            boundary.shared_file_count,
-        ],
-    )?;
-    for (position, row) in boundary.tree_rows.iter().enumerate() {
-        let position = to_i64(position as u64, "a boundary tree row's position")?;
-        let (kind, track_count, format_label) = match &row.kind {
-            FolderReleaseTreeRowKind::Folder => ("folder", None, None),
-            FolderReleaseTreeRowKind::Candidate { summary } => (
-                "candidate",
-                Some(summary.track_count),
-                Some(summary.format_label.as_str()),
-            ),
-            FolderReleaseTreeRowKind::Invalid { .. } => ("invalid", None, None),
-        };
-        let (invalid_reason, invalid_reason_path) = match &row.kind {
-            FolderReleaseTreeRowKind::Invalid { reason } => {
-                let (reason, path) = invalid_reason_columns(reason);
-                (Some(reason), path)
-            }
-            FolderReleaseTreeRowKind::Folder | FolderReleaseTreeRowKind::Candidate { .. } => {
-                (None, None)
-            }
-        };
-        sql.execute(
-            "INSERT INTO scan_boundary_tree_row \
-                 (watched_folder_path, boundary_relative_folder_path, position, name, \
-                  display_path, depth, kind, track_count, format_label, invalid_reason, \
-                  invalid_reason_path, decision_relative_folder_path) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            params![
-                watched_folder_path,
-                relative,
-                position,
-                row.name,
-                row.display_path,
-                row.depth,
-                kind,
-                track_count,
-                format_label,
-                invalid_reason,
-                invalid_reason_path,
-                row.decision_key.relative_folder_path,
-            ],
-        )?;
-        for (ancestor_position, ancestor) in row.ancestor_decision_keys.iter().enumerate() {
-            sql.execute(
-                "INSERT INTO scan_boundary_tree_row_ancestor \
-                     (watched_folder_path, boundary_relative_folder_path, row_position, \
-                      position, ancestor_relative_folder_path) \
-                 VALUES (?, ?, ?, ?, ?)",
-                params![
-                    watched_folder_path,
-                    relative,
-                    position,
-                    to_i64(ancestor_position as u64, "an ancestor key's position")?,
-                    ancestor.relative_folder_path,
-                ],
-            )?;
-        }
-    }
-    for (position, candidate_path) in boundary.candidate_keys.iter().enumerate() {
-        sql.execute(
-            "INSERT INTO scan_boundary_hidden_candidate \
-                 (watched_folder_path, boundary_relative_folder_path, position, candidate_path) \
-             VALUES (?, ?, ?, ?)",
-            params![
-                watched_folder_path,
-                relative,
-                to_i64(position as u64, "a hidden candidate's position")?,
-                candidate_path,
             ],
         )?;
     }

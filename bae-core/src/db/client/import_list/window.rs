@@ -5,7 +5,7 @@
 //! pick. All three are read for the entries inside a requested window and for
 //! the one key a selection names — never for the queue.
 
-use super::super::folder_scans::{load_boundary_items, load_item_by_key, load_resolved_boundaries};
+use super::super::folder_scans::{load_item_by_key, load_resolved_boundaries};
 use super::super::identity::check_releases_in_library_on;
 use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::payloads::load_release_payloads_on;
@@ -50,21 +50,6 @@ pub(super) fn materialise(
                     row.matched = picked_release(sql, &pick)?;
                 }
                 Ok(ImportListItem::Candidate(row))
-            }
-            ItemRef::Boundary(index) => {
-                let boundary = &rows.boundaries[*index];
-                let mut items = load_boundary_items(
-                    sql,
-                    &boundary.watched_folder_path,
-                    Some(&boundary.relative_folder_path),
-                )?;
-                match items.pop().map(|stored| stored.item) {
-                    Some(ScanItem::Boundary(boundary)) => Ok(ImportListItem::Boundary(boundary)),
-                    _ => Err(DbError::Message(format!(
-                        "folder scan boundary {} vanished between its two reads",
-                        boundary.display_path
-                    ))),
-                }
             }
             ItemRef::Invalid(index) => {
                 let scanned = &rows.candidates[*index];
@@ -137,7 +122,7 @@ pub(super) fn load_candidate_detail_on(
     let (candidate, actionable) = match stored.item {
         ScanItem::Valid(candidate) => (candidate, true),
         ScanItem::Discovered(candidate) => (candidate, false),
-        ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => return Ok(None),
+        ScanItem::Invalid(_) | ScanItem::Decided { .. } => return Ok(None),
     };
     let content_hash = candidate.files.content_hash();
 

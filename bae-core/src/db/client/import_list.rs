@@ -54,18 +54,6 @@ pub struct ScanCandidateListRow {
     pub invalid_reason: Option<InvalidReason>,
 }
 
-/// One boundary, as the list places it. The tree itself is loaded only for the
-/// boundaries inside a window; the rows' display paths are here because the
-/// filter matches them.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ScanBoundaryListRow {
-    pub watched_folder_path: String,
-    pub relative_folder_path: String,
-    pub name: String,
-    pub display_path: String,
-    pub tree_row_display_paths: Vec<String>,
-}
-
 /// One `import_candidate_state` row, as the list reads it: the revision it
 /// describes, what identification concluded, and what was decided.
 #[derive(Debug, Clone, PartialEq)]
@@ -84,7 +72,6 @@ pub struct ImportQueueRows {
     pub watched_folders: Vec<WatchedFolder>,
     pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
     pub candidates: Vec<ScanCandidateListRow>,
-    pub boundaries: Vec<ScanBoundaryListRow>,
     /// `(watched_folder_path, relative_candidate_path)` of every skipped row.
     pub skipped: HashSet<(String, String)>,
     /// The library release each imported content hash became.
@@ -119,7 +106,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
 
     let folder_scan_statuses = scan_statuses(sql, &watched_folders)?;
     let candidates = candidate_rows(sql)?;
-    let boundaries = boundary_rows(sql)?;
 
     let skipped: HashSet<(String, String)> = sql
         .query(
@@ -200,7 +186,6 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         watched_folders,
         folder_scan_statuses,
         candidates,
-        boundaries,
         skipped,
         imported,
         failures,
@@ -330,58 +315,6 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
         },
     )
     .collect()
-}
-
-fn boundary_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanBoundaryListRow>, DbError> {
-    let mut tree_rows: HashMap<(String, String), Vec<String>> = HashMap::new();
-    for (watched_folder_path, boundary, display_path) in sql.query(
-        "SELECT watched_folder_path, boundary_relative_folder_path, display_path \
-         FROM scan_boundary_tree_row ORDER BY watched_folder_path, \
-              boundary_relative_folder_path, position",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-            ))
-        },
-    )? {
-        tree_rows
-            .entry((watched_folder_path, boundary))
-            .or_default()
-            .push(display_path);
-    }
-    Ok(sql
-        .query(
-            "SELECT watched_folder_path, relative_folder_path, name, display_path \
-             FROM scan_boundary",
-            [],
-            |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    row.get::<_, String>(1)?,
-                    row.get::<_, String>(2)?,
-                    row.get::<_, String>(3)?,
-                ))
-            },
-        )?
-        .into_iter()
-        .map(
-            |(watched_folder_path, relative_folder_path, name, display_path)| {
-                let tree_row_display_paths = tree_rows
-                    .remove(&(watched_folder_path.clone(), relative_folder_path.clone()))
-                    .unwrap_or_default();
-                ScanBoundaryListRow {
-                    watched_folder_path,
-                    relative_folder_path,
-                    name,
-                    display_path,
-                    tree_row_display_paths,
-                }
-            },
-        )
-        .collect())
 }
 
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {

@@ -70,82 +70,28 @@ fn a_tentative_candidate_is_neither_a_row_nor_a_count() {
 }
 
 #[test]
-fn boundaries_count_pending_and_invalid_folders_count_skipped() {
+fn a_release_counts_pending_and_an_invalid_folder_counts_skipped() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release"), invalid("Broken")];
-    rows.boundaries = vec![boundary("Box", vec!["Box/CD1".to_string()])];
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
     assert_eq!(
         flat.summary.counts,
         TriageTabCounts {
-            pending: 2,
+            pending: 1,
             done: 0,
             skipped: 1,
         }
     );
     assert_eq!(
         sequence(&rows, &flat),
-        vec![
-            "group Box".to_string(),
-            "boundary Box".to_string(),
-            "candidate Release".to_string(),
-        ]
+        vec!["candidate Release".to_string()]
     );
     let skipped = flattened(&rows, &view(TriageTab::Skipped));
     assert_eq!(
         sequence(&rows, &skipped),
         vec!["invalid Broken".to_string()]
-    );
-}
-
-/// A first path component holding more than one entry becomes a group; a row
-/// that is the only thing at its root stays flat.
-#[test]
-fn a_group_header_precedes_the_run_of_entries_it_holds() {
-    let mut rows = queue();
-    rows.candidates = vec![
-        candidate("Group/Release 1"),
-        candidate("Group/Release 2"),
-        candidate("Loose"),
-    ];
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-
-    assert_eq!(
-        sequence(&rows, &flat),
-        vec![
-            "group Group".to_string(),
-            "candidate Group/Release 1".to_string(),
-            "candidate Group/Release 2".to_string(),
-            "candidate Loose".to_string(),
-        ]
-    );
-    assert_eq!(flat.headers[0].entry_count, 2);
-    assert!(flat.headers[0].expanded);
-    assert_eq!(
-        flat.summary.group_keys,
-        vec![FolderReleaseDecisionKey {
-            watched_folder_path: root(),
-            relative_folder_path: "Group".to_string(),
-        }]
-    );
-}
-
-/// A boundary that carries a tree groups its root even when it is the only
-/// entry there: the tentative rows it hides are what would otherwise be
-/// siblings.
-#[test]
-fn a_boundary_with_a_tree_groups_its_root() {
-    let mut rows = queue();
-    rows.boundaries = vec![boundary("Box", vec!["Box/CD1".to_string()])];
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-
-    assert_eq!(
-        sequence(&rows, &flat),
-        vec!["group Box".to_string(), "boundary Box".to_string()]
     );
 }
 
@@ -235,22 +181,9 @@ fn the_filter_matches_the_lead_match_title_and_artist() {
 }
 
 #[test]
-fn the_filter_matches_a_boundary_tree_row_and_an_invalid_folder() {
+fn the_filter_matches_an_invalid_folder() {
     let mut rows = queue();
     rows.candidates = vec![invalid("Broken")];
-    rows.boundaries = vec![boundary("Box", vec!["Box/Deep Disc".to_string()])];
-
-    let tree = flattened(
-        &rows,
-        &ImportListView {
-            filter_text: "deep disc".to_string(),
-            ..view(TriageTab::Pending)
-        },
-    );
-    assert_eq!(
-        sequence(&rows, &tree),
-        vec!["group Box".to_string(), "boundary Box".to_string()]
-    );
 
     let broken = flattened(
         &rows,

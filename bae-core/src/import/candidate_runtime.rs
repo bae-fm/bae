@@ -339,7 +339,6 @@ impl CandidateRuntime {
             // view, and the remaining scan events change rows, not runtime.
             ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
-                | ScanEvent::FolderReleaseBoundary(_)
                 | ScanEvent::CandidateSkipChanged { .. }
                 | ScanEvent::CandidateIdentityPicked { .. }
                 | ScanEvent::FolderScanStatusChanged { .. }

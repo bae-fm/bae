@@ -232,102 +232,6 @@ struct ImportCandidateListContent: View {
     }
 }
 
-struct FolderReleaseBoundaryRow: View {
-    let boundary: BridgeFolderReleaseBoundary
-    let onDecision:
-        (
-            _ key: BridgeFolderReleaseDecisionKey,
-            _ decision: BridgeFolderReleaseDecision
-        ) -> Void
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(
-                boundary.name,
-                systemImage: "folder.badge.questionmark"
-            )
-            .font(.system(size: 14, weight: .semibold))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(boundary.displayPath)
-                    .font(.system(size: 11.5, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                if boundary.sharedFileCount > 0 {
-                    Label(
-                        "\(Int64(boundary.sharedFileCount)) files",
-                        systemImage: "doc.on.doc"
-                    )
-                    .foregroundStyle(.secondary)
-                }
-                ForEach(boundary.treeRows, id: \.displayPath) { row in
-                    folderReleaseTreeRow(row)
-                        .padding(.leading, CGFloat(row.depth) * 12)
-                        .contextMenu {
-                            releaseDecisionMenu(row.decisionKey)
-                        }
-                }
-            }
-            .font(.system(size: 11.5))
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) {
-                    decisionButtons
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    decisionButtons
-                }
-            }
-            .controlSize(.small)
-        }
-        .padding(.vertical, 8)
-        .accessibilityElement(children: .contain)
-    }
-
-    @ViewBuilder
-    private var decisionButtons: some View {
-        Button("Combine as One Release") {
-            onDecision(boundary.key, .combineAsOneRelease)
-        }
-        Button("Keep as Separate Releases") {
-            onDecision(boundary.key, .keepAsSeparateReleases)
-        }
-    }
-
-    private func folderReleaseTreeRow(
-        _ row: BridgeFolderReleaseTreeRow
-    ) -> some View {
-        HStack(spacing: 5) {
-            switch row.kind {
-            case .folder:
-                Image(systemName: "folder")
-                Text(row.name)
-            case .candidate(let trackCount, let formatLabel):
-                Image(systemName: "opticaldisc")
-                Text(row.name)
-                Spacer(minLength: 4)
-                Text(verbatim: "\(Int(trackCount)) \u{b7} \(formatLabel)")
-                    .foregroundStyle(.secondary)
-            case .invalid(let reason):
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text(row.name)
-                Spacer(minLength: 4)
-                Text(reason.localizedText)
-                    .foregroundStyle(.red)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func releaseDecisionMenu(
-        _ key: BridgeFolderReleaseDecisionKey
-    ) -> some View {
-        Button("Combine as One Release") {
-            onDecision(key, .combineAsOneRelease)
-        }
-        Button("Keep as Separate Releases") {
-            onDecision(key, .keepAsSeparateReleases)
-        }
-    }
-}
-
 /// The list itself. In an extension so the view's body and the chrome it
 /// builds — tabs, filter, folders — read as one piece above them.
 extension ImportCandidateListContent {
@@ -368,11 +272,6 @@ extension ImportCandidateListContent {
                 releaseGroupHeader(group, expanded: expanded)
             case .candidate(_, let row):
                 candidateRow(row)
-            case .boundary(_, let boundary):
-                FolderReleaseBoundaryRow(
-                    boundary: boundary,
-                    onDecision: onReleaseDecision
-                )
             case .invalid(_, let invalid):
                 invalidRow(invalid)
             }
@@ -531,34 +430,4 @@ extension ImportCandidateListContent {
         .windowBackground()
     }
 
-    #Preview("Release Boundary") {
-        FolderReleaseBoundaryRow(
-            boundary: PreviewData.folderReleaseBoundary,
-            onDecision: { _, _ in }
-        )
-        .frame(width: 320)
-        .padding()
-        .windowBackground()
-    }
-
-    #Preview("Release Boundaries — Mixed Trees") {
-        let scene = PreviewData.releaseBoundaryScene()
-        let uiStore = UiStore()
-        return ImportCandidateListContent(
-            importStore: scene.store,
-            listSlot: scene.slot(uiStore: uiStore),
-            selectedKeys: .constant([]),
-            onAddFolder: {},
-            onRemoveFolder: { _ in },
-            onRefreshFolder: { _ in },
-            onReleaseDecision: { _, _ in },
-            onSkip: { _, _ in },
-            onImportSelected: { _ in }
-        )
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
-        .environment(uiStore)
-        .environment(PreviewData.artImageStore())
-        .frame(width: 520, height: 900)
-        .windowBackground()
-    }
 #endif

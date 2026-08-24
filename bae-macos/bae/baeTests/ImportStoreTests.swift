@@ -700,7 +700,7 @@ struct ImportListPageSourceTests {
             else { return nil }
             switch item {
             case .candidate(_, let row): return row.candidateKey
-            case .groupHeader, .boundary, .invalid: return nil
+            case .groupHeader, .invalid: return nil
             }
         }
     }

@@ -32,18 +32,6 @@
             )
         }
 
-        static func boundaryItem(
-            _ boundary: BridgeFolderReleaseBoundary
-        ) -> BridgeImportListItem {
-            .boundary(
-                stableKey:
-                    "boundary:\(boundary.key.watchedFolderPath.count):"
-                    + boundary.key.watchedFolderPath
-                    + boundary.key.relativeFolderPath,
-                boundary: boundary
-            )
-        }
-
         static func invalidItem(
             _ candidate: BridgeInvalidCandidate
         ) -> BridgeImportListItem {

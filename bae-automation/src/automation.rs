@@ -137,7 +137,7 @@ impl Automation {
                         ImportListItem::Invalid(candidate) => {
                             candidates.push(automation_candidate_from_invalid(&candidate));
                         }
-                        ImportListItem::GroupHeader { .. } | ImportListItem::Boundary(_) => {}
+                        ImportListItem::GroupHeader { .. } => {}
                     }
                 }
             }

@@ -214,9 +214,6 @@ fn a_wrapper_the_scan_reads_makes_its_children_actionable_at_once() {
     *lock.lock().unwrap() = true;
     condition.notify_all();
     scan.join().unwrap().unwrap();
-    assert!(!item_rx
-        .try_iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
 }
 
 #[test]
@@ -291,9 +288,6 @@ fn a_folder_with_its_own_tracks_beside_children_is_read_as_several_releases() {
     *lock.lock().unwrap() = true;
     condition.notify_all();
     scan.join().unwrap().unwrap();
-    assert!(!item_rx
-        .try_iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
 }
 
 #[test]
@@ -336,11 +330,6 @@ fn discography_and_multidisc_shapes_follow_folder_structure_only() {
         candidates["Solo Artist/1973 - Box"].scope,
         ReleaseFileScope::Recursive
     );
-
-    // Nothing is left for the user to answer.
-    assert!(!items
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
 
     // The user's own answer replaces the scan's.
     let separate = scan_for_candidates_with_decisions_collect(
@@ -473,9 +462,6 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
     // stored the scan reads the wrapper as one release and says so.
     let read_by_the_scan =
         scan_for_candidates_with_decisions_collect(root.clone(), FolderReleaseDecisions::default());
-    assert!(!read_by_the_scan
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
     assert!(read_by_the_scan.iter().any(|item| matches!(
         item,
         ScanItem::Decided {
@@ -488,10 +474,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .iter()
         .find_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_)
-            | ScanItem::Invalid(_)
-            | ScanItem::Boundary(_)
-            | ScanItem::Decided { .. } => None,
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } => None,
         })
         .expect("combined wrapper is actionable");
     assert_eq!(combined.path, wrapper);
@@ -509,10 +492,7 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
         .iter()
         .filter_map(|item| match item {
             ScanItem::Valid(candidate) => Some(candidate),
-            ScanItem::Discovered(_)
-            | ScanItem::Invalid(_)
-            | ScanItem::Boundary(_)
-            | ScanItem::Decided { .. } => None,
+            ScanItem::Discovered(_) | ScanItem::Invalid(_) | ScanItem::Decided { .. } => None,
         })
         .collect();
     assert_eq!(separate.len(), 2);
@@ -542,9 +522,6 @@ fn tracks_beside_an_album_folder_are_two_releases_that_say_so() {
     std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
 
     let items = scan_items(&root);
-    assert!(!items
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
     let candidates: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
@@ -576,9 +553,6 @@ fn an_invalid_folder_beside_an_album_folder_still_carries_the_reading() {
     std::fs::write(child.join("child.flac"), fake_flac()).unwrap();
 
     let items = scan_items(&root);
-    assert!(!items
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
     let invalid = items
         .iter()
         .find_map(|item| match item {
@@ -659,9 +633,6 @@ fn a_folder_that_yields_nothing_is_not_one_of_the_parts() {
     std::fs::write(scans.join("Booklet").join("notes.txt"), "notes").unwrap();
 
     let items = scan_for_candidates_with_decisions_collect(root, FolderReleaseDecisions::default());
-    assert!(!items
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
     assert!(items.iter().any(|item| matches!(
         item,
         ScanItem::Decided {
@@ -730,9 +701,6 @@ fn a_folder_that_yields_one_release_decides_nothing() {
             .any(|item| matches!(item, ScanItem::Decided { .. })),
         "one release is nothing to decide about: {items:?}"
     );
-    assert!(!items
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
     let releases: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
@@ -766,9 +734,6 @@ fn a_numbered_box_inside_a_collection_is_one_release() {
     }
 
     let items = scan_items(&root);
-    assert!(!items
-        .iter()
-        .any(|item| matches!(item, ScanItem::Boundary(_))));
     let mut paths: Vec<_> = items
         .iter()
         .filter_map(|item| match item {
@@ -816,4 +781,54 @@ fn two_walks_of_one_tree_produce_the_same_items() {
     for (left, right) in first.iter().zip(second.iter()) {
         assert_eq!(left, right);
     }
+}
+
+/// A folder of loose files whose releases all sit under one child folder is a
+/// wrapper, not a question. Nothing about it is the user's to answer: the child
+/// holding the releases has already been read, and this folder is only where
+/// reading them as one is offered.
+#[test]
+fn a_wrapper_over_one_folder_of_releases_asks_nothing() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let wrapper = root.join("Freddie Roach");
+    let inner = wrapper.join("Sound");
+    for album in ["Brown Sugar", "Mocha Motion", "Good Move"] {
+        let album = inner.join(album);
+        std::fs::create_dir_all(&album).unwrap();
+        std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
+    }
+    // The loose files beside the child folder, which is what used to make this
+    // shape a card rather than a reading.
+    std::fs::create_dir_all(&wrapper).unwrap();
+    std::fs::write(wrapper.join("front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+    std::fs::write(wrapper.join("notes.txt"), "notes").unwrap();
+
+    let items = scan_items(&root);
+
+    let mut releases: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate.display_path.as_str()),
+            _ => None,
+        })
+        .collect();
+    releases.sort_unstable();
+    assert_eq!(
+        releases,
+        vec![
+            "Freddie Roach/Sound/Brown Sugar",
+            "Freddie Roach/Sound/Good Move",
+            "Freddie Roach/Sound/Mocha Motion",
+        ]
+    );
+    // Every one of them names the wrapper, so the header over them offers to
+    // read the three as one release.
+    assert!(items.iter().all(|item| match item {
+        ScanItem::Valid(candidate) => candidate
+            .combine_ancestor_key
+            .as_ref()
+            .is_some_and(|key| key.relative_folder_path == "Freddie Roach"),
+        _ => true,
+    }));
 }

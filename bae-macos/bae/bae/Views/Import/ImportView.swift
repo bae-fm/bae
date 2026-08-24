@@ -349,13 +349,6 @@ struct ImportView: View {
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
-    #Preview("Import tab — folder boundaries") {
-        let uiStore = ImportTabPreview.uiStore(tab: .pending)
-        let scene = PreviewData.releaseBoundaryScene()
-        ImportView()
-            .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
-    }
-
     #Preview("Import tab — completed imports") {
         let uiStore = ImportTabPreview.uiStore(tab: .done)
         let scene = PreviewData.importTabScene()
