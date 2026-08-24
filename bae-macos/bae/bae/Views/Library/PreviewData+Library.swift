@@ -151,7 +151,6 @@
                 onPlay: {},
                 onAddToQueue: {},
                 onAddNext: {},
-                onPin: {},
             )
         }
 

@@ -8,7 +8,6 @@ struct AlbumCardMenuItems: View {
         Button(menu.playLabel) { menu.onPlay() }
         Button(menu.addToQueueLabel) { menu.onAddToQueue() }
         Button(menu.addNextLabel) { menu.onAddNext() }
-        Button(menu.pinLabel) { menu.onPin() }
     }
 }
 

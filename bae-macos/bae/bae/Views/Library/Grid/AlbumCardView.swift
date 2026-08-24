@@ -86,8 +86,7 @@ struct AlbumCardView: View {
             targetCount: 1,
             onPlay: {},
             onAddToQueue: {},
-            onAddNext: {},
-            onPin: {}
+            onAddNext: {}
         )
         HStack(spacing: 20) {
             AlbumCardView(

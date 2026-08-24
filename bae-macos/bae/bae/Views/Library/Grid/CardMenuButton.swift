@@ -36,7 +36,6 @@ struct CardMenuButton: View {
         nsMenu.addItem(
             MenuItem(title: menu.addNextLabel, handler: menu.onAddNext)
         )
-        nsMenu.addItem(MenuItem(title: menu.pinLabel, handler: menu.onPin))
 
         nsMenu.popUp(
             positioning: nil,

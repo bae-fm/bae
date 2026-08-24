@@ -31,7 +31,6 @@ struct AlbumGridView<ExpansionContent: View>: View {
     let onPlay: ([String]) -> Void
     let onAddToQueue: ([String]) -> Void
     let onAddNext: ([String]) -> Void
-    let onPin: ([String]) -> Void
     @ViewBuilder
     let expansionContent: (_ albumId: String) -> ExpansionContent
 
@@ -282,8 +281,7 @@ extension AlbumGridView {
             targetCount: targets.count,
             onPlay: { onPlay(targets) },
             onAddToQueue: { onAddToQueue(targets) },
-            onAddNext: { onAddNext(targets) },
-            onPin: { onPin(targets) }
+            onAddNext: { onAddNext(targets) }
         )
     }
 
@@ -339,7 +337,6 @@ extension AlbumGridView {
                 onPlay: { _ in },
                 onAddToQueue: { _ in },
                 onAddNext: { _ in },
-                onPin: { _ in },
             ) { albumId in
                 AlbumDetailView(albumId: albumId)
             }

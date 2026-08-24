@@ -8,8 +8,6 @@ struct LibraryView: View {
     var queue
     @Environment(Library.self)
     var library
-    @Environment(Downloads.self)
-    var downloads
     @Environment(LibraryStore.self)
     var libraryStore
     @Environment(UiStore.self)
@@ -201,10 +199,6 @@ extension LibraryView {
                         },
                         onAddNext: { albumIds in
                             queueActions.addNext(albumIds)
-                        },
-                        onPin: { albumIds in
-                            let releaseIds = primaryReleaseIds(for: albumIds)
-                            Task { try await downloads.queuePins(releaseIds) }
                         },
                     ) { albumId in
                         AlbumDetailView(albumId: albumId)
