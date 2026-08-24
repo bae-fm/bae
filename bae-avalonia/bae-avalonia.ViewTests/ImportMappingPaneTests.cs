@@ -108,11 +108,35 @@ public sealed class ImportMappingPaneTests
             written);
     }
 
+    // While the import runs, what the card offers is not a button: the commit
+    // already happened, and the question is how far along it is. The card says
+    // the same step, percent and bar the candidate's row says, from the one
+    // component that reads that run.
+    [AvaloniaFact]
+    public void TheCardShowsTheRunningImportWhereTheImportButtonWas()
+    {
+        var (pane, _) = Show(
+            Detail(),
+            running: new BridgeCandidateRuntimeSnapshot(
+                new BridgeIdentifyState.Idle(),
+                new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
+                new BridgeImportInFlight(37, new BridgeImportStep.Running(
+                    BridgeImportPhase.ReadingFiles))));
+
+        var texts = pane.GetLogicalDescendants().OfType<TextBlock>()
+            .Select(text => text.Text ?? string.Empty).ToList();
+        Assert.DoesNotContain(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("action.import")));
+        Assert.Contains(texts, text => text.Contains("37", StringComparison.Ordinal));
+    }
+
     // ── Building the pane ────────────────────────────────────────────────────
 
     private static (ImportMappingPane Pane, AppService App) Show(
         BridgeImportCandidateDetail detail,
-        Action<string, BridgeCandidateEditField, string>? onEditField = null)
+        Action<string, BridgeCandidateEditField, string>? onEditField = null,
+        BridgeCandidateRuntimeSnapshot? running = null)
     {
         // Controls may only be built on the headless session's dispatcher
         // thread, which [AvaloniaFact] is what supplies.
@@ -132,6 +156,9 @@ public sealed class ImportMappingPaneTests
                 return Task.FromResult((true, (string?)null));
             },
             AutoIdentifyFolder = _ => Task.FromResult(true),
+            // The run the pane and the progress line both read. Absent leaves
+            // the candidate at rest, where the card offers the Import button.
+            CandidateRuntime = _ => running,
         };
         var app = AppService.Stubbed(
             new SessionStore(Dispatcher.UIThread),

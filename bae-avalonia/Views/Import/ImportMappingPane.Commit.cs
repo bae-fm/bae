@@ -66,11 +66,27 @@ internal sealed partial class ImportMappingPane
             storage.Children.Add(pinned);
         }
 
-        // Nothing here disables the commit. The counts are stated; the one
-        // refusal left in the whole import is audio that will not decode, and
-        // core raises that.
-        var import = DialogUi.Primary(Loc.Chrome("action.import"));
-        import.Click += async (_, _) => await Commit();
+        // While the import runs, what stood here is the run itself: the same
+        // step, percent and bar the candidate's row shows, from the same
+        // component reading the same signal. There is nothing to press — the
+        // commit already happened — so the action's place is where the answer
+        // to "how far along is it?" belongs.
+        Control import;
+        if (EffectiveRowStatus.Kind == "importing" && _key is { } running)
+        {
+            import = ImportProgressLine.Build(_import, running);
+            import.MinWidth = 200;
+            import.VerticalAlignment = VerticalAlignment.Center;
+        }
+        else
+        {
+            // Nothing here disables the commit. The counts are stated; the one
+            // refusal left in the whole import is audio that will not decode,
+            // and core raises that.
+            var button = DialogUi.Primary(Loc.Chrome("action.import"));
+            button.Click += async (_, _) => await Commit();
+            import = button;
+        }
 
         var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 12 };
         Grid.SetColumn(counts, 0);

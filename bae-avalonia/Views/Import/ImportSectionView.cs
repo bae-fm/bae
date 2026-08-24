@@ -582,22 +582,9 @@ internal sealed partial class ImportSectionView : UserControl
         _progressRemaining.Text = counted;
         _progressCount.Text = counted;
         _progressBarHost.Children.Clear();
-        _progressBarHost.Children.Add(ThinProgressBar(fraction));
+        _progressBarHost.Children.Add(ImportProgressLine.Bar(fraction));
         _progressGoToKey = _import.Summary.FirstUnidentifiedKey;
         _progressLine.IsEnabled = _progressGoToKey is not null;
-    }
-
-    private static Control ThinProgressBar(double fraction)
-    {
-        var clamped = Math.Clamp(fraction, 0, 1);
-        var fill = new ColumnDefinition { Width = new GridLength(clamped, GridUnitType.Star) };
-        var rest = new ColumnDefinition { Width = new GridLength(1 - clamped, GridUnitType.Star) };
-        var fillBar = new Border { CornerRadius = new CornerRadius(1.5) };
-        fillBar[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
-        var track = new Grid { ColumnDefinitions = new ColumnDefinitions { fill, rest } };
-        Grid.SetColumn(fillBar, 0);
-        track.Children.Add(fillBar);
-        return new Border { Height = 3, CornerRadius = new CornerRadius(1.5), Child = track, ClipToBounds = true };
     }
 
     // ── The foot bar ─────────────────────────────────────────────────────────

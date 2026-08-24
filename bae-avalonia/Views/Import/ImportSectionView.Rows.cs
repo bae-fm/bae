@@ -335,7 +335,7 @@ internal sealed partial class ImportSectionView
         // an import is running, which is what the queue does answer.
         if (row.ImportStatus is BridgeTriageImportStatus.Importing)
         {
-            column.Children.Add(BuildImportProgressLine(row.CandidateKey));
+            column.Children.Add(ImportProgressLine.Build(_import, row.CandidateKey));
         }
         else if (row.Placement is BridgeTriagePlacement.Ready)
         {
@@ -474,40 +474,6 @@ internal sealed partial class ImportSectionView
             parts.Add(Loc.Chrome("import.candidate.tracks", "count", (long)trackCount));
         }
         return parts.Count == 0 ? null : string.Join(" · ", parts);
-    }
-
-    /// <summary>The running import's step, percent and bar, kept current from
-    /// the candidate-runtime signal for this one key.</summary>
-    private Control BuildImportProgressLine(string candidateKey)
-    {
-        var text = new TextBlock
-        {
-            FontSize = 12.5,
-            MaxLines = 1,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(0, 1, 0, 0),
-        };
-        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        var barHost = new Border { Margin = new Thickness(0, 7, 0, 0) };
-        var column = new StackPanel { Spacing = 0, Children = { text, barHost } };
-        CandidateRuntimeObserver.Attach(column, _import, candidateKey, runtime =>
-        {
-            // A row placed as importing whose run has not reported yet is at
-            // the start with no step named.
-            var percent = runtime?.Import?.ProgressPercent ?? 0;
-            var step = runtime?.Import?.Step;
-            text.Text = string.Join(
-                " · ",
-                new[]
-                {
-                    step is { } named
-                        ? BridgeDisplay.LocalizedLine(named)
-                        : Loc.Chrome("import.progress.identifying"),
-                    (percent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
-                }.Where(part => part.Length > 0));
-            barHost.Child = ThinProgressBar(percent / 100.0);
-        });
-        return column;
     }
 
     private string? ImportSubLine(

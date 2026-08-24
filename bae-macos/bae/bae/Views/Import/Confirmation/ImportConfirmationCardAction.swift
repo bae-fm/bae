@@ -80,25 +80,26 @@ struct ImportConfirmationCardAction: View {
         else if let status = importStatus {
             switch status {
             case .importing:
-                if case .running(.measuringLoudness)? = importInFlight?.step {
-                    // The loudness pass is the long pole; show its live,
-                    // determinate per-track bar (updated imperatively off the
-                    // high-frequency signal) instead of an indeterminate spinner.
-                    ImportLoudnessProgressRepresentable(key: candidateKey)
-                        .frame(width: 200, height: 32)
-                }
-                else {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .controlSize(.small)
-                        if let step = importInFlight?.step {
-                            Text(step.localizedText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
+                VStack(alignment: .leading, spacing: 0) {
+                    // The step, how far through the whole import it is, and the
+                    // bar — the same component the candidate's row draws, off
+                    // the same signal, so the two surfaces cannot come to
+                    // disagree about one run.
+                    ImportProgressLine(key: candidateKey)
+                    // The loudness pass is the long pole, and the card has room
+                    // the row does not: under the line, its live per-track bar
+                    // says how far through that one step the run is. A finer
+                    // view of the current step, not a second opinion about the
+                    // import.
+                    if case .running(.measuringLoudness)? = importInFlight?
+                        .step
+                    {
+                        ImportLoudnessProgressRepresentable(key: candidateKey)
+                            .frame(height: 32)
+                            .padding(.top, 4)
                     }
                 }
+                .frame(width: 200)
             case .error:
                 Button("Retry Import") { onConfirmImport() }
                     .buttonStyle(.borderedProminent)
