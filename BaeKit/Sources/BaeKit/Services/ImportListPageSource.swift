@@ -85,10 +85,6 @@ import Foundation
         ) {
             self.subscription = subscription
             self.onSummary = onSummary
-            HostTrace.line(
-                "PageSource",
-                "page source created; delivery task starting"
-            )
             deliveries = Task { [weak self] in
                 await self?.deliver()
             }
@@ -129,17 +125,7 @@ import Foundation
             let failure = self.failure
             let windows = requestedWindows()
             lock.unlock()
-            let standing =
-                failure.map { String(describing: $0) } ?? "none"
-            HostTrace.line(
-                "PageSource",
-                "page \(offset)/\(limit) registering; standing failure: \(standing)"
-            )
             if let failure {
-                HostTrace.line(
-                    "PageSource",
-                    "page \(offset)/\(limit) told about the standing failure"
-                )
                 Task { @MainActor in onError(failure) }
                 return PageWindow(source: self, key: key)
             }
@@ -197,12 +183,6 @@ import Foundation
             while !Task.isCancelled {
                 do {
                     let snapshot = try await subscription.next()
-                    let folders = snapshot.summary.watchedFolders.count
-                    let statuses = snapshot.summary.folderScanStatuses.count
-                    HostTrace.line(
-                        "PageSource",
-                        "delivery: \(folders) folders, \(statuses) statuses, \(snapshot.totalCount) items"
-                    )
                     let sinks = registeredSinks()
                     let onSummary = self.onSummary
                     let summary = snapshot.summary
@@ -220,11 +200,6 @@ import Foundation
                 }
                 catch {
                     if Task.isCancelled { return }
-                    let described = String(describing: error)
-                    HostTrace.line(
-                        "PageSource",
-                        "delivery FAILED: \(described)"
-                    )
                     failEveryPage(with: error)
                     // A failed read leaves nothing to wait on; the list rebuilds
                     // itself from the error its pages just received.
@@ -238,10 +213,6 @@ import Foundation
             failure = error
             let sinks = self.sinks
             lock.unlock()
-            HostTrace.line(
-                "PageSource",
-                "failure retained; telling \(sinks.count) already-registered page(s)"
-            )
             Task { @MainActor in
                 for sink in sinks.values {
                     sink.error(error)

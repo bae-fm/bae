@@ -67,12 +67,6 @@ class ImportStore {
     /// Take a delivered summary, unless it is the one already held.
     func applySummary(_ next: BridgeImportQueueSummary) {
         guard next != summary else { return }
-        let folders = next.watchedFolders.count
-        let statuses = next.folderScanStatuses.count
-        HostTrace.line(
-            "ImportStore",
-            "summary applied: \(folders) folders, \(statuses) statuses"
-        )
         summary = next
         reportNewScanFailures()
     }
@@ -83,10 +77,6 @@ class ImportStore {
             guard case .failed(let detail) = status.status else { continue }
             current[status.watchedFolderPath] = detail
             if reportedScanFailures[status.watchedFolderPath] != detail {
-                HostTrace.line(
-                    "ImportStore",
-                    "raising scan failure for \(status.watchedFolderPath): \(detail)"
-                )
                 onScanFailure?(status.watchedFolderPath, detail)
             }
         }

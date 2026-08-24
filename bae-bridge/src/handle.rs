@@ -59,9 +59,6 @@ mod editing_projection;
 mod import_list;
 #[cfg(feature = "desktop")]
 pub use import_list::ImportListSubscription;
-// TRACE(import-list-diagnosis): goes out with the rest of the trace.
-#[cfg(feature = "desktop")]
-pub use import_list::bridge_host_trace;
 #[cfg(feature = "desktop")]
 mod import_projection;
 mod library_projection;

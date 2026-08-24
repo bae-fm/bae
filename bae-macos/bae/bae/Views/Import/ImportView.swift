@@ -52,21 +52,12 @@ struct ImportView: View {
             ZStack {
                 if let failure = listSlot.loadFailure {
                     failedState(failure)
-                        .onAppear {
-                            HostTrace.line("ImportView", "branch: FAILED pane")
-                        }
                 }
                 else if importStore.watchedFolders.isEmpty {
                     emptyState
-                        .onAppear {
-                            HostTrace.line("ImportView", "branch: empty state")
-                        }
                 }
                 else {
                     splitContent
-                        .onAppear {
-                            HostTrace.line("ImportView", "branch: list")
-                        }
                 }
 
                 documentOverlay

@@ -187,10 +187,6 @@ final class DesktopSubscriptions {
         // starting up is raised on the first delivery instead of being
         // published to nobody.
         importStore.onScanFailure = { [uiStore] watchedFolderPath, detail in
-            HostTrace.line(
-                "Subscriptions",
-                "alerting scan failure: \(watchedFolderPath)"
-            )
             uiStore.showError(
                 DisplayError(
                     line: String(
@@ -222,7 +218,6 @@ final class DesktopSubscriptions {
     }
 
     func start() {
-        HostTrace.line("Subscriptions", "desktop subscriptions starting")
         precondition(subscriptions.isEmpty)
         subscriptions = [
             appHandle.subscribeOutputs(
@@ -239,7 +234,6 @@ final class DesktopSubscriptions {
         uiStore.onFolderCandidateSelectionChanged = { [selection] keys in
             selection.selectionChanged(keys)
         }
-        HostTrace.line("Subscriptions", "starting the import list load")
         importList.startLoad()
     }
 }

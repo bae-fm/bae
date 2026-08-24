@@ -131,22 +131,14 @@ impl ImportListSubscription {
         };
         let request_revision = event.revision().get();
         let cause = event.cause();
-        // TRACE(import-list-diagnosis): every value the list query produces,
-        // and every error. Remove once the startup failure path is settled.
+        // A list read that fails takes the whole import tab with it — no rows,
+        // no watched folders, no scan statuses — so the reason is worth a line
+        // whether or not anyone is on screen to be shown it.
         let projection = match event.into_result() {
-            Ok(projection) => {
-                tracing::info!(
-                    "import list query delivered revision {request_revision} ({cause:?}): \
-                     {} folders, {} scan statuses, {} items",
-                    projection.summary.watched_folders.len(),
-                    projection.summary.folder_scan_statuses.len(),
-                    projection.total_count,
-                );
-                projection
-            }
+            Ok(projection) => projection,
             Err(error) => {
                 tracing::error!(
-                    "import list query FAILED at revision {request_revision} ({cause:?}): {error}"
+                    "import list query failed at revision {request_revision} ({cause:?}): {error}"
                 );
                 return Err(error.into());
             }

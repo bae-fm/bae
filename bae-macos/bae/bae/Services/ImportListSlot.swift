@@ -117,10 +117,6 @@ final class ImportListSlot {
     }
 
     private func reload() async {
-        HostTrace.line(
-            "ListSlot",
-            "building the list source and reading its first page"
-        )
         sourceFailed = false
         loadFailure = nil
         let pages = makeSource(view)
@@ -131,23 +127,11 @@ final class ImportListSlot {
                 importStore.ingest(items)
             },
             onError: { [weak self] (error: any Error) in
-                HostTrace.line(
-                    "ListSlot",
-                    "list read failed: \(String(describing: error))"
-                )
                 self?.sourceFailed = true
                 // A cancellation has no line and is not a failed read.
                 guard let displayed = DisplayError(error) else {
-                    HostTrace.line(
-                        "ListSlot",
-                        "no display line — treated as a cancellation"
-                    )
                     return
                 }
-                HostTrace.line(
-                    "ListSlot",
-                    "marking the list failed: \(displayed.line)"
-                )
                 self?.loadFailure = displayed
                 self?.uiStore.showError(displayed)
             },
@@ -163,18 +147,10 @@ final class ImportListSlot {
         // to read that outcome here, or a library nobody could look at renders
         // as a library with no folders.
         if let initial = newList.initialLoadError {
-            HostTrace.line(
-                "ListSlot",
-                "first page read failed: \(initial.line)"
-            )
             sourceFailed = true
             loadFailure = initial
             uiStore.showError(initial)
         }
-        HostTrace.line(
-            "ListSlot",
-            "first page read returned; failed: \(self.loadFailure != nil)"
-        )
         guard !Task.isCancelled else { return }
         self.pages = pages
         list = newList

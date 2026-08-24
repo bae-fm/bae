@@ -1,18 +1,6 @@
 use super::*;
 use std::collections::BTreeSet;
 
-/// TRACE(import-list-diagnosis): a host-side trace line, written into the same
-/// rolling file log under `~/.bae/logs/` that the core writes, so one file
-/// holds both halves of the import list's read. At error level on purpose:
-/// unified logging keeps `info` in memory only, which is how the first attempt
-/// at this trace left the Swift half invisible.
-///
-/// Goes out with the rest of the trace.
-#[uniffi::export]
-pub fn bridge_host_trace(line: String) {
-    tracing::error!("[host] {line}");
-}
-
 /// The import tab's list, reconfigurable by view and by window.
 ///
 /// The same shape as [`AlbumBrowseSubscription`](super::AlbumBrowseSubscription):
@@ -30,9 +18,6 @@ impl AppHandle {
         &self,
         view: crate::types::BridgeImportListView,
     ) -> std::sync::Arc<ImportListSubscription> {
-        // TRACE(import-list-diagnosis): proves the host subscribed at all, and
-        // when. Remove once the startup failure path is settled.
-        tracing::info!("import list subscription opened (tab {:?})", view.tab);
         let runtime = self.runtime.handle().clone();
         std::sync::Arc::new(ImportListSubscription {
             inner: self
@@ -149,14 +134,11 @@ impl ImportListSubscription {
     ) -> Result<crate::types::BridgeImportListSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
-            // TRACE(import-list-diagnosis): what actually crosses to Swift.
-            match self.inner.next().await {
-                Ok(snapshot) => Ok(crate::types::BridgeImportListSnapshot::from_core(snapshot)),
-                Err(error) => {
-                    tracing::error!("import list next() crossing as an error: {error}");
-                    Err(list_error(error))
-                }
-            }
+            self.inner
+                .next()
+                .await
+                .map(crate::types::BridgeImportListSnapshot::from_core)
+                .map_err(list_error)
         })
         .await
     }
