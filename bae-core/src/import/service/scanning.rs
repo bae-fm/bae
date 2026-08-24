@@ -206,6 +206,7 @@ impl ImportService {
                                 }
                                 request_root_scan(
                                     path,
+                                    RootScanCause::Asked("a rescan was asked for"),
                                     None,
                                     &mut schedules,
                                     &starter,
@@ -246,6 +247,7 @@ impl ImportService {
                                 }
                                 request_root_scan(
                                     path,
+                                    RootScanCause::Asked("the folder was refreshed"),
                                     Some(completion),
                                     &mut schedules,
                                     &starter,
@@ -331,6 +333,9 @@ impl ImportService {
                                         } else {
                                             request_root_scan(
                                                 path,
+                                                RootScanCause::Asked(
+                                                    "a folder release decision changed",
+                                                ),
                                                 Some(completion),
                                                 &mut schedules,
                                                 &starter,
@@ -548,6 +553,10 @@ impl ImportService {
                         }
                         if schedule.pending {
                             let path = completion.path;
+                            info!(
+                                "folder scan of {} starting again: one was queued while it ran",
+                                path.display()
+                            );
                             let current_waiters = std::mem::take(&mut schedule.followup_waiters);
                             next_scan_id += 1;
                             let scan = starter(next_scan_id, path.clone(), completion_tx.clone());
@@ -583,6 +592,7 @@ impl ImportService {
                                     }
                                     request_root_scan(
                                         root,
+                                        RootScanCause::WatchError,
                                         None,
                                         &mut schedules,
                                         &starter,
@@ -601,18 +611,23 @@ impl ImportService {
                             .into_iter()
                             .map(|folder| PathBuf::from(folder.path))
                             .collect();
-                        for root in affected_roots(&changed, &roots) {
-                            if removals.contains_key(&root) {
-                                continue;
+                        let affected = affected_roots(&changed, &roots);
+                        if !affected.is_empty() {
+                            let summary = changed_events_summary(&events);
+                            for root in affected {
+                                if removals.contains_key(&root) {
+                                    continue;
+                                }
+                                request_root_scan(
+                                    root,
+                                    RootScanCause::FsChange(summary.clone()),
+                                    None,
+                                    &mut schedules,
+                                    &starter,
+                                    &completion_tx,
+                                    &mut next_scan_id,
+                                );
                             }
-                            request_root_scan(
-                                root,
-                                None,
-                                &mut schedules,
-                                &starter,
-                                &completion_tx,
-                                &mut next_scan_id,
-                            );
                         }
                     }
                     _ = periodic.tick() => {
@@ -629,6 +644,7 @@ impl ImportService {
                             }
                             request_root_scan(
                                 root,
+                                RootScanCause::Timer,
                                 None,
                                 &mut schedules,
                                 &starter,
@@ -789,6 +805,11 @@ impl ImportService {
         let walk_cancellation = cancellation.clone();
         let walk_watcher = folder_watcher.clone();
         let walk_root = root.to_path_buf();
+        // What this pass wrote and what it displaced, for the log line at the
+        // end. Two passes over an unchanged folder should displace nothing;
+        // one that keeps rewriting the same entry names it here.
+        let mut written_keys: Vec<String> = Vec::new();
+        let mut displaced_keys: Vec<String> = Vec::new();
         // Bound the duplicate candidate payloads waiting on per-item DB commits.
         // The blocking producer naturally pauses when the async consumer falls
         // behind, which caps memory on fast local trees.
@@ -890,6 +911,8 @@ impl ImportService {
                             unreachable!("persisted candidate scan item changed variant")
                         }
                     };
+                    written_keys.push(candidate.display_path.clone());
+                    displaced_keys.extend(superseded_keys.iter().cloned());
                     let skipped = folder_registry
                         .lock()
                         .unwrap()
@@ -924,6 +947,7 @@ impl ImportService {
                 }
                 // Invalid candidates have no tab state, so they need no stamping.
                 ScanItem::Invalid(candidate) => {
+                    written_keys.push(candidate.display_path.clone());
                     let persisted_item = ScanItem::Invalid(candidate.clone());
                     let Some(PersistedScanItem {
                         commit: _commit,
@@ -943,6 +967,7 @@ impl ImportService {
                         return Ok(());
                     };
                     for candidate_key in superseded_keys {
+                        displaced_keys.push(candidate_key.clone());
                         send_event(
                             event_tx,
                             crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -958,6 +983,7 @@ impl ImportService {
                     );
                 }
                 ScanItem::Boundary(boundary) => {
+                    written_keys.push(boundary.display_path.clone());
                     let persisted_item = ScanItem::Boundary(boundary.clone());
                     let Some(PersistedScanItem {
                         commit: _commit,
@@ -977,6 +1003,7 @@ impl ImportService {
                         return Ok(());
                     };
                     for candidate_key in superseded_keys {
+                        displaced_keys.push(candidate_key.clone());
                         send_event(
                             event_tx,
                             crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
@@ -1030,6 +1057,13 @@ impl ImportService {
         else {
             return Ok(());
         };
+        info!(
+            "folder scan of {} wrote {} entries; displaced {:?}; pruned {:?}",
+            root.display(),
+            written_keys.len(),
+            displaced_keys,
+            pruned
+        );
         for candidate_key in pruned {
             send_event(
                 event_tx,

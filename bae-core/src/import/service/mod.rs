@@ -147,6 +147,50 @@ fn changed_paths(events: &[notify_debouncer_full::DebouncedEvent]) -> Vec<&Path>
         .collect()
 }
 
+/// How many events a batch reported that name paths a scan should be asked for,
+/// and what the first few of them were. Capped: copying an album is hundreds of
+/// events, and the first handful name the cause as well as all of them do.
+fn changed_events_summary(events: &[notify_debouncer_full::DebouncedEvent]) -> String {
+    const NAMED: usize = 6;
+    let changes: Vec<&notify_debouncer_full::DebouncedEvent> = events
+        .iter()
+        .filter(|event| reports_a_change(&event.kind))
+        .collect();
+    let named: Vec<String> = changes
+        .iter()
+        .take(NAMED)
+        .map(|event| {
+            format!(
+                "{:?} {}",
+                event.kind,
+                event
+                    .paths
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })
+        .collect();
+    let ignored = events.len() - changes.len();
+    let more = changes.len().saturating_sub(named.len());
+    format!(
+        "{} of {} events count as changes ({ignored} ignored){}{}",
+        changes.len(),
+        events.len(),
+        if named.is_empty() {
+            String::new()
+        } else {
+            format!(": {}", named.join("; "))
+        },
+        if more > 0 {
+            format!(" and {more} more")
+        } else {
+            String::new()
+        }
+    )
+}
+
 fn reports_a_change(kind: &notify::EventKind) -> bool {
     use notify::event::{AccessKind, AccessMode};
     match kind {
@@ -373,8 +417,39 @@ fn spawn_root_scan(
     RootScanTask { cancellation, task }
 }
 
+/// Why a root scan was asked for.
+///
+/// Logged wherever one is requested, because "the scans never stop" is a
+/// question only the thing that keeps asking for them can answer — and until
+/// now nothing recorded that. A watched network share whose own reads come
+/// back as writes would look exactly like a folder somebody keeps editing.
+pub(super) enum RootScanCause {
+    /// The filesystem reported changes under the root: the events that passed
+    /// the change filter, kind and path, and how many were filtered out.
+    FsChange(String),
+    /// The watcher itself failed, so the root is re-read to catch up on
+    /// whatever it missed.
+    WatchError,
+    /// The periodic sweep.
+    Timer,
+    /// Something a person did — naming which.
+    Asked(&'static str),
+}
+
+impl std::fmt::Display for RootScanCause {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FsChange(events) => write!(f, "filesystem change ({events})"),
+            Self::WatchError => write!(f, "the folder watcher reported an error"),
+            Self::Timer => write!(f, "the periodic sweep"),
+            Self::Asked(what) => write!(f, "{what}"),
+        }
+    }
+}
+
 fn request_root_scan(
     path: PathBuf,
+    cause: RootScanCause,
     waiter: Option<RefreshCompletion>,
     schedules: &mut HashMap<PathBuf, RootScanSchedule>,
     starter: &RootScanStarter,
@@ -382,12 +457,17 @@ fn request_root_scan(
     next_scan_id: &mut u64,
 ) {
     if let Some(schedule) = schedules.get_mut(&path) {
+        info!(
+            "folder scan of {} queued behind the one running: {cause}",
+            path.display()
+        );
         schedule.pending = true;
         if let Some(waiter) = waiter {
             schedule.followup_waiters.push(waiter);
         }
         return;
     }
+    info!("folder scan of {} starting: {cause}", path.display());
     *next_scan_id += 1;
     let id = *next_scan_id;
     let scan = starter(id, path.clone(), completion_tx.clone());
