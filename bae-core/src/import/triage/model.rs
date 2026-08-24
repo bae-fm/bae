@@ -380,6 +380,14 @@ pub struct TriageRow {
 pub struct TriageGroup {
     pub key: FolderReleaseDecisionKey,
     pub name: String,
+    /// Whether the rows under this header are this folder read as several
+    /// releases, and so whether the header offers to read them as one. `false`
+    /// where the header is only a path component the rows happen to share —
+    /// there is nothing to combine and nothing was decided.
+    ///
+    /// The offer lives here and nowhere else: a row is a release, not a place
+    /// to answer a question about the folder holding it.
+    pub combinable: bool,
 }
 
 /// How many rows each tab holds. Computed in the same pass that places them, so

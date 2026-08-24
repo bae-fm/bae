@@ -676,3 +676,54 @@ fn a_pick_does_not_outrank_skipped_done_or_importing() {
         TriagePlacement::Importing
     );
 }
+
+/// A group header is where a folder read as several releases offers to be read
+/// as one. A header that is only a path component the rows share offers
+/// nothing — there is no such folder to combine, and asking would be a
+/// question with no answer behind it.
+#[test]
+fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
+    let mut rows = queue();
+    rows.candidates = vec![
+        candidate("Box/Disc 1"),
+        candidate("Box/Disc 2"),
+        candidate("Singles/One"),
+        candidate("Singles/Two"),
+    ];
+    rows.separated_folders.insert((root(), "Box".to_string()));
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let group_of = |name: &str| {
+        flat.headers
+            .iter()
+            .find(|header| header.group.name == name)
+            .unwrap_or_else(|| panic!("a header for {name}"))
+            .group
+            .clone()
+    };
+    assert!(group_of("Box").combinable);
+    assert!(!group_of("Singles").combinable);
+}
+
+/// A folder nothing has settled either way, holding several releases, is
+/// combinable too — the scan names it on every row below it, and the header
+/// for it is where the choice belongs.
+#[test]
+fn a_folder_the_scan_named_as_an_ancestor_offers_to_combine() {
+    let mut rows = queue();
+    rows.candidates = vec![
+        ScanCandidateListRow {
+            combine_ancestor_relative_path: Some("Wrapper".to_string()),
+            ..candidate("Wrapper/Box/Disc 1")
+        },
+        ScanCandidateListRow {
+            combine_ancestor_relative_path: Some("Wrapper".to_string()),
+            ..candidate("Wrapper/Box/Disc 2")
+        },
+    ];
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let header = flat.headers.first().expect("a header for Wrapper");
+    assert_eq!(header.group.name, "Wrapper");
+    assert!(header.group.combinable);
+}

@@ -99,6 +99,11 @@ pub struct ImportQueueRows {
     /// leads of single-match verdicts are checked: those are the only ones the
     /// Ready rule asks about.
     pub lead_statuses: HashMap<String, LibraryStatus>,
+    /// Every folder whose reading is settled as several releases, keyed by
+    /// `(watched_folder_path, relative_folder_path)`. The rows below such a
+    /// folder are its releases; the folder is where the choice to read them as
+    /// one is offered, so the list has to know which folders those are.
+    pub separated_folders: HashSet<(String, String)>,
 }
 
 pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQueueRows, DbError> {
@@ -146,6 +151,16 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         }
     }
 
+    let separated_folders: HashSet<(String, String)> = sql
+        .query(
+            "SELECT watched_folder_path, relative_folder_path \
+             FROM folder_release_decisions WHERE decision = 'keep_as_separate_releases'",
+            [],
+            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+        )?
+        .into_iter()
+        .collect();
+
     let failures: HashMap<String, String> = sql
         .query(
             "SELECT content_hash, error FROM import_candidate_failure",
@@ -191,6 +206,7 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         failures,
         states,
         lead_statuses,
+        separated_folders,
     })
 }
 

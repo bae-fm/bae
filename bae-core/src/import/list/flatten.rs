@@ -136,11 +136,13 @@ pub(crate) fn flatten(
     }
 
     let grouped_roots = grouped_roots(rows);
+    let combinable_roots = combinable_roots(rows);
     for entry in &mut ordered {
         entry.group = group_for(
             &entry.watched_folder_path,
             &entry.display_path,
             &grouped_roots,
+            &combinable_roots,
         );
     }
 
@@ -281,21 +283,36 @@ fn grouped_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
     grouped
 }
 
+/// The folders the list can offer to read as one release: those settled as
+/// several, and those holding several rows that nothing has settled either way.
+/// Both are folders whose rows below could be one release; the header for such
+/// a folder is where that is asked.
+fn combinable_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
+    let mut combinable = rows.separated_folders.clone();
+    for row in &rows.candidates {
+        if let Some(relative) = &row.combine_ancestor_relative_path {
+            combinable.insert((row.watched_folder_path.clone(), relative.clone()));
+        }
+    }
+    combinable
+}
+
 fn group_for(
     watched_folder_path: &str,
     display_path: &str,
     grouped_roots: &HashSet<(String, String)>,
+    combinable_roots: &HashSet<(String, String)>,
 ) -> Option<TriageGroup> {
     let mut components = display_path
         .split('/')
         .filter(|component| !component.is_empty());
     let first = components.next()?;
-    if components.next().is_none()
-        && !grouped_roots.contains(&(watched_folder_path.to_string(), first.to_string()))
-    {
+    let key = (watched_folder_path.to_string(), first.to_string());
+    if components.next().is_none() && !grouped_roots.contains(&key) {
         return None;
     }
     Some(TriageGroup {
+        combinable: combinable_roots.contains(&key),
         key: FolderReleaseDecisionKey {
             watched_folder_path: watched_folder_path.to_string(),
             relative_folder_path: first.to_string(),

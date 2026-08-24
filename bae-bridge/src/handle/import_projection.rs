@@ -484,6 +484,7 @@ impl crate::types::BridgeImportListItem {
                 group: crate::types::BridgeTriageGroup {
                     key: crate::types::BridgeFolderReleaseDecisionKey::from_core(group.key),
                     name: group.name,
+                    combinable: group.combinable,
                 },
                 watched_folder_path,
                 expanded,

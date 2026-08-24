@@ -478,6 +478,10 @@ pub struct BridgeTriageRow {
 pub struct BridgeTriageGroup {
     pub key: BridgeFolderReleaseDecisionKey,
     pub name: String,
+    /// Whether the rows under this header are one folder read as several
+    /// releases, and so whether the header offers to read them as one. `false`
+    /// where the header is only a path component the rows share.
+    pub combinable: bool,
 }
 
 /// How many rows each tab holds. Computed in core in the same pass that places
