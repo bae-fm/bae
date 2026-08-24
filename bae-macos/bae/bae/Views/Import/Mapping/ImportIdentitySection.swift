@@ -34,6 +34,8 @@ struct ImportIdentitySection: View {
     let evidence: BridgeClaimEvidence?
     /// Whether a release has been picked — what the change control reads as.
     let hasPick: Bool
+    /// Which service the picked release came from, for the card's chip.
+    let pickedSource: BridgeMetadataSource?
     /// Whether a read is in flight. The controls that start one read as pending
     /// rather than replacing the section with a placeholder.
     let isReading: Bool
@@ -92,6 +94,7 @@ struct ImportIdentitySection: View {
                         metaLine: metaLine,
                         evidence: evidence,
                         hasPick: hasPick,
+                        pickedSource: pickedSource,
                         isReading: isReading,
                         coverContent: coverContent,
                         hasCoverOptions: hasCoverOptions,

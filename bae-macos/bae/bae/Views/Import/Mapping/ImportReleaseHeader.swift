@@ -39,6 +39,9 @@ struct ImportReleaseHeader: View {
     let evidence: BridgeClaimEvidence?
     /// Whether a release has been picked.
     let hasPick: Bool
+    /// Which service the picked release came from. `nil` before a pick and for
+    /// a folder read as its own tags — there is no service behind either.
+    let pickedSource: BridgeMetadataSource?
     /// Whether a read is in flight — the change control says so and stays put
     /// rather than the card being replaced by a placeholder.
     let isReading: Bool
@@ -106,6 +109,19 @@ struct ImportReleaseHeader: View {
         case .search:
             EmptyView()
         }
+    }
+
+    /// Where the picked release came from. The service's own name, never a
+    /// code and never translated — it is a brand, and the name is what the
+    /// person recognises.
+    private func sourceChip(_ source: BridgeMetadataSource) -> some View {
+        Text(verbatim: bridgeMetadataSourceName(source: source))
+            .font(.system(size: 10.5, weight: .medium))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(Color.secondary.opacity(0.15), in: Capsule())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
     }
 
     private func badge(
@@ -233,11 +249,16 @@ struct ImportReleaseHeader: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-            Text(metaLine)
-                .font(.system(size: 11.5))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .padding(.top, 4)
+            HStack(spacing: 6) {
+                Text(metaLine)
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                if let pickedSource {
+                    sourceChip(pickedSource)
+                }
+            }
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

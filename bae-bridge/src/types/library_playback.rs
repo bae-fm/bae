@@ -37,6 +37,15 @@ pub enum BridgeMetadataSource {
 }
 
 impl BridgeMetadataSource {
+    /// The service's own name, for a surface that says where a pick came from.
+    ///
+    /// A brand, so it is the same in every language and carries no catalog
+    /// key — and the service's full name rather than a code, because the name
+    /// is what the person recognises.
+    pub fn name(self) -> &'static str {
+        self.into_core().display_name()
+    }
+
     pub fn into_core(self) -> bae_core::import::MetadataSource {
         match self {
             BridgeMetadataSource::MusicBrainz => bae_core::import::MetadataSource::MusicBrainz,

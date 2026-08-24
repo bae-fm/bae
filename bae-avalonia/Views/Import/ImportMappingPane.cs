@@ -528,6 +528,7 @@ internal sealed class ImportMappingPane : UserControl
         MetaLine = MetaLine(),
         Evidence = _candidate?.Evidence,
         HasPick = _candidate?.PickedRelease is not null,
+        PickedSource = _candidate?.PickedRelease?.Source,
         IsReading = _pickInFlight,
         LoadCover = _candidate?.Cover is { } cover
             ? image => _app.Images.Bind(

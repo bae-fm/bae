@@ -153,6 +153,14 @@ pub fn bridge_file_role_key(role: &BridgeFileRole) -> String {
     .to_string()
 }
 
+/// The name of the service a pick came from — "MusicBrainz", "Discogs".
+///
+/// A brand name, so it is not translated and needs no catalog key.
+#[cfg_attr(feature = "desktop", uniffi::export)]
+pub fn bridge_metadata_source_name(source: crate::types::BridgeMetadataSource) -> String {
+    source.name().to_string()
+}
+
 /// A role a person can put a file in, as opposed to the whole
 /// [`BridgeFileRole`] the scan proposes. Mirror of bae-core's
 /// `FileRoleChoice`. Only audio is a decision: an image is an image, and a

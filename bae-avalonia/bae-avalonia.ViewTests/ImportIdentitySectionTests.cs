@@ -157,6 +157,7 @@ public sealed class ImportIdentitySectionTests
             MetaLine = "CD · 1996",
             Evidence = evidence,
             HasPick = evidence is not null,
+            PickedSource = evidence is not null ? BridgeMetadataSource.MusicBrainz : null,
             IsReading = isReading,
             LoadCover = null,
             HasCoverOptions = false,

@@ -61,6 +61,11 @@ internal sealed class ImportIdentitySection
     /// reads as.</summary>
     internal required bool HasPick { get; init; }
 
+    /// <summary>Which service the picked release came from. Null before a pick
+    /// and for a folder read as its own tags — there is no service behind
+    /// either.</summary>
+    internal required BridgeMetadataSource? PickedSource { get; init; }
+
     /// <summary>Whether a read is in flight. The controls that start one read as
     /// pending rather than the section being replaced by a placeholder.</summary>
     internal required bool IsReading { get; init; }
@@ -144,7 +149,17 @@ internal sealed class ImportIdentitySection
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
         summary.Children.Add(title);
         summary.Children.Add(ImportPaneUi.Cell(Edit?.AlbumArtistText ?? string.Empty, secondary: true));
-        summary.Children.Add(ImportPaneUi.Cell(MetaLine, secondary: true));
+        var facts = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            Spacing = 6,
+        };
+        facts.Children.Add(ImportPaneUi.Cell(MetaLine, secondary: true));
+        if (SourceChip() is { } source)
+        {
+            facts.Children.Add(source);
+        }
+        summary.Children.Add(facts);
         if (EvidenceBadge() is { } badge)
         {
             summary.Children.Add(badge);
@@ -231,6 +246,34 @@ internal sealed class ImportIdentitySection
         ToolTip.SetTip(button, Loc.Chrome("cover.change_title"));
         button.Click += (_, _) => OnEditCover();
         return button;
+    }
+
+    /// <summary>Where the picked release came from. The service's own name,
+    /// never a code and never translated — it is a brand, and the name is what
+    /// the person recognises.</summary>
+    private Control? SourceChip()
+    {
+        if (PickedSource is not { } source)
+        {
+            return null;
+        }
+        var text = new TextBlock
+        {
+            Text = BaeBridgeMethods.BridgeMetadataSourceName(source),
+            FontSize = 10.5,
+            FontWeight = FontWeight.Medium,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        text[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var chip = new Border
+        {
+            CornerRadius = new CornerRadius(999),
+            Padding = new Thickness(5, 1),
+            Child = text,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        chip[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
+        return chip;
     }
 
     /// <summary>What turned this release up, in the same chip the pressing rows
