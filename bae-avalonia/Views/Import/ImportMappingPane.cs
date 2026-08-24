@@ -7,6 +7,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using Avalonia.Threading;
 using uniffi.bae_bridge;
 namespace Bae.Desktop;
 
@@ -329,9 +330,17 @@ internal sealed class ImportMappingPane : UserControl
 
     private void Render()
     {
-        if (_key is null || _candidate is null)
+        if (_key is null)
         {
             _content.Content = EmptyState();
+            return;
+        }
+        if (_candidate is null)
+        {
+            // A folder is chosen and its read has not landed yet. Blank, not
+            // the placeholder: "pick a folder" would be false about a folder
+            // that is picked, and it was flashing on every click.
+            _content.Content = PendingState();
             return;
         }
 
@@ -380,6 +389,36 @@ internal sealed class ImportMappingPane : UserControl
         }
 
         _content.Content = new ScrollViewer { Content = sections };
+    }
+
+    /// <summary>
+    /// How long a candidate's read may take before it is worth saying anything
+    /// about. Under this the pane stays blank — the read almost always lands
+    /// first, and a spinner that appears and leaves that fast is a flash of its
+    /// own.
+    /// </summary>
+    private static readonly TimeSpan SpinnerDelay = TimeSpan.FromMilliseconds(150);
+
+    /// <summary>The pane for a selection whose candidate has not been delivered
+    /// yet: empty, and a spinner only if the wait outlasts
+    /// <see cref="SpinnerDelay"/>. The timer stops when the pane is replaced by
+    /// the delivered candidate, which is what detaches this.</summary>
+    private static Control PendingState()
+    {
+        var host = new ContentControl
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var timer = new DispatcherTimer { Interval = SpinnerDelay };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            host.Content = new Spinner { Width = 16, Height = 16 };
+        };
+        host.AttachedToVisualTree += (_, _) => timer.Start();
+        host.DetachedFromVisualTree += (_, _) => timer.Stop();
+        return host;
     }
 
     private static Control EmptyState()

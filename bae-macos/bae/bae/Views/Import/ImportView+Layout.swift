@@ -39,6 +39,19 @@ extension ImportView {
                         maxHeight: .infinity
                     )
             }
+            else if let key = uiStore.selectedFolderCandidates.first {
+                // A folder is chosen and its read has not landed yet. Blank,
+                // not the placeholder: "select a folder" would be false about
+                // a folder that is selected, and it was flashing on every
+                // click. Never the previous candidate either — the pane reads
+                // the selected key, which holds nothing until this one lands.
+                ImportCandidatePendingPane(candidateKey: key)
+                    .frame(
+                        minWidth: 620,
+                        maxWidth: .infinity,
+                        maxHeight: .infinity
+                    )
+            }
             else {
                 ContentUnavailableView(
                     "Select a folder",
@@ -68,6 +81,39 @@ extension ImportView {
             .background(Theme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .shadow(radius: 20)
+        }
+    }
+}
+
+/// The pane for a selected candidate whose read has not been delivered yet.
+///
+/// Empty rather than a placeholder, and empty rather than a spinner: the read
+/// almost always lands within a frame or two, and a spinner that appears and
+/// leaves that fast is a flash of its own. One shows only if the wait outlasts
+/// `spinnerDelay`, which is the case worth reporting — a folder whose read is
+/// genuinely slow.
+private struct ImportCandidatePendingPane: View {
+    /// Restarts the wait when the selection moves to another folder while one
+    /// is still pending.
+    let candidateKey: String
+
+    private static let spinnerDelay = Duration.milliseconds(150)
+
+    @State
+    private var waitedLongEnough = false
+
+    var body: some View {
+        VStack {
+            if waitedLongEnough {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: candidateKey) {
+            waitedLongEnough = false
+            try? await Task.sleep(for: Self.spinnerDelay)
+            guard !Task.isCancelled else { return }
+            waitedLongEnough = true
         }
     }
 }
