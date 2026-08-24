@@ -1,5 +1,4 @@
 import BaeKit
-import OSLog
 import SwiftUI
 
 struct ImportView: View {
@@ -53,15 +52,21 @@ struct ImportView: View {
             ZStack {
                 if let failure = listSlot.loadFailure {
                     failedState(failure)
-                        .onAppear { importViewLog.error("branch: FAILED pane") }
+                        .onAppear {
+                            HostTrace.line("ImportView", "branch: FAILED pane")
+                        }
                 }
                 else if importStore.watchedFolders.isEmpty {
                     emptyState
-                        .onAppear { importViewLog.info("branch: empty state") }
+                        .onAppear {
+                            HostTrace.line("ImportView", "branch: empty state")
+                        }
                 }
                 else {
                     splitContent
-                        .onAppear { importViewLog.info("branch: list") }
+                        .onAppear {
+                            HostTrace.line("ImportView", "branch: list")
+                        }
                 }
 
                 documentOverlay
@@ -374,6 +379,3 @@ struct ImportView: View {
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 #endif
-
-// TRACE(import-list-diagnosis): remove with the rest of the trace.
-private let importViewLog = Logger.bae("ImportView")

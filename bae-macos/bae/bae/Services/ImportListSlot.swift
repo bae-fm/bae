@@ -1,10 +1,6 @@
 import BaeKit
 import Foundation
-import OSLog
 import Observation
-
-// TRACE(import-list-diagnosis): remove with the rest of the trace.
-private let slotLog = Logger.bae("ImportListSlot")
 
 /// The import sidebar's list machinery: the warm `PaginatedList`, the page
 /// source behind it, and the view that source is showing.
@@ -121,7 +117,10 @@ final class ImportListSlot {
     }
 
     private func reload() async {
-        slotLog.info("building the list source and reading its first page")
+        HostTrace.line(
+            "ListSlot",
+            "building the list source and reading its first page"
+        )
         sourceFailed = false
         loadFailure = nil
         let pages = makeSource(view)
@@ -132,14 +131,23 @@ final class ImportListSlot {
                 importStore.ingest(items)
             },
             onError: { [weak self] (error: any Error) in
-                slotLog.error("list read failed: \(String(describing: error))")
+                HostTrace.line(
+                    "ListSlot",
+                    "list read failed: \(String(describing: error))"
+                )
                 self?.sourceFailed = true
                 // A cancellation has no line and is not a failed read.
                 guard let displayed = DisplayError(error) else {
-                    slotLog.error("no display line — treated as a cancellation")
+                    HostTrace.line(
+                        "ListSlot",
+                        "no display line — treated as a cancellation"
+                    )
                     return
                 }
-                slotLog.error("marking the list failed: \(displayed.line)")
+                HostTrace.line(
+                    "ListSlot",
+                    "marking the list failed: \(displayed.line)"
+                )
                 self?.loadFailure = displayed
                 self?.uiStore.showError(displayed)
             },
@@ -148,7 +156,23 @@ final class ImportListSlot {
             }
         )
         await newList.loadInitial()
-        slotLog.info(
+        // The first page's failure never reaches `onError`: `PaginatedList`
+        // keeps it as `initialLoadError` for a list view to render inline, the
+        // way every other list surface reads it. The import tab is not a bare
+        // list — it decides between three panes before one is drawn — so it has
+        // to read that outcome here, or a library nobody could look at renders
+        // as a library with no folders.
+        if let initial = newList.initialLoadError {
+            HostTrace.line(
+                "ListSlot",
+                "first page read failed: \(initial.line)"
+            )
+            sourceFailed = true
+            loadFailure = initial
+            uiStore.showError(initial)
+        }
+        HostTrace.line(
+            "ListSlot",
             "first page read returned; failed: \(self.loadFailure != nil)"
         )
         guard !Task.isCancelled else { return }

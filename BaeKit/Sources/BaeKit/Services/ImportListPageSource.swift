@@ -1,10 +1,4 @@
 import Foundation
-import OSLog
-
-// TRACE(import-list-diagnosis): every hop of the import list's read, so a
-// startup failure can be followed in Console. Remove with the core-side
-// counterpart once the path is settled.
-private let listLog = Logger.bae("ImportListPageSource")
 
 // The import list is a desktop surface: its bridge types are built behind the
 // bridge's `desktop` feature, which the iOS bindings leave out.
@@ -91,7 +85,10 @@ private let listLog = Logger.bae("ImportListPageSource")
         ) {
             self.subscription = subscription
             self.onSummary = onSummary
-            listLog.info("page source created; delivery task starting")
+            HostTrace.line(
+                "PageSource",
+                "page source created; delivery task starting"
+            )
             deliveries = Task { [weak self] in
                 await self?.deliver()
             }
@@ -134,11 +131,13 @@ private let listLog = Logger.bae("ImportListPageSource")
             lock.unlock()
             let standing =
                 failure.map { String(describing: $0) } ?? "none"
-            listLog.info(
+            HostTrace.line(
+                "PageSource",
                 "page \(offset)/\(limit) registering; standing failure: \(standing)"
             )
             if let failure {
-                listLog.error(
+                HostTrace.line(
+                    "PageSource",
                     "page \(offset)/\(limit) told about the standing failure"
                 )
                 Task { @MainActor in onError(failure) }
@@ -200,7 +199,8 @@ private let listLog = Logger.bae("ImportListPageSource")
                     let snapshot = try await subscription.next()
                     let folders = snapshot.summary.watchedFolders.count
                     let statuses = snapshot.summary.folderScanStatuses.count
-                    listLog.info(
+                    HostTrace.line(
+                        "PageSource",
                         "delivery: \(folders) folders, \(statuses) statuses, \(snapshot.totalCount) items"
                     )
                     let sinks = registeredSinks()
@@ -221,7 +221,10 @@ private let listLog = Logger.bae("ImportListPageSource")
                 catch {
                     if Task.isCancelled { return }
                     let described = String(describing: error)
-                    listLog.error("delivery FAILED: \(described)")
+                    HostTrace.line(
+                        "PageSource",
+                        "delivery FAILED: \(described)"
+                    )
                     failEveryPage(with: error)
                     // A failed read leaves nothing to wait on; the list rebuilds
                     // itself from the error its pages just received.
@@ -235,7 +238,8 @@ private let listLog = Logger.bae("ImportListPageSource")
             failure = error
             let sinks = self.sinks
             lock.unlock()
-            listLog.error(
+            HostTrace.line(
+                "PageSource",
                 "failure retained; telling \(sinks.count) already-registered page(s)"
             )
             Task { @MainActor in
