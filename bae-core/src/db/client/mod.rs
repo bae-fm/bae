@@ -47,6 +47,8 @@ mod identity;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod folder_scans;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use folder_scans::ScanItemWrite;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_content_hash;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_list;

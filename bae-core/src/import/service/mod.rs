@@ -236,8 +236,10 @@ struct RootScanSchedule {
 struct PersistedScanItem {
     commit: tokio::sync::OwnedMutexGuard<()>,
     item: ScanItem,
-    /// The stored entries the write superseded and deleted.
-    superseded_keys: Vec<String>,
+    /// What the write did — and so whether there is anything to announce. A
+    /// pass over an untouched folder finds every row exactly as it left it, and
+    /// those rows are told to nobody.
+    write: crate::db::ScanItemWrite,
 }
 
 struct RootScanTask {

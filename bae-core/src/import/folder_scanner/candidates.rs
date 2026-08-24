@@ -38,7 +38,12 @@ pub struct InvalidCandidate {
 
 /// One item the scan callback yields per leaf folder: a valid release
 /// candidate, or an invalid one (looked like a release but failed validation).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+///
+/// Comparable, because that is how a pass tells what it changed from what it
+/// merely found again: a walk of an untouched folder produces items equal to
+/// the ones already stored, and equal items are written and announced to
+/// nobody.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ScanItem {
     /// A release approximation completed before its enclosing folder's reading
     /// was known. It is visible scan progress, but identification must wait for

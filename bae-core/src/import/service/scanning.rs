@@ -70,10 +70,10 @@ impl ImportService {
         let superseded = library_manager
             .save_folder_scan_item(&root.to_string_lossy(), generation, &item)
             .await?;
-        Ok(superseded.map(|superseded_keys| PersistedScanItem {
+        Ok(superseded.map(|write| PersistedScanItem {
             commit,
             item,
-            superseded_keys,
+            write,
         }))
     }
 
@@ -888,11 +888,7 @@ impl ImportService {
                     } else {
                         ScanItem::Discovered(candidate.clone())
                     };
-                    let Some(PersistedScanItem {
-                        commit: _commit,
-                        item: persisted_item,
-                        superseded_keys,
-                    }) = Self::persist_scan_item(
+                    let Some(persisted) = Self::persist_scan_item(
                         root,
                         generation,
                         &persisted_item,
@@ -905,12 +901,21 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
+                    let PersistedScanItem {
+                        commit: _commit,
+                        item: persisted_item,
+                        write,
+                    } = persisted;
                     let candidate = match persisted_item {
                         ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate,
                         ScanItem::Invalid(_) | ScanItem::Boundary(_) | ScanItem::Decided { .. } => {
                             unreachable!("persisted candidate scan item changed variant")
                         }
                     };
+                    if !write.changed() {
+                        continue;
+                    }
+                    let superseded_keys = write.superseded_keys().to_vec();
                     written_keys.push(candidate.display_path.clone());
                     displaced_keys.extend(superseded_keys.iter().cloned());
                     let skipped = folder_registry
@@ -947,13 +952,8 @@ impl ImportService {
                 }
                 // Invalid candidates have no tab state, so they need no stamping.
                 ScanItem::Invalid(candidate) => {
-                    written_keys.push(candidate.display_path.clone());
                     let persisted_item = ScanItem::Invalid(candidate.clone());
-                    let Some(PersistedScanItem {
-                        commit: _commit,
-                        item: _,
-                        superseded_keys,
-                    }) = Self::persist_scan_item(
+                    let Some(persisted) = Self::persist_scan_item(
                         root,
                         generation,
                         &persisted_item,
@@ -966,6 +966,16 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
+                    let PersistedScanItem {
+                        commit: _commit,
+                        item: _,
+                        write,
+                    } = persisted;
+                    if !write.changed() {
+                        continue;
+                    }
+                    written_keys.push(candidate.display_path.clone());
+                    let superseded_keys = write.superseded_keys().to_vec();
                     for candidate_key in superseded_keys {
                         displaced_keys.push(candidate_key.clone());
                         send_event(
@@ -983,13 +993,8 @@ impl ImportService {
                     );
                 }
                 ScanItem::Boundary(boundary) => {
-                    written_keys.push(boundary.display_path.clone());
                     let persisted_item = ScanItem::Boundary(boundary.clone());
-                    let Some(PersistedScanItem {
-                        commit: _commit,
-                        item: _,
-                        superseded_keys,
-                    }) = Self::persist_scan_item(
+                    let Some(persisted) = Self::persist_scan_item(
                         root,
                         generation,
                         &persisted_item,
@@ -1002,6 +1007,16 @@ impl ImportService {
                             .await?;
                         return Ok(());
                     };
+                    let PersistedScanItem {
+                        commit: _commit,
+                        item: _,
+                        write,
+                    } = persisted;
+                    if !write.changed() {
+                        continue;
+                    }
+                    written_keys.push(boundary.display_path.clone());
+                    let superseded_keys = write.superseded_keys().to_vec();
                     for candidate_key in superseded_keys {
                         displaced_keys.push(candidate_key.clone());
                         send_event(

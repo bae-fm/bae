@@ -101,6 +101,22 @@ pub(crate) fn touch_candidate(
     Ok(())
 }
 
+/// Stamp the stored boundary at this key with the current generation, so a
+/// pass that found it unchanged keeps it through the completion prune.
+pub(crate) fn touch_boundary(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    relative_folder_path: &str,
+    generation: i64,
+) -> Result<(), DbError> {
+    sql.execute(
+        "UPDATE scan_boundary SET generation = ? \
+         WHERE watched_folder_path = ? AND relative_folder_path = ?",
+        params![generation, watched_folder_path, relative_folder_path],
+    )?;
+    Ok(())
+}
+
 pub(super) fn insert_item(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,

@@ -40,6 +40,36 @@ pub(super) fn load_scan_item_on(
     Ok(Some(stored.item))
 }
 
+/// What one scan item's write did.
+///
+/// The distinction the import list lives on: a pass that finds a folder exactly
+/// as it left it has nothing to tell anyone, and saying so is what keeps a
+/// timer-driven re-read of a watched folder free.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScanItemWrite {
+    /// The stored row already said exactly this. It kept its place and took
+    /// this generation's stamp, so the completion prune keeps it too.
+    Unchanged,
+    /// The row was written, displacing the keys named here.
+    Stored { superseded_keys: Vec<String> },
+}
+
+impl ScanItemWrite {
+    /// Whether the row now says something it did not say before — the only
+    /// case anyone has to hear about.
+    pub fn changed(&self) -> bool {
+        matches!(self, Self::Stored { .. })
+    }
+
+    /// The stored entries this write displaced. Empty when it wrote nothing.
+    pub fn superseded_keys(&self) -> &[String] {
+        match self {
+            Self::Unchanged => &[],
+            Self::Stored { superseded_keys } => superseded_keys,
+        }
+    }
+}
+
 /// The key a boundary is addressed by — its watched root joined with the
 /// folder it asks about, which is what
 /// [`ScanItem::persisted_key`](crate::import::folder_scanner::ScanItem) builds
@@ -134,7 +164,7 @@ impl Database {
         watched_folder_path: &str,
         generation: u64,
         item: &ScanItem,
-    ) -> Result<Option<Vec<String>>, DbError> {
+    ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
         let Some(entry_key) = item.persisted_key() else {
@@ -168,7 +198,25 @@ impl Database {
                 && read::candidate_is_valid(sql, &watched_folder_path, &entry_key)?
             {
                 write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
-                return Ok(Some(Vec::new()));
+                return Ok(Some(ScanItemWrite::Unchanged));
+            }
+            // A walk of a folder nobody has touched produces exactly the items
+            // already stored for it. Rewriting one of those would mean a
+            // transaction, an announcement, and every reader of the import list
+            // rebuilding it — per row, per pass, forever, over a folder that did
+            // not change. So the row keeps its place and takes only this
+            // generation's stamp, which is all the completion prune asks of it.
+            if load_scan_item_on(sql, &entry_key)?.as_ref() == Some(&item) {
+                match &item {
+                    ScanItem::Boundary(boundary) => write::touch_boundary(
+                        sql,
+                        &watched_folder_path,
+                        &boundary.key.relative_folder_path,
+                        generation,
+                    )?,
+                    _ => write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?,
+                }
+                return Ok(Some(ScanItemWrite::Unchanged));
             }
             let stored = stored_entries(sql, &watched_folder_path)?;
             let keys: Vec<StoredEntryKey> = stored
@@ -199,7 +247,9 @@ impl Database {
                 }
             }
             write::insert_item(sql, &watched_folder_path, generation, &item)?;
-            Ok(Some(removed_keys))
+            Ok(Some(ScanItemWrite::Stored {
+                superseded_keys: removed_keys,
+            }))
         })
         .await
     }

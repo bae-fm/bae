@@ -779,3 +779,41 @@ fn a_numbered_box_inside_a_collection_is_one_release() {
     paths.sort_unstable();
     assert_eq!(paths, vec!["Collection/Box", "Collection/Release 03"]);
 }
+
+/// Two walks of one unchanged tree produce the same items, in the same order.
+///
+/// This is what lets a pass write and announce only what changed: the
+/// comparison it makes is between the item it just built and the row it stored
+/// last time, so anything the walk decides differently from one pass to the
+/// next — a set iterated in whatever order it felt like, a list left unsorted —
+/// would read as a change forever and rewrite the row on every pass.
+#[test]
+fn two_walks_of_one_tree_produce_the_same_items() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    for release in [
+        "Artist - Album",
+        "Box/Disc 1",
+        "Box/Disc 2",
+        "Wrapper/Live in Tokyo",
+        "Wrapper/Live in Osaka",
+    ] {
+        let release = root.join(release);
+        std::fs::create_dir_all(&release).unwrap();
+        for track in ["01.flac", "02.flac", "03.flac"] {
+            std::fs::write(release.join(track), fake_flac()).unwrap();
+        }
+        std::fs::write(release.join("cover.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+        std::fs::write(release.join("rip.log"), "log").unwrap();
+    }
+    std::fs::create_dir_all(root.join("Box/Scans")).unwrap();
+    std::fs::write(root.join("Box/Scans/front.jpg"), [0xFF, 0xD8, 0xFF, 0xE0]).unwrap();
+
+    let first = scan_items(&root);
+    let second = scan_items(&root);
+
+    assert_eq!(first.len(), second.len(), "{first:?} vs {second:?}");
+    for (left, right) in first.iter().zip(second.iter()) {
+        assert_eq!(left, right);
+    }
+}

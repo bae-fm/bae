@@ -500,3 +500,94 @@ fn import_trace_line_escapes_json_strings() {
     assert_eq!(parsed["artist"], "Artist \"Name\"");
     assert_eq!(parsed["steps"]["resolve_metadata"], 7);
 }
+
+/// Re-reading a folder nothing has touched is a scan that finds what it found
+/// last time. It must write nothing and announce nothing: a watched folder is
+/// re-read on a timer, and a pass that rewrites and re-announces every row it
+/// already holds is work the whole app pays for — a database transaction, a
+/// broadcast, and a list rebuilt — once per row, forever, over a folder that
+/// did not change.
+#[tokio::test]
+async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
+    let (service, tmp) = setup_import_service().await;
+    let root = tmp.path().join("watched");
+    for album in ["Artist - One", "Artist - Two"] {
+        let album = root.join(album);
+        std::fs::create_dir_all(&album).unwrap();
+        std::fs::write(album.join("01.flac"), flac()).unwrap();
+        std::fs::write(album.join("02.flac"), flac()).unwrap();
+    }
+    let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
+    let folder_registry = Arc::new(Mutex::new(
+        crate::import::folder_registry::ImportFolderRegistry::default(),
+    ));
+    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
+    let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
+    let commit = Arc::new(tokio::sync::Mutex::new(()));
+    let cancellation = crate::import::folder_scanner::ScanCancellation::new();
+    service
+        .library_manager
+        .add_watched_import_folder(&root.to_string_lossy())
+        .await
+        .unwrap();
+    folder_registry
+        .lock()
+        .unwrap()
+        .apply_added(root.to_string_lossy().into_owned());
+
+    let pass = async || {
+        ImportService::rescan_and_reconcile(
+            &root,
+            &event_tx,
+            &service.library_manager,
+            &folder_registry,
+            &commit,
+            &folder_watcher,
+            &cancellation,
+        )
+        .await
+        .expect("the pass reads the folder")
+    };
+    pass().await;
+    while events.try_recv().is_ok() {}
+    pass().await;
+
+    assert_eq!(announced_candidates(&mut events), Vec::<String>::new());
+
+    // And a folder that did change still announces — once, and only itself.
+    std::fs::write(root.join("Artist - Two").join("03.flac"), flac()).unwrap();
+    pass().await;
+
+    assert_eq!(announced_candidates(&mut events), vec!["Artist - Two"]);
+}
+
+fn flac() -> Vec<u8> {
+    std::fs::read(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
+    )
+    .unwrap()
+}
+
+/// The candidates a pass told anyone about, in the order it did.
+fn announced_candidates(
+    events: &mut tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
+) -> Vec<String> {
+    let mut announced = Vec::new();
+    while let Ok(event) = events.try_recv() {
+        match event {
+            crate::import::handle::ImportEvent::Scan(ScanEvent::FolderCandidate {
+                candidate,
+                ..
+            })
+            | crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateDiscovered {
+                candidate,
+                ..
+            }) => announced.push(candidate.display_path),
+            crate::import::handle::ImportEvent::Scan(ScanEvent::CandidateRemoved {
+                candidate_key,
+            }) => announced.push(format!("removed {candidate_key}")),
+            _ => {}
+        }
+    }
+    announced
+}

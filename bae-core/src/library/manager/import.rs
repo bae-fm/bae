@@ -142,7 +142,7 @@ impl LibraryManager {
         watched_folder_path: &str,
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
-    ) -> Result<Option<Vec<String>>, LibraryError> {
+    ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
         Ok(self
             .database
             .save_folder_scan_item(watched_folder_path, generation, item)
