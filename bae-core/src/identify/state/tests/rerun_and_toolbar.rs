@@ -8,6 +8,7 @@ fn driven_disagreement() -> IdentifyState {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 7,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),
@@ -100,6 +101,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),
@@ -173,6 +175,7 @@ fn rerun_re_dispatches_lookups() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),
@@ -332,6 +335,7 @@ fn toolbar_while_triangulating_shows_spinners() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
@@ -381,6 +385,7 @@ fn every_extracted_catalog_number_is_an_option_on_the_one_badge() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             vec![
@@ -418,6 +423,7 @@ fn choosing_a_catalog_number_looks_it_up_and_intersects() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &["LBL 001"],
@@ -493,6 +499,7 @@ fn checking_the_chosen_catalog_number_again_clears_it() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &["LBL 001"],
@@ -548,6 +555,7 @@ fn toolbar_shows_failed_disc_id_lookup() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
@@ -583,6 +591,7 @@ fn toolbar_shows_failed_barcode_lookup() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["012345678905"]),
@@ -655,6 +664,7 @@ fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &[],
@@ -726,6 +736,7 @@ fn found_carries_in_library_status_through() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &[],
@@ -771,6 +782,7 @@ fn toggle_from_found_re_derives_terminal_state() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &[],
@@ -821,6 +833,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),

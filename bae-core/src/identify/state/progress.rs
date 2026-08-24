@@ -251,6 +251,7 @@ pub(super) fn start_discid_progress(
         DiscIdSignal::Computed {
             disc_id,
             track_count,
+            ..
         } => {
             effects.push(Effect::LookupDiscid {
                 disc_id: disc_id.clone(),

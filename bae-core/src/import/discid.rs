@@ -351,9 +351,18 @@ fn discid_from_cue_audio(sheet: &CueSheet, audio_path: &Path) -> Option<String> 
 /// the folder scan parsed — no re-read, no re-parse. LOG first (most accurate),
 /// then the sheets that are bound to their audio. A folder whose sheet is
 /// unbound can still identify itself from its log.
+/// A disc ID and the file it was derived from — the rip log, or the sheet that
+/// carves the tracks. The file rides along so a surface can put the disc ID on
+/// the row for that file rather than beside the release.
+pub struct ComputedDiscId {
+    pub disc_id: String,
+    /// The candidate-relative path of the LOG or CUE it came from.
+    pub source_file: String,
+}
+
 pub fn compute_discid_from_categorized(
     categorized: &crate::import::folder_scanner::CategorizedFiles,
-) -> Option<String> {
+) -> Option<ComputedDiscId> {
     for doc in categorized.documents() {
         let is_log = doc
             .path
@@ -365,7 +374,12 @@ pub fn compute_discid_from_categorized(
             continue;
         }
         match calculate_mb_discid_from_log(&doc.path) {
-            Ok(id) => return Some(id),
+            Ok(id) => {
+                return Some(ComputedDiscId {
+                    disc_id: id,
+                    source_file: doc.relative_path.clone(),
+                })
+            }
             Err(e) => debug!("DiscID from LOG failed for {:?}: {}", doc.path, e),
         }
     }
@@ -374,7 +388,10 @@ pub fn compute_discid_from_categorized(
     // describes a disc this folder is no longer presenting.
     for bound in categorized.carving_sheets() {
         if let Some(id) = discid_from_cue_audio(bound.sheet, &bound.audio.path) {
-            return Some(id);
+            return Some(ComputedDiscId {
+                disc_id: id,
+                source_file: bound.file.relative_path.clone(),
+            });
         }
     }
 
@@ -657,9 +674,18 @@ mod tests {
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )
             .unwrap();
-        let disc_id = compute_discid_from_categorized(&categorized)
+        let computed = compute_discid_from_categorized(&categorized)
             .expect("CUE+APE pair must compute a disc ID");
-        assert_eq!(disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
+        assert_eq!(
+            computed.disc_id.len(),
+            28,
+            "MusicBrainz disc IDs are 28 chars"
+        );
+        assert!(
+            computed.source_file.ends_with(".cue"),
+            "the sheet it was carved from rides with it, got {:?}",
+            computed.source_file
+        );
     }
 
     /// A single-FILE rip with `.cue` + `.mp3` produces a disc ID — the dispatcher

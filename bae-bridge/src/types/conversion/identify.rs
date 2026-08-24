@@ -302,9 +302,11 @@ impl BridgeSignals {
             DiscIdSignal::Computed {
                 disc_id,
                 track_count,
+                source_file,
             } => BridgeDiscIdSignal::Computed {
                 disc_id,
                 track_count,
+                source_file,
             },
             DiscIdSignal::Absent { track_count } => BridgeDiscIdSignal::Absent { track_count },
             DiscIdSignal::Failed {

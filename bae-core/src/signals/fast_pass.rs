@@ -119,9 +119,10 @@ pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFil
     let track_count = categorized.track_count();
     pass.durations = probe_durations(categorized);
     pass.disc_id = match compute_discid_from_categorized(categorized) {
-        Some(disc_id) => DiscIdSignal::Computed {
-            disc_id,
+        Some(computed) => DiscIdSignal::Computed {
+            disc_id: computed.disc_id,
             track_count,
+            source_file: Some(computed.source_file),
         },
         None => DiscIdSignal::Absent { track_count },
     };

@@ -17,7 +17,8 @@ use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
 };
 
-const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, track_count, \
+const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_source_file, \
+     track_count, \
      disc_id_failure, disc_id_failure_status, disc_id_failure_detail, \
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
      text_state, text_failure, text_failure_status, text_failure_detail";
@@ -135,10 +136,19 @@ pub(super) fn insert_signals(
     content_hash: &str,
     signals: &Signals,
 ) -> Result<(), DbError> {
-    let (disc_id_state, disc_id, disc_id_failure) = match &signals.disc_id {
-        DiscIdSignal::Computed { disc_id, .. } => ("computed", Some(disc_id.as_str()), None),
-        DiscIdSignal::Absent { .. } => ("absent", None, None),
-        DiscIdSignal::Failed { failure, .. } => ("failed", None, Some(failure)),
+    let (disc_id_state, disc_id, disc_id_source_file, disc_id_failure) = match &signals.disc_id {
+        DiscIdSignal::Computed {
+            disc_id,
+            source_file,
+            ..
+        } => (
+            "computed",
+            Some(disc_id.as_str()),
+            source_file.clone(),
+            None,
+        ),
+        DiscIdSignal::Absent { .. } => ("absent", None, None, None),
+        DiscIdSignal::Failed { failure, .. } => ("failed", None, None, Some(failure)),
     };
     let (barcode_state, barcode_failure) = match &signals.barcode {
         BarcodeSignal::Settled { .. } => ("settled", None),
@@ -166,12 +176,13 @@ pub(super) fn insert_signals(
     sql.execute(
         &format!(
             "INSERT INTO import_candidate_signals ({SIGNALS_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ),
         params![
             content_hash,
             disc_id_state,
             disc_id,
+            disc_id_source_file,
             signals.disc_id.track_count(),
             disc_id_failure.kind,
             disc_id_failure.status,
@@ -282,6 +293,7 @@ pub(super) fn load_signals_on(
                 row.get::<_, String>("content_hash")?,
                 row.get::<_, String>("disc_id_state")?,
                 row.get::<_, Option<String>>("disc_id")?,
+                row.get::<_, Option<String>>("disc_id_source_file")?,
                 row.get::<_, i64>("track_count")?,
                 row.get::<_, Option<String>>("disc_id_failure")?,
                 row.get::<_, Option<i64>>("disc_id_failure_status")?,
@@ -304,6 +316,7 @@ pub(super) fn load_signals_on(
             content_hash,
             disc_id_state,
             disc_id,
+            disc_id_source_file,
             track_count,
             disc_id_failure,
             disc_id_failure_status,
@@ -327,6 +340,7 @@ pub(super) fn load_signals_on(
                     DbError::Message("a computed disc ID signal states no hash".into())
                 })?,
                 track_count,
+                source_file: disc_id_source_file,
             },
             "absent" => DiscIdSignal::Absent { track_count },
             "failed" => DiscIdSignal::Failed {

@@ -106,6 +106,7 @@ fn disc_computed_dispatches_lookup_idempotently() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Scanning { codes: vec![] },
             &[],
@@ -220,6 +221,7 @@ fn disc_only_resolves_to_found_with_provenance() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &[],
@@ -253,6 +255,7 @@ fn both_signals_intersect_to_found_combined() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 10,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),
@@ -302,6 +305,7 @@ fn empty_intersection_is_conflict() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),
@@ -428,6 +432,7 @@ fn barcode_lookup_failure_settles_failed() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 0,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["A", "B"]),
@@ -467,6 +472,7 @@ fn failed_discid_lookup_preserves_track_count() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &[],
@@ -495,6 +501,7 @@ fn an_unchosen_catalog_number_narrows_nothing() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Absent,
             &["LBL 001"],
@@ -532,6 +539,7 @@ fn both_lookups_empty_is_not_found_anywhere() {
             DiscIdSignal::Computed {
                 disc_id: "d".to_string(),
                 track_count: 5,
+                source_file: None,
             },
             BarcodeSignal::Settled {
                 codes: artwork_codes(&["BAR"]),

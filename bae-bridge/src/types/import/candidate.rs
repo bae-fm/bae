@@ -758,6 +758,10 @@ pub enum BridgeDiscIdSignal {
     Computed {
         disc_id: String,
         track_count: u32,
+        /// The candidate-relative path of the LOG or CUE it was derived from —
+        /// the id that file's row is keyed by, so a surface can put the disc ID
+        /// on it. `None` for a release re-identified from its stored tracks.
+        source_file: Option<String>,
     },
     Absent {
         track_count: u32,

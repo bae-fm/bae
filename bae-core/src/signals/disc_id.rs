@@ -11,7 +11,15 @@ use super::LookupFailure;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DiscIdSignal {
     /// A disc ID was derived from a LOG/CUE artifact.
-    Computed { disc_id: String, track_count: u32 },
+    Computed {
+        disc_id: String,
+        track_count: u32,
+        /// The candidate-relative path of the LOG or CUE it came from, so a
+        /// surface can put the disc ID on that file's row. `None` for a
+        /// re-identify pass over a library release, which derives it from
+        /// stored tracks rather than a file of a scanned folder.
+        source_file: Option<String>,
+    },
     /// No LOG/CUE artifact to derive one from.
     Absent { track_count: u32 },
     /// Derivation failed — a DB load, a "release not found", a compute task panic.

@@ -156,6 +156,8 @@ async fn every_settled_signal_shape_round_trips() {
             DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 11,
+                // The rip log it was derived from rides with it.
+                source_file: Some("rip.log".to_string()),
             },
             BarcodeSignal::Settled {
                 codes: vec![

@@ -260,6 +260,9 @@ async fn run_extraction(
                 Ok((Some(id), track_count)) => DiscIdSignal::Computed {
                     disc_id: id,
                     track_count,
+                    // Derived from the library's stored tracks, not a file of a
+                    // scanned folder, so there is no row to point at.
+                    source_file: None,
                 },
                 Ok((None, track_count)) => DiscIdSignal::Absent { track_count },
                 Err(detail) => DiscIdSignal::Failed {

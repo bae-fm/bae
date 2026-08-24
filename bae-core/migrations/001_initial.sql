@@ -577,6 +577,11 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     content_hash        TEXT PRIMARY KEY,
     disc_id_state       TEXT NOT NULL CHECK (disc_id_state IN ('computed', 'absent', 'failed')),
     disc_id             TEXT,
+    -- The candidate-relative path of the LOG or CUE the disc ID came from, so a
+    -- surface can put it on that file's row. NULL for a re-identify pass over a
+    -- library release, which derives the ID from stored tracks rather than a
+    -- file of a scanned folder.
+    disc_id_source_file TEXT,
     track_count         INTEGER NOT NULL CHECK (track_count >= 0),
     disc_id_failure     TEXT CHECK (disc_id_failure IS NULL OR disc_id_failure IN ('network', 'provider', 'timeout', 'artwork_analysis', 'diagnostic')),
     disc_id_failure_status INTEGER,
@@ -591,6 +596,8 @@ CREATE TABLE IF NOT EXISTS import_candidate_signals (
     text_failure_detail TEXT,
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
     CHECK ((disc_id_state = 'computed') = (disc_id IS NOT NULL)),
+    -- A source file with no computed ID behind it is not a provenance.
+    CHECK (disc_id_source_file IS NULL OR disc_id_state = 'computed'),
     CHECK ((disc_id_state = 'failed') = (disc_id_failure IS NOT NULL)),
     CHECK ((barcode_state = 'failed') = (barcode_failure IS NOT NULL)),
     CHECK ((text_state = 'failed') = (text_failure IS NOT NULL)),

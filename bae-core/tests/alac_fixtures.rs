@@ -437,15 +437,20 @@ fn cue_alac_disc_id_is_stable() {
     let disc_id = compute_discid_from_categorized(&categorized);
 
     assert_eq!(track_count, 3, "three tracks in the CUE sheet");
-    let disc_id = disc_id.expect("CUE+ALAC pair must produce a disc ID");
+    let computed = disc_id.expect("CUE+ALAC pair must produce a disc ID");
     assert_eq!(
-        disc_id.len(),
+        computed.disc_id.len(),
         28,
         "MusicBrainz disc IDs are 28-char base64 strings"
     );
     assert_eq!(
-        disc_id, EXPECTED_CUE_ALAC_DISC_ID,
+        computed.disc_id, EXPECTED_CUE_ALAC_DISC_ID,
         "disc ID drifted — CUE parsing, probe duration, or disc ID math changed",
+    );
+    assert!(
+        computed.source_file.ends_with(".cue"),
+        "the sheet it was carved from rides with it, got {:?}",
+        computed.source_file
     );
 }
 

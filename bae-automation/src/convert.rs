@@ -442,6 +442,7 @@ pub(super) fn automation_disc_id_signal(
         DiscIdSignal::Computed {
             disc_id,
             track_count,
+            ..
         } => AutomationDiscIdSignal::Computed {
             disc_id,
             track_count,

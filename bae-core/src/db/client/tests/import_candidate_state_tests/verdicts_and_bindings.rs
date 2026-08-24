@@ -381,6 +381,7 @@ async fn no_row_is_written_for_a_transport_failure() {
                 disc_id: DiscIdSignal::Computed {
                     disc_id: "disc-hash".to_string(),
                     track_count: 1,
+                    source_file: None,
                 },
                 barcode: BarcodeSignal::Absent,
                 text: TextSignal::Settled {

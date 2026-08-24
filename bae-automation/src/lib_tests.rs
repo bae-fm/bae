@@ -399,6 +399,7 @@ mod identify_mirrors {
             disc_id: DiscIdSignal::Computed {
                 disc_id: "disc-hash".to_string(),
                 track_count: 10,
+                source_file: None,
             },
             barcode: BarcodeSignal::Settled {
                 codes: vec![SourcedValue::new(
