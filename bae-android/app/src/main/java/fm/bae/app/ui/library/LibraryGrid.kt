@@ -9,26 +9,15 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -43,17 +32,12 @@ import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeAlbum
-
-private const val PULL_REFRESH_SETTLE_MS = 900L
 
 // How many fixture albums the library-grid screenshot scene renders — enough to
 // fill a couple of scrolled rows on a phone.
 private const val SCENE_ALBUM_COUNT = 9
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LibraryGridContent(
     session: OpenLibrary,
@@ -61,50 +45,17 @@ internal fun LibraryGridContent(
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
-    var refreshing by remember { mutableStateOf(false) }
-    val refreshScope = rememberCoroutineScope()
-    val onRefresh: () -> Unit = {
-        session.appHandle.triggerSync()
-        refreshScope.launch {
-            refreshing = true
-            delay(PULL_REFRESH_SETTLE_MS)
-            refreshing = false
-        }
-    }
-    val pageError = page.error
-    PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-        when {
-            pageError != null && page.rows.isEmpty() -> {
-                Column(
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(text = pageError.message, color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = pageError.onRetry) { Text(stringResource(R.string.retry)) }
-                }
-            }
-
-            page.loading && page.rows.isEmpty() -> {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
-
-            page.totalCount == 0 -> {
-                Text(
-                    text = stringResource(R.string.library_empty_syncing),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                )
-            }
-
-            else -> {
-                LibraryGridBacking(
-                    count = page.totalCount,
-                    albumAt = page.rows::get,
-                    gridState = gridState,
-                    onSelectAlbum = onSelectAlbum,
-                )
-            }
-        }
+    LibraryPageContent(
+        session = session,
+        page = page,
+        emptyMessage = stringResource(R.string.library_empty_syncing),
+    ) {
+        LibraryGridBacking(
+            count = page.totalCount,
+            albumAt = page.rows::get,
+            gridState = gridState,
+            onSelectAlbum = onSelectAlbum,
+        )
     }
 }
 

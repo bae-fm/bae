@@ -1,7 +1,6 @@
 package fm.bae.app.ui.library
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,7 +18,6 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -27,14 +25,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -75,53 +70,28 @@ internal fun rememberArtistPage(
 
 @Composable
 internal fun ArtistListContent(
+    session: OpenLibrary,
     page: ArtistPageStore,
     onSelectArtist: (String) -> Unit,
 ) {
-    val pageError = page.error
-    when {
-        pageError != null && page.rows.isEmpty() -> {
-            Column(
-                modifier = Modifier.fillMaxSize().padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(text = pageError.message, color = MaterialTheme.colorScheme.error)
-                TextButton(onClick = pageError.onRetry) { Text(stringResource(R.string.retry)) }
+    LibraryPageContent(
+        session = session,
+        page = page,
+        emptyMessage = stringResource(R.string.library_empty_artists),
+    ) {
+        val listState = rememberLazyListState()
+        LaunchedEffect(page, listState) {
+            snapshotFlow {
+                val visible = listState.layoutInfo.visibleItemsInfo
+                (visible.firstOrNull()?.index ?: 0) to (visible.lastOrNull()?.index ?: 0)
+            }.distinctUntilChanged().collect { (first, last) ->
+                page.reportVisibleRange(first, last)
             }
         }
-
-        page.loading && page.rows.isEmpty() -> {
-            Box(modifier = Modifier.fillMaxSize()) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            }
-        }
-
-        page.totalCount == 0 -> {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Text(
-                    text = stringResource(R.string.library_empty_artists),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
-                )
-            }
-        }
-
-        else -> {
-            val listState = rememberLazyListState()
-            LaunchedEffect(page, listState) {
-                snapshotFlow {
-                    val visible = listState.layoutInfo.visibleItemsInfo
-                    (visible.firstOrNull()?.index ?: 0) to (visible.lastOrNull()?.index ?: 0)
-                }.distinctUntilChanged().collect { (first, last) ->
-                    page.reportVisibleRange(first, last)
-                }
-            }
-            LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                items(page.totalCount, key = { index -> page.rows[index]?.artistId ?: "artist-slot-$index" }) { index ->
-                    page.rows[index]?.let { artist ->
-                        ArtistSummaryRow(artist = artist, onClick = { onSelectArtist(artist.artistId) })
-                    }
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            items(page.totalCount, key = { index -> page.rows[index]?.artistId ?: "artist-slot-$index" }) { index ->
+                page.rows[index]?.let { artist ->
+                    ArtistSummaryRow(artist = artist, onClick = { onSelectArtist(artist.artistId) })
                 }
             }
         }

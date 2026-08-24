@@ -8,16 +8,19 @@ struct ArtistListView: View {
 
     var body: some View {
         if let error = list.initialLoadError {
-            LoadFailureView(line: error.line) {
-                Task { await list.loadInitial() }
+            ListPlaceholder {
+                LoadFailureView(line: error.line) {
+                    Task { await list.loadInitial() }
+                }
             }
         }
         else if list.totalCount == 0 {
-            Text("No artists")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .padding(32)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ListPlaceholder {
+                Text("No artists")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .padding(32)
+            }
         }
         else {
             List {

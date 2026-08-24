@@ -266,6 +266,7 @@ private fun ComposerBrowserContent(
             session = session,
         )
         ComposerListContent(
+            session = session,
             page = page,
             onSelectComposer = onSelectComposer,
         )
@@ -292,6 +293,7 @@ private fun ArtistBrowserContent(
             session = session,
         )
         ArtistListContent(
+            session = session,
             page = page,
             onSelectArtist = onSelectArtist,
         )

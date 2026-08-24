@@ -31,59 +31,42 @@ struct LibraryContentView: View {
             )
         }
         else {
-            switch mode {
-            case .albums:
-                albumContent
-            case .composers:
-                composerContent
-            case .artists:
-                artistContent
+            browseContent
+                .refreshable {
+                    sync.triggerSync()
+                    await settleAfterRefresh()
+                }
+        }
+    }
+
+    /// The current tab's list. Every state it can be in — rows, empty, load
+    /// failure, and the moment before the list object exists — renders inside a
+    /// scroll view (`ListPlaceholder` supplies one for the row-less states), so
+    /// the `.refreshable` above always has a scroll view to arm.
+    @ViewBuilder
+    private var browseContent: some View {
+        switch mode {
+        case .albums:
+            if let albumList {
+                AlbumGrid(list: albumList, onSelect: onSelectAlbum)
             }
-        }
-    }
-
-    @ViewBuilder
-    private var albumContent: some View {
-        if let albumList {
-            AlbumGrid(list: albumList, onSelect: onSelectAlbum)
-                .refreshable {
-                    sync.triggerSync()
-                    await settleAfterRefresh()
-                }
-        }
-        else {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    private var composerContent: some View {
-        if let composerList {
-            ComposerListView(list: composerList, onSelect: onSelectComposer)
-                .refreshable {
-                    sync.triggerSync()
-                    await settleAfterRefresh()
-                }
-        }
-        else {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    private var artistContent: some View {
-        if let artistList {
-            ArtistListView(list: artistList, onSelect: onSelectArtist)
-                .refreshable {
-                    sync.triggerSync()
-                    await settleAfterRefresh()
-                }
-        }
-        else {
-            ProgressView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            else {
+                ListPlaceholder { ProgressView() }
+            }
+        case .composers:
+            if let composerList {
+                ComposerListView(list: composerList, onSelect: onSelectComposer)
+            }
+            else {
+                ListPlaceholder { ProgressView() }
+            }
+        case .artists:
+            if let artistList {
+                ArtistListView(list: artistList, onSelect: onSelectArtist)
+            }
+            else {
+                ListPlaceholder { ProgressView() }
+            }
         }
     }
 

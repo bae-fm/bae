@@ -13,17 +13,20 @@ struct AlbumGrid: View {
 
     var body: some View {
         if let error = list.initialLoadError {
-            LoadFailureView(line: error.line) {
-                Task { await list.loadInitial() }
+            ListPlaceholder {
+                LoadFailureView(line: error.line) {
+                    Task { await list.loadInitial() }
+                }
             }
         }
         else if list.totalCount == 0 {
-            Text("No albums yet. Syncing from the cloud\u{2026}")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(32)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ListPlaceholder {
+                Text("No albums yet. Syncing from the cloud\u{2026}")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(32)
+            }
         }
         else {
             ScrollView {
