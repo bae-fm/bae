@@ -31,28 +31,39 @@ public sealed class ImportSectionViewTests
         Assert.Null(SelectedKey(view));
     }
 
+    // How a folder is read is asked once, on the header of the folder read as
+    // several releases — never on the rows it produced, which are releases and
+    // not places to answer a question about the folder holding them.
+    [AvaloniaFact]
+    public void OnlyTheGroupHeaderOffersToReadTheFolderAsOneRelease()
+    {
+        var view = BuildView(PreviewData.ImportResolvedItems, PreviewData.ImportResolvedSummary);
+
+        Assert.Empty(CandidateRow(view)
+            .GetLogicalDescendants()
+            .OfType<Button>()
+            .Where(button => Equals(button.Content, Loc.Chrome("import.release.one"))));
+        Assert.NotNull(DecisionButton(view));
+    }
+
     [AvaloniaFact]
     public void FolderDecisionClearsTheSelectedCandidateBeforeDispatch()
     {
         var view = BuildView(PreviewData.ImportResolvedItems, PreviewData.ImportResolvedSummary);
-        var row = CandidateRow(view);
-        RaiseTap(row);
+        RaiseTap(CandidateRow(view));
         Assert.Equal(CandidateKey, SelectedKey(view));
-        var decision = DecisionButton(row);
 
-        decision.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        DecisionButton(view).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
         Assert.Null(SelectedKey(view));
     }
 
     [AvaloniaFact]
-    public void FolderDecisionTapDoesNotReactivateItsCandidateRow()
+    public void FolderDecisionTapDoesNotActivateACandidate()
     {
         var view = BuildView(PreviewData.ImportResolvedItems, PreviewData.ImportResolvedSummary);
-        var row = CandidateRow(view);
-        var decision = DecisionButton(row);
 
-        RaiseTap(decision);
+        RaiseTap(DecisionButton(view));
 
         Assert.Null(SelectedKey(view));
     }
@@ -411,7 +422,7 @@ public sealed class ImportSectionViewTests
         {
             new BridgeImportListItem.GroupHeader(
                 PreviewData.GroupStableKey(PreviewData.ImportGroupKey),
-                new BridgeTriageGroup(PreviewData.ImportGroupKey, "Collection"),
+                new BridgeTriageGroup(PreviewData.ImportGroupKey, "Collection", Combinable: false),
                 PreviewData.ImportRoot,
                 true,
                 1),
@@ -497,8 +508,10 @@ public sealed class ImportSectionViewTests
                 control.Tag,
                 PreviewData.CandidateStableKey(CandidateKey)));
 
-    private static Button DecisionButton(Control row) =>
-        row
+    /// <summary>The one control that reads a folder the other way: the offer
+    /// on the header of the folder read as several releases.</summary>
+    private static Button DecisionButton(Control root) =>
+        root
             .GetLogicalDescendants()
             .OfType<Button>()
             .Single(button => Equals(

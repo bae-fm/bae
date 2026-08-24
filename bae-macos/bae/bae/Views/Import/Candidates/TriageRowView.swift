@@ -96,35 +96,27 @@ struct TriageRowView: View {
             Button("Reveal in Finder") {
                 SystemActions.revealInFinder(path: row.candidateKey)
             }
-            if let combineKey = row.combineAncestorKey {
+            // A folder read as one release is this row and nothing else, so
+            // its row is the only place left to say otherwise. A folder read
+            // as several is a group of rows, and its header carries that
+            // choice — a row is a release, not a place to answer a question
+            // about the folder holding it.
+            ForEach(combinedBoundaries, id: \.key) { boundary in
                 Divider()
-                Button("Combine as One Release") {
-                    onReleaseDecision(combineKey, .combineAsOneRelease)
-                }
-            }
-            ForEach(
-                row.resolvedBoundaries,
-                id: \.key
-            ) { boundary in
-                Divider()
-                switch boundary.decision {
-                case .combineAsOneRelease:
-                    Button("Keep as Separate Releases") {
-                        onReleaseDecision(
-                            boundary.key,
-                            .keepAsSeparateReleases
-                        )
-                    }
-                case .keepAsSeparateReleases:
-                    Button("Combine as One Release") {
-                        onReleaseDecision(
-                            boundary.key,
-                            .combineAsOneRelease
-                        )
-                    }
+                Button("Keep as Separate Releases") {
+                    onReleaseDecision(
+                        boundary.key,
+                        .keepAsSeparateReleases
+                    )
                 }
             }
         }
+    }
+
+    /// The folders this row is the whole of, read as one release. Each offers
+    /// to be read as several again.
+    private var combinedBoundaries: [BridgeResolvedFolderReleaseBoundary] {
+        row.resolvedBoundaries.filter(isCombined)
     }
 
     private var isPending: Bool {
@@ -334,8 +326,10 @@ extension TriageRowView {
         let action: () -> Void
     }
 
-    /// The pill row under the meta column. Placement-specific commands and
-    /// persisted folder-boundary reversal commands share the same renderer.
+    /// The pill row under the meta column: what this row is asking for right
+    /// now. How the folder around it is read is not one of those — that lives
+    /// on the group header, or in this row's own menu where the folder is
+    /// this row.
     private var rowActions: [RowAction] {
         var actions: [RowAction] = []
         switch row.placement {
@@ -358,31 +352,6 @@ extension TriageRowView {
             }
         default:
             break
-        }
-        for boundary in row.resolvedBoundaries {
-            switch boundary.decision {
-            case .combineAsOneRelease:
-                actions.append(
-                    RowAction(
-                        label: "Keep as Separate Releases",
-                        isKey: false
-                    ) {
-                        onReleaseDecision(
-                            boundary.key,
-                            .keepAsSeparateReleases
-                        )
-                    }
-                )
-            case .keepAsSeparateReleases:
-                actions.append(
-                    RowAction(label: "Combine as One Release", isKey: false) {
-                        onReleaseDecision(
-                            boundary.key,
-                            .combineAsOneRelease
-                        )
-                    }
-                )
-            }
         }
         return actions
     }
@@ -600,3 +569,13 @@ private struct RowActionPillStyle: ButtonStyle {
         .windowBackground()
     }
 #endif
+
+/// Whether a settled reading is "this folder is one release" — the only one a
+/// row can offer to reverse, because a folder read as several releases is a
+/// group of rows and its header carries that choice.
+func isCombined(_ boundary: BridgeResolvedFolderReleaseBoundary) -> Bool {
+    if case .combineAsOneRelease = boundary.decision {
+        return true
+    }
+    return false
+}

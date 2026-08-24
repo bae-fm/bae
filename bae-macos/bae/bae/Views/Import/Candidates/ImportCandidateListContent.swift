@@ -399,12 +399,18 @@ extension ImportCandidateListContent {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .contextMenu {
-            Button("Combine as One Release") {
-                onReleaseDecision(group.key, .combineAsOneRelease)
-            }
-            Button("Keep as Separate Releases") {
-                onReleaseDecision(group.key, .keepAsSeparateReleases)
+        .overlay(alignment: .trailing) {
+            // The rows below are this folder read as several releases, and
+            // this is where it is read as one instead — once, for the folder,
+            // rather than on each of the rows it produced. A header that only
+            // names a shared path component has no such folder behind it and
+            // offers nothing.
+            if group.combinable {
+                Button("Combine as One Release") {
+                    onReleaseDecision(group.key, .combineAsOneRelease)
+                }
+                .buttonStyle(.link)
+                .font(.system(size: 11))
             }
         }
     }
@@ -443,26 +449,19 @@ extension ImportCandidateListContent {
             reason: invalid.reason,
             revealPath: invalid.folderPath
         )
+        // A folder read as one release that turned out to be unreadable is
+        // still that folder, and its row is the only place left to say it
+        // should be read as several.
         .contextMenu {
             ForEach(
-                invalid.resolvedBoundaries,
+                invalid.resolvedBoundaries.filter(isCombined),
                 id: \.key
             ) { boundary in
-                switch boundary.decision {
-                case .combineAsOneRelease:
-                    Button("Keep as Separate Releases") {
-                        onReleaseDecision(
-                            boundary.key,
-                            .keepAsSeparateReleases
-                        )
-                    }
-                case .keepAsSeparateReleases:
-                    Button("Combine as One Release") {
-                        onReleaseDecision(
-                            boundary.key,
-                            .combineAsOneRelease
-                        )
-                    }
+                Button("Keep as Separate Releases") {
+                    onReleaseDecision(
+                        boundary.key,
+                        .keepAsSeparateReleases
+                    )
                 }
             }
         }

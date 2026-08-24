@@ -41,41 +41,6 @@ struct CandidateFolderLine: View {
     }
 }
 
-/// How the folder this candidate came out of was read, and the control that
-/// reads it the other way. The scan reads such a folder for itself so the queue
-/// has candidates to work on; this is where that reading is visible and where
-/// it is overruled.
-struct FolderReadingControl: View {
-    let boundary: BridgeResolvedFolderReleaseBoundary
-    let onDecision:
-        (
-            _ key: BridgeFolderReleaseDecisionKey,
-            _ decision: BridgeFolderReleaseDecision
-        ) -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Label(boundary.name, systemImage: "folder")
-                .font(.system(size: 11.5))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            switch boundary.decision {
-            case .combineAsOneRelease:
-                Button("Keep as Separate Releases") {
-                    onDecision(boundary.key, .keepAsSeparateReleases)
-                }
-            case .keepAsSeparateReleases:
-                Button("Combine as One Release") {
-                    onDecision(boundary.key, .combineAsOneRelease)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .controlSize(.small)
-    }
-}
-
 #if DEBUG
     #Preview("Candidate folder line") {
         CandidateFolderLine(
@@ -89,35 +54,4 @@ struct FolderReadingControl: View {
         .windowBackground()
     }
 
-    #Preview("Folder reading") {
-        VStack(alignment: .leading, spacing: 8) {
-            FolderReadingControl(
-                boundary: BridgeResolvedFolderReleaseBoundary(
-                    key: BridgeFolderReleaseDecisionKey(
-                        watchedFolderPath: "/Music",
-                        relativeFolderPath: "Blue Sky Boys"
-                    ),
-                    decision: .combineAsOneRelease,
-                    name: "Blue Sky Boys",
-                    displayPath: "Blue Sky Boys"
-                ),
-                onDecision: { _, _ in }
-            )
-            FolderReadingControl(
-                boundary: BridgeResolvedFolderReleaseBoundary(
-                    key: BridgeFolderReleaseDecisionKey(
-                        watchedFolderPath: "/Music",
-                        relativeFolderPath: "Rarities"
-                    ),
-                    decision: .keepAsSeparateReleases,
-                    name: "Rarities",
-                    displayPath: "Rarities"
-                ),
-                onDecision: { _, _ in }
-            )
-        }
-        .padding()
-        .frame(width: 520)
-        .windowBackground()
-    }
 #endif

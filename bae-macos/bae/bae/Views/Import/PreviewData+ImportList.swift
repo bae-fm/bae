@@ -57,13 +57,18 @@
             key: BridgeFolderReleaseDecisionKey,
             name: String,
             expanded: Bool = true,
+            combinable: Bool = false,
             entryCount: UInt32
         ) -> BridgeImportListItem {
             .groupHeader(
                 stableKey:
                     "group:\(key.watchedFolderPath.count)"
                     + key.watchedFolderPath + key.relativeFolderPath,
-                group: BridgeTriageGroup(key: key, name: name),
+                group: BridgeTriageGroup(
+                    key: key,
+                    name: name,
+                    combinable: combinable
+                ),
                 watchedFolderPath: key.watchedFolderPath,
                 expanded: expanded,
                 entryCount: entryCount

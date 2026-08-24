@@ -37,7 +37,7 @@ internal static class PreviewData
     {
         new BridgeImportListItem.GroupHeader(
             GroupStableKey(ImportGroupKey),
-            new BridgeTriageGroup(ImportGroupKey, "Collection"),
+            new BridgeTriageGroup(ImportGroupKey, "Collection", Combinable: true),
             ImportRoot,
             true,
             2),
@@ -104,7 +104,7 @@ internal static class PreviewData
     {
         new BridgeImportListItem.GroupHeader(
             GroupStableKey(ImportGroupKey),
-            new BridgeTriageGroup(ImportGroupKey, "Collection"),
+            new BridgeTriageGroup(ImportGroupKey, "Collection", Combinable: true),
             ImportRoot,
             false,
             2),
@@ -122,10 +122,16 @@ internal static class PreviewData
             },
         };
 
-    // One row exposed by an explicit folder decision, so its context menu can
-    // set the opposite interpretation.
+    // A folder read as several releases: the header that says so and offers to
+    // read it as one, over the row it produced.
     internal static List<BridgeImportListItem> ImportResolvedItems { get; } = new()
     {
+        new BridgeImportListItem.GroupHeader(
+            GroupStableKey(ImportGroupKey),
+            new BridgeTriageGroup(ImportGroupKey, "Collection", Combinable: true),
+            ImportRoot,
+            true,
+            1),
         new BridgeImportListItem.Candidate(
             CandidateStableKey($"{ImportRoot}/Collection/Release 01"),
             new BridgeTriageRow(
@@ -155,7 +161,7 @@ internal static class PreviewData
     internal static BridgeImportQueueSummary ImportResolvedSummary { get; } = Summary(
         pending: 1,
         ready: new[] { ReadyRow("Collection/Release 01") },
-        groupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>());
+        groupKeys: new[] { ImportGroupKey });
 
     // The stable keys core gives each item kind. Named here so the fixtures
     // carry the same identities a real read would.

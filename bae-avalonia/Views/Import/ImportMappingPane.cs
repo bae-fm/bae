@@ -336,10 +336,6 @@ internal sealed partial class ImportMappingPane : UserControl
 
         var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };
         sections.Children.Add(FolderLine());
-        foreach (var boundary in _candidate?.Detail?.Row.ResolvedBoundaries ?? [])
-        {
-            sections.Children.Add(FolderReadingRow(boundary));
-        }
         sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.metadata.title")));
         sections.Children.Add(BuildIdentity().Build());
         if (_searchOpen)
@@ -472,37 +468,6 @@ internal sealed partial class ImportMappingPane : UserControl
             format[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
             row.Children.Add(format);
         }
-        return row;
-    }
-
-    // How the folder this candidate came out of was read, and the control that
-    // reads it the other way. The scan reads such a folder for itself so the
-    // queue has candidates to work on; this is where that reading is visible
-    // and where it is overruled.
-    private Control FolderReadingRow(BridgeResolvedFolderReleaseBoundary boundary)
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        var name = new TextBlock
-        {
-            Text = boundary.Name,
-            FontSize = 11.5,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        };
-        name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        row.Children.Add(Icons.Glyph(Icons.Folder, 12, "BaeTextSecondaryBrush"));
-        row.Children.Add(name);
-
-        var flipped = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-            ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
-            : BridgeFolderReleaseDecision.CombineAsOneRelease;
-        var flip = ImportPaneUi.RowButton(Loc.Chrome(
-            flipped is BridgeFolderReleaseDecision.CombineAsOneRelease
-                ? "import.release.one"
-                : "import.release.separate"));
-        var key = boundary.Key;
-        flip.Click += (_, _) => _import.SetFolderReleaseDecision(key, flipped);
-        row.Children.Add(flip);
         return row;
     }
 

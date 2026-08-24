@@ -70,17 +70,28 @@ internal sealed partial class ImportSectionView
             HorizontalContentAlignment = HorizontalAlignment.Left,
         };
         button.Click += (_, _) => _import.SetGroupExpanded(group.Key, !expanded);
+        if (!group.Combinable)
+        {
+            return button;
+        }
 
-        var combine = new MenuItem { Header = Loc.Chrome("import.release.one") };
-        combine.Click += (_, _) => ApplyFolderReleaseDecision(
-            group.Key,
-            BridgeFolderReleaseDecision.CombineAsOneRelease);
-        var separate = new MenuItem { Header = Loc.Chrome("import.release.separate") };
-        separate.Click += (_, _) => ApplyFolderReleaseDecision(
-            group.Key,
-            BridgeFolderReleaseDecision.KeepAsSeparateReleases);
-        button.ContextFlyout = new MenuFlyout { ItemsSource = new[] { combine, separate } };
-        return button;
+        // The rows below are this folder read as several releases, and this is
+        // where it is read as one instead — once, for the folder, rather than
+        // on each of the rows it produced. A header that only names a path
+        // component the rows share has no such folder behind it.
+        var combine = BuildActionPill(
+            Loc.Chrome("import.release.one"),
+            isKey: false,
+            () => ApplyFolderReleaseDecision(
+                group.Key,
+                BridgeFolderReleaseDecision.CombineAsOneRelease));
+        combine.HorizontalAlignment = HorizontalAlignment.Right;
+        combine.VerticalAlignment = VerticalAlignment.Center;
+        combine.Margin = new Thickness(0, 0, 10, 0);
+        var host = new Panel();
+        host.Children.Add(button);
+        host.Children.Add(combine);
+        return host;
     }
 
     private Control BuildBoundaryRow(BridgeFolderReleaseBoundary boundary)
@@ -547,7 +558,9 @@ internal sealed partial class ImportSectionView
     // The pill row under the meta column — only the placements the design
     // gives one: pick-a-pressing, already-in-library, and a failed import.
     // Every other row's action is "activate it," which the whole row already
-    // does.
+    // does. How the folder around the row is read is not one of them: that
+    // lives on the group header, or in the row's own menu where the folder is
+    // this one row.
     private Control? BuildRowActions(BridgeTriageRow row)
     {
         var pills = new List<(string Label, bool IsKey, Action Action)>();
@@ -566,19 +579,6 @@ internal sealed partial class ImportSectionView
                 },
             _ => Array.Empty<(string, bool, Action)>(),
         });
-        foreach (var boundary in row.ResolvedBoundaries)
-        {
-            var decision = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-                ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
-                : BridgeFolderReleaseDecision.CombineAsOneRelease;
-            pills.Add((
-                Loc.Chrome(
-                    decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-                        ? "import.release.one"
-                        : "import.release.separate"),
-                false,
-                () => ApplyFolderReleaseDecision(boundary.Key, decision)));
-        }
         if (pills.Count == 0)
         {
             return null;
@@ -738,30 +738,16 @@ internal sealed partial class ImportSectionView
         var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
         reveal.Click += (_, _) => RevealInFileManager.Reveal(row.CandidateKey);
         items.Add(reveal);
-        if (row.CombineAncestorKey is { } combineKey)
+        // A folder read as one release is this row and nothing else, so its row
+        // is the only place left to say otherwise. A folder read as several is
+        // a group of rows, and its header carries that choice.
+        foreach (var boundary in Combined(row.ResolvedBoundaries))
         {
             items.Add(new Separator());
-            var combine = new MenuItem { Header = Loc.Chrome("import.release.one") };
-            combine.Click += (_, _) => ApplyFolderReleaseDecision(
-                combineKey,
-                BridgeFolderReleaseDecision.CombineAsOneRelease);
-            items.Add(combine);
-        }
-        foreach (var boundary in row.ResolvedBoundaries)
-        {
-            items.Add(new Separator());
-            var decision = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-                ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
-                : BridgeFolderReleaseDecision.CombineAsOneRelease;
-            var regroup = new MenuItem
-            {
-                Header = Loc.Chrome(
-                    decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-                        ? "import.release.one"
-                        : "import.release.separate"),
-            };
-            regroup.Click += (_, _) =>
-                ApplyFolderReleaseDecision(boundary.Key, decision);
+            var regroup = new MenuItem { Header = Loc.Chrome("import.release.separate") };
+            regroup.Click += (_, _) => ApplyFolderReleaseDecision(
+                boundary.Key,
+                BridgeFolderReleaseDecision.KeepAsSeparateReleases);
             items.Add(regroup);
         }
         return new ContextMenu { ItemsSource = items };
@@ -809,26 +795,28 @@ internal sealed partial class ImportSectionView
         var host = new Border { Child = grid };
         ToolTip.SetTip(host, reasonLine);
         var items = new List<Control> { reveal };
-        foreach (var boundary in invalid.ResolvedBoundaries)
+        // A folder read as one release that turned out to be unreadable is
+        // still that folder, and its row is the only place left to say it
+        // should be read as several.
+        foreach (var boundary in Combined(invalid.ResolvedBoundaries))
         {
             items.Add(new Separator());
-            var decision = boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-                ? BridgeFolderReleaseDecision.KeepAsSeparateReleases
-                : BridgeFolderReleaseDecision.CombineAsOneRelease;
-            var regroup = new MenuItem
-            {
-                Header = Loc.Chrome(
-                    decision is BridgeFolderReleaseDecision.CombineAsOneRelease
-                        ? "import.release.one"
-                        : "import.release.separate"),
-            };
-            regroup.Click += (_, _) =>
-                ApplyFolderReleaseDecision(boundary.Key, decision);
+            var regroup = new MenuItem { Header = Loc.Chrome("import.release.separate") };
+            regroup.Click += (_, _) => ApplyFolderReleaseDecision(
+                boundary.Key,
+                BridgeFolderReleaseDecision.KeepAsSeparateReleases);
             items.Add(regroup);
         }
         host.ContextMenu = new ContextMenu { ItemsSource = items };
         return host;
     }
+
+    /// <summary>The settled readings that say "this folder is one release" —
+    /// the only ones a row can offer to reverse.</summary>
+    private static IEnumerable<BridgeResolvedFolderReleaseBoundary> Combined(
+        IEnumerable<BridgeResolvedFolderReleaseBoundary> boundaries) =>
+        boundaries.Where(boundary =>
+            boundary.Decision is BridgeFolderReleaseDecision.CombineAsOneRelease);
 
     private void ApplyFolderReleaseDecision(
         BridgeFolderReleaseDecisionKey key,
