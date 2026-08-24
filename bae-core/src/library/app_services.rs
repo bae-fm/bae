@@ -88,6 +88,64 @@ fn replace_transitioning_release_ids(current: &mut Vec<String>, mut next: Vec<St
     true
 }
 
+/// A live query's events, produced on a task of the query's own.
+///
+/// A subscription that merges a live query with other streams must take the
+/// query's events from here rather than poll [`coven::LiveQuery::next`] in its
+/// `select!` directly. `select!` drops the branches it does not pick, and
+/// dropping `next` throws away the database read it had in flight — the run
+/// stays pending, so the next poll starts that read over from the beginning. A
+/// steady stream on the other branches is what a running sync cycle looks like
+/// from here, and it restarts the read again and again; on a device where the
+/// read takes longer than the gap between those events the query never finishes
+/// its first run at all, and the screen waiting on its first value gets neither
+/// a value nor an error. Owning the query in its own task puts its read out of
+/// reach of the merge loop, whose only query branch is then a channel receive,
+/// which loses nothing when it is dropped and polled again.
+///
+/// Dropping this stops that task, so a subscription that ends — or replaces its
+/// query — takes the query it is done with down too.
+struct LiveQueryEvents<T> {
+    events: tokio::sync::mpsc::UnboundedReceiver<Result<T, crate::library::LibraryError>>,
+    task: tokio::task::JoinHandle<()>,
+}
+
+impl<T> LiveQueryEvents<T> {
+    async fn recv(&mut self) -> Option<Result<T, crate::library::LibraryError>> {
+        self.events.recv().await
+    }
+}
+
+impl<T> Drop for LiveQueryEvents<T> {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+
+fn live_query_events<T>(
+    runtime_handle: &tokio::runtime::Handle,
+    mut query: coven::LiveQuery<T>,
+) -> LiveQueryEvents<T>
+where
+    T: Clone + PartialEq + Send + 'static,
+{
+    let (tx, events) = tokio::sync::mpsc::unbounded_channel();
+    let task = runtime_handle.spawn(async move {
+        loop {
+            let event = query.next().await.map_err(|error| {
+                crate::library::LibraryError::Database(match error {
+                    coven::CovenError::Database(error) => *error,
+                    other => coven::DbError::Message(other.to_string()),
+                })
+            });
+            if tx.send(event).is_err() {
+                return;
+            }
+        }
+    });
+    LiveQueryEvents { events, task }
+}
+
 impl std::fmt::Debug for AppServices {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AppServices")
@@ -187,7 +245,10 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
-        let mut query = services.inner.manager.subscribe_album_detail(&album_id);
+        let mut query = live_query_events(
+            runtime_handle,
+            services.inner.manager.subscribe_album_detail(&album_id),
+        );
         let mut config = services.subscribe_config_changes();
         let mut sync = services.subscribe_sync_status_values();
         let mut transfers = services.subscribe_transfer_values();
@@ -195,18 +256,15 @@ impl AppServices {
             let mut last = None;
             loop {
                 tokio::select! {
-                    result = query.next() => match result {
-                        Ok(projection) => {
+                    event = query.recv() => match event {
+                        None => return,
+                        Some(Ok(projection)) => {
                             last = Some(projection.clone());
                             let value = services.inner.manager.resolve_album_detail_projection(projection).await;
                             if tx.send(value).is_err() { return; }
                         }
-                        Err(error) => {
-                            let error = match error {
-                                coven::CovenError::Database(error) => *error,
-                                other => coven::DbError::Message(other.to_string()),
-                            };
-                            if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
+                        Some(Err(error)) => {
+                            if tx.send(Err(error)).is_err() { return; }
                         }
                     },
                     changed = async { tokio::select! {
@@ -238,7 +296,10 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
-        let mut query = services.inner.manager.subscribe_release_detail(&release_id);
+        let mut query = live_query_events(
+            runtime_handle,
+            services.inner.manager.subscribe_release_detail(&release_id),
+        );
         let mut config = services.subscribe_config_changes();
         let mut sync = services.subscribe_sync_status_values();
         let mut transfers = services.subscribe_transfer_values();
@@ -246,18 +307,15 @@ impl AppServices {
             let mut last = None;
             loop {
                 tokio::select! {
-                    result = query.next() => match result {
-                        Ok(projection) => {
+                    event = query.recv() => match event {
+                        None => return,
+                        Some(Ok(projection)) => {
                             last = Some(projection.clone());
                             let value = services.inner.manager.resolve_release_detail_projection(&release_id, projection).await;
                             if tx.send(value).is_err() { return; }
                         }
-                        Err(error) => {
-                            let error = match error {
-                                coven::CovenError::Database(error) => *error,
-                                other => coven::DbError::Message(other.to_string()),
-                            };
-                            if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
+                        Some(Err(error)) => {
+                            if tx.send(Err(error)).is_err() { return; }
                         }
                     },
                     changed = async { tokio::select! {
@@ -342,6 +400,7 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let services = self.clone();
+        let query_runtime = runtime_handle.clone();
         let mut outbox = services.subscribe_outbox_values();
         let mut sync = services.subscribe_sync_status_values();
         let mut config = services.subscribe_config_changes();
@@ -362,26 +421,29 @@ impl AppServices {
                     },
                 }
             } else { Vec::new() };
-            let mut query = services.subscribe_storage_page(
-                &sort,
-                filter,
-                transitioning.clone(),
-                offset,
-                limit,
+            let mut query = live_query_events(
+                &query_runtime,
+                services.subscribe_storage_page(
+                    &sort,
+                    filter,
+                    transitioning.clone(),
+                    offset,
+                    limit,
+                ),
             );
             let mut last = None;
             loop {
                 tokio::select! {
-                    result = query.next() => match result {
-                        Ok(projection) => {
+                    event = query.recv() => match event {
+                        None => return,
+                        Some(Ok(projection)) => {
                             last = Some(projection.clone());
                             let value = services.resolve_storage_page_projection(projection).await
                                 .map(|(page, total_size)| StorageProjectionValue { page, total_size });
                             if tx.send(value).is_err() { return; }
                         }
-                        Err(error) => {
-                            let error = match error { coven::CovenError::Database(error) => *error, other => coven::DbError::Message(other.to_string()) };
-                            if tx.send(Err(crate::library::LibraryError::Database(error))).is_err() { return; }
+                        Some(Err(error)) => {
+                            if tx.send(Err(error)).is_err() { return; }
                         }
                     },
                     changed = outbox.changed(), if filter == crate::db::StorageFilter::Uploading => {
@@ -390,7 +452,10 @@ impl AppServices {
                             Some(Ok(snapshot)) => {
                                 let next = snapshot.transitioning_release_ids();
                                 if replace_transitioning_release_ids(&mut transitioning, next) {
-                                    query = services.subscribe_storage_page(&sort, filter, transitioning.clone(), offset, limit);
+                                    query = live_query_events(
+                                        &query_runtime,
+                                        services.subscribe_storage_page(&sort, filter, transitioning.clone(), offset, limit),
+                                    );
                                 }
                             }
                             Some(Err(error)) => match tx.send(Err(crate::library::LibraryError::Internal(error))) {

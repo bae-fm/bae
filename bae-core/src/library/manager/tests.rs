@@ -103,6 +103,7 @@ async fn assemble_test_manager(temp_dir: TempDir, config: Config) -> (LibraryMan
 include!("tests/save_and_config.rs");
 include!("tests/deletion.rs");
 include!("tests/release_details.rs");
+include!("tests/detail_subscriptions.rs");
 include!("tests/storage.rs");
 include!("tests/transfers.rs");
 include!("tests/downloads.rs");
