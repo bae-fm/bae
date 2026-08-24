@@ -1,4 +1,5 @@
 import BaeKit
+import Foundation
 import Testing
 
 @testable import bae
@@ -827,5 +828,114 @@ struct ImportStoreScanFailureTests {
         store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
 
         #expect(raised.map(\.1) == ["offline", "offline"])
+    }
+}
+
+/// The read behind the import list failing before the list has registered its
+/// first page. The delivery task starts with the source, so on a database this
+/// build cannot read the failure arrives with nobody to tell — and the page
+/// that registers a moment later waits on a loop that has already returned.
+/// That is what rendered a broken library as one with no folders.
+@Suite("Import list read failures")
+struct ImportListPageSourceFailureTests {
+    private struct ReadFailed: Error {}
+
+    /// A subscription whose first read fails, and which reports when that
+    /// read has been attempted.
+    private final class FailingListSubscription: ImportListSubscriptionProtocol,
+        @unchecked Sendable
+    {
+        private let attempted = AsyncStreamSignal()
+
+        var firstReadAttempted: Void {
+            get async { await attempted.wait() }
+        }
+
+        func setWindows(windows _: [BridgeLibraryPageWindow]) throws {}
+        func setView(view _: BridgeImportListView) throws {}
+        func cancel() async throws {}
+
+        func next() async throws -> BridgeImportListSnapshot {
+            attempted.signal()
+            throw ReadFailed()
+        }
+    }
+
+    /// One-shot signal: `wait()` returns once `signal()` has been called, then
+    /// and later.
+    private final class AsyncStreamSignal: @unchecked Sendable {
+        private let lock = NSLock()
+        private var fired = false
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+
+        func signal() {
+            lock.lock()
+            fired = true
+            let waiters = self.waiters
+            self.waiters = []
+            lock.unlock()
+            for waiter in waiters { waiter.resume() }
+        }
+
+        func wait() async {
+            await withCheckedContinuation { continuation in
+                lock.lock()
+                if fired {
+                    lock.unlock()
+                    continuation.resume()
+                    return
+                }
+                waiters.append(continuation)
+                lock.unlock()
+            }
+        }
+    }
+
+    @Test("a page registered after the read failed is told")
+    func aPageRegisteredAfterTheFailureIsTold() async {
+        let subscription = FailingListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        // The read fails before anything subscribes, which is the launch race.
+        await subscription.firstReadAttempted
+
+        let reported = AsyncStreamSignal()
+        let failures = Mutexed<[any Error]>([])
+        let window = source.subscribe(
+            offset: 0,
+            limit: 10,
+            onValue: { _, _ in },
+            onError: { error in
+                failures.withValue { $0.append(error) }
+                reported.signal()
+            }
+        )
+        defer { window.cancel() }
+
+        await reported.wait()
+        #expect(failures.value.count == 1)
+        #expect(failures.value.first is ReadFailed)
+    }
+
+    /// A tiny box so the error can be read back off the main actor.
+    private final class Mutexed<Value>: @unchecked Sendable {
+        private let lock = NSLock()
+        private var stored: Value
+
+        init(_ value: Value) { stored = value }
+
+        var value: Value {
+            lock.lock()
+            defer { lock.unlock() }
+            return stored
+        }
+
+        func withValue(_ change: (inout Value) -> Void) {
+            lock.lock()
+            change(&stored)
+            lock.unlock()
+        }
     }
 }

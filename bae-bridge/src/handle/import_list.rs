@@ -18,6 +18,9 @@ impl AppHandle {
         &self,
         view: crate::types::BridgeImportListView,
     ) -> std::sync::Arc<ImportListSubscription> {
+        // TRACE(import-list-diagnosis): proves the host subscribed at all, and
+        // when. Remove once the startup failure path is settled.
+        tracing::info!("import list subscription opened (tab {:?})", view.tab);
         let runtime = self.runtime.handle().clone();
         std::sync::Arc::new(ImportListSubscription {
             inner: self
@@ -134,11 +137,14 @@ impl ImportListSubscription {
     ) -> Result<crate::types::BridgeImportListSnapshot, BridgeError> {
         let runtime = self.runtime.clone();
         crate::operation_runtime::run(runtime, move || async move {
-            self.inner
-                .next()
-                .await
-                .map(crate::types::BridgeImportListSnapshot::from_core)
-                .map_err(list_error)
+            // TRACE(import-list-diagnosis): what actually crosses to Swift.
+            match self.inner.next().await {
+                Ok(snapshot) => Ok(crate::types::BridgeImportListSnapshot::from_core(snapshot)),
+                Err(error) => {
+                    tracing::error!("import list next() crossing as an error: {error}");
+                    Err(list_error(error))
+                }
+            }
         })
         .await
     }

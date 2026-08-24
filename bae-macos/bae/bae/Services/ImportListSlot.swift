@@ -1,6 +1,10 @@
 import BaeKit
 import Foundation
+import OSLog
 import Observation
+
+// TRACE(import-list-diagnosis): remove with the rest of the trace.
+private let slotLog = Logger.bae("ImportListSlot")
 
 /// The import sidebar's list machinery: the warm `PaginatedList`, the page
 /// source behind it, and the view that source is showing.
@@ -117,6 +121,7 @@ final class ImportListSlot {
     }
 
     private func reload() async {
+        slotLog.info("building the list source and reading its first page")
         sourceFailed = false
         loadFailure = nil
         let pages = makeSource(view)
@@ -127,9 +132,14 @@ final class ImportListSlot {
                 importStore.ingest(items)
             },
             onError: { [weak self] (error: any Error) in
+                slotLog.error("list read failed: \(String(describing: error))")
                 self?.sourceFailed = true
                 // A cancellation has no line and is not a failed read.
-                guard let displayed = DisplayError(error) else { return }
+                guard let displayed = DisplayError(error) else {
+                    slotLog.error("no display line — treated as a cancellation")
+                    return
+                }
+                slotLog.error("marking the list failed: \(displayed.line)")
                 self?.loadFailure = displayed
                 self?.uiStore.showError(displayed)
             },
@@ -138,6 +148,9 @@ final class ImportListSlot {
             }
         )
         await newList.loadInitial()
+        slotLog.info(
+            "first page read returned; failed: \(self.loadFailure != nil)"
+        )
         guard !Task.isCancelled else { return }
         self.pages = pages
         list = newList

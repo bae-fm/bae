@@ -131,7 +131,26 @@ impl ImportListSubscription {
         };
         let request_revision = event.revision().get();
         let cause = event.cause();
-        let projection = event.into_result()?;
+        // TRACE(import-list-diagnosis): every value the list query produces,
+        // and every error. Remove once the startup failure path is settled.
+        let projection = match event.into_result() {
+            Ok(projection) => {
+                tracing::info!(
+                    "import list query delivered revision {request_revision} ({cause:?}): \
+                     {} folders, {} scan statuses, {} items",
+                    projection.summary.watched_folders.len(),
+                    projection.summary.folder_scan_statuses.len(),
+                    projection.total_count,
+                );
+                projection
+            }
+            Err(error) => {
+                tracing::error!(
+                    "import list query FAILED at revision {request_revision} ({cause:?}): {error}"
+                );
+                return Err(error.into());
+            }
+        };
         Ok(ImportListSnapshot {
             windows: projection.windows,
             total_count: projection.total_count,

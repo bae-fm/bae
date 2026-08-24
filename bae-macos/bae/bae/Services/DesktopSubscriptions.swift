@@ -1,5 +1,9 @@
 import BaeKit
 import Foundation
+import OSLog
+
+// TRACE(import-list-diagnosis): remove with the rest of the trace.
+private let subscriptionsLog = Logger.bae("DesktopSubscriptions")
 
 private final class OutputValueSink: OutputCallback, @unchecked Sendable {
     private let apply: @MainActor @Sendable (BridgeOutputSnapshot) -> Void
@@ -187,6 +191,9 @@ final class DesktopSubscriptions {
         // starting up is raised on the first delivery instead of being
         // published to nobody.
         importStore.onScanFailure = { [uiStore] watchedFolderPath, detail in
+            subscriptionsLog.error(
+                "alerting scan failure: \(watchedFolderPath)"
+            )
             uiStore.showError(
                 DisplayError(
                     line: String(
@@ -218,6 +225,7 @@ final class DesktopSubscriptions {
     }
 
     func start() {
+        subscriptionsLog.info("desktop subscriptions starting")
         precondition(subscriptions.isEmpty)
         subscriptions = [
             appHandle.subscribeOutputs(
@@ -234,6 +242,7 @@ final class DesktopSubscriptions {
         uiStore.onFolderCandidateSelectionChanged = { [selection] keys in
             selection.selectionChanged(keys)
         }
+        subscriptionsLog.info("starting the import list load")
         importList.startLoad()
     }
 }

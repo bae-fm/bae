@@ -1,4 +1,10 @@
 import Foundation
+import OSLog
+
+// TRACE(import-list-diagnosis): every hop of the import list's read, so a
+// startup failure can be followed in Console. Remove with the core-side
+// counterpart once the path is settled.
+private let listLog = Logger.bae("ImportListPageSource")
 
 // The import list is a desktop surface: its bridge types are built behind the
 // bridge's `desktop` feature, which the iOS bindings leave out.
@@ -85,6 +91,7 @@ import Foundation
         ) {
             self.subscription = subscription
             self.onSummary = onSummary
+            listLog.info("page source created; delivery task starting")
             deliveries = Task { [weak self] in
                 await self?.deliver()
             }
@@ -125,7 +132,15 @@ import Foundation
             let failure = self.failure
             let windows = requestedWindows()
             lock.unlock()
+            let standing =
+                failure.map { String(describing: $0) } ?? "none"
+            listLog.info(
+                "page \(offset)/\(limit) registering; standing failure: \(standing)"
+            )
             if let failure {
+                listLog.error(
+                    "page \(offset)/\(limit) told about the standing failure"
+                )
                 Task { @MainActor in onError(failure) }
                 return PageWindow(source: self, key: key)
             }
@@ -183,6 +198,11 @@ import Foundation
             while !Task.isCancelled {
                 do {
                     let snapshot = try await subscription.next()
+                    let folders = snapshot.summary.watchedFolders.count
+                    let statuses = snapshot.summary.folderScanStatuses.count
+                    listLog.info(
+                        "delivery: \(folders) folders, \(statuses) statuses, \(snapshot.totalCount) items"
+                    )
                     let sinks = registeredSinks()
                     let onSummary = self.onSummary
                     let summary = snapshot.summary
@@ -200,6 +220,8 @@ import Foundation
                 }
                 catch {
                     if Task.isCancelled { return }
+                    let described = String(describing: error)
+                    listLog.error("delivery FAILED: \(described)")
                     failEveryPage(with: error)
                     // A failed read leaves nothing to wait on; the list rebuilds
                     // itself from the error its pages just received.
@@ -213,6 +235,9 @@ import Foundation
             failure = error
             let sinks = self.sinks
             lock.unlock()
+            listLog.error(
+                "failure retained; telling \(sinks.count) already-registered page(s)"
+            )
             Task { @MainActor in
                 for sink in sinks.values {
                     sink.error(error)
