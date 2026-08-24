@@ -258,7 +258,6 @@ struct ImportMappingColumns {
 
     static let position: CGFloat = 34
     static let length: CGFloat = 64
-    static let role: CGFloat = 118
     static let spacing: CGFloat = 10
     static let rowPadding: CGFloat = 14
 

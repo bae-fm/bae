@@ -378,7 +378,7 @@ enum MappingFixtures {
             ),
             release: picked == nil ? nil : releaseDetail,
             pickedLibraryStatus: nil,
-            evidence: picked == nil ? nil : .discIdAlone,
+            fileEvidence: [],
             edit: picked == nil ? nil : edit,
             mapping: mapping
                 ?? BridgeMappingTable(

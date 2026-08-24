@@ -218,7 +218,7 @@ private func detail(
         row: row ?? readyRow(folderPath, title: name),
         release: release,
         pickedLibraryStatus: nil,
-        evidence: nil,
+        fileEvidence: [],
         edit: nil,
         mapping: BridgeMappingTable(
             images: [],

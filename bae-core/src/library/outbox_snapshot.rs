@@ -546,9 +546,9 @@ pub struct UploadFileOp {
 /// A release's uploads, grouped so the queue pane renders one expandable row per
 /// release (matching the storage table) with the files inside. Every durable
 /// upload is rooted at a live release; missing release/title context fails the
-/// database projection before this value can exist. Files are in
-/// [`UploadFileLabel::display_order`], not the order the queue happened to
-/// enqueue them.
+/// database projection before this value can exist. Files are listed by name —
+/// naturally and ignoring case, with the release's own artwork ahead of them —
+/// not in the order the queue happened to enqueue them.
 #[derive(Debug, Clone)]
 pub struct UploadReleaseGroup {
     pub release_id: String,

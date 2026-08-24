@@ -106,6 +106,10 @@ struct ImportConfirmationCardAction: View {
         )
         .padding()
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        // A running import draws its progress through the candidate-runtime
+        // reader, so the preview mounts the same chain the app does even while
+        // it is showing the state before one starts.
+        .candidateReaderPreviewEnvironment()
         .windowBackground()
     }
 #endif

@@ -222,15 +222,6 @@
             relativeFolderPath: "Collection"
         )
 
-        private static func releaseQueueKey(
-            _ relativePath: String
-        ) -> BridgeFolderReleaseDecisionKey {
-            BridgeFolderReleaseDecisionKey(
-                watchedFolderPath: releaseQueueRoot,
-                relativeFolderPath: relativePath
-            )
-        }
-
         private static func releaseQueueRow(
             name: String,
             displayPath: String,
