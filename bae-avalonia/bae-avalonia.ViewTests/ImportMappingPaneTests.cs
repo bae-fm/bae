@@ -46,7 +46,7 @@ public sealed class ImportMappingPaneTests
         // show it in.
         Assert.Single(
             pane.GetLogicalDescendants().OfType<Image>(),
-            image => image.Width == 80);
+            image => image.Width == ImportIdentitySection.CoverSize);
     }
 
     // The pane leads with the folder it is about — the one fact nothing below
