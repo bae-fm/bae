@@ -373,7 +373,6 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>பொருத்தம் கிடைக்கவில்லை</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது</value></data>
-  <data name="import.progress.left" xml:space="preserve"><value>மீதம்: {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படும் வேட்பாளருக்குச் செல்</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} தேர்ந்தெடுக்கப்பட்டன</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>அனைத்தையும் தேர்ந்தெடு</value></data>

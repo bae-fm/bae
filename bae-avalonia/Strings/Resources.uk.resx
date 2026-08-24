@@ -373,7 +373,6 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Немає збігу</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Ще ідентифікується</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Ідентифікація</value></data>
-  <data name="import.progress.left" xml:space="preserve"><value>залишилось: {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Перейти до кандидата, що ще ідентифікується</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Вибрано: {count}</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Вибрати все</value></data>

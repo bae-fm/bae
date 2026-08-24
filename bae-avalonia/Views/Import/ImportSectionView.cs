@@ -538,12 +538,14 @@ internal sealed partial class ImportSectionView : UserControl
             return;
         }
         _progressButton.IsVisible = true;
-        var remaining = (long)(progress.Total - progress.Identified);
-        _progressRemaining.Text = Loc.Chrome("import.progress.left", "count", remaining);
         var fraction = (double)progress.Identified / progress.Total;
         _progressRing.SweepAngle = 360 * fraction;
-        _progressCount.Text =
+        // The same two numbers beside the ring and inside the flyout it opens,
+        // so the glance and the line never disagree.
+        var counted =
             $"{progress.Identified.ToString(CultureInfo.CurrentCulture)} / {progress.Total.ToString(CultureInfo.CurrentCulture)}";
+        _progressRemaining.Text = counted;
+        _progressCount.Text = counted;
         _progressBarHost.Children.Clear();
         _progressBarHost.Children.Add(ThinProgressBar(fraction));
         _progressGoToKey = _import.Summary.FirstUnidentifiedKey;

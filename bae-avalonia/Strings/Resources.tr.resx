@@ -373,7 +373,6 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Eşleşme Yok</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Hâlâ Tanımlanıyor</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Tanımlanıyor</value></data>
-  <data name="import.progress.left" xml:space="preserve"><value>{count} kaldı</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Hâlâ tanımlanan bir adaya git</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} seçildi</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Tümünü Seç</value></data>

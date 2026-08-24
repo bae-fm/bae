@@ -373,7 +373,6 @@
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Không khớp</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Vẫn đang nhận dạng</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Đang nhận dạng</value></data>
-  <data name="import.progress.left" xml:space="preserve"><value>còn {count}</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Đến ứng viên vẫn đang được nhận dạng</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Đã chọn {count}</value></data>
   <data name="import.footbar.select_all" xml:space="preserve"><value>Chọn tất cả</value></data>

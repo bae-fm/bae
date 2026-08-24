@@ -62,10 +62,6 @@ struct QueueProgressIndicator: View {
     @State
     private var lineShown = false
 
-    private var remaining: Int {
-        max(Int(total) - Int(identified), 0)
-    }
-
     private var fraction: Double {
         total == 0 ? 0 : Double(identified) / Double(total)
     }
@@ -76,9 +72,16 @@ struct QueueProgressIndicator: View {
         } label: {
             HStack(spacing: 4) {
                 ring
-                Text("\(remaining) left")
-                    .font(.system(size: 11.5))
-                    .monospacedDigit()
+                // The same two numbers the popover shows, so the glance and
+                // the line it opens never disagree. Verbatim: this is digits
+                // and a separator, and each number is already formatted for
+                // the locale.
+                Text(
+                    verbatim:
+                        "\(identified.formatted()) / \(total.formatted())"
+                )
+                .font(.system(size: 11.5))
+                .monospacedDigit()
             }
             .foregroundStyle(.secondary)
             .contentShape(Rectangle())
