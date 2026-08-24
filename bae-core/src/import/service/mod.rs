@@ -233,6 +233,18 @@ struct RootScanSchedule {
     followup_waiters: Vec<RefreshCompletion>,
 }
 
+/// What the blocking folder walk hands back: whether it read the tree, every
+/// directory it visited, and — where it could read all of their mtimes — when
+/// each was last touched.
+type FolderWalkOutcome = (
+    Result<(), crate::import::folder_scanner::FolderScanError>,
+    HashSet<PathBuf>,
+    Option<Vec<(String, i64)>>,
+);
+
+/// The walk itself, still running.
+type FolderWalk = tokio::task::JoinHandle<FolderWalkOutcome>;
+
 /// One scan item after its durable write, with the commit lock still held so
 /// the events announcing it go out before anything else writes.
 struct PersistedScanItem {

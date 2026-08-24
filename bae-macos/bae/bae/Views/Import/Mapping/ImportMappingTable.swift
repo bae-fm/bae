@@ -213,6 +213,24 @@ struct ImportMappingTable: View {
     }
 }
 
+extension View {
+    /// What every row of the mapping table sits in: one leading edge, one
+    /// height, and a separator over it. No striping — the columns are what a
+    /// reader follows across a row, and a tinted band under half of them is a
+    /// second, competing grouping.
+    fileprivate func rowChrome(background: Color = .clear) -> some View {
+        padding(.horizontal, ImportMappingColumns.rowPadding)
+            .padding(.vertical, 6)
+            .frame(minHeight: 40)
+            .background(background)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(.white.opacity(0.07))
+                    .frame(height: 1)
+            }
+    }
+}
+
 /// The widths the mapping table resolves for one pane.
 ///
 /// Two sections share one resolution so their headers and rows line up down

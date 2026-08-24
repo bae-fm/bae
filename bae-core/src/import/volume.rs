@@ -113,10 +113,12 @@ mod platform {
     use std::path::Path;
 
     /// Linux has no "is this local" flag, so the filesystem's own magic number
-    /// is what answers. These are the network filesystems a music library is
+    /// is what answers. Typed as the field it is compared against rather than
+    /// cast to a width of its own, so the comparison stays whatever `statfs`
+    /// says it is. These are the network filesystems a music library is
     /// plausibly kept on; anything not listed reads as local, which costs a
     /// folder nothing but the cheaper check.
-    const NETWORK_MAGICS: &[i64] = &[
+    const NETWORK_MAGICS: &[libc::__fsword_t] = &[
         0xFF53_4D42, // CIFS / SMB1
         0xFE53_4D42, // SMB2
         0x6969,      // NFS
@@ -131,7 +133,7 @@ mod platform {
         let Some(stats) = statfs(path) else {
             return VolumeKind::Local;
         };
-        if NETWORK_MAGICS.contains(&(stats.f_type as i64)) {
+        if NETWORK_MAGICS.contains(&stats.f_type) {
             VolumeKind::Network
         } else {
             VolumeKind::Local

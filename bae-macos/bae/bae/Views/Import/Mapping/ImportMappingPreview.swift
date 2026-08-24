@@ -46,7 +46,6 @@
                     viewInLibrary: { _ in },
                 ),
                 onSetIdentity: { _ in },
-                onReleaseDecision: { _, _ in },
                 onFindRelease: {},
                 onPickRelease: { _ in },
                 onEditCover: {},

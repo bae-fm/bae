@@ -82,11 +82,7 @@ impl ImportService {
         root: &Path,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
         item_rx: &mut mpsc::Receiver<ScanItem>,
-        walk: tokio::task::JoinHandle<(
-            Result<(), crate::import::folder_scanner::FolderScanError>,
-            HashSet<PathBuf>,
-            Option<Vec<(String, i64)>>,
-        )>,
+        walk: FolderWalk,
     ) -> Result<(), crate::import::ImportError> {
         cancellation.cancel();
         while item_rx.recv().await.is_some() {}
