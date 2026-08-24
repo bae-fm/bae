@@ -318,7 +318,11 @@ struct LibraryBrowseSessionAlbumProjectionTests {
         session?.albumSelection.toggle("album-a")
         await waitForStoreUpdate { detailProbe.count == 1 }
         session = nil
-        await Task.yield()
+        // Dropping the session tears its observation down through the task
+        // that owns the query, which takes more than one turn to reach the
+        // cancel — so this waits for the cancel itself, the way the sibling
+        // test above waits for a deselection's.
+        await waitForStoreUpdate { detailProbe.isCancelled(subscription: 0) }
 
         #expect(weakSession == nil)
         #expect(detailProbe.isCancelled(subscription: 0))

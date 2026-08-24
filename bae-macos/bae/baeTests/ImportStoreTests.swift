@@ -430,6 +430,12 @@ struct ImportStoreSidebarCoverTests {
 
 // MARK: - The paged list
 
+/// How many pages the paged list has taken delivery of.
+@MainActor
+private final class DeliveredPages {
+    var count = 0
+}
+
 @Suite("Import list page source")
 struct ImportListPageSourceTests {
     /// A stub bridge subscription: it records the windows asked for and hands
@@ -564,7 +570,7 @@ struct ImportListPageSourceTests {
                 firstUnidentifiedKey: "/w/c"
             )
         )
-        try await settle()
+        await settle(until: { totals.count == 2 })
 
         #expect(first == ["candidate:/w/a", "candidate:/w/b"])
         #expect(second == ["candidate:/w/c"])
@@ -612,9 +618,16 @@ struct ImportListPageSourceTests {
             onSummary: { _ in }
         )
         let importStore = ImportStore()
+        // A redelivered page changes nothing else about the list, so the count
+        // of pages taken is the one place a delivery is observable — and the
+        // only thing each wait below can honestly wait for.
+        let delivered = DeliveredPages()
         let list = PaginatedList<BridgeImportListItem>(
             pageSource: source,
-            ingest: { importStore.ingest($0) },
+            ingest: {
+                delivered.count += 1
+                importStore.ingest($0)
+            },
             onError: { _ in },
             onSnapshot: { ids, _ in importStore.retainItems(ids) }
         )
@@ -622,12 +635,12 @@ struct ImportListPageSourceTests {
         let secondPage = Array(keys[50..<60])
 
         async let initial: Void = list.loadInitial()
-        try await settle()
+        await settle(until: { !subscription.requestedWindows.isEmpty })
         subscription.deliver(
             snapshot([(0, 50, firstPage)], totalCount: UInt64(total))
         )
         await initial
-        try await settle()
+        await settle(until: { delivered.count == 1 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
         // A commit that leaves this window's rows exactly where they were —
@@ -636,14 +649,14 @@ struct ImportListPageSourceTests {
         subscription.deliver(
             snapshot([(0, 50, firstPage)], totalCount: UInt64(total))
         )
-        try await settle()
+        await settle(until: { delivered.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
         // Scrolling past the page boundary registers a second window. The
         // first window's rows are still on screen, so they stay resolvable
         // while the value that answers the new window is still in flight.
         async let next: Void = list.loadPage(containing: 55)
-        try await settle()
+        await settle(until: { subscription.requestedWindows.last?.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
 
         subscription.deliver(
@@ -653,7 +666,8 @@ struct ImportListPageSourceTests {
             )
         )
         await next
-        try await settle()
+        // One page taken per window, so the two-window value lands as two.
+        await settle(until: { delivered.count == 4 })
         #expect(loadedKeys(list, importStore, 0..<60) == keys)
     }
 
@@ -677,9 +691,16 @@ struct ImportListPageSourceTests {
         }
     }
 
-    /// Let the source's delivery task reach the main actor.
-    private func settle() async throws {
-        for _ in 0..<10 {
+    /// Let the source's delivery task reach the main actor, waiting for the
+    /// thing being waited on rather than for a fixed number of turns.
+    ///
+    /// A delivery hops off the main actor and back, and how many turns that
+    /// takes depends on what else the process is running — a fixed count of
+    /// yields passes with this suite alone and loses the race in a loaded test
+    /// bundle, where it reads as a value that never arrived.
+    @MainActor
+    private func settle(until arrived: @MainActor () -> Bool) async {
+        for _ in 0..<100 where !arrived() {
             await Task.yield()
         }
     }

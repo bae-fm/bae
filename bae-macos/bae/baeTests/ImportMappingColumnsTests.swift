@@ -36,7 +36,18 @@ struct ImportMappingColumnsTests {
 
     /// Under its minimum the table stops shrinking and is laid out at that
     /// minimum instead — the pane scrolls it sideways from there.
-    @Test(arguments: [0, 320, 600, ImportMappingColumns.minimumTableWidth - 1])
+    ///
+    /// The widths are stated against the minimum rather than as numbers: the
+    /// column floors have moved once already, and a literal that used to sit
+    /// under the minimum quietly becomes a width the table lays out normally.
+    @Test(
+        arguments: [
+            0,
+            ImportMappingColumns.minimumTableWidth / 4,
+            ImportMappingColumns.minimumTableWidth / 2,
+            ImportMappingColumns.minimumTableWidth - 1,
+        ] as [CGFloat]
+    )
     func aTableTooNarrowForItsColumnsIsLaidOutAtItsMinimum(width: CGFloat) {
         let columns = ImportMappingColumns.resolved(tableWidth: width)
 

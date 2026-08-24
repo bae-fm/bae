@@ -376,7 +376,8 @@
         }
 
         /// Every Import-tab state in one production-backed fixture: the
-        /// candidate questions and terminal tabs, plus the mixed folder trees.
+        /// candidate questions and the terminal tabs, under a second watched
+        /// root so the folder menu has more than one entry to draw.
         @MainActor
         static func importSmokeTestScene() -> ImportPreviewFixture {
             let scene = importTabScene()
@@ -394,7 +395,16 @@
                     firstUnidentifiedKey: base.firstUnidentifiedKey
                 )
             )
-            scene.store.queueIdentifyProgress = (identified: 20, total: 21)
+            // The identify count is over the whole queue, with the one row
+            // that is still identifying yet to land. Counted off the rows the
+            // scene actually holds rather than written down beside them, so
+            // adding a row to the fixture cannot leave the header claiming a
+            // queue that is not there.
+            let queue =
+                base.counts.pending + base.counts.done + base.counts.skipped
+            scene.store.queueIdentifyProgress = (
+                identified: queue - 1, total: queue
+            )
             return ImportPreviewFixture(
                 store: scene.store,
                 itemsByTab: scene.itemsByTab
