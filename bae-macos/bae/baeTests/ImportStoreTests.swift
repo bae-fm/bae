@@ -348,8 +348,7 @@ struct ImportLoudnessProgressTests {
         let store = ImportStore()
         let handler = DesktopEventHandler(
             importStore: store,
-            mediaControlService: MediaControlService(),
-            uiStore: UiStore()
+            mediaControlService: MediaControlService()
         )
 
         handler.apply(
@@ -728,5 +727,105 @@ struct ImportSelectionTests {
 
         #expect(uiStore.selectedFolderCandidates == ["/w/b"])
         #expect(reported == [["/w/a", "/w/b"], ["/w/b"]])
+    }
+}
+
+@Suite("Watched folder scan failures")
+struct ImportStoreScanFailureTests {
+    /// A summary carrying `statuses`, with everything else empty. The alert
+    /// reads nothing but the scan statuses.
+    private static func summary(
+        _ statuses: [BridgeWatchedFolderScanStatus]
+    ) -> BridgeImportQueueSummary {
+        BridgeImportQueueSummary(
+            counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
+            watchedFolders: [],
+            folderScanStatuses: statuses,
+            groupKeys: [],
+            ready: [],
+            firstUnidentifiedKey: nil
+        )
+    }
+
+    private static func failed(
+        _ path: String,
+        _ error: String
+    ) -> BridgeWatchedFolderScanStatus {
+        BridgeWatchedFolderScanStatus(
+            watchedFolderPath: path,
+            watchedFolderName: "Rips",
+            status: .failed(error: error)
+        )
+    }
+
+    private static func complete(_ path: String)
+        -> BridgeWatchedFolderScanStatus
+    {
+        BridgeWatchedFolderScanStatus(
+            watchedFolderPath: path,
+            watchedFolderName: "Rips",
+            status: .complete
+        )
+    }
+
+    /// The failure a scan wrote before the UI existed is in the first summary
+    /// the store is given, which is the launch case: the app's own startup scan
+    /// runs and fails before any of this is subscribed.
+    @MainActor
+    @Test("a root already failed in the first delivery is reported")
+    func firstDeliveryReportsAnAlreadyFailedRoot() {
+        let store = ImportStore()
+        var raised: [(String, String)] = []
+        store.onScanFailure = { path, detail in raised.append((path, detail)) }
+
+        store.applySummary(
+            Self.summary([Self.failed("/Media", "no such column")])
+        )
+
+        #expect(raised.count == 1)
+        #expect(raised.first?.0 == "/Media")
+        #expect(raised.first?.1 == "no such column")
+    }
+
+    /// The summary is re-delivered on every verdict the sweep commits, and the
+    /// timer re-reads every root every quarter hour — the same fault must not
+    /// raise the alert again. A different fault on the same root does.
+    @MainActor
+    @Test("the same failure is reported once, a different one again")
+    func repeatedDeliveriesReportOnlyNewFailures() {
+        let store = ImportStore()
+        var raised: [(String, String)] = []
+        store.onScanFailure = { path, detail in raised.append((path, detail)) }
+
+        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
+        // A delivery that says the same thing, then one that adds a row so the
+        // summary differs while the failure does not.
+        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
+        store.applySummary(
+            Self.summary([
+                Self.failed("/Media", "offline"), Self.complete("/Other"),
+            ])
+        )
+        store.applySummary(
+            Self.summary([Self.failed("/Media", "no such column")])
+        )
+
+        #expect(raised.map(\.1) == ["offline", "no such column"])
+    }
+
+    /// A root that reads cleanly again has no standing failure, so the next
+    /// time it breaks the same way it is news.
+    @MainActor
+    @Test("a root that recovers reports its next break again")
+    func aRecoveredRootReportsItsNextBreak() {
+        let store = ImportStore()
+        var raised: [(String, String)] = []
+        store.onScanFailure = { path, detail in raised.append((path, detail)) }
+
+        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
+        store.applySummary(Self.summary([Self.complete("/Media")]))
+        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
+
+        #expect(raised.map(\.1) == ["offline", "offline"])
     }
 }

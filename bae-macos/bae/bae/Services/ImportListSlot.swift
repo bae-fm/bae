@@ -37,6 +37,15 @@ final class ImportListSlot {
     @ObservationIgnored
     private var sourceFailed = false
 
+    /// Why the list could not be read, for as long as that stands.
+    ///
+    /// A read that fails delivers no rows, no watched folders and no summary,
+    /// which is indistinguishable from a library that has none — so the import
+    /// tab must render this rather than its "add a folder" prompt. Nil is the
+    /// only state in which the absence of folders means the person has not
+    /// added any.
+    private(set) var loadFailure: DisplayError?
+
     init(
         importStore: ImportStore,
         uiStore: UiStore,
@@ -109,6 +118,7 @@ final class ImportListSlot {
 
     private func reload() async {
         sourceFailed = false
+        loadFailure = nil
         let pages = makeSource(view)
         let importStore = importStore
         let newList = PaginatedList<BridgeImportListItem>(
@@ -118,7 +128,10 @@ final class ImportListSlot {
             },
             onError: { [weak self] (error: any Error) in
                 self?.sourceFailed = true
-                self?.uiStore.showError(error)
+                // A cancellation has no line and is not a failed read.
+                guard let displayed = DisplayError(error) else { return }
+                self?.loadFailure = displayed
+                self?.uiStore.showError(displayed)
             },
             onSnapshot: { (ids: [String], _: Int) in
                 importStore.retainItems(ids)

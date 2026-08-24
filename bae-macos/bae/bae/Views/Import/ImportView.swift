@@ -50,7 +50,10 @@ struct ImportView: View {
         VStack(spacing: 0) {
             Divider()
             ZStack {
-                if importStore.watchedFolders.isEmpty {
+                if let failure = listSlot.loadFailure {
+                    failedState(failure)
+                }
+                else if importStore.watchedFolders.isEmpty {
                     emptyState
                 }
                 else {
@@ -81,6 +84,32 @@ struct ImportView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// The list could not be read at all, so nothing here is known — including
+    /// whether any folder is being watched. Shown in place of the empty state,
+    /// which would otherwise say the library has no folders when the truth is
+    /// that nobody could look.
+    private func failedState(_ failure: DisplayError) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40, weight: .thin))
+                .foregroundStyle(.red)
+            Text("The import list couldn't be read")
+                .font(.callout)
+            if let detail = failure.detailSummary {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .textSelection(.enabled)
+            }
+            Button("Retry") {
+                listSlot.startLoad()
+            }
+        }
+        .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 

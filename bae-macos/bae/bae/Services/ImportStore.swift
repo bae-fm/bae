@@ -41,10 +41,46 @@ class ImportStore {
         firstUnidentifiedKey: nil
     )
 
+    /// The fault each watched root was last reported as having. A summary is
+    /// re-delivered on every verdict the sweep commits, and a root that cannot
+    /// be read fails the same way on every re-scan the timer starts, so this is
+    /// what keeps one broken folder from raising one alert every time either
+    /// happens. Rebuilt from each delivery, so a root that reads cleanly again
+    /// — or stops being watched — leaves, and its next break is news.
+    @ObservationIgnored
+    private var reportedScanFailures: [String: String] = [:]
+
+    /// Called for each watched root whose scan has newly failed, with the
+    /// folder's path and the untranslated fault. Set by whoever owns an error
+    /// surface — this store has none.
+    ///
+    /// The failure arrives on the summary rather than as a transient event
+    /// because that is where it lives: the scan writes it to
+    /// `folder_scan_roots` and the list's live query reads it back, so it is
+    /// delivered whenever the UI subscribes rather than only to whoever was
+    /// already listening. A scan that failed during launch, before any of this
+    /// existed, is in the first delivery.
+    @ObservationIgnored
+    var onScanFailure:
+        ((_ watchedFolderPath: String, _ detail: String) -> Void)?
+
     /// Take a delivered summary, unless it is the one already held.
     func applySummary(_ next: BridgeImportQueueSummary) {
         guard next != summary else { return }
         summary = next
+        reportNewScanFailures()
+    }
+
+    private func reportNewScanFailures() {
+        var current: [String: String] = [:]
+        for status in summary.folderScanStatuses {
+            guard case .failed(let detail) = status.status else { continue }
+            current[status.watchedFolderPath] = detail
+            if reportedScanFailures[status.watchedFolderPath] != detail {
+                onScanFailure?(status.watchedFolderPath, detail)
+            }
+        }
+        reportedScanFailures = current
     }
 
     /// The selected rows' folders, read by key. A selection opens one

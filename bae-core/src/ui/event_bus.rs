@@ -87,13 +87,6 @@ impl UiEventBus {
         runtime_handle.spawn(async move {
             use crate::import::ImportEvent;
 
-            // The failure each watched root was last reported as having, so the
-            // periodic re-scan of an unreachable folder does not raise the same
-            // alert every quarter hour. A root that scans cleanly again drops
-            // out, so the next break is news.
-            let mut reported_failures: std::collections::HashMap<String, String> =
-                std::collections::HashMap::new();
-
             loop {
                 match rx.recv().await {
                     Ok(event) => {
@@ -134,30 +127,6 @@ impl UiEventBus {
                                     identified,
                                     total,
                                 });
-                            }
-                            // A folder the user is watching could not be read.
-                            // The list's menu keeps the lasting mark; this is
-                            // what pops an alert the moment it breaks.
-                            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-                            ImportEvent::Scan(
-                                crate::import::ScanEvent::FolderScanStatusChanged { status },
-                            ) => {
-                                let path = status.watched_folder_path;
-                                match status.status {
-                                    crate::import::FolderScanStatus::Failed { error } => {
-                                        if reported_failures.get(&path) != Some(&error) {
-                                            reported_failures.insert(path.clone(), error.clone());
-                                            bus.emit(UiBusEvent::WatchedFolderScanFailed {
-                                                watched_folder_path: path,
-                                                detail: error,
-                                            });
-                                        }
-                                    }
-                                    crate::import::FolderScanStatus::Complete => {
-                                        reported_failures.remove(&path);
-                                    }
-                                    crate::import::FolderScanStatus::Scanning => {}
-                                }
                             }
                             _ => {}
                         }

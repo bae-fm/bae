@@ -40,8 +40,7 @@ public enum UiEventDispatcher {
         #if os(macOS)
             case .candidateImportLoudnessProgress,
                 .candidateSignalsUpdated,
-                .importQueueIdentifyProgress,
-                .watchedFolderScanFailed:
+                .importQueueIdentifyProgress:
                 return .unhandled
         #endif
         }

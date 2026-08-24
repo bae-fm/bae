@@ -181,6 +181,27 @@ final class DesktopSubscriptions {
             uiStore: uiStore,
             importer: importer
         )
+        // A watched folder that could not be read. Wired before anything can
+        // deliver a summary, and fed from the list's live query rather than a
+        // transient event, so a scan that failed while the app was still
+        // starting up is raised on the first delivery instead of being
+        // published to nobody.
+        importStore.onScanFailure = { [uiStore] watchedFolderPath, detail in
+            uiStore.showError(
+                DisplayError(
+                    line: String(
+                        format: NSLocalizedString(
+                            "ui.import.folder.scan_failed",
+                            tableName: "Core",
+                            bundle: .main,
+                            comment: ""
+                        ),
+                        watchedFolderPath
+                    ),
+                    detail: detail
+                )
+            )
+        }
         importList = ImportListSlot(
             importStore: importStore,
             uiStore: uiStore,

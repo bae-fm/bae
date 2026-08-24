@@ -65,6 +65,17 @@ import Foundation
         private let lock = NSLock()
         private var sinks: [WindowKey: Sink] = [:]
         private var deliveries: Task<Void, Never>?
+        /// The read failure this source died of, kept so a page registered
+        /// after it hears about it.
+        ///
+        /// The delivery task starts with this object, before the list has
+        /// registered its first page, so a read that fails immediately — a
+        /// database this build cannot read — fails with nothing to tell. That
+        /// error used to be dropped, and the page that registered a moment
+        /// later then waited on a delivery loop that had already returned: no
+        /// rows, no summary, no alert, and an import tab that renders its
+        /// "add a folder" prompt as though the library simply had none.
+        private var failure: (any Error)?
 
         public init(
             subscription: any ImportListSubscriptionProtocol,
@@ -111,8 +122,13 @@ import Foundation
             let key = WindowKey(offset: UInt64(offset), limit: UInt64(limit))
             lock.lock()
             sinks[key] = Sink(value: onValue, error: onError)
+            let failure = self.failure
             let windows = requestedWindows()
             lock.unlock()
+            if let failure {
+                Task { @MainActor in onError(failure) }
+                return PageWindow(source: self, key: key)
+            }
             push(windows, failing: onError)
             return PageWindow(source: self, key: key)
         }
@@ -193,7 +209,10 @@ import Foundation
         }
 
         private func failEveryPage(with error: any Error) {
-            let sinks = registeredSinks()
+            lock.lock()
+            failure = error
+            let sinks = self.sinks
+            lock.unlock()
             Task { @MainActor in
                 for sink in sinks.values {
                     sink.error(error)

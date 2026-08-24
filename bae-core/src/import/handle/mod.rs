@@ -9,7 +9,7 @@ use crate::library::LibraryManager;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 mod edits;
 mod import;

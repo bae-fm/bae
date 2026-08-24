@@ -36,22 +36,13 @@ pub(super) fn convert_ui_event(
         UiBusEvent::ImportQueueIdentifyProgress { identified, total } => {
             Some(BridgeUiEvent::ImportQueueIdentifyProgress { identified, total })
         }
-        #[cfg(feature = "desktop")]
-        UiBusEvent::WatchedFolderScanFailed {
-            watched_folder_path,
-            detail,
-        } => Some(BridgeUiEvent::WatchedFolderScanFailed {
-            watched_folder_path,
-            detail,
-        }),
         #[cfg(all(
             not(feature = "desktop"),
             not(any(target_os = "ios", target_os = "android"))
         ))]
         UiBusEvent::CandidateImportLoudnessProgress { .. }
         | UiBusEvent::CandidateSignalsUpdated { .. }
-        | UiBusEvent::ImportQueueIdentifyProgress { .. }
-        | UiBusEvent::WatchedFolderScanFailed { .. } => None,
+        | UiBusEvent::ImportQueueIdentifyProgress { .. } => None,
         UiBusEvent::Error { error } => Some(BridgeUiEvent::Error {
             error: crate::types::BridgeError::from_core(error),
         }),

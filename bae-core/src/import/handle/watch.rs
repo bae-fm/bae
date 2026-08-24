@@ -31,6 +31,12 @@ impl ImportServiceHandle {
     /// drop's, a `bae://import` link's. It is settled to the one spelling the
     /// row is keyed by before anything here uses it, so the in-memory registry,
     /// the OS watch, and the durable row all name the folder the same way.
+    ///
+    /// Choosing a folder that is already watched re-reads it. It is not an
+    /// error and it must not be nothing: the user pointed at a folder and asked
+    /// for it to be taken in, and a call that returned to a list which never
+    /// moved — no scan, no status, no log line — is how a folder that could not
+    /// be read stayed invisible however many times it was picked.
     pub async fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
         let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
         let _commit = self.folder_state_commit.lock().await;
@@ -39,7 +45,11 @@ impl ImportServiceHandle {
             .add_watched_import_folder(&path)
             .await?;
         if !added {
-            return Ok(());
+            info!("{path} is already watched; re-reading it");
+            return self.send_watcher_command(
+                WatcherCommand::Rescan(std::path::PathBuf::from(&path)),
+                "Failed to start watching folder",
+            );
         }
         let folders = {
             let mut registry = self.folder_registry.lock().unwrap();

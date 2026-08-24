@@ -27,6 +27,13 @@ internal sealed class ImportListPageSource : IPageSource<BridgeImportListItem>, 
     private readonly IImportListSubscription? _subscription;
 
     private bool _closed;
+    /// <summary>The read failure this source died of, kept so a page that
+    /// registers afterwards hears about it. The consume loop starts with this
+    /// object, before the list has registered its first page, so a read that
+    /// fails immediately would otherwise fail with nobody to tell — and the
+    /// page registered a moment later would wait forever on a loop that had
+    /// already returned.</summary>
+    private Exception? _failure;
 
     public ImportListPageSource(
         BridgeImportListView view,
@@ -88,6 +95,11 @@ internal sealed class ImportListPageSource : IPageSource<BridgeImportListItem>, 
         var key = (offset, limit);
         _sinks[key] = onValue;
         _failures[key] = onError;
+        if (_failure is { } failure)
+        {
+            _dispatch(() => onError(failure));
+            return new WindowRegistration(this, key);
+        }
         PushWindows();
         return new WindowRegistration(this, key);
     }
@@ -161,6 +173,7 @@ internal sealed class ImportListPageSource : IPageSource<BridgeImportListItem>, 
 
     private void Fail(Exception error)
     {
+        _failure = error;
         foreach (var failure in _failures.Values.ToList())
         {
             failure(error);

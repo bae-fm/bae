@@ -101,7 +101,7 @@ internal sealed partial class ImportSectionView : UserControl
             () => _import.List,
             _import.Item,
             BuildListCell,
-            () => Loc.Chrome(
+            () => _import.ListFailure ?? Loc.Chrome(
                 _import.FilterText.Length > 0
                     ? "import.empty.no_matches"
                     : "import.empty.nothing_here"));

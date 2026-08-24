@@ -132,6 +132,8 @@ internal sealed class ImportStore : IDisposable
         List = BuildList(_source);
     }
 
+    private readonly ScanFailureAlerts _scanFailures = new();
+
     private static BridgeImportQueueSummary EmptySummary => new(
         Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
         WatchedFolders: Array.Empty<BridgeWatchedFolder>(),
@@ -157,15 +159,25 @@ internal sealed class ImportStore : IDisposable
     private PaginatedList<BridgeImportListItem, string> BuildList(ImportListPageSource source) =>
         new(source, StableKey, Ingest, error => Show(error));
 
+    /// <summary>Why the import list could not be read, for as long as that
+    /// stands. A read that fails delivers no rows, no watched folders and no
+    /// summary, which is indistinguishable from a library that has none — so
+    /// the list says this instead of "nothing here yet". Null is the only state
+    /// in which an empty list means the queue is genuinely empty.</summary>
+    public string? ListFailure { get; private set; }
+
     private void Show(Exception error)
     {
         if (error is OperationCanceledException)
         {
             return;
         }
-        _showError(
-            Loc.Chrome("import.error_title"),
-            error is PageLoadException { Line: { } line } ? line : Loc.Chrome("import.failed"));
+        var line = error is PageLoadException { Line: { } failed }
+            ? failed
+            : Loc.Chrome("import.failed");
+        ListFailure = line;
+        Changed?.Invoke();
+        _showError(Loc.Chrome("import.error_title"), line);
     }
 
     internal static string StableKey(BridgeImportListItem item) => item switch
@@ -284,8 +296,17 @@ internal sealed class ImportStore : IDisposable
     /// page source's ingest.</summary>
     private void ApplyListSnapshot(BridgeImportListSnapshot snapshot)
     {
+        // A delivery is the read working again.
+        ListFailure = null;
         Summary = snapshot.Summary;
         WatchedFolders = snapshot.Summary.WatchedFolders.ToList();
+        // A watched folder that could not be read. The folder list's own mark
+        // is behind a menu nobody opens after picking a folder, so the failure
+        // also gets said out loud, once per distinct fault.
+        foreach (var (path, detail) in _scanFailures.NewFailures(Summary.FolderScanStatuses))
+        {
+            _showError(Loc.Core("ui.import.folder.scan_failed", "folder", path), detail);
+        }
         Interaction.RetainGroupDisclosureKeys(
             Summary.GroupKeys.Select(GroupDisclosureKey));
 
@@ -728,6 +749,8 @@ internal sealed class ImportStore : IDisposable
     {
         ClearReleaseLibraryStatus();
         ClearObservedCandidate();
+        _scanFailures.Clear();
+        ListFailure = null;
         Summary = EmptySummary;
         WatchedFolders = new List<BridgeWatchedFolder>();
         QueueIdentifyProgress = null;

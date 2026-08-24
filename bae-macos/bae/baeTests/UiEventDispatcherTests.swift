@@ -27,24 +27,6 @@ struct UiEventDispatcherErrorTests {
         #expect(appService.hasDisplayedErrorForTesting)
     }
 
-    @Test("a failed watched-folder scan reaches uiStore through the tail")
-    func watchedFolderScanFailureReachesUiStore() {
-        let appService = makeAppService()
-        let sink = UiEventDispatcher.makeSink(
-            appService: appService,
-            onUnhandled: DesktopUiEvents.apply
-        )
-
-        sink(
-            .watchedFolderScanFailed(
-                watchedFolderPath: "/Music/Rips",
-                detail: "no such column: author"
-            )
-        )
-
-        #expect(appService.hasDisplayedErrorForTesting)
-    }
-
     @Test("error reaches uiStore through the showError override")
     func errorReachesUiStore() {
         let appService = makeAppService()
@@ -118,10 +100,6 @@ private let unhandledEvents: [BridgeUiEvent] = [
         tracksDone: 0,
         tracksTotal: 1,
         fraction: 0
-    ),
-    .watchedFolderScanFailed(
-        watchedFolderPath: "/Music/Rips",
-        detail: "no such column: author"
     ),
 ]
 

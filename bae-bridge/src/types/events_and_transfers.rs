@@ -75,19 +75,6 @@ pub enum BridgeUiEvent {
         identified: u32,
         total: u32,
     },
-    /// Reading a watched folder failed. The UI raises an alert naming the
-    /// folder and carrying `detail` — the untranslated diagnostic — beside it;
-    /// the folder's entry in the import list's menu keeps the lasting mark.
-    /// Sent once per distinct failure, not once per re-scan.
-    ///
-    /// The diagnostic is `detail`, not `error`: a `BridgeUiEvent` variant named
-    /// `Error` already exists, and the generated C# nests every variant under
-    /// the same parent, where a field named `error` collides with it.
-    #[cfg(feature = "desktop")]
-    WatchedFolderScanFailed {
-        watched_folder_path: String,
-        detail: String,
-    },
 
     // ── Errors ─────────────────────────────────────────────────────
     Error {

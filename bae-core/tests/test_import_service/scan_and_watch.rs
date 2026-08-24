@@ -400,6 +400,50 @@ async fn scan_whose_stored_decisions_cannot_be_read_records_the_failure() {
     );
 }
 
+/// Choosing a folder that is already watched reads it again. It used to return
+/// having done nothing at all — no scan, no status, no log line — so a user
+/// whose folder could not be read got the same silence however many times they
+/// picked it.
+#[tokio::test]
+async fn adding_an_already_watched_folder_reads_it_again() {
+    support::tracing_init();
+    let f = ImportFixture::new().await;
+    let root = f.temp_path().join("Collection");
+    let album = root.join("Artist - Album");
+    fs::create_dir_all(&album).unwrap();
+    generate_album_files(&album, &["01 Track.flac"]);
+    let root_key = root.to_string_lossy().into_owned();
+
+    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    wait_for_candidates(&f, "the first scan of the added root", |projection| {
+        projection.summary.folder_scan_statuses.iter().any(|status| {
+            status.watched_folder_path == root_key
+                && matches!(status.status, bae_core::import::FolderScanStatus::Complete)
+        })
+    })
+    .await;
+
+    let mut scan_rx = f.handle.subscribe_folder_scan_events();
+    f.handle.add_watched_folder(root_key.clone()).await.unwrap();
+    wait_for_scan_event(
+        &mut scan_rx,
+        "the re-added root is scanned again",
+        |event| {
+            matches!(
+                event,
+                ScanEvent::FolderScanStatusChanged { status }
+                    if status.watched_folder_path == root_key
+                        && matches!(
+                            status.status,
+                            bae_core::import::FolderScanStatus::Scanning
+                        )
+            )
+        },
+    )
+    .await;
+    assert_eq!(f.handle.watched_folders().len(), 1);
+}
+
 /// A refresh waits for its scan to be over. If a watched root disappears, the
 /// scan records the failed status and preserves the last candidate snapshot
 /// rather than turning an unavailable filesystem into removals — and the
