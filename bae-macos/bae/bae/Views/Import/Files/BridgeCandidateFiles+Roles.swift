@@ -16,12 +16,10 @@ extension BridgeFileRole {
         return false
     }
 
-    /// Cover or artwork — everything the gallery and the cover picker show.
+    /// Artwork — everything the gallery and the cover picker show.
     var isImage: Bool {
-        switch self {
-        case .cover, .artwork: return true
-        default: return false
-        }
+        if case .artwork = self { return true }
+        return false
     }
 
     var isDocument: Bool {
@@ -48,7 +46,7 @@ extension BridgeCandidateFiles {
         files.filter { $0.role.isTrackSheet }
     }
 
-    /// Cover and artwork — what the cover picker and the lightbox show.
+    /// The artwork the cover picker and the lightbox show.
     var images: [BridgeCandidateFile] { files.filter { $0.role.isImage } }
 }
 

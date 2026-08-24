@@ -201,7 +201,9 @@ extension BridgeMappingRole {
 /// there is no line to draw — core says which by naming a key or not, and two
 /// sides that account for the same rows name none. Each message takes its own
 /// numbers, in the order the English value names them.
-func bridgeSlotReconciliationText(_ value: BridgeSlotReconciliation) -> String? {
+func bridgeSlotReconciliationText(
+    _ value: BridgeSlotReconciliation
+) -> String? {
     guard let key = bridgeSlotReconciliationKey(reconciliation: value) else {
         return nil
     }

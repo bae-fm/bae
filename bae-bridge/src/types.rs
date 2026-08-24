@@ -26,6 +26,9 @@ mod device_pairing_progress_tests;
 #[cfg(test)]
 #[path = "types/eager_cache_fill_tests.rs"]
 mod eager_cache_fill_tests;
+#[cfg(all(test, feature = "desktop"))]
+#[path = "types/loc_key_coverage_tests.rs"]
+mod loc_key_coverage_tests;
 #[cfg(test)]
 #[path = "types_tests.rs"]
 mod tests;
