@@ -323,13 +323,17 @@ impl LibraryManager {
 
         let has_cloud_home = self.has_cloud_home();
         let cover = covers.get(&primary_release_id).cloned();
+        // Ask coven's cache which of these releases are pinned — the orthogonal
+        // coven-cache property of a remote release. One read covers the whole
+        // album, the way the cover lookup above does.
+        let pin_ids: Vec<Option<&str>> = raw
+            .releases
+            .iter()
+            .map(|r| r.files.first().map(|f| f.id.as_str()))
+            .collect();
+        let pin_states = self.releases_pinned(&pin_ids).await?;
         let mut releases = Vec::with_capacity(raw.releases.len());
-        for (i, r) in raw.releases.into_iter().enumerate() {
-            // Ask coven's cache whether this release is pinned — the orthogonal
-            // coven-cache property of a remote release.
-            let pinned = self
-                .release_pinned(r.files.first().map(|f| f.id.as_str()))
-                .await?;
+        for (i, (r, pinned)) in raw.releases.into_iter().zip(pin_states).enumerate() {
             let release_cover = covers.get(&r.release.id).cloned();
             let ctx = ReleaseResolveCtx {
                 has_cloud_home,

@@ -5,47 +5,57 @@ use super::*;
 /// deleted file) is `RejectedBadId` rather than silently folded into `NotPinned`,
 /// so the caller that holds the diagnostics sink can count it as an anomaly before
 /// treating it as not pinned.
+#[derive(Clone, Copy)]
 pub(super) enum ReleasePinState {
     Pinned,
     NotPinned,
     RejectedBadId,
 }
 
-/// Whether `file_id`'s release is pinned offline, answered through the handle's
-/// cache-state query. coven binds the row blob reference from the live
-/// `release_files` row; a `file_id` that names no such row can't be pinned and is
-/// rejected (never trusted), while a real I/O failure on the pin check still
+/// Whether each release is pinned offline, one answer per entry in the order
+/// given, through the handle's set-based cache-state query. Each entry is a
+/// release's representative file id, or `None` for a release with no files —
+/// which is not pinned and asks coven nothing.
+///
+/// coven resolves each live `release_files` row and answers the pin question for
+/// the whole set in one read, so a list that shows a pin marker per row costs one
+/// call rather than one per row. A file id that names no such row can't be
+/// pinned and is rejected (never trusted); a file with no committed cloud object
+/// — a Local release's, or one whose upload has not landed — has nothing to keep
+/// a copy of and is not pinned; a real I/O failure on the pin check still
 /// surfaces.
-pub(super) async fn release_file_pin_state(
+pub(super) async fn release_file_pin_states(
     database: &Database,
-    file_id: &str,
-) -> Result<ReleasePinState, LibraryError> {
-    let blob = match database
-        .row_blob_ref(crate::sync::RELEASE_FILES_NAMESPACE, file_id)
+    any_file_ids: &[Option<&str>],
+) -> Result<Vec<ReleasePinState>, LibraryError> {
+    let named: Vec<String> = any_file_ids
+        .iter()
+        .flatten()
+        .map(|file_id| (*file_id).to_string())
+        .collect();
+    if named.is_empty() {
+        return Ok(vec![ReleasePinState::NotPinned; any_file_ids.len()]);
+    }
+    let pinned = database
+        .rows_pinned(crate::sync::RELEASE_FILES_NAMESPACE, named.clone())
         .await
-    {
-        Ok(blob) => blob,
-        Err(e) => {
-            warn!("pin-state check: no release_files row for {file_id}: {e}");
-            return Ok(ReleasePinState::RejectedBadId);
-        }
-    };
-    // Pinning is a property of a *cloud* object: the pinned folder holds kept
-    // copies of blobs that live remotely. A blob with no committed cloud object
-    // — a Local release's file, or one whose upload has not landed yet — has
-    // nothing to keep a copy of, so it is not pinned. Read that off coven's own
-    // reference rather than asking it to resolve a cache path for an object that
-    // does not exist.
-    if blob.stored().is_none() {
-        return Ok(ReleasePinState::NotPinned);
-    }
-    match database.is_pinned(&[blob]).await {
-        Ok(true) => Ok(ReleasePinState::Pinned),
-        Ok(false) => Ok(ReleasePinState::NotPinned),
-        Err(e) => Err(LibraryError::Storage(format!(
-            "pin-state for {file_id}: {e}"
-        ))),
-    }
+        .map_err(|e| LibraryError::Storage(format!("pin-state for {named:?}: {e}")))?;
+    // coven answers one entry per named id, in order, so stepping those answers
+    // through the named slots puts each back beside the release it came from.
+    let mut answers = named.iter().zip(pinned);
+    Ok(any_file_ids
+        .iter()
+        .map(
+            |any_file_id| match any_file_id.and_then(|_| answers.next()) {
+                Some((_, Some(true))) => ReleasePinState::Pinned,
+                Some((_, Some(false))) | None => ReleasePinState::NotPinned,
+                Some((file_id, None)) => {
+                    warn!("pin-state check: no release_files row for {file_id}");
+                    ReleasePinState::RejectedBadId
+                }
+            },
+        )
+        .collect())
 }
 
 impl LibraryManager {

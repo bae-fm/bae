@@ -218,11 +218,16 @@ impl Database {
         self.inner.handle.unpin(blobs).await
     }
 
-    pub(crate) async fn is_pinned(
+    /// Whether each of `table`'s `row_ids` is pinned offline, one answer per id
+    /// in the order given, resolved in one read. `None` where an id names no
+    /// live blob-bearing row. The set-based read behind every list that draws a
+    /// per-row "kept offline" marker.
+    pub(crate) async fn rows_pinned(
         &self,
-        blobs: &[coven::RowBlobRef],
-    ) -> Result<bool, coven::BlobCacheError> {
-        self.inner.handle.is_pinned(blobs).await
+        table: &str,
+        row_ids: Vec<String>,
+    ) -> Result<Vec<Option<bool>>, coven::BlobCacheError> {
+        self.inner.handle.rows_pinned(table, row_ids).await
     }
 
     pub(crate) async fn evict_blob(

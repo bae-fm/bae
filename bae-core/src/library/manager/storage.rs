@@ -117,6 +117,21 @@ impl LibraryManager {
         }
     }
 
+    /// Whether each row of a Storage Manager page is pinned, in row order, in
+    /// one read. Both page paths — the direct query and the live-query
+    /// projection — resolve their pin markers through here, so neither can drift
+    /// into asking per row.
+    async fn page_pin_states(
+        &self,
+        rows: &[crate::db::DbStorageRow],
+    ) -> Result<Vec<bool>, LibraryError> {
+        let any_file_ids: Vec<Option<&str>> = rows
+            .iter()
+            .map(|row| row.release.any_file_id.as_deref())
+            .collect();
+        self.releases_pinned(&any_file_ids).await
+    }
+
     /// One page of the Storage Manager list, pre-sorted and pre-filtered.
     /// `total_count` counts the filtered subset, not the whole library.
     pub async fn get_storage_page(
@@ -148,11 +163,9 @@ impl LibraryManager {
             })
             .collect();
         let covers = self.cover_refs(&cover_ids).await?;
+        let pin_states = self.page_pin_states(&raw_rows).await?;
         let mut rows = Vec::with_capacity(raw_rows.len());
-        for raw in raw_rows {
-            let pinned = self
-                .release_pinned(raw.release.any_file_id.as_deref())
-                .await?;
+        for (raw, pinned) in raw_rows.into_iter().zip(pin_states) {
             let transfer_action = self.current_transfer_action(&raw.release.id);
             rows.push(StorageRow::from_raw(
                 raw,
@@ -196,11 +209,9 @@ impl LibraryManager {
             })
             .collect::<HashMap<_, _>>();
         let has_cloud_home = self.has_cloud_home();
+        let pin_states = self.page_pin_states(&projection.rows).await?;
         let mut rows = Vec::with_capacity(projection.rows.len());
-        for raw in projection.rows {
-            let pinned = self
-                .release_pinned(raw.release.any_file_id.as_deref())
-                .await?;
+        for (raw, pinned) in projection.rows.into_iter().zip(pin_states) {
             let transfer_action = self.current_transfer_action(&raw.release.id);
             rows.push(StorageRow::from_raw(
                 raw,

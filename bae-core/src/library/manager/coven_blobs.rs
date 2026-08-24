@@ -187,19 +187,34 @@ impl LibraryManager {
         &self,
         any_file_id: Option<&str>,
     ) -> Result<bool, LibraryError> {
-        let Some(file_id) = any_file_id else {
-            return Ok(false);
-        };
-        match release_file_pin_state(&self.database, file_id).await? {
-            ReleasePinState::Pinned => Ok(true),
-            ReleasePinState::NotPinned => Ok(false),
-            ReleasePinState::RejectedBadId => {
-                self.diagnostics.event(TelemetryEvent::Anomaly {
-                    kind: crate::diagnostics::AnomalyKind::BlobIdInvalid,
-                });
-                Ok(false)
-            }
-        }
+        Ok(self.releases_pinned(&[any_file_id]).await?[0])
+    }
+
+    /// The same answer for a list of releases, in the order given, in one read.
+    /// Every list that shows a pin marker per row asks here once for the page
+    /// rather than once per row: a page of releases costs one round trip to
+    /// coven, not one per release.
+    ///
+    /// Each entry is a release's representative file id, or `None` for a release
+    /// with no files.
+    pub(crate) async fn releases_pinned(
+        &self,
+        any_file_ids: &[Option<&str>],
+    ) -> Result<Vec<bool>, LibraryError> {
+        Ok(release_file_pin_states(&self.database, any_file_ids)
+            .await?
+            .into_iter()
+            .map(|state| match state {
+                ReleasePinState::Pinned => true,
+                ReleasePinState::NotPinned => false,
+                ReleasePinState::RejectedBadId => {
+                    self.diagnostics.event(TelemetryEvent::Anomaly {
+                        kind: crate::diagnostics::AnomalyKind::BlobIdInvalid,
+                    });
+                    false
+                }
+            })
+            .collect())
     }
 
     /// Every blob a release keeps pinned: its audio files, plus its cover when it
