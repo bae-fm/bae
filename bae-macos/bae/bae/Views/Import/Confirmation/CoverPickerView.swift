@@ -79,7 +79,7 @@ struct CoverPickerView: View {
                 // Source label + count
                 VStack(spacing: 8) {
                     Text(
-                        "\(cursor.current.label) \u{2014} \(cursor.index + 1) of \(cursor.items.count)"
+                        "\(cursor.current.label): \(cursor.index + 1) of \(cursor.items.count)"
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)

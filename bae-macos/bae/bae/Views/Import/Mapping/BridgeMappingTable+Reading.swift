@@ -122,9 +122,9 @@ struct ImportAudioChoice: Identifiable {
         self.audio = audio
         switch unit.source {
         case .file(let file):
-            label = "\(file.name) \u{2014} \(file.sizeText)"
+            label = "\(file.name), \(file.sizeText)"
         case .sheetEntry(let entry):
-            label = "\(entry.containerName) \u{2014} \(entry.number)"
+            label = "\(entry.containerName), \(entry.number)"
         case .missing:
             return nil
         }
