@@ -98,6 +98,8 @@ cd bae-macos/bae && xcodegen && cd ../..
 DERIVED_DATA="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
 DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
 
+# Keep the normal app identity explicit here even for Debug builds: Xcode
+# previews can use a separate bundle identity without changing run.sh.
 xcodebuild -project bae-macos/bae/bae.xcodeproj \
     -scheme bae \
     -configuration "$CONFIG" \
