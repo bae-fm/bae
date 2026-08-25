@@ -242,11 +242,8 @@ impl LibraryManager {
             let tracks = self.get_tracks_for_release(&release.id).await?;
             all_track_ids.extend(tracks.into_iter().map(|t| t.id));
             let delete_plan = self.release_delete_plan(release).await?;
-            // See `delete_release`: a make-remote caught mid-flight is coven's to
-            // unwind, before the rows it covers are removed.
-            if delete_plan.cancel_make_remote {
-                self.coven_cancel_make_remote(&release.id).await?;
-            }
+            // See `delete_release`: the delete records each release's unwind in
+            // the transaction that removes it.
             db_cleanups.push(delete_plan.db_cleanup);
             evict_blobs.extend(delete_plan.evict_blobs);
         }

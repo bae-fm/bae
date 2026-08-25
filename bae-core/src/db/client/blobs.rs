@@ -15,7 +15,6 @@ pub(crate) struct OutboxDisplayRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OutboxDisplayContext {
     file_names: HashMap<String, String>,
-    album_titles: HashMap<String, ReleaseAlbumTitle>,
 }
 
 /// What the display read found for one queued upload's release root.
@@ -381,7 +380,6 @@ impl Database {
             .subscribe_reconfigurable(initial, |request, sql| {
                 Ok(OutboxDisplayContext {
                     file_names: outbox_release_file_names_on(&sql, &request.release_file_ids)?,
-                    album_titles: outbox_release_titles_on(&sql, &request.release_ids)?,
                 })
             })
     }
@@ -393,7 +391,6 @@ impl Database {
         self.read(move |sql| {
             Ok(OutboxDisplayContext {
                 file_names: outbox_release_file_names_on(&sql, &request.release_file_ids)?,
-                album_titles: outbox_release_titles_on(&sql, &request.release_ids)?,
             })
         })
         .await
@@ -409,24 +406,20 @@ impl Database {
             make_remotes,
         } = snapshot;
 
-        let OutboxDisplayContext {
-            file_names,
-            album_titles,
-        } = context;
+        let OutboxDisplayContext { file_names } = context;
 
         let uploads = uploads
             .into_iter()
             .map(|upload| {
                 let label = match upload.blob.table() {
-                    crate::sync::RELEASE_FILES_NAMESPACE => {
-                        let file_name = file_names.get(upload.blob.row_id()).ok_or_else(|| {
-                            DbError::Message(format!(
-                                "queued release file {} no longer has a database row",
-                                upload.blob.row_id()
-                            ))
-                        })?;
-                        crate::library::UploadFileLabel::Filename(file_name.clone())
-                    }
+                    // A file whose row went with its release has nothing left
+                    // to name it, and needs nothing: the entry is on its way
+                    // out, which is what the row says it is.
+                    crate::sync::RELEASE_FILES_NAMESPACE => file_names
+                        .get(upload.blob.row_id())
+                        .map_or(crate::library::UploadFileLabel::Unwinding, |file_name| {
+                            crate::library::UploadFileLabel::Filename(file_name.clone())
+                        }),
                     crate::sync::COVERS_NAMESPACE => crate::library::UploadFileLabel::Cover,
                     crate::sync::ARTIST_IMAGES_NAMESPACE => {
                         crate::library::UploadFileLabel::ArtistImage
@@ -438,7 +431,7 @@ impl Database {
                     }
                 };
                 let release_id = upload.root_id;
-                let album_title = album_title_of(&album_titles, &release_id, "queued upload")?;
+                let album_title = upload.root_label;
                 Ok(DbOutboxUpload {
                     album_title,
                     release_id,
@@ -456,8 +449,7 @@ impl Database {
         let make_remotes = make_remotes
             .into_iter()
             .map(|transition| {
-                let album_title =
-                    album_title_of(&album_titles, &transition.root_id, "make-Remote")?;
+                let album_title = transition.root_label.clone();
                 Ok(DbMakeRemote {
                     transition,
                     album_title,
@@ -506,6 +498,24 @@ fn outbox_release_file_names_on(
         map.extend(rows);
     }
     Ok(map)
+}
+
+impl Database {
+    /// The album title `release_id` belongs under, read at the moment work is
+    /// queued for it.
+    ///
+    /// This is what the queue snapshots onto its own rows. It is read here,
+    /// where the release is certainly present — queueing work for it is what
+    /// the caller is doing — rather than when the queue is rendered, which is
+    /// exactly when the row may be gone.
+    pub(crate) async fn release_album_title(&self, release_id: &str) -> Result<String, DbError> {
+        let release_id = release_id.to_string();
+        self.read(move |sql| {
+            let titles = outbox_release_titles_on(&sql, std::slice::from_ref(&release_id))?;
+            album_title_of(&titles, &release_id, "queueing an upload for")
+        })
+        .await
+    }
 }
 
 /// The album title one outbox entry renders under, or which row is missing.

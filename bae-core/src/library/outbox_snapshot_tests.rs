@@ -596,6 +596,7 @@ fn publishing_intent_keeps_the_release_visible_after_upload_rows_leave() {
             transition: coven::QueuedMakeRemote {
                 root_table: "releases".to_string(),
                 root_id: RELEASE.to_string(),
+                root_label: "Album Title".to_string(),
                 retain_pinned: false,
                 progress: coven::MakeRemoteProgress::Publishing,
             },

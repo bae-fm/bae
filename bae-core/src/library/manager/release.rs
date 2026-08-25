@@ -797,13 +797,11 @@ impl LibraryManager {
             .collect();
 
         let delete_plan = self.release_delete_plan(&release).await?;
-        // Unwind a make-remote caught mid-flight before the rows go: coven clears
-        // the intent, drops the queued uploads, and tombstones whatever already
-        // reached the cloud. Doing it first means the delete never races the
-        // drain for rows it is about to remove.
-        if delete_plan.cancel_make_remote {
-            self.coven_cancel_make_remote(release_id).await?;
-        }
+        // The delete records the unwind itself, in the transaction that removes
+        // the rows: coven marks the transition cancelling and the drain takes
+        // any object already in the cloud back out. Cancelling here first would
+        // only make the delete wait for a provider it does not need — deleting
+        // is local work, and the unwind waits visibly like any other transfer.
         self.database
             .delete_release_with_cleanup(release_id, &album_id, delete_plan.db_cleanup)
             .await?;

@@ -47,6 +47,8 @@ struct OutboxFileRow: View {
             QueueSummary.message("core.import.role.cover")
         case .artistImage:
             QueueSummary.message("core.outbox.file.artist_image")
+        case .unwinding:
+            QueueSummary.message("core.outbox.file.unwinding")
         }
     }
 

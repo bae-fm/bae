@@ -138,9 +138,15 @@ pub enum BridgeUploadFileState {
 /// image roles cross as typed cases so each platform localizes them.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeUploadFileLabel {
-    Filename { name: String },
+    Filename {
+        name: String,
+    },
     Cover,
     ArtistImage,
+    /// A file whose row went with the release being removed from the cloud.
+    /// There is nothing left to name it and nothing to name: the release
+    /// leaving is what the group says.
+    Unwinding,
 }
 
 /// One cloud object still owed a removal.

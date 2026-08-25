@@ -147,7 +147,6 @@ impl LibraryManager {
                 external_refs_to_clear,
             },
             evict_blobs,
-            cancel_make_remote: make_remote_in_flight,
         })
     }
 

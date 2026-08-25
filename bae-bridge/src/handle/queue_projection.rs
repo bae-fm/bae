@@ -111,6 +111,7 @@ impl crate::types::BridgeUploadFileLabel {
             bae_core::library::UploadFileLabel::Filename(name) => Self::Filename { name },
             bae_core::library::UploadFileLabel::Cover => Self::Cover,
             bae_core::library::UploadFileLabel::ArtistImage => Self::ArtistImage,
+            bae_core::library::UploadFileLabel::Unwinding => Self::Unwinding,
         }
     }
 }

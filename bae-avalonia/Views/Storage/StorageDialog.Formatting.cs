@@ -58,6 +58,7 @@ internal sealed partial class StorageDialog
         BridgeUploadFileLabel.Filename filename => filename.Name,
         BridgeUploadFileLabel.Cover => Loc.Core("core.import.role.cover"),
         BridgeUploadFileLabel.ArtistImage => Loc.Core("core.outbox.file.artist_image"),
+        BridgeUploadFileLabel.Unwinding => Loc.Core("core.outbox.file.unwinding"),
         _ => throw new ArgumentOutOfRangeException(nameof(label), label, "Unknown upload file label"),
     };
 

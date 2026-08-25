@@ -464,10 +464,6 @@ impl SyncStatusState {
 struct ReleaseDeletePlan {
     db_cleanup: DeleteCleanupPlan,
     evict_blobs: Vec<coven::RowBlobRef>,
-    /// The release was mid-make-remote, so coven must unwind that transition
-    /// (intent, queued uploads, and any cloud object already written) before the
-    /// rows go.
-    cancel_make_remote: bool,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

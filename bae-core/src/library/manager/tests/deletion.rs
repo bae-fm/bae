@@ -238,6 +238,20 @@ async fn delete_release_cancels_in_flight_make_remote() {
         .await
         .unwrap()
         .is_none());
+    // The delete records the unwind rather than performing it: the object
+    // already in the cloud has to be taken back out, and only a drain can do
+    // that. Until it runs the queue is intact and says what it is doing.
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&release.id)
+            .await
+            .unwrap(),
+        Some(coven::MakeRemoteProgress::Cancelling),
+        "the deleted release's transition is being unwound"
+    );
+    manager.drain_uploads_for_test().await.unwrap();
+
     assert!(
         manager
             .database
@@ -245,7 +259,7 @@ async fn delete_release_cancels_in_flight_make_remote() {
             .await
             .unwrap()
             == 0,
-        "deleting the release cancels unresolved make-Remote uploads"
+        "the drain took the deleted release's uploads out of the queue"
     );
     assert!(manager
         .database
@@ -273,7 +287,10 @@ async fn delete_release_cancels_in_flight_make_remote() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn delete_release_keeps_rows_when_make_remote_cleanup_fails() {
+/// Deleting is local work. A cloud that refuses the object's removal does not
+/// keep the release: the removal stays owed and waits for a drain that can
+/// carry it out, the way any pending transfer does.
+async fn delete_release_survives_a_cloud_that_refuses_the_cleanup() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
     let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
@@ -282,14 +299,23 @@ async fn delete_release_keeps_rows_when_make_remote_cleanup_fails() {
     manager
         .delete_release(&release.id)
         .await
-        .expect_err("failed cloud cleanup must stop the release delete");
+        .expect("the delete does not wait on the cloud");
 
     assert!(manager
         .database
         .find_release_by_id(&release.id)
         .await
         .unwrap()
-        .is_some());
+        .is_none());
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&release.id)
+            .await
+            .unwrap(),
+        Some(coven::MakeRemoteProgress::Cancelling),
+        "and the unwind is still owed"
+    );
 }
 
 #[cfg(feature = "test-utils")]
@@ -308,6 +334,17 @@ async fn delete_album_cancels_in_flight_make_remote() {
         .await
         .unwrap()
         .is_none());
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&release.id)
+            .await
+            .unwrap(),
+        Some(coven::MakeRemoteProgress::Cancelling),
+        "each deleted release's transition is being unwound"
+    );
+    manager.drain_uploads_for_test().await.unwrap();
+
     assert!(
         manager
             .database
@@ -315,7 +352,7 @@ async fn delete_album_cancels_in_flight_make_remote() {
             .await
             .unwrap()
             == 0,
-        "deleting the album cancels unresolved make-Remote uploads"
+        "the drain took the deleted album's uploads out of the queue"
     );
     assert!(manager
         .database
@@ -343,7 +380,9 @@ async fn delete_album_cancels_in_flight_make_remote() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn delete_album_keeps_rows_when_make_remote_cleanup_fails() {
+/// See the release case: a cloud that refuses the removal does not keep the
+/// album. The removal stays owed.
+async fn delete_album_survives_a_cloud_that_refuses_the_cleanup() {
     let (manager, temp_dir) = setup_test_manager().await;
     let home = connect_test_cloud(&manager).await;
     let release = insert_partially_uploaded_make_remote_release(&manager, temp_dir.path()).await;
@@ -352,14 +391,23 @@ async fn delete_album_keeps_rows_when_make_remote_cleanup_fails() {
     manager
         .delete_album(&release.album_id)
         .await
-        .expect_err("failed cloud cleanup must stop the album delete");
+        .expect("the delete does not wait on the cloud");
 
     assert!(manager
         .database
         .find_release_by_id(&release.id)
         .await
         .unwrap()
-        .is_some());
+        .is_none());
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&release.id)
+            .await
+            .unwrap(),
+        Some(coven::MakeRemoteProgress::Cancelling),
+        "and the unwind is still owed"
+    );
 }
 
 #[tokio::test]

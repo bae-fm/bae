@@ -14,8 +14,12 @@ impl LibraryManager {
         release_id: &str,
         pin: bool,
     ) -> Result<u64, LibraryError> {
+        // The album title rides onto the queue rows here, while the release is
+        // certainly there to read it from — the queue outliving that row is the
+        // whole reason the rows carry a name of their own.
+        let album_title = self.database.release_album_title(release_id).await?;
         self.database
-            .make_remote("releases", release_id, pin)
+            .make_remote("releases", release_id, &album_title, pin)
             .await
             .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))?;
         // Publish the same canonical projection the durable live query emits

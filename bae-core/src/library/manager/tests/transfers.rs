@@ -520,6 +520,8 @@ async fn cancelling_an_upload_then_deleting_its_release_leaves_no_orphan() {
     manager.cancel_release_upload(&release.id).await.unwrap();
     manager.delete_release(&release.id).await.unwrap();
 
+    // The cancel drained before it returned, so the delete finds nothing left
+    // to unwind and the outbox is empty either way.
     let snapshot = manager
         .outbox_snapshot()
         .await
@@ -550,14 +552,64 @@ async fn deleting_a_release_mid_upload_leaves_no_orphan() {
 
     manager.delete_release(&release.id).await.unwrap();
 
+    // The queue outlives the row on purpose: the object may be in the cloud
+    // already and only a drain can take it back out. It reads, and it still
+    // names the release it is removing, which the release row can no longer
+    // say.
     let snapshot = manager
         .outbox_snapshot()
         .await
         .expect("the outbox still reads after the release it queued work for is gone");
+    assert_eq!(snapshot.upload_groups.len(), 1);
+    assert_eq!(snapshot.upload_groups[0].display_title, "Test Album");
+    assert_eq!(snapshot.total.cancelling, 1);
+
+    manager.drain_uploads_for_test().await.unwrap();
+    let snapshot = manager.outbox_snapshot().await.expect("the outbox reads");
     assert!(
         snapshot.upload_groups.is_empty(),
-        "the deleted release left uploads behind: {:?}",
+        "the drain finished the unwind: {:?}",
         snapshot.upload_groups
+    );
+}
+
+/// The import rollback removes the release through the same host write every
+/// other deletion uses, so it records the same unwind: a failed cloud import
+/// leaves nothing queued against the release it just took back out.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_failed_import_rollback_leaves_no_orphan() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let source_dir = temp_dir.path().join("rolled-back");
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &source_dir,
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
+
+    manager
+        .fail_import_and_delete_release(&release.id)
+        .await
+        .expect("roll the failed import back");
+
+    let snapshot = manager
+        .outbox_snapshot()
+        .await
+        .expect("the outbox still reads after the rolled-back release is gone");
+    assert_eq!(snapshot.total.cancelling, 1, "the unwind is recorded");
+    manager.drain_uploads_for_test().await.unwrap();
+    assert!(
+        manager
+            .outbox_snapshot()
+            .await
+            .unwrap()
+            .upload_groups
+            .is_empty(),
+        "and the drain finished it",
     );
 }
 
@@ -648,10 +700,13 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
         .any(|group| group.release_id == release.id));
 }
 
-/// Queue identity and display context have different owners. A title edit does
-/// not change coven's private outbox rows, but the retained outbox value must
-/// still re-enrich the same release instead of freezing the title captured at
-/// enqueue time.
+/// The queue names the release it was queued under, and keeps that name.
+///
+/// It has to: what the queue outlives is the release row, so a title read at
+/// render time is exactly the one a removal cannot produce. The trade is that
+/// renaming an album does not retitle work already queued for it — the queue
+/// says what was queued, which is also what it is removing. The file names it
+/// does read live are still its own rows' and still wake it.
 #[cfg(feature = "test-utils")]
 #[tokio::test]
 async fn outbox_subscription_reacts_to_release_display_context_changes() {
@@ -693,24 +748,11 @@ async fn outbox_subscription_reacts_to_release_display_context_changes() {
         .rename_album_for_test(&release.album_id, "Renamed Album")
         .await
         .unwrap();
-
-    let renamed = tokio::time::timeout(std::time::Duration::from_secs(2), async {
-        loop {
-            values.changed().await.expect("outbox value stream");
-            let current = values.borrow_and_update();
-            let snapshot = current
-                .as_ref()
-                .expect("outbox subscription published a value")
-                .as_ref()
-                .unwrap_or_else(|error| panic!("outbox projection failed: {error}"));
-            if snapshot.upload_groups[0].display_title == "Renamed Album" {
-                break snapshot.upload_groups[0].display_title.clone();
-            }
-        }
-    })
-    .await
-    .expect("album title changes wake outbox enrichment");
-    assert_eq!(renamed, "Renamed Album");
+    assert_eq!(
+        manager.outbox_snapshot().await.unwrap().upload_groups[0].display_title,
+        "Album Title",
+        "the queue keeps the name the work was queued under",
+    );
 
     let file = manager
         .database

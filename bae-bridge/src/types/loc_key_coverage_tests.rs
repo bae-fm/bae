@@ -50,6 +50,7 @@ const DIRECT_KEYS: &[&str] = &[
     // any more — which image leads a release is the cover choice, not a
     // property of a file — so both desktops reach for this key directly.
     "core.outbox.file.artist_image",
+    "core.outbox.file.unwinding",
     "core.import.role.cover",
     // Album total playing time: the UI switches on `BridgeDurationUnits` and
     // composes the hours and minutes words through the join pattern.
