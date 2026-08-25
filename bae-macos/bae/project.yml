@@ -125,6 +125,11 @@ targets:
           - "@loader_path/../Frameworks"
           - $(SRCROOT)/../../bae-ffmpeg/dist/lib
           - /opt/bae-ffmpeg/lib
+      configs:
+        Debug:
+          # Xcode previews run an app process; a separate identity lets that
+          # process coexist with the app launched by run.sh.
+          PRODUCT_BUNDLE_IDENTIFIER: fm.bae.desktop.xcode
   baeTests:
     type: bundle.unit-test
     platform: macOS
