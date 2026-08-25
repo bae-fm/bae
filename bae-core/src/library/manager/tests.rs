@@ -106,6 +106,7 @@ include!("tests/release_details.rs");
 include!("tests/detail_subscriptions.rs");
 include!("tests/storage_fixtures.rs");
 include!("tests/storage.rs");
+include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
 include!("tests/downloads.rs");
 include!("tests/output.rs");
