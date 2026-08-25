@@ -498,6 +498,69 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.retrying, 0);
 }
 
+/// The sequence a live library hit: queue an upload, cancel it while it is
+/// still queued, then delete the release. Nothing may be left in the outbox
+/// naming a release that is gone — the snapshot reads the release row for its
+/// album title, so one orphan takes the whole storage view down.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn cancelling_an_upload_then_deleting_its_release_leaves_no_orphan() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let source_dir = temp_dir.path().join("queued");
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &source_dir,
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
+
+    manager.cancel_release_upload(&release.id).await.unwrap();
+    manager.delete_release(&release.id).await.unwrap();
+
+    let snapshot = manager
+        .outbox_snapshot()
+        .await
+        .expect("the outbox still reads after the release it queued work for is gone");
+    assert!(
+        snapshot.upload_groups.is_empty(),
+        "the deleted release left uploads behind: {:?}",
+        snapshot.upload_groups
+    );
+}
+
+/// The same ending without the cancel: the release is deleted while its upload
+/// is still queued. The delete owns taking the queue with it.
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn deleting_a_release_mid_upload_leaves_no_orphan() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let source_dir = temp_dir.path().join("queued");
+    let release = insert_release_with_queued_uploads(
+        &manager,
+        &source_dir,
+        "Test Album",
+        &[("a.flac", &vec![b'a'; 1000])],
+    )
+    .await;
+    assert_eq!(manager.outbox_snapshot().await.unwrap().total.queued, 1);
+
+    manager.delete_release(&release.id).await.unwrap();
+
+    let snapshot = manager
+        .outbox_snapshot()
+        .await
+        .expect("the outbox still reads after the release it queued work for is gone");
+    assert!(
+        snapshot.upload_groups.is_empty(),
+        "the deleted release left uploads behind: {:?}",
+        snapshot.upload_groups
+    );
+}
+
 /// A cover upload is carried by the `covers` row whose primary key is the
 /// release id, while its immutable cloud blob has a distinct id. The queue must
 /// identify and size the blob itself rather than mistaking the release id for

@@ -15,7 +15,21 @@ pub(crate) struct OutboxDisplayRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct OutboxDisplayContext {
     file_names: HashMap<String, String>,
-    album_titles: HashMap<String, String>,
+    album_titles: HashMap<String, ReleaseAlbumTitle>,
+}
+
+/// What the display read found for one queued upload's release root.
+///
+/// Absence from the map is a third answer — no `releases` row at all — and the
+/// three are separate on purpose: a release that is gone and a release whose
+/// album is gone are different defects with different causes, and one message
+/// covering both says neither.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum ReleaseAlbumTitle {
+    /// The release row and the album row it names are both there.
+    Known(String),
+    /// The release row is there and names an album row that is not.
+    AlbumMissing { album_id: String },
 }
 
 impl Database {
@@ -424,11 +438,7 @@ impl Database {
                     }
                 };
                 let release_id = upload.root_id;
-                let album_title = album_titles.get(&release_id).cloned().ok_or_else(|| {
-                    DbError::Message(format!(
-                        "queued upload release {release_id} no longer has an album title"
-                    ))
-                })?;
+                let album_title = album_title_of(&album_titles, &release_id, "queued upload")?;
                 Ok(DbOutboxUpload {
                     album_title,
                     release_id,
@@ -447,15 +457,7 @@ impl Database {
             .into_iter()
             .map(|transition| {
                 let album_title =
-                    album_titles
-                        .get(&transition.root_id)
-                        .cloned()
-                        .ok_or_else(|| {
-                            DbError::Message(format!(
-                                "make-Remote release {} no longer has an album title",
-                                transition.root_id
-                            ))
-                        })?;
+                    album_title_of(&album_titles, &transition.root_id, "make-Remote")?;
                 Ok(DbMakeRemote {
                     transition,
                     album_title,
@@ -506,17 +508,47 @@ fn outbox_release_file_names_on(
     Ok(map)
 }
 
+/// The album title one outbox entry renders under, or which row is missing.
+///
+/// Both absences are the same defect class — durable queue work outliving the
+/// release it was queued for — and both stay loud rather than rendering the
+/// entry with a placeholder: the queue naming a row that is gone is a state the
+/// writers must make impossible, and a reader that quietly papers over it is
+/// how it would go unnoticed. What each says is different, though, so each says
+/// it: one names a release row, the other the album row a live release points at.
+fn album_title_of(
+    titles: &HashMap<String, ReleaseAlbumTitle>,
+    release_id: &str,
+    entry: &str,
+) -> Result<String, DbError> {
+    match titles.get(release_id) {
+        Some(ReleaseAlbumTitle::Known(title)) => Ok(title.clone()),
+        Some(ReleaseAlbumTitle::AlbumMissing { album_id }) => Err(DbError::Message(format!(
+            "{entry} release {release_id} names album {album_id}, which has no row"
+        ))),
+        None => Err(DbError::Message(format!(
+            "{entry} names release {release_id}, which has no row"
+        ))),
+    }
+}
+
 /// Album titles for the release roots coven groups uploads under. The title
 /// belongs to the root, not to whichever audio/image row happens to be first.
+///
+/// The join is outer and the title is read as nullable, which is the whole
+/// point: a release whose album row is gone comes back as a row with no title
+/// rather than as no row, so the caller can tell that apart from a release that
+/// is gone itself. Reading the outer join's title as NOT NULL — which this did
+/// — turns the first case into a column-type error naming neither.
 fn outbox_release_titles_on(
     sql: &SqlReadContext<'_>,
     release_ids: &[String],
-) -> Result<HashMap<String, String>, DbError> {
+) -> Result<HashMap<String, ReleaseAlbumTitle>, DbError> {
     let mut map = HashMap::new();
     for chunk in release_ids.chunks(SQL_MAX_IN_VARS) {
         let placeholders = in_clause_placeholders(chunk.len());
         let query = format!(
-            "SELECT r.id, a.title \
+            "SELECT r.id, r.album_id, a.title \
              FROM releases r \
              LEFT JOIN albums a ON a.id = r.album_id \
              WHERE r.id IN ({placeholders})"
@@ -524,7 +556,18 @@ fn outbox_release_titles_on(
         let rows = sql.query(
             &query,
             coven::rusqlite::params_from_iter(chunk.iter()),
-            |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
+            |row| {
+                let release_id: String = row.get(0)?;
+                let album_id: String = row.get(1)?;
+                let title: Option<String> = row.get(2)?;
+                Ok((
+                    release_id,
+                    match title {
+                        Some(title) => ReleaseAlbumTitle::Known(title),
+                        None => ReleaseAlbumTitle::AlbumMissing { album_id },
+                    },
+                ))
+            },
         )?;
         map.extend(rows);
     }
