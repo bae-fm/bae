@@ -61,6 +61,7 @@ struct StorageManagerView: View {
                         list: list,
                         selection: $selection,
                         sort: $sort,
+                        sortingEnabled: filter != .uploading,
                         libraryStore: libraryStore,
                         library: library,
                         runner: runner,

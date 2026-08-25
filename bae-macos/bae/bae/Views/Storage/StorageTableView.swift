@@ -47,6 +47,7 @@ struct StorageTableView: NSViewRepresentable {
     var selection: Set<String>
     @Binding
     var sort: BridgeStorageSort
+    let sortingEnabled: Bool
     let libraryStore: LibraryStore
     let library: Library
     let runner: StorageActionRunner
@@ -61,6 +62,7 @@ struct StorageTableView: NSViewRepresentable {
             list: list,
             selection: $selection,
             sort: $sort,
+            sortingEnabled: sortingEnabled,
             libraryStore: libraryStore,
             library: library,
             runner: runner,
@@ -92,12 +94,6 @@ struct StorageTableView: NSViewRepresentable {
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
             tableColumn.isEditable = false
-            if column.sortField != nil {
-                tableColumn.sortDescriptorPrototype = NSSortDescriptor(
-                    key: column.rawValue,
-                    ascending: true
-                )
-            }
             outlineView.addTableColumn(tableColumn)
         }
         // First column carries the disclosure triangle.
@@ -106,7 +102,7 @@ struct StorageTableView: NSViewRepresentable {
                 StorageTableColumn.album.rawValue
             )
         )
-        coordinator.applySortIndicator(to: outlineView, sort: sort)
+        coordinator.configureSorting(on: outlineView, sort: sort)
 
         let scrollView = NSScrollView()
         scrollView.documentView = outlineView
@@ -135,6 +131,7 @@ struct StorageTableView: NSViewRepresentable {
             list: list,
             imageStore: imageStore,
             outboxStore: outboxStore,
+            sortingEnabled: sortingEnabled,
         )
 
         // A new list instance, a new generation, or a changed count means the
@@ -144,7 +141,7 @@ struct StorageTableView: NSViewRepresentable {
             outlineView.reloadData()
         }
 
-        coordinator.applySortIndicator(to: outlineView, sort: sort)
+        coordinator.configureSorting(on: outlineView, sort: sort)
         coordinator.applySelection(selection, to: outlineView)
     }
 }
@@ -159,6 +156,7 @@ extension StorageTableView {
         private(set) var list: StorageList
         private let selection: Binding<Set<String>>
         private let sort: Binding<BridgeStorageSort>
+        private var sortingEnabled: Bool
         private let libraryStore: LibraryStore
         private let library: Library
         private let runner: StorageActionRunner
@@ -192,6 +190,7 @@ extension StorageTableView {
             list: StorageList,
             selection: Binding<Set<String>>,
             sort: Binding<BridgeStorageSort>,
+            sortingEnabled: Bool,
             libraryStore: LibraryStore,
             library: Library,
             runner: StorageActionRunner,
@@ -201,6 +200,7 @@ extension StorageTableView {
             self.list = list
             self.selection = selection
             self.sort = sort
+            self.sortingEnabled = sortingEnabled
             self.libraryStore = libraryStore
             self.library = library
             self.runner = runner
@@ -212,6 +212,7 @@ extension StorageTableView {
             list: StorageList,
             imageStore: ImageStore,
             outboxStore: OutboxStore,
+            sortingEnabled: Bool,
         ) {
             if self.list !== list {
                 cancelDetailSubscriptions()
@@ -219,6 +220,7 @@ extension StorageTableView {
             self.list = list
             self.imageStore = imageStore
             self.outboxStore = outboxStore
+            self.sortingEnabled = sortingEnabled
         }
 
         /// Rebuild the cached root items when the list's epoch or count
@@ -421,7 +423,7 @@ extension StorageTableView.Coordinator {
         _ outlineView: NSOutlineView,
         sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
     ) {
-        guard
+        guard sortingEnabled,
             let descriptor = outlineView.sortDescriptors.first,
             let key = descriptor.key,
             let field = sortField(forDescriptorKey: key)
@@ -435,6 +437,34 @@ extension StorageTableView.Coordinator {
             field: field,
             direction: descriptor.ascending ? .ascending : .descending
         )
+    }
+
+    func configureSorting(
+        on outlineView: NSOutlineView,
+        sort: BridgeStorageSort
+    ) {
+        for column in StorageTableColumn.allCases {
+            guard
+                let tableColumn = outlineView.tableColumn(
+                    withIdentifier: NSUserInterfaceItemIdentifier(
+                        column.rawValue
+                    )
+                )
+            else { continue }
+            tableColumn.sortDescriptorPrototype =
+                sortingEnabled
+                ? column.sortField.map { _ in
+                    NSSortDescriptor(key: column.rawValue, ascending: true)
+                }
+                : nil
+        }
+        guard sortingEnabled else {
+            if !outlineView.sortDescriptors.isEmpty {
+                outlineView.sortDescriptors = []
+            }
+            return
+        }
+        applySortIndicator(to: outlineView, sort: sort)
     }
 
     /// Reflect the active `BridgeStorageSort` in the header indicator

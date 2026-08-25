@@ -217,25 +217,20 @@ impl LibraryManager {
             .collect())
     }
 
-    /// Every blob a release keeps pinned: its audio files, plus its cover when it
-    /// has a `covers` row. coven's `make_remote` pins the release's whole root
+    /// Every blob a release keeps pinned: its cover when present, followed by
+    /// audio files in the same natural filename order the release table renders.
+    /// coven's `make_remote` pins the release's whole root
     /// batch — the cover rides along — so this is the set a pin must fetch and an
     /// unpin must release. Both read it here rather than enumerating rows
     /// themselves, so the two can't act on different sets: enumerating only
     /// `release_files` stranded the cover in `storage/pinned/` on unpin (nothing
     /// else ever names it again) and left it evictable after a Pin.
-    async fn release_pinnable_blobs(
+    pub(super) async fn release_pinnable_blobs(
         &self,
         release_id: &str,
     ) -> Result<Vec<PinnableBlob>, LibraryError> {
         let files = self.database.get_files_for_release(release_id).await?;
         let mut pinnable = Vec::with_capacity(files.len() + 1);
-        for file in &files {
-            pinnable.push(PinnableBlob {
-                blob: self.release_file_row_blob_ref(&file.id).await?,
-                bytes: pinnable_bytes(release_id, &file.id, file.file_size)?,
-            });
-        }
         let cover_type = LibraryImageType::Cover;
         if let Some(cover) = self
             .database
@@ -247,6 +242,12 @@ impl LibraryManager {
                     .image_row_blob_ref(cover_type.namespace(), release_id)
                     .await?,
                 bytes: pinnable_bytes(release_id, release_id, cover.file_size)?,
+            });
+        }
+        for file in &files {
+            pinnable.push(PinnableBlob {
+                blob: self.release_file_row_blob_ref(&file.id).await?,
+                bytes: pinnable_bytes(release_id, &file.id, file.file_size)?,
             });
         }
         Ok(pinnable)
@@ -362,8 +363,8 @@ fn image_ref_map(
 
 /// One blob of a release's pinned set, with the plaintext byte size its row
 /// records — what a pin fetches, and what the Downloads pane counts.
-struct PinnableBlob {
-    blob: coven::RowBlobRef,
+pub(super) struct PinnableBlob {
+    pub(super) blob: coven::RowBlobRef,
     bytes: u64,
 }
 

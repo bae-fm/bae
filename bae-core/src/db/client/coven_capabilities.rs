@@ -251,10 +251,11 @@ impl Database {
         root_id: &str,
         root_label: &str,
         pin: bool,
+        refs: Vec<coven::RowBlobRef>,
     ) -> Result<(), coven::MakeRemoteError> {
         self.inner
             .handle
-            .make_remote(root_table, root_id, root_label, pin)
+            .make_remote(root_table, root_id, root_label, pin, refs)
             .await
     }
 

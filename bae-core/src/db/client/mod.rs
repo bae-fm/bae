@@ -14,10 +14,7 @@ use coven::rusqlite::Connection;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::Coven;
 use coven::{ClockRef, CovenError, CovenHandle, DbError, IdRef, SqlContext, SqlReadContext};
-use std::collections::{BTreeSet, HashMap};
-// Used only by the desktop-only import modules below, which import `super::*`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashMap, HashSet};
 // Only the test-only external-ref helper names a path type here; production
 // paths live on the types that carry them.
 #[cfg(any(test, feature = "test-utils"))]

@@ -285,7 +285,8 @@ impl Database {
         if filter != StorageFilter::Uploading {
             return Ok(Vec::new());
         }
-        let mut ids: Vec<String> = self
+        let mut seen = HashSet::new();
+        let ids = self
             .inner
             .handle
             .queued_uploads()
@@ -293,9 +294,8 @@ impl Database {
             .into_iter()
             .filter(|upload| upload.root_table == "releases")
             .map(|upload| upload.root_id)
+            .filter(|release_id| seen.insert(release_id.clone()))
             .collect();
-        ids.sort();
-        ids.dedup();
         Ok(ids)
     }
 
@@ -320,34 +320,6 @@ impl Database {
             .await
     }
 
-    /// Paginated storage-page query. Joins releases × albums × (optional)
-    /// primary-artist sort table; both halves of the returned row are the
-    /// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
-    fn storage_page_query(order_by: &str, artist_sort_join: &str, where_clause: &str) -> String {
-        let album_columns = album_summary_columns();
-        format!(
-            "SELECT \
-                r.id AS release_id, \
-                r.album_id, \
-                r.format AS release_format, \
-                r.remote, \
-                (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
-                COALESCE(( \
-                    SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
-                ), 0) AS file_count, \
-                COALESCE(( \
-                    SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
-                ), 0) AS total_size, \
-                {album_columns} \
-            FROM releases r \
-            JOIN albums a ON a.id = r.album_id \
-            {artist_sort_join} \
-            {where_clause} \
-            ORDER BY {order_by} \
-            LIMIT ? OFFSET ?"
-        )
-    }
-
     pub async fn get_storage_page(
         &self,
         sort: &StorageSortCriterion,
@@ -355,12 +327,23 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> Result<Vec<DbStorageRow>, DbError> {
-        let (order_by, needs_artist_sort_join) = storage_order_by(sort);
-        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let uploading = self.uploading_release_ids(filter).await?;
+        let queue_ordered = filter == StorageFilter::Uploading && !uploading.is_empty();
+        let (order_by, needs_artist_sort_join) = if queue_ordered {
+            ("upload_queue.position".to_string(), false)
+        } else {
+            storage_order_by(sort)
+        };
+        let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let where_clause = storage_filter_where(filter, uploading.len());
+        let page_where = if queue_ordered { "" } else { &where_clause };
 
-        let query = Self::storage_page_query(&order_by, artist_sort_join, &where_clause);
+        let query = storage_page_query(
+            &order_by,
+            artist_sort_join,
+            page_where,
+            usize::from(queue_ordered) * uploading.len(),
+        );
 
         self.read(move |sql| storage_page_on(&sql, &query, &uploading, offset, limit))
             .await
@@ -374,10 +357,21 @@ impl Database {
         offset: u64,
         limit: u64,
     ) -> coven::LiveQuery<StoragePageProjection> {
-        let (order_by, needs_artist_sort_join) = storage_order_by(sort);
+        let queue_ordered = filter == StorageFilter::Uploading && !uploading.is_empty();
+        let (order_by, needs_artist_sort_join) = if queue_ordered {
+            ("upload_queue.position".to_string(), false)
+        } else {
+            storage_order_by(sort)
+        };
         let artist_sort_join = album_summary_artist_join(needs_artist_sort_join);
         let where_clause = storage_filter_where(filter, uploading.len());
-        let query = Self::storage_page_query(&order_by, artist_sort_join, &where_clause);
+        let page_where = if queue_ordered { "" } else { &where_clause };
+        let query = storage_page_query(
+            &order_by,
+            artist_sort_join,
+            page_where,
+            usize::from(queue_ordered) * uploading.len(),
+        );
         self.inner.handle.subscribe(move |sql| {
             let rows = storage_page_on(&sql, &query, &uploading, offset, limit)
                 .map_err(CovenError::from)?;

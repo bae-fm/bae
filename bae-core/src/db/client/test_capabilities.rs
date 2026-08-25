@@ -18,6 +18,26 @@ impl Database {
             .len())
     }
 
+    pub async fn queued_upload_rows_for_root_for_test(
+        &self,
+        root_table: &str,
+        root_id: &str,
+    ) -> Result<Vec<(String, String)>, DbError> {
+        Ok(self
+            .inner
+            .handle
+            .queued_uploads_for_root(root_table, root_id)
+            .await?
+            .into_iter()
+            .map(|upload| {
+                (
+                    upload.blob.table().to_string(),
+                    upload.blob.row_id().to_string(),
+                )
+            })
+            .collect())
+    }
+
     pub async fn queued_delete_count_for_test(&self) -> Result<usize, DbError> {
         Ok(self.inner.handle.queued_deletes().await?.len())
     }

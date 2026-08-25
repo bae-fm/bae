@@ -620,14 +620,10 @@ pub enum OutboxPauseState {
 
 impl OutboxSnapshot {
     pub fn transitioning_release_ids(&self) -> Vec<String> {
-        let mut ids = self
-            .upload_groups
+        self.upload_groups
             .iter()
             .map(|group| group.release_id.clone())
-            .collect::<Vec<_>>();
-        ids.sort();
-        ids.dedup();
-        ids
+            .collect()
     }
 
     pub fn per_release_progress(&self) -> HashMap<String, UploadProgress> {

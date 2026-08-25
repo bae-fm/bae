@@ -657,6 +657,52 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
     }
 }
 
+/// Paginated storage-page query. Joins releases × albums × (optional)
+/// primary-artist sort table; both halves of the returned row are the
+/// raw aggregates the resolver maps to `ReleaseSummary` / `AlbumSummary`.
+pub(super) fn storage_page_query(
+    order_by: &str,
+    artist_sort_join: &str,
+    where_clause: &str,
+    uploading_count: usize,
+) -> String {
+    let album_columns = album_summary_columns();
+    let (queue_cte, queue_join) = if uploading_count == 0 {
+        (String::new(), String::new())
+    } else {
+        let values = (0..uploading_count)
+            .map(|position| format!("(?, {position})"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        (
+            format!("WITH upload_queue(release_id, position) AS (VALUES {values}) "),
+            "JOIN upload_queue ON upload_queue.release_id = r.id".to_string(),
+        )
+    };
+    format!(
+        "{queue_cte}SELECT \
+            r.id AS release_id, \
+            r.album_id, \
+            r.format AS release_format, \
+            r.remote, \
+            (SELECT rf.id FROM release_files rf WHERE rf.release_id = r.id LIMIT 1) AS any_file_id, \
+            COALESCE(( \
+                SELECT COUNT(*) FROM release_files rf WHERE rf.release_id = r.id \
+            ), 0) AS file_count, \
+            COALESCE(( \
+                SELECT SUM(rf.file_size) FROM release_files rf WHERE rf.release_id = r.id \
+            ), 0) AS total_size, \
+            {album_columns} \
+        FROM releases r \
+        JOIN albums a ON a.id = r.album_id \
+        {artist_sort_join} \
+        {queue_join} \
+        {where_clause} \
+        ORDER BY {order_by} \
+        LIMIT ? OFFSET ?"
+    )
+}
+
 /// Build a WHERE clause fragment for storage-page filtering. Returns the
 /// empty string for `StorageFilter::All`.
 /// The WHERE clause for a storage-page filter.

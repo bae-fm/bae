@@ -108,6 +108,7 @@ include!("tests/storage_fixtures.rs");
 include!("tests/storage.rs");
 include!("tests/storage_sorting.rs");
 include!("tests/transfers.rs");
+include!("tests/transfer_order.rs");
 include!("tests/downloads.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");

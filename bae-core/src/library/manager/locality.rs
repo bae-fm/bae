@@ -18,8 +18,14 @@ impl LibraryManager {
         // certainly there to read it from — the queue outliving that row is the
         // whole reason the rows carry a name of their own.
         let album_title = self.database.release_album_title(release_id).await?;
+        let ordered_blobs = self
+            .release_pinnable_blobs(release_id)
+            .await?
+            .into_iter()
+            .map(|entry| entry.blob)
+            .collect();
         self.database
-            .make_remote("releases", release_id, &album_title, pin)
+            .make_remote("releases", release_id, &album_title, pin, ordered_blobs)
             .await
             .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))?;
         // Publish the same canonical projection the durable live query emits
