@@ -759,33 +759,140 @@ mod candidate_runtime {
         (subscription, receiver)
     }
 
-    /// The next change the subscription delivers for `key`. Changes for other
-    /// keys are skipped: an empty library has none, but a shared test root
-    /// should not be able to make this flaky.
-    fn next_for(
+    /// What one change says about `key`.
+    ///
+    /// Three shapes say something, and which one arrives is timing rather than
+    /// meaning. `Updated` and `Removed` name the key. A `Reset` — the
+    /// subscription re-stating every key in flight after the broadcast dropped
+    /// deliveries under load — speaks about every key at once, including the
+    /// ones it leaves out: "a consumer holding a key this does not list treats
+    /// it as removed" is the type's own contract, and on a loaded runner it is
+    /// the *only* thing that ever says a key is gone, because the `Removed`
+    /// that would have said so is exactly what was dropped.
+    enum SaysAbout {
+        InFlight(Box<crate::types::BridgeCandidateRuntimeSnapshot>),
+        Gone,
+        /// A change about some other key. An empty library has none, but a
+        /// shared test root should not be able to make this flaky.
+        NothingOfTheSort,
+    }
+
+    fn says_about(change: &BridgeCandidateRuntimeChange, key: &str) -> SaysAbout {
+        match change {
+            BridgeCandidateRuntimeChange::Updated {
+                key: changed,
+                runtime,
+            } if changed == key => SaysAbout::InFlight(Box::new(runtime.clone())),
+            BridgeCandidateRuntimeChange::Removed { key: changed } if changed == key => {
+                SaysAbout::Gone
+            }
+            BridgeCandidateRuntimeChange::Updated { .. }
+            | BridgeCandidateRuntimeChange::Removed { .. } => SaysAbout::NothingOfTheSort,
+            BridgeCandidateRuntimeChange::Reset { runtimes } => runtimes
+                .iter()
+                .find(|entry| entry.key == key)
+                .map_or(SaysAbout::Gone, |entry| {
+                    SaysAbout::InFlight(Box::new(entry.runtime.clone()))
+                }),
+        }
+    }
+
+    /// Drain changes until the stream says `key` is in flight, and answer with
+    /// what it is running.
+    ///
+    /// A change saying the opposite on the way there is not a failure — it is
+    /// the answer not having arrived yet, so this keeps draining. Only the
+    /// timeout is a failure.
+    fn wait_in_flight(
         handle: &Arc<super::super::AppHandle>,
         receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
         key: &str,
-    ) -> BridgeCandidateRuntimeChange {
+    ) -> crate::types::BridgeCandidateRuntimeSnapshot {
+        drain_until(handle, receiver, key, |said| match said {
+            SaysAbout::InFlight(runtime) => Some(*runtime),
+            SaysAbout::Gone | SaysAbout::NothingOfTheSort => None,
+        })
+        .expect("the stream says the key is in flight")
+    }
+
+    /// Drain changes until the stream says `key` is not in flight, by either of
+    /// the two shapes that say it.
+    fn wait_gone(
+        handle: &Arc<super::super::AppHandle>,
+        receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
+        key: &str,
+    ) {
+        drain_until(handle, receiver, key, |said| match said {
+            SaysAbout::Gone => Some(()),
+            SaysAbout::InFlight(_) | SaysAbout::NothingOfTheSort => None,
+        })
+        .expect("the stream says the key is gone");
+    }
+
+    fn drain_until<T>(
+        handle: &Arc<super::super::AppHandle>,
+        receiver: &mut tokio::sync::mpsc::UnboundedReceiver<BridgeCandidateRuntimeChange>,
+        key: &str,
+        settled: impl Fn(SaysAbout) -> Option<T>,
+    ) -> Option<T> {
         handle
             .runtime
             .block_on(async {
                 tokio::time::timeout(Duration::from_secs(5), async {
                     loop {
                         let change = receiver.recv().await.expect("the subscription stays open");
-                        let delivered = match &change {
-                            BridgeCandidateRuntimeChange::Updated { key, .. }
-                            | BridgeCandidateRuntimeChange::Removed { key } => key.as_str(),
-                            BridgeCandidateRuntimeChange::Reset { .. } => continue,
-                        };
-                        if delivered == key {
-                            return change;
+                        if let Some(value) = settled(says_about(&change, key)) {
+                            return value;
                         }
                     }
                 })
                 .await
             })
-            .expect("a change for the key is delivered")
+            .ok()
+    }
+
+    /// A lagged subscription never sends the `Removed` — it sends one `Reset`
+    /// standing for the whole map, and a key it leaves out is gone. A consumer
+    /// that waits for `Removed` alone waits for a message that is not coming,
+    /// which is what the loaded runner produced and the quiet machine did not.
+    #[test]
+    fn a_reset_that_omits_the_key_says_the_key_is_gone() {
+        let (handle, _root) = fresh_bridge_handle("candidate-runtime-reset");
+        let key = "/watch/Album Title".to_string();
+        let running = crate::types::BridgeCandidateRuntimeSnapshot::from_core(
+            bae_core::import::CandidateRuntimeSnapshot {
+                identify: None,
+                import: Some(bae_core::import::ImportInFlight {
+                    progress_percent: 0,
+                    step: None,
+                }),
+            },
+        );
+
+        let (changes, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+        // Another key's reset entry is not this key's answer, so the map's
+        // omission has to be read rather than its emptiness.
+        changes
+            .send(BridgeCandidateRuntimeChange::Reset {
+                runtimes: vec![crate::types::BridgeKeyedCandidateRuntime {
+                    key: "/watch/Someone Else".to_string(),
+                    runtime: running.clone(),
+                }],
+            })
+            .unwrap();
+        wait_gone(&handle, &mut receiver, &key);
+
+        // And the same reset listing the key says it is still in flight.
+        let (changes, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+        changes
+            .send(BridgeCandidateRuntimeChange::Reset {
+                runtimes: vec![crate::types::BridgeKeyedCandidateRuntime {
+                    key: key.clone(),
+                    runtime: running,
+                }],
+            })
+            .unwrap();
+        wait_in_flight(&handle, &mut receiver, &key);
     }
 
     #[test]
@@ -798,14 +905,11 @@ mod candidate_runtime {
             .runtime
             .block_on(handle.services.claim_candidate_for_import_for_test(&key));
 
-        let claimed = next_for(&handle, &mut watching_changes, &key);
-        let import = match &claimed {
-            BridgeCandidateRuntimeChange::Updated { runtime, .. } => runtime
-                .import
-                .clone()
-                .expect("a claimed candidate has an import in flight"),
-            other => panic!("expected the claim, got {other:?}"),
-        };
+        let claimed = wait_in_flight(&handle, &mut watching_changes, &key);
+        let import = claimed
+            .import
+            .clone()
+            .expect("a claimed candidate has an import in flight");
         assert_eq!(import.progress_percent, 0);
         assert!(
             matches!(
@@ -820,11 +924,9 @@ mod candidate_runtime {
         // running rather than left waiting for the next tick.
         let (_joining, mut joining_changes) = subscribe(&handle);
         assert!(
-            matches!(
-                next_for(&handle, &mut joining_changes, &key),
-                BridgeCandidateRuntimeChange::Updated { runtime, .. }
-                    if runtime.import.is_some()
-            ),
+            wait_in_flight(&handle, &mut joining_changes, &key)
+                .import
+                .is_some(),
             "a late subscriber is replayed the running import"
         );
 
@@ -840,13 +942,7 @@ mod candidate_runtime {
 
         // The failure is a row by the time it is announced, so the key stops
         // being in flight rather than crossing as a status of its own.
-        assert!(
-            matches!(
-                next_for(&handle, &mut watching_changes, &key),
-                BridgeCandidateRuntimeChange::Removed { .. }
-            ),
-            "a failed import leaves the stream"
-        );
+        wait_gone(&handle, &mut watching_changes, &key);
         assert!(
             handle.candidate_runtime(key).is_none(),
             "and nothing is left to read for the key"
