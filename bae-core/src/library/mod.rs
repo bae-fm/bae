@@ -437,6 +437,7 @@ async fn restore_from_code_inner(
         code,
         &crate::sync::synced_tables(),
         &crate::migrations::all(),
+        coven::CovenMigrationPolicy::ApplyPending,
         // Upload verification is local host policy and does not come from the
         // restore code.
         coven::ExactUploadVerification::MetadataHash,
@@ -496,6 +497,7 @@ pub async fn join_prepared_device_pairing_cancellable(
         layout.clone(),
         crate::sync::synced_tables(),
         crate::migrations::all(),
+        coven::CovenMigrationPolicy::ApplyPending,
         // Upload verification is local host policy and does not come from the
         // scanned pairing offer.
         coven::ExactUploadVerification::MetadataHash,

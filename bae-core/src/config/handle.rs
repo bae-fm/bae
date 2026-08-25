@@ -39,6 +39,7 @@ impl ConfigHandle {
         coven::Coven::builder(self.store_dir.clone(), move || {
             config_handle.config().to_coven()
         })
+        .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
     }
 
     #[cfg(test)]

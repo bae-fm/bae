@@ -52,6 +52,7 @@ fn main() {
             config.to_coven(),
         )
         .synced_tables(bae_core::sync::synced_tables())
+        .coven_migration_policy(coven::CovenMigrationPolicy::ApplyPending)
         .migrations(bae_core::migrations::all())
         .open()
         .map_err(|e| format!("open store failed: {e}"))?;
