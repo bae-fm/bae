@@ -9,7 +9,6 @@
 //! sync part and does the re-emit itself.
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use tracing::{info, warn};
@@ -50,8 +49,9 @@ pub(crate) struct SyncController {
     /// Rolling-window upload-throughput tracker. The observer records bytes; the
     /// snapshot builder reads the rate.
     upload_throughput: Arc<UploadThroughput>,
-    /// User-driven pause flag for the cloud-upload pipeline.
-    sync_paused: Arc<AtomicBool>,
+    /// User-driven absolute pause state. The observer subscribes to this same
+    /// watch value so coven can suspend and resume active transfer futures.
+    sync_paused: tokio::sync::watch::Sender<bool>,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     /// Typed telemetry sink, shared with the owning manager. The
     /// provider-connect/disconnect completions emit through it.
@@ -74,7 +74,7 @@ impl SyncController {
             >,
         >,
         upload_throughput: Arc<UploadThroughput>,
-        sync_paused: Arc<AtomicBool>,
+        sync_paused: tokio::sync::watch::Sender<bool>,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         diagnostics: Diagnostics,
     ) -> Self {
@@ -110,14 +110,11 @@ impl SyncController {
         );
     }
 
-    /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
-    /// still land in the outbox but the sync cycle won't drain them; in-flight
-    /// uploads finish (coven's `drain_uploads` checks the flag between
-    /// entries, not mid-write). Re-emits the outbox snapshot so the UI's
-    /// paused indicator and the bottom-panel summary update.
+    /// Pause or resume the cloud-upload pipeline. New enqueues still land in
+    /// the outbox; coven suspends active preparation/provider futures and keeps
+    /// their open upload sessions for resume.
     pub(crate) async fn set_sync_paused(&self, paused: bool) {
-        self.sync_paused
-            .store(paused, std::sync::atomic::Ordering::SeqCst);
+        self.sync_paused.send_replace(paused);
         if !paused {
             // Kick the loop so the queue starts draining immediately on resume
             // rather than waiting for the next idle tick.
@@ -129,7 +126,7 @@ impl SyncController {
     /// Current paused state of the upload pipeline. The snapshot builder
     /// reads this so the UI can render its paused indicator.
     pub(crate) fn is_sync_paused(&self) -> bool {
-        self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
+        *self.sync_paused.borrow()
     }
 
     /// Build and publish the current outbox snapshot. Called by durable outbox

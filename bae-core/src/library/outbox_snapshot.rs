@@ -581,9 +581,7 @@ pub struct OutboxSnapshot {
     /// Sum across all uploads — drives the queue counts, ETA, the master
     /// progress bar, and the summary band.
     pub total: UploadProgress,
-    /// Whether uploads are running, finishing the provider write that was
-    /// already active when pause was requested, or fully paused between
-    /// entries.
+    /// Whether uploads are running or suspended.
     pub pause_state: OutboxPauseState,
     /// Rolling-window upload throughput in bytes per second. Zero when the
     /// queue is idle or has been idle long enough for the window to drain. The
@@ -608,13 +606,10 @@ impl Default for OutboxSnapshot {
     }
 }
 
-/// The effective pause phase of the cloud upload pipeline. A provider write
-/// cannot be interrupted halfway through; requesting pause while one is active
-/// therefore enters `Pausing` until that exact write completes.
+/// The absolute pause state of the cloud upload pipeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutboxPauseState {
     Running,
-    Pausing,
     Paused,
 }
 
@@ -817,12 +812,10 @@ pub(crate) fn build_outbox_snapshot(
 
     // Hide throughput/ETA while paused: the rolling window decays toward zero
     // anyway, and "2.3 MB/s" beside a paused indicator would just confuse.
-    let pause_state = if !pause_requested {
-        OutboxPauseState::Running
-    } else if total.preparing > 0 || total.uploading > 0 {
-        OutboxPauseState::Pausing
-    } else {
+    let pause_state = if pause_requested {
         OutboxPauseState::Paused
+    } else {
+        OutboxPauseState::Running
     };
     let throughput_bps = if pause_requested {
         0

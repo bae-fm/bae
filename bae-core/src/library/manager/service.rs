@@ -22,7 +22,7 @@ impl LibraryManager {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let transient_uploads = Arc::new(Mutex::new(HashMap::new()));
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
-        let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (sync_paused, _) = tokio::sync::watch::channel(false);
 
         let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
             transient_uploads.clone(),
@@ -142,7 +142,7 @@ impl LibraryManager {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
         let transient_uploads = Arc::new(Mutex::new(HashMap::new()));
         let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
-        let sync_paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (sync_paused, _) = tokio::sync::watch::channel(false);
         let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
             transient_uploads.clone(),
             upload_throughput.clone(),

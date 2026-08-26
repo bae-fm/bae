@@ -467,12 +467,10 @@ pub struct BridgeUploadReleaseGroup {
     pub progress: BridgeUploadProgress,
 }
 
-/// Whether the upload queue is running, finishing the provider write that was
-/// already active when pause was requested, or fully paused between entries.
+/// Whether the upload queue is running or suspended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeOutboxPauseState {
     Running,
-    Pausing,
     Paused,
 }
 

@@ -33,7 +33,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.artwork_cache.cancelled",
     "core.artwork_cache.failed",
     "core.outbox.pending_deletes",
-    "core.outbox.pausing",
     "core.outbox.preparing",
     "core.outbox.prepared",
     "core.outbox.uploaded",

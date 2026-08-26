@@ -186,7 +186,6 @@ impl crate::types::BridgeOutboxPauseState {
     fn from_core(state: bae_core::library::OutboxPauseState) -> Self {
         match state {
             bae_core::library::OutboxPauseState::Running => Self::Running,
-            bae_core::library::OutboxPauseState::Pausing => Self::Pausing,
             bae_core::library::OutboxPauseState::Paused => Self::Paused,
         }
     }

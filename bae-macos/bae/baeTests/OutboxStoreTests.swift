@@ -137,15 +137,7 @@ struct CloudUploadPausePresentationTests {
         #expect(uiStore.lastError != nil)
     }
 
-    @Test("an active provider write reports pausing after pause is requested")
-    func activeWriteReportsPausing() {
-        #expect(
-            OutboxSection.pauseStatusText(.pausing)
-                == QueueSummary.message("core.outbox.pausing")
-        )
-    }
-
-    @Test("the queue reports paused only after the active write finishes")
+    @Test("the queue reports the absolute paused state")
     func stoppedQueueReportsPaused() {
         #expect(
             OutboxSection.pauseStatusText(.paused)

@@ -89,8 +89,6 @@ struct OutboxSection: View {
         switch state {
         case .running:
             nil
-        case .pausing:
-            QueueSummary.message("core.outbox.pausing")
         case .paused:
             String(localized: "Paused")
         }

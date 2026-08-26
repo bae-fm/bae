@@ -278,7 +278,7 @@ fn live_bytes_ride_the_active_file_and_the_totals() {
 }
 
 #[test]
-fn pause_state_waits_for_the_active_provider_write_to_finish() {
+fn pause_state_is_absolute_while_transfer_work_is_active() {
     let mut queue = two_queued_uploads();
     queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
     queue.uploads[1].provider_bytes_total = Some(1016);
@@ -290,8 +290,9 @@ fn pause_state_waits_for_the_active_provider_write_to_finish() {
         },
     )]);
 
-    let pausing = build_outbox_snapshot(queue.clone(), &transient, &UploadThroughput::new(), true);
-    assert_eq!(pausing.pause_state, OutboxPauseState::Pausing);
+    let paused_during_upload =
+        build_outbox_snapshot(queue.clone(), &transient, &UploadThroughput::new(), true);
+    assert_eq!(paused_during_upload.pause_state, OutboxPauseState::Paused);
 
     let paused = build_outbox_snapshot(queue, &HashMap::new(), &UploadThroughput::new(), true);
     assert_eq!(paused.pause_state, OutboxPauseState::Paused);
@@ -303,15 +304,15 @@ fn pause_state_waits_for_the_active_provider_write_to_finish() {
             bytes_total: 100,
         },
     )]);
-    let pausing_during_preparation = build_outbox_snapshot(
+    let paused_during_preparation = build_outbox_snapshot(
         two_queued_uploads(),
         &preparing,
         &UploadThroughput::new(),
         true,
     );
     assert_eq!(
-        pausing_during_preparation.pause_state,
-        OutboxPauseState::Pausing
+        paused_during_preparation.pause_state,
+        OutboxPauseState::Paused
     );
 
     let running = build(two_queued_uploads(), &HashMap::new());

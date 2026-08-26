@@ -12,8 +12,8 @@
 //! - durable queue changes, including terminal publication, arrive through
 //!   coven's cloud-outbox live query rather than lifecycle callbacks.
 //!
-//! `should_skip_uploads` lets the host pause the upload pipeline without touching
-//! the queue.
+//! The pause watch lets coven suspend active preparation and provider futures
+//! without touching the durable queue or discarding open upload sessions.
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::{Arc, Mutex, Weak};
@@ -66,7 +66,7 @@ pub struct ReleaseUploadObserver {
         >,
     >,
     throughput: Arc<crate::library::UploadThroughput>,
-    sync_paused: Arc<std::sync::atomic::AtomicBool>,
+    sync_paused: tokio::sync::watch::Sender<bool>,
     events: mpsc::UnboundedSender<UploadObserverMessage>,
 }
 
@@ -81,7 +81,7 @@ impl ReleaseUploadObserver {
             >,
         >,
         throughput: Arc<crate::library::UploadThroughput>,
-        sync_paused: Arc<std::sync::atomic::AtomicBool>,
+        sync_paused: tokio::sync::watch::Sender<bool>,
     ) -> (Self, UploadObserverEvents) {
         let (events, receiver) = mpsc::unbounded_channel();
         (
@@ -113,6 +113,19 @@ impl ReleaseUploadObserver {
 
 fn upload_blob_key(upload: &coven::RowBlobRef) -> crate::library::outbox_snapshot::UploadBlobKey {
     crate::library::outbox_snapshot::UploadBlobKey::from_row(upload)
+}
+
+async fn wait_for_upload_pause_state(pause_state: &tokio::sync::watch::Sender<bool>, target: bool) {
+    let mut pause_state = pause_state.subscribe();
+    loop {
+        if *pause_state.borrow_and_update() == target {
+            return;
+        }
+        pause_state
+            .changed()
+            .await
+            .expect("release upload observer owns the pause sender");
+    }
 }
 
 #[async_trait::async_trait]
@@ -323,7 +336,15 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     }
 
     fn should_skip_uploads(&self) -> bool {
-        self.sync_paused.load(std::sync::atomic::Ordering::SeqCst)
+        *self.sync_paused.borrow()
+    }
+
+    async fn wait_until_uploads_paused(&self) {
+        wait_for_upload_pause_state(&self.sync_paused, true).await;
+    }
+
+    async fn wait_until_uploads_resumed(&self) {
+        wait_for_upload_pause_state(&self.sync_paused, false).await;
     }
 
     /// coven finished making a root Local (blobs materialized to local files,
@@ -422,6 +443,19 @@ impl BlobTransitionObserver for WeakUploadObserver {
             .is_some_and(|observer| observer.should_skip_uploads())
     }
 
+    async fn wait_until_uploads_paused(&self) {
+        match self.inner.upgrade() {
+            Some(observer) => observer.wait_until_uploads_paused().await,
+            None => std::future::pending::<()>().await,
+        }
+    }
+
+    async fn wait_until_uploads_resumed(&self) {
+        if let Some(observer) = self.inner.upgrade() {
+            observer.wait_until_uploads_resumed().await;
+        }
+    }
+
     async fn on_root_made_local(&self, root_table: &str, root_id: &str) {
         if let Some(observer) = self.inner.upgrade() {
             observer.on_root_made_local(root_table, root_id).await;
@@ -450,7 +484,7 @@ mod tests {
     ) {
         let transient = Arc::new(Mutex::new(HashMap::new()));
         let throughput = Arc::new(crate::library::UploadThroughput::new());
-        let paused = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let (paused, _) = tokio::sync::watch::channel(false);
         let (observer, events) =
             ReleaseUploadObserver::new(transient.clone(), throughput.clone(), paused);
         (observer, events, transient, throughput)
@@ -476,6 +510,40 @@ mod tests {
             None,
         )
         .expect("valid observer test blob")
+    }
+
+    #[tokio::test]
+    async fn pause_waiters_wake_on_each_absolute_state_change() {
+        let transient = Arc::new(Mutex::new(HashMap::new()));
+        let throughput = Arc::new(crate::library::UploadThroughput::new());
+        let (pause_state, _) = tokio::sync::watch::channel(false);
+        let (observer, _events) =
+            ReleaseUploadObserver::new(transient, throughput, pause_state.clone());
+        let observer = Arc::new(observer);
+
+        let waiting_for_pause = tokio::spawn({
+            let observer = observer.clone();
+            async move { observer.wait_until_uploads_paused().await }
+        });
+        tokio::task::yield_now().await;
+        assert!(!waiting_for_pause.is_finished());
+        pause_state.send_replace(true);
+        tokio::time::timeout(std::time::Duration::from_secs(1), waiting_for_pause)
+            .await
+            .expect("pause notification")
+            .expect("pause waiter task");
+
+        let waiting_for_resume = tokio::spawn({
+            let observer = observer.clone();
+            async move { observer.wait_until_uploads_resumed().await }
+        });
+        tokio::task::yield_now().await;
+        assert!(!waiting_for_resume.is_finished());
+        pause_state.send_replace(false);
+        tokio::time::timeout(std::time::Duration::from_secs(1), waiting_for_resume)
+            .await
+            .expect("resume notification")
+            .expect("resume waiter task");
     }
 
     #[tokio::test]

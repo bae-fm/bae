@@ -18,11 +18,6 @@ class OutboxStoreTest {
         assertFalse(store.snapshot.value.pauseRequested)
 
         store.setSnapshot(
-            BridgeFixtures.outboxSnapshot(BridgeOutboxPauseState.PAUSING),
-        )
-        assertTrue(store.snapshot.value.pauseRequested)
-
-        store.setSnapshot(
             BridgeFixtures.outboxSnapshot(BridgeOutboxPauseState.PAUSED),
         )
         assertTrue(store.snapshot.value.pauseRequested)
