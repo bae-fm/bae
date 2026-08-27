@@ -659,7 +659,8 @@ private final class MutableImportListPageSource: PageSource,
                         $0.id == target.stableKey
                     }
                 }
-            }
+            },
+            waitForView: { _ in }
         )
     }
 
@@ -732,7 +733,8 @@ final class ImportCandidateViewportTests: XCTestCase {
         let slot = ImportListSlot(
             importStore: store,
             uiStore: uiStore,
-            makeSource: { _ in source.pages }
+            makeSource: { _ in source.pages },
+            locateCandidate: { _, _ in nil }
         )
         slot.startLoad()
         await viewportSettle { slot.list?.idAt(30) != nil }

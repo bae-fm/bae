@@ -126,6 +126,28 @@ impl AppServices {
             .await
     }
 
+    /// The tab, disclosure state and position that reveal one candidate at its
+    /// current placement.
+    pub async fn locate_import_candidate(
+        &self,
+        view: ImportListView,
+        candidate_key: &str,
+    ) -> Result<Option<crate::import::ImportCandidateListLocation>, crate::library::LibraryError>
+    {
+        self.inner
+            .manager
+            .locate_import_candidate(
+                ImportListRequest {
+                    view,
+                    windows: crate::library::LibraryPageWindows::new(),
+                    runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
+                    upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
+                },
+                candidate_key,
+            )
+            .await
+    }
+
     /// One candidate as the pane reads it, once, with its runtime folded in.
     pub async fn load_import_candidate(
         &self,

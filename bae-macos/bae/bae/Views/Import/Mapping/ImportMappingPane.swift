@@ -38,6 +38,7 @@ struct ImportMappingPane: View {
     /// — the same pick a search-sheet row click runs.
     let onPickRelease: (BridgeMetadataResult) -> Void
     let onEditCover: () -> Void
+    let onNavigateToPlacement: (String) -> Void
 
     /// The folder's mapping, as core reads it back for this candidate.
     private var mapping: BridgeMappingTable {
@@ -57,9 +58,13 @@ struct ImportMappingPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 CandidateFolderLine(
+                    placement: candidate.row?.placement,
                     folderName: candidate.displayName,
                     folderPath: candidate.key,
-                    formatLabel: candidate.files.formatLabel
+                    formatLabel: candidate.files.formatLabel,
+                    onNavigateToPlacement: {
+                        onNavigateToPlacement(candidate.key)
+                    }
                 )
                 identitySection
                 banners

@@ -28,6 +28,8 @@ import Foundation
                 BridgeImportListView,
                 BridgeFirstUnidentifiedRowRef
             ) async throws -> Int?
+        private let awaitAppliedView:
+            @Sendable (BridgeImportListView) async throws -> Void
 
         public init(
             source: any PageSource<BridgeImportListItem>,
@@ -36,11 +38,14 @@ import Foundation
                 @escaping @Sendable (
                     BridgeImportListView,
                     BridgeFirstUnidentifiedRowRef
-                ) async throws -> Int?
+                ) async throws -> Int?,
+            waitForView:
+                @escaping @Sendable (BridgeImportListView) async throws -> Void
         ) {
             self.source = source
             applyView = setView
             resolveFirstUnidentifiedPosition = candidatePosition
+            awaitAppliedView = waitForView
         }
 
         public func setView(_ view: BridgeImportListView) {
@@ -58,6 +63,12 @@ import Foundation
                 view,
                 target
             )
+        }
+
+        /// Apply `view` and wait until the live list has delivered the exact
+        /// revision that accepted it.
+        public func waitForView(_ view: BridgeImportListView) async throws {
+            try await awaitAppliedView(view)
         }
     }
 
@@ -82,17 +93,17 @@ import Foundation
             let error: @MainActor @Sendable (any Error) -> Void
         }
 
-        private struct PositionWaiter {
+        private struct ViewWaiter {
             let revision: UInt64
-            let target: BridgeFirstUnidentifiedRowRef
-            let continuation: CheckedContinuation<Int?, any Error>
+            let continuation:
+                CheckedContinuation<BridgeImportQueueSummary, any Error>
         }
 
-        private enum PositionWaiterState {
+        private enum ViewWaiterState {
             case awaitingRegistration(UInt64)
             case cancelled
             case failed(any Error)
-            case waiting(PositionWaiter)
+            case waiting(ViewWaiter)
         }
 
         private struct DeliveredSummary {
@@ -105,7 +116,7 @@ import Foundation
             @MainActor @Sendable (BridgeImportQueueSummary) -> Void
         private let lock = NSLock()
         private var sinks: [WindowKey: Sink] = [:]
-        private var positionWaiters: [UUID: PositionWaiterState] = [:]
+        private var viewWaiters: [UUID: ViewWaiterState] = [:]
         private var latestSummary: DeliveredSummary?
         private var deliveries: Task<Void, Never>?
         /// The read failure this source died of, kept so a page registered
@@ -146,17 +157,20 @@ import Foundation
                 setView: { [self] view in
                     do {
                         let revision = try subscription.setView(view: view)
-                        cancelPositionWaiters(before: revision)
+                        cancelViewWaiters(before: revision)
                     }
                     catch {
                         failEveryPage(with: error)
                     }
                 },
                 firstUnidentifiedPosition: { [self] view, target in
-                    try await firstUnidentifiedPosition(
-                        for: target,
+                    let summary = try await deliveredSummary(
                         afterApplying: view
                     )
+                    return summary.firstUnidentifiedPosition(for: target)
+                },
+                waitForView: { [self] view in
+                    _ = try await deliveredSummary(afterApplying: view)
                 }
             )
         }
@@ -247,7 +261,7 @@ import Foundation
                                 .value(window.items, Int(snapshot.totalCount))
                         }
                     }
-                    fulfillPositionWaiters(
+                    fulfillViewWaiters(
                         revision: snapshot.requestRevision,
                         summary: summary
                     )
@@ -266,7 +280,7 @@ import Foundation
             lock.lock()
             failure = error
             let sinks = self.sinks
-            let waiters: [(UUID, PositionWaiter)] = positionWaiters.compactMap {
+            let waiters: [(UUID, ViewWaiter)] = viewWaiters.compactMap {
                 element in
                 guard case .waiting(let waiter) = element.value else {
                     return nil
@@ -274,16 +288,16 @@ import Foundation
                 return (element.key, waiter)
             }
             for (id, _) in waiters {
-                positionWaiters.removeValue(forKey: id)
+                viewWaiters.removeValue(forKey: id)
             }
-            let awaiting: [UUID] = positionWaiters.compactMap { element in
+            let awaiting: [UUID] = viewWaiters.compactMap { element in
                 if case .awaitingRegistration = element.value {
                     return element.key
                 }
                 return nil
             }
             for id in awaiting {
-                positionWaiters[id] = .failed(error)
+                viewWaiters[id] = .failed(error)
             }
             lock.unlock()
             Task { @MainActor in
@@ -298,83 +312,74 @@ import Foundation
     }
 
     extension ImportListPageSource {
-        private func firstUnidentifiedPosition(
-            for target: BridgeFirstUnidentifiedRowRef,
+        private func deliveredSummary(
             afterApplying view: BridgeImportListView
-        ) async throws -> Int? {
+        ) async throws -> BridgeImportQueueSummary {
             let revision = try subscription.setView(view: view)
             let id = UUID()
             let failure = lock.withLock {
                 let failure = self.failure
                 if failure == nil {
-                    positionWaiters[id] = .awaitingRegistration(revision)
+                    viewWaiters[id] = .awaitingRegistration(revision)
                 }
                 return failure
             }
             if let failure { throw failure }
             return try await withTaskCancellationHandler {
                 try await withCheckedThrowingContinuation { continuation in
-                    if let result = registerPositionWaiter(
+                    if let result = registerViewWaiter(
                         id: id,
                         revision: revision,
-                        target: target,
                         continuation: continuation
                     ) {
                         continuation.resume(with: result)
                     }
                 }
             } onCancel: {
-                self.cancelPositionWaiter(id)
+                self.cancelViewWaiter(id)
             }
         }
 
-        private func registerPositionWaiter(
+        private func registerViewWaiter(
             id: UUID,
             revision: UInt64,
-            target: BridgeFirstUnidentifiedRowRef,
-            continuation: CheckedContinuation<Int?, any Error>
-        ) -> Result<Int?, any Error>? {
+            continuation:
+                CheckedContinuation<BridgeImportQueueSummary, any Error>
+        ) -> Result<BridgeImportQueueSummary, any Error>? {
             lock.lock()
             defer { lock.unlock() }
-            switch positionWaiters[id] {
+            switch viewWaiters[id] {
             case .cancelled:
-                positionWaiters.removeValue(forKey: id)
+                viewWaiters.removeValue(forKey: id)
                 return .failure(CancellationError())
             case .failed(let error):
-                positionWaiters.removeValue(forKey: id)
+                viewWaiters.removeValue(forKey: id)
                 return .failure(error)
             case .awaitingRegistration:
-                if let delivered = deliveredPositionResult(
-                    revision: revision,
-                    target: target
-                ) {
-                    positionWaiters.removeValue(forKey: id)
+                if let delivered = deliveredViewResult(revision: revision) {
+                    viewWaiters.removeValue(forKey: id)
                     return delivered
                 }
-                positionWaiters[id] = .waiting(
-                    PositionWaiter(
+                viewWaiters[id] = .waiting(
+                    ViewWaiter(
                         revision: revision,
-                        target: target,
                         continuation: continuation
                     )
                 )
                 return nil
             case .waiting, .none:
                 preconditionFailure(
-                    "position waiter registration has one owner"
+                    "view waiter registration has one owner"
                 )
             }
         }
 
-        private func deliveredPositionResult(
-            revision: UInt64,
-            target: BridgeFirstUnidentifiedRowRef
-        ) -> Result<Int?, any Error>? {
+        private func deliveredViewResult(
+            revision: UInt64
+        ) -> Result<BridgeImportQueueSummary, any Error>? {
             guard let delivered = latestSummary else { return nil }
             if delivered.revision == revision {
-                return .success(
-                    delivered.summary.firstUnidentifiedPosition(for: target)
-                )
+                return .success(delivered.summary)
             }
             if delivered.revision > revision {
                 return .failure(CancellationError())
@@ -382,7 +387,7 @@ import Foundation
             return nil
         }
 
-        private func fulfillPositionWaiters(
+        private func fulfillViewWaiters(
             revision: UInt64,
             summary: BridgeImportQueueSummary
         ) {
@@ -391,7 +396,7 @@ import Foundation
                 revision: revision,
                 summary: summary
             )
-            let ready: [(UUID, PositionWaiter)] = positionWaiters.compactMap {
+            let ready: [(UUID, ViewWaiter)] = viewWaiters.compactMap {
                 element in
                 guard case .waiting(let waiter) = element.value,
                     waiter.revision <= revision
@@ -399,16 +404,12 @@ import Foundation
                 return (element.key, waiter)
             }
             for (id, _) in ready {
-                positionWaiters.removeValue(forKey: id)
+                viewWaiters.removeValue(forKey: id)
             }
             lock.unlock()
             for (_, waiter) in ready {
                 if waiter.revision == revision {
-                    waiter.continuation.resume(
-                        returning: summary.firstUnidentifiedPosition(
-                            for: waiter.target
-                        )
-                    )
+                    waiter.continuation.resume(returning: summary)
                 }
                 else {
                     waiter.continuation.resume(
@@ -418,16 +419,16 @@ import Foundation
             }
         }
 
-        private func cancelPositionWaiters(before revision: UInt64) {
+        private func cancelViewWaiters(before revision: UInt64) {
             lock.lock()
-            let cancelled: [(UUID, PositionWaiter)] =
-                positionWaiters.compactMap { element in
+            let cancelled: [(UUID, ViewWaiter)] =
+                viewWaiters.compactMap { element in
                     guard case .waiting(let waiter) = element.value,
                         waiter.revision < revision
                     else { return nil }
                     return (element.key, waiter)
                 }
-            let awaiting: [UUID] = positionWaiters.compactMap { element in
+            let awaiting: [UUID] = viewWaiters.compactMap { element in
                 guard
                     case .awaitingRegistration(let awaitingRevision) =
                         element.value,
@@ -436,10 +437,10 @@ import Foundation
                 return element.key
             }
             for (id, _) in cancelled {
-                positionWaiters.removeValue(forKey: id)
+                viewWaiters.removeValue(forKey: id)
             }
             for id in awaiting {
-                positionWaiters[id] = .cancelled
+                viewWaiters[id] = .cancelled
             }
             lock.unlock()
             for (_, waiter) in cancelled {
@@ -447,18 +448,18 @@ import Foundation
             }
         }
 
-        private func cancelPositionWaiter(_ id: UUID) {
+        private func cancelViewWaiter(_ id: UUID) {
             lock.lock()
-            let waiter: PositionWaiter?
-            switch positionWaiters[id] {
+            let waiter: ViewWaiter?
+            switch viewWaiters[id] {
             case .awaitingRegistration:
-                positionWaiters[id] = .cancelled
+                viewWaiters[id] = .cancelled
                 waiter = nil
             case .waiting(let waiting):
-                positionWaiters.removeValue(forKey: id)
+                viewWaiters.removeValue(forKey: id)
                 waiter = waiting
             case .failed:
-                positionWaiters[id] = .cancelled
+                viewWaiters[id] = .cancelled
                 waiter = nil
             case .cancelled, .none:
                 waiter = nil
@@ -501,7 +502,8 @@ import Foundation
                     items.firstIndex {
                         $0.id == target.stableKey
                     }
-                }
+                },
+                waitForView: { _ in }
             )
         }
 

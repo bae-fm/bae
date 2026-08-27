@@ -66,6 +66,9 @@ extension ImportView {
                 )
             },
             onEditCover: { presentCoverPicker(for: candidate) },
+            onNavigateToPlacement: { key in
+                listSlot.requestCandidateReveal(key)
+            },
         )
         .animation(nil, value: uiStore.selectedFolderCandidates)
         // Keyed on the folder's files: what a sheet may be bound to changes

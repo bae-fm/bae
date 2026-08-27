@@ -490,6 +490,20 @@ impl Database {
             .await
     }
 
+    pub(crate) async fn locate_import_candidate(
+        &self,
+        request: ImportListRequest,
+        candidate_key: &str,
+    ) -> Result<Option<crate::import::ImportCandidateListLocation>, DbError> {
+        let candidate_key = candidate_key.to_string();
+        self.read(move |sql| {
+            let rows = load_import_queue_on(&sql)?;
+            crate::import::list::locate_candidate(&rows, &request, &candidate_key)
+                .map_err(|error| DbError::Message(error.to_string()))
+        })
+        .await
+    }
+
     /// One candidate as the pane reads it, live. `None` once the key names no
     /// scanned folder, which is what clears a selection.
     pub(crate) fn subscribe_import_candidate(

@@ -203,40 +203,6 @@ struct ImportCandidateListContent: View {
         )
     }
 
-    /// Go to the first row the identify count is still waiting on. `nil` when
-    /// there is none to go to.
-    private func goToFirstUnidentified(
-        using proxy: ScrollViewProxy
-    ) -> (() -> Void)? {
-        summary.firstUnidentified.map { target in
-            {
-                revealOperation?.cancel()
-                let operation = ImportCandidateRevealOperation()
-                revealOperation = operation
-                operation.task = Task {
-                    defer {
-                        if revealOperation === operation {
-                            revealOperation = nil
-                        }
-                    }
-                    do {
-                        guard
-                            let position = try await listSlot.reveal(target),
-                            !Task.isCancelled
-                        else { return }
-                        selectedKeys = [target.candidateKey]
-                        proxy.scrollTo(position, anchor: .center)
-                        await Task.yield()
-                    }
-                    catch is CancellationError {}
-                    catch {
-                        uiStore.showError(error)
-                    }
-                }
-            }
-        }
-    }
-
     var body: some View {
         ScrollViewReader { proxy in
             ImportSidebarList {
@@ -319,6 +285,16 @@ struct ImportCandidateListContent: View {
             }
             .onDisappear {
                 cancelReveal()
+            }
+            .onReceive(listSlot.candidateRevealRequests) { candidateKey in
+                startReveal(using: proxy) {
+                    guard
+                        let position = try await listSlot.revealCandidate(
+                            candidateKey
+                        )
+                    else { return nil }
+                    return (candidateKey, position)
+                }
             }
         }
     }
@@ -561,6 +537,56 @@ extension ImportCandidateListContent {
             }
         }
         .padding(ImportListHierarchyLayout.insets(isGroupMember: isGroupMember))
+    }
+}
+
+extension ImportCandidateListContent {
+    /// Go to the first row the identify count is still waiting on. `nil` when
+    /// there is none to go to.
+    private func goToFirstUnidentified(
+        using proxy: ScrollViewProxy
+    ) -> (() -> Void)? {
+        summary.firstUnidentified.map { target in
+            {
+                startReveal(using: proxy) {
+                    guard let position = try await listSlot.reveal(target)
+                    else {
+                        return nil
+                    }
+                    return (target.candidateKey, position)
+                }
+            }
+        }
+    }
+
+    private func startReveal(
+        using proxy: ScrollViewProxy,
+        locate:
+            @escaping @MainActor () async throws
+            -> (candidateKey: String, position: Int)?
+    ) {
+        revealOperation?.cancel()
+        let operation = ImportCandidateRevealOperation()
+        revealOperation = operation
+        operation.task = Task {
+            defer {
+                if revealOperation === operation {
+                    revealOperation = nil
+                }
+            }
+            do {
+                guard let target = try await locate(), !Task.isCancelled else {
+                    return
+                }
+                selectedKeys = [target.candidateKey]
+                proxy.scrollTo(target.position, anchor: .center)
+                await Task.yield()
+            }
+            catch is CancellationError {}
+            catch {
+                uiStore.showError(error)
+            }
+        }
     }
 }
 

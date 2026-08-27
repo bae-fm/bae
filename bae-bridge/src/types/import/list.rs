@@ -79,6 +79,16 @@ pub struct BridgeFirstUnidentifiedRowRef {
     pub visible_position: Option<u64>,
 }
 
+/// The list view and position that reveal one candidate at its current
+/// placement.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeImportCandidateListLocation {
+    pub stable_key: String,
+    pub tab: BridgeTriageTab,
+    pub group_key: Option<BridgeFolderReleaseDecisionKey>,
+    pub visible_position: u64,
+}
+
 /// Everything the chrome around the list shows, computed in the same pass as
 /// the items so none of it can drift from them.
 #[derive(Debug, Clone, uniffi::Record)]

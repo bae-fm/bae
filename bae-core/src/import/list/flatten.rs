@@ -8,8 +8,9 @@
 //! the items inside the requested windows and nowhere else.
 
 use super::{
-    FirstUnidentifiedRowRef, GroupHeaderRow, ImportListItem, ImportListOrder, ImportListRequest,
-    ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
+    FirstUnidentifiedRowRef, GroupHeaderRow, ImportCandidateListLocation, ImportListItem,
+    ImportListOrder, ImportListRequest, ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef,
+    UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
@@ -212,6 +213,53 @@ pub(crate) fn flatten(
         rows: placed,
         summary,
     })
+}
+
+/// Locate `candidate_key` using the same placement, grouping, filtering and
+/// ordering pass as the list itself. Only the target's group is opened; the
+/// caller's disclosure state for every other group remains authoritative.
+pub(crate) fn locate_candidate(
+    rows: &ImportQueueRows,
+    request: &ImportListRequest,
+    candidate_key: &str,
+) -> Result<Option<ImportCandidateListLocation>, LibraryError> {
+    let initial = flatten(rows, request)?;
+    let Some(placed) = initial
+        .rows
+        .iter()
+        .find(|placed| placed.row.candidate_key == candidate_key)
+    else {
+        return Ok(None);
+    };
+    let tab = placed.row.placement.tab();
+    let group = if tab == TriageTab::Pending {
+        let source = &rows.candidates[placed.index];
+        group_for(
+            &source.watched_folder_path,
+            &source.display_path,
+            &grouped_roots(rows),
+            &combinable_roots(rows),
+        )
+    } else {
+        None
+    };
+    let mut request = request.clone();
+    request.view.tab = tab;
+    request.view.filter_text.clear();
+    if let Some(group) = &group {
+        request.view.collapsed_groups.remove(&group.key);
+    }
+    let flat = flatten(rows, &request)?;
+    let position = flat.items.iter().position(|item| match item {
+        ItemRef::Candidate { index, .. } => flat.rows[*index].row.candidate_key == candidate_key,
+        ItemRef::Header(_) | ItemRef::Invalid { .. } => false,
+    });
+    Ok(position.map(|position| ImportCandidateListLocation {
+        stable_key: ImportListItem::candidate_stable_key(candidate_key),
+        tab,
+        group_key: group.map(|group| group.key),
+        visible_position: position as u64,
+    }))
 }
 
 /// One settled candidate's row, as the tables place it with this key's

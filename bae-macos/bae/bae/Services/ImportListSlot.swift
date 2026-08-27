@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import Foundation
 import Observation
 
@@ -23,6 +24,12 @@ final class ImportListSlot {
     private var view: BridgeImportListView
     @ObservationIgnored
     private let makeSource: (BridgeImportListView) -> ImportListPages
+    @ObservationIgnored
+    private let locateCandidate:
+        @Sendable (BridgeImportListView, String) async throws
+            -> BridgeImportCandidateListLocation?
+    @ObservationIgnored
+    private let candidateRevealSubject = PassthroughSubject<String, Never>()
     @ObservationIgnored
     private var pages: ImportListPages?
     @ObservationIgnored
@@ -49,11 +56,15 @@ final class ImportListSlot {
     init(
         importStore: ImportStore,
         uiStore: UiStore,
-        makeSource: @escaping (BridgeImportListView) -> ImportListPages
+        makeSource: @escaping (BridgeImportListView) -> ImportListPages,
+        locateCandidate:
+            @escaping @Sendable (BridgeImportListView, String) async throws
+            -> BridgeImportCandidateListLocation?
     ) {
         self.importStore = importStore
         self.uiStore = uiStore
         self.makeSource = makeSource
+        self.locateCandidate = locateCandidate
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
@@ -62,6 +73,14 @@ final class ImportListSlot {
             // watched roots and the folder paths give it.
             order: .pathAscending
         )
+    }
+
+    var candidateRevealRequests: AnyPublisher<String, Never> {
+        candidateRevealSubject.eraseToAnyPublisher()
+    }
+
+    func requestCandidateReveal(_ candidateKey: String) {
+        candidateRevealSubject.send(candidateKey)
     }
 
     /// Build the list and read its first page. Called once the app's
@@ -111,6 +130,37 @@ final class ImportListSlot {
         guard
             !Task.isCancelled,
             list.idAt(position) == target.stableKey
+        else { return nil }
+        return position
+    }
+
+    /// Navigate to the candidate's current authoritative placement, even when
+    /// that placement has moved it out of the list presently on screen.
+    func revealCandidate(_ candidateKey: String) async throws -> Int? {
+        guard let location = try await locateCandidate(view, candidateKey)
+        else {
+            return nil
+        }
+        uiStore.setImportCandidateTab(location.tab)
+        uiStore.setImportCandidateFilterText("")
+        if let groupKey = location.groupKey {
+            uiStore.setReleaseGroupExpanded(
+                releaseGroupDisclosureID(groupKey),
+                true
+            )
+        }
+        var next = view
+        next.tab = location.tab
+        next.filterText = ""
+        next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
+        view = next
+        guard let pages, let list else { return nil }
+        try await pages.waitForView(next)
+        await list.loadPage(containing: Int(location.visiblePosition))
+        let position = Int(location.visiblePosition)
+        guard
+            !Task.isCancelled,
+            list.idAt(position) == location.stableKey
         else { return nil }
         return position
     }
@@ -200,6 +250,17 @@ final class ImportListSlot {
                 uiStore: uiStore,
                 makeSource: { _ in
                     ImportListPreviewPageSource(items: items).pages
+                },
+                locateCandidate: { _, key in
+                    items.firstIndex { $0.id == "candidate:\(key)" }
+                        .map {
+                            BridgeImportCandidateListLocation(
+                                stableKey: "candidate:\(key)",
+                                tab: uiStore.importCandidateTab,
+                                groupKey: nil,
+                                visiblePosition: UInt64($0)
+                            )
+                        }
                 }
             )
             importStore.ingest(items)

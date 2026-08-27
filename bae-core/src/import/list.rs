@@ -38,7 +38,7 @@ mod subscription;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use flatten::{flatten, Flattened, ItemRef};
+pub(crate) use flatten::{flatten, locate_candidate, Flattened, ItemRef};
 pub(crate) use subscription::facts_of;
 pub use subscription::{ImportListSubscription, ImportListSubscriptionError};
 
@@ -181,6 +181,17 @@ impl ImportListItem {
             }
         }
     }
+}
+
+/// The list view and position that reveal one candidate at its current
+/// placement.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImportCandidateListLocation {
+    pub stable_key: String,
+    pub tab: TriageTab,
+    /// The Pending group that has to be open for this candidate to be visible.
+    pub group_key: Option<FolderReleaseDecisionKey>,
+    pub visible_position: u64,
 }
 
 /// One group header the flatten emitted, before it becomes an item.

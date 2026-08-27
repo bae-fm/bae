@@ -12,7 +12,7 @@ pub struct ImportListSubscription {
     runtime: tokio::runtime::Handle,
 }
 
-#[uniffi::export]
+#[uniffi::export(async_runtime = "tokio", cancellable)]
 impl AppHandle {
     pub fn subscribe_import_list(
         &self,
@@ -25,6 +25,23 @@ impl AppHandle {
                 .subscribe_import_list(view.into_core(), &runtime),
             runtime,
         })
+    }
+
+    pub async fn locate_import_candidate(
+        self: std::sync::Arc<Self>,
+        view: crate::types::BridgeImportListView,
+        candidate_key: String,
+    ) -> Result<Option<crate::types::BridgeImportCandidateListLocation>, BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .locate_import_candidate(view.into_core(), &candidate_key)
+                .await
+                .map(|location| {
+                    location.map(crate::types::BridgeImportCandidateListLocation::from_core)
+                })
+                .map_err(BridgeError::database_query)
+        })
+        .await
     }
 
     /// One candidate as the pane reads it, and every later read of it.

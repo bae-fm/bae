@@ -1,6 +1,7 @@
 import BaeKit
 import Foundation
 import Testing
+import XCTest
 
 @testable import bae
 
@@ -24,7 +25,8 @@ private struct FailingPageSource: PageSource {
         ImportListPages(
             source: self,
             setView: { _ in },
-            firstUnidentifiedPosition: { _, _ in nil }
+            firstUnidentifiedPosition: { _, _ in nil },
+            waitForView: { _ in }
         )
     }
 }
@@ -70,12 +72,68 @@ private final class CandidatePositionResolver: @unchecked Sendable {
     }
 }
 
+private final class AppliedViewResolver: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Never>?
+    private var requested: [BridgeImportListView] = []
+
+    var requests: [BridgeImportListView] {
+        lock.withLock { requested }
+    }
+
+    func wait(for view: BridgeImportListView) async {
+        await withCheckedContinuation { continuation in
+            lock.withLock {
+                requested.append(view)
+                self.continuation = continuation
+            }
+        }
+    }
+
+    func resolve() {
+        let continuation = lock.withLock {
+            let continuation = self.continuation
+            self.continuation = nil
+            return continuation
+        }
+        continuation?.resume()
+    }
+}
+
 @MainActor
 private func waitUntil(_ predicate: @MainActor () -> Bool) async {
     for _ in 0..<500 {
         if predicate() { return }
         await Task.yield()
     }
+}
+
+private func candidateItem(_ index: Int) -> BridgeImportListItem {
+    let key = candidateKey(index)
+    return .candidate(
+        stableKey: "candidate:\(key)",
+        row: BridgeTriageRow(
+            candidateKey: key,
+            folderName: "Release \(index)",
+            watchedFolderPath: "/library",
+            displayPath: "Release \(index)",
+            resolvedBoundaries: [],
+            combineAncestorKey: nil,
+            actionable: true,
+            placement: .skipped,
+            skipAction: .unskip,
+            matched: nil,
+            selectable: false,
+            importStatus: nil,
+            picked: nil,
+            claim: nil
+        ),
+        isGroupMember: false
+    )
+}
+
+private func candidateKey(_ index: Int) -> String {
+    "/library/release-\(index)"
 }
 
 /// The import tab decides between three panes — the list, the "add a folder"
@@ -96,7 +154,8 @@ struct ImportListSlotTests {
         let slot = ImportListSlot(
             importStore: ImportStore(),
             uiStore: uiStore,
-            makeSource: { _ in FailingPageSource().pages }
+            makeSource: { _ in FailingPageSource().pages },
+            locateCandidate: { _, _ in nil }
         )
 
         #expect(slot.loadFailure == nil)
@@ -131,9 +190,11 @@ struct ImportListSlotTests {
                             view: view,
                             candidateKey: target.candidateKey
                         )
-                    }
+                    },
+                    waitForView: { _ in }
                 )
-            }
+            },
+            locateCandidate: { _, _ in nil }
         )
         slot.startLoad()
         await waitUntil { slot.list?.idAt(0) != nil }
@@ -183,9 +244,11 @@ struct ImportListSlotTests {
                             view: view,
                             candidateKey: target.candidateKey
                         )
-                    }
+                    },
+                    waitForView: { _ in }
                 )
-            }
+            },
+            locateCandidate: { _, _ in nil }
         )
         slot.startLoad()
         await waitUntil { slot.list?.idAt(0) != nil }
@@ -203,32 +266,63 @@ struct ImportListSlotTests {
         #expect(try await task.value == nil)
     }
 
-    private func candidateItem(_ index: Int) -> BridgeImportListItem {
-        let key = candidateKey(index)
-        return .candidate(
-            stableKey: "candidate:\(key)",
-            row: BridgeTriageRow(
-                candidateKey: key,
-                folderName: "Release \(index)",
-                watchedFolderPath: "/library",
-                displayPath: "Release \(index)",
-                resolvedBoundaries: [],
-                combineAncestorKey: nil,
-                actionable: true,
-                placement: .skipped,
-                skipAction: .unskip,
-                matched: nil,
-                selectable: false,
-                importStatus: nil,
-                picked: nil,
-                claim: nil
-            ),
-            isGroupMember: false
-        )
-    }
+}
 
-    private func candidateKey(_ index: Int) -> String {
-        "/library/release-\(index)"
+final class CandidatePlacementNavigationTests: XCTestCase {
+    @MainActor
+    func testRevealFollowsCurrentPlacementBeforeLoading() async throws {
+        let uiStore = UiStore()
+        uiStore.setImportCandidateTab(.pending)
+        uiStore.setImportCandidateFilterText("hidden")
+        let targetKey = candidateKey(61)
+        let items = (0..<80).map(candidateItem)
+        let pageSource = ImportListPreviewPageSource(items: items)
+        let delivery = AppliedViewResolver()
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            makeSource: { _ in
+                ImportListPages(
+                    source: pageSource,
+                    setView: { _ in },
+                    firstUnidentifiedPosition: { _, _ in nil },
+                    waitForView: { view in
+                        await delivery.wait(for: view)
+                    }
+                )
+            },
+            locateCandidate: { _, key in
+                BridgeImportCandidateListLocation(
+                    stableKey: "candidate:\(key)",
+                    tab: .done,
+                    groupKey: nil,
+                    visiblePosition: 61
+                )
+            }
+        )
+        slot.startLoad()
+        await waitUntil { slot.list?.idAt(0) != nil }
+        let outcome = CandidateRevealOutcome()
+        Task {
+            outcome.position = try? await slot.revealCandidate(targetKey)
+        }
+        await waitUntil { !delivery.requests.isEmpty }
+
+        XCTAssertEqual(uiStore.importCandidateTab, .done)
+        XCTAssertTrue(uiStore.importCandidateFilterText.isEmpty)
+        XCTAssertNil(outcome.position)
+        XCTAssertNil(slot.list?.idAt(61))
+        XCTAssertEqual(delivery.requests.first?.tab, .done)
+        XCTAssertEqual(delivery.requests.first?.filterText.isEmpty, true)
+
+        delivery.resolve()
+        await waitUntil { outcome.position != nil }
+
+        XCTAssertEqual(outcome.position, 61)
+        XCTAssertEqual(
+            slot.list?.idAt(61),
+            "candidate:\(targetKey)"
+        )
     }
 }
 

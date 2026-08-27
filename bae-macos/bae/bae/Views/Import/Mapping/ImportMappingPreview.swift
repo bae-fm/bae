@@ -49,6 +49,7 @@
                 onFindRelease: {},
                 onPickRelease: { _ in },
                 onEditCover: {},
+                onNavigateToPlacement: { _ in },
             )
         }
     }

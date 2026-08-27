@@ -662,6 +662,56 @@ fn the_first_grouped_unidentified_position_follows_its_header() {
     assert_eq!(target.visible_position, Some(1));
 }
 
+#[test]
+fn candidate_location_opens_only_its_group() {
+    let mut rows = queue();
+    rows.candidates = vec![
+        candidate("Earlier/Release 1"),
+        candidate("Earlier/Release 2"),
+        candidate("Target/Release 1"),
+    ];
+    let earlier = FolderReleaseDecisionKey {
+        watched_folder_path: root(),
+        relative_folder_path: "Earlier".to_string(),
+    };
+    let target = FolderReleaseDecisionKey {
+        watched_folder_path: root(),
+        relative_folder_path: "Target".to_string(),
+    };
+    let request = ImportListRequest {
+        view: ImportListView {
+            filter_text: "does not match".to_string(),
+            collapsed_groups: BTreeSet::from([earlier.clone(), target.clone()]),
+            ..view(TriageTab::Pending)
+        },
+        ..ImportListRequest::default()
+    };
+
+    let location = locate_candidate(&rows, &request, &key("Target/Release 1"))
+        .expect("the queue locates")
+        .expect("the candidate is in Pending");
+
+    assert_eq!(location.tab, TriageTab::Pending);
+    assert_eq!(location.group_key, Some(target));
+    assert_eq!(location.visible_position, 2);
+}
+
+#[test]
+fn candidate_location_follows_an_import_from_pending_to_done() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states
+        .insert("hash-Release".to_string(), ready_state("mb-1"));
+    imported(&mut rows, "Release", "mb-1", 100);
+
+    let location = locate_candidate(&rows, &request(view(TriageTab::Pending)), &key("Release"))
+        .expect("the queue locates")
+        .expect("the imported candidate is in Done");
+    assert_eq!(location.tab, TriageTab::Done);
+    assert_eq!(location.group_key, None);
+    assert_eq!(location.visible_position, 0);
+}
+
 /// The Ready set is filtered — it is what a bulk import of what is on screen
 /// would act on — while the counts and the group keys are the whole queue's.
 #[test]

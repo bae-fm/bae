@@ -23,6 +23,18 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn locate_import_candidate(
+        &self,
+        request: crate::import::ImportListRequest,
+        candidate_key: &str,
+    ) -> Result<Option<crate::import::ImportCandidateListLocation>, LibraryError> {
+        Ok(self
+            .database
+            .locate_import_candidate(request, candidate_key)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn subscribe_import_candidate(
         &self,
         key: &str,

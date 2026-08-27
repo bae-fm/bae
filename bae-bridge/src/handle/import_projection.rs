@@ -250,6 +250,14 @@ impl crate::types::BridgeTriageRow {
 
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeTriageTab {
+    pub(super) fn from_core(tab: bae_core::import::TriageTab) -> Self {
+        match tab {
+            bae_core::import::TriageTab::Pending => Self::Pending,
+            bae_core::import::TriageTab::Done => Self::Done,
+            bae_core::import::TriageTab::Skipped => Self::Skipped,
+        }
+    }
+
     pub(super) fn into_core(self) -> bae_core::import::TriageTab {
         match self {
             Self::Pending => bae_core::import::TriageTab::Pending,
@@ -524,6 +532,19 @@ impl crate::types::BridgeFirstUnidentifiedRowRef {
                 .group_key
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
             visible_position: row.visible_position,
+        }
+    }
+}
+
+impl crate::types::BridgeImportCandidateListLocation {
+    pub(super) fn from_core(location: bae_core::import::ImportCandidateListLocation) -> Self {
+        Self {
+            stable_key: location.stable_key,
+            tab: crate::types::BridgeTriageTab::from_core(location.tab),
+            group_key: location
+                .group_key
+                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
+            visible_position: location.visible_position,
         }
     }
 }

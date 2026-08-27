@@ -213,6 +213,12 @@ final class DesktopSubscriptions {
                     }
                 )
                 .pages
+            },
+            locateCandidate: { view, key in
+                try await appHandle.locateImportCandidate(
+                    view: view,
+                    candidateKey: key
+                )
             }
         )
     }

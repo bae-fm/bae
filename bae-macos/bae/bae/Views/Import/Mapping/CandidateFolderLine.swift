@@ -9,14 +9,40 @@ import SwiftUI
 /// The name is selectable (a path is something people copy) and the glyph
 /// beside it is the control that shows the folder in Finder.
 struct CandidateFolderLine: View {
+    let placement: BridgeTriagePlacement?
     let folderName: String
     /// The folder on disk — what the glyph reveals.
     let folderPath: String
     /// The folder's audio shape ("FLAC", "CUE+FLAC").
     let formatLabel: String
+    let onNavigateToPlacement: () -> Void
+
+    static func placementLabel(for placement: BridgeTriagePlacement) -> String {
+        return switch bridgeTriageTab(placement: placement) {
+        case .pending: String(localized: "Pending")
+        case .done: String(localized: "Done")
+        case .skipped: String(localized: "Skipped")
+        }
+    }
 
     var body: some View {
         HStack(spacing: 8) {
+            if let placement {
+                Button(action: onNavigateToPlacement) {
+                    Text(Self.placementLabel(for: placement))
+                        .font(.caption.weight(.medium))
+                        .lineLimit(1)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.accent.opacity(0.14), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.accent)
+                .fixedSize()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
             Button {
                 SystemActions.revealInFinder(path: folderPath)
             } label: {
@@ -44,10 +70,12 @@ struct CandidateFolderLine: View {
 #if DEBUG
     #Preview("Candidate folder line") {
         CandidateFolderLine(
+            placement: .ready,
             folderName:
                 "2010 \u{2013} Blue Sky Boys 1939\u{2013}1940 (256 kbps)",
             folderPath: "/Music/Blue Sky Boys",
-            formatLabel: "FLAC"
+            formatLabel: "FLAC",
+            onNavigateToPlacement: {}
         )
         .padding()
         .frame(width: 520)
