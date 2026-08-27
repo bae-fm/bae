@@ -99,6 +99,12 @@ fix.
   responsive column widths.
 - Increase the visible play/pause glyph and its pointer target while keeping
   every playback state vertically centered in a stable row height.
+- Keep descriptor-file and audio-association controls in the Source side of the
+  table instead of occupying mapped release fields.
+- Constrain long source names and picker labels without changing grid width,
+  and keep file sizes on one horizontal line.
+- Verify awaiting-release, unassociated descriptor, associated descriptor, and
+  long-filename rows at constrained and wide table widths.
 - Give Tracks and Files their real per-section column models if they currently
   share a grid shape that prevents the correct order.
 
