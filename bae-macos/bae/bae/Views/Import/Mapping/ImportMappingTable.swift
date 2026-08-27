@@ -256,23 +256,6 @@ struct ImportMappingColumns {
             ImportMappingColumns.position + title + artist
                 + ImportMappingColumns.spacing * 2
         }
-
-        var positionOrigin: CGFloat {
-            source + ImportMappingColumns.spacing
-        }
-
-        var titleOrigin: CGFloat {
-            positionOrigin + ImportMappingColumns.position
-                + ImportMappingColumns.spacing
-        }
-
-        var artistOrigin: CGFloat {
-            titleOrigin + title + ImportMappingColumns.spacing
-        }
-
-        var lengthOrigin: CGFloat {
-            artistOrigin + artist + ImportMappingColumns.spacing
-        }
     }
 
     struct Files {

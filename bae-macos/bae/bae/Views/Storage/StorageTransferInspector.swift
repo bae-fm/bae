@@ -22,14 +22,6 @@ struct StorageTransferInspectorContent {
             }
         }
 
-        var releaseId: String {
-            switch self {
-            case .download(let operation): operation.releaseId
-            case .output(let operation): operation.releaseId
-            case .upload(let group): group.releaseId
-            }
-        }
-
         var title: LocalizedStringKey {
             switch self {
             case .download: "Downloads"

@@ -47,13 +47,17 @@ struct StorageTransferInspectorTests {
             )
         )
 
-        #expect(
-            content.items.map(\.releaseId)
-                == Array(
-                    repeating: selectedReleaseId,
-                    count: 3
-                )
-        )
+        #expect(content.items.count == 3)
+        for item in content.items {
+            switch item {
+            case .download(let operation):
+                #expect(operation.releaseId == selectedReleaseId)
+            case .output(let operation):
+                #expect(operation.releaseId == selectedReleaseId)
+            case .upload(let group):
+                #expect(group.releaseId == selectedReleaseId)
+            }
+        }
     }
 
     @Test("cloud deletes are never attributed to a selected release")
