@@ -15,11 +15,10 @@ impl LibraryManager {
         self.database.is_connected()
     }
 
-    /// Pause or resume the cloud-upload pipeline. Paused means new enqueues
-    /// still land in the outbox but the sync cycle won't drain them; in-flight
-    /// uploads finish (coven's `drain_uploads` checks the flag between
-    /// entries, not mid-write). Re-emits the outbox snapshot so the UI's
-    /// paused indicator and the bottom-panel summary update.
+    /// Pause or resume the cloud-upload pipeline. New enqueues still land in
+    /// the outbox; coven suspends active preparation and provider request
+    /// bodies while retaining their open upload sessions. Re-emits the outbox
+    /// snapshot so the UI's paused indicator and bottom-panel summary update.
     pub async fn set_sync_paused(&self, paused: bool) {
         self.sync.set_sync_paused(paused).await
     }
