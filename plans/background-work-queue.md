@@ -129,11 +129,10 @@ Completed in `6985a5cd9`.
 
 ### Files table columns
 
-- Show Length only when at least one displayed file has a meaningful duration.
-- Show Role only when at least one displayed file has a role the user can
-  change.
+- Remove the Length and Role columns from the Files table.
 - Remove fixed role chips such as Document and Other.
-- Give hidden-column width back to Name.
+- Keep useful file sizes inline with Name and give the removed-column width
+  back to it.
 
 ### Tracks table source-first layout
 
