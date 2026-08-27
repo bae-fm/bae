@@ -101,15 +101,18 @@ Completed in `b5db987e4`.
 - Provide a close action that hides and clears the inspector without changing
   transfer state.
 
-## Active and ordered queue
-
 ### Release-choice confirmation
+
+Completed in `8cd52f717`.
 
 - Keep the release-choice sheet open after the user selects a pressing.
 - Show the existing spinner in that pressing row while its release data loads.
 - Commit the selection and close the sheet together only after the load
   succeeds.
 - On failure, keep the sheet open and surface the error.
+- Prevent a late completion from dismissing a newer modal.
+
+## Active and ordered queue
 
 ### File-backed evidence provenance
 
