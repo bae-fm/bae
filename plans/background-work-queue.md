@@ -164,14 +164,15 @@ Completed in `c825b094d`.
   clears a stale filter, opens the target's folder group, and reveals and
   selects the same candidate after the exact list revision arrives.
 
+### Hosted candidate viewport regression
+
+Completed in `2143c58e1`.
+
+- Preserve the hosted viewport regression that verifies live page deliveries
+  keep the visible candidate anchored.
+- Find the hosted table with a first-match hierarchy walk instead of building
+  a copy of the complete SwiftUI view hierarchy.
+
 ## Active and ordered queue
 
-### macOS unit-test CI failure
-
-- The hosted candidate viewport regression was the only failed test in run
-  `33066474588`, job `98497669793`; its test process exited while walking the
-  complete SwiftUI view hierarchy to find the first table.
-- Keep the real hosted regression while bounding that lookup to the first
-  matching descendant.
-- Run the focused macOS tests and normal commit checks before handing the
-  focused commit to the main checkout.
+No queued items.
