@@ -21,6 +21,7 @@ use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use serial_test::serial;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tempfile::TempDir;
@@ -282,6 +283,20 @@ struct SlowAnalyzer {
     delay: Duration,
 }
 
+struct CountingAnalyzer {
+    calls: Arc<AtomicUsize>,
+}
+
+impl ArtworkAnalyzer for CountingAnalyzer {
+    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+        self.calls.fetch_add(1, Ordering::Relaxed);
+        ArtworkAnalysis {
+            barcodes: Vec::new(),
+            text_lines: Vec::new(),
+        }
+    }
+}
+
 impl ArtworkAnalyzer for SlowAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         std::thread::sleep(self.delay);
@@ -379,13 +394,13 @@ impl Fixture {
         let executor_thread = std::thread::spawn(move || {
             runtime.block_on(completion_tasks.wait());
         });
-        let sweep = QueueSweepHandle {
-            context: context.clone(),
-            token: CancellationToken::new(),
+        let sweep = QueueSweepHandle::new(
+            context.clone(),
+            CancellationToken::new(),
             tasks,
             runtime_handle,
-            executor_thread: Arc::new(Mutex::new(Some(executor_thread))),
-        };
+            executor_thread,
+        );
         Fixture {
             manager,
             import,

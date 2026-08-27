@@ -77,6 +77,30 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
+    pub fn set_automatic_import_metadata_lookup(
+        &self,
+        enabled: bool,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|config| config.automatic_import_metadata_lookup = enabled)
+    }
+
+    pub fn set_default_import_metadata_mode(
+        &self,
+        mode: crate::config::DefaultImportMetadataMode,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|config| config.default_import_metadata_mode = mode)
+    }
+
+    pub fn set_last_import_metadata_mode(
+        &self,
+        mode: crate::config::ImportMetadataMode,
+    ) -> Result<(), crate::config::ConfigError> {
+        self.config_handle
+            .update(|config| config.last_import_metadata_mode = mode)
+    }
+
     /// Whether casting to a network receiver is available. Turning it off is
     /// what ends an active session: the desktop cast controller follows this
     /// field, stops browsing, and disconnects.

@@ -112,6 +112,49 @@ fn transfer_concurrency_survives_yaml_roundtrip() {
     assert_eq!(yaml.max_concurrent_downloads.get(), 4);
 }
 
+#[test]
+fn import_metadata_settings_default_to_automatic_lookup() {
+    let tmp = TempDir::new().unwrap();
+    let config = make_test_config("lib", tmp.path().to_path_buf());
+
+    assert!(config.automatic_import_metadata_lookup);
+    assert_eq!(
+        config.default_import_metadata_mode,
+        DefaultImportMetadataMode::Lookup
+    );
+    assert_eq!(config.last_import_metadata_mode, ImportMetadataMode::Lookup);
+    assert_eq!(
+        config.resolved_unseeded_import_metadata_mode(),
+        ImportMetadataMode::Lookup
+    );
+}
+
+#[test]
+fn last_used_import_metadata_mode_roundtrips_and_resolves() {
+    let tmp = TempDir::new().unwrap();
+    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+    config.automatic_import_metadata_lookup = false;
+    config.default_import_metadata_mode = DefaultImportMetadataMode::LastUsed;
+    config.last_import_metadata_mode = ImportMetadataMode::Manual;
+    config.save_to_config_yaml().unwrap();
+
+    let yaml: ConfigYaml =
+        serde_yaml::from_str(&std::fs::read_to_string(tmp.path().join("config.yaml")).unwrap())
+            .unwrap();
+    let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
+
+    assert!(!loaded.automatic_import_metadata_lookup);
+    assert_eq!(
+        loaded.default_import_metadata_mode,
+        DefaultImportMetadataMode::LastUsed
+    );
+    assert_eq!(loaded.last_import_metadata_mode, ImportMetadataMode::Manual);
+    assert_eq!(
+        loaded.resolved_unseeded_import_metadata_mode(),
+        ImportMetadataMode::Manual
+    );
+}
+
 /// A hand-edited `0` is refused at load rather than reaching coven — the
 /// `NonZeroU32` field makes the deadlocking value unrepresentable.
 #[test]
@@ -232,6 +275,9 @@ fn config_yaml_requires_every_bae_field() {
         "show_remaining_time",
         "library_full_width",
         "verify_decode_on_import",
+        "automatic_import_metadata_lookup",
+        "default_import_metadata_mode",
+        "last_import_metadata_mode",
         "cast_enabled",
     ] {
         assert!(

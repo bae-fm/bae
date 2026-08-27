@@ -108,6 +108,25 @@ pub enum ReplayGainMode {
     Album,
 }
 
+/// The metadata surface presented for an import candidate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ImportMetadataMode {
+    Lookup,
+    FileTags,
+    Manual,
+}
+
+/// How an unseeded import candidate chooses its initial metadata surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DefaultImportMetadataMode {
+    Lookup,
+    FileTags,
+    Manual,
+    LastUsed,
+}
+
 /// Whether a usable Discogs API key is configured. Folds the no-key case and
 /// the validation state into the four states a UI shows, so each binding
 /// doesn't re-derive the precedence.
@@ -262,6 +281,13 @@ pub struct ConfigYaml {
     /// shortfall), failing the import for a broken track rather than importing it
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     pub verify_decode_on_import: bool,
+    /// Whether an unseeded candidate whose initial metadata surface is Lookup
+    /// runs the identification pipeline without an explicit Find action.
+    pub automatic_import_metadata_lookup: bool,
+    /// Which metadata surface an unseeded candidate initially presents.
+    pub default_import_metadata_mode: DefaultImportMetadataMode,
+    /// The last metadata surface explicitly chosen by the user.
+    pub last_import_metadata_mode: ImportMetadataMode,
     /// Whether casting to a network receiver is available at all. Off unless the
     /// user turns it on: while off, nothing browses the local network and no
     /// cast session can be started.
@@ -299,6 +325,9 @@ impl ConfigYaml {
             show_remaining_time: self.show_remaining_time,
             library_full_width: self.library_full_width,
             verify_decode_on_import: self.verify_decode_on_import,
+            automatic_import_metadata_lookup: self.automatic_import_metadata_lookup,
+            default_import_metadata_mode: self.default_import_metadata_mode,
+            last_import_metadata_mode: self.last_import_metadata_mode,
             cast_enabled: self.cast_enabled,
             mcp: self.mcp,
             subsonic: self.subsonic,
@@ -323,6 +352,9 @@ impl From<&Config> for ConfigYaml {
             show_remaining_time: config.show_remaining_time,
             library_full_width: config.library_full_width,
             verify_decode_on_import: config.verify_decode_on_import,
+            automatic_import_metadata_lookup: config.automatic_import_metadata_lookup,
+            default_import_metadata_mode: config.default_import_metadata_mode,
+            last_import_metadata_mode: config.last_import_metadata_mode,
             cast_enabled: config.cast_enabled,
             mcp: config.mcp,
             subsonic: config.subsonic.clone(),
@@ -395,6 +427,13 @@ pub struct Config {
     /// Whether import verifies each track by fully decoding it, failing the import
     /// for a broken (truncated/corrupt) track. Defaults to `true`.
     pub verify_decode_on_import: bool,
+    /// Whether the Lookup surface starts identification automatically for an
+    /// unseeded candidate. Defaults to `true`.
+    pub automatic_import_metadata_lookup: bool,
+    /// Which metadata surface an unseeded candidate initially presents.
+    pub default_import_metadata_mode: DefaultImportMetadataMode,
+    /// The last metadata surface the user explicitly selected.
+    pub last_import_metadata_mode: ImportMetadataMode,
     /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
     /// Defaults to `false`: casting browses the local network and serves audio
     /// off this machine, so it stays off until the user asks for it. While off,
@@ -426,6 +465,20 @@ impl Config {
     /// the path value, not Coven's store owner.
     pub fn library_path(&self) -> &std::path::Path {
         &self.library_path
+    }
+
+    pub fn resolved_unseeded_import_metadata_mode(&self) -> ImportMetadataMode {
+        match self.default_import_metadata_mode {
+            DefaultImportMetadataMode::Lookup => ImportMetadataMode::Lookup,
+            DefaultImportMetadataMode::FileTags => ImportMetadataMode::FileTags,
+            DefaultImportMetadataMode::Manual => ImportMetadataMode::Manual,
+            DefaultImportMetadataMode::LastUsed => self.last_import_metadata_mode,
+        }
+    }
+
+    pub fn automatic_import_identification_enabled(&self) -> bool {
+        self.automatic_import_metadata_lookup
+            && self.resolved_unseeded_import_metadata_mode() == ImportMetadataMode::Lookup
     }
 
     pub fn load_registered_library(
@@ -529,6 +582,9 @@ impl Config {
             show_remaining_time: false,
             library_full_width: false,
             verify_decode_on_import: true,
+            automatic_import_metadata_lookup: true,
+            default_import_metadata_mode: DefaultImportMetadataMode::Lookup,
+            last_import_metadata_mode: ImportMetadataMode::Lookup,
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),
             subsonic: SubsonicConfig::disabled_default(),

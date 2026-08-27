@@ -51,9 +51,11 @@ use tokio_util::sync::CancellationToken;
 use tokio_util::task::TaskTracker;
 use tracing::{debug, warn};
 
+mod handle;
 mod plan;
 mod settle;
 
+pub use handle::QueueSweepHandle;
 use plan::*;
 use settle::*;
 
@@ -67,178 +69,41 @@ use settle::*;
 /// meaningfully choose here.
 const MAX_IN_FLIGHT: usize = 4;
 
-/// The running queue sweep.
-#[derive(Clone)]
-pub struct QueueSweepHandle {
-    context: SweepContext,
-    token: CancellationToken,
-    tasks: TaskTracker,
-    runtime_handle: tokio::runtime::Handle,
-    executor_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
-}
-
-impl QueueSweepHandle {
-    /// Stop sweeping. In-flight candidates are cancelled and write no rows; the
-    /// next launch picks them up, which is correct for the same reason a
-    /// transport failure is — nothing was learned.
-    ///
-    /// This has to run *before* the tokio runtime is dropped, or every task it
-    /// would cancel is already gone — see the field ordering on
-    /// [`crate::library::AppServices`].
-    pub fn stop(&self) {
-        self.token.cancel();
-        self.tasks.close();
-        let Some(executor_thread) = self.executor_thread.lock().unwrap().take() else {
-            return;
-        };
-        if executor_thread.join().is_err() {
-            warn!("queue sweep executor thread panicked during shutdown");
-        }
-    }
-
-    /// Answer a folder candidate for a person who is looking at it: run
-    /// identification when no stored verdict exists, and do nothing when one
-    /// does — the selection's own query already serves a stored verdict as the
-    /// candidate's identify state, so an answered candidate has nothing left
-    /// to start. The run's verdict settles and persists like the sweep's own,
-    /// so a candidate a person answered opens with no network on every launch
-    /// after.
-    pub fn identify_for_selection(&self, candidate_key: String) {
-        if self.token.is_cancelled() {
-            return;
-        }
-        let this = self.clone();
-        self.tasks.spawn_on(
-            async move {
-                let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
-                else {
-                    warn!(
-                        "cannot identify selection {candidate_key}: \
-                         it is not a folder candidate"
-                    );
-                    return;
-                };
-                // A candidate already answered needs nothing: its stored
-                // verdict is what the selection query serves as its identify
-                // state. Only a candidate with no stored answer runs.
-                if !has_stored_verdict(&this.context, &candidate_key).await {
-                    this.start_selection_run(candidate_key, candidate);
-                }
-            },
-            &self.runtime_handle,
-        );
-    }
-
-    /// Re-run identification for a candidate whose driver is gone — the
-    /// Re-run control on a resumed verdict. The stored answer is deliberately
-    /// not consulted: a re-run exists to replace it.
-    pub fn rerun_for_selection(&self, candidate_key: String) {
-        let this = self.clone();
-        self.tasks.spawn_on(
-            async move {
-                let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
-                else {
-                    warn!(
-                        "cannot re-run selection {candidate_key}: \
-                         it is not a folder candidate"
-                    );
-                    return;
-                };
-                this.start_selection_run(candidate_key, candidate);
-            },
-            &self.runtime_handle,
-        );
-    }
-
-    /// The three steps of a selection's identify run, together and in this
-    /// order: the recorder has to be watching before a candidate with no
-    /// signals settles on its first step, and identify takes its bus
-    /// subscription synchronously so extraction cannot start ahead of it.
-    fn start_selection_run(&self, candidate_key: String, candidate: FolderCandidate) {
-        let run = self.context.identify.new_run();
-        self.record_selection(run, candidate_key.clone());
-        self.context
-            .identify
-            .start(run, candidate_key.clone(), CallPriority::Interactive);
-        self.context.extraction.start(
-            candidate_key,
-            ExtractionSource::Folder {
-                path: candidate.path,
-                files: candidate.files,
-            },
-            CallPriority::Interactive,
-        );
-    }
-
-    /// Persist the verdict of a run a person started, so opening a candidate
-    /// answers it for good rather than only for this session.
-    ///
-    /// Call this from the import selection path, not from the identify service:
-    /// the same pipeline also re-identifies existing library releases
-    /// (`ExtractionSource::Release`), which have no candidate folder, no content
-    /// hash to key a row by, and no probed duration. The recorder resolves its
-    /// candidate through the import service's scanned set, so a re-identify key
-    /// finds nothing there and writes nothing — a second guard on the same
-    /// fact.
-    ///
-    /// The verdict settles before it stores, here as in the sweep's own pass:
-    /// the lead's documents are bought and written first.
-    pub fn record_selection(&self, run: IdentifyRunId, candidate_key: String) {
-        let context = self.context.clone();
-        let token = self.token.child_token();
-        if self.token.is_cancelled() {
-            return;
-        }
-        self.tasks.spawn_on(
-            async move {
-                record_selection_verdict(&context, run, candidate_key, &token).await;
-            },
-            &self.runtime_handle,
-        );
-    }
-}
-
-/// What one pass needs to reach. Grouped because every one of them is required
-/// and they are always passed together.
+/// The services and live ownership one queue-identification pass needs.
 #[derive(Clone)]
 struct SweepContext {
     import: ImportServiceHandle,
     identify: IdentifyServiceHandle,
     extraction: ExtractionServiceHandle,
     library_manager: LibraryManager,
-    /// Candidate keys the sweep currently has drivers running for. Entries are
-    /// added when a run starts and removed when it is finished with — the sweep
-    /// cancels its own drivers once they settle, so this never accumulates keys
-    /// it no longer owns and can never mistake a candidate the user has since
-    /// opened for one of its own.
+    /// Candidate keys the sweep currently has drivers running for.
     ours: Arc<Mutex<HashSet<String>>>,
 }
 
 impl SweepContext {
-    /// Whether this candidate belongs to someone else — the user opened it, and
-    /// their run finishes at its own priority. `IdentifyServiceHandle::start`
-    /// supersedes, so starting one here would cancel theirs and restart it in
-    /// the background, which is the opposite of what the priority is for.
-    ///
-    /// Asked at the moment a run would start, never cached: between planning a
-    /// pass and reaching a candidate, someone can open it.
     fn owned_elsewhere(&self, key: &str) -> bool {
         self.identify.is_running(key) && !self.ours.lock().unwrap().contains(key)
     }
 
-    /// Take a candidate the sweep started: cancel its driver and its extraction,
-    /// and give up ownership.
-    ///
-    /// The sweep never toggles a signal or re-runs, so a settled driver of its
-    /// own is pure cost — `run_driver` only ends via `Cancelled`, so each one
-    /// left alive parks a task, a bus-relay task, and a live broadcast receiver
-    /// that every later `IdentifyStateChanged` is deep-cloned into. Over a whole
-    /// queue that is fan-out quadratic in its size. A driver a *person* started
-    /// is not touched: they can still toggle and re-run it.
     fn release(&self, key: &str) {
         self.identify.cancel(key);
         self.extraction.cancel(key);
         self.ours.lock().unwrap().remove(key);
+    }
+
+    fn release_all(&self) {
+        let keys = self
+            .ours
+            .lock()
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+        for key in keys {
+            self.identify.cancel(&key);
+            self.extraction.cancel(&key);
+        }
+        self.ours.lock().unwrap().clear();
     }
 }
 
@@ -264,6 +129,7 @@ pub fn start(
     // cannot land in the gap between `start` returning and the loop's first
     // `recv`.
     let mut bus = context.import.subscribe_events();
+    let mut config = context.library_manager.subscribe_config_changes();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel();
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -294,6 +160,18 @@ pub fn start(
                 let event = tokio::select! {
                     biased;
                     _ = loop_token.cancelled() => return,
+                    changed = config.changed() => {
+                        if changed.is_err() {
+                            return;
+                        }
+                        if config.borrow().automatic_import_identification_enabled() {
+                            run_pass(&loop_context, &loop_token, &mut event_rx, &mut config).await;
+                        } else {
+                            loop_context.release_all();
+                            emit_progress(&loop_context, 0, 0);
+                        }
+                        continue;
+                    }
                     event = event_rx.recv() => event,
                 };
                 // A pass over an already-answered queue is one DB read and one
@@ -311,12 +189,24 @@ pub fn start(
                         | ScanEvent::CandidateBindingChanged { .. }
                         | ScanEvent::CandidateSkipChanged { .. },
                     ))) => {
-                        run_pass(&loop_context, &loop_token, &mut event_rx).await;
+                        run_pass(
+                            &loop_context,
+                            &loop_token,
+                            &mut event_rx,
+                            &mut config,
+                        )
+                        .await;
                     }
                     Some(Ok(_)) => {}
                     Some(Err(broadcast::error::RecvError::Lagged(n))) => {
                         warn!("sweep: import bus lagged by {n} events; planning a pass in case a scan finished inside the gap");
-                        run_pass(&loop_context, &loop_token, &mut event_rx).await;
+                        run_pass(
+                            &loop_context,
+                            &loop_token,
+                            &mut event_rx,
+                            &mut config,
+                        )
+                        .await;
                     }
                     Some(Err(broadcast::error::RecvError::Closed)) | None => return,
                 }
@@ -331,13 +221,7 @@ pub fn start(
         .spawn(move || runtime.block_on(completion_tasks.wait()))
         .expect("queue sweep executor thread");
 
-    QueueSweepHandle {
-        context,
-        token,
-        tasks,
-        runtime_handle,
-        executor_thread: Arc::new(Mutex::new(Some(executor_thread))),
-    }
+    QueueSweepHandle::new(context, token, tasks, runtime_handle, executor_thread)
 }
 
 /// One candidate the pass is driving: what it will need once a verdict lands.
@@ -397,7 +281,13 @@ async fn run_pass(
     context: &SweepContext,
     token: &CancellationToken,
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
+    config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) {
+    if !config.borrow().automatic_import_identification_enabled() {
+        context.release_all();
+        emit_progress(context, 0, 0);
+        return;
+    }
     let candidates = match new_candidates(context).await {
         Ok(candidates) => candidates,
         Err(error) => {
@@ -457,6 +347,12 @@ async fn run_pass(
 
     loop {
         while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
+            if !config.borrow().automatic_import_identification_enabled() {
+                context.release_all();
+                finishing.shutdown().await;
+                emit_progress(context, 0, 0);
+                return;
+            }
             let Some(mut job) = pending.pop_front() else {
                 break;
             };
@@ -509,6 +405,18 @@ async fn run_pass(
                 }
                 finishing.shutdown().await;
                 return;
+            }
+            changed = config.changed() => {
+                if changed.is_err()
+                    || !config
+                        .borrow()
+                        .automatic_import_identification_enabled()
+                {
+                    context.release_all();
+                    finishing.shutdown().await;
+                    emit_progress(context, 0, 0);
+                    return;
+                }
             }
             Some(result) = finishing.join_next() => {
                 match result {
@@ -879,7 +787,8 @@ async fn run_pass_for_test(context: &SweepContext, token: &CancellationToken) {
             }
         }
     });
-    run_pass(context, token, &mut event_rx).await;
+    let mut config = context.library_manager.subscribe_config_changes();
+    run_pass(context, token, &mut event_rx, &mut config).await;
     relay.abort();
 }
 
