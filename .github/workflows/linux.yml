@@ -29,6 +29,11 @@ jobs:
       with:
         ref: ${{ inputs.ref || github.sha }}
 
+    - name: Free disk space
+      # Workspace lint, documentation, debug tests, and the release CPU test
+      # retain multiple Rust build profiles on the GitHub-hosted Ubuntu image.
+      uses: ./.github/actions/free-ubuntu-runner-disk
+
     - name: Setup Linux environment
       uses: ./.github/actions/setup-linux
 

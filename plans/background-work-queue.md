@@ -203,3 +203,14 @@ Completed in `e14568a3e`.
   failing loudly instead of fabricating a request revision.
 - Preserve the regression where an initial list read fails before the first
   page registers and the later page still receives that failure.
+
+### Linux runner disk capacity
+
+- Reclaim GitHub-hosted Ubuntu toolchains that bae's Linux and Android jobs do
+  not use before either job starts compiling.
+- Put the cleanup in one local composite action so both disk-heavy jobs use the
+  same fixed set of runner-owned paths.
+- Keep the Linux lint, documentation, debug-test, and release CPU-test gates
+  intact; the runner must retain enough disk to reach and execute all of them.
+- Report disk capacity before and after cleanup so a later runner-image change
+  leaves direct evidence in the job log.
