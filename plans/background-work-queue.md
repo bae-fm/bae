@@ -137,24 +137,22 @@ Completed in `45dd0408d`.
   fixed labels.
 - Give Files and Tracks explicit per-section column models.
 
-## Active and ordered queue
-
 ### Tracks table source-first layout
+
+Completed in `6727834ff`.
 
 - Order track columns as Source, track number, Title, Artist, and Length.
 - Put the playable source filename at the far left as the primary origin field.
-- Preserve playback behavior, alignment, truncation, accessibility, and
-  responsive column widths.
-- Increase the visible play/pause glyph and its pointer target while keeping
-  every playback state vertically centered in a stable row height.
-- Keep descriptor-file and audio-association controls in the Source side of the
-  table instead of occupying mapped release fields.
-- Constrain long source names and picker labels without changing grid width,
-  and keep file sizes on one horizontal line.
-- Verify awaiting-release, unassociated descriptor, associated descriptor, and
-  long-filename rows at constrained and wide table widths.
-- Give Tracks and Files their real per-section column models if they currently
-  share a grid shape that prevents the correct order.
+- Keep playback behavior, alignment, truncation, accessibility, and responsive
+  widths.
+- Use a 12-point play or stop glyph in a stable 24-point pointer target.
+- Keep descriptor-file and audio-association controls inside Source.
+- Constrain long source and picker labels without changing the resolved grid,
+  and keep file sizes on one line.
+- Verify awaiting-release, associated and unassociated descriptor, long-name,
+  constrained-width, and wide-width rows.
+
+## Active and ordered queue
 
 ### Candidate placement breadcrumb
 
