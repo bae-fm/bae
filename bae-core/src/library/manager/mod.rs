@@ -75,6 +75,7 @@ mod discogs;
 /// a compile error rather than a release that sits `Queued` with nothing to run it.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod export;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod identity;
 mod image;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -98,6 +99,7 @@ pub(crate) use discogs::discogs_validation_from_result;
 /// land after a `set_identity` call. `new_album` carries the album row
 /// to insert when the target is brand-new; otherwise the target is an
 /// existing album and `new_album` is `None`.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 struct IdentityTargetAlbum {
     album_id: String,
     new_album: Option<DbAlbum>,

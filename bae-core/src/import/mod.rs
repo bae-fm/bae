@@ -176,12 +176,12 @@ pub use triage::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::ImportCommand;
 pub use types::{
-    ArtistAssignment, AudioFile, EditValidationError, MetadataSeed, MetadataSource, NewArtistSeed,
-    PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit,
+    ArtistAssignment, AudioFile, EditValidationError, MetadataSource, NewArtistSeed, PressingEdit,
+    RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit,
     TrackArtistAssignments, TrackUserEdit,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::{
-    CoverSelection, ImportPhase, ImportProgress, ImportStep, MetadataRef, PayloadSource,
-    PrepareStep, ReleaseReseed, SourcePayload, StorageMode, TrackFile,
+    CoverSelection, ImportPhase, ImportProgress, ImportStep, MetadataRef, MetadataSeed,
+    PayloadSource, PrepareStep, ReleaseReseed, SourcePayload, StorageMode, TrackFile,
 };
