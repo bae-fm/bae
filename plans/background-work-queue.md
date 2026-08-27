@@ -164,18 +164,25 @@ Completed in `c825b094d`.
   clears a stale filter, opens the target's folder group, and reveals and
   selects the same candidate after the exact list revision arrives.
 
-## Active and ordered queue
-
 ### Hosted candidate viewport regression
 
 Completed in `3dfc25eae`.
 
+- Preserve the hosted viewport regression that verifies live page deliveries
+  keep the visible candidate anchored.
+- Keep viewport bookkeeping in a stable non-observable reference so geometry
+  preference delivery cannot invalidate SwiftUI rendering.
+
 ### Import release header preview environment
+
+Completed in `e14568a3e`.
 
 - Keep the release-header preview's full view chain loadable when its commit
   action reaches the candidate runtime reader.
 - Compose the existing import and candidate-reader preview environments at the
   release-header preview root so its `Importer` and runtime publisher follow
   the same dependency path as other candidate previews.
-- Run the missing-environment audit and normal commit checks before handing the
-  focused commit to the main checkout.
+
+## Active and ordered queue
+
+No queued items.
