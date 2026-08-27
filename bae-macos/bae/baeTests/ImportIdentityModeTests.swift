@@ -46,7 +46,9 @@ struct ImportIdentityModeTests {
             releaseId: "rel-loading"
         )
         store.mutateCandidate(forKey: MappingFixtures.candidateKey) {
-            $0.pickInFlight = pendingPick
+            $0.identityPickSession = CandidateIdentityPickSession(
+                pick: pendingPick
+            )
             $0.search.searchAlbum = "typed album"
         }
         let before = try #require(

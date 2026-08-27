@@ -24,6 +24,9 @@ struct ImportSearchState {
     /// Release id of the pressing whose confirm pane is open, so its row renders
     /// selected.
     let selectedReleaseId: String?
+    /// Release id whose fetched candidate detail has not landed yet. The
+    /// matching result row swaps its chevron for the existing spinner.
+    let loadingReleaseId: String?
     let isSearching: Bool
     let hasSearched: Bool
     let isImporting: Bool

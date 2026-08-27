@@ -17,51 +17,84 @@ extension ImportSearchFlow {
         importer: Importer,
         importStore: ImportStore,
         key: String,
-        pick: BridgeIdentityPick
+        pick: BridgeIdentityPick,
+        onConfirmed: (@Sendable () -> Void)? = nil
     ) {
-        importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.error = nil
-            candidate.pickInFlight = pick
+        guard
+            let session = importStore.beginIdentityPick(
+                key: key,
+                pick: pick,
+                onConfirmed: onConfirmed
+            )
+        else {
+            logger.debug("Identity pick ignored for missing key: \(key)")
+            return
         }
-        Task { @MainActor in
-            var didLand = false
+
+        let task = Task { @MainActor [weak session] in
             do {
                 try await importer.pickCandidateIdentity(key, pick)
-                didLand = true
+                guard let session else { return }
+                importStore.identityPickCommandSucceeded(
+                    key: key,
+                    session: session
+                )
             }
             catch is CancellationError {
                 logger.debug("Identity pick cancelled for key: \(key)")
+                guard let session else { return }
+                importStore.identityPickFailed(
+                    key: key,
+                    session: session,
+                    error: nil
+                )
             }
             catch {
                 logger.error(
                     "Identity pick failed: \(error.localizedDescription)"
                 )
-                importStore.mutateCandidate(forKey: key) { candidate in
-                    // A nil line is core reporting a cancellation: nothing to
-                    // put in front of the user, and the pane still shows
-                    // whatever was stored before the click.
-                    candidate.error = error.displayLine.map {
-                        switch pick {
-                        case .release:
-                            String(
-                                localized:
-                                    "Failed to load release details: \($0)"
-                            )
-                        case .unknown:
-                            String(localized: "Couldn't read file tags: \($0)")
-                        }
+                guard let session else { return }
+                let line = error.displayLine.map {
+                    switch pick {
+                    case .release:
+                        String(
+                            localized:
+                                "Failed to load release details: \($0)"
+                        )
+                    case .unknown:
+                        String(localized: "Couldn't read file tags: \($0)")
                     }
                 }
-            }
-            importStore.mutateCandidate(forKey: key) { candidate in
-                if candidate.pickInFlight == pick {
-                    if !didLand {
-                        candidate.presentedIdentity = candidate.identity
-                    }
-                    candidate.pickInFlight = nil
-                }
+                importStore.identityPickFailed(
+                    key: key,
+                    session: session,
+                    error: line
+                )
             }
         }
+        session.install(task)
+    }
+
+    /// Pick one search-sheet pressing and dismiss only after its command and
+    /// exact candidate-detail delivery have both succeeded.
+    @MainActor
+    static func chooseReleaseFromSearchSheet(
+        _ result: BridgeMetadataResult,
+        importer: Importer,
+        importStore: ImportStore,
+        key: String,
+        onConfirmed: @escaping @Sendable () -> Void
+    ) {
+        decideIdentity(
+            importer: importer,
+            importStore: importStore,
+            key: key,
+            pick: .release(
+                source: result.source,
+                releaseId: result.releaseId
+            ),
+            onConfirmed: onConfirmed
+        )
     }
 
     // MARK: - Import status helpers

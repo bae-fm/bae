@@ -272,7 +272,9 @@ struct ImportStoreCandidateDetailTests {
             source: .musicBrainz,
             releaseId: "rel-1"
         )
-        existing.pickInFlight = pendingPick
+        existing.identityPickSession = CandidateIdentityPickSession(
+            pick: pendingPick
+        )
         existing.presentedIdentity = .unknown
         existing.search.searchAlbum = "typed album"
         store.selectedCandidates["/w1/a"] = existing

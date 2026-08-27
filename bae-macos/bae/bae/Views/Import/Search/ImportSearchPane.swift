@@ -147,6 +147,7 @@ struct ImportSearchPane: View {
                 libraryStatuses: found.statuses,
                 provenance: found.provenance,
                 selectedReleaseId: state.selectedReleaseId,
+                loadingReleaseId: state.loadingReleaseId,
                 onSelect: onSelect,
             )
         }
@@ -268,6 +269,7 @@ struct ImportSearchPane: View {
                 isImporting: state.isImporting,
                 libraryStatuses: state.libraryStatuses,
                 selectedReleaseId: state.selectedReleaseId,
+                loadingReleaseId: state.loadingReleaseId,
                 onSelect: onSelect,
             )
         }

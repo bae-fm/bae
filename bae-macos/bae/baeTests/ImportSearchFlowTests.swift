@@ -1,5 +1,6 @@
 import BaeKit
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import bae
@@ -7,94 +8,236 @@ import Testing
 @MainActor
 @Suite("ImportSearchFlow identity picks")
 struct ImportSearchFlowIdentityTests {
-    @Test("an in-flight release pick names the row that is loading")
-    func anInFlightReleasePickNamesItsRow() async throws {
-        let store = ImportStore()
-        let candidate = PreviewData.folderCandidates[0]
-        store.selectedCandidates[candidate.key] = candidate
-        let (gate, releaseGate) = AsyncStream<Void>.makeStream()
+    @Test("command return keeps the sheet open until detail delivery")
+    func commandReturnWaitsForDetailDelivery() async throws {
+        let store = unsettledStore()
+        let uiStore = UiStore()
+        let presentation = presentModal(in: uiStore)
+        let recorder = PickRecorder()
         let importer = Importer(
-            pickCandidateIdentity: { _, _ in
+            pickCandidateIdentity: { _, pick in
+                await recorder.record(pick)
+            }
+        )
+
+        ImportSearchFlow.chooseReleaseFromSearchSheet(
+            result(),
+            importer: importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            onConfirmed: { uiStore.dismissModal(presentation) }
+        )
+        await waitUntil {
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .identityPickSession?
+                .commandSucceeded == true
+        }
+
+        #expect(recorder.picks == [MappingFixtures.pick])
+        #expect(uiStore.modalPresentation === presentation)
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .loadingReleaseId == MappingFixtures.releaseId
+        )
+
+        deliverPickedDetail(to: store)
+
+        let delivered = try #require(
+            store.candidate(forKey: MappingFixtures.candidateKey)
+        )
+        #expect(delivered.error == nil)
+        #expect(delivered.pickedRelease?.releaseId == MappingFixtures.releaseId)
+        #expect(delivered.pickInFlight == nil)
+        #expect(uiStore.modalBuilder == nil)
+    }
+
+    @Test("detail delivery before command return still waits for both")
+    func detailDeliveryBeforeCommandReturnWaitsForBoth() async throws {
+        let store = unsettledStore()
+        let uiStore = UiStore()
+        let presentation = presentModal(in: uiStore)
+        let (gate, releaseGate) = AsyncStream<Void>.makeStream()
+        let recorder = PickRecorder()
+        let importer = Importer(
+            pickCandidateIdentity: { _, pick in
+                await recorder.record(pick)
                 for await _ in gate { break }
             }
         )
-        let pick = BridgeIdentityPick.release(
-            source: .musicBrainz,
-            releaseId: "rel-loading"
-        )
 
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.chooseReleaseFromSearchSheet(
+            result(),
             importer: importer,
             importStore: store,
-            key: candidate.key,
-            pick: pick
+            key: MappingFixtures.candidateKey,
+            onConfirmed: { uiStore.dismissModal(presentation) }
         )
+        await waitUntil { recorder.picks == [MappingFixtures.pick] }
 
-        let pending = try #require(store.candidate(forKey: candidate.key))
-        #expect(pending.pickInFlight == pick)
-        #expect(pending.loadingReleaseId == "rel-loading")
+        deliverPickedDetail(to: store)
+
+        #expect(uiStore.modalPresentation === presentation)
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .pickInFlight == MappingFixtures.pick
+        )
 
         releaseGate.finish()
-        for _ in 0..<100
-        where store.candidate(forKey: candidate.key)?.pickInFlight != nil {
-            await Task.yield()
-        }
-        #expect(store.candidate(forKey: candidate.key)?.pickInFlight == nil)
+        await waitUntil { uiStore.modalBuilder == nil }
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .pickInFlight == nil
+        )
     }
 
-    @Test("a pick that lands leaves no error and nothing in flight")
-    func aPickThatLandsClearsThePendingPick() async throws {
-        let store = ImportStore()
-        let candidate = PreviewData.folderCandidates[0]
-        store.selectedCandidates[candidate.key] = candidate
-        var picked: [BridgeIdentityPick] = []
-        let importer = Importer(
-            pickCandidateIdentity: { _, pick in
-                await MainActor.run { picked.append(pick) }
-            }
-        )
-        let pick = BridgeIdentityPick.release(
-            source: .musicBrainz,
-            releaseId: "rel-picked"
-        )
+    @Test("a different detail cannot confirm the chosen pressing")
+    func mismatchedDetailCannotConfirmTheChoice() async throws {
+        let store = unsettledStore()
+        let uiStore = UiStore()
+        let presentation = presentModal(in: uiStore)
+        let importer = Importer()
 
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.chooseReleaseFromSearchSheet(
+            result(),
             importer: importer,
             importStore: store,
-            key: candidate.key,
-            pick: pick
+            key: MappingFixtures.candidateKey,
+            onConfirmed: { uiStore.dismissModal(presentation) }
         )
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil {
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .identityPickSession?
+                .commandSucceeded == true
+        }
 
-        #expect(picked == [pick])
-        let after = try #require(store.candidate(forKey: candidate.key))
-        #expect(after.error == nil)
-        #expect(after.pickInFlight == nil)
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.unknownTable,
+                picked: .release(
+                    source: MappingFixtures.source,
+                    releaseId: "rel-other"
+                )
+            )
+        )
+
+        #expect(uiStore.modalPresentation === presentation)
+        #expect(
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .pickInFlight == MappingFixtures.pick
+        )
+
+        deliverPickedDetail(to: store)
+        #expect(uiStore.modalBuilder == nil)
     }
 
-    @Test("a pick that fails states the failure and stores nothing")
-    func aPickThatFailsStatesIt() async throws {
-        let store = ImportStore()
-        let candidate = PreviewData.folderCandidates[0]
-        store.selectedCandidates[candidate.key] = candidate
+    @Test("a failed choice leaves its sheet open and shows the error")
+    func failedChoiceLeavesSheetOpenAndShowsError() async throws {
+        let store = unsettledStore()
+        let uiStore = UiStore()
+        let presentation = presentModal(in: uiStore)
         let importer = Importer(
             pickCandidateIdentity: { _, _ in throw StubError.notImplemented }
         )
 
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.chooseReleaseFromSearchSheet(
+            result(),
             importer: importer,
             importStore: store,
-            key: candidate.key,
-            pick: .unknown
+            key: MappingFixtures.candidateKey,
+            onConfirmed: { uiStore.dismissModal(presentation) }
         )
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil {
+            store.candidate(forKey: MappingFixtures.candidateKey)?.error != nil
+        }
 
-        let after = try #require(store.candidate(forKey: candidate.key))
+        let after = try #require(
+            store.candidate(forKey: MappingFixtures.candidateKey)
+        )
         #expect(after.error != nil)
         #expect(after.pickInFlight == nil)
-        // Nothing about the pane moved: the pick never landed, so there is
-        // nothing new for it to draw.
-        #expect(after.detail == nil)
+        #expect(after.pickedRelease == nil)
+        #expect(uiStore.modalPresentation === presentation)
+    }
+
+    @Test("a late choice cannot dismiss a newer modal")
+    func lateChoiceCannotDismissNewerModal() async {
+        let store = unsettledStore()
+        let uiStore = UiStore()
+        let searchPresentation = presentModal(in: uiStore)
+        let importer = Importer()
+
+        ImportSearchFlow.chooseReleaseFromSearchSheet(
+            result(),
+            importer: importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            onConfirmed: {
+                uiStore.dismissModal(searchPresentation)
+            }
+        )
+        await waitUntil {
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .identityPickSession?
+                .commandSucceeded == true
+        }
+        uiStore.dismissModal(searchPresentation)
+        let newerPresentation = presentModal(in: uiStore)
+
+        deliverPickedDetail(to: store)
+
+        #expect(uiStore.modalPresentation === newerPresentation)
+        #expect(uiStore.modalBuilder != nil)
+    }
+
+    private func unsettledStore() -> ImportStore {
+        let store = ImportStore()
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(mapping: nil, picked: nil)
+        )
+        return store
+    }
+
+    private func result() -> BridgeMetadataResult {
+        BridgeMetadataResult(
+            source: MappingFixtures.source,
+            releaseId: MappingFixtures.releaseId,
+            year: 1996,
+            format: "CD",
+            label: "Label Name",
+            catalogNumber: "CAT-001",
+            country: "US"
+        )
+    }
+
+    private func presentModal(in uiStore: UiStore) -> ModalPresentation {
+        let presentation = ModalPresentation()
+        uiStore.presentModal(presentation: presentation) { EmptyView() }
+        return presentation
+    }
+
+    private func deliverPickedDetail(to store: ImportStore) {
+        store.applyCandidateDetail(
+            key: MappingFixtures.candidateKey,
+            detail: MappingFixtures.detail(mapping: nil)
+        )
+    }
+
+    private func waitUntil(_ predicate: () -> Bool) async {
+        for _ in 0..<100 where !predicate() {
+            await Task.yield()
+        }
+        #expect(predicate())
+    }
+}
+
+@MainActor
+private final class PickRecorder {
+    var picks: [BridgeIdentityPick] = []
+
+    func record(_ pick: BridgeIdentityPick) {
+        picks.append(pick)
     }
 }
 
@@ -172,19 +315,7 @@ struct ImportSearchFlowLibraryStatusTests {
     @Test("an old same-key status subscription cannot update its replacement")
     func sameKeyReplacementRejectsOldCallbacks() async throws {
         let store = ImportStore()
-        var candidate = PreviewData.folderCandidates[0]
-        let statusKey = ReleaseLibraryStatusSubscriptionKey(
-            source: .musicBrainz,
-            releaseId: "rel-live",
-            sourceGroupId: "group-live"
-        )
-        var results = candidate.search.activeResults()
-        results.libraryStatusSubscriptionKeys = [statusKey]
-        candidate.search.setResults(
-            results,
-            forTab: candidate.search.activeTab,
-            source: candidate.search.activeSource
-        )
+        let (candidate, statusKey) = candidateWithStatusSubscription()
         store.selectedCandidates[candidate.key] = candidate
         let harness = ReleaseStatusHarness()
         let importer = Importer(
@@ -225,37 +356,56 @@ struct ImportSearchFlowLibraryStatusTests {
         )
         await waitUntil { harness.callbackCount(releaseId: "rel-live") == 2 }
 
-        try #require(harness.callback(releaseId: "rel-live", index: 0))
-            .onValue(
-                value: BridgeLibraryStatus(
-                    releaseId: "rel-live",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albumTitle: "Old Title",
-                    albumId: "album-old"
-                )
-            )
+        try deliverStatus(harness, index: 0, albumId: "album-old")
         await Task.yield()
         #expect(
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"] == nil
         )
 
-        try #require(harness.callback(releaseId: "rel-live", index: 1))
-            .onValue(
-                value: BridgeLibraryStatus(
-                    releaseId: "rel-live",
-                    releaseInLibrary: true,
-                    albumInLibrary: true,
-                    albumTitle: "New Title",
-                    albumId: "album-new"
-                )
-            )
+        try deliverStatus(harness, index: 1, albumId: "album-new")
         await waitUntil {
             store.candidate(forKey: candidate.key)?
                 .libraryStatuses["rel-live"]?
                 .albumId == "album-new"
         }
+    }
+
+    private func candidateWithStatusSubscription() -> (
+        Candidate,
+        ReleaseLibraryStatusSubscriptionKey
+    ) {
+        var candidate = PreviewData.folderCandidates[0]
+        let statusKey = ReleaseLibraryStatusSubscriptionKey(
+            source: .musicBrainz,
+            releaseId: "rel-live",
+            sourceGroupId: "group-live"
+        )
+        var results = candidate.search.activeResults()
+        results.libraryStatusSubscriptionKeys = [statusKey]
+        candidate.search.setResults(
+            results,
+            forTab: candidate.search.activeTab,
+            source: candidate.search.activeSource
+        )
+        return (candidate, statusKey)
+    }
+
+    private func deliverStatus(
+        _ harness: ReleaseStatusHarness,
+        index: Int,
+        albumId: String
+    ) throws {
+        try #require(harness.callback(releaseId: "rel-live", index: index))
+            .onValue(
+                value: BridgeLibraryStatus(
+                    releaseId: "rel-live",
+                    releaseInLibrary: true,
+                    albumInLibrary: true,
+                    albumTitle: "Album Title",
+                    albumId: albumId
+                )
+            )
     }
 
     private func searchResponse() -> BridgeCandidateSearchResults {

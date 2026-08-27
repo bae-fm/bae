@@ -14,6 +14,8 @@ struct ReleaseGroupListView: View {
     var provenance: [String: BridgeResultProvenance] = [:]
     /// Release id of the pressing whose confirm pane is open, if any.
     let selectedReleaseId: String?
+    /// Release id whose candidate detail is being fetched, if any.
+    let loadingReleaseId: String?
     let onSelect: (BridgeMetadataResult) -> Void
 
     var body: some View {
@@ -26,6 +28,7 @@ struct ReleaseGroupListView: View {
                         libraryStatuses: libraryStatuses,
                         provenance: provenance,
                         selectedReleaseId: selectedReleaseId,
+                        loadingReleaseId: loadingReleaseId,
                         onSelect: onSelect,
                     )
                 }
@@ -94,6 +97,7 @@ struct ReleaseGroupSection: View {
             libraryStatuses: [:],
             provenance: PreviewData.searchProvenanceExact,
             selectedReleaseId: nil,
+            loadingReleaseId: nil,
             onSelect: { _ in },
         )
         .frame(width: 620, height: 520)
@@ -106,6 +110,7 @@ struct ReleaseGroupSection: View {
             isImporting: false,
             libraryStatuses: [:],
             selectedReleaseId: nil,
+            loadingReleaseId: nil,
             onSelect: { _ in },
         )
         .frame(width: 620, height: 520)

@@ -11,6 +11,7 @@ import SwiftUI
 /// for the width.
 struct ImportSearchSheet: View {
     let candidateKey: String
+    let presentation: ModalPresentation
 
     /// Which half of the pane is showing. The sheet owns it: it opens on what
     /// identification found, and a session that ended in the typed search does
@@ -56,7 +57,7 @@ struct ImportSearchSheet: View {
                 .font(.system(size: 13, weight: .semibold))
             Spacer()
             Button {
-                uiStore.dismissModal()
+                uiStore.dismissModal(presentation)
             } label: {
                 Image(systemName: "xmark")
                     .font(.caption.weight(.semibold))
@@ -98,16 +99,15 @@ struct ImportSearchSheet: View {
             // control, always visible there — not a link inside the search.
             onAddAsUnknown: nil,
             onSelect: { result in
-                ImportSearchFlow.decideIdentity(
+                ImportSearchFlow.chooseReleaseFromSearchSheet(
+                    result,
                     importer: importer,
                     importStore: importStore,
                     key: candidateKey,
-                    pick: .release(
-                        source: result.source,
-                        releaseId: result.releaseId
-                    )
+                    onConfirmed: {
+                        uiStore.dismissModal(presentation)
+                    }
                 )
-                uiStore.dismissModal()
             },
         )
     }

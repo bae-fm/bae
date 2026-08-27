@@ -144,6 +144,7 @@ extension ImportSearchFlow {
             error: candidate.error,
             searchGroups: tabResults.groups,
             selectedReleaseId: input.selectedReleaseId,
+            loadingReleaseId: candidate.loadingReleaseId,
             isSearching: tabResults.isSearching,
             hasSearched: tabResults.hasSearched,
             isImporting: isImporting(candidate),

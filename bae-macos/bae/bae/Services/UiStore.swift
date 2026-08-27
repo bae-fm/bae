@@ -78,6 +78,15 @@ struct ReleaseGroupDisclosureID: Hashable {
     }
 }
 
+/// Identity of one modal presentation. Async work may dismiss only the
+/// presentation that started it, so a late completion cannot close a newer
+/// modal.
+final class ModalPresentation: Equatable, @unchecked Sendable {
+    static func == (lhs: ModalPresentation, rhs: ModalPresentation) -> Bool {
+        lhs === rhs
+    }
+}
+
 // MARK: - UiStore
 
 /// Shared UI-originated state. Views read properties, call methods to mutate.
@@ -145,6 +154,7 @@ class UiStore: @unchecked Sendable {
 
     var lightbox: Cursor<LightboxItem>?
     private(set) var modalBuilder: (() -> AnyView)?
+    private(set) var modalPresentation: ModalPresentation?
     private(set) var isImportFolderPickerPresented = false
 
     // ── Errors ──────────────────────────────────────────────────────────
@@ -383,7 +393,11 @@ class UiStore: @unchecked Sendable {
 
     // MARK: - Overlay methods
 
-    func presentModal(@ViewBuilder content: @escaping () -> some View) {
+    func presentModal(
+        presentation: ModalPresentation = ModalPresentation(),
+        @ViewBuilder content: @escaping () -> some View
+    ) {
+        modalPresentation = presentation
         modalBuilder = { AnyView(content()) }
     }
 
@@ -392,7 +406,13 @@ class UiStore: @unchecked Sendable {
     }
 
     func dismissModal() {
+        modalPresentation = nil
         modalBuilder = nil
+    }
+
+    func dismissModal(_ presentation: ModalPresentation) {
+        guard modalPresentation === presentation else { return }
+        dismissModal()
     }
 
     func setImportFolderPickerPresented(_ presented: Bool) {

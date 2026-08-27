@@ -179,7 +179,86 @@ class ImportStore {
         if let existing = selectedCandidates[key] {
             incoming = incoming.withSessionState(from: existing)
         }
+        let deliveredSession = incoming.identityPickSession.flatMap {
+            session -> CandidateIdentityPickSession? in
+            guard detail.row.picked == session.pick else { return nil }
+            session.recordDetailDelivery()
+            return session
+        }
         selectedCandidates[key] = incoming
+        if let deliveredSession {
+            finishIdentityPickIfConfirmed(
+                key: key,
+                session: deliveredSession
+            )
+        }
+    }
+
+    /// Start one identity-pick session before its bridge command is dispatched,
+    /// so an immediate candidate-detail delivery cannot outrun registration.
+    /// Replacing a session drops its task owner and cancels the older command.
+    func beginIdentityPick(
+        key: String,
+        pick: BridgeIdentityPick,
+        onConfirmed: (@Sendable () -> Void)? = nil
+    ) -> CandidateIdentityPickSession? {
+        guard candidate(forKey: key) != nil else { return nil }
+        let session = CandidateIdentityPickSession(
+            pick: pick,
+            onConfirmed: onConfirmed
+        )
+        mutateCandidate(forKey: key) { candidate in
+            candidate.error = nil
+            candidate.identityPickSession = session
+        }
+        return session
+    }
+
+    /// Record that the bridge command returned successfully. A release choice
+    /// still remains pending until its exact picked detail has also landed.
+    func identityPickCommandSucceeded(
+        key: String,
+        session: CandidateIdentityPickSession
+    ) {
+        guard candidate(forKey: key)?.identityPickSession === session else {
+            return
+        }
+        session.recordCommandSuccess()
+        finishIdentityPickIfConfirmed(key: key, session: session)
+    }
+
+    /// End only the session that raised this failure. A replacement choice may
+    /// already own the candidate by the time an older command returns.
+    func identityPickFailed(
+        key: String,
+        session: CandidateIdentityPickSession,
+        error: String?
+    ) {
+        guard candidate(forKey: key)?.identityPickSession === session else {
+            return
+        }
+        mutateCandidate(forKey: key) { candidate in
+            if let error {
+                candidate.error = error
+            }
+            candidate.presentedIdentity = candidate.identity
+            candidate.identityPickSession = nil
+        }
+    }
+
+    private func finishIdentityPickIfConfirmed(
+        key: String,
+        session: CandidateIdentityPickSession
+    ) {
+        guard session.isConfirmed,
+            candidate(forKey: key)?.identityPickSession === session
+        else { return }
+        let confirmation = session.takeConfirmation()
+        mutateCandidate(forKey: key) { candidate in
+            guard candidate.identityPickSession === session else { return }
+            candidate.identityPickSession = nil
+        }
+        confirmation?()
     }
 
     private func mutateSelectedCandidate(

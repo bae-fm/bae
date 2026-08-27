@@ -57,6 +57,66 @@ final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
     }
 }
 
+/// One candidate identity choice from its click until both the bridge command
+/// and the authoritative candidate-detail delivery have confirmed it. Release
+/// picks wait for that delivery because it carries the fetched release data;
+/// File Tags has no remote release read, so the command result settles it.
+final class CandidateIdentityPickSession: Equatable, @unchecked Sendable {
+    let pick: BridgeIdentityPick
+
+    private(set) var commandSucceeded = false
+    private(set) var detailDelivered: Bool
+    private var task: Task<Void, Never>?
+    private var onConfirmed: (@Sendable () -> Void)?
+
+    init(
+        pick: BridgeIdentityPick,
+        onConfirmed: (@Sendable () -> Void)? = nil
+    ) {
+        self.pick = pick
+        self.onConfirmed = onConfirmed
+        detailDelivered =
+            switch pick {
+            case .release: false
+            case .unknown: true
+            }
+    }
+
+    func install(_ task: Task<Void, Never>) {
+        precondition(self.task == nil)
+        self.task = task
+    }
+
+    func recordCommandSuccess() {
+        commandSucceeded = true
+    }
+
+    func recordDetailDelivery() {
+        detailDelivered = true
+    }
+
+    var isConfirmed: Bool {
+        commandSucceeded && detailDelivered
+    }
+
+    func takeConfirmation() -> (@Sendable () -> Void)? {
+        precondition(isConfirmed)
+        defer { onConfirmed = nil }
+        return onConfirmed
+    }
+
+    deinit {
+        task?.cancel()
+    }
+
+    static func == (
+        lhs: CandidateIdentityPickSession,
+        rhs: CandidateIdentityPickSession
+    ) -> Bool {
+        lhs === rhs
+    }
+}
+
 // MARK: - CandidateSearchState
 
 /// Per-tab search state plus form fields and active tab/source.
@@ -152,11 +212,15 @@ struct Candidate: Equatable, Identifiable {
     var error: String?
     /// The pick currently being read. The initiating row uses its identity for
     /// selection feedback while the pane keeps showing stored data.
-    var pickInFlight: BridgeIdentityPick?
+    var identityPickSession: CandidateIdentityPickSession?
     /// Which metadata source the mapping pane is showing. This is session
     /// navigation, separate from the stored pick: Lookup can be open while
     /// the stored verdict still says to use the folder's file tags.
     var presentedIdentity: ImportIdentity = .release
+
+    var pickInFlight: BridgeIdentityPick? {
+        identityPickSession?.pick
+    }
 
     var loadingReleaseId: String? {
         guard case .release(_, let releaseId) = pickInFlight else { return nil }
@@ -202,7 +266,7 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.error = existing.error
-        copy.pickInFlight = existing.pickInFlight
+        copy.identityPickSession = existing.identityPickSession
         copy.presentedIdentity = existing.presentedIdentity
         copy.search = existing.search
         copy.searchTask = existing.searchTask

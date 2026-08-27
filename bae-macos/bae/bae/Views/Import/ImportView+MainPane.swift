@@ -115,8 +115,12 @@ extension ImportView {
     /// Open the release editor: the search pane, reached the way an editor is
     /// reached.
     func presentSearch(for candidate: Candidate) {
-        uiStore.presentModal {
-            ImportSearchSheet(candidateKey: candidate.key)
+        let presentation = ModalPresentation()
+        uiStore.presentModal(presentation: presentation) {
+            ImportSearchSheet(
+                candidateKey: candidate.key,
+                presentation: presentation
+            )
         }
     }
 
