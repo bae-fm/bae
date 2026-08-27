@@ -121,6 +121,30 @@ fn a_collapsed_group_keeps_its_header_and_drops_its_entries() {
 }
 
 #[test]
+fn only_entries_beneath_a_group_header_are_group_members() {
+    let mut rows = queue();
+    rows.candidates = vec![
+        candidate("Group/Release 1"),
+        candidate("Group/Release 2"),
+        candidate("Ungrouped"),
+    ];
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+
+    let memberships = flat
+        .items
+        .iter()
+        .filter_map(|item| match item {
+            ItemRef::Candidate {
+                is_group_member, ..
+            } => Some(*is_group_member),
+            ItemRef::Header(_) | ItemRef::Invalid { .. } => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(memberships, vec![true, true, false]);
+}
+
+#[test]
 fn the_filter_matches_the_folder_name_and_the_display_path() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Wanted"), candidate("Other")];

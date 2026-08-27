@@ -792,7 +792,9 @@ async fn queue_row(fixture: &Fixture, key: &str) -> crate::import::TriageRow {
             .iter()
             .flat_map(|window| &window.items)
             .find_map(|item| match item {
-                crate::import::ImportListItem::Candidate(row) if row.candidate_key == key => {
+                crate::import::ImportListItem::Candidate { row, .. }
+                    if row.candidate_key == key =>
+                {
                     Some(row.clone())
                 }
                 _ => None,

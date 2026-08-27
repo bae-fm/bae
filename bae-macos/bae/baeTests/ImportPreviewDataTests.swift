@@ -5,6 +5,21 @@ import Testing
 
 @Suite("Import preview data")
 struct ImportPreviewDataTests {
+    @Test("only group members receive the child indent")
+    func importListHierarchyInsets() {
+        let root = ImportListHierarchyLayout.insets(isGroupMember: false)
+        #expect(root.top == 0)
+        #expect(root.leading == -64)
+        #expect(root.bottom == 0)
+        #expect(root.trailing == 64)
+
+        let member = ImportListHierarchyLayout.insets(isGroupMember: true)
+        #expect(member.top == 0)
+        #expect(member.leading == 0)
+        #expect(member.bottom == 0)
+        #expect(member.trailing == 0)
+    }
+
     @MainActor
     @Test("smoke preview combines every queue state")
     func smokePreviewCombinesProductionShapes() {
@@ -107,7 +122,7 @@ struct ImportPreviewDataTests {
             let rows = scene.itemsByTab.values.flatMap { $0 }
                 .compactMap {
                     item -> BridgeTriageRow? in
-                    guard case .candidate(_, let row) = item else {
+                    guard case .candidate(_, let row, _) = item else {
                         return nil
                     }
                     return row
@@ -128,7 +143,7 @@ struct ImportPreviewDataTests {
         let scene = PreviewData.importTabScene()
         let entries = scene.itemsByTab.values.flatMap { $0 }
         let rows = entries.compactMap { item -> BridgeTriageRow? in
-            guard case .candidate(_, let row) = item else { return nil }
+            guard case .candidate(_, let row, _) = item else { return nil }
             return row
         }
         let needsYouGroups = rows.compactMap { row -> BridgeNeedsYouGroup? in

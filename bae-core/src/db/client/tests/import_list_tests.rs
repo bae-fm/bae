@@ -161,7 +161,7 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            ImportListItem::Candidate(row) => Some(row.clone()),
+            ImportListItem::Candidate { row, .. } => Some(row.clone()),
             _ => None,
         })
         .collect()

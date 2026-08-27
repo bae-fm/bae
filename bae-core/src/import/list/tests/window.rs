@@ -61,8 +61,8 @@ fn a_window_boundary_inside_a_group_keeps_the_header_in_the_earlier_window() {
     let second = window_refs(&flat.items, &window(2, 2));
 
     assert!(matches!(first[0], ItemRef::Header(_)));
-    assert!(matches!(first[1], ItemRef::Candidate(_)));
+    assert!(matches!(first[1], ItemRef::Candidate { .. }));
     assert!(second
         .iter()
-        .all(|item| matches!(item, ItemRef::Candidate(_))));
+        .all(|item| matches!(item, ItemRef::Candidate { .. })));
 }

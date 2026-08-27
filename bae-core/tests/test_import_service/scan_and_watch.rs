@@ -194,7 +194,7 @@ fn candidate_rows(
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            bae_core::import::ImportListItem::Candidate(row) => Some(row),
+            bae_core::import::ImportListItem::Candidate { row, .. } => Some(row),
             _ => None,
         })
         .collect()

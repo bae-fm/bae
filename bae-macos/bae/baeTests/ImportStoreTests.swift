@@ -442,6 +442,19 @@ private final class DeliveredPages {
 
 @Suite("Import list page source")
 struct ImportListPageSourceTests {
+    private struct SnapshotWindow {
+        let window: BridgeLibraryPageWindow
+        let keys: [String]
+
+        init(offset: UInt64, limit: UInt64, keys: [String]) {
+            self.window = BridgeLibraryPageWindow(
+                offset: offset,
+                limit: limit
+            )
+            self.keys = keys
+        }
+    }
+
     /// A stub bridge subscription: it records the windows asked for and hands
     /// back the values a test queues.
     private final class StubListSubscription: ImportListSubscriptionProtocol,
@@ -499,23 +512,21 @@ struct ImportListPageSourceTests {
     private func item(_ key: String) -> BridgeImportListItem {
         .candidate(
             stableKey: "candidate:\(key)",
-            row: readyRow(key, title: key)
+            row: readyRow(key, title: key),
+            isGroupMember: false
         )
     }
 
     private func snapshot(
-        _ windows: [(UInt64, UInt64, [String])],
+        _ windows: [SnapshotWindow],
         totalCount: UInt64,
         firstUnidentifiedKey: String? = nil
     ) -> BridgeImportListSnapshot {
         BridgeImportListSnapshot(
-            windows: windows.map { offset, limit, keys in
+            windows: windows.map { fixture in
                 BridgeImportListWindow(
-                    window: BridgeLibraryPageWindow(
-                        offset: offset,
-                        limit: limit
-                    ),
-                    items: keys.map(item)
+                    window: fixture.window,
+                    items: fixture.keys.map(item)
                 )
             },
             totalCount: totalCount,
@@ -569,7 +580,14 @@ struct ImportListPageSourceTests {
 
         subscription.deliver(
             snapshot(
-                [(0, 2, ["/w/a", "/w/b"]), (2, 2, ["/w/c"])],
+                [
+                    SnapshotWindow(
+                        offset: 0,
+                        limit: 2,
+                        keys: ["/w/a", "/w/b"]
+                    ),
+                    SnapshotWindow(offset: 2, limit: 2, keys: ["/w/c"]),
+                ],
                 totalCount: 3,
                 firstUnidentifiedKey: "/w/c"
             )
@@ -641,7 +659,10 @@ struct ImportListPageSourceTests {
         async let initial: Void = list.loadInitial()
         await settle(until: { !subscription.requestedWindows.isEmpty })
         subscription.deliver(
-            snapshot([(0, 50, firstPage)], totalCount: UInt64(total))
+            snapshot(
+                [SnapshotWindow(offset: 0, limit: 50, keys: firstPage)],
+                totalCount: UInt64(total)
+            )
         )
         await initial
         await settle(until: { delivered.count == 1 })
@@ -651,7 +672,10 @@ struct ImportListPageSourceTests {
         // an identification tick on a row further down the queue. The value
         // repeats, and nothing it repeats may go missing.
         subscription.deliver(
-            snapshot([(0, 50, firstPage)], totalCount: UInt64(total))
+            snapshot(
+                [SnapshotWindow(offset: 0, limit: 50, keys: firstPage)],
+                totalCount: UInt64(total)
+            )
         )
         await settle(until: { delivered.count == 2 })
         #expect(loadedKeys(list, importStore, 0..<50) == firstPage)
@@ -665,7 +689,10 @@ struct ImportListPageSourceTests {
 
         subscription.deliver(
             snapshot(
-                [(0, 50, firstPage), (50, 50, secondPage)],
+                [
+                    SnapshotWindow(offset: 0, limit: 50, keys: firstPage),
+                    SnapshotWindow(offset: 50, limit: 50, keys: secondPage),
+                ],
                 totalCount: UInt64(total)
             )
         )
@@ -689,7 +716,7 @@ struct ImportListPageSourceTests {
                 let item = importStore.items[id]
             else { return nil }
             switch item {
-            case .candidate(_, let row): return row.candidateKey
+            case .candidate(_, let row, _): return row.candidateKey
             case .groupHeader, .invalid: return nil
             }
         }

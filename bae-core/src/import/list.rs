@@ -149,8 +149,14 @@ pub enum ImportListItem {
         /// How many entries the group holds in this tab, after the filter.
         entry_count: u32,
     },
-    Candidate(TriageRow),
-    Invalid(InvalidCandidate),
+    Candidate {
+        row: TriageRow,
+        is_group_member: bool,
+    },
+    Invalid {
+        candidate: InvalidCandidate,
+        is_group_member: bool,
+    },
 }
 
 impl ImportListItem {
@@ -165,8 +171,10 @@ impl ImportListItem {
                 group.key.watched_folder_path,
                 group.key.relative_folder_path
             ),
-            Self::Candidate(row) => format!("candidate:{}", row.candidate_key),
-            Self::Invalid(candidate) => format!("invalid:{}", candidate.path.display()),
+            Self::Candidate { row, .. } => format!("candidate:{}", row.candidate_key),
+            Self::Invalid { candidate, .. } => {
+                format!("invalid:{}", candidate.path.display())
+            }
         }
     }
 }

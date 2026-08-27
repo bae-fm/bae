@@ -447,13 +447,21 @@ impl crate::types::BridgeImportListItem {
                 expanded,
                 entry_count,
             },
-            bae_core::import::ImportListItem::Candidate(row) => Self::Candidate {
+            bae_core::import::ImportListItem::Candidate {
+                row,
+                is_group_member,
+            } => Self::Candidate {
                 stable_key,
                 row: crate::types::BridgeTriageRow::from_core(row),
+                is_group_member,
             },
-            bae_core::import::ImportListItem::Invalid(candidate) => Self::Invalid {
+            bae_core::import::ImportListItem::Invalid {
+                candidate,
+                is_group_member,
+            } => Self::Invalid {
                 stable_key,
                 invalid_candidate: crate::types::BridgeInvalidCandidate::from_core(candidate),
+                is_group_member,
             },
         }
     }

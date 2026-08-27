@@ -123,7 +123,7 @@ impl Automation {
             for window in projection.windows {
                 for item in window.items {
                     match item {
-                        ImportListItem::Candidate(row) => {
+                        ImportListItem::Candidate { row, .. } => {
                             let Some(detail) = self
                                 .services
                                 .load_import_candidate(&row.candidate_key)
@@ -134,7 +134,7 @@ impl Automation {
                             };
                             candidates.push(automation_candidate_from_folder(&detail, &runtime));
                         }
-                        ImportListItem::Invalid(candidate) => {
+                        ImportListItem::Invalid { candidate, .. } => {
                             candidates.push(automation_candidate_from_invalid(&candidate));
                         }
                         ImportListItem::GroupHeader { .. } => {}

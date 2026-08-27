@@ -31,9 +31,9 @@ pub(crate) enum ItemRef {
     /// Into [`Flattened::headers`].
     Header(usize),
     /// Into [`Flattened::rows`].
-    Candidate(usize),
+    Candidate { index: usize, is_group_member: bool },
     /// Into [`ImportQueueRows::candidates`] — a row the scan found invalid.
-    Invalid(usize),
+    Invalid { index: usize, is_group_member: bool },
 }
 
 /// The whole queue, flattened for one view.
@@ -95,7 +95,10 @@ pub(crate) fn flatten(
                         view,
                         [row.name.as_str(), row.display_path.as_str()],
                     ),
-                    item: ItemRef::Invalid(index),
+                    item: ItemRef::Invalid {
+                        index,
+                        is_group_member: false,
+                    },
                     done_order: None,
                 });
             }
@@ -128,7 +131,10 @@ pub(crate) fn flatten(
                     tab,
                     group: None,
                     matches_filter,
-                    item: ItemRef::Candidate(placed.len()),
+                    item: ItemRef::Candidate {
+                        index: placed.len(),
+                        is_group_member: false,
+                    },
                     done_order: (tab == TriageTab::Done)
                         .then(|| done_order(rows, row, &triage_row, &request.upload_standing)),
                 });
@@ -404,7 +410,7 @@ fn summarise(
                 group_keys.push(group.key.clone());
             }
         }
-        let ItemRef::Candidate(index) = entry.item else {
+        let ItemRef::Candidate { index, .. } = entry.item else {
             continue;
         };
         let row = &placed[index].row;
@@ -475,10 +481,31 @@ fn emit(view: &ImportListView, ordered: &[OrderedEntry]) -> (Vec<ItemRef>, Vec<G
                 continue;
             }
         }
-        items.extend(entries[start..end].iter().map(|entry| entry.item));
+        let is_group_member = head.group.is_some();
+        items.extend(
+            entries[start..end]
+                .iter()
+                .map(|entry| entry.item.with_group_membership(is_group_member)),
+        );
         start = end;
     }
     (items, headers)
+}
+
+impl ItemRef {
+    fn with_group_membership(self, is_group_member: bool) -> Self {
+        match self {
+            Self::Header(index) => Self::Header(index),
+            Self::Candidate { index, .. } => Self::Candidate {
+                index,
+                is_group_member,
+            },
+            Self::Invalid { index, .. } => Self::Invalid {
+                index,
+                is_group_member,
+            },
+        }
+    }
 }
 
 fn group_key(entry: &OrderedEntry) -> Option<&FolderReleaseDecisionKey> {

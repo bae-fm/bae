@@ -28,7 +28,8 @@
         ) -> BridgeImportListItem {
             .candidate(
                 stableKey: "candidate:\(row.candidateKey)",
-                row: row
+                row: row,
+                isGroupMember: false
             )
         }
 
@@ -37,7 +38,8 @@
         ) -> BridgeImportListItem {
             .invalid(
                 stableKey: "invalid:\(candidate.folderPath)",
-                invalidCandidate: candidate
+                invalidCandidate: candidate,
+                isGroupMember: false
             )
         }
 

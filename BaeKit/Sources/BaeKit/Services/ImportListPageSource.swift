@@ -9,8 +9,8 @@ import Foundation
         public var id: String {
             switch self {
             case .groupHeader(let stableKey, _, _, _, _),
-                .candidate(let stableKey, _),
-                .invalid(let stableKey, _):
+                .candidate(let stableKey, _, _),
+                .invalid(let stableKey, _, _):
                 return stableKey
             }
         }

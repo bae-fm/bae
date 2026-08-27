@@ -42,10 +42,12 @@ pub enum BridgeImportListItem {
     Candidate {
         stable_key: String,
         row: BridgeTriageRow,
+        is_group_member: bool,
     },
     Invalid {
         stable_key: String,
         invalid_candidate: BridgeInvalidCandidate,
+        is_group_member: bool,
     },
 }
 

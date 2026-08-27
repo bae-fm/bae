@@ -723,7 +723,7 @@ fn candidate_names(projection: &crate::import::ImportListProjection) -> Vec<Stri
         .iter()
         .flat_map(|window| &window.items)
         .filter_map(|item| match item {
-            crate::import::ImportListItem::Candidate(row) => Some(row.folder_name.clone()),
+            crate::import::ImportListItem::Candidate { row, .. } => Some(row.folder_name.clone()),
             _ => None,
         })
         .collect()

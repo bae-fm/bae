@@ -193,10 +193,12 @@ fn sequence(rows: &ImportQueueRows, flat: &Flattened) -> Vec<String> {
         .iter()
         .map(|item| match item {
             ItemRef::Header(index) => format!("group {}", flat.headers[*index].group.name),
-            ItemRef::Candidate(index) => {
+            ItemRef::Candidate { index, .. } => {
                 format!("candidate {}", flat.rows[*index].row.display_path)
             }
-            ItemRef::Invalid(index) => format!("invalid {}", rows.candidates[*index].display_path),
+            ItemRef::Invalid { index, .. } => {
+                format!("invalid {}", rows.candidates[*index].display_path)
+            }
         })
         .collect()
 }

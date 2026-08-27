@@ -36,7 +36,10 @@ pub(super) fn materialise(
         .iter()
         .map(|item| match item {
             ItemRef::Header(index) => Ok(flat.headers[*index].item()),
-            ItemRef::Candidate(index) => {
+            ItemRef::Candidate {
+                index,
+                is_group_member,
+            } => {
                 let placed = &flat.rows[*index];
                 let scanned = &rows.candidates[placed.index];
                 let mut row = placed.row.clone();
@@ -55,24 +58,36 @@ pub(super) fn materialise(
                 if let Some(pick) = row.picked.clone() {
                     row.matched = picked_release(sql, &pick)?;
                 }
-                Ok(ImportListItem::Candidate(row))
+                Ok(ImportListItem::Candidate {
+                    row,
+                    is_group_member: *is_group_member,
+                })
             }
-            ItemRef::Invalid(index) => {
+            ItemRef::Invalid {
+                index,
+                is_group_member,
+            } => {
                 let scanned = &rows.candidates[*index];
-                Ok(ImportListItem::Invalid(InvalidCandidate {
-                    path: PathBuf::from(&scanned.path),
-                    name: scanned.name.clone(),
-                    watched_folder_path: scanned.watched_folder_path.clone(),
-                    display_path: scanned.display_path.clone(),
-                    resolved_boundaries: resolved_boundaries(
-                        sql,
-                        &scanned.watched_folder_path,
-                        &scanned.path,
-                    )?,
-                    reason: scanned.invalid_reason.clone().ok_or_else(|| {
-                        DbError::Message(format!("scan candidate {} has no reason", scanned.path))
-                    })?,
-                }))
+                Ok(ImportListItem::Invalid {
+                    candidate: InvalidCandidate {
+                        path: PathBuf::from(&scanned.path),
+                        name: scanned.name.clone(),
+                        watched_folder_path: scanned.watched_folder_path.clone(),
+                        display_path: scanned.display_path.clone(),
+                        resolved_boundaries: resolved_boundaries(
+                            sql,
+                            &scanned.watched_folder_path,
+                            &scanned.path,
+                        )?,
+                        reason: scanned.invalid_reason.clone().ok_or_else(|| {
+                            DbError::Message(format!(
+                                "scan candidate {} has no reason",
+                                scanned.path
+                            ))
+                        })?,
+                    },
+                    is_group_member: *is_group_member,
+                })
             }
         })
         .collect()

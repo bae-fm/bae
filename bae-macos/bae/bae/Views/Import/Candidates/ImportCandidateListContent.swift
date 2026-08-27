@@ -7,6 +7,15 @@ func releaseGroupDisclosureID(
     ReleaseGroupDisclosureID(key: key)
 }
 
+enum ImportListHierarchyLayout {
+    static func insets(isGroupMember: Bool) -> EdgeInsets {
+        if isGroupMember {
+            return EdgeInsets()
+        }
+        return EdgeInsets(top: 0, leading: -64, bottom: 0, trailing: 64)
+    }
+}
+
 // MARK: - ImportCandidateListContent
 
 /// The import sidebar: one paged list over the tab the slot is showing. Which
@@ -270,10 +279,10 @@ extension ImportCandidateListContent {
             switch item {
             case .groupHeader(_, let group, _, let expanded, _):
                 releaseGroupHeader(group, expanded: expanded)
-            case .candidate(_, let row):
-                candidateRow(row)
-            case .invalid(_, let invalid):
-                invalidRow(invalid)
+            case .candidate(_, let row, let isGroupMember):
+                candidateRow(row, isGroupMember: isGroupMember)
+            case .invalid(_, let invalid, let isGroupMember):
+                invalidRow(invalid, isGroupMember: isGroupMember)
             }
         }
         else {
@@ -283,10 +292,9 @@ extension ImportCandidateListContent {
         }
     }
 
-    /// A folder group renders as a header row followed by its rows as
-    /// siblings — not a `DisclosureGroup`, which indents whatever it contains.
-    /// Grouped and ungrouped rows share one leading edge; the header row is
-    /// the only thing that says a group is there.
+    /// A folder group renders as a header row followed by sibling list items,
+    /// rather than a `DisclosureGroup`. Core marks the actual members so only
+    /// those siblings receive the child inset.
     private func releaseGroupHeader(
         _ group: BridgeTriageGroup,
         expanded: Bool
@@ -337,7 +345,10 @@ extension ImportCandidateListContent {
         )
     }
 
-    private func candidateRow(_ row: BridgeTriageRow) -> some View {
+    private func candidateRow(
+        _ row: BridgeTriageRow,
+        isGroupMember: Bool
+    ) -> some View {
         TriageRowView(
             row: row,
             importStore: importStore,
@@ -348,11 +359,15 @@ extension ImportCandidateListContent {
         )
         .tag(row.candidateKey)
         .disabled(!row.actionable)
+        .padding(ImportListHierarchyLayout.insets(isGroupMember: isGroupMember))
     }
 
     /// An invalid folder isn't selectable — selecting its key is a no-op
     /// upstream (it isn't a real candidate), so it carries no `.tag()`.
-    private func invalidRow(_ invalid: BridgeInvalidCandidate) -> some View {
+    private func invalidRow(
+        _ invalid: BridgeInvalidCandidate,
+        isGroupMember: Bool
+    ) -> some View {
         InvalidCandidateRow(
             displayName: invalid.sourceFolderName,
             reason: invalid.reason,
@@ -374,6 +389,7 @@ extension ImportCandidateListContent {
                 }
             }
         }
+        .padding(ImportListHierarchyLayout.insets(isGroupMember: isGroupMember))
     }
 }
 
