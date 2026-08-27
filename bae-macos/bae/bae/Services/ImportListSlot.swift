@@ -84,6 +84,37 @@ final class ImportListSlot {
         updateView { $0.filterText = text }
     }
 
+    /// Ask for the view that contains `target`, then return only after that
+    /// exact view revision has delivered the candidate's position.
+    func reveal(_ target: BridgeFirstUnidentifiedRowRef) async throws -> Int? {
+        uiStore.setImportCandidateTab(.pending)
+        uiStore.setImportCandidateFilterText("")
+        if let groupKey = target.groupKey {
+            uiStore.setReleaseGroupExpanded(
+                releaseGroupDisclosureID(groupKey),
+                true
+            )
+        }
+        var next = view
+        next.tab = .pending
+        next.filterText = ""
+        next.collapsedGroups = uiStore.collapsedReleaseGroupKeys
+        view = next
+        guard let pages else { return nil }
+        guard
+            let position = try await pages.firstUnidentifiedPosition(
+                for: target,
+                afterApplying: next
+            ), let list
+        else { return nil }
+        await list.loadPage(containing: position)
+        guard
+            !Task.isCancelled,
+            list.idAt(position) == target.stableKey
+        else { return nil }
+        return position
+    }
+
     /// Fold one group open or shut. Its entries leave the list when it folds,
     /// so this changes what every later offset holds.
     func setGroupExpanded(_ id: ReleaseGroupDisclosureID, _ expanded: Bool) {

@@ -476,7 +476,7 @@ impl crate::types::BridgeImportQueueSummary {
             folder_scan_statuses,
             group_keys,
             ready,
-            first_unidentified_key,
+            first_unidentified,
         } = summary;
         let bae_core::import::TriageTabCounts {
             pending,
@@ -509,7 +509,21 @@ impl crate::types::BridgeImportQueueSummary {
                     cover_thumbnail_url: row.cover_thumbnail_url,
                 })
                 .collect(),
-            first_unidentified_key,
+            first_unidentified: first_unidentified
+                .map(crate::types::BridgeFirstUnidentifiedRowRef::from_core),
+        }
+    }
+}
+
+impl crate::types::BridgeFirstUnidentifiedRowRef {
+    pub(super) fn from_core(row: bae_core::import::FirstUnidentifiedRowRef) -> Self {
+        Self {
+            candidate_key: row.candidate_key,
+            stable_key: row.stable_key,
+            group_key: row
+                .group_key
+                .map(crate::types::BridgeFolderReleaseDecisionKey::from_core),
+            visible_position: row.visible_position,
         }
     }
 }

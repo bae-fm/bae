@@ -160,6 +160,10 @@ pub enum ImportListItem {
 }
 
 impl ImportListItem {
+    fn candidate_stable_key(candidate_key: &str) -> String {
+        format!("candidate:{candidate_key}")
+    }
+
     /// Stable identity for one item. Variant prefixes keep a candidate, a
     /// boundary and a group header at the same folder from sharing view state;
     /// the length prefix makes a two-component key unambiguous.
@@ -171,7 +175,7 @@ impl ImportListItem {
                 group.key.watched_folder_path,
                 group.key.relative_folder_path
             ),
-            Self::Candidate { row, .. } => format!("candidate:{}", row.candidate_key),
+            Self::Candidate { row, .. } => Self::candidate_stable_key(&row.candidate_key),
             Self::Invalid { candidate, .. } => {
                 format!("invalid:{}", candidate.path.display())
             }
@@ -214,6 +218,20 @@ pub struct ReadyRowRef {
     pub cover_thumbnail_url: Option<String>,
 }
 
+/// The first candidate identification has not settled yet, and where that row
+/// is in the requested view when the view includes it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FirstUnidentifiedRowRef {
+    pub candidate_key: String,
+    /// Stable identity of the candidate row in the paginated list.
+    pub stable_key: String,
+    /// The Pending group that must be open for the candidate to be visible.
+    pub group_key: Option<FolderReleaseDecisionKey>,
+    /// Its position in this projection's active tab/filter/disclosure view.
+    /// Absent when that view does not contain the candidate.
+    pub visible_position: Option<u64>,
+}
+
 /// Everything the chrome around the list shows, computed in the same pass as
 /// the items so none of it can drift from them.
 #[derive(Debug, Clone, PartialEq)]
@@ -226,8 +244,9 @@ pub struct ImportQueueSummary {
     pub group_keys: Vec<FolderReleaseDecisionKey>,
     /// The Ready rows matching the view's filter, in queue order.
     pub ready: Vec<ReadyRowRef>,
-    /// The first row the identify count is still waiting on, unfiltered.
-    pub first_unidentified_key: Option<String>,
+    /// The first row the identify count is still waiting on, unfiltered, plus
+    /// its position when the current view contains it.
+    pub first_unidentified: Option<FirstUnidentifiedRowRef>,
 }
 
 /// One read of the list: the requested windows, the total, and the chrome.

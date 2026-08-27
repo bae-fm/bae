@@ -41,7 +41,7 @@ impl Requests {
     fn update(
         &self,
         change: impl FnOnce(&mut ImportListRequest),
-    ) -> Result<(), ImportListSubscriptionError> {
+    ) -> Result<u64, ImportListSubscriptionError> {
         if self.cancellation.is_cancelled() {
             return Err(ImportListSubscriptionError::Cancelled);
         }
@@ -59,8 +59,8 @@ impl Requests {
             .as_ref()
             .ok_or(ImportListSubscriptionError::Cancelled)?
             .set(next)
-            .expect("the import list subscription owns its live query");
-        Ok(())
+            .map(|revision| revision.get())
+            .map_err(|_| ImportListSubscriptionError::Cancelled)
     }
 
     fn cancel(&self) {
@@ -117,7 +117,7 @@ impl ImportListSubscription {
 
     /// Show a different tab, filter, order, or set of folded groups. The
     /// windows are kept: the query reruns and the list re-ingests them.
-    pub fn set_view(&self, view: ImportListView) -> Result<(), ImportListSubscriptionError> {
+    pub fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
         self.requests.update(|request| request.view = view)
     }
 
@@ -125,7 +125,9 @@ impl ImportListSubscription {
         &self,
         windows: LibraryPageWindows,
     ) -> Result<(), ImportListSubscriptionError> {
-        self.requests.update(|request| request.windows = windows)
+        self.requests
+            .update(|request| request.windows = windows)
+            .map(|_| ())
     }
 
     pub async fn next(&self) -> Result<ImportListSnapshot, ImportListSubscriptionError> {

@@ -440,8 +440,21 @@ private final class DeliveredPages {
     var count = 0
 }
 
+@MainActor
+private final class CandidatePositionOutcome {
+    enum State: Equatable {
+        case waiting
+        case resolved(Int?)
+        case failed
+    }
+
+    var state = State.waiting
+}
+
 @Suite("Import list page source")
 struct ImportListPageSourceTests {
+    private struct PositionReadFailed: Error {}
+
     private struct SnapshotWindow {
         let window: BridgeLibraryPageWindow
         let keys: [String]
@@ -462,16 +475,23 @@ struct ImportListPageSourceTests {
     {
         private let lock = NSLock()
         private var windows: [[BridgeLibraryPageWindow]] = []
-        private var pending: [BridgeImportListSnapshot] = []
+        private var pending: [Result<BridgeImportListSnapshot, any Error>] = []
+        private var viewRevision: UInt64 = 0
+        private var views: [BridgeImportListView] = []
+        private var setViewHook: (() -> Void)?
         private var waiter:
-            CheckedContinuation<
-                BridgeImportListSnapshot, Never
-            >?
+            CheckedContinuation<BridgeImportListSnapshot, any Error>?
 
         var requestedWindows: [[BridgeLibraryPageWindow]] {
             lock.lock()
             defer { lock.unlock() }
             return windows
+        }
+
+        var requestedViews: [BridgeImportListView] {
+            lock.lock()
+            defer { lock.unlock() }
+            return views
         }
 
         func setWindows(windows: [BridgeLibraryPageWindow]) throws {
@@ -480,7 +500,20 @@ struct ImportListPageSourceTests {
             lock.unlock()
         }
 
-        func setView(view: BridgeImportListView) throws {}
+        func setView(view: BridgeImportListView) throws -> UInt64 {
+            lock.lock()
+            viewRevision += 1
+            views.append(view)
+            let revision = viewRevision
+            let hook = setViewHook
+            lock.unlock()
+            hook?()
+            return revision
+        }
+
+        func onSetView(_ hook: @escaping () -> Void) {
+            lock.withLock { setViewHook = hook }
+        }
 
         func cancel() async throws {}
 
@@ -488,13 +521,22 @@ struct ImportListPageSourceTests {
             lock.lock()
             let waiter = self.waiter
             self.waiter = nil
-            if waiter == nil { pending.append(snapshot) }
+            if waiter == nil { pending.append(.success(snapshot)) }
             lock.unlock()
             waiter?.resume(returning: snapshot)
         }
 
-        func next() async -> BridgeImportListSnapshot {
-            await withCheckedContinuation { continuation in
+        func fail(_ error: any Error) {
+            lock.lock()
+            let waiter = self.waiter
+            self.waiter = nil
+            if waiter == nil { pending.append(.failure(error)) }
+            lock.unlock()
+            waiter?.resume(throwing: error)
+        }
+
+        func next() async throws -> BridgeImportListSnapshot {
+            try await withCheckedThrowingContinuation { continuation in
                 lock.lock()
                 if pending.isEmpty {
                     waiter = continuation
@@ -503,7 +545,7 @@ struct ImportListPageSourceTests {
                 else {
                     let snapshot = pending.removeFirst()
                     lock.unlock()
-                    continuation.resume(returning: snapshot)
+                    continuation.resume(with: snapshot)
                 }
             }
         }
@@ -520,7 +562,9 @@ struct ImportListPageSourceTests {
     private func snapshot(
         _ windows: [SnapshotWindow],
         totalCount: UInt64,
-        firstUnidentifiedKey: String? = nil
+        firstUnidentifiedCandidateKey: String? = nil,
+        firstUnidentifiedPosition: UInt64? = nil,
+        requestRevision: UInt64 = 0
     ) -> BridgeImportListSnapshot {
         BridgeImportListSnapshot(
             windows: windows.map { fixture in
@@ -540,11 +584,201 @@ struct ImportListPageSourceTests {
                 folderScanStatuses: [],
                 groupKeys: [],
                 ready: [],
-                firstUnidentifiedKey: firstUnidentifiedKey
+                firstUnidentified: firstUnidentifiedCandidateKey.map {
+                    BridgeFirstUnidentifiedRowRef(
+                        candidateKey: $0,
+                        stableKey: "candidate:\($0)",
+                        groupKey: nil,
+                        visiblePosition: firstUnidentifiedPosition
+                    )
+                }
             ),
-            requestRevision: 0,
+            requestRevision: requestRevision,
             cause: .requestChanged
         )
+    }
+}
+
+extension ImportListPageSourceTests {
+    @MainActor
+    @Test("candidate position waits for the view revision that defines it")
+    func candidatePositionWaitsForItsViewRevision() async throws {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        let view = BridgeImportListView(
+            tab: .pending,
+            filterText: "",
+            collapsedGroups: [],
+            order: .pathAscending
+        )
+        let outcome = CandidatePositionOutcome()
+        Task {
+            do {
+                outcome.state = .resolved(
+                    try await source.pages.firstUnidentifiedPosition(
+                        for: BridgeFirstUnidentifiedRowRef(
+                            candidateKey: "/w/target",
+                            stableKey: "candidate:/w/target",
+                            groupKey: nil,
+                            visiblePosition: nil
+                        ),
+                        afterApplying: view
+                    )
+                )
+            }
+            catch {
+                outcome.state = .failed
+            }
+        }
+        await settle(until: { subscription.requestedViews == [view] })
+
+        subscription.deliver(
+            snapshot(
+                [],
+                totalCount: 70,
+                firstUnidentifiedCandidateKey: "/w/target",
+                firstUnidentifiedPosition: 4,
+                requestRevision: 0
+            )
+        )
+        await Task.yield()
+        #expect(outcome.state == .waiting)
+
+        subscription.deliver(
+            snapshot(
+                [],
+                totalCount: 70,
+                firstUnidentifiedCandidateKey: "/w/target",
+                firstUnidentifiedPosition: 61,
+                requestRevision: 1
+            )
+        )
+        await settle(until: { outcome.state != .waiting })
+        #expect(outcome.state == .resolved(61))
+    }
+
+    @MainActor
+    @Test("candidate position cancellation cannot miss registration")
+    func candidatePositionCancellationAtRegistration() async {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        let task = Task {
+            try await source.pages.firstUnidentifiedPosition(
+                for: BridgeFirstUnidentifiedRowRef(
+                    candidateKey: "/w/target",
+                    stableKey: "candidate:/w/target",
+                    groupKey: nil,
+                    visiblePosition: nil
+                ),
+                afterApplying: BridgeImportListView(
+                    tab: .pending,
+                    filterText: "",
+                    collapsedGroups: [],
+                    order: .pathAscending
+                )
+            )
+        }
+
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("a cancelled position wait returned a position")
+        }
+        catch is CancellationError {}
+        catch {
+            Issue.record("unexpected cancellation error: \(error)")
+        }
+    }
+
+    @MainActor
+    @Test("candidate position registration receives a source failure")
+    func candidatePositionFailureAtRegistration() async {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        let task = Task {
+            try await source.pages.firstUnidentifiedPosition(
+                for: BridgeFirstUnidentifiedRowRef(
+                    candidateKey: "/w/target",
+                    stableKey: "candidate:/w/target",
+                    groupKey: nil,
+                    visiblePosition: nil
+                ),
+                afterApplying: BridgeImportListView(
+                    tab: .pending,
+                    filterText: "",
+                    collapsedGroups: [],
+                    order: .pathAscending
+                )
+            )
+        }
+        await settle(until: { !subscription.requestedViews.isEmpty })
+
+        subscription.fail(PositionReadFailed())
+
+        do {
+            _ = try await task.value
+            Issue.record("a failed position wait returned a position")
+        }
+        catch is PositionReadFailed {}
+        catch {
+            Issue.record("unexpected position error: \(error)")
+        }
+    }
+
+    @Test("a failure between view acceptance and registration is retained")
+    func candidatePositionFailureBeforeRegistration() async {
+        let subscription = StubListSubscription()
+        let source = ImportListPageSource(
+            subscription: subscription,
+            onSummary: { _ in }
+        )
+        let failureDelivered = DispatchSemaphore(value: 0)
+        _ = source.subscribe(
+            offset: 0,
+            limit: 1,
+            onValue: { _, _ in },
+            onError: { _ in failureDelivered.signal() }
+        )
+        subscription.onSetView {
+            subscription.fail(PositionReadFailed())
+            failureDelivered.wait()
+        }
+        let pages = source.pages
+        let task = Task {
+            try await pages.firstUnidentifiedPosition(
+                for: BridgeFirstUnidentifiedRowRef(
+                    candidateKey: "/w/target",
+                    stableKey: "candidate:/w/target",
+                    groupKey: nil,
+                    visiblePosition: nil
+                ),
+                afterApplying: BridgeImportListView(
+                    tab: .pending,
+                    filterText: "",
+                    collapsedGroups: [],
+                    order: .pathAscending
+                )
+            )
+        }
+
+        do {
+            _ = try await task.value
+            Issue.record("a failed position wait returned a position")
+        }
+        catch is PositionReadFailed {}
+        catch {
+            Issue.record("unexpected position error: \(error)")
+        }
     }
 
     @MainActor
@@ -589,7 +823,7 @@ struct ImportListPageSourceTests {
                     SnapshotWindow(offset: 2, limit: 2, keys: ["/w/c"]),
                 ],
                 totalCount: 3,
-                firstUnidentifiedKey: "/w/c"
+                firstUnidentifiedCandidateKey: "/w/c"
             )
         )
         await settle(until: { totals.count == 2 })
@@ -597,7 +831,9 @@ struct ImportListPageSourceTests {
         #expect(first == ["candidate:/w/a", "candidate:/w/b"])
         #expect(second == ["candidate:/w/c"])
         #expect(totals == [3, 3])
-        #expect(summaries.last?.firstUnidentifiedKey == "/w/c")
+        #expect(
+            summaries.last?.firstUnidentified?.candidateKey == "/w/c"
+        )
     }
 
     @MainActor
@@ -733,235 +969,6 @@ struct ImportListPageSourceTests {
     private func settle(until arrived: @MainActor () -> Bool) async {
         for _ in 0..<100 where !arrived() {
             await Task.yield()
-        }
-    }
-}
-
-@Suite("Import selection")
-struct ImportSelectionTests {
-    @MainActor
-    @Test("a read that says the folder is gone drops it from the selection")
-    func aMissingCandidateClearsItsSelection() {
-        let uiStore = UiStore()
-        var reported: [Set<String>] = []
-        uiStore.onFolderCandidateSelectionChanged = { reported.append($0) }
-
-        uiStore.setFolderCandidateSelection(["/w/a", "/w/b"])
-        // What the per-key read does when it delivers no candidate.
-        uiStore.removeFolderCandidateSelection(["/w/a"])
-
-        #expect(uiStore.selectedFolderCandidates == ["/w/b"])
-        #expect(reported == [["/w/a", "/w/b"], ["/w/b"]])
-    }
-}
-
-@Suite("Watched folder scan failures")
-struct ImportStoreScanFailureTests {
-    /// A summary carrying `statuses`, with everything else empty. The alert
-    /// reads nothing but the scan statuses.
-    private static func summary(
-        _ statuses: [BridgeWatchedFolderScanStatus]
-    ) -> BridgeImportQueueSummary {
-        BridgeImportQueueSummary(
-            counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
-            watchedFolders: [],
-            folderScanStatuses: statuses,
-            groupKeys: [],
-            ready: [],
-            firstUnidentifiedKey: nil
-        )
-    }
-
-    private static func failed(
-        _ path: String,
-        _ error: String
-    ) -> BridgeWatchedFolderScanStatus {
-        BridgeWatchedFolderScanStatus(
-            watchedFolderPath: path,
-            watchedFolderName: "Rips",
-            status: .failed(error: error),
-            onNetworkVolume: false
-        )
-    }
-
-    private static func complete(_ path: String)
-        -> BridgeWatchedFolderScanStatus
-    {
-        BridgeWatchedFolderScanStatus(
-            watchedFolderPath: path,
-            watchedFolderName: "Rips",
-            status: .complete,
-            onNetworkVolume: false
-        )
-    }
-
-    /// The failure a scan wrote before the UI existed is in the first summary
-    /// the store is given, which is the launch case: the app's own startup scan
-    /// runs and fails before any of this is subscribed.
-    @MainActor
-    @Test("a root already failed in the first delivery is reported")
-    func firstDeliveryReportsAnAlreadyFailedRoot() {
-        let store = ImportStore()
-        var raised: [(String, String)] = []
-        store.onScanFailure = { path, detail in raised.append((path, detail)) }
-
-        store.applySummary(
-            Self.summary([Self.failed("/Media", "no such column")])
-        )
-
-        #expect(raised.count == 1)
-        #expect(raised.first?.0 == "/Media")
-        #expect(raised.first?.1 == "no such column")
-    }
-
-    /// The summary is re-delivered on every verdict the sweep commits, and the
-    /// timer re-reads every root every quarter hour — the same fault must not
-    /// raise the alert again. A different fault on the same root does.
-    @MainActor
-    @Test("the same failure is reported once, a different one again")
-    func repeatedDeliveriesReportOnlyNewFailures() {
-        let store = ImportStore()
-        var raised: [(String, String)] = []
-        store.onScanFailure = { path, detail in raised.append((path, detail)) }
-
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-        // A delivery that says the same thing, then one that adds a row so the
-        // summary differs while the failure does not.
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-        store.applySummary(
-            Self.summary([
-                Self.failed("/Media", "offline"), Self.complete("/Other"),
-            ])
-        )
-        store.applySummary(
-            Self.summary([Self.failed("/Media", "no such column")])
-        )
-
-        #expect(raised.map(\.1) == ["offline", "no such column"])
-    }
-
-    /// A root that reads cleanly again has no standing failure, so the next
-    /// time it breaks the same way it is news.
-    @MainActor
-    @Test("a root that recovers reports its next break again")
-    func aRecoveredRootReportsItsNextBreak() {
-        let store = ImportStore()
-        var raised: [(String, String)] = []
-        store.onScanFailure = { path, detail in raised.append((path, detail)) }
-
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-        store.applySummary(Self.summary([Self.complete("/Media")]))
-        store.applySummary(Self.summary([Self.failed("/Media", "offline")]))
-
-        #expect(raised.map(\.1) == ["offline", "offline"])
-    }
-}
-
-/// The read behind the import list failing before the list has registered its
-/// first page. The delivery task starts with the source, so on a database this
-/// build cannot read the failure arrives with nobody to tell — and the page
-/// that registers a moment later waits on a loop that has already returned.
-/// That is what rendered a broken library as one with no folders.
-@Suite("Import list read failures")
-struct ImportListPageSourceFailureTests {
-    private struct ReadFailed: Error {}
-
-    /// A subscription whose first read fails, and which reports when that
-    /// read has been attempted.
-    private final class FailingListSubscription: ImportListSubscriptionProtocol,
-        @unchecked Sendable
-    {
-        private let attempted = AsyncStreamSignal()
-
-        var firstReadAttempted: Void {
-            get async { await attempted.wait() }
-        }
-
-        func setWindows(windows _: [BridgeLibraryPageWindow]) throws {}
-        func setView(view _: BridgeImportListView) throws {}
-        func cancel() async throws {}
-
-        func next() async throws -> BridgeImportListSnapshot {
-            attempted.signal()
-            throw ReadFailed()
-        }
-    }
-
-    /// One-shot signal: `wait()` returns once `signal()` has been called, then
-    /// and later.
-    private final class AsyncStreamSignal: @unchecked Sendable {
-        private let lock = NSLock()
-        private var fired = false
-        private var waiters: [CheckedContinuation<Void, Never>] = []
-
-        func signal() {
-            lock.lock()
-            fired = true
-            let waiters = self.waiters
-            self.waiters = []
-            lock.unlock()
-            for waiter in waiters { waiter.resume() }
-        }
-
-        func wait() async {
-            await withCheckedContinuation { continuation in
-                lock.lock()
-                if fired {
-                    lock.unlock()
-                    continuation.resume()
-                    return
-                }
-                waiters.append(continuation)
-                lock.unlock()
-            }
-        }
-    }
-
-    @Test("a page registered after the read failed is told")
-    func aPageRegisteredAfterTheFailureIsTold() async {
-        let subscription = FailingListSubscription()
-        let source = ImportListPageSource(
-            subscription: subscription,
-            onSummary: { _ in }
-        )
-        // The read fails before anything subscribes, which is the launch race.
-        await subscription.firstReadAttempted
-
-        let reported = AsyncStreamSignal()
-        let failures = Mutexed<[any Error]>([])
-        let window = source.subscribe(
-            offset: 0,
-            limit: 10,
-            onValue: { _, _ in },
-            onError: { error in
-                failures.withValue { $0.append(error) }
-                reported.signal()
-            }
-        )
-        defer { window.cancel() }
-
-        await reported.wait()
-        #expect(failures.value.count == 1)
-        #expect(failures.value.first is ReadFailed)
-    }
-
-    /// A tiny box so the error can be read back off the main actor.
-    private final class Mutexed<Value>: @unchecked Sendable {
-        private let lock = NSLock()
-        private var stored: Value
-
-        init(_ value: Value) { stored = value }
-
-        var value: Value {
-            lock.lock()
-            defer { lock.unlock() }
-            return stored
-        }
-
-        func withValue(_ change: (inout Value) -> Void) {
-            lock.lock()
-            change(&stored)
-            lock.unlock()
         }
     }
 }

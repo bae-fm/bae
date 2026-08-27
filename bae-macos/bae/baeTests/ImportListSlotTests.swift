@@ -21,7 +21,11 @@ private struct FailingPageSource: PageSource {
     }
 
     var pages: ImportListPages {
-        ImportListPages(source: self, setView: { _ in })
+        ImportListPages(
+            source: self,
+            setView: { _ in },
+            firstUnidentifiedPosition: { _, _ in nil }
+        )
     }
 }
 
@@ -33,6 +37,37 @@ private final class TaskBackedSubscription: PageSubscription,
     init(task: Task<Void, Never>) { self.task = task }
 
     func cancel() { task.cancel() }
+}
+
+private final class CandidatePositionResolver: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Int?, Never>?
+    private var requested: [(BridgeImportListView, String)] = []
+
+    var requests: [(BridgeImportListView, String)] {
+        lock.withLock { requested }
+    }
+
+    func position(
+        view: BridgeImportListView,
+        candidateKey: String
+    ) async -> Int? {
+        await withCheckedContinuation { continuation in
+            lock.withLock {
+                requested.append((view, candidateKey))
+                self.continuation = continuation
+            }
+        }
+    }
+
+    func resolve(_ position: Int?) {
+        let continuation = lock.withLock {
+            let continuation = self.continuation
+            self.continuation = nil
+            return continuation
+        }
+        continuation?.resume(returning: position)
+    }
 }
 
 @MainActor
@@ -75,4 +110,129 @@ struct ImportListSlotTests {
         // background failure reaches the person.
         #expect(uiStore.lastError != nil)
     }
+
+    @Test("explicit reveal waits for its view before loading the target page")
+    func explicitRevealWaitsForViewDelivery() async throws {
+        let uiStore = UiStore()
+        uiStore.setImportCandidateTab(.done)
+        uiStore.setImportCandidateFilterText("hidden")
+        let resolver = CandidatePositionResolver()
+        let items = (0..<80).map(candidateItem)
+        let pageSource = ImportListPreviewPageSource(items: items)
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            makeSource: { _ in
+                ImportListPages(
+                    source: pageSource,
+                    setView: { _ in },
+                    firstUnidentifiedPosition: { view, target in
+                        await resolver.position(
+                            view: view,
+                            candidateKey: target.candidateKey
+                        )
+                    }
+                )
+            }
+        )
+        slot.startLoad()
+        await waitUntil { slot.list?.idAt(0) != nil }
+        let list = try #require(slot.list)
+        let target = BridgeFirstUnidentifiedRowRef(
+            candidateKey: candidateKey(61),
+            stableKey: "candidate:\(candidateKey(61))",
+            groupKey: nil,
+            visiblePosition: nil
+        )
+        let outcome = CandidateRevealOutcome()
+        Task {
+            outcome.position = try? await slot.reveal(target)
+        }
+        await waitUntil { !resolver.requests.isEmpty }
+
+        #expect(outcome.position == nil)
+        #expect(list.idAt(61) == nil)
+        let requested = try #require(resolver.requests.first)
+        #expect(requested.0.tab == .pending)
+        #expect(requested.0.filterText.isEmpty)
+        #expect(requested.1 == target.candidateKey)
+
+        resolver.resolve(61)
+        await waitUntil { outcome.position != nil }
+
+        #expect(outcome.position == 61)
+        #expect(list.idAt(61) == target.stableKey)
+    }
+
+    @Test("explicit reveal does not navigate to a mismatched delivered row")
+    func explicitRevealRejectsMismatchedDelivery() async throws {
+        let uiStore = UiStore()
+        let resolver = CandidatePositionResolver()
+        let pageSource = ImportListPreviewPageSource(
+            items: (0..<80).map(candidateItem)
+        )
+        let slot = ImportListSlot(
+            importStore: ImportStore(),
+            uiStore: uiStore,
+            makeSource: { _ in
+                ImportListPages(
+                    source: pageSource,
+                    setView: { _ in },
+                    firstUnidentifiedPosition: { view, target in
+                        await resolver.position(
+                            view: view,
+                            candidateKey: target.candidateKey
+                        )
+                    }
+                )
+            }
+        )
+        slot.startLoad()
+        await waitUntil { slot.list?.idAt(0) != nil }
+        let target = BridgeFirstUnidentifiedRowRef(
+            candidateKey: "/library/missing",
+            stableKey: "candidate:/library/missing",
+            groupKey: nil,
+            visiblePosition: nil
+        )
+        let task = Task { try await slot.reveal(target) }
+        await waitUntil { !resolver.requests.isEmpty }
+
+        resolver.resolve(61)
+
+        #expect(try await task.value == nil)
+    }
+
+    private func candidateItem(_ index: Int) -> BridgeImportListItem {
+        let key = candidateKey(index)
+        return .candidate(
+            stableKey: "candidate:\(key)",
+            row: BridgeTriageRow(
+                candidateKey: key,
+                folderName: "Release \(index)",
+                watchedFolderPath: "/library",
+                displayPath: "Release \(index)",
+                resolvedBoundaries: [],
+                combineAncestorKey: nil,
+                actionable: true,
+                placement: .skipped,
+                skipAction: .unskip,
+                matched: nil,
+                selectable: false,
+                importStatus: nil,
+                picked: nil,
+                claim: nil
+            ),
+            isGroupMember: false
+        )
+    }
+
+    private func candidateKey(_ index: Int) -> String {
+        "/library/release-\(index)"
+    }
+}
+
+@MainActor
+private final class CandidateRevealOutcome {
+    var position: Int?
 }

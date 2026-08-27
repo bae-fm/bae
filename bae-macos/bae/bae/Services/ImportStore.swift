@@ -38,7 +38,7 @@ class ImportStore {
         folderScanStatuses: [],
         groupKeys: [],
         ready: [],
-        firstUnidentifiedKey: nil
+        firstUnidentified: nil
     )
 
     /// The fault each watched root was last reported as having. A summary is

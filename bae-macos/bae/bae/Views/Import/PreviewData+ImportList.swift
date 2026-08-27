@@ -93,7 +93,7 @@
             folderScanStatuses: [BridgeWatchedFolderScanStatus] = [],
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             ready: [BridgeReadyRowRef] = [],
-            firstUnidentifiedKey: String? = nil
+            firstUnidentified: BridgeFirstUnidentifiedRowRef? = nil
         ) -> BridgeImportQueueSummary {
             BridgeImportQueueSummary(
                 counts: BridgeTriageTabCounts(
@@ -105,7 +105,7 @@
                 folderScanStatuses: folderScanStatuses,
                 groupKeys: groupKeys,
                 ready: ready,
-                firstUnidentifiedKey: firstUnidentifiedKey
+                firstUnidentified: firstUnidentified
             )
         }
     }

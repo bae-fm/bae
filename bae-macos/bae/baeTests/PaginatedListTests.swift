@@ -1,6 +1,9 @@
+import AppKit
 import BaeKit
 import Foundation
+import SwiftUI
 import Testing
+import XCTest
 
 @testable import bae
 
@@ -498,8 +501,10 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
         }
         guard let subscription else { return }
         let end = min(subscription.offset + subscription.limit, totalCount)
-        let rows = subscription.offset < end
-            ? (subscription.offset..<end).map { makeBridgeAlbum(id: "stale-a\($0)") }
+        let rows =
+            subscription.offset < end
+            ? (subscription.offset..<end)
+                .map { makeBridgeAlbum(id: "stale-a\($0)") }
             : []
         await subscription.onValue(rows, totalCount)
     }
@@ -509,7 +514,9 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
             cancelled.first { $0.offset == offset }
         }
         guard let subscription else { return }
-        await subscription.onError(PaginatedListTestError(message: "stale error"))
+        await subscription.onError(
+            PaginatedListTestError(message: "stale error")
+        )
     }
 
     func setCount(_ count: Int) async {
@@ -525,14 +532,17 @@ private final class MutableAlbumPageSource: PageSource, @unchecked Sendable {
     private func deliver(_ active: Active) async {
         let count = lock.withLock { self.count }
         let end = min(active.offset + active.limit, count)
-        let rows = active.offset < end
+        let rows =
+            active.offset < end
             ? (active.offset..<end).map { makeBridgeAlbum(id: "a\($0)") }
             : []
         await active.onValue(rows, count)
     }
 }
 
-private final class MutablePageSubscription: PageSubscription, @unchecked Sendable {
+private final class MutablePageSubscription: PageSubscription,
+    @unchecked Sendable
+{
     private let onCancel: @Sendable () -> Void
 
     init(onCancel: @escaping @Sendable () -> Void) {
@@ -588,15 +598,17 @@ final class GatedAlbumPageSource: PageSource, @unchecked Sendable {
         let albums = albums
         let gate = gate
         let entryContinuation = entryContinuation
-        return TestPageSubscription(Task { @MainActor in
-            if !(offset == 0 && limit == 50) {
-                entryContinuation.yield(())
-                await gate.wait()
+        return TestPageSubscription(
+            Task { @MainActor in
+                if !(offset == 0 && limit == 50) {
+                    entryContinuation.yield(())
+                    await gate.wait()
+                }
+                let start = min(offset, albums.count)
+                let end = min(start + limit, albums.count)
+                onValue(Array(albums[start..<end]), albums.count)
             }
-            let start = min(offset, albums.count)
-            let end = min(start + limit, albums.count)
-            onValue(Array(albums[start..<end]), albums.count)
-        })
+        )
     }
 
     /// Suspend until a `page()` call has entered (and is blocked on the gate).
@@ -607,5 +619,315 @@ final class GatedAlbumPageSource: PageSource, @unchecked Sendable {
 
     func openGate() async {
         await gate.open()
+    }
+}
+
+// MARK: - Import candidate viewport integration
+
+private final class MutableImportListPageSource: PageSource,
+    @unchecked Sendable
+{
+    typealias Row = BridgeImportListItem
+
+    private struct Sink {
+        let offset: Int
+        let limit: Int
+        let value: @MainActor @Sendable ([Row], Int) -> Void
+    }
+
+    private struct Delivery {
+        let sink: Sink
+        let page: [Row]
+        let total: Int
+    }
+
+    private let lock = NSLock()
+    private var items: [Row]
+    private var sinks: [UUID: Sink] = [:]
+
+    init(items: [Row]) {
+        self.items = items
+    }
+
+    var pages: ImportListPages {
+        ImportListPages(
+            source: self,
+            setView: { _ in },
+            firstUnidentifiedPosition: { [self] _, target in
+                lock.withLock {
+                    items.firstIndex {
+                        $0.id == target.stableKey
+                    }
+                }
+            }
+        )
+    }
+
+    func subscribe(
+        offset: Int,
+        limit: Int,
+        onValue: @escaping @MainActor @Sendable ([Row], Int) -> Void,
+        onError _: @escaping @MainActor @Sendable (any Error) -> Void
+    ) -> any PageSubscription {
+        let id = UUID()
+        let sink = Sink(offset: offset, limit: limit, value: onValue)
+        let value = lock.withLock { () -> ([Row], Int) in
+            sinks[id] = sink
+            return page(for: sink)
+        }
+        Task { @MainActor in onValue(value.0, value.1) }
+        return MutableImportListPageSubscription { [weak self] in
+            _ = self?.lock
+                .withLock {
+                    self?.sinks.removeValue(forKey: id)
+                }
+        }
+    }
+
+    func replaceItems(_ items: [Row]) async {
+        let deliveries = lock.withLock { () -> [Delivery] in
+            self.items = items
+            return sinks.values.map { sink in
+                let value = page(for: sink)
+                return Delivery(
+                    sink: sink,
+                    page: value.0,
+                    total: value.1
+                )
+            }
+        }
+        for delivery in deliveries {
+            await delivery.sink.value(delivery.page, delivery.total)
+        }
+    }
+
+    private func page(for sink: Sink) -> ([Row], Int) {
+        let start = min(sink.offset, items.count)
+        let end = min(start + sink.limit, items.count)
+        return (Array(items[start..<end]), items.count)
+    }
+}
+
+private final class MutableImportListPageSubscription: PageSubscription,
+    @unchecked Sendable
+{
+    private let cancelAction: @Sendable () -> Void
+
+    init(cancel: @escaping @Sendable () -> Void) {
+        cancelAction = cancel
+    }
+
+    func cancel() {
+        cancelAction()
+    }
+}
+
+@MainActor
+final class ImportCandidateViewportTests: XCTestCase {
+    func testLivePageDeliveryKeepsTheVisibleCandidateAnchored() async throws {
+        let initial = (0..<80).map(candidateItem)
+        let source = MutableImportListPageSource(items: initial)
+        let store = ImportStore()
+        let uiStore = UiStore()
+        let slot = ImportListSlot(
+            importStore: store,
+            uiStore: uiStore,
+            makeSource: { _ in source.pages }
+        )
+        slot.startLoad()
+        await viewportSettle { slot.list?.idAt(30) != nil }
+        let list = try XCTUnwrap(slot.list)
+
+        let root = candidateList(store: store, uiStore: uiStore, slot: slot)
+        let hosting = NSHostingView(rootView: root)
+        let window = makeWindow(hosting: hosting)
+        defer { window.close() }
+        drainViewportLayout()
+
+        let table = try XCTUnwrap(
+            descendants(of: hosting).compactMap { $0 as? NSTableView }.first
+        )
+        let scrollView = try XCTUnwrap(table.enclosingScrollView)
+        let anchorIndex = 30
+        scrollView.contentView.scroll(
+            to: table.rect(ofRow: anchorIndex).origin
+        )
+        scrollView.reflectScrolledClipView(scrollView.contentView)
+        drainViewportLayout()
+        let anchor = try XCTUnwrap(list.idAt(topRow(in: table)))
+
+        uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
+        let changed = (0..<80)
+            .map { index in
+                index < 20 ? groupHeaderItem(index) : candidateItem(index)
+            }
+        await source.replaceItems(changed)
+        drainViewportLayout()
+
+        XCTAssertEqual(list.idAt(topRow(in: table)), anchor)
+    }
+
+    func testExplicitRevealOwnsItsScrollThenEstablishesTheRetainedAnchor() {
+        let targetIndex = 61
+        let targetKey = viewportCandidateKey(targetIndex)
+        var viewport = ImportCandidateListViewport()
+        XCTAssertNil(
+            viewport.update(
+                rows: [
+                    ImportCandidateListRowBounds(
+                        stableKey: viewportCandidateKey(30),
+                        bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
+                    )
+                ],
+                contentRevision: 1,
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertNil(
+            viewport.update(
+                rows: [
+                    ImportCandidateListRowBounds(
+                        stableKey: viewportCandidateKey(42),
+                        bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
+                    )
+                ],
+                contentRevision: 2,
+                revealInProgress: true,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertNil(
+            viewport.update(
+                rows: [
+                    ImportCandidateListRowBounds(
+                        stableKey: targetKey,
+                        bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
+                    )
+                ],
+                contentRevision: 2,
+                revealInProgress: true,
+                positionOf: { _ in nil }
+            )
+        )
+
+        XCTAssertEqual(
+            viewport.update(
+                rows: [
+                    ImportCandidateListRowBounds(
+                        stableKey: viewportCandidateKey(49),
+                        bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
+                    )
+                ],
+                contentRevision: 3,
+                revealInProgress: false,
+                positionOf: { $0 == targetKey ? targetIndex : nil }
+            ),
+            targetIndex
+        )
+    }
+
+    private func candidateList(
+        store: ImportStore,
+        uiStore: UiStore,
+        slot: ImportListSlot
+    ) -> some View {
+        ImportCandidateListContent(
+            importStore: store,
+            listSlot: slot,
+            selectedKeys: Binding(
+                get: { uiStore.selectedFolderCandidates },
+                set: { uiStore.setFolderCandidateSelection($0) }
+            ),
+            onAddFolder: {},
+            onRemoveFolder: { _ in },
+            onRefreshFolder: { _ in },
+            onReleaseDecision: { _, _ in },
+            onSkip: { _, _ in },
+            onImportSelected: { _ in }
+        )
+        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
+        .environment(uiStore)
+        .environment(PreviewData.artImageStore())
+        .frame(width: 460, height: 600)
+    }
+
+    private func makeWindow<Content: View>(
+        hosting: NSHostingView<Content>
+    ) -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(
+                x: -10_000,
+                y: -10_000,
+                width: 460,
+                height: 600
+            ),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hosting
+        window.orderBack(nil)
+        return window
+    }
+
+    private func candidateItem(_ index: Int) -> BridgeImportListItem {
+        PreviewData.candidateItem(
+            BridgeTriageRow(
+                candidateKey: viewportCandidateKey(index),
+                folderName: "Release \(index)",
+                watchedFolderPath: "/library",
+                displayPath: "Release \(index)",
+                resolvedBoundaries: [],
+                combineAncestorKey: nil,
+                actionable: true,
+                placement: .skipped,
+                skipAction: .unskip,
+                matched: nil,
+                selectable: false,
+                importStatus: nil,
+                picked: nil,
+                claim: nil
+            )
+        )
+    }
+
+    private func groupHeaderItem(_ index: Int) -> BridgeImportListItem {
+        PreviewData.groupHeaderItem(
+            key: BridgeFolderReleaseDecisionKey(
+                watchedFolderPath: "/library",
+                relativeFolderPath: "Group \(index)"
+            ),
+            name: "Group \(index)",
+            entryCount: 1
+        )
+    }
+
+    private func viewportCandidateKey(_ index: Int) -> String {
+        "/library/release-\(index)"
+    }
+
+    private func topRow(in table: NSTableView) -> Int {
+        let y = table.enclosingScrollView?.contentView.bounds.minY ?? 0
+        return table.row(at: NSPoint(x: 0, y: y + 1))
+    }
+
+    private func descendants(of view: NSView) -> [NSView] {
+        [view] + view.subviews.flatMap { descendants(of: $0) }
+    }
+
+    private func drainViewportLayout() {
+        for _ in 0..<20 {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+        }
+    }
+
+    private func viewportSettle(
+        _ predicate: @MainActor () -> Bool
+    ) async {
+        for _ in 0..<500 {
+            if predicate() { return }
+            await Task.yield()
+        }
     }
 }

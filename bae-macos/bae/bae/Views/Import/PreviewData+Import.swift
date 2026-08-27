@@ -392,7 +392,7 @@
                     folderScanStatuses: base.folderScanStatuses,
                     groupKeys: base.groupKeys,
                     ready: base.ready,
-                    firstUnidentifiedKey: base.firstUnidentifiedKey
+                    firstUnidentified: base.firstUnidentified
                 )
             )
             // The identify count is over the whole queue, with the one row

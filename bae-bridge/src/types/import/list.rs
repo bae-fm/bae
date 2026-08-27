@@ -69,6 +69,16 @@ pub struct BridgeReadyRowRef {
     pub cover_thumbnail_url: Option<String>,
 }
 
+/// The first candidate identification has not settled yet, and where that row
+/// is in the requested view when the view includes it.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFirstUnidentifiedRowRef {
+    pub candidate_key: String,
+    pub stable_key: String,
+    pub group_key: Option<BridgeFolderReleaseDecisionKey>,
+    pub visible_position: Option<u64>,
+}
+
 /// Everything the chrome around the list shows, computed in the same pass as
 /// the items so none of it can drift from them.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -82,8 +92,9 @@ pub struct BridgeImportQueueSummary {
     pub group_keys: Vec<BridgeFolderReleaseDecisionKey>,
     /// The Ready rows matching the view's filter, in queue order.
     pub ready: Vec<BridgeReadyRowRef>,
-    /// The first row the identify count is still waiting on.
-    pub first_unidentified_key: Option<String>,
+    /// The first row the identify count is still waiting on, unfiltered, plus
+    /// its position when the current view contains it.
+    pub first_unidentified: Option<BridgeFirstUnidentifiedRowRef>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

@@ -588,7 +588,7 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
 }
 
 #[test]
-fn the_first_unidentified_key_is_the_first_row_still_waiting_on_a_verdict() {
+fn the_first_unidentified_row_has_its_position_in_the_current_view() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
     rows.states
@@ -596,10 +596,70 @@ fn the_first_unidentified_key_is_the_first_row_still_waiting_on_a_verdict() {
 
     let flat = flattened(&rows, &view(TriageTab::Pending));
 
-    assert_eq!(
-        flat.summary.first_unidentified_key.as_deref(),
-        Some(key("Release 2").as_str())
+    let target = flat
+        .summary
+        .first_unidentified
+        .expect("the queue has an unidentified row");
+    assert_eq!(target.candidate_key, key("Release 2"));
+    assert_eq!(target.stable_key, format!("candidate:{}", key("Release 2")));
+    assert_eq!(target.group_key, None);
+    assert_eq!(target.visible_position, Some(1));
+}
+
+#[test]
+fn the_first_unidentified_position_is_absent_outside_the_current_view() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];
+    rows.states
+        .insert("hash-Release 1".to_string(), ready_state("mb-1"));
+
+    let filtered = flattened(
+        &rows,
+        &ImportListView {
+            filter_text: "Release 1".to_string(),
+            ..view(TriageTab::Pending)
+        },
     );
+    let other_tab = flattened(&rows, &view(TriageTab::Done));
+
+    assert_eq!(
+        filtered
+            .summary
+            .first_unidentified
+            .expect("identification still has a target")
+            .visible_position,
+        None
+    );
+    assert_eq!(
+        other_tab
+            .summary
+            .first_unidentified
+            .expect("identification still has a target")
+            .visible_position,
+        None
+    );
+}
+
+#[test]
+fn the_first_grouped_unidentified_position_follows_its_header() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Group/Release 1"), candidate("Group/Release 2")];
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let target = flat
+        .summary
+        .first_unidentified
+        .expect("the queue has an unidentified row");
+
+    assert_eq!(target.candidate_key, key("Group/Release 1"));
+    assert_eq!(
+        target
+            .group_key
+            .expect("the candidate is grouped")
+            .relative_folder_path,
+        "Group"
+    );
+    assert_eq!(target.visible_position, Some(1));
 }
 
 /// The Ready set is filtered — it is what a bulk import of what is on screen

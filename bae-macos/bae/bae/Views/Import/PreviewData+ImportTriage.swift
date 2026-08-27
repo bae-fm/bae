@@ -457,7 +457,13 @@
             watchedFolders: [importWatchedFolder],
             groupKeys: [importTabGroupKey],
             ready: readyRows(importTabPendingRows),
-            firstUnidentifiedKey: triageRowStillIdentifying.candidateKey
+            firstUnidentified: BridgeFirstUnidentifiedRowRef(
+                candidateKey: triageRowStillIdentifying.candidateKey,
+                stableKey:
+                    "candidate:\(triageRowStillIdentifying.candidateKey)",
+                groupKey: nil,
+                visiblePosition: 0
+            )
         )
 
         /// One preview of the whole Import tab: the store the sidebar and the

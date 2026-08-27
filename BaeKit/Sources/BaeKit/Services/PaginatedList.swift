@@ -85,6 +85,11 @@ where Row.ID: Sendable {
     /// Total row count from the most recent subscription value.
     public private(set) var totalCount: Int = 0
 
+    /// Advances after one subscribed page value has replaced its positions.
+    /// A rendered viewport uses this boundary to restore the row it held while
+    /// rows of different heights were materialised or changed above it.
+    public private(set) var contentRevision: UInt64 = 0
+
     /// The cold count load (`loadInitial`) failed. The consuming grid reads this
     /// to show an error + Retry instead of the empty-library placeholder — a
     /// failed initial load is not an empty library. Only `loadInitial` sets it
@@ -289,6 +294,7 @@ where Row.ID: Sendable {
             )
         }
         onSnapshot?(allLoadedIds, totalCount)
+        contentRevision += 1
     }
 
     private func isCurrentSubscription(_ key: String, _ identity: UUID) -> Bool

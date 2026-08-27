@@ -16,6 +16,87 @@ enum ImportListHierarchyLayout {
     }
 }
 
+struct ImportCandidateListRowBounds: Equatable {
+    let stableKey: String
+    let bounds: CGRect
+}
+
+private struct ImportCandidateListRowBoundsKey: PreferenceKey {
+    static let defaultValue: [ImportCandidateListRowBounds] = []
+
+    static func reduce(
+        value: inout [ImportCandidateListRowBounds],
+        nextValue: () -> [ImportCandidateListRowBounds]
+    ) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
+struct ImportCandidateListViewport {
+    private var anchorKey: String?
+    private var appliedContentRevision: UInt64?
+
+    private mutating func accept(contentRevision: UInt64) {
+        appliedContentRevision = contentRevision
+    }
+
+    private mutating func observe(
+        _ rows: [ImportCandidateListRowBounds],
+        contentRevision: UInt64
+    ) {
+        if appliedContentRevision == nil {
+            appliedContentRevision = contentRevision
+        }
+        guard appliedContentRevision == contentRevision else { return }
+        anchorKey =
+            rows
+            .filter { $0.bounds.maxY > 0 }
+            .min { $0.bounds.minY < $1.bounds.minY }?
+            .stableKey
+    }
+
+    private mutating func contentChanged(
+        to revision: UInt64,
+        positionOf: (String) -> Int?
+    ) -> Int? {
+        guard revision != appliedContentRevision else { return nil }
+        appliedContentRevision = revision
+        return anchorKey.flatMap(positionOf)
+    }
+
+    mutating func update(
+        rows: [ImportCandidateListRowBounds],
+        contentRevision: UInt64,
+        revealInProgress: Bool,
+        positionOf: (String) -> Int?
+    ) -> Int? {
+        if revealInProgress {
+            accept(contentRevision: contentRevision)
+            observe(rows, contentRevision: contentRevision)
+            return nil
+        }
+        if let restore = contentChanged(
+            to: contentRevision,
+            positionOf: positionOf
+        ) {
+            return restore
+        }
+        observe(rows, contentRevision: contentRevision)
+        return nil
+    }
+}
+
+@MainActor
+private final class ImportCandidateRevealOperation {
+    var task: Task<Void, Never>?
+
+    func cancel() {
+        task?.cancel()
+    }
+}
+
+private let importCandidateListCoordinateSpace = "import-candidate-list"
+
 // MARK: - ImportCandidateListContent
 
 /// The import sidebar: one paged list over the tab the slot is showing. Which
@@ -51,18 +132,38 @@ struct ImportCandidateListContent: View {
     private var imageStore
     @Environment(\.displayScale)
     private var displayScale
+    @State
+    private var viewport = ImportCandidateListViewport()
+    @State
+    private var revealOperation: ImportCandidateRevealOperation?
 
     private var filterTextBinding: Binding<String> {
         Binding(
             get: { uiStore.importCandidateFilterText },
-            set: { listSlot.setFilterText($0) }
+            set: {
+                cancelReveal()
+                listSlot.setFilterText($0)
+            }
         )
     }
 
     private var activeTabBinding: Binding<BridgeTriageTab> {
         Binding(
             get: { uiStore.importCandidateTab },
-            set: { listSlot.setTab($0) }
+            set: {
+                cancelReveal()
+                listSlot.setTab($0)
+            }
+        )
+    }
+
+    private var candidateSelectionBinding: Binding<Set<String>> {
+        Binding(
+            get: { selectedKeys },
+            set: {
+                cancelReveal()
+                selectedKeys = $0
+            }
         )
     }
 
@@ -104,90 +205,121 @@ struct ImportCandidateListContent: View {
 
     /// Go to the first row the identify count is still waiting on. `nil` when
     /// there is none to go to.
-    private var goToFirstUnidentified: (() -> Void)? {
-        summary.firstUnidentifiedKey.map { key in
+    private func goToFirstUnidentified(
+        using proxy: ScrollViewProxy
+    ) -> (() -> Void)? {
+        summary.firstUnidentified.map { target in
             {
-                listSlot.setTab(.pending)
-                selectedKeys = [key]
+                revealOperation?.cancel()
+                let operation = ImportCandidateRevealOperation()
+                revealOperation = operation
+                operation.task = Task {
+                    defer {
+                        if revealOperation === operation {
+                            revealOperation = nil
+                        }
+                    }
+                    do {
+                        guard
+                            let position = try await listSlot.reveal(target),
+                            !Task.isCancelled
+                        else { return }
+                        selectedKeys = [target.candidateKey]
+                        proxy.scrollTo(position, anchor: .center)
+                        await Task.yield()
+                    }
+                    catch is CancellationError {}
+                    catch {
+                        uiStore.showError(error)
+                    }
+                }
             }
         }
     }
 
     var body: some View {
-        ImportSidebarList {
-            VStack(spacing: 0) {
-                TriageTabBar(
-                    activeTab: activeTabBinding,
-                    counts: summary.counts
-                )
-                .padding(.horizontal, 10)
-                .padding(.top, 10)
-                .padding(.bottom, 10)
-
-                // The tabs choose what the list holds; the filter narrows what
-                // it shows. Two jobs, so the header says where one ends.
-                Divider()
-
-                HStack(spacing: 8) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.tertiary)
-                    TextField("Filter...", text: filterTextBinding)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 12.5))
-                    if !uiStore.importCandidateFilterText.isEmpty {
-                        Button {
-                            listSlot.setFilterText("")
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.tertiary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    if let progress = importStore.queueIdentifyProgress,
-                        progress.total > 0,
-                        progress.identified < progress.total
-                    {
-                        QueueProgressIndicator(
-                            identified: progress.identified,
-                            total: progress.total,
-                            onGoToUnidentified: goToFirstUnidentified
-                        )
-                    }
-                    CandidateListMenu(
-                        watchedFolders: importStore.watchedFolders,
-                        refreshingFolders: uiStore.refreshingWatchedFolders,
-                        scanStatuses: scanStatuses,
-                        networkFolders: networkFolders,
-                        onAddFolder: onAddFolder,
-                        onRefreshFolder: onRefreshFolder,
-                        onRemoveFolder: onRemoveFolder
+        ScrollViewReader { proxy in
+            ImportSidebarList {
+                VStack(spacing: 0) {
+                    TriageTabBar(
+                        activeTab: activeTabBinding,
+                        counts: summary.counts
                     )
-                    .equatable()
+                    .padding(.horizontal, 10)
+                    .padding(.top, 10)
+                    .padding(.bottom, 10)
+
+                    // The tabs choose what the list holds; the filter narrows what
+                    // it shows. Two jobs, so the header says where one ends.
+                    Divider()
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(.tertiary)
+                        TextField("Filter...", text: filterTextBinding)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12.5))
+                        if !uiStore.importCandidateFilterText.isEmpty {
+                            Button {
+                                cancelReveal()
+                                listSlot.setFilterText("")
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        if let progress = importStore.queueIdentifyProgress,
+                            progress.total > 0,
+                            progress.identified < progress.total
+                        {
+                            QueueProgressIndicator(
+                                identified: progress.identified,
+                                total: progress.total,
+                                onGoToUnidentified: goToFirstUnidentified(
+                                    using: proxy
+                                )
+                            )
+                        }
+                        CandidateListMenu(
+                            watchedFolders: importStore.watchedFolders,
+                            refreshingFolders: uiStore.refreshingWatchedFolders,
+                            scanStatuses: scanStatuses,
+                            networkFolders: networkFolders,
+                            onAddFolder: onAddFolder,
+                            onRefreshFolder: onRefreshFolder,
+                            onRemoveFolder: onRemoveFolder
+                        )
+                        .equatable()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 9)
+            } content: {
+                if activeTabIsEmpty {
+                    emptyState
+                }
+                else {
+                    tabList(proxy)
+                }
             }
-        } content: {
-            if activeTabIsEmpty {
-                emptyState
+            .task(id: summary.groupKeys) {
+                listSlot.retainGroups(summary.groupKeys)
             }
-            else {
-                tabList
+            // Importable rows are covers this app has already downloaded once.
+            // Decoding them as the queue lands keeps Pending's first frame from
+            // being a grid of spinners.
+            .task(id: readyCovers) {
+                await imageStore.warm(
+                    readyCovers,
+                    pointSize: TriageRowView.coverPointSize,
+                    displayScale: displayScale
+                )
             }
-        }
-        .task(id: summary.groupKeys) {
-            listSlot.retainGroups(summary.groupKeys)
-        }
-        // Importable rows are covers this app has already downloaded once.
-        // Decoding them as the queue lands keeps Pending's first frame from
-        // being a grid of spinners.
-        .task(id: readyCovers) {
-            await imageStore.warm(
-                readyCovers,
-                pointSize: TriageRowView.coverPointSize,
-                displayScale: displayScale
-            )
+            .onDisappear {
+                cancelReveal()
+            }
         }
     }
 
@@ -213,12 +345,12 @@ struct ImportCandidateListContent: View {
     }
 
     @ViewBuilder
-    private var tabList: some View {
+    private func tabList(_ proxy: ScrollViewProxy) -> some View {
         if let list = listSlot.list {
             switch uiStore.importCandidateTab {
             case .pending:
                 VStack(spacing: 0) {
-                    entryList(list)
+                    entryList(list, proxy: proxy)
                     Divider()
                     TriageFootBar(
                         selectedCount: selectedReadyKeys.count,
@@ -235,7 +367,7 @@ struct ImportCandidateListContent: View {
                     )
                 }
             case .done, .skipped:
-                entryList(list)
+                entryList(list, proxy: proxy)
             }
         }
     }
@@ -252,16 +384,49 @@ extension ImportCandidateListContent {
     /// Virtualized rows over the paged list: each visible position loads the
     /// page it sits in and renders whatever core put at that offset.
     private func entryList(
-        _ list: PaginatedList<BridgeImportListItem>
+        _ list: PaginatedList<BridgeImportListItem>,
+        proxy: ScrollViewProxy
     ) -> some View {
-        List(selection: $selectedKeys) {
+        List(selection: candidateSelectionBinding) {
             ForEach(0..<list.totalCount, id: \.self) { index in
+                let stableKey = list.idAt(index)
                 entry(at: index, in: list)
+                    .id(index)
+                    .background {
+                        if let stableKey {
+                            GeometryReader { geometry in
+                                Color.clear.preference(
+                                    key: ImportCandidateListRowBoundsKey.self,
+                                    value: [
+                                        ImportCandidateListRowBounds(
+                                            stableKey: stableKey,
+                                            bounds: geometry.frame(
+                                                in: .named(
+                                                    importCandidateListCoordinateSpace
+                                                )
+                                            )
+                                        )
+                                    ]
+                                )
+                            }
+                        }
+                    }
                     .task(
                         id: RowLoadID(epoch: list.loadEpoch, index: index)
                     ) {
                         await list.loadPage(containing: index)
                     }
+            }
+        }
+        .coordinateSpace(name: importCandidateListCoordinateSpace)
+        .onPreferenceChange(ImportCandidateListRowBoundsKey.self) { rows in
+            if let target = viewport.update(
+                rows: rows,
+                contentRevision: list.contentRevision,
+                revealInProgress: revealOperation != nil,
+                positionOf: { list.position(of: $0) }
+            ) {
+                proxy.scrollTo(target, anchor: .top)
             }
         }
         .scrollContentBackground(.hidden)
@@ -300,6 +465,7 @@ extension ImportCandidateListContent {
         expanded: Bool
     ) -> some View {
         Button {
+            cancelReveal()
             listSlot.setGroupExpanded(
                 releaseGroupDisclosureID(group.key),
                 !expanded
@@ -330,6 +496,11 @@ extension ImportCandidateListContent {
                 }
             }
         }
+    }
+
+    private func cancelReveal() {
+        revealOperation?.cancel()
+        revealOperation = nil
     }
 
     /// The Ready row's bulk-import checkbox, over the selection `UiStore`

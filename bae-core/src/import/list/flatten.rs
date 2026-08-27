@@ -8,8 +8,8 @@
 //! the items inside the requested windows and nowhere else.
 
 use super::{
-    GroupHeaderRow, ImportListItem, ImportListOrder, ImportListRequest, ImportListView,
-    ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
+    FirstUnidentifiedRowRef, GroupHeaderRow, ImportListItem, ImportListOrder, ImportListRequest,
+    ImportListView, ImportQueueSummary, PlacedRow, ReadyRowRef, UploadStanding,
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
@@ -193,8 +193,19 @@ pub(crate) fn flatten(
         })
     });
 
-    let summary = summarise(rows, &ordered, &placed, counts);
+    let mut summary = summarise(rows, &ordered, &placed, counts);
     let (items, headers) = emit(view, &ordered);
+    if let Some(target) = &mut summary.first_unidentified {
+        target.visible_position = items
+            .iter()
+            .position(|item| match item {
+                ItemRef::Candidate { index, .. } => {
+                    placed[*index].row.candidate_key == target.candidate_key
+                }
+                ItemRef::Header(_) | ItemRef::Invalid { .. } => false,
+            })
+            .map(|position| position as u64);
+    }
     Ok(Flattened {
         items,
         headers,
@@ -403,7 +414,7 @@ fn summarise(
     let mut group_keys = Vec::new();
     let mut seen_groups = HashSet::new();
     let mut ready = Vec::new();
-    let mut first_unidentified_key = None;
+    let mut first_unidentified = None;
     for entry in ordered {
         if let Some(group) = &entry.group {
             if seen_groups.insert(group.key.clone()) {
@@ -414,7 +425,7 @@ fn summarise(
             continue;
         };
         let row = &placed[index].row;
-        if first_unidentified_key.is_none()
+        if first_unidentified.is_none()
             && matches!(
                 &row.placement,
                 TriagePlacement::NeedsYou {
@@ -423,7 +434,12 @@ fn summarise(
                 }
             )
         {
-            first_unidentified_key = Some(row.candidate_key.clone());
+            first_unidentified = Some(FirstUnidentifiedRowRef {
+                candidate_key: row.candidate_key.clone(),
+                stable_key: ImportListItem::candidate_stable_key(&row.candidate_key),
+                group_key: entry.group.as_ref().map(|group| group.key.clone()),
+                visible_position: None,
+            });
         }
         if entry.matches_filter && row.selectable {
             if let Some(claim) = row.claim.clone() {
@@ -444,7 +460,7 @@ fn summarise(
         folder_scan_statuses: rows.folder_scan_statuses.clone(),
         group_keys,
         ready,
-        first_unidentified_key,
+        first_unidentified,
     }
 }
 

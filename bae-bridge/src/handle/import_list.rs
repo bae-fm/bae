@@ -111,7 +111,7 @@ impl AppHandle {
 
 #[uniffi::export(async_runtime = "tokio", cancellable)]
 impl ImportListSubscription {
-    pub fn set_view(&self, view: crate::types::BridgeImportListView) -> Result<(), BridgeError> {
+    pub fn set_view(&self, view: crate::types::BridgeImportListView) -> Result<u64, BridgeError> {
         self.inner.set_view(view.into_core()).map_err(list_error)
     }
 

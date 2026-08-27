@@ -4,6 +4,29 @@ use bae_core::album_detail::{
 use bae_core::db::{DbArtist, DbComposerSummary, DbWork, DbWorkSummary};
 use std::sync::{Arc, Mutex};
 
+#[test]
+#[cfg(feature = "desktop")]
+fn first_unidentified_position_crosses_the_bridge() {
+    let bridge = crate::types::BridgeFirstUnidentifiedRowRef::from_core(
+        bae_core::import::FirstUnidentifiedRowRef {
+            candidate_key: "/library/release".to_string(),
+            stable_key: "candidate:/library/release".to_string(),
+            group_key: Some(bae_core::import::FolderReleaseDecisionKey {
+                watched_folder_path: "/library".to_string(),
+                relative_folder_path: "group".to_string(),
+            }),
+            visible_position: Some(61),
+        },
+    );
+
+    assert_eq!(bridge.candidate_key, "/library/release");
+    assert_eq!(bridge.stable_key, "candidate:/library/release");
+    assert_eq!(bridge.visible_position, Some(61));
+    let group = bridge.group_key.expect("the target belongs to its group");
+    assert_eq!(group.watched_folder_path, "/library");
+    assert_eq!(group.relative_folder_path, "group");
+}
+
 /// Records every delivered event so tests can assert on the stream.
 struct CollectingCallback {
     events: Arc<Mutex<Vec<crate::types::BridgeUiEvent>>>,
