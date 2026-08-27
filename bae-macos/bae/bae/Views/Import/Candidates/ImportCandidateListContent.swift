@@ -341,6 +341,7 @@ extension ImportCandidateListContent {
     private func candidateRow(_ row: BridgeTriageRow) -> some View {
         TriageRowView(
             row: row,
+            importStore: importStore,
             coverContent: importStore.sidebarCover(for: row),
             selection: row.selectable ? readySelection(for: row) : nil,
             onSkip: { onSkip(row.candidateKey, $0) },

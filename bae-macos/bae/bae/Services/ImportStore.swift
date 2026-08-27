@@ -167,19 +167,6 @@ class ImportStore {
             ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
     }
 
-    /// The title a row leads with — the matched release's, or the folder name
-    /// when nothing matched.
-    static func displayTitle(_ row: BridgeTriageRow) -> String {
-        row.matched?.title ?? row.folderName
-    }
-
-    /// Whether `displayTitle` fell through to the folder name — the rows that
-    /// take a folder icon, so the title reads as a place on disk rather than a
-    /// release nobody has matched.
-    static func titleIsFolderName(_ row: BridgeTriageRow) -> Bool {
-        row.matched == nil
-    }
-
     // MARK: - Per-key reads
 
     /// One selected candidate, as its own read describes it, keeping whatever

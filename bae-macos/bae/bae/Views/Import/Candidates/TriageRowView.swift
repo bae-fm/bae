@@ -16,6 +16,7 @@ struct TriageRowView: View {
     static let coverPointSize: CGFloat = 44
 
     let row: BridgeTriageRow
+    let importStore: ImportStore
     let coverContent: ImageContent?
     /// Non-nil exactly when `row.selectable`. Passed in rather than read off
     /// `row` again so the list content is the one place selection state
@@ -33,6 +34,7 @@ struct TriageRowView: View {
 
     init(
         row: BridgeTriageRow,
+        importStore: ImportStore,
         coverContent: ImageContent?,
         selection: Binding<Bool>?,
         onSkip: @escaping (_ skipped: Bool) -> Void,
@@ -43,6 +45,7 @@ struct TriageRowView: View {
             ) -> Void = { _, _ in }
     ) {
         self.row = row
+        self.importStore = importStore
         self.coverContent = coverContent
         self.selection = selection
         self.onSkip = onSkip
@@ -134,85 +137,86 @@ struct TriageRowView: View {
 
     // MARK: - Meta
 
+    /// The selected candidate's editor is authoritative while it is open, so
+    /// this repeats exactly what the header says as fields are changed. Rows
+    /// without a live detail use the list projection's matched release.
+    private var releaseSummary: ImportReleaseSummary? {
+        if let candidate = importStore.candidate(forKey: row.candidateKey),
+            let editValues = candidate.edit
+        {
+            return ImportReleaseSummary(
+                candidate: candidate,
+                editValues: editValues
+            )
+        }
+        return ImportReleaseSummary(row: row)
+    }
+
+    @ViewBuilder
     private var meta: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 5) {
-                if ImportStore.titleIsFolderName(row) {
-                    Image(systemName: "folder")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                }
-                Text(ImportStore.displayTitle(row))
-                    .font(.system(size: 14, weight: .semibold))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            // A running import is the one line that changes by the second, so
-            // it is a leaf of its own: it subscribes to the candidate-runtime
-            // signal and redraws itself, leaving the rest of the row alone.
-            if case .importing = row.importStatus {
-                ImportProgressLine(key: row.candidateKey)
-            }
-            else if case .ready = row.placement {
-                readyLines
+            if let releaseSummary {
+                ImportReleaseSummaryView(
+                    summary: releaseSummary,
+                    style: .sidebar
+                )
             }
             else {
-                if let subLine {
-                    Text(subLine)
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .padding(.top, 1)
-                }
-                if let progress = cloudUploadObservation?.progressBar {
-                    ProgressTrackBar(
-                        progress: progress.fraction,
-                        trackHeight: 3
-                    )
-                    .padding(.top, 7)
-                }
+                folderTitle
+            }
+            stateLine
+            if let progress = cloudUploadObservation?.progressBar {
+                ProgressTrackBar(
+                    progress: progress.fraction,
+                    trackHeight: 3
+                )
+                .padding(.top, 7)
             }
         }
     }
 
-    /// A Ready row says the same three things the pane header does — the
-    /// title above, then who it is by, then the pressing — rather than
-    /// packing all of it into one line.
+    private var folderTitle: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "folder")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            Text(row.folderName)
+                .font(.system(size: 14, weight: .semibold))
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+    }
+
     @ViewBuilder
-    private var readyLines: some View {
-        if let artist = row.matched?.artist {
-            Text(artist)
+    private var stateLine: some View {
+        // A running import is the one line that changes by the second, so it
+        // subscribes to the candidate-runtime signal at this leaf.
+        if case .importing = row.importStatus {
+            ImportProgressLine(key: row.candidateKey)
+        }
+        else if let statusLine {
+            Text(statusLine)
                 .font(.system(size: 12.5))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .padding(.top, 1)
         }
-        if let pressingLine {
-            Text(pressingLine)
-                .font(.system(size: 11.5))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .padding(.top, 1)
-        }
     }
+
 }
 
 /// The row's metadata and trailing column. In an extension so the view's body
 /// and the layout it composes stay readable as one piece.
 extension TriageRowView {
-    /// The second line: the matched release's metadata, a disagreement
-    /// sentence, the still-identifying phase, or an import failure —
-    /// whichever `row` is actually saying.
-    private var subLine: String? {
+    /// State that belongs below the release summary: a disagreement, the
+    /// still-identifying phase, or an import failure.
+    private var statusLine: String? {
         switch row.placement {
-        // A Ready row draws its own artist and pressing lines; `subLine` is
-        // not asked for it.
         case .ready:
             return nil
         case .skipped:
-            return metadataLine
+            return nil
         case .needsYou(let group, let reason):
             switch reason {
             case .stillIdentifying(let phase):
@@ -220,15 +224,9 @@ extension TriageRowView {
             case .disagreement(let needsYou):
                 switch group {
                 case .alreadyInLibrary:
-                    // The pressing is settled here — exactly one match — so
-                    // the row still leads with what it matched; the trailing
-                    // chip states the disagreement instead.
-                    return metadataLine
+                    return nil
                 case .pickAPressing:
-                    // The pressing is exactly what's unsettled, so there is
-                    // no metadata line yet — the lead match's artist is all
-                    // that's known, and the trailing chip states the count.
-                    return row.matched?.artist
+                    return nil
                 case .noMatch:
                     return nil
                 default:
@@ -236,62 +234,16 @@ extension TriageRowView {
                 }
             }
         case .importing, .failed, .done:
-            return importSubLine
+            return importStatusLine
         }
     }
 
-    private var metadataLine: String? {
-        guard let matched = row.matched else {
-            return nil
-        }
-        var parts: [String] = []
-        if let artist = matched.artist {
-            parts.append(artist)
-        }
-        if let pressing = matched.pressing {
-            if let year = pressing.year {
-                parts.append(Int(year).formatted(.number.grouping(.never)))
-            }
-            if let format = pressing.format {
-                parts.append(format)
-            }
-            if let trackCount = pressing.trackCount {
-                parts.append(String(localized: "\(Int(trackCount)) tracks"))
-            }
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
-    }
-
-    /// The pressing on its own: `CD \u{b7} 1991 \u{b7} 10 tracks`, with
-    /// whatever the source did not say left out.
-    private var pressingLine: String? {
-        guard let pressing = row.matched?.pressing else {
-            return nil
-        }
-        var parts: [String] = []
-        if let format = pressing.format {
-            parts.append(format)
-        }
-        if let year = pressing.year {
-            parts.append(Int(year).formatted(.number.grouping(.never)))
-        }
-        if let trackCount = pressing.trackCount {
-            parts.append(String(localized: "\(Int(trackCount)) tracks"))
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " \u{b7} ")
-    }
-
-    private var importSubLine: String? {
+    private var importStatusLine: String? {
         switch row.importStatus {
-        // A running import draws its own line; `subLine` is not asked for it.
         case .importing:
             return nil
-        // The row says what the release is. That its files are still going up
-        // is the trailing glyph's to say, and how far they have come is the
-        // bar's — a count of the files queued behind it answers a question
-        // nobody asked of a row.
         case .complete, nil:
-            return metadataLine
+            return nil
         case .error(let error):
             return error.displayLine
         }
@@ -411,6 +363,7 @@ extension TriageRowView {
         VStack(alignment: .leading, spacing: 0) {
             TriageRowView(
                 row: PreviewData.triageRowReady,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReady
                 ),
@@ -419,6 +372,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowPickAPressing,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPickAPressing
                 ),
@@ -427,6 +381,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowSeveralMatchesFromSignals,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
@@ -435,6 +390,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowAlreadyInLibrary,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
@@ -443,6 +399,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowNoMatch,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowNoMatch
                 ),
@@ -451,6 +408,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowStillIdentifying,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowStillIdentifying
                 ),
@@ -459,6 +417,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowDoneImported
                 ),
@@ -467,6 +426,7 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowFailed,
+                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowFailed
                 ),
