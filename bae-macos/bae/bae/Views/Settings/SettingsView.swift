@@ -62,6 +62,7 @@ struct SettingsView: View {
             pane
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .toolbar(removing: .sidebarToggle)
         // The sidebar's width plus the width every pane was drawn against.
         .frame(width: 690, height: 600)
     }
