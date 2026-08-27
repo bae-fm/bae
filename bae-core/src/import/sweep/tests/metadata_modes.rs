@@ -27,29 +27,63 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_file_tags_default_runs_none_of_the_identification_pipeline() {
-    let fixture = Fixture::new("file-tags-default").await;
-    let calls = Arc::new(AtomicUsize::new(0));
-    fixture
-        .extraction
-        .register_analyzer(Arc::new(CountingAnalyzer {
-            calls: Arc::clone(&calls),
-        }));
-    let dir = fixture.barcode_candidate("Candidate");
-    fixture.scan(1).await;
-    fixture
-        .manager
-        .set_default_import_metadata_mode(crate::config::DefaultImportMetadataMode::FileTags)
-        .unwrap();
+async fn every_non_lookup_default_runs_none_of_the_identification_pipeline() {
+    use crate::config::{DefaultImportMetadataMode, ImportMetadataMode};
 
-    fixture.sweep_once().await;
+    let cases = [
+        (
+            "file-tags-default",
+            DefaultImportMetadataMode::FileTags,
+            ImportMetadataMode::Lookup,
+        ),
+        (
+            "manual-default",
+            DefaultImportMetadataMode::Manual,
+            ImportMetadataMode::Lookup,
+        ),
+        (
+            "last-file-tags",
+            DefaultImportMetadataMode::LastUsed,
+            ImportMetadataMode::FileTags,
+        ),
+        (
+            "last-manual",
+            DefaultImportMetadataMode::LastUsed,
+            ImportMetadataMode::Manual,
+        ),
+    ];
 
-    assert_eq!(calls.load(Ordering::Relaxed), 0, "OCR must not run");
-    assert!(
-        fixture.provider.requests().is_empty(),
-        "no provider request may run"
-    );
-    assert!(fixture.stored_for(&dir).await.is_none());
+    for (name, default_mode, last_mode) in cases {
+        let fixture = Fixture::new(name).await;
+        let calls = Arc::new(AtomicUsize::new(0));
+        fixture
+            .extraction
+            .register_analyzer(Arc::new(CountingAnalyzer {
+                calls: Arc::clone(&calls),
+            }));
+        let dir = fixture.barcode_candidate("Candidate");
+        fixture.scan(1).await;
+        fixture
+            .manager
+            .set_last_import_metadata_mode(last_mode)
+            .unwrap();
+        fixture
+            .manager
+            .set_default_import_metadata_mode(default_mode)
+            .unwrap();
+
+        fixture.sweep_once().await;
+
+        assert_eq!(calls.load(Ordering::Relaxed), 0, "OCR ran for {name}");
+        assert!(
+            fixture.provider.requests().is_empty(),
+            "provider request ran for {name}"
+        );
+        assert!(
+            fixture.stored_for(&dir).await.is_none(),
+            "identification state was stored for {name}"
+        );
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
