@@ -44,6 +44,20 @@ struct ImportPreviewDataTests {
     }
 
     @MainActor
+    @Test("smoke preview includes a selectable ready child")
+    func smokePreviewExercisesReadyGroupMember() {
+        let hasReadyGroupMember = PreviewData.importTabItems(.pending)
+            .contains { item in
+                guard case .candidate(_, let row, true) = item else {
+                    return false
+                }
+                return row.placement == .ready && row.selectable
+            }
+
+        #expect(hasReadyGroupMember)
+    }
+
+    @MainActor
     @Test("smoke preview combines every queue state")
     func smokePreviewCombinesProductionShapes() {
         let base = PreviewData.importTabScene()

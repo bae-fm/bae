@@ -173,12 +173,31 @@
             identifyState: searchStateTriangulating.identifyState
         )
 
-        private static let importTabGroupedCandidates = [
-            importTabFolder(
-                path: "Artist Collection/Album Title Nine",
-                name: "Album Title Nine",
-                identifyState: searchStateNotFound.identifyState
+        @MainActor
+        private static let importTabGroupedReadyCandidate = paneCandidate(
+            folder: BridgeFolderCandidate(
+                folderPath:
+                    "\(importWatchedFolder.path)/Artist Collection/Album Title Nine",
+                sourceFolderName: "Album Title Nine",
+                watchedFolderPath: importWatchedFolder.path,
+                files: bridgeCandidateFiles,
+                trackCount: 9,
+                skipped: false,
+                isAdded: false
             ),
+            picked: .release(
+                source: releaseDetailBridge.source,
+                releaseId: releaseDetailBridge.releaseId
+            ),
+            release: releaseDetailBridge,
+            edit: confirmEditValues,
+            mapping: everyRowKindMappingTable,
+            cover: releaseDetailBridge.defaultCover
+        )
+
+        @MainActor
+        private static let importTabGroupedCandidates = [
+            importTabGroupedReadyCandidate,
             importTabFolder(
                 path: "Artist Collection/Album Title Ten",
                 name: "Album Title Ten",
@@ -375,9 +394,32 @@
             )
         )
 
-        private static let triageGroupedRows = importTabGroupedCandidates.map {
+        @MainActor
+        private static let triageGroupedRows = [
             triageRow(
-                for: $0,
+                for: importTabGroupedReadyCandidate,
+                placement: .ready,
+                skipAction: .skip,
+                matched: triageMatch(
+                    releaseId: releaseDetailBridge.releaseId,
+                    title: releaseDetailBridge.title,
+                    artist: releaseDetailBridge.artist,
+                    year: releaseDetailBridge.year,
+                    format: releaseDetailBridge.format,
+                    trackCount: releaseDetailBridge.trackCount
+                ),
+                selectable: true,
+                picked: .release(
+                    source: releaseDetailBridge.source,
+                    releaseId: releaseDetailBridge.releaseId
+                ),
+                claim: .release(
+                    releaseId: releaseDetailBridge.releaseId,
+                    source: releaseDetailBridge.source
+                )
+            ),
+            triageRow(
+                for: importTabGroupedCandidates[1],
                 placement: .needsYou(
                     group: .noMatch,
                     reason: .disagreement(disagreement: .noMatch)
@@ -385,8 +427,8 @@
                 skipAction: .skip,
                 matched: nil,
                 selectable: false
-            )
-        }
+            ),
+        ]
 
         @MainActor
         static let importTabCandidates =
@@ -458,7 +500,7 @@
             skipped: 1 + UInt32(invalidCandidates.count),
             watchedFolders: [importWatchedFolder],
             groupKeys: [importTabGroupKey],
-            ready: readyRows(importTabPendingRows),
+            ready: readyRows(importTabPendingRows + triageGroupedRows),
             firstUnidentified: BridgeFirstUnidentifiedRowRef(
                 candidateKey: triageRowStillIdentifying.candidateKey,
                 stableKey:
