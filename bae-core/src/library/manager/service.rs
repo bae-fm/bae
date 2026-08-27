@@ -249,7 +249,7 @@ impl LibraryManager {
         self.spawn_supervised_task(task_name, worker(manager));
     }
 
-    fn spawn_supervised_task<F>(&self, task_name: &'static str, task: F)
+    pub(super) fn spawn_supervised_task<F>(&self, task_name: &'static str, task: F)
     where
         F: Future<Output = ()> + Send + 'static,
     {

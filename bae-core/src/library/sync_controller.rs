@@ -390,7 +390,8 @@ impl SyncController {
     /// key — the caller only reaches this once it knows the key is
     /// established, or the home is keyless/browsable). Shares this
     /// controller's outbox in-flight set and event channel with the sync loop's
-    /// upload observer. Call before starting the sync-status listener.
+    /// upload observer. The sync-status listener may already be running: its
+    /// receiver follows this handle across provider connection.
     pub(crate) async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         self.connect_provider().await?;
         Ok(())

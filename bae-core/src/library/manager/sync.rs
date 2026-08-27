@@ -120,9 +120,20 @@ impl LibraryManager {
     /// cipher from the master-key custody itself, keyed off whatever this
     /// device's keyring already holds. Shares the sync controller's outbox
     /// in-flight set and event channel with the sync loop's upload observer.
-    /// Call before [`Self::start`].
     pub async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         self.sync.attach_and_start_sync().await
+    }
+
+    /// Start the returning-user attachment without withholding local library
+    /// services. [`Self::start`] must already have installed the status and
+    /// outbox subscriptions so the connection's first events have consumers.
+    /// The task runs on the runtime retained by the app and is supervised like
+    /// the manager's other background workers.
+    pub fn start_sync_at_startup(&self) {
+        let manager = self.clone();
+        self.spawn_supervised_task("startup sync attachment", async move {
+            manager.attach_and_start_sync_at_startup().await;
+        });
     }
 
     /// Attach the sync manager at startup, tolerating a connect failure.
@@ -134,10 +145,16 @@ impl LibraryManager {
     /// sync-status error (identical to a later cycle failing) so the UI shows its
     /// reconnect banner, and `has_cloud_home` / `is_sync_ready` report not connected.
     pub async fn attach_and_start_sync_at_startup(&self) {
+        let started = std::time::Instant::now();
+        tracing::info!("startup sync attachment started");
         if let Err(error) = self.attach_and_start_sync().await {
             warn!("startup sync connect failed; opening library not connected: {error}");
             self.set_sync_error(Some(error.to_string()));
         }
+        tracing::info!(
+            attachment_ms = started.elapsed().as_millis(),
+            "startup sync attachment returned"
+        );
     }
 
     /// Retry sync against the provider this library already has configured, so a

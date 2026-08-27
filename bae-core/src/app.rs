@@ -92,9 +92,9 @@ pub(crate) fn classify_key_state_error(error: crate::library::LibraryError) -> B
 /// Build and start the application for `library_id`.
 ///
 /// `position_update_interval_ms` controls how often playback emits a position
-/// tick. Returns once the DB is open, sync is attached (if the library is
-/// unlocked on this device), and playback (plus the desktop import pipeline) is
-/// running; background work continues on the returned runtime.
+/// tick. Returns once the DB is open and playback (plus the desktop import
+/// pipeline) is running. For an unlocked cloud library, sync attachment starts
+/// on the returned runtime and reports readiness or failure through sync status.
 ///
 /// Opening by registered id records the library as this device's active library
 /// only once the open fully completes and the library is unlocked on this device;
@@ -274,30 +274,18 @@ where
         })
         .map_err(|e| BootstrapError::Database(e.to_string()))?;
 
-    // Now that the manager owns the outbox in-flight set and event channel, build
-    // and start the sync manager (if unlocked, or keyless) so the upload observer
-    // shares them. Must precede `library_manager.start()`, which subscribes to the
-    // sync loop. The database already holds the seeded `_updated_at` stamper from
-    // `open` above; building the manager here only wires the cloud loop. coven
-    // resolves the at-rest cipher itself from the master-key custody (an
-    // opaque-but-locked home stays unbuilt above, awaiting unlock), so there is no
-    // key material left to thread through here — an established opaque key and a
-    // keyless browsable home now take the identical call.
-    // A connect failure here (the network is down, the provider is unreachable) must
-    // not abort the launch: the library opens, and sync reports itself not connected
-    // so the UI shows its reconnect banner. Local browse and pinned playback need no
-    // network, and the next launch retries the connect.
-    if provider_configured && !locked {
-        timing.stage(&library_id, "attach and start sync", || {
-            runtime.block_on(library_manager.attach_and_start_sync_at_startup())
-        });
-    }
-
-    // Forward the sync loop's row changes + errors as library/UI events: the
-    // synced DB is what drives the UI on every platform.
+    // Install the sync-status and outbox subscriptions before connection starts.
+    // coven's status receiver may be subscribed before a provider connects, so the
+    // attachment's first events cannot race the library/UI observers.
     timing.stage(&library_id, "start library observation", || {
         library_manager.start()
     });
+
+    let startup_sync_manager = if provider_configured && !locked {
+        Some(library_manager.clone())
+    } else {
+        None
+    };
 
     // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
     // iOS, AAudio on Android.
@@ -357,6 +345,16 @@ where
                 config_handle.config().save_active_library()
             })
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
+    }
+
+    // Local services and the frontend owner are fully initialized before provider
+    // attachment begins. The task runs on the runtime retained by that owner, and
+    // failures flow through the sync-status subscription installed above. A later
+    // reconnect still uses the direct awaited attachment path.
+    if let Some(manager) = startup_sync_manager {
+        timing.stage(&library_id, "schedule startup sync attachment", || {
+            manager.start_sync_at_startup()
+        });
     }
 
     timing.complete(&library_id);
