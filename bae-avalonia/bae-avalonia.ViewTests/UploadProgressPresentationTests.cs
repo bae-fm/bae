@@ -16,6 +16,16 @@ public sealed class UploadProgressPresentationTests
                 new List<BridgeCountLabel>()));
     }
 
+    [Fact]
+    public void PausedQueueUsesThePausedSummary()
+    {
+        Assert.Equal(
+            Loc.Chrome("download.paused"),
+            UploadProgressPresentation.QueueSummary(
+                BridgeOutboxPauseState.Paused,
+                new List<BridgeCountLabel>()));
+    }
+
     // The outbox is the authority on a release's cloud work: it holds the
     // release while there is any, and drops it when there is none.
     [Fact]

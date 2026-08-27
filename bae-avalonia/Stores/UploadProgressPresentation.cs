@@ -41,7 +41,6 @@ internal static class UploadProgressPresentation
         var pause = pauseState switch
         {
             BridgeOutboxPauseState.Running => string.Empty,
-            BridgeOutboxPauseState.Pausing => Loc.Core("core.outbox.pausing"),
             BridgeOutboxPauseState.Paused => Loc.Chrome("download.paused"),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(pauseState),
