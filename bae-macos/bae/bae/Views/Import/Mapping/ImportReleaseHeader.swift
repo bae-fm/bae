@@ -24,16 +24,9 @@ struct ImportCommitControls {
 /// BECOMES column in place. Before anything is picked the same control reads
 /// "Find this release".
 struct ImportReleaseHeader: View {
-    let title: String
-    let artist: String
-    /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
-    /// fetched.
-    let metaLine: String
+    let releaseSummary: ImportReleaseSummary
     /// Whether a release has been picked.
     let hasPick: Bool
-    /// Which service the picked release came from. `nil` before a pick and for
-    /// a folder read as its own tags — there is no service behind either.
-    let pickedSource: BridgeMetadataSource?
     /// Whether a read is in flight — the change control says so and stays put
     /// rather than the card being replaced by a placeholder.
     let isReading: Bool
@@ -67,7 +60,10 @@ struct ImportReleaseHeader: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 16) {
                 cover
-                summary
+                ImportReleaseSummaryView(
+                    summary: releaseSummary,
+                    style: .card
+                )
                 changeControl
             }
             if let editValues {
@@ -79,22 +75,6 @@ struct ImportReleaseHeader: View {
         }
         .padding(14)
         .formGroupCard()
-    }
-
-    /// The card's own fold: the release's fields, under a row that is the
-    /// control end to end — a caret is a target the width of a glyph, and the
-    /// line beside it says what opens.
-    /// Where the picked release came from. The service's own name, never a
-    /// code and never translated — it is a brand, and the name is what the
-    /// person recognises.
-    private func sourceChip(_ source: BridgeMetadataSource) -> some View {
-        Text(verbatim: bridgeMetadataSourceName(source: source))
-            .font(.system(size: 10.5, weight: .medium))
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(Color.secondary.opacity(0.15), in: Capsule())
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
     }
 
     private func details(
@@ -196,30 +176,6 @@ struct ImportReleaseHeader: View {
         .disabled(isReading)
     }
 
-    private var summary: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.system(size: 17, weight: .semibold))
-                .lineLimit(1)
-                .truncationMode(.tail)
-            Text(artist)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-            HStack(spacing: 6) {
-                Text(metaLine)
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                if let pickedSource {
-                    sourceChip(pickedSource)
-                }
-            }
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     private var cover: some View {
         Group {
             if let coverContent {
@@ -249,3 +205,28 @@ struct ImportReleaseHeader: View {
         }
     }
 }
+
+#if DEBUG
+
+    #Preview("Import release header") {
+        ImportReleaseHeader(
+            releaseSummary: ImportReleaseSummary(
+                candidate: PreviewData.mappingCandidate,
+                editValues: PreviewData.confirmEditValues
+            ),
+            hasPick: true,
+            isReading: false,
+            coverContent: nil,
+            hasCoverOptions: true,
+            editValues: PreviewData.confirmEditValues,
+            editActions: ReleaseFieldWriter { _, _ in },
+            commit: nil,
+            onEditCover: {},
+            onFindRelease: {},
+        )
+        .padding(24)
+        .frame(width: 900, height: 360)
+        .importPreviewEnvironment()
+    }
+
+#endif

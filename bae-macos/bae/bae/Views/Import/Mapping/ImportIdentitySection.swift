@@ -24,15 +24,9 @@ struct ImportMatchOptions {
 /// and file tags read it off the folder's own files.
 struct ImportIdentitySection: View {
     let identity: ImportIdentity
-    let title: String
-    let artist: String
-    /// "CD · 1996 · 9 tracks", from what is being edited rather than what was
-    /// fetched.
-    let metaLine: String
+    let releaseSummary: ImportReleaseSummary?
     /// Whether a release has been picked — what the change control reads as.
     let hasPick: Bool
-    /// Which service the picked release came from, for the card's chip.
-    let pickedSource: BridgeMetadataSource?
     /// Whether a read is in flight. The controls that start one read as pending
     /// rather than replacing the section with a placeholder.
     let isReading: Bool
@@ -86,11 +80,8 @@ struct ImportIdentitySection: View {
                 }
                 else if hasSettled {
                     ImportReleaseHeader(
-                        title: title,
-                        artist: artist,
-                        metaLine: metaLine,
+                        releaseSummary: settledReleaseSummary,
                         hasPick: hasPick,
-                        pickedSource: pickedSource,
                         isReading: isReading,
                         coverContent: coverContent,
                         hasCoverOptions: hasCoverOptions,
@@ -118,6 +109,15 @@ struct ImportIdentitySection: View {
                 }
             }
         }
+    }
+
+    private var settledReleaseSummary: ImportReleaseSummary {
+        guard let releaseSummary else {
+            preconditionFailure(
+                "a settled import candidate must carry its release summary"
+            )
+        }
+        return releaseSummary
     }
 
     /// The one control that switches sides. Picking file tags reads the

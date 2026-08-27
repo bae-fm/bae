@@ -104,11 +104,10 @@ struct ImportMappingPane: View {
     private var identitySection: some View {
         ImportIdentitySection(
             identity: candidate.identity,
-            title: headerTitle,
-            artist: candidate.edit?.albumArtistText ?? "",
-            metaLine: headerMetaLine,
+            releaseSummary: candidate.edit.map {
+                ImportReleaseSummary(candidate: candidate, editValues: $0)
+            },
             hasPick: candidate.pickedRelease != nil,
-            pickedSource: candidate.pickedRelease?.source,
             isReading: candidate.pickInFlight != nil,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
@@ -144,37 +143,6 @@ struct ImportMappingPane: View {
             loadingReleaseId: candidate.loadingReleaseId,
             onSelect: onPickRelease,
         )
-    }
-
-    /// The album title the card leads with: what the editor holds once there is
-    /// one, and the folder's own name before that.
-    private var headerTitle: String {
-        let title = candidate.edit?.albumTitle ?? ""
-        return title.isEmpty ? candidate.displayName : title
-    }
-
-    /// "CD · 1996 · XE · 463360 2 · 10 tracks" from the live editor and the
-    /// live table, so it tracks what is being edited. Empty pressing fields
-    /// drop out rather than leaving stray separators, and reading the folder as
-    /// Unknown says so where a pressing would be.
-    private var headerMetaLine: String {
-        guard let values = candidate.edit else {
-            return candidate.files.formatLabel
-        }
-        let count = mapping.willWriteCount
-        let trackText = String(localized: "\(count) tracks")
-        let lead =
-            candidate.identity == .unknown
-            ? [coreString("ui.import.metadata.from_file_tags")]
-            : [
-                values.pressing.format,
-                values.pressing.year,
-                values.pressing.country,
-                values.pressing.catalogNumber,
-            ]
-        return (lead + [trackText])
-            .filter { !$0.isEmpty }
-            .joined(separator: " \u{00b7} ")
     }
 
     private var banners: some View {
