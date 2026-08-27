@@ -164,15 +164,14 @@ Completed in `c825b094d`.
   clears a stale filter, opens the target's folder group, and reveals and
   selects the same candidate after the exact list revision arrives.
 
-### Hosted candidate viewport regression
+## Active and ordered queue
 
-Completed in `2143c58e1`.
+### Hosted candidate viewport regression
 
 - Preserve the hosted viewport regression that verifies live page deliveries
   keep the visible candidate anchored.
-- Find the hosted table with a first-match hierarchy walk instead of building
-  a copy of the complete SwiftUI view hierarchy.
-
-## Active and ordered queue
-
-No queued items.
+- Keep viewport bookkeeping outside SwiftUI's render-invalidating state: row
+  geometry updates do not change rendered content and must not request another
+  preference delivery.
+- Run the focused macOS tests and normal commit checks before handing the
+  focused commit to the main checkout.

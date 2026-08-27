@@ -32,15 +32,16 @@ private struct ImportCandidateListRowBoundsKey: PreferenceKey {
     }
 }
 
-struct ImportCandidateListViewport {
+@MainActor
+final class ImportCandidateListViewport {
     private var anchorKey: String?
     private var appliedContentRevision: UInt64?
 
-    private mutating func accept(contentRevision: UInt64) {
+    private func accept(contentRevision: UInt64) {
         appliedContentRevision = contentRevision
     }
 
-    private mutating func observe(
+    private func observe(
         _ rows: [ImportCandidateListRowBounds],
         contentRevision: UInt64
     ) {
@@ -55,7 +56,7 @@ struct ImportCandidateListViewport {
             .stableKey
     }
 
-    private mutating func contentChanged(
+    private func contentChanged(
         to revision: UInt64,
         positionOf: (String) -> Int?
     ) -> Int? {
@@ -64,7 +65,7 @@ struct ImportCandidateListViewport {
         return anchorKey.flatMap(positionOf)
     }
 
-    mutating func update(
+    func update(
         rows: [ImportCandidateListRowBounds],
         contentRevision: UInt64,
         revealInProgress: Bool,

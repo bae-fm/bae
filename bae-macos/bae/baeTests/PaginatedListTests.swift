@@ -747,7 +747,7 @@ final class ImportCandidateViewportTests: XCTestCase {
         drainViewportLayout()
 
         let table = try XCTUnwrap(
-            firstDescendant(of: NSTableView.self, in: hosting)
+            descendants(of: hosting).compactMap { $0 as? NSTableView }.first
         )
         let scrollView = try XCTUnwrap(table.enclosingScrollView)
         let anchorIndex = 30
@@ -772,7 +772,7 @@ final class ImportCandidateViewportTests: XCTestCase {
     func testExplicitRevealOwnsItsScrollThenEstablishesTheRetainedAnchor() {
         let targetIndex = 61
         let targetKey = viewportCandidateKey(targetIndex)
-        var viewport = ImportCandidateListViewport()
+        let viewport = ImportCandidateListViewport()
         XCTAssertNil(
             viewport.update(
                 rows: [
@@ -914,19 +914,8 @@ final class ImportCandidateViewportTests: XCTestCase {
         return table.row(at: NSPoint(x: 0, y: y + 1))
     }
 
-    private func firstDescendant<View: NSView>(
-        of type: View.Type,
-        in view: NSView
-    ) -> View? {
-        if let match = view as? View {
-            return match
-        }
-        for subview in view.subviews {
-            if let match = firstDescendant(of: type, in: subview) {
-                return match
-            }
-        }
-        return nil
+    private func descendants(of view: NSView) -> [NSView] {
+        [view] + view.subviews.flatMap { descendants(of: $0) }
     }
 
     private func drainViewportLayout() {
