@@ -92,14 +92,16 @@ Completed in `0005f913e`.
 - Preserve an existing picked release and the row-level pending state while
   changing modes.
 
-## Active and ordered queue
-
 ### Storage Manager inspector
+
+Completed in `b5db987e4`.
 
 - Keep the transfer list compact.
 - Show details for only the selected release in a side inspector.
 - Provide a close action that hides and clears the inspector without changing
   transfer state.
+
+## Active and ordered queue
 
 ### Release-choice confirmation
 
