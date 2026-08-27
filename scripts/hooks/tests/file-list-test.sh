@@ -16,6 +16,34 @@ if staged_file_in_list "Cargo.toml"; then
     exit 1
 fi
 
+if ! staged_path_under "bae-core"; then
+    echo "expected a staged path below bae-core to match"
+    exit 1
+fi
+
+if staged_path_under "bae"; then
+    echo "a directory prefix matched a different staged directory"
+    exit 1
+fi
+
+CHANGED_FILES=$'bae-core/src/lib.rs\nbae-bridge/src/lib.rs\nnotes/example.md'
+changed_crates=$(changed_workspace_crates \
+    bae-automation bae-bridge bae-cast bae-core bae-desktop \
+    bae-loc bae-mcp bae-subsonic bae-test-support)
+if [ "$changed_crates" != $'bae-bridge\nbae-core' ]; then
+    echo "directly changed workspace crates were routed incorrectly:"
+    echo "$changed_crates"
+    exit 1
+fi
+
+CHANGED_FILES=$'bae-ios/bae/bae/AppService.swift\nBaeKit/Package.swift\nbae-core/src/lib.rs'
+swift_files=$(staged_files_with_extension swift)
+if [ "$swift_files" != $'bae-ios/bae/bae/AppService.swift\nBaeKit/Package.swift' ]; then
+    echo "staged Swift files were routed incorrectly:"
+    echo "$swift_files"
+    exit 1
+fi
+
 repo=$(mktemp -d)
 trap 'rm -rf "$repo"' EXIT
 git -C "$repo" init -q

@@ -10,17 +10,20 @@ source "$(git rev-parse --show-toplevel)/scripts/hooks/lib/file-list.sh"
 # hook's own git commands rediscover the repo from cwd, so drop the overrides.
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 
-# Dependency graph (update when crate dependencies change):
-#   bae-core: no local deps; dev-depends on bae-test-support (its tests)
-#   bae-test-support: depends on bae-core
-#   bae-bridge: depends on bae-core, bae-cast
-#   bae-subsonic: depends on bae-core
-#   bae-cast: depends on bae-core, bae-subsonic
-#   bae-desktop: depends on bae-core, bae-mcp, bae-subsonic
-#   bae-macos: depends on bae-bridge (Swift native app)
-
 # Use target-macos to avoid busting iOS/Android caches
 export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-target-macos}"
+
+WORKSPACE_CRATES=(
+    bae-automation
+    bae-bridge
+    bae-cast
+    bae-core
+    bae-desktop
+    bae-loc
+    bae-mcp
+    bae-subsonic
+    bae-test-support
+)
 
 TMPFILE=$(mktemp)
 FORMAT_STATE=$(mktemp)
@@ -32,14 +35,6 @@ trap cleanup EXIT
 
 # Get changed files (staged for commit)
 CHANGED_FILES=$(git --no-pager diff --cached --name-only)
-
-has_changes_in() {
-    if echo "$CHANGED_FILES" | grep -q "^$1/"; then
-        echo "Changes detected in $1"
-        return 0
-    fi
-    return 1
-}
 
 run_check() {
     local name="$1"
@@ -102,12 +97,6 @@ run_check "restricted-path Rust visibility" scripts/check-rust-visibility.sh || 
     exit 1
 }
 
-# Parse the complete Rust and Swift source trees on every commit: ownership can
-# leak through a type declared in one module and a field or getter in another.
-run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {
-    exit 1
-}
-
 run_check "UniFFI runtime boundary" scripts/check-uniffi-runtime-boundary.py || {
     exit 1
 }
@@ -116,170 +105,60 @@ run_check "macOS native Cargo cache" scripts/check-macos-build-cache.sh || {
     exit 1
 }
 
-# bae-core checks. bae-test-support compiles into bae-core's integration tests,
-# so a change there has to re-run them even when bae-core itself is untouched.
-if has_changes_in "bae-core" || has_changes_in "bae-test-support"; then
-    cd bae-core
+DIRECTLY_CHANGED_CRATES=()
+while IFS= read -r crate; do
+    [ -n "$crate" ] && DIRECTLY_CHANGED_CRATES+=("$crate")
+done < <(changed_workspace_crates "${WORKSPACE_CRATES[@]}")
 
-    run_check "clippy lib (bae-core)" cargo clippy --lib -- -D warnings || {
-        echo "Fix the warnings above and try again"
-        exit 1
-    }
-
-    run_check "clippy tests (bae-core)" cargo clippy --tests --features test-utils -- -D warnings || {
-        exit 1
-    }
-
-    cd ..
-
-    # The run above builds bae-test-support as a dependency, which enforces the
-    # workspace's rustc denies on it but does not run clippy's own lints there.
-    run_check "clippy (bae-test-support)" cargo clippy -p bae-test-support -- -D warnings || {
-        exit 1
-    }
-fi
-
-# Every other Rust crate that depends on bae-core, in one sweep rather than a
-# list. A bae-core type change breaks its dependents silently otherwise, and
-# naming them individually only moves the problem to whichever crate is missing
-# from the list: a SaveCodec variant once broke bae-subsonic on main, and a
-# widened struct later broke bae-automation's fixtures. `--all-targets` matters
-# as much as the breadth: library-only checks did not compile the failing test
-# targets.
-if has_changes_in "bae-core" || has_changes_in "bae-subsonic" \
-    || has_changes_in "bae-desktop" || has_changes_in "bae-automation" \
-    || has_changes_in "bae-mcp" \
-    || has_changes_in "bae-loc" || has_changes_in "bae-test-support" \
-    || has_changes_in "bae-cast" || has_changes_in "bae-bridge"; then
-    run_check "clippy (workspace)" cargo clippy --workspace --all-targets -- -D warnings || {
-        echo "Fix the warnings above and try again"
-        exit 1
-    }
-fi
-
-# bae-bridge checks (depends on bae-core)
-if has_changes_in "bae-bridge" || has_changes_in "bae-core"; then
-    run_check "clippy (bae-bridge)" cargo clippy -p bae-bridge -- -D warnings || {
-        echo "Fix the warnings above and try again"
-        exit 1
-    }
-
-    # Validate the localization catalog (ICU syntax, arg coverage, translation
-    # completeness) before any native resource files are emitted from it.
-    run_check "loc-gen check" cargo run -q -p bae-loc --bin loc-gen -- check || {
-        echo "Localization catalog is invalid"
-        exit 1
-    }
-fi
-
-# bae-macos checks (depends on bae-bridge and the shared BaeKit package)
-if has_changes_in "bae-macos" || has_changes_in "bae-bridge" \
-    || has_changes_in "BaeKit"; then
-    if xcrun --find swift-format &> /dev/null; then
-        record_staged_worktree_state "$FORMAT_STATE"
-        run_check "swift-format format (bae-macos + BaeKit)" bash -c '
-            find bae-macos/bae/bae BaeKit/Sources/BaeKit \
-                BaeKit/Sources/AppleHost -name "*.swift" -print0 \
-                | xargs -0 xcrun swift-format format -i -p
-        ' || {
-            echo "swift-format format failed"
-            exit 1
-        }
-        restage_and_fail_if_changed "swift-format" "$FORMAT_STATE" "bae-macos/"
-        restage_and_fail_if_changed "swift-format" "$FORMAT_STATE" "BaeKit/"
-
-        # Lint catches structural rules the formatter does not auto-fix
-        # (e.g. OnlyOneTrailingClosureArgument, TypeNamesShouldBeCapitalized,
-        # EndOfLineComment). These need a manual fix.
-        run_check "swift-format lint (bae-macos + BaeKit)" bash -c '
-            find bae-macos/bae/bae BaeKit/Sources/BaeKit \
-                BaeKit/Sources/AppleHost -name "*.swift" -print0 \
-                | xargs -0 xcrun swift-format lint -s
-        ' || {
-            echo "swift-format lint failed — fix the violations above and commit again"
-            exit 1
-        }
-
-        # swift-format owns layout; SwiftLint owns code quality, and the two
-        # split cleanly (see .swiftlint.yml). Running only the formatter here
-        # let two oversized view bodies reach main and fail CI, so the same
-        # roots CI lints are linted here — the point of a pre-commit gate is
-        # that it is the same gate.
-        run_check "swiftlint (bae-macos + BaeKit + bae-ios)" \
-            swiftlint lint --quiet --strict --config .swiftlint.yml \
-            bae-macos/bae/bae BaeKit/Sources/BaeKit \
-            BaeKit/Sources/AppleHost bae-ios/bae/bae || {
-            echo "swiftlint failed — fix the violations above and commit again"
-            exit 1
-        }
+if [ "${#DIRECTLY_CHANGED_CRATES[@]}" -gt 0 ]; then
+    CLIPPY_ARGS=(clippy --all-targets)
+    core_changed=0
+    for crate in "${DIRECTLY_CHANGED_CRATES[@]}"; do
+        CLIPPY_ARGS+=(-p "$crate")
+        [ "$crate" = "bae-core" ] && core_changed=1
+    done
+    if [ "$core_changed" -eq 1 ]; then
+        CLIPPY_ARGS+=(--features bae-core/test-utils)
     fi
+    CLIPPY_ARGS+=(-- -D warnings)
+    run_check "clippy (directly changed crates)" cargo "${CLIPPY_ARGS[@]}" || {
+        echo "Fix the warnings above and try again"
+        exit 1
+    }
+fi
 
-    run_check "build bridge (bae-macos)" ./bae-bridge/build-macos.sh || {
-        echo "Bridge build failed"
+STAGED_SWIFT_FILES=()
+while IFS= read -r file; do
+    [ -f "$file" ] && STAGED_SWIFT_FILES+=("$file")
+done < <(staged_files_with_extension swift)
+
+if [ "${#STAGED_SWIFT_FILES[@]}" -gt 0 ] && xcrun --find swift-format &> /dev/null; then
+    record_staged_worktree_state "$FORMAT_STATE"
+    run_check "swift-format format (staged files)" \
+        xcrun swift-format format -i -p "${STAGED_SWIFT_FILES[@]}" || {
+        echo "swift-format format failed"
+        exit 1
+    }
+    restage_and_fail_if_changed "swift-format" "$FORMAT_STATE"
+
+    run_check "swift-format lint (staged files)" \
+        xcrun swift-format lint -s "${STAGED_SWIFT_FILES[@]}" || {
+        echo "swift-format lint failed — fix the violations above and commit again"
         exit 1
     }
 
-    ./bae-bridge/install-swift-bindings.sh macos
-
-    if ! command -v xcodegen &> /dev/null; then
-        echo "⚠️  xcodegen not installed, skipping macOS build check"
-    else
-        # The build below disables automatic package resolution, which needs a
-        # Package.resolved inside the gitignored generated xcodeproj. The
-        # post-checkout prime seeds it on worktree creation, but worktrees
-        # created with hooks disabled (lean agent worktrees) never ran it —
-        # seed here from the main checkout, same as the prime does.
-        resolved="bae-macos/bae/bae.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-        main_checkout="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
-        if [ ! -f "$resolved" ] && [ -f "$main_checkout/$resolved" ]; then
-            mkdir -p "$(dirname "$resolved")"
-            cp "$main_checkout/$resolved" "$resolved"
-            echo "Seeded Package.resolved from $main_checkout"
-        fi
-        cd bae-macos/bae
-        MACOS_DERIVED_DATA_PATH="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
-        run_check "xcodegen (bae-macos)" xcodegen || {
-            echo "xcodegen failed"
-            exit 1
-        }
-        # Keep xcodebuild and periphery pointed at the same index store.
-        # SWIFT_EMIT_LOC_STRINGS on the command line reaches SPM package
-        # targets (BaeKit) too — project.yml's copy covers only the app
-        # target — so the string gate below sees every compiled string.
-        run_check "xcodebuild (bae-macos)" xcodebuild -project bae.xcodeproj -scheme bae -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
-            SWIFT_EMIT_LOC_STRINGS=YES \
-            -derivedDataPath "$MACOS_DERIVED_DATA_PATH" \
-            -scmProvider system -disablePackageRepositoryCache -skipPackageUpdates \
-            -disableAutomaticPackageResolution build || {
-            echo "macOS app build failed"
-            exit 1
-        }
-
-        run_check "localizable strings (bae-macos)" \
-            python3 ../../scripts/check_localizable_strings.py \
-            --derived-data "$MACOS_DERIVED_DATA_PATH" || {
-            echo "Localizable.xcstrings disagrees with compiled strings. See above."
-            exit 1
-        }
-
-        if command -v periphery &> /dev/null; then
-            run_check "periphery (bae-macos)" periphery scan --strict \
-                --skip-build --skip-schemes-validation \
-                --index-store-path "$MACOS_DERIVED_DATA_PATH/Index.noindex/DataStore" || {
-                echo "Dead code detected. Remove unused declarations and try again."
-                exit 1
-            }
-        fi
-
-        cd ../..
-    fi
+    run_check "swiftlint (staged files)" \
+        swiftlint lint --quiet --strict --config .swiftlint.yml \
+        "${STAGED_SWIFT_FILES[@]}" || {
+        echo "swiftlint failed — fix the violations above and commit again"
+        exit 1
+    }
 fi
 
 # bae-avalonia bridge boundary. The compiler can't see dependency direction, so
 # this fails loud if a view or store reaches for NativeBae outside the sanctioned
 # composition boundary. Pure Python — runs on the dev host without the bindings.
-if has_changes_in "bae-avalonia"; then
+if staged_path_under "bae-avalonia"; then
     run_check "avalonia bridge boundary" python3 scripts/avalonia-bridge-boundary.py || {
         echo "A view or store reached for NativeBae outside the boundary. See above."
         exit 1

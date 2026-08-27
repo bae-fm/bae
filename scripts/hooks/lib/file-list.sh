@@ -5,6 +5,34 @@ staged_file_in_list() {
     grep -qxF "$file" <<< "$CHANGED_FILES"
 }
 
+staged_path_under() {
+    local directory="${1%/}"
+    while IFS= read -r file; do
+        case "$file" in
+            "$directory"/*) return 0 ;;
+        esac
+    done <<< "$CHANGED_FILES"
+    return 1
+}
+
+staged_files_with_extension() {
+    local extension="$1"
+    while IFS= read -r file; do
+        case "$file" in
+            *."$extension") printf '%s\n' "$file" ;;
+        esac
+    done <<< "$CHANGED_FILES"
+}
+
+changed_workspace_crates() {
+    local crate
+    for crate in "$@"; do
+        if staged_path_under "$crate"; then
+            printf '%s\n' "$crate"
+        fi
+    done
+}
+
 record_staged_worktree_state() {
     local state_file="$1"
     : > "$state_file"
