@@ -592,7 +592,7 @@ internal sealed partial class ImportSectionView : UserControl
         _progressCount.Text = counted;
         _progressBarHost.Children.Clear();
         _progressBarHost.Children.Add(ImportProgressLine.Bar(fraction));
-        _progressGoToKey = _import.Summary.FirstUnidentifiedKey;
+        _progressGoToKey = _import.Summary.FirstUnidentified?.CandidateKey;
         _progressLine.IsEnabled = _progressGoToKey is not null;
     }
 

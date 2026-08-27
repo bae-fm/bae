@@ -140,7 +140,7 @@ internal sealed class ImportStore : IDisposable
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
         GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
         Ready: Array.Empty<BridgeReadyRowRef>(),
-        FirstUnidentifiedKey: null);
+        FirstUnidentified: null);
 
     private BridgeImportListView BuildView() => new(
         Tab: ActiveTab,
