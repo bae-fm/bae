@@ -152,13 +152,18 @@ Completed in `6727834ff`.
 - Verify awaiting-release, associated and unassociated descriptor, long-name,
   constrained-width, and wide-width rows.
 
-## Active and ordered queue
-
 ### Candidate placement breadcrumb
+
+Completed in `c825b094d`.
 
 - Render the candidate header as a placement breadcrumb:
   `[Pending | Done | Skipped] > [folder icon] folder name [format]`.
 - Source the placement from authoritative candidate state and update it when an
   import moves from Pending to Done.
-- Make the placement root clickable. It switches the left sidebar to that list
-  and reveals and selects the same candidate.
+- Make the placement root clickable. It switches the left sidebar to that list,
+  clears a stale filter, opens the target's folder group, and reveals and
+  selects the same candidate after the exact list revision arrives.
+
+## Active and ordered queue
+
+No queued items.
