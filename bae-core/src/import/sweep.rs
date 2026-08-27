@@ -1,5 +1,5 @@
-//! Queue-wide identification: every candidate the scan produced acquires a
-//! verdict, without anyone clicking it.
+//! Queue-wide identification: every unseeded candidate in automatic Lookup
+//! mode acquires a verdict, without anyone clicking it.
 //!
 //! The sweep owns no pipeline of its own. It walks the candidates the scan
 //! already found, drives each through the existing extraction → identify pair
@@ -22,10 +22,10 @@
 //! is written by the import handle, and writing it *clears* the verdict, which
 //! is what brings a re-bound candidate back to this sweep.
 //!
-//! **A candidate whose content hash already holds a finished verdict is
-//! skipped**, which is what makes every launch after the first instant. There
-//! is nothing left to finish on such a row: the settle step and the verdict are
-//! written together, so a stored verdict is a settled one.
+//! **A candidate whose content hash already holds a metadata seed or a finished
+//! verdict is skipped.** Manual and File Tags are complete source choices, not
+//! inputs to Lookup. A stored identify verdict is settled because the settle
+//! step and the verdict are written together.
 //!
 //! **Nothing durable is written for work that did not complete.** A transport
 //! failure, a cancelled shutdown, a settle lookup that never answered, a
@@ -187,6 +187,7 @@ pub fn start(
                         ScanEvent::FolderCandidate { .. }
                         | ScanEvent::Finished
                         | ScanEvent::CandidateBindingChanged { .. }
+                        | ScanEvent::CandidateMetadataSeeded { .. }
                         | ScanEvent::CandidateSkipChanged { .. },
                     ))) => {
                         run_pass(
@@ -268,11 +269,16 @@ impl IdentifyJob {
 /// What a pass has to do, decided against the stored rows before any of it
 /// starts.
 struct Plan {
-    /// Candidates with no usable stored verdict: identify them.
+    /// Candidates with neither a metadata seed nor a usable stored verdict.
     identify: VecDeque<IdentifyJob>,
-    /// How many of `total` already hold a verdict.
+    /// How many of `total` already hold a seed or verdict.
     identified: u32,
     total: u32,
+}
+
+enum PassOutcome {
+    Complete,
+    Replan,
 }
 
 /// Walk the queue once: plan what still needs answering, drive it under the
@@ -283,10 +289,19 @@ async fn run_pass(
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
     config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) {
+    while let PassOutcome::Replan = run_pass_once(context, token, bus, config).await {}
+}
+
+async fn run_pass_once(
+    context: &SweepContext,
+    token: &CancellationToken,
+    bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
+    config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
+) -> PassOutcome {
     if !config.borrow().automatic_import_identification_enabled() {
         context.release_all();
         emit_progress(context, 0, 0);
-        return;
+        return PassOutcome::Complete;
     }
     let candidates = match new_candidates(context).await {
         Ok(candidates) => candidates,
@@ -294,7 +309,7 @@ async fn run_pass(
             // Without the list the sweep cannot plan. Skip the pass; the next
             // scan plans another.
             warn!("sweep: could not read the candidate list ({error}); skipping this pass");
-            return;
+            return PassOutcome::Complete;
         }
     };
     let total = candidates.len() as u32;
@@ -315,18 +330,18 @@ async fn run_pass(
             // unanswered, and identifying the whole queue again would spend the
             // rate limit re-learning what it already knows. Skip the pass; the
             // next scan plans another.
-            warn!("sweep: could not read stored verdicts ({e}); skipping this pass");
-            return;
+            warn!("sweep: could not read stored candidate states ({e}); skipping this pass");
+            return PassOutcome::Complete;
         }
     };
     let mut answered_keys: HashSet<String> = candidates
         .iter()
-        .filter(|candidate| usable_stored_row(&stored, candidate).is_some())
+        .filter(|candidate| usable_stored_answer(&stored, candidate).is_some())
         .map(|candidate| candidate.path.to_string_lossy().into_owned())
         .collect();
     let mut answered_identities: HashSet<CandidateIdentity> = candidates
         .iter()
-        .filter(|candidate| usable_stored_row(&stored, candidate).is_some())
+        .filter(|candidate| usable_stored_answer(&stored, candidate).is_some())
         .map(candidate_identity)
         .collect();
 
@@ -338,7 +353,7 @@ async fn run_pass(
     emit_progress(context, identified, total);
 
     if pending.is_empty() {
-        return;
+        return PassOutcome::Complete;
     }
 
     let mut in_flight: HashMap<String, InFlight> = HashMap::new();
@@ -351,7 +366,7 @@ async fn run_pass(
                 context.release_all();
                 finishing.shutdown().await;
                 emit_progress(context, 0, 0);
-                return;
+                return PassOutcome::Complete;
             }
             let Some(mut job) = pending.pop_front() else {
                 break;
@@ -394,7 +409,7 @@ async fn run_pass(
         }
 
         if in_flight.is_empty() && pending.is_empty() && finishing.is_empty() {
-            return;
+            return PassOutcome::Complete;
         }
 
         tokio::select! {
@@ -404,7 +419,7 @@ async fn run_pass(
                     context.release(key);
                 }
                 finishing.shutdown().await;
-                return;
+                return PassOutcome::Complete;
             }
             changed = config.changed() => {
                 if changed.is_err()
@@ -415,7 +430,7 @@ async fn run_pass(
                     context.release_all();
                     finishing.shutdown().await;
                     emit_progress(context, 0, 0);
-                    return;
+                    return PassOutcome::Complete;
                 }
             }
             Some(result) = finishing.join_next() => {
@@ -452,7 +467,9 @@ async fn run_pass(
                             );
                         }
                     }
-                    Err(error) if error.is_cancelled() && token.is_cancelled() => return,
+                    Err(error) if error.is_cancelled() && token.is_cancelled() => {
+                        return PassOutcome::Complete;
+                    }
                     Err(error) => warn!("sweep finishing task failed: {error}"),
                 }
             }
@@ -510,6 +527,15 @@ async fn run_pass(
                             }
                         });
                     }
+                }
+                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataSeeded { .. }))) => {
+                    // A chosen source owns this candidate now. Cancel every
+                    // background run from this pass and plan again from the
+                    // committed seeds so no in-flight duplicate can continue
+                    // OCR or provider lookup for the same content hash.
+                    context.release_all();
+                    finishing.shutdown().await;
+                    return PassOutcome::Replan;
                 }
                 // The folder was removed, renamed, or unmounted while we were
                 // identifying it. Extraction is cancelled for us by the signal
@@ -614,7 +640,7 @@ async fn run_pass(
                         &mut pending,
                     );
                     remove_finishing_member(&mut finishing_members, &candidate_key);
-                    let stored_now = match current_stored_verdict(context, &candidate).await {
+                    let stored_now = match current_stored_answer(context, &candidate).await {
                         Ok(stored) => stored,
                         Err(error) => {
                             warn!(
@@ -624,7 +650,7 @@ async fn run_pass(
                                 context.release(key);
                             }
                             finishing.shutdown().await;
-                            return;
+                            return PassOutcome::Complete;
                         }
                     };
                     // Already answered — either on disk, or by a candidate this
@@ -671,7 +697,7 @@ async fn run_pass(
                             total = total.saturating_add(1);
                         }
                         let stored_now =
-                            match current_stored_verdict(context, &candidate).await {
+                            match current_stored_answer(context, &candidate).await {
                                 Ok(stored) => stored,
                                 Err(error) => {
                                     warn!(
@@ -681,7 +707,7 @@ async fn run_pass(
                                         context.release(key);
                                     }
                                     finishing.shutdown().await;
-                                    return;
+                                    return PassOutcome::Complete;
                                 }
                             };
                         if stored_now {
@@ -765,7 +791,9 @@ async fn run_pass(
                         pending.push_back(entry.job);
                     }
                 }
-                Some(Err(broadcast::error::RecvError::Closed)) | None => return,
+                Some(Err(broadcast::error::RecvError::Closed)) | None => {
+                    return PassOutcome::Complete;
+                }
             },
         }
     }

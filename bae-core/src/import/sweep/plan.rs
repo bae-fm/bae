@@ -87,14 +87,14 @@ pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdenti
     (candidate.files.content_hash(), candidate.file_edit_revision)
 }
 
-pub(super) fn usable_stored_row<'a>(
+pub(super) fn usable_stored_answer<'a>(
     stored: &'a HashMap<String, DbImportCandidateState>,
     candidate: &FolderCandidate,
 ) -> Option<&'a DbImportCandidateState> {
     stored
         .get(&candidate.files.content_hash())
         .filter(|row| row.file_edits.revision == candidate.file_edit_revision)
-        .filter(|row| row.identify.is_some())
+        .filter(|row| row.metadata_seed.is_some() || row.identify.is_some())
 }
 
 pub(super) async fn usable_current_candidate(
@@ -107,9 +107,9 @@ pub(super) async fn usable_current_candidate(
         .is_some_and(|candidate| candidate_identity(&candidate) == *identity)
 }
 
-/// Whether this candidate, as it is on disk right now, already holds a stored
-/// verdict for that shape.
-pub(super) async fn current_stored_verdict(
+/// Whether this candidate, as it is on disk right now, already has metadata or
+/// an identification answer for that shape.
+pub(super) async fn current_stored_answer(
     context: &SweepContext,
     candidate: &FolderCandidate,
 ) -> Result<bool, String> {
@@ -124,7 +124,7 @@ pub(super) async fn current_stored_verdict(
     if row.file_edits.revision != candidate.file_edit_revision {
         return Ok(false);
     }
-    Ok(row.identify.is_some())
+    Ok(row.metadata_seed.is_some() || row.identify.is_some())
 }
 
 /// Split the queue against what is already stored.
@@ -149,10 +149,9 @@ pub(super) fn plan(
     }
     for job in grouped {
         let candidate = job.representative();
-        // A row with no identify result is a candidate nobody has answered —
-        // either never, or not since a sheet binding changed what the folder is
-        // and cleared the answer it had.
-        if usable_stored_row(stored, candidate).is_none() {
+        // Only a candidate with neither a chosen metadata seed nor an identify
+        // result belongs to automatic Lookup.
+        if usable_stored_answer(stored, candidate).is_none() {
             identify.push_back(job);
             continue;
         }
