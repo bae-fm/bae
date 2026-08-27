@@ -5,7 +5,7 @@
 //! extraction services, and wires the UI event bus — no per-frontend copy to
 //! drift.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Instant};
 
 use tracing::{info, warn};
 
@@ -15,6 +15,41 @@ use crate::library::AppServices;
 use crate::ui::UiEventBus;
 use coven::{ClockRef, SystemClock};
 use coven::{IdRef, UuidProvider};
+
+struct BootstrapTiming {
+    started: Instant,
+}
+
+impl BootstrapTiming {
+    fn start(library_id: &str) -> Self {
+        info!(%library_id, "Application bootstrap started");
+        Self {
+            started: Instant::now(),
+        }
+    }
+
+    fn stage<T>(&self, library_id: &str, stage: &'static str, run: impl FnOnce() -> T) -> T {
+        info!(%library_id, stage, "Application bootstrap stage started");
+        let started = Instant::now();
+        let output = run();
+        info!(
+            %library_id,
+            stage,
+            stage_ms = %started.elapsed().as_millis(),
+            total_ms = %self.started.elapsed().as_millis(),
+            "Application bootstrap stage returned"
+        );
+        output
+    }
+
+    fn complete(&self, library_id: &str) {
+        info!(
+            %library_id,
+            total_ms = %self.started.elapsed().as_millis(),
+            "Application bootstrap completed"
+        );
+    }
+}
 
 /// Why [`bootstrap`] could not bring the application up. Frontends map these
 /// onto their own error surface (the bridge onto `BridgeError`, the desktop app
@@ -146,20 +181,23 @@ fn bootstrap_inner<T, F>(
 where
     F: FnOnce(AppServices, UiEventBus, tokio::runtime::Runtime) -> Result<T, BootstrapError>,
 {
+    let timing = BootstrapTiming::start(&library_id);
+
     // The injected wall clock + id source are built before loading the config so
     // device-id auto-generation draws from the injected source too.
     let clock: ClockRef = Arc::new(SystemClock);
     let ids: IdRef = Arc::new(UuidProvider);
 
-    let config =
-        Config::load_registered_library(&library_id, ids.as_ref()).map_err(
-            |error| match error {
-                crate::config::ConfigError::Config(_) => {
-                    BootstrapError::LibraryNotFound(library_id.clone())
-                }
-                other => BootstrapError::Config(other.to_string()),
-            },
-        )?;
+    let config = timing
+        .stage(&library_id, "load config", || {
+            Config::load_registered_library(&library_id, ids.as_ref())
+        })
+        .map_err(|error| match error {
+            crate::config::ConfigError::Config(_) => {
+                BootstrapError::LibraryNotFound(library_id.clone())
+            }
+            other => BootstrapError::Config(other.to_string()),
+        })?;
     let library_id = config.store_id.clone();
 
     // Telemetry was built by the host at process start (from compiled-in values
@@ -169,36 +207,46 @@ where
     // config load) ship without the field rather than a placeholder.
     diagnostics.set_device_id(config.device_id.clone());
 
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(2)
-        // The sync cycle (snapshot creation, changeset apply) runs on these
-        // workers and overflows the default 2 MB stack in debug builds.
-        .thread_stack_size(16 * 1024 * 1024)
-        .enable_all()
-        .build()
+    let runtime = timing
+        .stage(&library_id, "build async runtime", || {
+            tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                // The sync cycle (snapshot creation, changeset apply) runs on these
+                // workers and overflows the default 2 MB stack in debug builds.
+                .thread_stack_size(16 * 1024 * 1024)
+                .enable_all()
+                .build()
+        })
         .map_err(|e| BootstrapError::Internal(format!("Failed to create runtime: {e}")))?;
 
-    crate::audio_codec::init();
+    timing.stage(&library_id, "initialize audio codecs", || {
+        crate::audio_codec::init()
+    });
 
     let config_handle = Arc::new(ConfigHandle::new(config));
 
-    let library_manager = crate::library::LibraryManager::open(
-        Arc::clone(&config_handle),
-        Arc::clone(&clock),
-        ids,
-        diagnostics.clone(),
-        runtime.handle().clone(),
-        cloudkit_ops,
-        crate::import::cover_art::RemoteImageCache::new(
-            Arc::clone(&clock),
-            config_handle.config().library_path(),
-        ),
-    )
-    .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
+    let library_manager = timing
+        .stage(&library_id, "open library manager", || {
+            crate::library::LibraryManager::open(
+                Arc::clone(&config_handle),
+                Arc::clone(&clock),
+                ids,
+                diagnostics.clone(),
+                runtime.handle().clone(),
+                cloudkit_ops,
+                crate::import::cover_art::RemoteImageCache::new(
+                    Arc::clone(&clock),
+                    config_handle.config().library_path(),
+                ),
+            )
+        })
+        .map_err(|e| BootstrapError::Database(format!("Failed to open database: {e}")))?;
 
     let provider_configured = config_handle.config().cloud_home.provider.is_some();
-    let key_state = library_manager
-        .cloud_home_key_state()
+    let key_state = timing
+        .stage(&library_id, "read cloud-home key state", || {
+            library_manager.cloud_home_key_state()
+        })
         .map_err(classify_key_state_error)?;
     let locked = provider_configured && key_state == coven::CloudHomeKeyState::Locked;
     let advance_active_pointer = !locked;
@@ -220,8 +268,10 @@ where
 
     // Configure coven's per-namespace cache budgets (device-local, idempotent):
     // the bulk for audio, a small reserved slice each for covers / artist images.
-    runtime
-        .block_on(library_manager.configure_cache_budgets())
+    timing
+        .stage(&library_id, "configure cache budgets", || {
+            runtime.block_on(library_manager.configure_cache_budgets())
+        })
         .map_err(|e| BootstrapError::Database(e.to_string()))?;
 
     // Now that the manager owns the outbox in-flight set and event channel, build
@@ -238,28 +288,36 @@ where
     // so the UI shows its reconnect banner. Local browse and pinned playback need no
     // network, and the next launch retries the connect.
     if provider_configured && !locked {
-        runtime.block_on(library_manager.attach_and_start_sync_at_startup());
+        timing.stage(&library_id, "attach and start sync", || {
+            runtime.block_on(library_manager.attach_and_start_sync_at_startup())
+        });
     }
 
     // Forward the sync loop's row changes + errors as library/UI events: the
     // synced DB is what drives the UI on every platform.
-    library_manager.start();
+    timing.stage(&library_id, "start library observation", || {
+        library_manager.start()
+    });
 
     // The in-core cpal/ffmpeg audio engine. cpal drives the sink on desktop and
     // iOS, AAudio on Android.
-    let playback_handle = library_manager.start_playback_service(
-        runtime.handle().clone(),
-        position_update_interval_ms,
-        restore_playback,
-    );
+    let playback_handle = timing.stage(&library_id, "start playback service", || {
+        library_manager.start_playback_service(
+            runtime.handle().clone(),
+            position_update_interval_ms,
+            restore_playback,
+        )
+    });
 
     // The import pipeline (scanning, transcoding, identify) is desktop-only.
     // Mobile is a sync/playback client, so its `AppServices` carries just the
     // library manager and the in-core player.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let app_services = {
-        let import_handle = runtime
-            .block_on(library_manager.start_import_service(runtime.handle().clone()))
+        let import_handle = timing
+            .stage(&library_id, "start import service", || {
+                runtime.block_on(library_manager.start_import_service(runtime.handle().clone()))
+            })
             .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
         AppServices::new(library_manager, playback_handle, import_handle)
@@ -272,13 +330,19 @@ where
     diagnostics.event(TelemetryEvent::AppStarted {});
 
     let ui_event_bus = UiEventBus::new();
-    ui_event_bus.wire(&app_services, runtime.handle());
+    timing.stage(&library_id, "wire UI event bus", || {
+        ui_event_bus.wire(&app_services, runtime.handle())
+    });
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    app_services
-        .import_scan_watched_folders()
+    timing
+        .stage(&library_id, "request watched-folder scan", || {
+            app_services.import_scan_watched_folders()
+        })
         .map_err(|error| BootstrapError::Database(error.to_string()))?;
 
-    let owner = compose(app_services, ui_event_bus, runtime)?;
+    let owner = timing.stage(&library_id, "compose frontend owner", || {
+        compose(app_services, ui_event_bus, runtime)
+    })?;
 
     // The durable active-library pointer names the library the user last actually
     // landed in, so launch ordering (discovery sorts active-first) and
@@ -288,12 +352,14 @@ where
     // must leave the previously-active library in charge. A successful unlock
     // re-runs bootstrap unlocked and advances the pointer then.
     if advance_active_pointer {
-        config_handle
-            .config()
-            .save_active_library()
+        timing
+            .stage(&library_id, "save active-library pointer", || {
+                config_handle.config().save_active_library()
+            })
             .map_err(|e| BootstrapError::Config(e.to_string()))?;
     }
 
+    timing.complete(&library_id);
     Ok(owner)
 }
 
