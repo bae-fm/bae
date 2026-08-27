@@ -91,6 +91,15 @@ fix.
 - Remove fixed role chips such as Document and Other.
 - Give hidden-column width back to Name.
 
+### Tracks table source-first layout
+
+- Order track columns as Source, track number, Title, Artist, and Length.
+- Put the playable source filename at the far left as the primary origin field.
+- Preserve playback behavior, alignment, truncation, accessibility, and
+  responsive column widths.
+- Give Tracks and Files their real per-section column models if they currently
+  share a grid shape that prevents the correct order.
+
 ### Candidate placement breadcrumb
 
 - Render the candidate header as a placement breadcrumb:
