@@ -60,14 +60,23 @@ Completed in `c9c83e167`.
 - Align candidates outside that group with the outer hierarchy guide rather
   than the grouped-child guide.
 
-## Active and ordered queue
-
 ### Candidate selection viewport stability
+
+Completed in `4da9a75c5`.
 
 - Preserve the sidebar viewport during ordinary candidate selection.
 - Permit scrolling only for explicit navigation commands that reveal a target.
-- Find the source among selection handling, row identity, pagination updates,
-  and row-height changes; fix it at the owning layer.
+- Keep the revealed target as the retained anchor for later page deliveries.
+
+## Active and ordered queue
+
+### Import hierarchy checkbox hit area
+
+- Keep Pending's selection checkbox inside the row and its hit-testing area.
+- Preserve the member and nonmember content alignment established by the
+  hierarchy indentation change.
+- Apply hierarchy alignment to row content without displacing List-owned
+  selection controls.
 
 ### Identity mode navigation
 
