@@ -8,9 +8,6 @@ mod assemble;
 pub(crate) mod candidate_runtime;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod candidates;
-// Reads the identify state and the picked release's detail, both desktop-only.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod claim;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discid;
@@ -19,6 +16,8 @@ mod discid_hash;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discogs_mapper;
 mod error;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod file_evidence;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod file_tag_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -121,8 +120,6 @@ pub use candidates::{
     ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use claim::{file_evidence, EvidenceSignal, FileEvidence};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use edits::{
@@ -130,6 +127,8 @@ pub use edits::{
     TrackEditState,
 };
 pub use error::ImportError;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

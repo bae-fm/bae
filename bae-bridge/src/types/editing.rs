@@ -62,19 +62,17 @@ pub struct BridgeReleaseTrack {
     pub side: u32,
 }
 
-/// One signal that identified the picked release, and the candidate file it
-/// was read off. Mirrors `bae_core::import::FileEvidence`.
+/// One kind of identifying signal extracted from a candidate file. Mirrors
+/// `bae_core::import::FileEvidence`.
 ///
-/// It explains the pick and decides nothing. The chip goes on the file: the
-/// gallery tile for the image a barcode was read off, the table row for the
-/// log or cue a disc ID was computed from. Nothing is said beside the release
-/// itself.
+/// This is independent of which pressing is selected. The chip goes on the
+/// file: the gallery tile for an image barcodes were read from, or the table
+/// row for the log or cue a disc ID was computed from.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeFileEvidence {
     pub signal: BridgeEvidenceSignal,
-    /// The value itself — the barcode digits, the disc ID — which the chip's
-    /// wording names.
+    /// The extracted barcode digits or disc ID.
     pub value: String,
     /// The file's identity within the release (its relative path): the same id
     /// `BridgeMappingImage` and `BridgeMappingFile` carry.

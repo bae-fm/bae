@@ -20,8 +20,8 @@ struct ImportMappingTable: View {
     /// The audio units nothing has read yet. Their rows say so while the read
     /// runs; every other length on the pane is already stored.
     var unprobed: Set<BridgeAudioFile> = []
-    /// What identified the release, by the file each piece was read off. The
-    /// row for that file carries the chip.
+    /// Extracted identifying signals by their source file. The row for that
+    /// file carries the chip independently of the selected pressing.
     var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
 
@@ -207,8 +207,9 @@ struct ImportMappingTable: View {
         }
     }
 
-    private func evidenceFor(_ unit: BridgeMappingUnit) -> BridgeFileEvidence? {
-        guard case .file(let file) = unit.source else { return nil }
+    private func evidenceFor(_ unit: BridgeMappingUnit) -> [BridgeFileEvidence]
+    {
+        guard case .file(let file) = unit.source else { return [] }
         return ImportEvidence.of(file.fileId, in: evidence)
     }
 }

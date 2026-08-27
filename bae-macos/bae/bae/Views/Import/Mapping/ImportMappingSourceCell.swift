@@ -14,9 +14,9 @@ struct ImportMappingSourceCell: View {
     /// thing on the pane that is still being fetched, so it is the one place a
     /// spinner belongs.
     var isMeasuring: Bool = false
-    /// What identified the release, where this row's file is what it was read
-    /// off — the chip the row carries. `nil` for every other row.
-    var evidence: BridgeFileEvidence?
+    /// Identifying signals extracted from this row's file. Empty for every
+    /// other row.
+    var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
 
     private var isPreviewing: Bool {
@@ -57,10 +57,10 @@ struct ImportMappingSourceCell: View {
                 // A squeezed column must truncate the name, never wrap the
                 // size mid-digit.
                 .fixedSize()
-            if let evidence {
-                ImportEvidenceChip(signal: evidence.signal)
+            ForEach(ImportEvidence.badges(evidence)) { badge in
+                ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()
-                    .help(ImportEvidence.hoverText(evidence))
+                    .help(ImportEvidence.hoverText(badge.evidence))
             }
             if isMeasuring {
                 ProgressView()

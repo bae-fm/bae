@@ -20,9 +20,9 @@ struct ImportMappingTrackRow: View {
     let previewingPath: String?
     /// Whether this row's audio has not been read yet.
     var isMeasuring: Bool = false
-    /// What identified the release, where this row's file is what it was read
-    /// off. `nil` for every other row.
-    var evidence: BridgeFileEvidence?
+    /// Identifying signals extracted from this row's file. Empty for every
+    /// other row.
+    var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
 
     @State

@@ -1,6 +1,30 @@
 use super::*;
 
 #[cfg(test)]
+mod identity_pick_tests {
+    use super::*;
+
+    #[test]
+    fn a_stored_pick_is_the_identity_it_commits() {
+        let pick = IdentityPick::Release {
+            source: MetadataSource::MusicBrainz,
+            release_id: "release-a".to_string(),
+        };
+        assert_eq!(
+            pick.choice(),
+            IdentityChoice::Release {
+                release_ref: MetadataRef::new("release-a", MetadataSource::MusicBrainz)
+            }
+        );
+        assert_eq!(IdentityPick::Unknown.choice(), IdentityChoice::Unknown);
+
+        let stored = serde_json::to_string(&pick).expect("a pick encodes");
+        let read_back: IdentityPick = serde_json::from_str(&stored).expect("a stored pick decodes");
+        assert_eq!(read_back, pick);
+    }
+}
+
+#[cfg(test)]
 mod edit_shaping_tests {
     use super::*;
 

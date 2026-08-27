@@ -1,25 +1,58 @@
 import BaeKit
 import SwiftUI
 
-/// The mark that says a signal read off this file is what identified the
-/// release: the image a barcode was OCR'd from, the log or sheet a disc ID was
-/// computed from. It states a fact and does nothing.
+/// The mark that says an identifying signal was extracted from this file: the
+/// image a barcode was read from, or the log or sheet a disc ID was computed
+/// from. It states a fact and does nothing.
 ///
 /// The hover carries the whole sentence, value included — the mark itself is
 /// only as wide as its surface allows, and a 96-point thumbnail allows a
 /// glyph.
 enum ImportEvidence {
-    /// The evidence this file is the source of, if it is any.
+    struct Badge: Identifiable {
+        let signal: BridgeEvidenceSignal
+        var evidence: [BridgeFileEvidence]
+
+        var id: String {
+            switch signal {
+            case .barcode: "barcode"
+            case .discId: "disc-id"
+            }
+        }
+    }
+
+    /// Every extracted value whose source is this file.
     static func of(
         _ fileId: String,
         in evidence: [BridgeFileEvidence]
-    ) -> BridgeFileEvidence? {
-        evidence.first { $0.fileId == fileId }
+    ) -> [BridgeFileEvidence] {
+        evidence.filter { $0.fileId == fileId }
     }
 
-    /// What hovering the file says, in the user's language.
+    /// One badge per signal kind, preserving every extracted value for its
+    /// help text. Grouping is presentation-only: core keeps one provenance
+    /// record per extracted value.
+    static func badges(_ evidence: [BridgeFileEvidence]) -> [Badge] {
+        evidence.reduce(into: []) { badges, entry in
+            if let index = badges.firstIndex(where: {
+                $0.signal == entry.signal
+            }) {
+                badges[index].evidence.append(entry)
+            }
+            else {
+                badges.append(Badge(signal: entry.signal, evidence: [entry]))
+            }
+        }
+    }
+
+    /// What hovering one signal badge says, in the user's language.
     static func hoverText(_ evidence: BridgeFileEvidence) -> String {
         coreString(bridgeFileEvidenceKey(evidence: evidence), evidence.value)
+    }
+
+    /// What hovering a file tile says when it carries several signal kinds.
+    static func hoverText(_ evidence: [BridgeFileEvidence]) -> String {
+        evidence.map(hoverText).joined(separator: "\n")
     }
 
     /// The same glyph and wording the signals toolbar uses for the signal.

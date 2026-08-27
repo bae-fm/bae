@@ -300,8 +300,8 @@ struct Candidate: Equatable, Identifiable {
         detail?.release
     }
 
-    /// What identified the picked release, each entry naming the file it was
-    /// read off — the chip that file's gallery tile or table row carries.
+    /// Identifying signals extracted from the candidate, each entry naming
+    /// the source file whose gallery tile or table row carries the chip.
     var fileEvidence: [BridgeFileEvidence] {
         detail?.fileEvidence ?? []
     }

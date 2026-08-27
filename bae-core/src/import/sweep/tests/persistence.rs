@@ -569,8 +569,12 @@ async fn a_pick_reads_back_as_the_same_answer() {
     );
     assert_eq!(
         resumed.file_evidence,
-        vec![],
-        "there is no release to have found"
+        vec![crate::import::FileEvidence {
+            signal: crate::import::EvidenceSignal::DiscId,
+            value: SEEDED_DISC_ID.to_string(),
+            file_id: SEEDED_DISC_ID_FILE.to_string(),
+        }],
+        "the extracted Disc ID still names its source file without a release pick"
     );
     assert!(
         fixture.provider.requests().is_empty(),
@@ -648,6 +652,19 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         .await
         .expect("the pick task runs")
         .expect("picking the searched release succeeds");
+    assert_eq!(
+        fixture
+            .pane(&dir)
+            .await
+            .expect("the candidate reads back")
+            .file_evidence,
+        vec![crate::import::FileEvidence {
+            signal: crate::import::EvidenceSignal::DiscId,
+            value: SEEDED_DISC_ID.to_string(),
+            file_id: SEEDED_DISC_ID_FILE.to_string(),
+        }],
+        "a manual pick does not erase the candidate's extracted signal source"
+    );
     let matched = queue_row(&fixture, &key)
         .await
         .matched
@@ -696,8 +713,8 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .await
         .expect("picking the release succeeds");
 
-    // The evidence says what identified the release, which the pick does not
-    // change.
+    // Extracted signal provenance belongs to the candidate files, so picking a
+    // release does not change it.
     let pane = fixture.pane(&dir).await.expect("the candidate reads back");
     assert_eq!(
         pane.file_evidence,

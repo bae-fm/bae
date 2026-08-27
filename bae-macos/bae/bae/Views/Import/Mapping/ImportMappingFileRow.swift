@@ -11,9 +11,9 @@ struct ImportMappingFileRow: View {
     let unit: BridgeMappingUnit
     let columns: ImportMappingColumns
     let previewingPath: String?
-    /// What identified the release, where this file is what it was read off —
-    /// the rip log a disc ID was computed from wears its chip here.
-    var evidence: BridgeFileEvidence?
+    /// Identifying signals extracted from this file — the rip log a disc ID
+    /// was computed from wears its chip here.
+    var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
 
     var body: some View {

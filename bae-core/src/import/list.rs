@@ -318,16 +318,7 @@ pub struct ImportCandidateDetailProjection {
 
 impl ImportCandidateDetailProjection {
     /// The pane's value, with this key's runtime applied.
-    ///
-    /// `live_identify` is the run in flight for this key, `Idle` when none is.
-    /// It decides the evidence badge: a run that just found the release by
-    /// disc ID says so before its verdict is stored, and after a restart the
-    /// resumed verdict says the same thing.
-    pub fn resolve(
-        self,
-        facts: &TriageRuntimeFacts,
-        live_identify: &IdentifyState,
-    ) -> ImportCandidateDetail {
+    pub fn resolve(self, facts: &TriageRuntimeFacts) -> ImportCandidateDetail {
         let Self {
             candidate,
             actionable,
@@ -348,25 +339,10 @@ impl ImportCandidateDetailProjection {
             signals,
             failure,
         } = self;
-        let file_evidence = match (picked.as_ref(), signals.as_ref()) {
-            (
-                Some(IdentityPick::Release {
-                    source, release_id, ..
-                }),
-                Some(signals),
-            ) => {
-                let state = match live_identify {
-                    IdentifyState::Idle => &resumed_identify_state,
-                    live => live,
-                };
-                crate::import::claim::file_evidence(
-                    state,
-                    &crate::import::MetadataRef::new(release_id.clone(), *source),
-                    signals,
-                )
-            }
-            _ => Vec::new(),
-        };
+        let file_evidence = signals
+            .as_ref()
+            .map(crate::import::file_evidence)
+            .unwrap_or_default();
         let import_status = import_status_of(
             facts.importing,
             imported_release.as_ref(),
@@ -435,10 +411,8 @@ pub struct ImportCandidateDetail {
     pub row: TriageRow,
     pub release: Option<ImportSearchReleaseDetail>,
     pub picked_library_status: Option<LibraryStatus>,
-    /// What identified the picked release, pinned to the candidate file each
-    /// piece of evidence was read off — the chip that file's gallery tile or
-    /// table row carries. Empty with no pick, for a folder read as its own
-    /// tags, and where nothing identification matched on came from a file.
+    /// Extracted identifying signals pinned to their source files. Independent
+    /// of the selected pressing; result support lives in result provenance.
     pub file_evidence: Vec<FileEvidence>,
     pub edit: Option<RawReleaseEdit>,
     pub mapping: MappingTable,

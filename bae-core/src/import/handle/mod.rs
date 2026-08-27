@@ -424,14 +424,11 @@ impl ImportServiceHandle {
             .as_ref()
             .map(crate::import::triage::TriageRuntimeFacts::of)
             .unwrap_or_default();
-        let identify = runtime
-            .and_then(|runtime| runtime.identify)
-            .unwrap_or(crate::identify::IdentifyState::Idle);
         Ok(self
             .library_manager
             .load_import_candidate(key)
             .await?
-            .map(|projection| projection.resolve(&facts, &identify)))
+            .map(|projection| projection.resolve(&facts)))
     }
 
     /// The first import list `accept` admits, waiting through the query's
