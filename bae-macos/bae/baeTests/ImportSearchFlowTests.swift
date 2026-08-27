@@ -7,8 +7,43 @@ import Testing
 @MainActor
 @Suite("ImportSearchFlow identity picks")
 struct ImportSearchFlowIdentityTests {
+    @Test("an in-flight release pick names the row that is loading")
+    func anInFlightReleasePickNamesItsRow() async throws {
+        let store = ImportStore()
+        let candidate = PreviewData.folderCandidates[0]
+        store.selectedCandidates[candidate.key] = candidate
+        let (gate, releaseGate) = AsyncStream<Void>.makeStream()
+        let importer = Importer(
+            pickCandidateIdentity: { _, _ in
+                for await _ in gate { break }
+            }
+        )
+        let pick = BridgeIdentityPick.release(
+            source: .musicBrainz,
+            releaseId: "rel-loading"
+        )
+
+        ImportSearchFlow.decideIdentity(
+            importer: importer,
+            importStore: store,
+            key: candidate.key,
+            pick: pick
+        )
+
+        let pending = try #require(store.candidate(forKey: candidate.key))
+        #expect(pending.pickInFlight == pick)
+        #expect(pending.loadingReleaseId == "rel-loading")
+
+        releaseGate.finish()
+        for _ in 0..<100
+        where store.candidate(forKey: candidate.key)?.pickInFlight != nil {
+            await Task.yield()
+        }
+        #expect(store.candidate(forKey: candidate.key)?.pickInFlight == nil)
+    }
+
     @Test("a pick that lands leaves no error and nothing in flight")
-    func aPickThatLandsClearsTheFlag() async throws {
+    func aPickThatLandsClearsThePendingPick() async throws {
         let store = ImportStore()
         let candidate = PreviewData.folderCandidates[0]
         store.selectedCandidates[candidate.key] = candidate
@@ -34,7 +69,7 @@ struct ImportSearchFlowIdentityTests {
         #expect(picked == [pick])
         let after = try #require(store.candidate(forKey: candidate.key))
         #expect(after.error == nil)
-        #expect(after.pickInFlight == false)
+        #expect(after.pickInFlight == nil)
     }
 
     @Test("a pick that fails states the failure and stores nothing")
@@ -56,7 +91,7 @@ struct ImportSearchFlowIdentityTests {
 
         let after = try #require(store.candidate(forKey: candidate.key))
         #expect(after.error != nil)
-        #expect(after.pickInFlight == false)
+        #expect(after.pickInFlight == nil)
         // Nothing about the pane moved: the pick never landed, so there is
         // nothing new for it to draw.
         #expect(after.detail == nil)

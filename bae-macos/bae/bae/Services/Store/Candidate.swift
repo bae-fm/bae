@@ -150,9 +150,14 @@ struct Candidate: Equatable, Identifiable {
     /// dropped, a write that would not land, a commit the fields do not
     /// support. Shown in the banner and cleared by the next command.
     var error: String?
-    /// Whether a pick is in flight. The control that started it says so; the
-    /// pane behind it keeps showing whatever is stored until the pick lands.
-    var pickInFlight: Bool = false
+    /// The pick currently being read. The initiating row uses its identity for
+    /// selection feedback while the pane keeps showing stored data.
+    var pickInFlight: BridgeIdentityPick?
+
+    var loadingReleaseId: String? {
+        guard case .release(_, let releaseId) = pickInFlight else { return nil }
+        return releaseId
+    }
     var search: CandidateSearchState = .init()
     // periphery:ignore
     /// In-flight search task. Replacing it cancels the old one via the

@@ -109,7 +109,7 @@ struct ImportMappingPane: View {
             metaLine: headerMetaLine,
             hasPick: candidate.pickedRelease != nil,
             pickedSource: candidate.pickedRelease?.source,
-            isReading: candidate.pickInFlight,
+            isReading: candidate.pickInFlight != nil,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editValues: candidate.edit,
@@ -141,7 +141,7 @@ struct ImportMappingPane: View {
             libraryStatuses: libraryStatuses,
             provenance: provenance,
             isImporting: ImportSearchFlow.isImporting(candidate),
-            loadingReleaseId: nil,
+            loadingReleaseId: candidate.loadingReleaseId,
             onSelect: onPickRelease,
         )
     }

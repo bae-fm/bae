@@ -429,7 +429,7 @@ struct ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.error != nil)
-        #expect(candidate.pickInFlight == false)
+        #expect(candidate.pickInFlight == nil)
         #expect(candidate.detail == before)
         #expect(candidate.hasSettled)
     }

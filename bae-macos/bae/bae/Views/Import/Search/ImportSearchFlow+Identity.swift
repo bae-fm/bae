@@ -21,7 +21,7 @@ extension ImportSearchFlow {
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
             candidate.error = nil
-            candidate.pickInFlight = true
+            candidate.pickInFlight = pick
         }
         Task { @MainActor in
             do {
@@ -51,7 +51,11 @@ extension ImportSearchFlow {
                     }
                 }
             }
-            importStore.mutateCandidate(forKey: key) { $0.pickInFlight = false }
+            importStore.mutateCandidate(forKey: key) { candidate in
+                if candidate.pickInFlight == pick {
+                    candidate.pickInFlight = nil
+                }
+            }
         }
     }
 
