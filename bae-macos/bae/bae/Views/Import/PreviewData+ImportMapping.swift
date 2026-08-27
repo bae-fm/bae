@@ -444,6 +444,15 @@
             mapping: awaitingPickTable,
         )
 
+        /// The same unresolved folder with File Tags presented before those
+        /// tags have been chosen as its identity.
+        @MainActor
+        static let unidentifiedFileTagsMappingCandidate: Candidate = {
+            var candidate = unidentifiedMappingCandidate
+            candidate.presentedIdentity = .unknown
+            return candidate
+        }()
+
         /// The same unpicked folder with identification settled on several
         /// pressings — the identity section offers them inline.
         @MainActor

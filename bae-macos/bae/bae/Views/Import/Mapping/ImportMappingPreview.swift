@@ -89,7 +89,7 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — nothing picked yet") {
+    #Preview("Mapping pane — Lookup, no search") {
         @Previewable
         @State
         var storageCloud = true
@@ -98,6 +98,22 @@
         var storagePinned = true
         ImportMappingPreview.make(
             candidate: PreviewData.unidentifiedMappingCandidate,
+            storageCloud: $storageCloud,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 700)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — File tags, not selected") {
+        @Previewable
+        @State
+        var storageCloud = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.unidentifiedFileTagsMappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
