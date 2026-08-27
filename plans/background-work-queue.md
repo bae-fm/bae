@@ -166,4 +166,12 @@ Completed in `c825b094d`.
 
 ## Active and ordered queue
 
-No queued items.
+### macOS unit-test CI failure
+
+- The hosted candidate viewport regression was the only failed test in run
+  `33066474588`, job `98497669793`; its test process exited while walking the
+  complete SwiftUI view hierarchy to find the first table.
+- Keep the real hosted regression while bounding that lookup to the first
+  matching descendant.
+- Run the focused macOS tests and normal commit checks before handing the
+  focused commit to the main checkout.
