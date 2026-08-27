@@ -185,4 +185,12 @@ Completed in `e14568a3e`.
 
 ## Active and ordered queue
 
-No queued items.
+### Hosted candidate viewport test settling
+
+- Preserve the real hosted-list assertion that a live page delivery retains
+  the visible candidate.
+- Let SwiftUI and AppKit layout settle through their asynchronous main-actor
+  delivery instead of driving a nested main run loop from the test.
+- Keep viewport bookkeeping as value state; reference identity did not change
+  the hosted timeout and must not remain as an unrelated mechanism.
+- Keep the person's running application independent from test verification.

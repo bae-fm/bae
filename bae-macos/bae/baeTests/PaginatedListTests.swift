@@ -744,7 +744,7 @@ final class ImportCandidateViewportTests: XCTestCase {
         let hosting = NSHostingView(rootView: root)
         let window = makeWindow(hosting: hosting)
         defer { window.close() }
-        drainViewportLayout()
+        await settleViewportLayout(in: hosting)
 
         let table = try XCTUnwrap(
             descendants(of: hosting).compactMap { $0 as? NSTableView }.first
@@ -755,7 +755,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             to: table.rect(ofRow: anchorIndex).origin
         )
         scrollView.reflectScrolledClipView(scrollView.contentView)
-        drainViewportLayout()
+        await settleViewportLayout(in: hosting)
         let anchor = try XCTUnwrap(list.idAt(topRow(in: table)))
 
         uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
@@ -764,7 +764,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 index < 20 ? groupHeaderItem(index) : candidateItem(index)
             }
         await source.replaceItems(changed)
-        drainViewportLayout()
+        await settleViewportLayout(in: hosting)
 
         XCTAssertEqual(list.idAt(topRow(in: table)), anchor)
     }
@@ -772,7 +772,7 @@ final class ImportCandidateViewportTests: XCTestCase {
     func testExplicitRevealOwnsItsScrollThenEstablishesTheRetainedAnchor() {
         let targetIndex = 61
         let targetKey = viewportCandidateKey(targetIndex)
-        let viewport = ImportCandidateListViewport()
+        var viewport = ImportCandidateListViewport()
         XCTAssertNil(
             viewport.update(
                 rows: [
@@ -918,9 +918,10 @@ final class ImportCandidateViewportTests: XCTestCase {
         [view] + view.subviews.flatMap { descendants(of: $0) }
     }
 
-    private func drainViewportLayout() {
+    private func settleViewportLayout(in hosting: NSView) async {
         for _ in 0..<20 {
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+            hosting.layoutSubtreeIfNeeded()
+            await Task.yield()
         }
     }
 
