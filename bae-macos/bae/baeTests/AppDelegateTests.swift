@@ -12,6 +12,26 @@ import Testing
 @Suite("AppDelegate")
 struct AppDelegateTests {
 
+    @Test("preview host does not construct application services")
+    func previewHostIsInert() {
+        var serviceConstructionCount = 0
+        let runtime = AppRuntime(
+            environment: ["XCODE_RUNNING_FOR_PREVIEWS": "1"]
+        )
+
+        let delegate = AppDelegate(
+            runtime: runtime,
+            makeApplicationServices: {
+                serviceConstructionCount += 1
+                return ApplicationServices()
+            }
+        )
+
+        #expect(runtime == .preview)
+        #expect(serviceConstructionCount == 0)
+        #expect(delegate.applicationServices == nil)
+    }
+
     @Test("forgetActiveLibrary with no open library is a no-op")
     func forgetWithoutLibraryIsNoOp() {
         let delegate = AppDelegate()

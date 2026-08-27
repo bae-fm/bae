@@ -3,9 +3,9 @@ import Sparkle
 import SwiftUI
 import os.log
 
-private let logger = Logger.bae("BaeApp")
-private let appProcessEnvironment = ProcessInfo.processInfo.environment
-private let appEdition: AppEdition = {
+let baeAppLogger = Logger.bae("BaeApp")
+let baeAppProcessEnvironment = ProcessInfo.processInfo.environment
+let baeAppEdition: AppEdition = {
     #if BAE_OAUTH_PROVIDERS
         .bae
     #else
@@ -13,11 +13,25 @@ private let appEdition: AppEdition = {
     #endif
 }()
 
-private enum AppRuntime {
-    static func skipsApplicationServices(environment: [String: String]) -> Bool
-    {
-        isPreview(environment: environment)
-            || isTestHost(environment: environment)
+enum AppRuntime: Equatable {
+    case application
+    case preview
+    case testHost
+
+    init(environment: [String: String]) {
+        if Self.isPreview(environment: environment) {
+            self = .preview
+        }
+        else if Self.isTestHost(environment: environment) {
+            self = .testHost
+        }
+        else {
+            self = .application
+        }
+    }
+
+    var startsApplicationServices: Bool {
+        self == .application
     }
 
     private static func isPreview(environment: [String: String]) -> Bool {
@@ -46,9 +60,7 @@ private enum AppRuntime {
     #endif
 }
 
-private let skipsApplicationServices = AppRuntime.skipsApplicationServices(
-    environment: appProcessEnvironment
-)
+private let appRuntime = AppRuntime(environment: baeAppProcessEnvironment)
 
 private func discoverInitialLibraries(
     environment: [String: String]
@@ -73,37 +85,51 @@ enum AppScreen {
     case library
 }
 
-@main
-struct BaeApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self)
-    var appDelegate
-    private let updaterController: SPUStandardUpdaterController
-    private let librarySetup = LibrarySetup.live()
-    @ObservedObject
-    private var checkForUpdatesViewModel: CheckForUpdatesViewModel
+/// Dependencies owned by the installed application rather than the SwiftUI
+/// preview or unit-test host. Keeping them together makes host construction an
+/// all-or-nothing decision: an inert host cannot accidentally start one of the
+/// process-wide services while skipping another.
+@MainActor
+final class ApplicationServices {
+    let diagnostics: BridgeDiagnostics
+    let mediaControlService: MediaControlService
+    let librarySetup: LibrarySetup
+    let updaterController: SPUStandardUpdaterController
+    let checkForUpdatesViewModel: CheckForUpdatesViewModel
 
     init() {
-        let startUpdater = !AppRuntime.skipsApplicationServices(
-            environment: appProcessEnvironment
+        diagnostics = BaeDiagnostics.configure(
+            source: "macos",
+            edition: baeAppEdition
         )
+        mediaControlService = MediaControlService()
+        librarySetup = LibrarySetup.live()
         #if DEBUG
-            _ = startUpdater  // suppress unused warning
-            let controller = SPUStandardUpdaterController(
+            let updaterController = SPUStandardUpdaterController(
                 startingUpdater: false,
                 updaterDelegate: nil,
                 userDriverDelegate: nil
             )
         #else
-            let controller = SPUStandardUpdaterController(
-                startingUpdater: startUpdater,
+            let updaterController = SPUStandardUpdaterController(
+                startingUpdater: true,
                 updaterDelegate: nil,
                 userDriverDelegate: nil
             )
         #endif
-        updaterController = controller
+        self.updaterController = updaterController
         checkForUpdatesViewModel = CheckForUpdatesViewModel(
-            updater: controller.updater
+            updater: updaterController.updater
         )
+    }
+}
+
+@main
+struct BaeApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self)
+    var appDelegate
+    private var applicationServices: ApplicationServices {
+        appDelegate.requiredApplicationServices
     }
 
     /// Window title — the active library's name if one is loaded, else
@@ -141,7 +167,7 @@ struct BaeApp: App {
                 )
             }
         }
-        .environment(librarySetup)
+        .environment(applicationServices.librarySetup)
     }
 
     /// Main-window content once the first library has opened. Switching
@@ -285,22 +311,28 @@ struct BaeApp: App {
 extension BaeApp {
     @CommandsBuilder
     private var applicationCommands: some Commands {
-        CommandGroup(after: .appInfo) {
-            CheckForUpdatesView(viewModel: checkForUpdatesViewModel)
+        if let applicationServices = appDelegate.applicationServices {
+            CommandGroup(after: .appInfo) {
+                CheckForUpdatesView(
+                    viewModel: applicationServices.checkForUpdatesViewModel
+                )
+            }
+            LibraryFileMenuCommands(
+                libraries: appDelegate.libraries,
+                onNewLibrary: { appDelegate.presentWelcome(mode: $0) },
+                onOpenLibrary: { appDelegate.openLibrary($0) },
+                onSwitchOffset: { appDelegate.switchLibrary(byOffset: $0) },
+                onRenameLibrary: { appDelegate.presentRenameLibrary() },
+                onLockLibrary: {
+                    appDelegate.presentLockLibraryConfirmation()
+                },
+                onSyncNow: { appDelegate.syncNow() },
+                onRevealLibrary: { appDelegate.revealLibraryInFinder() },
+                onCopyLibraryId: { appDelegate.copyLibraryId() },
+                onCloseLibrary: { appDelegate.closeLibrary() }
+            )
+            MainAppMenuCommands()
         }
-        LibraryFileMenuCommands(
-            libraries: appDelegate.libraries,
-            onNewLibrary: { appDelegate.presentWelcome(mode: $0) },
-            onOpenLibrary: { appDelegate.openLibrary($0) },
-            onSwitchOffset: { appDelegate.switchLibrary(byOffset: $0) },
-            onRenameLibrary: { appDelegate.presentRenameLibrary() },
-            onLockLibrary: { appDelegate.presentLockLibraryConfirmation() },
-            onSyncNow: { appDelegate.syncNow() },
-            onRevealLibrary: { appDelegate.revealLibraryInFinder() },
-            onCopyLibraryId: { appDelegate.copyLibraryId() },
-            onCloseLibrary: { appDelegate.closeLibrary() }
-        )
-        MainAppMenuCommands()
     }
 
     /// One primary WindowGroup changes content and content-driven size as the
@@ -308,7 +340,10 @@ extension BaeApp {
     private var primaryWindow: some Scene {
         WindowGroup("bae", id: MainWindow.sceneID) {
             Group {
-                if appDelegate.hasShell,
+                if !appDelegate.runtime.startsApplicationServices {
+                    EmptyView()
+                }
+                else if appDelegate.hasShell,
                     let appService = appDelegate.appService
                 {
                     appService.installEnvironment(
@@ -338,7 +373,8 @@ extension BaeApp {
             .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
             .onAppear {
                 #if !DEBUG
-                    updaterController.updater.checkForUpdatesInBackground()
+                    appDelegate.applicationServices?.updaterController.updater
+                        .checkForUpdatesInBackground()
                 #endif
             }
         }
@@ -356,7 +392,12 @@ extension BaeApp {
 
     private var storageManagerWindow: some Scene {
         Window("Storage Manager", id: "storage-manager") {
-            StorageManagerWindowRoot(appDelegate: appDelegate)
+            if appDelegate.runtime.startsApplicationServices {
+                StorageManagerWindowRoot(appDelegate: appDelegate)
+            }
+            else {
+                EmptyView()
+            }
         }
         .defaultSize(width: 800, height: 500)
         // Never restored: a restored auxiliary window marks the session as
@@ -393,7 +434,8 @@ extension BaeApp {
         Settings {
             SettingsWindowRoot(
                 appDelegate: appDelegate,
-                checkForUpdatesViewModel: checkForUpdatesViewModel
+                checkForUpdatesViewModel:
+                    appDelegate.applicationServices?.checkForUpdatesViewModel
             )
         }
         // Never restored, for the reason the Storage Manager window is not:
@@ -414,10 +456,15 @@ extension BaeApp {
     /// bar's gear open the very same scene and appear to disagree with it.
     private struct SettingsWindowRoot: View {
         let appDelegate: AppDelegate
-        let checkForUpdatesViewModel: CheckForUpdatesViewModel
+        let checkForUpdatesViewModel: CheckForUpdatesViewModel?
 
         var body: some View {
-            if let appService = appDelegate.appService {
+            if !appDelegate.runtime.startsApplicationServices {
+                EmptyView()
+            }
+            else if let appService = appDelegate.appService,
+                let checkForUpdatesViewModel
+            {
                 appService.installEnvironment(
                     SettingsView(
                         checkForUpdatesViewModel: checkForUpdatesViewModel,
@@ -446,17 +493,17 @@ extension BaeApp {
 @MainActor
 @Observable
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    let runtime: AppRuntime
+    private(set) var applicationServices: ApplicationServices?
     var appService: AppService?
-    private let mediaControlService = MediaControlService()
-    /// The process-lifetime telemetry sink, built at delegate construction —
-    /// before every other launch step (crash reporter, keyring, library open),
-    /// so it exists for any failure they report. Held for the whole app run;
-    /// every library open threads it into its `AppService`. The
-    /// skip-application-services path (previews/tests) gets the no-op sink.
-    private let diagnostics: BridgeDiagnostics =
-        AppRuntime.skipsApplicationServices(environment: appProcessEnvironment)
-        ? configureDiagnostics(config: .disabled)
-        : BaeDiagnostics.configure(source: "macos", edition: appEdition)
+    fileprivate var requiredApplicationServices: ApplicationServices {
+        guard let applicationServices else {
+            preconditionFailure(
+                "Application services are unavailable in the inert app host"
+            )
+        }
+        return applicationServices
+    }
     var uiStore = UiStore()
     var screen: AppScreen = .loading
     var loadError: DisplayError?
@@ -489,7 +536,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var opener = LibrarySessionOpener<AppHandle, AppService>(
         // Capture the sink by value so the `@Sendable` makeHandle doesn't read
         // the main-actor property from off the main actor.
-        makeHandle: { [diagnostics] libraryId in
+        makeHandle: {
+            [diagnostics = requiredApplicationServices.diagnostics] libraryId in
             try initApp(
                 libraryId: libraryId,
                 positionUpdateIntervalMs: 200,
@@ -527,6 +575,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @ObservationIgnored
     private let shutdownCoordinator =
         LibraryShutdownCoordinator<AppService>()
+
+    override convenience init() {
+        self.init(runtime: appRuntime)
+    }
+
+    init(
+        runtime: AppRuntime,
+        makeApplicationServices: () -> ApplicationServices = {
+            ApplicationServices()
+        }
+    ) {
+        self.runtime = runtime
+        applicationServices =
+            runtime.startsApplicationServices
+            ? makeApplicationServices()
+            : nil
+        super.init()
+    }
 }
 
 extension AppDelegate {
@@ -587,14 +653,10 @@ extension AppDelegate {
     /// and needs no keychain — so the welcome screen lists the libraries that are
     /// here, but auto-opening one would only replace the recorded cause with the
     /// failure it produces.
-    private func loadInitialState(canOpenLibraries: Bool) {
-        if skipsApplicationServices {
-            screen = .welcome
-            return
-        }
+    func loadInitialState(canOpenLibraries: Bool) {
         do {
             let libraries = try discoverInitialLibraries(
-                environment: appProcessEnvironment
+                environment: baeAppProcessEnvironment
             )
             self.libraries = libraries
             // Auto-open only a library whose config loaded. A broken one
@@ -637,7 +699,7 @@ extension AppDelegate {
             case .superseded:
                 // Superseded by a newer open (or a close); that call owns
                 // screen/appService.
-                logger.debug(
+                baeAppLogger.debug(
                     "Library open superseded before it could land; skipping"
                 )
             case .failed(let error):
@@ -678,8 +740,9 @@ extension AppDelegate {
     ) -> AppService {
         let service = AppService(
             appHandle: handle,
-            mediaControlService: mediaControlService,
-            diagnostics: diagnostics,
+            mediaControlService:
+                requiredApplicationServices.mediaControlService,
+            diagnostics: requiredApplicationServices.diagnostics,
             uiStore: uiStore,
             config: config,
             initialOutbox: initialOutbox
@@ -699,7 +762,7 @@ extension AppDelegate {
     }
 
     @discardableResult
-    private func beginLibraryShutdown(_ service: AppService)
+    func beginLibraryShutdown(_ service: AppService)
         -> Task<LibraryShutdownResult, Never>
     {
         let attempt = shutdownCoordinator.begin(for: service) {
@@ -726,13 +789,15 @@ extension AppDelegate {
         case .completed:
             releaseLibrarySession(service)
         case .failed(let failure):
-            logger.error("Failed to shut down library: \(failure.diagnostic)")
+            baeAppLogger.error(
+                "Failed to shut down library: \(failure.diagnostic)"
+            )
             loadError = failure.displayedError
             screen = .library
         }
     }
 
-    private func prepareForLibraryShutdown() {
+    func prepareForLibraryShutdown() {
         // Cancel any open still in flight so a parked `initApp` can't resume
         // past its post-await cancellation check and replace this session.
         opener.cancel()
@@ -763,7 +828,7 @@ extension AppDelegate {
             work: { try discoverLibraries() },
             onSuccess: { self.libraries = $0 },
             onError: {
-                logger.error(
+                baeAppLogger.error(
                     "Failed to list libraries: \($0.localizedDescription)"
                 )
             }
@@ -802,7 +867,7 @@ extension AppDelegate {
                 self.reloadLibraries()
             },
             onError: {
-                logger.error(
+                baeAppLogger.error(
                     "Failed to rename \(libraryId): \($0.localizedDescription)"
                 )
                 self.renameLibrarySheet?.error = $0.localizedDescription
@@ -820,7 +885,7 @@ extension AppDelegate {
             work: { try await appService.lockActiveLibrary() },
             onSuccess: {},
             onError: {
-                logger.error(
+                baeAppLogger.error(
                     "Failed to lock library: \($0.localizedDescription)"
                 )
                 self.loadError = DisplayError($0)
@@ -842,7 +907,7 @@ extension AppDelegate {
     /// re-paired from the welcome screen.
     func forgetActiveLibrary() {
         guard let service = appService else {
-            logger.warning(
+            baeAppLogger.warning(
                 "Ignoring remove-library request: no library is open."
             )
             return
@@ -859,7 +924,7 @@ extension AppDelegate {
                 self.reloadLibraries()
             },
             onError: {
-                logger.error(
+                baeAppLogger.error(
                     "Failed to remove library: \($0.localizedDescription)"
                 )
                 guard let displayed = DisplayError($0) else { return }
@@ -870,131 +935,5 @@ extension AppDelegate {
                 )
             }
         )
-    }
-}
-
-extension AppDelegate {
-    func applicationDidFinishLaunching(_: Notification) {
-        var keyringReady = true
-        if !skipsApplicationServices {
-            // Telemetry is already up (built at delegate construction, from
-            // compiled-in values only), so every step from here on has a sink
-            // for any failure it reports.
-            BaeCrashReporting.configure(edition: appEdition)
-            logger.info("application launched")
-            do {
-                try initializeKeyring()
-            }
-            catch {
-                // Discovery reads config.yaml and needs no keychain, so a
-                // keyring failure must not cost the user the list of libraries
-                // on this Mac — returning here handed a first-run create/join
-                // wall to someone with libraries sitting right there. It does
-                // cost them the open, since every library's keys live in the
-                // keyring, so discovery runs and the welcome screen lists them
-                // under this error.
-                logger.error(
-                    "Keyring initialization failed: \(error.localizedDescription)"
-                )
-                loadError = DisplayError(error)
-                keyringReady = false
-            }
-            // Hand Rust the CloudKit driver once. It can't build the driver
-            // itself (it needs the platform CloudKit APIs); installing it is
-            // idempotent and harmless for libraries that sync elsewhere, so it
-            // belongs here at the composition root rather than at each open.
-            #if BAE_CLOUDKIT
-                setCloudkitDriver(driver: CloudKitService.bae())
-            #endif
-        }
-        startWatchingForKeychainUnlock()
-        loadInitialState(canOpenLibraries: keyringReady)
-    }
-
-    private func initializeKeyring() throws {
-        #if DEBUG
-            if AppRuntime.usesTestKeyring(
-                environment: appProcessEnvironment
-            ) {
-                initTestKeyring()
-                return
-            }
-        #endif
-        try initKeyring(diagnostics: diagnostics)
-    }
-
-    /// AppKit's deferred-terminate flow, replacing the old fire-and-forget
-    /// `applicationWillTerminate`: that method fired a detached `Task` and
-    /// returned immediately, so the process could exit before the shutdown
-    /// task's `persist_playback_state` write landed — losing the resume
-    /// position on every quit that raced it. Returning `.terminateLater` here
-    /// and replying only after `shutdown()` succeeds makes Quit wait for the
-    /// save. A failure cancels termination and leaves the library open.
-    func applicationShouldTerminate(_ sender: NSApplication)
-        -> NSApplication.TerminateReply
-    {
-        guard let appService else {
-            // No open library: closeLibrary() already shut its handle down
-            // (or none was ever opened), so there's nothing left to save.
-            return .terminateNow
-        }
-        prepareForLibraryShutdown()
-        let shutdown = beginLibraryShutdown(appService)
-        Task {
-            let result = await shutdown.value
-            let shouldTerminate: Bool
-            switch result {
-            case .completed:
-                shouldTerminate = true
-            case .failed:
-                shouldTerminate = false
-            }
-            sender.reply(toApplicationShouldTerminate: shouldTerminate)
-        }
-        return .terminateLater
-    }
-
-    func applicationDidBecomeActive(_: Notification) {
-        guard !skipsApplicationServices else { return }
-        // Before the `appService` gate: having no service is the whole state.
-        retryOpenIfKeychainWasLocked(trigger: "app activation")
-        // Refresh the library list so the Open Library submenu reflects
-        // libraries created, renamed, or removed elsewhere. Only meaningful
-        // once a library is open — the menu that consumes it exists only then.
-        guard appService != nil else { return }
-        reloadLibraries()
-    }
-
-    func application(_: NSApplication, open urls: [URL]) {
-        for url in urls {
-            addWatchedFolderFromOpenURL(url)
-        }
-    }
-
-    private func addWatchedFolderFromOpenURL(_ url: URL) {
-        var isDir: ObjCBool = false
-        guard
-            FileManager.default.fileExists(
-                atPath: url.path,
-                isDirectory: &isDir
-            ),
-            isDir.boolValue
-        else {
-            return
-        }
-        Task {
-            do {
-                try await appService?.addWatchedFolder(path: url.path)
-            }
-            catch {
-                guard let displayed = DisplayError(error) else { return }
-                uiStore.showError(
-                    displayed.addingContext(
-                        String(localized: "Couldn't add folder")
-                    )
-                )
-            }
-        }
-        uiStore.navigateToImport()
     }
 }
