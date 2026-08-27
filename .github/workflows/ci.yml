@@ -52,6 +52,10 @@ jobs:
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
       run: python3 scripts/check_localizable_strings.py
 
+    - name: Check local run isolation
+      if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
+      run: bae-macos/tests/run-isolation.sh
+
     - name: Run macOS unit tests (baeTests)
       if: ${{ !cancelled() && steps.build_macos.conclusion == 'success' }}
       run: |

@@ -4,6 +4,10 @@ options:
   deploymentTarget:
     macOS: "15.0"
   xcodeVersion: "26.0"
+configs:
+  Debug: debug
+  Local: debug
+  Release: release
 settings:
   base:
     DEAD_CODE_STRIPPING: YES
@@ -27,6 +31,7 @@ targets:
     # for DEVELOPMENT_TEAM, so the team isn't committed (see Signing.xcconfig).
     configFiles:
       Debug: Signing.xcconfig
+      Local: Signing.xcconfig
       Release: Signing.xcconfig
     sources:
       # The generated bindings live in the BaeKit package (BaeBridge target),
@@ -130,6 +135,11 @@ targets:
           # Xcode previews run an app process; a separate identity lets that
           # process coexist with the app launched by run.sh.
           PRODUCT_BUNDLE_IDENTIFIER: fm.bae.desktop.xcode
+        Local:
+          # run.sh builds into its own product directory while retaining the
+          # installed app identity. XCTest hosts remain under Debug and cannot
+          # be mistaken for this app by LaunchServices.
+          PRODUCT_BUNDLE_IDENTIFIER: fm.bae.desktop
   baeTests:
     type: bundle.unit-test
     platform: macOS

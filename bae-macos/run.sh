@@ -82,7 +82,7 @@ fi
 if [[ "$RELEASE" == true ]]; then
     CONFIG=Release
 else
-    CONFIG=Debug
+    CONFIG=Local
 fi
 
 cd bae-macos/bae && xcodegen && cd ../..
@@ -98,8 +98,9 @@ cd bae-macos/bae && xcodegen && cd ../..
 DERIVED_DATA="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
 DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
 
-# Keep the normal app identity explicit here even for Debug builds: Xcode
-# previews can use a separate bundle identity without changing run.sh.
+# The Local configuration has its own product directory, separate from Debug
+# XCTest and preview hosts. Keep the installed app identity explicit here for
+# both Local and Release builds.
 xcodebuild -project bae-macos/bae/bae.xcodeproj \
     -scheme bae \
     -configuration "$CONFIG" \
