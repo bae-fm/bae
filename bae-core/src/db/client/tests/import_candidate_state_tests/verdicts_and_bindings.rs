@@ -97,7 +97,7 @@ fn new_candidate_row(
         verdict: verdict.clone(),
         signals: sample_signals(probed_total_duration_ms),
         expected_edit_revision: 0,
-        identity_pick: None,
+        metadata_seed: None,
     }
 }
 
@@ -169,8 +169,8 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
     );
 }
 
-fn release_pick(release_id: &str) -> crate::import::IdentityPick {
-    crate::import::IdentityPick::Release {
+fn release_pick(release_id: &str) -> crate::import::MetadataSeed {
+    crate::import::MetadataSeed::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
     }
@@ -191,11 +191,11 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
     let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
 
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    settled.identity_pick = Some(release_pick("mb-rel-1"));
+    settled.metadata_seed = Some(release_pick("mb-rel-1"));
     db.save_import_candidate_verdict(&settled).await.unwrap();
 
     let re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
-    assert_eq!(re_run.identity_pick, None, "nothing was found to pick");
+    assert_eq!(re_run.metadata_seed, None, "nothing was found to pick");
     db.save_import_candidate_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -203,7 +203,7 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
         loaded
             .get(&hash)
             .expect("the row is still there")
-            .identity_pick,
+            .metadata_seed,
         None,
         "the pick the superseded verdict made must not outlive it"
     );
@@ -217,7 +217,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let (db, _tmp) = empty_db().await;
     let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
 
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("mb-rel-chosen"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("mb-rel-chosen"))
         .await
         .unwrap();
 
@@ -229,7 +229,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         loaded
             .get(&hash)
             .expect("the row is still there")
-            .identity_pick,
+            .metadata_seed,
         Some(release_pick("mb-rel-chosen")),
         "a verdict must not unmake a choice a person made"
     );
@@ -243,11 +243,11 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
 
     let mut first = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    first.identity_pick = Some(release_pick("mb-rel-first"));
+    first.metadata_seed = Some(release_pick("mb-rel-first"));
     db.save_import_candidate_verdict(&first).await.unwrap();
 
     let mut second = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    second.identity_pick = Some(release_pick("mb-rel-second"));
+    second.metadata_seed = Some(release_pick("mb-rel-second"));
     db.save_import_candidate_verdict(&second).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -255,7 +255,7 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
         loaded
             .get(&hash)
             .expect("the row is still there")
-            .identity_pick,
+            .metadata_seed,
         Some(release_pick("mb-rel-second")),
         "the live verdict's own conclusion is the one that stands"
     );
@@ -273,7 +273,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     let edits = crate::import::folder_scanner::CandidateFileEdits::default();
 
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    settled.identity_pick = Some(release_pick("mb-rel-derived"));
+    settled.metadata_seed = Some(release_pick("mb-rel-derived"));
     db.save_import_candidate_verdict(&settled).await.unwrap();
     db.save_import_candidate_file_edits(&hash, "/music/Album", 0, &edits, &[])
         .await
@@ -282,11 +282,11 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     let row = loaded.get(&hash).expect("the row is still there");
     assert!(row.identify.is_none(), "the decision clears the verdict");
     assert_eq!(
-        row.identity_pick, None,
+        row.metadata_seed, None,
         "and the pick that verdict concluded goes with it"
     );
 
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("mb-rel-chosen"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("mb-rel-chosen"))
         .await
         .unwrap();
     db.save_import_candidate_file_edits(&hash, "/music/Album", 1, &edits, &[])
@@ -297,7 +297,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
         loaded
             .get(&hash)
             .expect("the row is still there")
-            .identity_pick,
+            .metadata_seed,
         Some(release_pick("mb-rel-chosen")),
         "a file decision must not unmake a choice a person made"
     );

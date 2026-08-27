@@ -40,7 +40,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -102,29 +102,32 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
         .unwrap();
 
     assert_eq!(preview.album_title, "Test Album");
-    assert_eq!(preview.album_artist_names, vec!["Test Artist".to_string()]);
+    assert_eq!(
+        preview.album_artist_assignments,
+        vec![ArtistAssignment::new("Test Artist")]
+    );
     assert_eq!(preview.pressing.year, None);
     assert_eq!(preview.pressing.format.as_deref(), Some("FLAC"));
 
-    let preview_tracks: Vec<(String, Vec<String>)> = preview
+    let preview_tracks: Vec<(String, TrackArtistAssignments)> = preview
         .tracks
         .iter()
-        .map(|t| (t.title.clone(), t.artist_names.clone()))
+        .map(|t| (t.title.clone(), t.artist_assignments.clone()))
         .collect();
     assert_eq!(
         preview_tracks,
         vec![
             (
                 "Track One (Silence)".to_string(),
-                vec!["Test Artist".to_string()],
+                TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Test Artist")]),
             ),
             (
                 "Track Two (White Noise)".to_string(),
-                vec!["Test Artist".to_string()],
+                TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Test Artist")]),
             ),
             (
                 "Track Three (Brown Noise)".to_string(),
-                vec!["Test Artist".to_string()],
+                TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Test Artist")]),
             ),
         ],
     );
@@ -139,7 +142,7 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -159,25 +162,34 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
             .await
             .unwrap()
             .expect("album detail");
-    let committed_album_artist_names: Vec<String> = album_detail
+    let committed_album_artist_assignments: Vec<ArtistAssignment> = album_detail
         .artists
         .iter()
-        .map(|a| a.name.clone())
+        .map(|artist| ArtistAssignment::new(&artist.name))
         .collect();
-    assert_eq!(preview.album_artist_names, committed_album_artist_names);
+    assert_eq!(
+        preview.album_artist_assignments,
+        committed_album_artist_assignments
+    );
 
     let release_detail =
         f.db.find_release_detail(&release_id)
             .await
             .unwrap()
             .expect("release detail");
-    let committed_tracks: Vec<(String, Vec<String>)> = release_detail
+    let committed_tracks: Vec<(String, TrackArtistAssignments)> = release_detail
         .tracks
         .iter()
         .map(|track| {
             (
                 track.track.title.clone(),
-                track.artists.iter().map(|a| a.name.clone()).collect(),
+                TrackArtistAssignments::Explicit(
+                    track
+                        .artists
+                        .iter()
+                        .map(|artist| ArtistAssignment::new(&artist.name))
+                        .collect(),
+                ),
             )
         })
         .collect();
@@ -214,7 +226,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -283,7 +295,7 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -330,8 +342,9 @@ async fn unknown_import_always_creates_a_fresh_album() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })
@@ -366,7 +379,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -405,7 +418,7 @@ async fn unknown_import_with_user_edit_overlay() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_names: vec!["Edited Artist".to_string()],
+        album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
         pressing: PressingEdit {
             year: Some(2010),
             format: Some("FLAC".to_string()),
@@ -418,7 +431,7 @@ async fn unknown_import_with_user_edit_overlay() {
             title: "Edited Track Title".to_string(),
             side: 1,
             track_number: Some(1),
-            artist_names: vec![],
+            artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: None,
         }],
     };
@@ -433,7 +446,7 @@ async fn unknown_import_with_user_edit_overlay() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: Some(edit),
         })
         .await
@@ -495,7 +508,7 @@ async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await

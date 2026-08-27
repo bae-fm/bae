@@ -55,8 +55,8 @@ pub(super) fn materialise(
                 // search settles a folder on a release the verdict never
                 // named. With nothing archived behind the pick the row leads
                 // with its folder name rather than someone else's release.
-                if let Some(pick) = row.picked.clone() {
-                    row.matched = picked_release(sql, &pick)?;
+                if let Some(seed) = row.metadata_seed.clone() {
+                    row.matched = picked_release(sql, &seed)?;
                 }
                 Ok(ImportListItem::Candidate {
                     row,
@@ -110,9 +110,9 @@ fn resolved_boundaries(
 /// behind a release pick.
 fn picked_release(
     sql: &SqlReadContext<'_>,
-    pick: &IdentityPick,
+    pick: &MetadataSeed,
 ) -> Result<Option<MatchedRelease>, DbError> {
-    let IdentityPick::Release {
+    let MetadataSeed::ExternalRelease {
         source, release_id, ..
     } = pick
     else {
@@ -180,7 +180,7 @@ pub(super) fn load_candidate_detail_on(
     let identify = current.as_ref().and_then(|state| state.identify.as_ref());
     let picked = current
         .as_ref()
-        .and_then(|state| state.identity_pick.clone());
+        .and_then(|state| state.metadata_seed.clone());
     let durations = current
         .as_ref()
         .map(|state| state.durations.clone())
@@ -257,7 +257,7 @@ pub(super) fn load_candidate_detail_on(
         resumed_identify_state,
         answer,
         matched,
-        picked,
+        metadata_seed: picked,
         imported_release,
         release: pane.release,
         picked_library_status,
@@ -284,7 +284,7 @@ struct PaneValue {
 fn pane_of(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
-    picked: Option<&IdentityPick>,
+    picked: Option<&MetadataSeed>,
     durations: &ProbedDurations,
     rows: &DbCandidatePaneRows,
     clock: &dyn coven::Clock,
@@ -299,7 +299,7 @@ fn pane_of(
         });
     };
     let pick = match picked {
-        IdentityPick::Release {
+        MetadataSeed::ExternalRelease {
             source, release_id, ..
         } => {
             let release = MetadataRef::new(release_id.clone(), *source);
@@ -326,7 +326,7 @@ fn pane_of(
             )
             .map_err(message)?
         }
-        IdentityPick::Unknown => crate::import::pane::unknown_pane(
+        MetadataSeed::FileTags => crate::import::pane::unknown_pane(
             &candidate.files,
             Some(&candidate.name),
             durations,
@@ -336,6 +336,12 @@ fn pane_of(
             ids,
         )
         .map_err(message)?,
+        MetadataSeed::Manual => crate::import::pane::manual_pane(
+            &candidate.files,
+            durations,
+            &rows.edit,
+            &rows.track_edits,
+        ),
     };
     Ok(PaneValue {
         release: pick.release,

@@ -367,12 +367,12 @@ impl From<MetadataSource> for AutomationMetadataSource {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationIdentityChoice {
-    Release {
+pub enum AutomationReleaseReseed {
+    ExternalRelease {
         source: AutomationMetadataSource,
         release_id: String,
     },
-    Unknown,
+    FileTags,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -476,7 +476,7 @@ pub struct AutomationReleaseTrack {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct AutomationReleaseUserEdit {
     pub album_title: String,
-    pub album_artist_names: Vec<String>,
+    pub album_artist_assignments: Vec<AutomationArtistAssignment>,
     pub pressing: AutomationPressingEdit,
     pub tracks: Vec<AutomationTrackUserEdit>,
 }
@@ -496,7 +496,31 @@ pub struct AutomationTrackUserEdit {
     pub title: String,
     pub side: i32,
     pub track_number: Option<i32>,
-    pub artist_names: Vec<String>,
+    pub artist_assignments: AutomationTrackArtistAssignments,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationArtistAssignment {
+    Existing { artist_id: String },
+    New { seed: AutomationNewArtistSeed },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationNewArtistSeed {
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationTrackArtistAssignments {
+    AlbumArtists,
+    Explicit {
+        assignments: Vec<AutomationArtistAssignment>,
+    },
 }
 
 /// Start an import of a candidate. Nothing about the release rides in: the
@@ -781,22 +805,22 @@ pub struct CandidateSkipSetInput {
     pub skipped: bool,
 }
 
-/// The identity a candidate is being decided as.
+/// The metadata source a candidate will be committed from.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationIdentityPick {
-    Release {
+pub enum AutomationMetadataSeed {
+    ExternalRelease {
         source: AutomationMetadataSource,
         release_id: String,
     },
-    /// The folder read as its own files describe it.
-    Unknown,
+    FileTags,
+    Manual,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct CandidateIdentityPickInput {
+pub struct CandidateMetadataSeedInput {
     pub candidate_key: String,
-    pub pick: AutomationIdentityPick,
+    pub seed: AutomationMetadataSeed,
 }
 
 /// One album-level field of a candidate's metadata form. `year` is text
@@ -805,7 +829,6 @@ pub struct CandidateIdentityPickInput {
 #[serde(rename_all = "snake_case")]
 pub enum AutomationCandidateEditField {
     AlbumTitle,
-    AlbumArtistText,
     Year,
     Format,
     Label,
@@ -956,7 +979,7 @@ pub struct AutomationOutputSnapshot {
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct ReleaseReidentifyInput {
     pub release_id: String,
-    pub choice: AutomationIdentityChoice,
+    pub choice: AutomationReleaseReseed,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

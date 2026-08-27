@@ -100,7 +100,7 @@ impl ImportService {
                 command.selected_cover,
                 command.storage_mode,
                 command.pin,
-                command.identity_choice,
+                command.metadata_seed,
                 command.user_edit,
             )
             .await;
@@ -137,11 +137,8 @@ impl ImportService {
         }
     }
 
-    /// Prepare and run a folder import. Exact / Approximate source the release
-    /// through `prepare_release` (reading the network LRU caches the UI's
-    /// prefetch warmed, so normally a hit); Unknown reads the candidate's local
-    /// evidence through `map_unknown_candidate_to_db`. Either way, the folder is
-    /// walked for files, then track mapping and `run_import` follow.
+    /// Prepare and run a folder import by dispatching on its stored metadata
+    /// seed, then walk the folder and run the shared mapping and write path.
     pub(super) async fn prepare_and_run_folder_import(
         &self,
         import_id: String,
@@ -153,7 +150,7 @@ impl ImportService {
         selected_cover: Option<CoverSelection>,
         storage_mode: StorageMode,
         pin: bool,
-        identity_choice: crate::import::IdentityChoice,
+        metadata_seed: crate::import::MetadataSeed,
         user_edit: Option<crate::import::ReleaseUserEdit>,
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
@@ -229,19 +226,20 @@ impl ImportService {
             },
         );
 
-        let (parsed, release_cover) = match &identity_choice {
-            crate::import::IdentityChoice::Release { release_ref } => {
+        let (parsed, release_cover) = match &metadata_seed {
+            crate::import::MetadataSeed::ExternalRelease { source, release_id } => {
                 // The documents are archived by `prepare_release`, keyed by the
                 // picked source release — so nothing about this release's rows
                 // needs to carry them, and the pointer written below is what
                 // finds them again.
+                let release_ref = crate::import::MetadataRef::new(release_id.clone(), *source);
                 let payloads =
-                    prepare_release(library_manager, release_ref, CallPriority::Interactive)
+                    prepare_release(library_manager, &release_ref, CallPriority::Interactive)
                         .await?;
                 let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
                 (parsed, payloads.default_cover()?)
             }
-            crate::import::IdentityChoice::Unknown => {
+            crate::import::MetadataSeed::FileTags => {
                 let folder_name = folder
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -264,6 +262,14 @@ impl ImportService {
                 // An Unknown import claims no source release, so there is no
                 // release cover to derive: its art comes from the folder or the
                 // files' own tags.
+                (parsed, None)
+            }
+            crate::import::MetadataSeed::Manual => {
+                let parsed = crate::import::manual_mapper::map_manual_candidate_to_db(
+                    &categorized,
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                );
                 (parsed, None)
             }
         };
@@ -384,7 +390,7 @@ impl ImportService {
         // Only tagged rips carry a picture, which is the Unknown path, so a
         // source-backed import skips the read entirely.
         let embedded_cover = if selected_cover.is_none()
-            && matches!(identity_choice, crate::import::IdentityChoice::Unknown)
+            && matches!(metadata_seed, crate::import::MetadataSeed::FileTags)
         {
             let audio_paths = categorized.audio_paths();
             tokio::task::spawn_blocking(move || {

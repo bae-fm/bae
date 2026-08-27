@@ -199,20 +199,18 @@ impl Automation {
         Ok(automation_search_results(results))
     }
 
-    /// Pick an identity for a candidate: a release, or the folder's own tags.
-    /// The documents land before the pick does, so a pane opened afterwards
-    /// draws whole.
-    pub async fn pick_candidate_identity(
+    /// Select the source from which a candidate's release metadata is seeded.
+    pub async fn select_candidate_metadata_seed(
         &self,
         candidate_key: String,
-        pick: AutomationIdentityPick,
+        seed: AutomationMetadataSeed,
     ) -> Result<EmptyResponse, AutomationError> {
         // Resolve the candidate first, and hand core the key the snapshot
         // resolved rather than the caller's string, so a typo is refused here
         // rather than stored.
         let candidate = self.get_candidate(candidate_key).await?;
         self.services
-            .import_pick_candidate_identity(candidate.key().to_string(), identity_pick(pick))
+            .import_select_candidate_metadata_seed(candidate.key().to_string(), metadata_seed(seed))
             .await?;
         Ok(EmptyResponse {})
     }
@@ -375,10 +373,10 @@ impl Automation {
     pub async fn reidentify_release(
         &self,
         release_id: String,
-        choice: AutomationIdentityChoice,
+        choice: AutomationReleaseReseed,
     ) -> Result<(), AutomationError> {
         self.services
-            .re_identify_release(&release_id, identity_choice(choice))
+            .re_identify_release(&release_id, release_reseed(choice))
             .await?;
         Ok(())
     }
@@ -468,10 +466,10 @@ impl Automation {
                 let query: AutomationSearchQuery = from_value(args)?;
                 to_value(self.search_imports(query).await?)
             }
-            AutomationTool::ImportCandidateIdentityPick => {
-                let input: CandidateIdentityPickInput = from_value(args)?;
+            AutomationTool::ImportCandidateMetadataSeedSelect => {
+                let input: CandidateMetadataSeedInput = from_value(args)?;
                 to_value(
-                    self.pick_candidate_identity(input.candidate_key, input.pick)
+                    self.select_candidate_metadata_seed(input.candidate_key, input.seed)
                         .await?,
                 )
             }

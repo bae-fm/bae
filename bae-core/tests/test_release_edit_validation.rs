@@ -11,7 +11,9 @@
 use bae_core::db::{
     Database, DbAlbum, DbArtist, DbRelease, DbTrack, Pressing, ReleaseMetadataSource,
 };
-use bae_core::import::{PressingEdit, ReleaseUserEdit, TrackUserEdit};
+use bae_core::import::{
+    ArtistAssignment, PressingEdit, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
+};
 use bae_core::library::{LibraryError, LibraryManager};
 use bae_test_support::{test_config, tracing_init};
 use chrono::Utc;
@@ -97,16 +99,19 @@ async fn seed(db: &Database) -> (String, String) {
 
 /// A wire edit built field-for-field, exactly as `bae-automation`'s
 /// `release_user_edit` builds one from an MCP tool call — no shaping, no trimming.
-fn wire_edit(album_title: &str, album_artist_names: &[&str]) -> ReleaseUserEdit {
+fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUserEdit {
     ReleaseUserEdit {
         album_title: album_title.to_string(),
-        album_artist_names: album_artist_names.iter().map(|s| s.to_string()).collect(),
+        album_artist_assignments: album_artist_seed_names
+            .iter()
+            .map(|name| ArtistAssignment::new(*name))
+            .collect(),
         pressing: PressingEdit::blank(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),
             side: 1,
             track_number: Some(1),
-            artist_names: Vec::new(),
+            artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: None,
         }],
     }
@@ -118,7 +123,7 @@ async fn empty_album_title_is_rejected_on_the_write_path() {
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("", &["The Beatles"]))
+        .apply_release_metadata_user_edit(&release_id, &wire_edit("", &["Artist Alpha"]))
         .await;
 
     assert!(
@@ -139,7 +144,7 @@ async fn whitespace_only_album_title_is_rejected_on_the_write_path() {
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("   ", &["The Beatles"]))
+        .apply_release_metadata_user_edit(&release_id, &wire_edit("   ", &["Artist Alpha"]))
         .await;
 
     assert!(matches!(result, Err(LibraryError::Edit(_))));
@@ -158,13 +163,13 @@ async fn an_untrimmed_album_title_is_stored_trimmed() {
     manager
         .apply_release_metadata_user_edit(
             &release_id,
-            &wire_edit("  Abbey Road  ", &["The Beatles"]),
+            &wire_edit("  Album Alpha  ", &["Artist Alpha"]),
         )
         .await
         .unwrap();
 
     let album = db.find_album_by_id(&album_id).await.unwrap().unwrap();
-    assert_eq!(album.title, "Abbey Road");
+    assert_eq!(album.title, "Album Alpha");
 }
 
 #[tokio::test]
@@ -173,7 +178,7 @@ async fn an_artist_less_edit_is_rejected_on_the_write_path() {
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("Abbey Road", &[]))
+        .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", &[]))
         .await;
 
     assert!(matches!(result, Err(LibraryError::Edit(_))));
@@ -189,7 +194,7 @@ async fn a_blank_artist_name_is_rejected_on_the_write_path() {
     let (album_id, release_id) = seed(&db).await;
 
     let result = manager
-        .apply_release_metadata_user_edit(&release_id, &wire_edit("Abbey Road", &["  "]))
+        .apply_release_metadata_user_edit(&release_id, &wire_edit("Album Alpha", &["  "]))
         .await;
 
     assert!(matches!(result, Err(LibraryError::Edit(_))));
@@ -197,24 +202,23 @@ async fn a_blank_artist_name_is_rejected_on_the_write_path() {
     assert_eq!(album.title, "Original Album");
 }
 
-/// The artist names a user edit does supply are trimmed, so "The Beatles" and
-/// " The Beatles " don't resolve to two library artists.
+/// The artist names a user edit does supply are trimmed.
 #[tokio::test]
-async fn artist_names_are_stored_trimmed() {
+async fn new_artist_names_are_stored_trimmed() {
     let (manager, db, _tmp) = setup().await;
     let (album_id, release_id) = seed(&db).await;
 
     manager
         .apply_release_metadata_user_edit(
             &release_id,
-            &wire_edit("Abbey Road", &["  The Beatles  "]),
+            &wire_edit("Album Alpha", &["  Artist Alpha  "]),
         )
         .await
         .unwrap();
 
     let artists = db.get_artists_for_album(&album_id).await.unwrap();
     assert!(
-        artists.iter().any(|a| a.name == "The Beatles"),
+        artists.iter().any(|a| a.name == "Artist Alpha"),
         "expected a trimmed artist name, got {:?}",
         artists.iter().map(|a| &a.name).collect::<Vec<_>>(),
     );

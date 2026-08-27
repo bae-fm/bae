@@ -215,7 +215,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
             Some(CoverSelection::Local("cover.bmp".to_string())),
             StorageMode::Local,
             false,
-            crate::import::IdentityChoice::Unknown,
+            crate::import::MetadataSeed::FileTags,
             None,
         )
         .await;
@@ -262,7 +262,7 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
                 )),
                 storage_mode: StorageMode::Local,
                 pin: false,
-                identity_choice: crate::import::IdentityChoice::Unknown,
+                metadata_seed: crate::import::MetadataSeed::FileTags,
                 user_edit: None,
             },
             expectation,

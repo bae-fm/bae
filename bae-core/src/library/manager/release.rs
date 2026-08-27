@@ -149,6 +149,11 @@ impl LibraryManager {
             ReleaseMetadataSource::MusicBrainz => Some(MetadataSource::MusicBrainz),
             ReleaseMetadataSource::Discogs => Some(MetadataSource::Discogs),
             ReleaseMetadataSource::FileTags => None,
+            ReleaseMetadataSource::Manual => {
+                return Err(LibraryError::Import(format!(
+                    "release '{release_id}' was entered manually and has no metadata source"
+                )))
+            }
         };
 
         let parsed = match external_source {
@@ -193,7 +198,7 @@ impl LibraryManager {
         Ok(parsed_album_to_user_edit(&parsed))
     }
 
-    /// Re-identify commit: translate the user's `IdentityChoice` into a fully
+    /// Re-identify commit: translate the user's `ReleaseReseed` into a fully
     /// cross-linked identity vec plus metadata pointer, then `set_identity`. Mirrors
     /// the import commit pipeline, so a re-identified release lands with the same
     /// identity-row shape an initial import would produce.
@@ -219,12 +224,12 @@ impl LibraryManager {
     pub async fn re_identify_release(
         &self,
         release_id: &str,
-        identity_choice: crate::import::IdentityChoice,
+        identity_choice: crate::import::ReleaseReseed,
     ) -> Result<(), LibraryError> {
-        use crate::import::{IdentityChoice, MetadataPointer};
+        use crate::import::{MetadataSeed, ReleaseReseed};
 
         let (new_identities, metadata_pointer) = match &identity_choice {
-            IdentityChoice::Release { release_ref } => {
+            ReleaseReseed::ExternalRelease { release_ref } => {
                 let payloads = crate::import::service::prepare_release(
                     self,
                     release_ref,
@@ -253,13 +258,13 @@ impl LibraryManager {
                     )));
                 }
 
-                let pointer = MetadataPointer::External {
+                let pointer = MetadataSeed::ExternalRelease {
                     source: release_ref.source,
                     release_id: release_ref.id.clone(),
                 };
                 (parsed.identities, pointer)
             }
-            IdentityChoice::Unknown => (Vec::new(), MetadataPointer::FileTags),
+            ReleaseReseed::FileTags => (Vec::new(), MetadataSeed::FileTags),
         };
 
         self.set_identity(release_id, new_identities, metadata_pointer)
@@ -271,7 +276,7 @@ impl LibraryManager {
         // blank-but-editable title/artist — the prompt the user answers in the
         // editor — so this writes through the ungated path. The blank is not a user
         // edit, and the user-edit gate would reject it.
-        if matches!(identity_choice, IdentityChoice::Unknown) {
+        if matches!(identity_choice, ReleaseReseed::FileTags) {
             let edit = self.reset_metadata_to_source(release_id).await?;
             self.write_release_metadata(release_id, &edit).await?;
         }
@@ -350,12 +355,14 @@ impl LibraryManager {
         let (album_id, release, album, existing_tracks) =
             self.load_release_for_edit(release_id).await?;
 
-        let album_artist_names: Vec<String> = self
+        let album_artist_assignments: Vec<crate::import::ArtistAssignment> = self
             .database
             .get_artists_for_album(&album_id)
             .await?
             .into_iter()
-            .map(|a| a.name)
+            .map(|artist| crate::import::ArtistAssignment::Existing {
+                artist_id: artist.id,
+            })
             .collect();
 
         let mut tracks = Vec::with_capacity(existing_tracks.len());
@@ -363,18 +370,24 @@ impl LibraryManager {
             // Empty when the track has no artist rows of its own — the wire edit
             // reads that as "shares the album artist", matching how
             // `apply_release_metadata_user_edit` writes it back.
-            let artist_names = self
+            let artists: Vec<crate::import::ArtistAssignment> = self
                 .database
                 .get_artists_for_track(&track.id)
                 .await?
                 .into_iter()
-                .map(|a| a.name)
+                .map(|artist| crate::import::ArtistAssignment::Existing {
+                    artist_id: artist.id,
+                })
                 .collect();
             tracks.push(crate::import::TrackUserEdit {
                 title: track.title.clone(),
                 side: track.side,
                 track_number: track.track_number,
-                artist_names,
+                artist_assignments: if artists.is_empty() {
+                    crate::import::TrackArtistAssignments::AlbumArtists
+                } else {
+                    crate::import::TrackArtistAssignments::Explicit(artists)
+                },
                 // Re-projecting a release's metadata never re-binds its files;
                 // the audio each track already points at stays as it is.
                 file: None,
@@ -383,7 +396,7 @@ impl LibraryManager {
 
         let edit = crate::import::ReleaseUserEdit {
             album_title: album.title,
-            album_artist_names,
+            album_artist_assignments,
             pressing: crate::import::PressingEdit {
                 year: release.pressing.year,
                 format: release.pressing.format,
@@ -424,15 +437,16 @@ impl LibraryManager {
 
     /// Write a release's metadata rows: album title and artists, release pressing
     /// fields, and per-track titles, sides, track numbers, and artists. Resolves
-    /// artist names against the library (creating rows for new names), writes the
+    /// explicit library IDs and exact external IDs, creates new name-only artists,
+    /// and writes the
     /// album/release/track rows and replaces the `album_artists` /
     /// `track_artists` junctions in one commit.
     ///
     /// Track edits align positionally with the release's existing tracks (the
     /// edit can't add or remove tracks — `tracks.len()` must equal the
     /// release's track count). Album artists and per-track artists are
-    /// positional lists — the order in `album_artist_names` /
-    /// `tracks[i].artist_names` becomes the `position` column on the
+    /// positional lists — the order in `album_artist_assignments` and each
+    /// track's explicit assignments becomes the `position` column on the
     /// `album_artists` / `track_artists` rows.
     ///
     /// archived provider documents, `release_identities`, and the `metadata_source`
@@ -448,7 +462,7 @@ impl LibraryManager {
         release_id: &str,
         edit: &crate::import::ReleaseUserEdit,
     ) -> Result<(), LibraryError> {
-        use crate::db::{DbAlbumArtist, DbArtist, DbTrackArtist};
+        use crate::db::{DbAlbumArtist, DbTrackArtist};
 
         let (album_id, release, album, existing_tracks) =
             self.load_release_for_edit(release_id).await?;
@@ -460,71 +474,36 @@ impl LibraryManager {
             )));
         }
 
-        // Collect every distinct artist name the edit references. The album
-        // artists always appear; track-level artists only when the user
-        // supplied any (an empty `artist_names` means "same as album artist",
-        // no per-track row).
-        let mut name_order: Vec<String> = Vec::new();
-        let mut seen: std::collections::HashSet<String> = std::collections::HashSet::new();
-        let mut push_name = |name: &str| {
-            let key = name.to_lowercase();
-            if seen.insert(key) {
-                name_order.push(name.to_string());
+        let mut assignments = edit.album_artist_assignments.clone();
+        let album_assignment_count = assignments.len();
+        let mut track_ranges = Vec::with_capacity(edit.tracks.len());
+        for track in &edit.tracks {
+            let start = assignments.len();
+            if let crate::import::TrackArtistAssignments::Explicit(track_assignments) =
+                &track.artist_assignments
+            {
+                assignments.extend(track_assignments.iter().cloned());
             }
-        };
-        for name in &edit.album_artist_names {
-            push_name(name);
+            track_ranges.push(start..assignments.len());
         }
-        for t in &edit.tracks {
-            for name in &t.artist_names {
-                push_name(name);
-            }
-        }
-
+        let resolved_artists = self.resolve_artist_assignments(&assignments).await?;
+        let album_artist_ids = &resolved_artists.ids[..album_assignment_count];
         let now = self.clock.now();
-        let parsed_artists: Vec<DbArtist> = name_order
-            .iter()
-            .map(|name| DbArtist {
-                id: self.ids.new_id(),
-                name: name.clone(),
-                sort_name: None,
-                discogs_artist_id: None,
-                musicbrainz_artist_id: None,
-                created_at: now,
-            })
-            .collect();
-
-        let resolved_artists = self.resolve_artists_for_import(&parsed_artists).await?;
-        let name_to_id: HashMap<String, String> = name_order
-            .iter()
-            .zip(resolved_artists.ids.iter())
-            .map(|(name, id)| (name.to_lowercase(), id.clone()))
-            .collect();
-
-        let lookup_artist_id = |name: &str| -> Result<String, LibraryError> {
-            name_to_id
-                .get(&name.to_lowercase())
-                .cloned()
-                .ok_or_else(|| {
-                    LibraryError::Import(format!("Artist '{name}' missing from resolved map"))
-                })
-        };
 
         // The `album.artist_id` FK is the primary album artist; additional
         // artists go in the `album_artists` junction with position >= 1
         // (mirrors the convention in {discogs,musicbrainz}_mapper.rs).
         // `get_artists_for_album` UNIONs the FK row in at sort_key = -1, so
         // including the primary in the junction too would duplicate it.
-        let primary_album_artist_name = edit.album_artist_names.first().ok_or_else(|| {
+        let primary_album_artist_id = album_artist_ids.first().ok_or_else(|| {
             LibraryError::Internal(format!(
                 "release {release_id} metadata carries no album artist"
             ))
         })?;
-        let primary_album_artist_id = lookup_artist_id(primary_album_artist_name)?;
 
         let updated_album = DbAlbum {
             title: edit.album_title.clone(),
-            artist_id: primary_album_artist_id,
+            artist_id: primary_album_artist_id.clone(),
             ..album.clone()
         };
 
@@ -555,11 +534,10 @@ impl LibraryManager {
             .collect();
 
         let mut album_artists: Vec<DbAlbumArtist> = Vec::new();
-        for (i, name) in edit.album_artist_names.iter().enumerate().skip(1) {
-            let artist_id = lookup_artist_id(name)?;
+        for (i, artist_id) in album_artist_ids.iter().enumerate().skip(1) {
             album_artists.push(DbAlbumArtist::new(
                 &album_id,
-                &artist_id,
+                artist_id,
                 i as i32,
                 self.ids.new_id(),
                 now,
@@ -569,12 +547,21 @@ impl LibraryManager {
         // Track artists have no FK on `tracks` — every artist (primary or
         // additional) goes in `track_artists` with positional ordering.
         let mut track_artists: Vec<DbTrackArtist> = Vec::new();
-        for (existing, t) in existing_tracks.iter().zip(edit.tracks.iter()) {
-            for (i, name) in t.artist_names.iter().enumerate() {
-                let artist_id = lookup_artist_id(name)?;
+        for ((existing, track), range) in existing_tracks
+            .iter()
+            .zip(edit.tracks.iter())
+            .zip(track_ranges)
+        {
+            if matches!(
+                track.artist_assignments,
+                crate::import::TrackArtistAssignments::AlbumArtists
+            ) {
+                continue;
+            }
+            for (i, artist_id) in resolved_artists.ids[range].iter().enumerate() {
                 track_artists.push(DbTrackArtist::new(
                     &existing.id,
-                    &artist_id,
+                    artist_id,
                     i as i32,
                     self.ids.new_id(),
                     now,

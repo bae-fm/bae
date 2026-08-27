@@ -97,7 +97,7 @@ async fn pure_reads_use_the_read_connection() {
                 durations: bae_core::import::probe::ProbedDurations::default(),
             },
             expected_edit_revision: 7,
-            identity_pick: None,
+            metadata_seed: None,
         })
         .await
         .unwrap());

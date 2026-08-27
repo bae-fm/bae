@@ -1,56 +1,64 @@
 //! Reading `import_candidate_state` back: the identify columns with their
-//! match rows, the identity pick, and the per-file decisions.
+//! match rows, the metadata seed, and the per-file decisions.
 
 use super::duration_rows::load_durations_on;
 use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{read_match_row, unreadable, verdict_of, MatchLists};
 use super::*;
-use crate::import::{IdentityPick, MetadataSource};
+use crate::import::{MetadataSeed, MetadataSource};
 use std::str::FromStr;
 
-/// The identity pick as its three columns. `kind` alone is set for the
-/// folder's own tags; a pressing sets all three.
-pub(super) struct PickColumns<'a> {
+/// The metadata seed as its three columns. Only an external release carries a
+/// source and release id.
+pub(super) struct SeedColumns<'a> {
     pub(super) kind: &'static str,
     pub(super) source: Option<&'static str>,
     pub(super) release_id: Option<&'a str>,
 }
 
-pub(super) fn pick_columns(pick: &IdentityPick) -> PickColumns<'_> {
-    match pick {
-        IdentityPick::Unknown => PickColumns {
-            kind: "unknown",
+pub(super) fn seed_columns(seed: &MetadataSeed) -> SeedColumns<'_> {
+    match seed {
+        MetadataSeed::FileTags => SeedColumns {
+            kind: "file_tags",
             source: None,
             release_id: None,
         },
-        IdentityPick::Release { source, release_id } => PickColumns {
-            kind: "release",
+        MetadataSeed::Manual => SeedColumns {
+            kind: "manual",
+            source: None,
+            release_id: None,
+        },
+        MetadataSeed::ExternalRelease { source, release_id } => SeedColumns {
+            kind: "external_release",
             source: Some(source.as_str()),
             release_id: Some(release_id.as_str()),
         },
     }
 }
 
-pub(crate) fn pick_of(
+pub(crate) fn metadata_seed_of(
     kind: Option<String>,
     source: Option<String>,
     release_id: Option<String>,
-) -> Result<Option<IdentityPick>, DbError> {
+) -> Result<Option<MetadataSeed>, DbError> {
     let Some(kind) = kind else {
         return Ok(None);
     };
     match kind.as_str() {
-        "unknown" => Ok(Some(IdentityPick::Unknown)),
-        "release" => {
-            let missing = |what: &str| DbError::Message(format!("a stored pick names no {what}"));
-            Ok(Some(IdentityPick::Release {
+        "file_tags" => Ok(Some(MetadataSeed::FileTags)),
+        "manual" => Ok(Some(MetadataSeed::Manual)),
+        "external_release" => {
+            let missing = |what: &str| {
+                DbError::Message(format!("a stored external metadata seed names no {what}"))
+            };
+            Ok(Some(MetadataSeed::ExternalRelease {
                 source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
                     .map_err(DbError::Message)?,
                 release_id: release_id.ok_or_else(|| missing("release"))?,
             }))
         }
-        other => Err(unreadable("pick_kind", other)),
+        other => Err(unreadable("seed_kind", other)),
     }
 }
 
@@ -62,7 +70,7 @@ struct StateRow {
     verdict_matched_barcode: Option<String>,
     probed_total_duration_ms: Option<i64>,
     identified_at: Option<DateTime<Utc>>,
-    pick: Option<IdentityPick>,
+    metadata_seed: Option<MetadataSeed>,
     edit_revision: i64,
 }
 
@@ -78,18 +86,18 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         identified_at: identified_at
             .map(|_| rfc3339_column(row, "identified_at"))
             .transpose()?,
-        pick: pick_of(
-            row.get("pick_kind")?,
-            row.get("pick_source")?,
-            row.get("pick_release_id")?,
+        metadata_seed: metadata_seed_of(
+            row.get("seed_kind")?,
+            row.get("seed_source")?,
+            row.get("seed_release_id")?,
         )?,
         edit_revision: row.get("edit_revision")?,
     })
 }
 
 const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_track_count, \
-     verdict_matched_barcode, probed_total_duration_ms, identified_at, pick_kind, pick_source, \
-     pick_release_id, edit_revision";
+     verdict_matched_barcode, probed_total_duration_ms, identified_at, seed_kind, seed_source, \
+     seed_release_id, edit_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
@@ -174,7 +182,7 @@ pub(crate) fn load_states_on(
                 folder_path: state.folder_path,
                 identify,
                 file_edits,
-                identity_pick: state.pick,
+                metadata_seed: state.metadata_seed,
             },
         );
     }

@@ -209,10 +209,10 @@ impl ImportServiceHandle {
     /// after a restart. Only explicit choices land here: a Ready row's
     /// auto-pick is derived from its stored verdict and re-derives on every
     /// open, so it never writes one.
-    pub(crate) async fn set_candidate_identity_pick(
+    pub(crate) async fn set_candidate_metadata_seed(
         &self,
         candidate_key: String,
-        pick: crate::import::IdentityPick,
+        pick: crate::import::MetadataSeed,
     ) -> Result<(), crate::import::ImportError> {
         let Some((files, _)) = self.actionable_candidate_files(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
@@ -220,16 +220,16 @@ impl ImportServiceHandle {
             });
         };
         self.library_manager
-            .save_candidate_identity_pick(&files.content_hash(), &candidate_key, &pick)
+            .save_candidate_metadata_seed(&files.content_hash(), &candidate_key, &pick)
             .await?;
         Ok(())
     }
 
     /// Tell the surfaces a candidate's identity is decided.
-    pub(crate) fn announce_identity_pick(&self, candidate_key: String) {
+    pub(crate) fn announce_metadata_seed(&self, candidate_key: String) {
         send_event(
             &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateIdentityPicked { candidate_key }),
+            ImportEvent::Scan(ScanEvent::CandidateMetadataSeeded { candidate_key }),
         );
     }
 

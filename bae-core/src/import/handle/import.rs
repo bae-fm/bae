@@ -1,5 +1,6 @@
 use super::*;
 use crate::discogs::DiscogsClient;
+use crate::import::payloads::ReleasePayloads;
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
@@ -94,7 +95,7 @@ impl ImportServiceHandle {
             .load_import_candidate_state(&content_hash)
             .await?
             .filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-        let Some(pick) = state.as_ref().and_then(|state| state.identity_pick.clone()) else {
+        let Some(pick) = state.as_ref().and_then(|state| state.metadata_seed.clone()) else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("nothing is picked for {candidate_key}"),
             });
@@ -105,7 +106,7 @@ impl ImportServiceHandle {
             .load_import_candidate_pane_rows(&content_hash)
             .await?;
 
-        let pick_for_pane = pick.clone();
+        let seed_for_pane = pick.clone();
         let files = candidate.files.clone();
         let folder_name = candidate.name.clone();
         let clock = self.clock.clone();
@@ -113,20 +114,26 @@ impl ImportServiceHandle {
         // Reading the archived documents and the folder's own tags is the same
         // work the pane's query does, off the async executor because the
         // Unknown path opens every audio file's tags.
-        let payloads = match &pick_for_pane {
-            crate::import::IdentityPick::Release {
+        enum PaneSeed {
+            ExternalRelease(ReleasePayloads),
+            FileTags,
+            Manual,
+        }
+        let pane_seed = match &seed_for_pane {
+            crate::import::MetadataSeed::ExternalRelease {
                 source, release_id, ..
-            } => Some(
+            } => PaneSeed::ExternalRelease(
                 self.payloads_for_pick(
                     candidate_key,
                     &crate::import::MetadataRef::new(release_id.clone(), *source),
                 )
                 .await?,
             ),
-            crate::import::IdentityPick::Unknown => None,
+            crate::import::MetadataSeed::FileTags => PaneSeed::FileTags,
+            crate::import::MetadataSeed::Manual => PaneSeed::Manual,
         };
-        let pane = tokio::task::spawn_blocking(move || match payloads {
-            Some(payloads) => crate::import::pane::release_pane(
+        let pane = tokio::task::spawn_blocking(move || match pane_seed {
+            PaneSeed::ExternalRelease(payloads) => crate::import::pane::release_pane(
                 &payloads,
                 &files,
                 &durations,
@@ -135,7 +142,7 @@ impl ImportServiceHandle {
                 clock.as_ref(),
                 ids.as_ref(),
             ),
-            None => crate::import::pane::unknown_pane(
+            PaneSeed::FileTags => crate::import::pane::unknown_pane(
                 &files,
                 Some(&folder_name),
                 &durations,
@@ -144,6 +151,12 @@ impl ImportServiceHandle {
                 clock.as_ref(),
                 ids.as_ref(),
             ),
+            PaneSeed::Manual => Ok(crate::import::pane::manual_pane(
+                &files,
+                &durations,
+                &rows.edit,
+                &rows.track_edits,
+            )),
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {
@@ -169,7 +182,7 @@ impl ImportServiceHandle {
             selected_cover,
             storage_mode,
             pin,
-            identity_choice: pick.choice(),
+            metadata_seed: pick,
             user_edit: Some(user_edit),
         };
 

@@ -12,7 +12,7 @@
 mod window;
 
 use super::identity::check_releases_in_library_on;
-use super::import_state::pick_of;
+use super::import_state::metadata_seed_of;
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_registry::WatchedFolder;
@@ -24,7 +24,7 @@ use crate::import::list::{
 };
 use crate::import::search::SourceTracks;
 use crate::import::{
-    FolderScanStatus, IdentityPick, ImportedRelease, MetadataSource, WatchedFolderScanStatus,
+    FolderScanStatus, ImportedRelease, MetadataSeed, MetadataSource, WatchedFolderScanStatus,
 };
 use folder_scans::columns::{invalid_reason_of, to_u32, to_u64, unreadable};
 use std::str::FromStr;
@@ -62,7 +62,7 @@ pub struct CandidateStateListRow {
     /// `None` when the identify columns are clear.
     pub verdict: Option<VerdictSummary>,
     pub probed_total_duration_ms: u64,
-    pub pick: Option<IdentityPick>,
+    pub pick: Option<MetadataSeed>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -352,7 +352,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut states = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, edit_revision, verdict_kind, verdict_track_count, \
-                probed_total_duration_ms, pick_kind, pick_source, pick_release_id \
+                probed_total_duration_ms, seed_kind, seed_source, seed_release_id \
          FROM import_candidate_state",
         [],
         |row| {
@@ -362,7 +362,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
                 row.get::<_, Option<i64>>(4)?,
-                pick_of(row.get(5)?, row.get(6)?, row.get(7)?),
+                metadata_seed_of(row.get(5)?, row.get(6)?, row.get(7)?),
             ))
         },
     )? {

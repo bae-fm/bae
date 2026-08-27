@@ -87,8 +87,9 @@ async fn build_remote_multi_window_template(
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })

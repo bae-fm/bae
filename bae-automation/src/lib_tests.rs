@@ -81,10 +81,20 @@ mod candidate_lookup {
 mod release_metadata_update_input {
     use super::*;
 
-    fn edit(album_title: &str, album_artist_names: &[&str]) -> AutomationReleaseUserEdit {
+    fn edit(album_title: &str, album_artist_seed_names: &[&str]) -> AutomationReleaseUserEdit {
         AutomationReleaseUserEdit {
             album_title: album_title.to_string(),
-            album_artist_names: album_artist_names.iter().map(|s| s.to_string()).collect(),
+            album_artist_assignments: album_artist_seed_names
+                .iter()
+                .map(|name| AutomationArtistAssignment::New {
+                    seed: AutomationNewArtistSeed {
+                        name: (*name).to_string(),
+                        sort_name: None,
+                        musicbrainz_artist_id: None,
+                        discogs_artist_id: None,
+                    },
+                })
+                .collect(),
             pressing: AutomationPressingEdit {
                 year: None,
                 format: None,
@@ -99,7 +109,7 @@ mod release_metadata_update_input {
 
     #[test]
     fn an_empty_album_title_fails_the_edit_rule() {
-        let wire = release_user_edit(edit("", &["The Beatles"]));
+        let wire = release_user_edit(edit("", &["Artist Alpha"]));
         assert_eq!(
             wire.validate(),
             Err(bae_core::import::EditValidationError::EmptyAlbumTitle),
@@ -108,7 +118,7 @@ mod release_metadata_update_input {
 
     #[test]
     fn an_artist_less_edit_fails_the_edit_rule() {
-        let wire = release_user_edit(edit("Abbey Road", &[]));
+        let wire = release_user_edit(edit("Album Alpha", &[]));
         assert_eq!(
             wire.validate(),
             Err(bae_core::import::EditValidationError::NoAlbumArtist),
@@ -119,10 +129,13 @@ mod release_metadata_update_input {
     /// trims the same input rather than erroring on it.
     #[test]
     fn an_untrimmed_album_title_normalizes() {
-        let wire = release_user_edit(edit("  Abbey Road  ", &["  The Beatles  "])).normalized();
+        let wire = release_user_edit(edit("  Album Alpha  ", &["  Artist Alpha  "])).normalized();
         assert_eq!(wire.validate(), Ok(()));
-        assert_eq!(wire.album_title, "Abbey Road");
-        assert_eq!(wire.album_artist_names, vec!["The Beatles".to_string()]);
+        assert_eq!(wire.album_title, "Album Alpha");
+        assert_eq!(
+            wire.album_artist_assignments,
+            vec![bae_core::import::ArtistAssignment::new("Artist Alpha")]
+        );
     }
 
     /// A refused edit reaches the client as `validation` — input it can fix —

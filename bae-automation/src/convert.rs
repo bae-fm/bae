@@ -163,31 +163,33 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> SearchQuery {
     }
 }
 
-pub(super) fn identity_choice(choice: AutomationIdentityChoice) -> IdentityChoice {
+pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     match choice {
-        AutomationIdentityChoice::Release { source, release_id } => IdentityChoice::Release {
-            release_ref: MetadataRef::new(release_id, source.into()),
-        },
-        AutomationIdentityChoice::Unknown => IdentityChoice::Unknown,
+        AutomationReleaseReseed::ExternalRelease { source, release_id } => {
+            ReleaseReseed::ExternalRelease {
+                release_ref: MetadataRef::new(release_id, source.into()),
+            }
+        }
+        AutomationReleaseReseed::FileTags => ReleaseReseed::FileTags,
     }
 }
 
-/// The identity a caller is deciding. A pick claims the pressing whatever
-/// turned the release up, which is what a click on that release does too.
-pub(super) fn identity_pick(pick: AutomationIdentityPick) -> IdentityPick {
-    match pick {
-        AutomationIdentityPick::Release { source, release_id } => IdentityPick::Release {
-            source: source.into(),
-            release_id,
-        },
-        AutomationIdentityPick::Unknown => IdentityPick::Unknown,
+pub(super) fn metadata_seed(seed: AutomationMetadataSeed) -> MetadataSeed {
+    match seed {
+        AutomationMetadataSeed::ExternalRelease { source, release_id } => {
+            MetadataSeed::ExternalRelease {
+                source: source.into(),
+                release_id,
+            }
+        }
+        AutomationMetadataSeed::FileTags => MetadataSeed::FileTags,
+        AutomationMetadataSeed::Manual => MetadataSeed::Manual,
     }
 }
 
 pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> CandidateEditField {
     match field {
         AutomationCandidateEditField::AlbumTitle => CandidateEditField::AlbumTitle,
-        AutomationCandidateEditField::AlbumArtistText => CandidateEditField::AlbumArtistText,
         AutomationCandidateEditField::Year => CandidateEditField::Year,
         AutomationCandidateEditField::Format => CandidateEditField::Format,
         AutomationCandidateEditField::Label => CandidateEditField::Label,
@@ -323,7 +325,11 @@ pub(super) fn automation_release_user_edit(
 ) -> AutomationReleaseUserEdit {
     AutomationReleaseUserEdit {
         album_title: edit.album_title,
-        album_artist_names: edit.album_artist_names,
+        album_artist_assignments: edit
+            .album_artist_assignments
+            .into_iter()
+            .map(automation_artist_assignment)
+            .collect(),
         pressing: AutomationPressingEdit {
             year: edit.pressing.year,
             format: edit.pressing.format,
@@ -339,7 +345,7 @@ pub(super) fn automation_release_user_edit(
                 title: track.title,
                 side: track.side,
                 track_number: track.track_number,
-                artist_names: track.artist_names,
+                artist_assignments: automation_track_artist_assignments(track.artist_assignments),
             })
             .collect(),
     }
@@ -350,7 +356,11 @@ pub(super) fn release_user_edit(
 ) -> bae_core::import::ReleaseUserEdit {
     bae_core::import::ReleaseUserEdit {
         album_title: edit.album_title,
-        album_artist_names: edit.album_artist_names,
+        album_artist_assignments: edit
+            .album_artist_assignments
+            .into_iter()
+            .map(artist_assignment)
+            .collect(),
         pressing: PressingEdit {
             year: edit.pressing.year,
             format: edit.pressing.format,
@@ -366,13 +376,80 @@ pub(super) fn release_user_edit(
                 title: track.title,
                 side: track.side,
                 track_number: track.track_number,
-                artist_names: track.artist_names,
+                artist_assignments: track_artist_assignments(track.artist_assignments),
                 // Automation edits a release's metadata, never which of the
                 // folder's audio backs each track; an import it starts gets the
                 // track slots the folder and the tracklist produce.
                 file: None,
             })
             .collect(),
+    }
+}
+
+fn automation_artist_assignment(
+    assignment: bae_core::import::ArtistAssignment,
+) -> AutomationArtistAssignment {
+    match assignment {
+        bae_core::import::ArtistAssignment::Existing { artist_id } => {
+            AutomationArtistAssignment::Existing { artist_id }
+        }
+        bae_core::import::ArtistAssignment::New { seed } => AutomationArtistAssignment::New {
+            seed: AutomationNewArtistSeed {
+                name: seed.name,
+                sort_name: seed.sort_name,
+                musicbrainz_artist_id: seed.musicbrainz_artist_id,
+                discogs_artist_id: seed.discogs_artist_id,
+            },
+        },
+    }
+}
+
+fn artist_assignment(assignment: AutomationArtistAssignment) -> bae_core::import::ArtistAssignment {
+    match assignment {
+        AutomationArtistAssignment::Existing { artist_id } => {
+            bae_core::import::ArtistAssignment::Existing { artist_id }
+        }
+        AutomationArtistAssignment::New { seed } => bae_core::import::ArtistAssignment::New {
+            seed: bae_core::import::NewArtistSeed {
+                name: seed.name,
+                sort_name: seed.sort_name,
+                musicbrainz_artist_id: seed.musicbrainz_artist_id,
+                discogs_artist_id: seed.discogs_artist_id,
+            },
+        },
+    }
+}
+
+fn automation_track_artist_assignments(
+    assignments: bae_core::import::TrackArtistAssignments,
+) -> AutomationTrackArtistAssignments {
+    match assignments {
+        bae_core::import::TrackArtistAssignments::AlbumArtists => {
+            AutomationTrackArtistAssignments::AlbumArtists
+        }
+        bae_core::import::TrackArtistAssignments::Explicit(assignments) => {
+            AutomationTrackArtistAssignments::Explicit {
+                assignments: assignments
+                    .into_iter()
+                    .map(automation_artist_assignment)
+                    .collect(),
+            }
+        }
+    }
+}
+
+fn track_artist_assignments(
+    assignments: AutomationTrackArtistAssignments,
+) -> bae_core::import::TrackArtistAssignments {
+    match assignments {
+        AutomationTrackArtistAssignments::AlbumArtists => {
+            bae_core::import::TrackArtistAssignments::AlbumArtists
+        }
+        AutomationTrackArtistAssignments::Explicit { assignments } => {
+            bae_core::import::TrackArtistAssignments::Explicit(
+                assignments.into_iter().map(artist_assignment).collect(),
+            )
+        }
     }
 }
 

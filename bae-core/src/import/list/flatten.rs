@@ -19,7 +19,6 @@ use crate::import::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
     TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
-use crate::import::types::IdentityPick;
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::LibraryError;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -307,12 +306,12 @@ fn place_row(
         candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
             .map_err(|error| LibraryError::Internal(error.to_string()))?,
     ));
-    let picked = state.and_then(|state| state.pick.clone());
+    let metadata_seed = state.and_then(|state| state.pick.clone());
     let placement = place(
         skipped,
         imported.is_some(),
         import_status.as_ref(),
-        picked.as_ref(),
+        metadata_seed.as_ref(),
         &known,
     );
     Ok(TriageRow {
@@ -335,8 +334,7 @@ fn place_row(
         matched: verdict.and_then(MatchedRelease::of_summary),
         placement,
         import_status,
-        claim: picked.as_ref().map(IdentityPick::choice),
-        picked,
+        metadata_seed,
     })
 }
 
@@ -490,10 +488,10 @@ fn summarise(
             });
         }
         if entry.matches_filter && row.selectable {
-            if let Some(claim) = row.claim.clone() {
+            if let Some(metadata_seed) = row.metadata_seed.clone() {
                 ready.push(ReadyRowRef {
                     candidate_key: row.candidate_key.clone(),
-                    claim,
+                    metadata_seed,
                     cover_thumbnail_url: row
                         .matched
                         .as_ref()

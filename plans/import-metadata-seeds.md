@@ -25,11 +25,16 @@ chosen seed remains Pending and cannot be bulk-imported. The file list and its
 role controls remain available because they describe the candidate, not its
 metadata seed.
 
-Automatic online lookup is controlled by a device-local Import setting. When
-it is off, scanning performs no provider lookup. Lookup opens with no search
-having run and offers `Find this release`. Interactive search remains available.
-Stored results from an earlier lookup remain visible; the setting controls new
-background work, not whether existing evidence may be read.
+Automatic online lookup is controlled by a device-local Import setting. The
+whole identification pipeline belongs to Lookup: signal extraction, including
+DiscID, barcode OCR, catalog text, provider search, and matching runs in the
+background only when an unseeded candidate resolves to Lookup and automatic
+lookup is enabled. Manual and File Tags candidates perform none of that work.
+Lookup opens with no search having run and offers `Find this release` when
+automatic lookup is disabled. Explicitly opening Lookup may start an interactive
+identification run regardless of the automatic setting. Stored results from an
+earlier lookup remain visible; the setting controls new background work, not
+whether existing evidence may be read.
 
 A second Import setting chooses which metadata surface opens for an unseeded
 candidate: Lookup, File Tags, Manual, or Last Used. Lookup is the default for a
@@ -37,9 +42,9 @@ new configuration so existing behavior remains recognizable. Last Used resolves
 to the last surface the user explicitly selected; opening a candidate or
 receiving a detail refresh does not rewrite that history. A candidate that
 already has a stored seed always opens the surface corresponding to that seed.
-The default surface and automatic lookup are independent: File Tags or Manual
-may open while online results are prefetched, and Lookup may open empty while
-automatic lookup is disabled.
+The default surface determines whether an unseeded candidate is eligible for
+background identification. The automatic setting is the second gate: Lookup
+may still open empty when automatic lookup is disabled.
 
 ## Existing code that changes
 
@@ -470,9 +475,11 @@ candidate-detail updates do not write it. The currently open candidate keeps
 its presented mode across detail refreshes; selecting another candidate resolves
 its mode from the stored seed first, then the configured default.
 
-The queue sweep reads this setting before admitting background identification.
-Turning it off cancels queued and running background identification and removes
-their runtime progress, without deleting settled verdicts or selected seeds.
+The queue sweep reads this setting and the candidate's resolved metadata mode
+before admitting background identification. Turning it off, or changing the
+resolved default away from Lookup, cancels queued and running background
+identification and removes their runtime progress, without deleting settled
+verdicts or selected seeds.
 Interactive Find, provider-row selection, and release re-identification do not
 consult the setting. Turning it on schedules unresolved actionable candidates.
 
@@ -630,8 +637,10 @@ Bug fixes begin with failing tests against production functions.
   update Last Used.
 - A detail update for the active candidate preserves its currently presented
   mode unless the user selects another candidate.
-- Automatic lookup and default-mode combinations control provider traffic and
-  presentation independently.
+- Background identification runs only when the resolved mode is Lookup and
+  automatic lookup is enabled.
+- Manual and File Tags defaults dispatch no DiscID, OCR, text-signal, provider,
+  or matching work.
 - Config YAML and bridge round-trips preserve both enums and reject Last Used
   as a concrete remembered mode.
 

@@ -206,21 +206,21 @@ impl AppHandle {
     /// Identification writes the same record itself when a verdict settles on
     /// exactly one match; this is the path for the choices only a person can
     /// make.
-    pub async fn pick_candidate_identity(
+    pub async fn select_candidate_metadata_seed(
         self: std::sync::Arc<Self>,
         candidate_key: String,
-        pick: crate::types::BridgeIdentityPick,
+        pick: crate::types::BridgeMetadataSeed,
     ) -> Result<(), BridgeError> {
         self.run_exported(move |this| async move {
             this.services
-                .import_pick_candidate_identity(candidate_key, pick.into_core())
+                .import_select_candidate_metadata_seed(candidate_key, pick.into_core())
                 .await
                 .map_err(BridgeError::import)
         })
         .await
     }
 
-    /// Re-identify commit. Translates the user's `IdentityChoice` into a fully
+    /// Re-identify commit. Translates the user's `ReleaseReseed` into a fully
     /// cross-linked identity vec + metadata pointer, then writes via
     /// `set_identity` — the outcome is indistinguishable from re-importing the
     /// release with the same choice.
@@ -232,7 +232,7 @@ impl AppHandle {
     pub async fn re_identify_release(
         self: std::sync::Arc<Self>,
         release_id: String,
-        identity_choice: crate::types::BridgeIdentityChoice,
+        identity_choice: crate::types::BridgeReleaseReseed,
     ) -> Result<String, BridgeError> {
         self.run_exported(move |this| async move {
             let core_choice = identity_choice.into_core();
@@ -542,7 +542,7 @@ impl AppHandle {
     /// editor's user-edit shape. Used by the "Add as Unknown"
     /// affordance: the UI calls this to populate the editor before
     /// the user verifies/edits and commits with
-    /// `BridgeIdentityChoice::Unknown`.
+    /// `BridgeReleaseReseed::FileTags`.
     pub async fn preview_file_tags_for_folder(
         self: std::sync::Arc<Self>,
         candidate_key: String,

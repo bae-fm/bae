@@ -201,7 +201,7 @@ pub enum ScanEvent {
     /// The user chose an identity for the candidate — a pressing, or its own
     /// tags — and the choice was persisted. The triage projection re-reads so
     /// the row carries it.
-    CandidateIdentityPicked {
+    CandidateMetadataSeeded {
         candidate_key: String,
     },
     FolderScanStatusChanged {
@@ -676,7 +676,7 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
     // A ParsedAlbum is self-consistent by construction (the mapper builds its
     // artists and junctions together), so a missing reference is a bug here, not
     // a user-facing error.
-    let album_artist_names = crate::import::artist_names::album_artist_names(
+    let album_artist_assignments = crate::import::artist_assignments::album_artist_assignments(
         &parsed.artists,
         &parsed.album_artists,
         &parsed.album.artist_id,
@@ -687,7 +687,7 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
         .tracks
         .iter()
         .map(|t| {
-            let artist_names = crate::import::artist_names::track_artist_names(
+            let artist_assignments = crate::import::artist_assignments::track_artist_assignments(
                 &parsed.artists,
                 &parsed.track_artists,
                 &t.id,
@@ -697,7 +697,7 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
                 title: t.title.clone(),
                 side: t.side,
                 track_number: t.track_number,
-                artist_names,
+                artist_assignments,
                 // A seed says what the release is, not which of the folder's
                 // audio backs each track; the track slots settle that, and
                 // stamp the binding onto the rows they hand to the editor.
@@ -708,7 +708,7 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
 
     crate::import::ReleaseUserEdit {
         album_title: parsed.album.title.clone(),
-        album_artist_names,
+        album_artist_assignments,
         pressing: crate::import::PressingEdit {
             year: parsed.release.pressing.year,
             format: parsed.release.pressing.format.clone(),

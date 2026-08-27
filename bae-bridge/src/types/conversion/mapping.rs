@@ -223,7 +223,7 @@ impl BridgeCandidateFiles {
 
 #[cfg(feature = "desktop")]
 impl BridgePressingEdit {
-    fn from_core(p: bae_core::import::PressingEdit) -> Self {
+    pub(super) fn from_core(p: bae_core::import::PressingEdit) -> Self {
         let bae_core::import::PressingEdit {
             year,
             format,
@@ -242,7 +242,7 @@ impl BridgePressingEdit {
         }
     }
 
-    fn into_core(self) -> bae_core::import::PressingEdit {
+    pub(super) fn into_core(self) -> bae_core::import::PressingEdit {
         let BridgePressingEdit {
             year,
             format,
@@ -279,7 +279,7 @@ impl BridgeAudioFile {
         }
     }
 
-    fn into_core(self) -> bae_core::import::AudioFile {
+    pub(super) fn into_core(self) -> bae_core::import::AudioFile {
         match self {
             Self::Standalone { file_id } => bae_core::import::AudioFile::Standalone { file_id },
             Self::SheetSlice {
@@ -741,203 +741,6 @@ impl BridgeMappingTable {
                 .collect(),
             rows: rows.into_iter().map(BridgeMappingRow::into_core).collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::into_core),
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeTrackUserEdit {
-    fn from_core(t: bae_core::import::TrackUserEdit) -> Self {
-        let bae_core::import::TrackUserEdit {
-            title,
-            side,
-            track_number,
-            artist_names,
-            file,
-        } = t;
-        Self {
-            title,
-            side,
-            track_number,
-            artist_names,
-            file: file.map(BridgeAudioFile::from_core),
-        }
-    }
-
-    fn into_core(self) -> bae_core::import::TrackUserEdit {
-        let BridgeTrackUserEdit {
-            title,
-            side,
-            track_number,
-            artist_names,
-            file,
-        } = self;
-        bae_core::import::TrackUserEdit {
-            title,
-            side,
-            track_number,
-            artist_names,
-            file: file.map(BridgeAudioFile::into_core),
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeReleaseUserEdit {
-    pub(crate) fn from_core(e: bae_core::import::ReleaseUserEdit) -> Self {
-        let bae_core::import::ReleaseUserEdit {
-            album_title,
-            album_artist_names,
-            pressing,
-            tracks,
-        } = e;
-        BridgeReleaseUserEdit {
-            album_title,
-            album_artist_names,
-            pressing: BridgePressingEdit::from_core(pressing),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeTrackUserEdit::from_core)
-                .collect(),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::ReleaseUserEdit {
-        let BridgeReleaseUserEdit {
-            album_title,
-            album_artist_names,
-            pressing,
-            tracks,
-        } = self;
-        bae_core::import::ReleaseUserEdit {
-            album_title,
-            album_artist_names,
-            pressing: pressing.into_core(),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeTrackUserEdit::into_core)
-                .collect(),
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeRawPressingEdit {
-    pub(crate) fn from_core(p: bae_core::import::RawPressingEdit) -> Self {
-        let bae_core::import::RawPressingEdit {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        } = p;
-        Self {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::RawPressingEdit {
-        let BridgeRawPressingEdit {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        } = self;
-        bae_core::import::RawPressingEdit {
-            year,
-            format,
-            label,
-            catalog_number,
-            country,
-            barcode,
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeRawTrackEdit {
-    pub(crate) fn from_core(t: bae_core::import::RawTrackEdit) -> Self {
-        let bae_core::import::RawTrackEdit {
-            id,
-            title,
-            artist_text,
-            side,
-            track_number,
-            file,
-        } = t;
-        Self {
-            id,
-            title,
-            artist_text,
-            side,
-            track_number,
-            file: file.map(BridgeAudioFile::from_core),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::RawTrackEdit {
-        let BridgeRawTrackEdit {
-            id,
-            title,
-            artist_text,
-            side,
-            track_number,
-            file,
-        } = self;
-        bae_core::import::RawTrackEdit {
-            id,
-            title,
-            artist_text,
-            side,
-            track_number,
-            file: file.map(BridgeAudioFile::into_core),
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeRawReleaseEdit {
-    pub(crate) fn from_core(e: bae_core::import::RawReleaseEdit) -> Self {
-        let bae_core::import::RawReleaseEdit {
-            album_title,
-            album_artist_text,
-            pressing,
-            tracks,
-        } = e;
-        BridgeRawReleaseEdit {
-            album_title,
-            album_artist_text,
-            pressing: BridgeRawPressingEdit::from_core(pressing),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeRawTrackEdit::from_core)
-                .collect(),
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::import::RawReleaseEdit {
-        let BridgeRawReleaseEdit {
-            album_title,
-            album_artist_text,
-            pressing,
-            tracks,
-        } = self;
-        bae_core::import::RawReleaseEdit {
-            album_title,
-            album_artist_text,
-            pressing: pressing.into_core(),
-            tracks: tracks
-                .into_iter()
-                .map(BridgeRawTrackEdit::into_core)
-                .collect(),
         }
     }
 }

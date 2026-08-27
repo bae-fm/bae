@@ -63,9 +63,7 @@ pub struct BridgeImportListWindow {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReadyRowRef {
     pub candidate_key: String,
-    /// The stored decision in the shape commit takes — a bulk import has no
-    /// pane to read a claim line off.
-    pub claim: BridgeIdentityChoice,
+    pub metadata_seed: BridgeMetadataSeed,
     pub cover_thumbnail_url: Option<String>,
 }
 

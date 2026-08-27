@@ -109,7 +109,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
             lead: Some(lead(release_id)),
         }),
         probed_total_duration_ms: 2_400_000,
-        pick: Some(IdentityPick::Release {
+        pick: Some(MetadataSeed::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: release_id.to_string(),
         }),
@@ -147,8 +147,8 @@ fn not_found_state() -> CandidateStateListRow {
 }
 
 /// The pick a user makes on a release row.
-fn release_pick(release_id: &str) -> IdentityPick {
-    IdentityPick::Release {
+fn release_pick(release_id: &str) -> MetadataSeed {
+    MetadataSeed::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
     }

@@ -222,8 +222,7 @@ impl crate::types::BridgeTriageRow {
             matched,
             selectable,
             import_status,
-            picked,
-            claim,
+            metadata_seed,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -242,8 +241,7 @@ impl crate::types::BridgeTriageRow {
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
-            picked: picked.map(crate::types::BridgeIdentityPick::from_core),
-            claim: claim.map(crate::types::BridgeIdentityChoice::from_core),
+            metadata_seed: metadata_seed.map(crate::types::BridgeMetadataSeed::from_core),
         }
     }
 }
@@ -513,7 +511,7 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(|row| crate::types::BridgeReadyRowRef {
                     candidate_key: row.candidate_key,
-                    claim: crate::types::BridgeIdentityChoice::from_core(row.claim),
+                    metadata_seed: crate::types::BridgeMetadataSeed::from_core(row.metadata_seed),
                     cover_thumbnail_url: row.cover_thumbnail_url,
                 })
                 .collect(),

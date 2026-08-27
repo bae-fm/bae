@@ -655,7 +655,7 @@ impl Fixture {
                         ))
                     },
                     expected_edit_revision: 0,
-                    identity_pick: Some(crate::import::IdentityPick::Release {
+                    metadata_seed: Some(crate::import::MetadataSeed::ExternalRelease {
                         source: crate::import::MetadataSource::MusicBrainz,
                         release_id: release_id.to_string(),
                     }),

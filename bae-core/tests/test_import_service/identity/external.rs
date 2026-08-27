@@ -57,8 +57,9 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key.clone(),
             },
             user_edit: None,
         })
@@ -109,7 +110,7 @@ async fn a_user_edit_overlays_the_picked_release() {
 
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
-        album_artist_names: vec!["Edited Artist".to_string()],
+        album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
         pressing: PressingEdit {
             // User typed JP — we expect this to land on the release row.
             country: Some("JP".to_string()),
@@ -119,7 +120,7 @@ async fn a_user_edit_overlays_the_picked_release() {
             title: "Edited Track".to_string(),
             side: 1,
             track_number: Some(1),
-            artist_names: vec![],
+            artist_assignments: TrackArtistAssignments::AlbumArtists,
             file: None,
         }],
     };
@@ -134,8 +135,9 @@ async fn a_user_edit_overlays_the_picked_release() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key.clone(), MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key.clone(),
             },
             user_edit: Some(edit),
         })
@@ -312,8 +314,9 @@ async fn cross_source_writes_both_release_ids() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: mb_id.clone(),
             },
             user_edit: None,
         })

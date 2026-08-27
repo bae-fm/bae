@@ -97,7 +97,7 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
         .unwrap();
 
     manager
-        .re_identify_release(&release.id, crate::import::IdentityChoice::Unknown)
+        .re_identify_release(&release.id, crate::import::ReleaseReseed::FileTags)
         .await
         .unwrap();
 
@@ -231,7 +231,7 @@ async fn insert_n_tracks(database: &Database, release_id: &str, n: usize) {
 
 #[tokio::test]
 async fn re_identify_release_exact_archives_the_picked_release() {
-    use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
+    use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -267,7 +267,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     manager
         .re_identify_release(
             &release.id,
-            IdentityChoice::Release {
+            ReleaseReseed::ExternalRelease {
                 release_ref: MetadataRef {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
@@ -335,7 +335,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     // point at: a 12-track release can't replace a 10-track rip. A folder
     // import maps its own audio into track slots instead, where a count
     // disagreement is a row to look at rather than a refusal.
-    use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
+    use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -361,7 +361,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
     let err = manager
         .re_identify_release(
             &release.id,
-            IdentityChoice::Release {
+            ReleaseReseed::ExternalRelease {
                 release_ref: MetadataRef {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
@@ -394,7 +394,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     // projects through the new pointer and reaches the documents that commit
     // archived. A regression here means re-identify pointed the release at a
     // source release whose documents it never wrote.
-    use crate::import::{IdentityChoice, MetadataRef, MetadataSource};
+    use crate::import::{ReleaseReseed, MetadataRef, MetadataSource};
     use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
 
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -421,7 +421,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
     manager
         .re_identify_release(
             &release.id,
-            IdentityChoice::Release {
+            ReleaseReseed::ExternalRelease {
                 release_ref: MetadataRef {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
@@ -449,7 +449,7 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
     // files whose embedded tags say something different. Re-identifying
     // as Unknown must reseed the album/track rows from those tags — not
     // leave the old MB metadata displayed under a "use my files" claim.
-    use crate::import::IdentityChoice;
+    use crate::import::ReleaseReseed;
     use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
@@ -537,7 +537,7 @@ async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
         .unwrap();
 
     manager
-        .re_identify_release(&release.id, IdentityChoice::Unknown)
+        .re_identify_release(&release.id, ReleaseReseed::FileTags)
         .await
         .unwrap();
 

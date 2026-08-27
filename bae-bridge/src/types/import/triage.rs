@@ -405,36 +405,43 @@ pub struct BridgeMatchedRelease {
     pub evidence: BridgeMatchEvidence,
 }
 
-/// The identity decided for a candidate, as the row carries it back and the
-/// pick command sends it down. Mirror of `bae_core::import::IdentityPick`.
+/// The metadata source selected for a candidate. Mirror of
+/// `bae_core::import::MetadataSeed`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeIdentityPick {
-    Release {
+pub enum BridgeMetadataSeed {
+    ExternalRelease {
         source: BridgeMetadataSource,
         release_id: String,
     },
-    Unknown,
+    FileTags,
+    Manual,
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeIdentityPick {
-    pub(crate) fn from_core(pick: bae_core::import::IdentityPick) -> Self {
+impl BridgeMetadataSeed {
+    pub(crate) fn from_core(pick: bae_core::import::MetadataSeed) -> Self {
         match pick {
-            bae_core::import::IdentityPick::Release { source, release_id } => Self::Release {
-                source: BridgeMetadataSource::from_core(source),
-                release_id,
-            },
-            bae_core::import::IdentityPick::Unknown => Self::Unknown,
+            bae_core::import::MetadataSeed::ExternalRelease { source, release_id } => {
+                Self::ExternalRelease {
+                    source: BridgeMetadataSource::from_core(source),
+                    release_id,
+                }
+            }
+            bae_core::import::MetadataSeed::FileTags => Self::FileTags,
+            bae_core::import::MetadataSeed::Manual => Self::Manual,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::IdentityPick {
+    pub(crate) fn into_core(self) -> bae_core::import::MetadataSeed {
         match self {
-            Self::Release { source, release_id } => bae_core::import::IdentityPick::Release {
-                source: source.into_core(),
-                release_id,
-            },
-            Self::Unknown => bae_core::import::IdentityPick::Unknown,
+            Self::ExternalRelease { source, release_id } => {
+                bae_core::import::MetadataSeed::ExternalRelease {
+                    source: source.into_core(),
+                    release_id,
+                }
+            }
+            Self::FileTags => bae_core::import::MetadataSeed::FileTags,
+            Self::Manual => bae_core::import::MetadataSeed::Manual,
         }
     }
 }
@@ -462,13 +469,8 @@ pub struct BridgeTriageRow {
     /// says *that* an import is running; how far along rides on the
     /// candidate's runtime.
     pub import_status: Option<BridgeTriageImportStatus>,
-    /// The identity already decided for this candidate — the settled single
-    /// match, the pressing the user picked, or their decision to read the
-    /// folder's own tags. Selection re-applies it, so the pane opens answered.
-    pub picked: Option<BridgeIdentityPick>,
-    /// The same decision in the shape commit takes, for a bulk import.
-    /// `None` alongside `picked`.
-    pub claim: Option<BridgeIdentityChoice>,
+    /// The metadata seed already decided for this candidate.
+    pub metadata_seed: Option<BridgeMetadataSeed>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

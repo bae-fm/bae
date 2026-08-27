@@ -220,7 +220,9 @@ fn find_or_push_artist(
                 ReleaseMetadataSource::MusicBrainz => {
                     name_matches && artist.musicbrainz_artist_id.is_none()
                 }
-                ReleaseMetadataSource::Discogs | ReleaseMetadataSource::FileTags => name_matches,
+                ReleaseMetadataSource::Discogs
+                | ReleaseMetadataSource::FileTags
+                | ReleaseMetadataSource::Manual => name_matches,
             }
         }
     });

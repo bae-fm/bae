@@ -8,7 +8,7 @@ use bae_core::config::SubsonicCredential;
 use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
-    IdentityChoice, ImportCommand, MetadataRef, MetadataSource, ReleaseFileScope, StorageMode,
+    ImportCommand, MetadataSeed, MetadataSource, ReleaseFileScope, StorageMode,
 };
 use bae_core::library::{AppServices, LibraryManager};
 use bae_test_support as support;
@@ -203,7 +203,7 @@ async fn seed_library() -> Library {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -239,8 +239,9 @@ async fn seed_library() -> Library {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(discogs_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: discogs_key,
             },
             user_edit: None,
         })

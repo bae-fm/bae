@@ -8,8 +8,7 @@
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
-    CoverSelection, IdentityChoice, ImportCommand, ImportProgress, MetadataRef, MetadataSource,
-    StorageMode,
+    CoverSelection, ImportCommand, ImportProgress, MetadataSeed, MetadataSource, StorageMode,
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
@@ -92,8 +91,9 @@ async fn test_local_import() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })
@@ -242,8 +242,9 @@ async fn test_local_delete_preserves_files() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })
@@ -342,8 +343,9 @@ async fn run_import_with_cover_test() {
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })

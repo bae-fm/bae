@@ -405,11 +405,13 @@ fn produced_keys() -> Vec<String> {
     for reason in [
         BridgeValidationReason::EmptyAlbumTitle,
         BridgeValidationReason::NoAlbumArtist,
+        BridgeValidationReason::EmptyArtistName,
         BridgeValidationReason::InvalidYear,
     ] {
         let expected = match reason {
             BridgeValidationReason::EmptyAlbumTitle => "core.import.validation.empty_album_title",
             BridgeValidationReason::NoAlbumArtist => "core.import.validation.no_album_artist",
+            BridgeValidationReason::EmptyArtistName => "core.import.validation.empty_artist_name",
             BridgeValidationReason::InvalidYear => "core.import.validation.invalid_year",
         };
         assert_eq!(reason.loc_key(), expected);

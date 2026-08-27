@@ -6,7 +6,7 @@
 //! writes, the query redraws.
 
 use crate::import::mapping::{mapping_with_track, mapping_without_track, MappingTable};
-use crate::import::types::{AudioFile, RawReleaseEdit, RawTrackEdit};
+use crate::import::types::{ArtistAssignment, AudioFile, RawReleaseEdit, RawTrackEdit};
 use chrono::{DateTime, Utc};
 
 /// One album-level field of the metadata form.
@@ -16,7 +16,6 @@ use chrono::{DateTime, Utc};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandidateEditField {
     AlbumTitle,
-    AlbumArtistText,
     Year,
     Format,
     Label,
@@ -30,7 +29,6 @@ impl CandidateEditField {
     pub(crate) fn column(self) -> &'static str {
         match self {
             Self::AlbumTitle => "album_title",
-            Self::AlbumArtistText => "album_artist_text",
             Self::Year => "year",
             Self::Format => "format",
             Self::Label => "label",
@@ -50,7 +48,7 @@ impl CandidateEditField {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CandidateEditOverlay {
     pub album_title: Option<String>,
-    pub album_artist_text: Option<String>,
+    pub album_artist_assignments: Option<Vec<ArtistAssignment>>,
     pub year: Option<String>,
     pub format: Option<String>,
     pub label: Option<String>,
@@ -72,7 +70,9 @@ impl CandidateEditOverlay {
             }
         };
         overwrite(&mut seed.album_title, &self.album_title);
-        overwrite(&mut seed.album_artist_text, &self.album_artist_text);
+        if let Some(assignments) = &self.album_artist_assignments {
+            seed.album_artist_assignments.clone_from(assignments);
+        }
         overwrite(&mut seed.pressing.year, &self.year);
         overwrite(&mut seed.pressing.format, &self.format);
         overwrite(&mut seed.pressing.label, &self.label);

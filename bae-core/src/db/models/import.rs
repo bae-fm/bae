@@ -41,7 +41,7 @@ pub struct NewImportCandidateVerdict {
     /// Either way it replaces whatever identification concluded last time: the
     /// pick belongs to the verdict that made it. A pick a person made outranks
     /// both and is left alone.
-    pub identity_pick: Option<crate::import::IdentityPick>,
+    pub metadata_seed: Option<crate::import::MetadataSeed>,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
@@ -79,7 +79,7 @@ pub struct DbImportCandidateState {
     /// decided. A person's choice survives file decisions and later verdicts
     /// alike — it names a release, not a shape; one identification concluded
     /// lives exactly as long as the verdict that concluded it.
-    pub identity_pick: Option<crate::import::IdentityPick>,
+    pub metadata_seed: Option<crate::import::MetadataSeed>,
 }
 
 /// Everything a person settled about one candidate through its pane, keyed by

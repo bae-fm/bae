@@ -1,7 +1,7 @@
 // Gated with its two callers (`handle` and `service`), which the mobile builds
 // leave out — the import editor is desktop-only.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod artist_names;
+mod artist_assignments;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod assemble;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -44,6 +44,8 @@ pub mod list;
 mod loudness;
 // Projects the folder's audio units against a picked tracklist — the desktop
 // import pane's one structure, and desktop-only like the slots it reads.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) mod manual_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod mapping;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -172,11 +174,12 @@ pub use triage::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::ImportCommand;
 pub use types::{
-    AudioFile, EditValidationError, MetadataPointer, MetadataSource, PressingEdit, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit, TrackUserEdit,
+    ArtistAssignment, AudioFile, EditValidationError, MetadataSeed, MetadataSource, NewArtistSeed,
+    PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseIdentity, ReleaseUserEdit,
+    TrackArtistAssignments, TrackUserEdit,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::{
-    CoverSelection, IdentityChoice, IdentityPick, ImportPhase, ImportProgress, ImportStep,
-    MetadataRef, PayloadSource, PrepareStep, SourcePayload, StorageMode, TrackFile,
+    CoverSelection, ImportPhase, ImportProgress, ImportStep, MetadataRef, PayloadSource,
+    PrepareStep, ReleaseReseed, SourcePayload, StorageMode, TrackFile,
 };

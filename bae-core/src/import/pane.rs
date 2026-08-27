@@ -26,6 +26,9 @@ pub const IMPORT_TRACK_ID_PREFIX: &str = "import-track";
 /// The row identity they carry when the folder's own files name them.
 pub const UNKNOWN_TRACK_ID_PREFIX: &str = "unknown-track";
 
+/// The row identity the mapping table's tracks carry for manual entry.
+pub const MANUAL_TRACK_ID_PREFIX: &str = "manual-track";
+
 /// What a pick produces for the pane: the release as its documents describe
 /// it, the edit form seeded from it with the stored overlay applied, and the
 /// mapping table with the stored row edits applied.
@@ -60,7 +63,7 @@ pub fn release_pane(
         durations,
         &source_tracks,
         IMPORT_TRACK_ID_PREFIX,
-        TracklistSource::Release,
+        TracklistSource::ExternalRelease,
         track_edits,
     );
     Ok(PanePick {
@@ -98,7 +101,7 @@ pub fn unknown_pane(
         .iter()
         .map(|edit| SourceTrack {
             edit: edit.clone(),
-            position: edit.track_number.map(|n| n.to_string()).unwrap_or_default(),
+            position: edit.track_number.map(|n| n.to_string()),
             duration_ms: None,
         })
         .collect();
@@ -107,7 +110,7 @@ pub fn unknown_pane(
         durations,
         &source_tracks,
         UNKNOWN_TRACK_ID_PREFIX,
-        TracklistSource::FileTags,
+        TracklistSource::CandidateFiles,
         track_edits,
     );
     Ok(PanePick {
@@ -115,6 +118,44 @@ pub fn unknown_pane(
         edit: edit_form(seed, UNKNOWN_TRACK_ID_PREFIX, overlay),
         mapping,
     })
+}
+
+/// The pane for metadata entered without consulting tags or online sources.
+/// The form begins blank while the mapping retains only physical track slots.
+pub fn manual_pane(
+    files: &CategorizedFiles,
+    durations: &ProbedDurations,
+    overlay: &CandidateEditOverlay,
+    track_edits: &[CandidateTrackEdit],
+) -> PanePick {
+    let tracks = crate::import::track_slots::manual_track_rows(files);
+    let source_tracks: Vec<SourceTrack> = tracks
+        .iter()
+        .map(|edit| SourceTrack {
+            edit: edit.clone(),
+            position: None,
+            duration_ms: None,
+        })
+        .collect();
+    let mapping = table_for(
+        files,
+        durations,
+        &source_tracks,
+        MANUAL_TRACK_ID_PREFIX,
+        TracklistSource::CandidateFiles,
+        track_edits,
+    );
+    let seed = ReleaseUserEdit {
+        album_title: String::new(),
+        album_artist_assignments: Vec::new(),
+        pressing: crate::import::PressingEdit::blank(),
+        tracks,
+    };
+    PanePick {
+        release: None,
+        edit: edit_form(seed, MANUAL_TRACK_ID_PREFIX, overlay),
+        mapping,
+    }
 }
 
 /// The table for a folder nobody has picked a release for: every source unit
@@ -156,8 +197,8 @@ fn source_tracks_of(
             SourceTrack {
                 edit: edit.clone(),
                 position: match source {
-                    Some(track) => track.position.clone(),
-                    None => edit.track_number.map(|n| n.to_string()).unwrap_or_default(),
+                    Some(track) => Some(track.position.clone()),
+                    None => edit.track_number.map(|n| n.to_string()),
                 },
                 duration_ms: source.and_then(|track| track.duration_ms),
             }

@@ -50,7 +50,9 @@ impl ImportService {
 
         // The overlay applies after the seed, so the user's edits win over
         // every seeded value.
-        if let Some(edit) = user_edit {
+        let explicit_existing_artist_ids = if let Some(edit) = user_edit {
+            let existing_artists =
+                super::load_existing_artist_assignments(&edit, library_manager).await?;
             apply_user_edit_to_seed(
                 &edit,
                 &mut db_album,
@@ -59,10 +61,13 @@ impl ImportService {
                 &mut artists,
                 &mut album_artists,
                 &mut track_artists,
+                &existing_artists,
                 self.clock.as_ref(),
                 self.ids.as_ref(),
-            )?;
-        }
+            )?
+        } else {
+            std::collections::HashSet::new()
+        };
 
         let album_title = db_album.title.clone();
         let artist_name = artists
@@ -79,7 +84,9 @@ impl ImportService {
             db_release.album_id = album_id.clone();
         }
 
-        let resolved = library_manager.resolve_artists_for_import(&artists).await?;
+        let resolved = library_manager
+            .resolve_artists_for_import_with_existing(&artists, &explicit_existing_artist_ids)
+            .await?;
 
         let artist_id_map: HashMap<String, String> = artists
             .iter()

@@ -245,11 +245,11 @@ pub enum TracklistSource {
     /// A release picked from a metadata source. Its tracklist and the folder's
     /// audio are two independent accounts of one disc, so the table tallies
     /// them against each other.
-    Release,
-    /// The folder's own files — their embedded tags, or the track sheets they
-    /// come with. It cannot disagree with the folder, because it *is* the
-    /// folder, so the table carries no tally.
-    FileTags,
+    ExternalRelease,
+    /// Track rows derived from the candidate's files, either from their tags
+    /// or as blank manual rows. They cannot disagree with the candidate because
+    /// the candidate itself determines their physical slots.
+    CandidateFiles,
 }
 
 /// The tracklist a folder is being committed as, and the row identities the
@@ -389,7 +389,7 @@ pub fn mapping_table(
     }
 
     let reconciliation = picked
-        .filter(|picked| picked.source == TracklistSource::Release)
+        .filter(|picked| picked.source == TracklistSource::ExternalRelease)
         .map(|_| tally(&rows));
     MappingTable {
         images,
@@ -510,7 +510,7 @@ impl RowBuilder<'_> {
                 position,
                 source_duration_ms,
                 ..
-            } => (Some(position.clone()), *source_duration_ms),
+            } => (position.clone(), *source_duration_ms),
             TrackSlot::FileOnly { .. } => (None, None),
         };
         MappingBecomes::Track {

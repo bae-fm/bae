@@ -67,10 +67,10 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
                 title: format!("Track Title {}", index + 1),
                 side: 1,
                 track_number: Some(index as i32 + 1),
-                artist_names: Vec::new(),
+                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
-            position: (index + 1).to_string(),
+            position: Some((index + 1).to_string()),
             duration_ms: Some(180_000),
         })
         .collect()
@@ -189,7 +189,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "import-track",
-            source: TracklistSource::Release,
+            source: TracklistSource::ExternalRelease,
         }),
         &durations,
     );
@@ -257,7 +257,7 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "import-track",
-            source: TracklistSource::Release,
+            source: TracklistSource::ExternalRelease,
         }),
         &durations,
     );
@@ -310,7 +310,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "import-track",
-            source: TracklistSource::Release,
+            source: TracklistSource::ExternalRelease,
         }),
         &durations,
     );
@@ -409,7 +409,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "import-track",
-            source: TracklistSource::Release,
+            source: TracklistSource::ExternalRelease,
         }),
         &durations,
     );
@@ -448,7 +448,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "import-track",
-            source: TracklistSource::Release,
+            source: TracklistSource::ExternalRelease,
         }),
         &durations,
     );
@@ -487,7 +487,7 @@ fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
         Some(PickedTracklist {
             slots: &slots,
             track_id_prefix: "unknown-track",
-            source: TracklistSource::FileTags,
+            source: TracklistSource::CandidateFiles,
         }),
         &durations,
     );
@@ -528,7 +528,7 @@ fn projecting_the_table_opens_no_audio() {
             Some(PickedTracklist {
                 slots: &slots,
                 track_id_prefix: "import-track",
-                source: TracklistSource::Release,
+                source: TracklistSource::ExternalRelease,
             }),
             &durations,
         )

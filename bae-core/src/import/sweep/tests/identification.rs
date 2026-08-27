@@ -619,9 +619,9 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
 
     fixture
         .import
-        .pick_candidate_identity(
+        .select_candidate_metadata_seed(
             dir.to_string_lossy().into_owned(),
-            crate::import::IdentityPick::Release {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-offline-1".to_string(),
             },
@@ -675,9 +675,9 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
 
     let error = fixture
         .import
-        .pick_candidate_identity(
+        .select_candidate_metadata_seed(
             dir.to_string_lossy().into_owned(),
-            crate::import::IdentityPick::Release {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-missing-1".to_string(),
             },
@@ -713,13 +713,13 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "nothing has fetched this release yet"
     );
 
-    let pick = || crate::import::IdentityPick::Release {
+    let pick = || crate::import::MetadataSeed::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-manual-1".to_string(),
     };
     fixture
         .import
-        .pick_candidate_identity(dir.to_string_lossy().into_owned(), pick())
+        .select_candidate_metadata_seed(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("a manual pick fetches");
 
@@ -732,7 +732,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let before = fixture.provider.requests().len();
     fixture
         .import
-        .pick_candidate_identity(dir.to_string_lossy().into_owned(), pick())
+        .select_candidate_metadata_seed(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("re-picking reads what the first pick archived");
     assert_eq!(

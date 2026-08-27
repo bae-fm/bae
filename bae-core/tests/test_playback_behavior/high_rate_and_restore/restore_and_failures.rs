@@ -38,8 +38,9 @@ async fn restore_test_library() -> RestoreTestLibrary {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })
@@ -113,8 +114,9 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_key,
             },
             user_edit: None,
         })
@@ -396,8 +398,9 @@ impl CloudOnlyPlaybackFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Remote,
                 pin: false,
-                identity_choice: IdentityChoice::Release {
-                    release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+                metadata_seed: MetadataSeed::ExternalRelease {
+                    source: MetadataSource::Discogs,
+                release_id: release_id_key,
                 },
                 user_edit: None,
             })

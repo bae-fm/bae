@@ -328,40 +328,43 @@ pub struct BridgeRelease {
     pub cover: Option<BridgeImageRef>,
 }
 
-/// User's identity claim from the import flow. Mirrors
-/// `bae_core::import::IdentityChoice` — Release carries the picked release
-/// reference; Unknown carries none (the worker seeds from embedded file tags).
+/// A new metadata source for a release already in the library. Mirrors
+/// `bae_core::import::ReleaseReseed`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeIdentityChoice {
-    Release {
+pub enum BridgeReleaseReseed {
+    ExternalRelease {
         release_id: String,
         source: BridgeMetadataSource,
     },
-    Unknown,
+    FileTags,
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeIdentityChoice {
-    pub fn into_core(self) -> bae_core::import::IdentityChoice {
+impl BridgeReleaseReseed {
+    pub fn into_core(self) -> bae_core::import::ReleaseReseed {
         match self {
-            Self::Release { release_id, source } => bae_core::import::IdentityChoice::Release {
-                release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
-            },
-            Self::Unknown => bae_core::import::IdentityChoice::Unknown,
+            Self::ExternalRelease { release_id, source } => {
+                bae_core::import::ReleaseReseed::ExternalRelease {
+                    release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
+                }
+            }
+            Self::FileTags => bae_core::import::ReleaseReseed::FileTags,
         }
     }
 
     /// The claim core recorded for a candidate — the direction `into_core`
     /// doesn't cover, since a pick's claim is settled in core and travels
     /// outward.
-    pub fn from_core(choice: bae_core::import::IdentityChoice) -> Self {
+    pub fn from_core(choice: bae_core::import::ReleaseReseed) -> Self {
         match choice {
-            bae_core::import::IdentityChoice::Release { release_ref } => Self::Release {
-                release_id: release_ref.id,
-                source: BridgeMetadataSource::from_core(release_ref.source),
-            },
-            bae_core::import::IdentityChoice::Unknown => Self::Unknown,
+            bae_core::import::ReleaseReseed::ExternalRelease { release_ref } => {
+                Self::ExternalRelease {
+                    release_id: release_ref.id,
+                    source: BridgeMetadataSource::from_core(release_ref.source),
+                }
+            }
+            bae_core::import::ReleaseReseed::FileTags => Self::FileTags,
         }
     }
 }

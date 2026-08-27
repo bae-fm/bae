@@ -371,15 +371,15 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_candidate_identity_pick(
+    pub async fn save_candidate_metadata_seed(
         &self,
         content_hash: &str,
         folder_path: &str,
-        pick: &crate::import::IdentityPick,
+        pick: &crate::import::MetadataSeed,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .save_candidate_identity_pick(content_hash, folder_path, pick)
+            .save_candidate_metadata_seed(content_hash, folder_path, pick)
             .await?)
     }
 

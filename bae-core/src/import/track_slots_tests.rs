@@ -79,10 +79,10 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
                 title: format!("Track Title {}", index + 1),
                 side: 1,
                 track_number: Some(index as i32 + 1),
-                artist_names: Vec::new(),
+                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
-            position: (index + 1).to_string(),
+            position: Some((index + 1).to_string()),
             // Three minutes each, which is what the synthetic sheets lay
             // their tracks out at.
             duration_ms: Some(180_000),

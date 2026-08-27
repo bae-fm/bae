@@ -376,15 +376,9 @@ pub struct TriageRow {
     /// says *that* an import is running; how far along it is is the
     /// candidate's runtime, which ticks far more often than rows re-project.
     pub import_status: Option<TriageImportStatus>,
-    /// The identity the user already chose for this candidate, read back from
-    /// the stored row — what lets selection reopen the pane answered instead
-    /// of asking again. `None` while they have chosen nothing.
-    pub picked: Option<crate::import::IdentityPick>,
-    /// The same decision in the shape commit takes, for a bulk import: it has
-    /// no pane to read a claim line off, and turning a pick into an identity
-    /// claim is not something a list should be working out. `None` alongside
-    /// `picked` — nothing decided is nothing to commit.
-    pub claim: Option<IdentityChoice>,
+    /// The metadata seed already chosen for this candidate. `None` while no
+    /// source has been selected.
+    pub metadata_seed: Option<crate::import::MetadataSeed>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

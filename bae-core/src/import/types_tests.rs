@@ -1,26 +1,19 @@
 use super::*;
 
 #[cfg(test)]
-mod identity_pick_tests {
+mod metadata_seed_tests {
     use super::*;
 
     #[test]
-    fn a_stored_pick_is_the_identity_it_commits() {
-        let pick = IdentityPick::Release {
+    fn a_metadata_seed_round_trips_without_an_identity_proxy() {
+        let seed = MetadataSeed::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "release-a".to_string(),
         };
-        assert_eq!(
-            pick.choice(),
-            IdentityChoice::Release {
-                release_ref: MetadataRef::new("release-a", MetadataSource::MusicBrainz)
-            }
-        );
-        assert_eq!(IdentityPick::Unknown.choice(), IdentityChoice::Unknown);
-
-        let stored = serde_json::to_string(&pick).expect("a pick encodes");
-        let read_back: IdentityPick = serde_json::from_str(&stored).expect("a stored pick decodes");
-        assert_eq!(read_back, pick);
+        let stored = serde_json::to_string(&seed).expect("a metadata seed encodes");
+        let read_back: MetadataSeed =
+            serde_json::from_str(&stored).expect("a stored metadata seed decodes");
+        assert_eq!(read_back, seed);
     }
 }
 
@@ -34,7 +27,7 @@ mod edit_shaping_tests {
     fn valid_form() -> RawReleaseEdit {
         RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_text: "Artist One".to_string(),
+            album_artist_assignments: vec![ArtistAssignment::new("Artist One")],
             pressing: RawPressingEdit {
                 year: "1999".to_string(),
                 format: "2×LP".to_string(),
@@ -46,7 +39,9 @@ mod edit_shaping_tests {
             tracks: vec![RawTrackEdit {
                 id: "track-0".to_string(),
                 title: "Track Title".to_string(),
-                artist_text: "Artist Two".to_string(),
+                artist_assignments: TrackArtistAssignments::Explicit(vec![ArtistAssignment::new(
+                    "Artist Two",
+                )]),
                 side: 1,
                 track_number: Some(1),
                 file: Some(AudioFile::Standalone {
@@ -60,38 +55,54 @@ mod edit_shaping_tests {
     fn shapes_a_valid_form_into_a_wire_edit() {
         let shaped = valid_form().shape().expect("valid form shapes");
         assert_eq!(shaped.album_title, "Album Title");
-        assert_eq!(shaped.album_artist_names, vec!["Artist One".to_string()]);
+        assert_eq!(
+            shaped.album_artist_assignments,
+            vec![ArtistAssignment::new("Artist One")]
+        );
         assert_eq!(shaped.pressing.year, Some(1999));
         assert_eq!(shaped.pressing.format.as_deref(), Some("2×LP"));
         assert_eq!(shaped.tracks.len(), 1);
         assert_eq!(shaped.tracks[0].title, "Track Title");
         assert_eq!(
-            shaped.tracks[0].artist_names,
-            vec!["Artist Two".to_string()]
+            shaped.tracks[0].artist_assignments,
+            TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Artist Two")])
         );
     }
 
     #[test]
-    fn splits_comma_separated_artists_trimming_and_dropping_empties() {
+    fn trims_new_artist_metadata_without_losing_provider_ids() {
         let mut form = valid_form();
-        form.album_artist_text = " Artist One ,Artist Two,  , Artist Three ".to_string();
+        form.album_artist_assignments = vec![ArtistAssignment::New {
+            seed: NewArtistSeed {
+                name: " Artist One ".to_string(),
+                sort_name: Some("  One, Artist ".to_string()),
+                musicbrainz_artist_id: Some(" mb-1 ".to_string()),
+                discogs_artist_id: None,
+            },
+        }];
         let shaped = form.shape().expect("shapes");
         assert_eq!(
-            shaped.album_artist_names,
-            vec![
-                "Artist One".to_string(),
-                "Artist Two".to_string(),
-                "Artist Three".to_string(),
-            ]
+            shaped.album_artist_assignments,
+            vec![ArtistAssignment::New {
+                seed: NewArtistSeed {
+                    name: "Artist One".to_string(),
+                    sort_name: Some("One, Artist".to_string()),
+                    musicbrainz_artist_id: Some("mb-1".to_string()),
+                    discogs_artist_id: None,
+                }
+            }]
         );
     }
 
     #[test]
-    fn empty_track_artist_text_yields_no_track_artists() {
+    fn album_artist_mode_survives_shaping() {
         let mut form = valid_form();
-        form.tracks[0].artist_text = "   ".to_string();
+        form.tracks[0].artist_assignments = TrackArtistAssignments::AlbumArtists;
         let shaped = form.shape().expect("shapes");
-        assert!(shaped.tracks[0].artist_names.is_empty());
+        assert_eq!(
+            shaped.tracks[0].artist_assignments,
+            TrackArtistAssignments::AlbumArtists
+        );
     }
 
     #[test]
@@ -134,10 +145,17 @@ mod edit_shaping_tests {
     }
 
     #[test]
-    fn all_empty_artist_text_is_a_validation_error() {
+    fn no_album_artist_is_a_validation_error() {
         let mut form = valid_form();
-        form.album_artist_text = " , ,  ".to_string();
+        form.album_artist_assignments.clear();
         assert_eq!(form.shape(), Err(EditValidationError::NoAlbumArtist));
+    }
+
+    #[test]
+    fn blank_new_artist_is_a_validation_error() {
+        let mut form = valid_form();
+        form.album_artist_assignments = vec![ArtistAssignment::new("   ")];
+        assert_eq!(form.shape(), Err(EditValidationError::EmptyArtistName));
     }
 
     #[test]
@@ -153,7 +171,10 @@ mod edit_shaping_tests {
     fn from_user_edit_round_trips_through_shape() {
         let original = ReleaseUserEdit {
             album_title: "Album Title".to_string(),
-            album_artist_names: vec!["Artist One".to_string(), "Artist Two".to_string()],
+            album_artist_assignments: vec![
+                ArtistAssignment::existing("artist-1"),
+                ArtistAssignment::new("Artist Two"),
+            ],
             pressing: PressingEdit {
                 year: Some(1999),
                 format: Some("2×LP".to_string()),
@@ -167,7 +188,9 @@ mod edit_shaping_tests {
                     title: "Track One".to_string(),
                     side: 1,
                     track_number: Some(1),
-                    artist_names: vec!["Track Artist".to_string()],
+                    artist_assignments: TrackArtistAssignments::Explicit(vec![
+                        ArtistAssignment::new("Track Artist"),
+                    ]),
                     file: Some(AudioFile::Standalone {
                         file_id: "01.flac".to_string(),
                     }),
@@ -176,18 +199,27 @@ mod edit_shaping_tests {
                     title: "Track Two".to_string(),
                     side: 2,
                     track_number: Some(1),
-                    artist_names: vec![],
+                    artist_assignments: TrackArtistAssignments::AlbumArtists,
                     file: None,
                 },
             ],
         };
 
         let raw = RawReleaseEdit::from_user_edit(original.clone(), "reset-track");
-        assert_eq!(raw.album_artist_text, "Artist One, Artist Two");
+        assert_eq!(
+            raw.album_artist_assignments,
+            original.album_artist_assignments
+        );
         assert_eq!(raw.tracks[0].id, "reset-track-0");
         assert_eq!(raw.tracks[1].id, "reset-track-1");
-        assert_eq!(raw.tracks[0].artist_text, "Track Artist");
-        assert_eq!(raw.tracks[1].artist_text, "");
+        assert_eq!(
+            raw.tracks[0].artist_assignments,
+            original.tracks[0].artist_assignments
+        );
+        assert_eq!(
+            raw.tracks[1].artist_assignments,
+            TrackArtistAssignments::AlbumArtists
+        );
         assert_eq!(raw.pressing.year, "1999");
         assert_eq!(raw.pressing.label, "");
 

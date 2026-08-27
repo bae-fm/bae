@@ -106,13 +106,13 @@ pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
 /// metadata edit ready to apply.
 ///
 /// `tracks` MUST line up with the release's existing tracks in order; edits
-/// cannot add or remove tracks. `album_artist_names` is positional —
+/// cannot add or remove tracks. `album_artist_assignments` is positional —
 /// element 0 becomes the primary album artist (`album.artist_id`),
 /// subsequent elements get higher `album_artists.position` rows.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseUserEdit {
     pub album_title: String,
-    pub album_artist_names: Vec<String>,
+    pub album_artist_assignments: Vec<BridgeArtistAssignment>,
     pub pressing: BridgePressingEdit,
     pub tracks: Vec<BridgeTrackUserEdit>,
 }
@@ -129,21 +129,41 @@ pub struct BridgePressingEdit {
     pub barcode: Option<String>,
 }
 
-/// One per existing track, in track order. `artist_names` empty means the
-/// track shares the album artist (no per-track artist rows). Non-empty is
-/// positional — element N becomes `track_artists.position = N`.
+/// One per existing track, in track order.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeTrackUserEdit {
     pub title: String,
     pub side: i32,
     pub track_number: Option<i32>,
-    pub artist_names: Vec<String>,
+    pub artist_assignments: BridgeTrackArtistAssignments,
     /// Which of the folder's audio holds this track's samples. An import's rows
     /// are its track slots, so this is the pairing the user left and the one the
     /// commit writes; a row with no audio is a slot nobody answered and does not
     /// become a track. The library's metadata editor never re-binds files, so
     /// its rows carry `None`.
     pub file: Option<BridgeAudioFile>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeArtistAssignment {
+    Existing { artist_id: String },
+    New { seed: BridgeNewArtistSeed },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeNewArtistSeed {
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeTrackArtistAssignments {
+    AlbumArtists,
+    Explicit {
+        assignments: Vec<BridgeArtistAssignment>,
+    },
 }
 
 /// The audio a track's samples come from. Mirrors
@@ -452,7 +472,6 @@ pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdi
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCandidateEditField {
     AlbumTitle,
-    AlbumArtistText,
     Year,
     Format,
     Label,
@@ -467,7 +486,6 @@ impl BridgeCandidateEditField {
         use bae_core::import::CandidateEditField as Field;
         match self {
             Self::AlbumTitle => Field::AlbumTitle,
-            Self::AlbumArtistText => Field::AlbumArtistText,
             Self::Year => Field::Year,
             Self::Format => Field::Format,
             Self::Label => Field::Label,
@@ -485,8 +503,7 @@ impl BridgeCandidateEditField {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawReleaseEdit {
     pub album_title: String,
-    /// Comma-separated artist text in positional order, as typed.
-    pub album_artist_text: String,
+    pub album_artist_assignments: Vec<BridgeArtistAssignment>,
     pub pressing: BridgeRawPressingEdit,
     pub tracks: Vec<BridgeRawTrackEdit>,
 }
@@ -506,12 +523,12 @@ pub struct BridgeRawPressingEdit {
 
 /// One raw track row from the editor. Mirrors
 /// `bae_core::import::RawTrackEdit`: `id` is the stable `ForEach` row
-/// identity; `artist_text` empty means "share the album artist".
+/// identity and its explicit artist assignment mode.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRawTrackEdit {
     pub id: String,
     pub title: String,
-    pub artist_text: String,
+    pub artist_assignments: BridgeTrackArtistAssignments,
     pub side: i32,
     pub track_number: Option<i32>,
     /// The audio bound to this row. An editor must carry it through untouched:
@@ -527,6 +544,7 @@ pub struct BridgeRawTrackEdit {
 pub enum BridgeValidationReason {
     EmptyAlbumTitle,
     NoAlbumArtist,
+    EmptyArtistName,
     InvalidYear,
 }
 
@@ -540,6 +558,7 @@ impl BridgeValidationReason {
         match self {
             Self::EmptyAlbumTitle => "core.import.validation.empty_album_title",
             Self::NoAlbumArtist => "core.import.validation.no_album_artist",
+            Self::EmptyArtistName => "core.import.validation.empty_artist_name",
             Self::InvalidYear => "core.import.validation.invalid_year",
         }
     }

@@ -1,6 +1,6 @@
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{IdentityChoice, ImportCommand, MetadataRef, MetadataSource, StorageMode};
+use bae_core::import::{ImportCommand, MetadataSeed, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_core::sync::CloudCipher;
@@ -144,8 +144,9 @@ async fn test_cue_ape_records_correct_durations() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })
@@ -333,8 +334,9 @@ async fn test_cue_ape_records_track_timing() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: release_id_key,
             },
             user_edit: None,
         })
@@ -466,8 +468,9 @@ impl CueApeTestFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                identity_choice: IdentityChoice::Release {
-                    release_ref: MetadataRef::new(release_id_key, MetadataSource::Discogs),
+                metadata_seed: MetadataSeed::ExternalRelease {
+                    source: MetadataSource::Discogs,
+                release_id: release_id_key,
                 },
                 user_edit: None,
             })

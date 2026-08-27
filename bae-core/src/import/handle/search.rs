@@ -294,12 +294,12 @@ impl ImportServiceHandle {
     ///
     /// Nothing comes back. The per-candidate query sees the write and
     /// redraws the pane from it, which is the same thing a relaunch does.
-    pub async fn pick_candidate_identity(
+    pub async fn select_candidate_metadata_seed(
         &self,
         candidate_key: String,
-        pick: crate::import::IdentityPick,
+        pick: crate::import::MetadataSeed,
     ) -> Result<(), crate::import::ImportError> {
-        if let crate::import::IdentityPick::Release {
+        if let crate::import::MetadataSeed::ExternalRelease {
             source, release_id, ..
         } = &pick
         {
@@ -309,9 +309,9 @@ impl ImportServiceHandle {
             )
             .await?;
         }
-        self.set_candidate_identity_pick(candidate_key.clone(), pick)
+        self.set_candidate_metadata_seed(candidate_key.clone(), pick)
             .await?;
-        self.announce_identity_pick(candidate_key);
+        self.announce_metadata_seed(candidate_key);
         Ok(())
     }
 

@@ -9,7 +9,7 @@ use bae_core::db::{
     Database, DbAlbum, DbArtist, DbFile, DbRelease, DbSourceReleasePayload, DbTrack, Pressing,
     ReleaseMetadataSource,
 };
-use bae_core::import::{MetadataSource, PayloadSource, ReleaseIdentity};
+use bae_core::import::{ArtistAssignment, MetadataSource, PayloadSource, ReleaseIdentity};
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use chrono::Utc;
@@ -230,7 +230,10 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 
     assert_eq!(edit.album_title, "Cached Album");
-    assert_eq!(edit.album_artist_names, vec!["Cached Artist".to_string()]);
+    assert_eq!(
+        edit.album_artist_assignments,
+        vec![ArtistAssignment::new("Cached Artist")]
+    );
     assert_eq!(edit.pressing.year, Some(1999));
     assert_eq!(edit.pressing.format.as_deref(), Some("CD"));
     assert_eq!(edit.pressing.label.as_deref(), Some("Test Label"));
@@ -359,8 +362,8 @@ async fn reset_discogs_returns_full_pressing_data_from_cache() {
 
     assert_eq!(edit.album_title, "Cached Discogs Album");
     assert_eq!(
-        edit.album_artist_names,
-        vec!["Cached Discogs Artist".to_string()]
+        edit.album_artist_assignments,
+        vec![ArtistAssignment::new("Cached Discogs Artist")]
     );
     assert_eq!(edit.pressing.year, Some(1985));
     assert_eq!(edit.pressing.format.as_deref(), Some("CD"));
@@ -459,7 +462,10 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 
     assert_eq!(edit.album_title, "Tag Album");
-    assert_eq!(edit.album_artist_names, vec!["Tag Artist".to_string()]);
+    assert_eq!(
+        edit.album_artist_assignments,
+        vec![ArtistAssignment::new("Tag Artist")]
+    );
     assert_eq!(edit.pressing.year, Some(2010));
     assert_eq!(edit.pressing.format.as_deref(), Some("FLAC"));
     assert_eq!(edit.tracks.len(), 2);

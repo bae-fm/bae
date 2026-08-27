@@ -56,7 +56,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_identities: Vec<crate::import::ReleaseIdentity>,
-        metadata_pointer: crate::import::MetadataPointer,
+        metadata_pointer: crate::import::MetadataSeed,
     ) -> Result<(), LibraryError> {
         let current_album_id = self
             .database
@@ -219,22 +219,23 @@ fn identities_fit_album(
     true
 }
 
-/// Project a `MetadataPointer` onto the two `releases` columns it sets:
+/// Project a `MetadataSeed` onto the two `releases` columns it sets:
 /// `metadata_source`, always present, and `metadata_source_release_id`, NULL when
 /// the source is `file_tags`.
 fn metadata_pointer_to_columns(
-    pointer: crate::import::MetadataPointer,
+    pointer: crate::import::MetadataSeed,
 ) -> (crate::db::ReleaseMetadataSource, Option<String>) {
     use crate::db::ReleaseMetadataSource;
-    use crate::import::{MetadataPointer, MetadataSource};
+    use crate::import::{MetadataSeed, MetadataSource};
     match pointer {
-        MetadataPointer::External { source, release_id } => {
+        MetadataSeed::ExternalRelease { source, release_id } => {
             let column_source = match source {
                 MetadataSource::MusicBrainz => ReleaseMetadataSource::MusicBrainz,
                 MetadataSource::Discogs => ReleaseMetadataSource::Discogs,
             };
             (column_source, Some(release_id))
         }
-        MetadataPointer::FileTags => (ReleaseMetadataSource::FileTags, None),
+        MetadataSeed::FileTags => (ReleaseMetadataSource::FileTags, None),
+        MetadataSeed::Manual => (ReleaseMetadataSource::Manual, None),
     }
 }

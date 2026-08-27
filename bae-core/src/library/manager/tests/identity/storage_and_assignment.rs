@@ -80,7 +80,7 @@ async fn set_identity_to_unknown_moves_release_to_fresh_album() {
         .set_identity(
             &release.id,
             vec![],
-            crate::import::MetadataPointer::FileTags,
+            crate::import::MetadataSeed::FileTags,
         )
         .await
         .unwrap();
@@ -157,7 +157,7 @@ async fn set_identity_replaces_rows_when_new_identity_fits_current_album() {
         .set_identity(
             &release1.id,
             vec![mb_identity("g1", "mb-rel-99")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-99".to_string(),
             },
@@ -258,7 +258,7 @@ async fn set_identity_creates_new_album_when_no_existing_album_fits() {
         .set_identity(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
@@ -325,7 +325,7 @@ async fn set_identity_moves_release_to_matching_album() {
         .set_identity(
             &release_alpha.id,
             vec![mb_identity("g2", "mb-rel-pressing")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-pressing".to_string(),
             },
@@ -392,7 +392,7 @@ async fn set_identity_keeps_vacated_album_when_other_releases_remain() {
         .set_identity(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
@@ -456,7 +456,7 @@ async fn set_identity_does_not_touch_metadata_columns() {
         .set_identity(
             &release.id,
             vec![discogs_identity("dg1", "dg-rel-1")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::Discogs,
                 release_id: "dg-rel-1".to_string(),
             },
@@ -583,7 +583,7 @@ async fn set_identity_to_fresh_album_preserves_album_artists() {
         .set_identity(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },
@@ -674,7 +674,7 @@ async fn set_identity_clears_primary_when_it_pointed_at_moved_release() {
         .set_identity(
             &release_alpha.id,
             vec![mb_identity("g2", "g2-rel")],
-            crate::import::MetadataPointer::External {
+            crate::import::MetadataSeed::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-rel-g2".to_string(),
             },

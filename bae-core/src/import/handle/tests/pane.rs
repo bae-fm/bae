@@ -90,10 +90,10 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
     let (manager, tmp) = setup_test_manager().await;
     let (candidate, key, hash) = picked_candidate(&manager, &tmp).await;
     manager
-        .save_candidate_identity_pick(
+        .save_candidate_metadata_seed(
             &hash,
             &candidate.path.to_string_lossy(),
-            &crate::import::IdentityPick::Unknown,
+            &crate::import::MetadataSeed::FileTags,
         )
         .await
         .unwrap();
@@ -153,7 +153,10 @@ fn probed_lengths(table: &crate::import::MappingTable) -> Vec<Option<u64>> {
 async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let seeded = pane(&handle, &key).await;
-    let seeded_artist = seeded.edit.expect("a pick draws the form").album_artist_text;
+    let seeded_artists = seeded
+        .edit
+        .expect("a pick draws the form")
+        .album_artist_assignments;
 
     handle
         .set_candidate_edit_field(
@@ -167,7 +170,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let edited = pane(&handle, &key).await.edit.unwrap();
     assert_eq!(edited.album_title, "Typed Title");
     assert_eq!(
-        edited.album_artist_text, seeded_artist,
+        edited.album_artist_assignments, seeded_artists,
         "nothing else moved with it"
     );
 
@@ -232,7 +235,9 @@ async fn an_edited_track_row_redraws_alone() {
             &key,
             crate::import::RawTrackEdit {
                 title: "Renamed".to_string(),
-                artist_text: "Someone".to_string(),
+                artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
+                    crate::import::ArtistAssignment::new("Someone"),
+                ]),
                 ..first.clone()
             },
         )
@@ -242,7 +247,12 @@ async fn an_edited_track_row_redraws_alone() {
     let after = track_rows(&pane(&handle, &key).await.mapping);
     assert_eq!(after.len(), before.len());
     assert_eq!(after[0].title, "Renamed");
-    assert_eq!(after[0].artist_text, "Someone");
+    assert_eq!(
+        after[0].artist_assignments,
+        crate::import::TrackArtistAssignments::Explicit(vec![
+            crate::import::ArtistAssignment::new("Someone")
+        ])
+    );
     assert_eq!(
         after[0].file, first.file,
         "the audio the row was bound to rides through the edit"

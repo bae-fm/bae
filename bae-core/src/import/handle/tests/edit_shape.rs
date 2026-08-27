@@ -182,10 +182,17 @@ fn seed_carries_every_album_artist() {
 
     let edit = seed_for(&response);
 
-    assert_eq!(
-        edit.album_artist_names,
-        vec!["Artist A".to_string(), "Artist B".to_string()]
-    );
+    let names: Vec<&str> = edit
+        .album_artist_assignments
+        .iter()
+        .map(|assignment| match assignment {
+            crate::import::ArtistAssignment::New { seed } => seed.name.as_str(),
+            crate::import::ArtistAssignment::Existing { .. } => {
+                panic!("a parsed source artist is not a library selection")
+            }
+        })
+        .collect();
+    assert_eq!(names, vec!["Artist A", "Artist B"]);
 }
 
 /// A track crediting a guest seeds that name; a track with no credit of its own
@@ -197,10 +204,23 @@ fn seed_per_track_artist_override() {
 
     let edit = seed_for(&response);
 
-    assert_eq!(edit.tracks[0].artist_names, Vec::<String>::new());
-    assert_eq!(edit.tracks[1].artist_names, Vec::<String>::new());
     assert_eq!(
-        edit.tracks[2].artist_names,
-        vec!["Guest Artist".to_string()]
+        edit.tracks[0].artist_assignments,
+        crate::import::TrackArtistAssignments::AlbumArtists
     );
+    assert_eq!(
+        edit.tracks[1].artist_assignments,
+        crate::import::TrackArtistAssignments::AlbumArtists
+    );
+    let crate::import::TrackArtistAssignments::Explicit(assignments) =
+        &edit.tracks[2].artist_assignments
+    else {
+        panic!("the guest credit is explicit")
+    };
+    assert!(matches!(
+        assignments.as_slice(),
+        [crate::import::ArtistAssignment::New { seed }]
+            if seed.name == "Guest Artist"
+                && seed.musicbrainz_artist_id.as_deref() == Some("mb-guest")
+    ));
 }

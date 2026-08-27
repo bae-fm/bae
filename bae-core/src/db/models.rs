@@ -367,13 +367,13 @@ pub enum LoadedPlaybackState {
 ///
 /// Mirrors the `metadata_source` text column. Distinct from
 /// `crate::import::MetadataSource` because that one only spans the two
-/// editorial sources — this one also covers file-tags-only imports
-/// (Unknown identity).
+/// editorial sources — this one also covers file-tag and manual imports.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReleaseMetadataSource {
     MusicBrainz,
     Discogs,
     FileTags,
+    Manual,
 }
 
 impl ReleaseMetadataSource {
@@ -382,6 +382,7 @@ impl ReleaseMetadataSource {
             Self::MusicBrainz => "musicbrainz",
             Self::Discogs => "discogs",
             Self::FileTags => "file_tags",
+            Self::Manual => "manual",
         }
     }
 }
@@ -394,6 +395,7 @@ impl std::str::FromStr for ReleaseMetadataSource {
             "musicbrainz" => Ok(Self::MusicBrainz),
             "discogs" => Ok(Self::Discogs),
             "file_tags" => Ok(Self::FileTags),
+            "manual" => Ok(Self::Manual),
             other => Err(format!("unknown release metadata source: {other}")),
         }
     }

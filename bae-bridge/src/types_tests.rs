@@ -212,7 +212,10 @@ mod conversion_roundtrip {
     fn release_user_edit_round_trips() {
         let core = bae_core::import::ReleaseUserEdit {
             album_title: "Album Title".to_string(),
-            album_artist_names: vec!["Artist Name".to_string(), "Second Artist".to_string()],
+            album_artist_assignments: vec![
+                bae_core::import::ArtistAssignment::new("Artist Name"),
+                bae_core::import::ArtistAssignment::new("Artist Beta"),
+            ],
             pressing: bae_core::import::PressingEdit {
                 year: Some(1990),
                 format: Some("CD".to_string()),
@@ -225,7 +228,9 @@ mod conversion_roundtrip {
                 title: "Track Title".to_string(),
                 side: 1,
                 track_number: Some(1),
-                artist_names: vec!["Track Artist".to_string()],
+                artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
+                    bae_core::import::ArtistAssignment::new("Track Artist"),
+                ]),
                 file: Some(bae_core::import::AudioFile::SheetSlice {
                     file_id: "CDImage.flac".to_string(),
                     sheet_id: "CDImage.cue".to_string(),
@@ -244,7 +249,10 @@ mod conversion_roundtrip {
     fn raw_release_edit_round_trips() {
         let core = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
-            album_artist_text: "Artist Name, Second Artist".to_string(),
+            album_artist_assignments: vec![
+                bae_core::import::ArtistAssignment::new("Artist Name"),
+                bae_core::import::ArtistAssignment::new("Artist Beta"),
+            ],
             pressing: bae_core::import::RawPressingEdit {
                 year: "1990".to_string(),
                 format: "CD".to_string(),
@@ -256,7 +264,9 @@ mod conversion_roundtrip {
             tracks: vec![bae_core::import::RawTrackEdit {
                 id: "row-1".to_string(),
                 title: "Track Title".to_string(),
-                artist_text: "Track Artist".to_string(),
+                artist_assignments: bae_core::import::TrackArtistAssignments::Explicit(vec![
+                    bae_core::import::ArtistAssignment::new("Track Artist"),
+                ]),
                 side: 1,
                 track_number: Some(1),
                 // The audio binding is not a form field, so it has to survive

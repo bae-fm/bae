@@ -24,7 +24,7 @@ use super::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriagePlacement,
     TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
-use super::types::{AudioFile, IdentityChoice, IdentityPick, RawReleaseEdit};
+use super::types::{AudioFile, MetadataSeed, RawReleaseEdit};
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};
@@ -223,9 +223,7 @@ pub struct ImportListWindow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReadyRowRef {
     pub candidate_key: String,
-    /// The stored decision in the shape commit takes — a bulk import has no
-    /// pane to read a claim line off.
-    pub claim: IdentityChoice,
+    pub metadata_seed: MetadataSeed,
     pub cover_thumbnail_url: Option<String>,
 }
 
@@ -299,7 +297,7 @@ pub struct ImportCandidateDetailProjection {
     /// The identity the row leads with: the pick's archived documents where
     /// there is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
-    pub picked: Option<IdentityPick>,
+    pub metadata_seed: Option<MetadataSeed>,
     /// The library release this candidate's bytes were imported as.
     pub imported_release: Option<ImportedRelease>,
     /// The picked release as its archived documents describe it. `None` with
@@ -338,7 +336,7 @@ impl ImportCandidateDetailProjection {
             resumed_identify_state,
             answer,
             matched,
-            picked,
+            metadata_seed,
             imported_release,
             release,
             picked_library_status,
@@ -367,7 +365,7 @@ impl ImportCandidateDetailProjection {
             skipped,
             is_added,
             import_status.as_ref(),
-            picked.as_ref().filter(|_| actionable),
+            metadata_seed.as_ref().filter(|_| actionable),
             &known,
         );
         let row = TriageRow {
@@ -383,11 +381,7 @@ impl ImportCandidateDetailProjection {
             matched: matched.filter(|_| actionable),
             placement,
             import_status,
-            claim: picked
-                .as_ref()
-                .filter(|_| actionable)
-                .map(IdentityPick::choice),
-            picked: picked.filter(|_| actionable),
+            metadata_seed: metadata_seed.filter(|_| actionable),
         };
         ImportCandidateDetail {
             candidate,

@@ -235,8 +235,9 @@ fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
         flat.summary.ready,
         vec![ReadyRowRef {
             candidate_key: key("Release"),
-            claim: IdentityChoice::Release {
-                release_ref: crate::import::MetadataRef::new("mb-1", MetadataSource::MusicBrainz),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-1".to_string(),
             },
             cover_thumbnail_url: Some("https://example.test/thumb.jpg".to_string()),
         }]
@@ -789,12 +790,10 @@ fn a_pick_answers_whatever_the_verdict_asked() {
         assert_eq!(row.placement, TriagePlacement::Ready, "{name}: answered");
         assert!(row.selectable, "{name}: a Ready row takes a checkbox");
         assert_eq!(
-            row.claim,
-            Some(IdentityChoice::Release {
-                release_ref: crate::import::MetadataRef::new(
-                    "mb-picked",
-                    MetadataSource::MusicBrainz
-                ),
+            row.metadata_seed,
+            Some(MetadataSeed::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-picked".to_string(),
             }),
             "{name}: the row carries what a bulk import would commit"
         );
@@ -810,7 +809,7 @@ fn an_unknown_pick_answers_the_row() {
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
-            pick: Some(IdentityPick::Unknown),
+            pick: Some(MetadataSeed::FileTags),
             ..several_matches_state()
         },
     );
@@ -818,7 +817,7 @@ fn an_unknown_pick_answers_the_row() {
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Ready);
-    assert_eq!(row.claim, Some(IdentityChoice::Unknown));
+    assert_eq!(row.metadata_seed, Some(MetadataSeed::FileTags));
 }
 
 /// A pick belongs to the file shape it was made against. Editing the folder
@@ -848,7 +847,7 @@ fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
             ..
         }
     ));
-    assert_eq!(row.claim, None);
+    assert_eq!(row.metadata_seed, None);
 }
 
 /// A pick does not outrank the three facts above it: a skipped candidate stays

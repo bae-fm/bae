@@ -185,11 +185,24 @@ impl LibraryManager {
         &self,
         artists: &[DbArtist],
     ) -> Result<ResolvedImportArtists, LibraryError> {
+        self.resolve_artists_for_import_with_existing(artists, &std::collections::HashSet::new())
+            .await
+    }
+
+    pub(crate) async fn resolve_artists_for_import_with_existing(
+        &self,
+        artists: &[DbArtist],
+        explicit_existing_ids: &std::collections::HashSet<String>,
+    ) -> Result<ResolvedImportArtists, LibraryError> {
         let mut ids = Vec::with_capacity(artists.len());
         let mut inserts = Vec::new();
         let mut external_id_updates = Vec::new();
 
         for artist in artists {
+            if explicit_existing_ids.contains(&artist.id) {
+                ids.push(artist.id.clone());
+                continue;
+            }
             let existing = self.find_existing_artist_for_import(artist).await?;
             let actual_id = if let Some(existing_artist) = existing {
                 let id = existing_artist.id;
@@ -208,6 +221,45 @@ impl LibraryManager {
             inserts,
             external_id_updates,
         })
+    }
+
+    pub(crate) async fn resolve_artist_assignments(
+        &self,
+        assignments: &[crate::import::ArtistAssignment],
+    ) -> Result<ResolvedImportArtists, LibraryError> {
+        let now = self.clock.now();
+        let mut resolved = ResolvedImportArtists {
+            ids: Vec::with_capacity(assignments.len()),
+            inserts: Vec::new(),
+            external_id_updates: Vec::new(),
+        };
+        for assignment in assignments {
+            match assignment {
+                crate::import::ArtistAssignment::Existing { artist_id } => {
+                    if self.database.find_artist_by_id(artist_id).await?.is_none() {
+                        return Err(LibraryError::Import(format!(
+                            "artist '{artist_id}' no longer exists"
+                        )));
+                    }
+                    resolved.ids.push(artist_id.clone());
+                }
+                crate::import::ArtistAssignment::New { seed } => {
+                    let artist = DbArtist {
+                        id: self.ids.new_id(),
+                        name: seed.name.clone(),
+                        sort_name: seed.sort_name.clone(),
+                        discogs_artist_id: seed.discogs_artist_id.clone(),
+                        musicbrainz_artist_id: seed.musicbrainz_artist_id.clone(),
+                        created_at: now,
+                    };
+                    let one = self.resolve_artists_for_import(&[artist]).await?;
+                    resolved.ids.extend(one.ids);
+                    resolved.inserts.extend(one.inserts);
+                    resolved.external_id_updates.extend(one.external_id_updates);
+                }
+            }
+        }
+        Ok(resolved)
     }
 
     /// Resolve each parsed artist to an existing DB row, inserting immediately when
@@ -250,44 +302,39 @@ impl LibraryManager {
             }
         }
 
-        if let Some(discogs_id) = artist.discogs_artist_id.as_deref() {
-            if let Some(existing) = self.database.get_artist_by_discogs_id(discogs_id).await? {
-                return Ok(Some(existing));
-            }
-        }
-
-        if let Some(mb_id) = artist.musicbrainz_artist_id.as_deref() {
-            if let Some(existing) = self.database.get_artist_by_mb_id(mb_id).await? {
-                return Ok(Some(existing));
-            }
-        }
-
-        self.find_name_match_for_import(artist).await
-    }
-
-    async fn find_name_match_for_import(
-        &self,
-        artist: &DbArtist,
-    ) -> Result<Option<DbArtist>, LibraryError> {
-        let Some(matched) = self.database.get_artist_by_name(&artist.name).await? else {
-            return Ok(None);
+        let by_discogs = match artist.discogs_artist_id.as_deref() {
+            Some(id) => self.database.get_artist_by_discogs_id(id).await?,
+            None => None,
         };
-
-        if source_id_conflicts(
-            matched.discogs_artist_id.as_deref(),
-            artist.discogs_artist_id.as_deref(),
-        ) || source_id_conflicts(
-            matched.musicbrainz_artist_id.as_deref(),
-            artist.musicbrainz_artist_id.as_deref(),
-        ) {
-            debug!(
-                "Name match for '{}' has conflicting source IDs, inserting new artist",
-                artist.name
-            );
-            Ok(None)
-        } else {
-            Ok(Some(matched))
+        let by_musicbrainz = match artist.musicbrainz_artist_id.as_deref() {
+            Some(id) => self.database.get_artist_by_mb_id(id).await?,
+            None => None,
+        };
+        let matched = match (by_discogs, by_musicbrainz) {
+            (Some(discogs), Some(musicbrainz)) if discogs.id != musicbrainz.id => {
+                return Err(LibraryError::Import(format!(
+                    "artist '{}' has source IDs belonging to different library artists",
+                    artist.name
+                )))
+            }
+            (Some(artist), _) | (_, Some(artist)) => Some(artist),
+            (None, None) => None,
+        };
+        if let Some(existing) = matched.as_ref() {
+            if source_id_conflicts(
+                existing.discogs_artist_id.as_deref(),
+                artist.discogs_artist_id.as_deref(),
+            ) || source_id_conflicts(
+                existing.musicbrainz_artist_id.as_deref(),
+                artist.musicbrainz_artist_id.as_deref(),
+            ) {
+                return Err(LibraryError::Import(format!(
+                    "artist '{}' has conflicting source IDs",
+                    artist.name
+                )));
+            }
         }
+        Ok(matched)
     }
 }
 

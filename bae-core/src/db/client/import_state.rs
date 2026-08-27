@@ -11,23 +11,23 @@ use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, Store
 use duration_rows::{delete_durations, delete_slice_durations, insert_durations};
 use edit_rows::{delete_file_edits, insert_file_edits};
 pub(super) use pane_rows::load_pane_rows_on;
-pub(super) use rows::{load_states_on, pick_of};
+pub(super) use rows::{load_states_on, metadata_seed_of};
 use signal_rows::{delete_signals, insert_signals};
 
-use rows::{load_candidate_file_edits_on, pick_columns};
+use rows::{load_candidate_file_edits_on, seed_columns};
 use verdict_rows::{delete_matches, insert_matches, verdict_columns};
 
-/// Who decided a candidate's stored identity pick. The two outlive different
+/// Who decided a candidate's stored metadata seed. The two outlive different
 /// things — identification's goes with the verdict that concluded it, a
 /// person's outlives every verdict — so the row records which it holds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PickAuthor {
+pub(crate) enum MetadataSeedAuthor {
     User,
     Identification,
 }
 
-impl PickAuthor {
-    /// The stored `identity_pick_author` value.
+impl MetadataSeedAuthor {
+    /// The stored `metadata_seed_author` value.
     pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::User => "user",
@@ -469,12 +469,12 @@ impl Database {
         };
         self.call(move |sql| {
             let columns = verdict_columns(&verdict.verdict);
-            let pick = verdict.identity_pick.as_ref().map(pick_columns);
+            let pick = verdict.metadata_seed.as_ref().map(seed_columns);
             // A verdict never replaces a person's pick, so only an
             // identification pick can be superseded here — and only then does
             // the metadata typed over the release it named go with it.
             let superseded = stored_pick(sql, &verdict.content_hash)?
-                .filter(|stored| stored.author == PickAuthor::Identification);
+                .filter(|stored| stored.author == MetadataSeedAuthor::Identification);
             // A pick identification made belongs to the verdict that made it,
             // so this write replaces it — with the new verdict's own
             // conclusion, or with nothing when it concluded none. A pick a
@@ -487,15 +487,15 @@ impl Database {
                          verdict_kind = :kind, verdict_track_count = :track_count, \
                          verdict_matched_barcode = :matched_barcode, \
                          probed_total_duration_ms = :probed, identified_at = :now, \
-                         pick_kind = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_kind ELSE :pick_kind END, \
-                         pick_source = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_source ELSE :pick_source END, \
-                         pick_release_id = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_release_id ELSE :pick_release_id END, \
-                         identity_pick_author = CASE \
-                             WHEN identity_pick_author = 'user' THEN 'user' \
-                             WHEN :pick_kind IS NULL THEN NULL \
+                         seed_kind = CASE WHEN metadata_seed_author = 'user' \
+                             THEN seed_kind ELSE :seed_kind END, \
+                         seed_source = CASE WHEN metadata_seed_author = 'user' \
+                             THEN seed_source ELSE :seed_source END, \
+                         seed_release_id = CASE WHEN metadata_seed_author = 'user' \
+                             THEN seed_release_id ELSE :seed_release_id END, \
+                         metadata_seed_author = CASE \
+                             WHEN metadata_seed_author = 'user' THEN 'user' \
+                             WHEN :seed_kind IS NULL THEN NULL \
                              ELSE 'identification' END \
                      WHERE content_hash = :content_hash AND edit_revision = :expected",
                     named_params! {
@@ -505,9 +505,9 @@ impl Database {
                         ":matched_barcode": columns.matched_barcode,
                         ":probed": probed,
                         ":now": now,
-                        ":pick_kind": pick.as_ref().map(|pick| pick.kind),
-                        ":pick_source": pick.as_ref().and_then(|pick| pick.source),
-                        ":pick_release_id": pick.as_ref().and_then(|pick| pick.release_id),
+                        ":seed_kind": pick.as_ref().map(|pick| pick.kind),
+                        ":seed_source": pick.as_ref().and_then(|pick| pick.source),
+                        ":seed_release_id": pick.as_ref().and_then(|pick| pick.release_id),
                         ":content_hash": verdict.content_hash,
                         ":expected": expected,
                     },
@@ -517,7 +517,7 @@ impl Database {
                     "INSERT INTO import_candidate_state \
                          (content_hash, folder_path, verdict_kind, verdict_track_count, \
                           verdict_matched_barcode, probed_total_duration_ms, identified_at, \
-                          pick_kind, pick_source, pick_release_id, identity_pick_author, \
+                          seed_kind, seed_source, seed_release_id, metadata_seed_author, \
                           edit_revision) \
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                     params![
@@ -531,7 +531,8 @@ impl Database {
                         pick.as_ref().map(|pick| pick.kind),
                         pick.as_ref().and_then(|pick| pick.source),
                         pick.as_ref().and_then(|pick| pick.release_id),
-                        pick.as_ref().map(|_| PickAuthor::Identification.as_str()),
+                        pick.as_ref()
+                            .map(|_| MetadataSeedAuthor::Identification.as_str()),
                     ],
                 )? == 1
             };
@@ -541,7 +542,7 @@ impl Database {
                 delete_matches(sql, &verdict.content_hash)?;
                 insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
                 if let Some(superseded) = superseded {
-                    if superseded.identity != pick_identity(verdict.identity_pick.as_ref()) {
+                    if superseded.identity != pick_identity(verdict.metadata_seed.as_ref()) {
                         clear_pick_dependent_rows(sql, &verdict.content_hash)?;
                     }
                 }
@@ -635,14 +636,14 @@ impl Database {
                          verdict_kind = NULL, verdict_track_count = NULL, \
                          verdict_matched_barcode = NULL, \
                          probed_total_duration_ms = NULL, identified_at = NULL, \
-                         pick_kind = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_kind ELSE NULL END, \
-                         pick_source = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_source ELSE NULL END, \
-                         pick_release_id = CASE WHEN identity_pick_author = 'user' \
-                             THEN pick_release_id ELSE NULL END, \
-                         identity_pick_author = CASE \
-                             WHEN identity_pick_author = 'user' THEN 'user' \
+                         seed_kind = CASE WHEN metadata_seed_author = 'user' \
+                             THEN seed_kind ELSE NULL END, \
+                         seed_source = CASE WHEN metadata_seed_author = 'user' \
+                             THEN seed_source ELSE NULL END, \
+                         seed_release_id = CASE WHEN metadata_seed_author = 'user' \
+                             THEN seed_release_id ELSE NULL END, \
+                         metadata_seed_author = CASE \
+                             WHEN metadata_seed_author = 'user' THEN 'user' \
                              ELSE NULL END, \
                          edit_revision = ? \
                      WHERE content_hash = ? AND edit_revision = ?",
@@ -715,17 +716,17 @@ impl Database {
     ///
     /// It is recorded as the person's, which is what keeps a later run's
     /// verdict from revising it.
-    pub async fn save_candidate_identity_pick(
+    pub async fn save_candidate_metadata_seed(
         &self,
         content_hash: &str,
         folder_path: &str,
-        pick: &crate::import::IdentityPick,
+        pick: &crate::import::MetadataSeed,
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
         let pick = pick.clone();
         self.call(move |sql| {
-            let columns = pick_columns(&pick);
+            let columns = seed_columns(&pick);
             // An edit to release A's year is not an edit to release B's, and
             // the table's row identities mean different tracks under a
             // different release. Re-picking the same release keeps them.
@@ -733,27 +734,27 @@ impl Database {
                 .is_some_and(|stored| stored.identity != pick_identity(Some(&pick)));
             let changed = sql.execute(
                 "INSERT INTO import_candidate_state \
-                     (content_hash, folder_path, pick_kind, pick_source, pick_release_id, \
-                      identity_pick_author) \
+                     (content_hash, folder_path, seed_kind, seed_source, seed_release_id, \
+                      metadata_seed_author) \
                  VALUES (?, ?, ?, ?, ?, ?) \
                  ON CONFLICT (content_hash) DO UPDATE SET \
                      folder_path = excluded.folder_path, \
-                     pick_kind = excluded.pick_kind, \
-                     pick_source = excluded.pick_source, \
-                     pick_release_id = excluded.pick_release_id, \
-                     identity_pick_author = excluded.identity_pick_author",
+                     seed_kind = excluded.seed_kind, \
+                     seed_source = excluded.seed_source, \
+                     seed_release_id = excluded.seed_release_id, \
+                     metadata_seed_author = excluded.metadata_seed_author",
                 params![
                     content_hash,
                     folder_path,
                     columns.kind,
                     columns.source,
                     columns.release_id,
-                    PickAuthor::User.as_str()
+                    MetadataSeedAuthor::User.as_str()
                 ],
             )?;
             if changed != 1 {
                 return Err(DbError::Message(format!(
-                    "identity pick write changed {changed} rows; expected exactly one"
+                    "metadata seed write changed {changed} rows; expected exactly one"
                 )));
             }
             if replaced {
@@ -807,13 +808,13 @@ type PickIdentity = (String, Option<String>, Option<String>);
 
 /// The pick a candidate row holds, with who made it.
 struct StoredPick {
-    author: PickAuthor,
+    author: MetadataSeedAuthor,
     identity: Option<PickIdentity>,
 }
 
-fn pick_identity(pick: Option<&crate::import::IdentityPick>) -> Option<PickIdentity> {
+fn pick_identity(pick: Option<&crate::import::MetadataSeed>) -> Option<PickIdentity> {
     pick.map(|pick| {
-        let columns = pick_columns(pick);
+        let columns = seed_columns(pick);
         (
             columns.kind.to_string(),
             columns.source.map(str::to_string),
@@ -834,7 +835,7 @@ fn stored_pick(
     }
     let row = sql
         .query_row(
-            "SELECT pick_kind, pick_source, pick_release_id, identity_pick_author \
+            "SELECT seed_kind, seed_source, seed_release_id, metadata_seed_author \
              FROM import_candidate_state WHERE content_hash = ?",
             [content_hash],
             |row| {
@@ -857,11 +858,11 @@ fn stored_pick(
         return Ok(None);
     };
     let author = match author.as_str() {
-        "user" => PickAuthor::User,
-        "identification" => PickAuthor::Identification,
+        "user" => MetadataSeedAuthor::User,
+        "identification" => MetadataSeedAuthor::Identification,
         other => {
             return Err(DbError::Message(format!(
-                "import candidate column identity_pick_author holds {other:?}"
+                "import candidate column metadata_seed_author holds {other:?}"
             )))
         }
     };

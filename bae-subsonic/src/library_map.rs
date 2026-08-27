@@ -22,7 +22,9 @@ pub(crate) fn lib_err(error: LibraryError) -> SubError {
 fn release_mb_id(release: &DbRelease) -> Option<String> {
     match release.metadata_source {
         ReleaseMetadataSource::MusicBrainz => release.metadata_source_release_id.clone(),
-        ReleaseMetadataSource::Discogs | ReleaseMetadataSource::FileTags => None,
+        ReleaseMetadataSource::Discogs
+        | ReleaseMetadataSource::FileTags
+        | ReleaseMetadataSource::Manual => None,
     }
 }
 

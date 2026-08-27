@@ -5,8 +5,8 @@
 use crate::import::probe::{ProbedDurations, ProbedUnit};
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::{
-    AudioFile, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, CoverSelection,
-    RawTrackEdit, TrackEditState,
+    ArtistAssignment, AudioFile, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit,
+    CoverSelection, NewArtistSeed, RawTrackEdit, TrackArtistAssignments, TrackEditState,
 };
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
@@ -56,7 +56,7 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
         verdict: sample_verdict(),
         signals,
         expected_edit_revision: 0,
-        identity_pick: None,
+        metadata_seed: None,
     })
     .await
     .unwrap()
@@ -66,11 +66,22 @@ fn edited_row(id: &str, title: &str, file: Option<AudioFile>) -> CandidateTrackE
     CandidateTrackEdit::edited(RawTrackEdit {
         id: id.to_string(),
         title: title.to_string(),
-        artist_text: "Artist Name".to_string(),
+        artist_assignments: TrackArtistAssignments::Explicit(vec![new_artist("Artist Name")]),
         side: 1,
         track_number: Some(1),
         file,
     })
+}
+
+fn new_artist(name: &str) -> ArtistAssignment {
+    ArtistAssignment::New {
+        seed: NewArtistSeed {
+            name: name.to_string(),
+            sort_name: None,
+            musicbrainz_artist_id: None,
+            discogs_artist_id: None,
+        },
+    }
 }
 
 /// The measurements a verdict carries come back exactly, kinds and absences
@@ -288,7 +299,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 verdict: sample_verdict(),
                 signals: scanning,
                 expected_edit_revision: 0,
-                identity_pick: None,
+                metadata_seed: None,
             })
             .await
             .expect_err("a scanning signal is not storable");
@@ -369,7 +380,7 @@ async fn a_cover_choice_round_trips_in_both_shapes() {
     ] {
         let (db, _tmp) = empty_db().await;
         let hash = pane_candidate().content_hash();
-        db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-1"))
+        db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
             .await
             .unwrap();
 
@@ -413,7 +424,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-1"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
         .await
         .unwrap();
 
@@ -436,7 +447,7 @@ async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
 
     let seed = crate::import::RawReleaseEdit {
         album_title: "Seeded Title".to_string(),
-        album_artist_text: "Artist Name".to_string(),
+        album_artist_assignments: vec![new_artist("Artist Name")],
         pressing: crate::import::RawPressingEdit {
             year: "1990".to_string(),
             format: "CD".to_string(),
@@ -450,12 +461,61 @@ async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
     let applied = overlay.apply(seed.clone());
     assert_eq!(applied.album_title, "Album Title");
     assert_eq!(applied.pressing.year, "1991");
-    assert_eq!(applied.album_artist_text, seed.album_artist_text);
+    assert_eq!(
+        applied.album_artist_assignments,
+        seed.album_artist_assignments
+    );
     assert_eq!(applied.pressing.format, seed.pressing.format);
     assert_eq!(applied.pressing.label, seed.pressing.label);
     assert_eq!(applied.pressing.catalog_number, seed.pressing.catalog_number);
     assert_eq!(applied.pressing.country, seed.pressing.country);
     assert_eq!(applied.pressing.barcode, seed.pressing.barcode);
+}
+
+#[tokio::test]
+async fn artist_assignments_round_trip_without_name_inference() {
+    let (db, _tmp) = empty_db().await;
+    let hash = pane_candidate().content_hash();
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
+        .await
+        .unwrap();
+
+    let assignments = vec![
+        ArtistAssignment::existing("library-artist"),
+        ArtistAssignment::New {
+            seed: NewArtistSeed {
+                name: "New Artist".to_string(),
+                sort_name: Some("Artist, New".to_string()),
+                musicbrainz_artist_id: Some("mb-new".to_string()),
+                discogs_artist_id: Some("discogs-new".to_string()),
+            },
+        },
+    ];
+    db.replace_import_candidate_album_artists(&hash, &assignments)
+        .await
+        .unwrap();
+
+    let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(stored.edit.album_artist_assignments, Some(assignments));
+
+    let explicit_empty = CandidateTrackEdit::edited(RawTrackEdit {
+        id: "import-track-empty".to_string(),
+        title: "Track Title".to_string(),
+        artist_assignments: TrackArtistAssignments::Explicit(Vec::new()),
+        side: 1,
+        track_number: Some(1),
+        file: None,
+    });
+    db.save_import_candidate_track_edit(&hash, &explicit_empty)
+        .await
+        .unwrap();
+    assert_eq!(
+        db.load_import_candidate_pane_rows(&hash)
+            .await
+            .unwrap()
+            .track_edits,
+        vec![explicit_empty]
+    );
 }
 
 /// A row edit is stored whole, in each of the three shapes its audio can
@@ -464,7 +524,7 @@ async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
 async fn a_track_row_round_trips_in_every_shape() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-1"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
         .await
         .unwrap();
 
@@ -518,7 +578,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         slice_unit(0, Some(200_000)),
     ]);
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-1"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
         .await
         .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
@@ -568,7 +628,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
 async fn picking_a_different_release_clears_what_belonged_to_the_old_one() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-1"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
         .await
         .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
@@ -581,7 +641,7 @@ async fn picking_a_different_release_clears_what_belonged_to_the_old_one() {
         .await
         .unwrap();
 
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-1"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
         .await
         .unwrap();
     let kept = db.load_import_candidate_pane_rows(&hash).await.unwrap();
@@ -589,7 +649,7 @@ async fn picking_a_different_release_clears_what_belonged_to_the_old_one() {
     assert!(kept.cover.is_some());
     assert_eq!(kept.track_edits.len(), 1);
 
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-2"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-2"))
         .await
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
@@ -604,7 +664,7 @@ async fn picking_a_different_release_clears_what_belonged_to_the_old_one() {
 async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
-    db.save_candidate_identity_pick(&hash, "/music/Album", &release_pick("rel-chosen"))
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-chosen"))
         .await
         .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
@@ -618,14 +678,14 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             verdict: sample_verdict(),
             signals: signals_with(ProbedDurations::default()),
             expected_edit_revision: 0,
-            identity_pick: Some(release_pick("rel-1")),
+            metadata_seed: Some(release_pick("rel-1")),
         })
         .await
         .unwrap()
     );
 
     let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
-    assert_eq!(state.identity_pick, Some(release_pick("rel-chosen")));
+    assert_eq!(state.metadata_seed, Some(release_pick("rel-chosen")));
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
             .await

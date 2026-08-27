@@ -576,7 +576,7 @@ fn settle_track_rows(
                 title: track.title.clone(),
                 side: track.side,
                 track_number: track.track_number,
-                artist_names: Vec::new(),
+                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             })
             .collect();
@@ -589,7 +589,7 @@ fn settle_track_rows(
                     row.title = edited.title.clone();
                     row.side = edited.side;
                     row.track_number = edited.track_number;
-                    row.artist_names = edited.artist_names.clone();
+                    row.artist_assignments = edited.artist_assignments.clone();
                 }
                 row
             })
@@ -676,12 +676,13 @@ fn apply_user_edit_to_seed(
     artists: &mut Vec<crate::db::DbArtist>,
     album_artists: &mut Vec<crate::db::DbAlbumArtist>,
     track_artists: &mut Vec<crate::db::DbTrackArtist>,
+    existing_artists: &HashMap<String, crate::db::DbArtist>,
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
-) -> Result<(), crate::import::ImportError> {
-    use crate::db::{DbAlbumArtist, DbArtist, DbTrackArtist};
+) -> Result<HashSet<String>, crate::import::ImportError> {
+    use crate::db::{DbAlbumArtist, DbTrackArtist};
 
-    if edit.album_artist_names.is_empty() {
+    if edit.album_artist_assignments.is_empty() {
         return Err(crate::import::EditValidationError::NoAlbumArtist.into());
     }
     if edit.tracks.len() != db_tracks.len() {
@@ -695,42 +696,17 @@ fn apply_user_edit_to_seed(
     }
 
     let now = clock.now();
-
-    // Resolve a name to an artist id, inserting a fresh (source-id-free) row on
-    // a miss. Case-insensitive — the import-artist resolver matches the same way.
-    let ensure_artist = |artists: &mut Vec<DbArtist>, name: &str| -> String {
-        if let Some(existing) = artists.iter().find(|a| a.name.eq_ignore_ascii_case(name)) {
-            return existing.id.clone();
-        }
-        let new_artist = DbArtist {
-            id: ids.new_id(),
-            name: name.to_string(),
-            sort_name: Some(name.to_string()),
-            discogs_artist_id: None,
-            musicbrainz_artist_id: None,
-            created_at: now,
-        };
-        let id = new_artist.id.clone();
-        artists.push(new_artist);
-        id
-    };
-
-    // The seed's album-artist names (primary at [0], junction rows by ascending
-    // position), to compare against the edit's list.
-    // Must be the same projection parsed_album_to_user_edit fed the editor -- a
-    // difference here reads as a user edit and re-mints the artists without their
-    // source ids. See import::artist_names.
-    let seeded_album_artist_names = crate::import::artist_names::album_artist_names(
-        artists,
-        album_artists,
-        &db_album.artist_id,
-    )
-    .map_err(|missing| crate::import::ImportError::Internal {
-        detail: format!("album_artist references missing artist {}", missing.0),
-    })?;
+    let mut existing_artist_ids = HashSet::new();
 
     db_album.title = edit.album_title.clone();
-    db_album.artist_id = ensure_artist(artists, &edit.album_artist_names[0]);
+    db_album.artist_id = materialize_artist_assignment(
+        &edit.album_artist_assignments[0],
+        artists,
+        &mut existing_artist_ids,
+        existing_artists,
+        ids,
+        now,
+    )?;
 
     db_release.pressing = crate::db::Pressing {
         year: edit.pressing.year,
@@ -747,43 +723,39 @@ fn apply_user_edit_to_seed(
         track.track_number = t_edit.track_number;
     }
 
-    // Rebuild only on a real change; equality keeps the mapper's
-    // source-id-bearing rows.
-    if !names_equal(&seeded_album_artist_names, &edit.album_artist_names) {
-        album_artists.clear();
-        for (position, name) in edit.album_artist_names.iter().enumerate().skip(1) {
-            let artist_id = ensure_artist(artists, name);
-            album_artists.push(DbAlbumArtist::new(
-                &db_album.id,
-                &artist_id,
-                position as i32,
-                ids.new_id(),
-                now,
-            ));
-        }
+    album_artists.clear();
+    for (position, assignment) in edit.album_artist_assignments.iter().enumerate().skip(1) {
+        let artist_id = materialize_artist_assignment(
+            assignment,
+            artists,
+            &mut existing_artist_ids,
+            existing_artists,
+            ids,
+            now,
+        )?;
+        album_artists.push(DbAlbumArtist::new(
+            &db_album.id,
+            &artist_id,
+            position as i32,
+            ids.new_id(),
+            now,
+        ));
     }
 
-    // An empty per-track edit list means "share the album artist", and a seeded
-    // credit list matching the album's round-trips through the editor as empty —
-    // so those compare equal. Anything else is a real change and rebuilds.
     for (track, t_edit) in db_tracks.iter().zip(edit.tracks.iter()) {
-        let seeded_names =
-            crate::import::artist_names::track_artist_names(artists, track_artists, &track.id)
-                .map_err(|missing| crate::import::ImportError::Internal {
-                    detail: format!("track_artist references missing artist {}", missing.0),
-                })?;
-
-        let edit_names = &t_edit.artist_names;
-        let unchanged = if edit_names.is_empty() {
-            seeded_names.is_empty() || names_equal(&seeded_names, &seeded_album_artist_names)
-        } else {
-            names_equal(&seeded_names, edit_names)
-        };
-
-        if !unchanged {
-            track_artists.retain(|ta| ta.track_id != track.id);
-            for (position, name) in edit_names.iter().enumerate() {
-                let artist_id = ensure_artist(artists, name);
+        track_artists.retain(|credit| credit.track_id != track.id);
+        if let crate::import::TrackArtistAssignments::Explicit(assignments) =
+            &t_edit.artist_assignments
+        {
+            for (position, assignment) in assignments.iter().enumerate() {
+                let artist_id = materialize_artist_assignment(
+                    assignment,
+                    artists,
+                    &mut existing_artist_ids,
+                    existing_artists,
+                    ids,
+                    now,
+                )?;
                 track_artists.push(DbTrackArtist::new(
                     &track.id,
                     &artist_id,
@@ -795,17 +767,77 @@ fn apply_user_edit_to_seed(
         }
     }
 
-    Ok(())
+    Ok(existing_artist_ids)
 }
 
-/// Case-insensitive equality on lists of artist names. Matches the rule
-/// the import-artist resolver uses for canonicalization, so two name lists
-/// the DB would treat as identical compare equal here.
-fn names_equal(a: &[String], b: &[String]) -> bool {
-    a.len() == b.len()
-        && a.iter()
-            .zip(b.iter())
-            .all(|(x, y)| x.eq_ignore_ascii_case(y))
+fn materialize_artist_assignment(
+    assignment: &crate::import::ArtistAssignment,
+    artists: &mut Vec<crate::db::DbArtist>,
+    existing_artist_ids: &mut HashSet<String>,
+    existing_artists: &HashMap<String, crate::db::DbArtist>,
+    ids: &dyn coven::IdProvider,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<String, crate::import::ImportError> {
+    match assignment {
+        crate::import::ArtistAssignment::Existing { artist_id } => {
+            let artist = existing_artists.get(artist_id).cloned().ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!("selected artist {artist_id} no longer exists"),
+                }
+            })?;
+            if !artists.iter().any(|candidate| candidate.id == artist.id) {
+                artists.push(artist);
+            }
+            existing_artist_ids.insert(artist_id.clone());
+            Ok(artist_id.clone())
+        }
+        crate::import::ArtistAssignment::New { seed } => {
+            let id = ids.new_id();
+            artists.push(crate::db::DbArtist {
+                id: id.clone(),
+                name: seed.name.clone(),
+                sort_name: seed.sort_name.clone(),
+                discogs_artist_id: seed.discogs_artist_id.clone(),
+                musicbrainz_artist_id: seed.musicbrainz_artist_id.clone(),
+                created_at: now,
+            });
+            Ok(id)
+        }
+    }
+}
+
+async fn load_existing_artist_assignments(
+    edit: &crate::import::ReleaseUserEdit,
+    library_manager: &LibraryManager,
+) -> Result<HashMap<String, crate::db::DbArtist>, crate::import::ImportError> {
+    let album = edit.album_artist_assignments.iter();
+    let tracks = edit
+        .tracks
+        .iter()
+        .flat_map(|track| match &track.artist_assignments {
+            crate::import::TrackArtistAssignments::AlbumArtists => [].as_slice().iter(),
+            crate::import::TrackArtistAssignments::Explicit(assignments) => assignments.iter(),
+        });
+    let mut out = HashMap::new();
+    for artist_id in album
+        .chain(tracks)
+        .filter_map(|assignment| match assignment {
+            crate::import::ArtistAssignment::Existing { artist_id } => Some(artist_id),
+            crate::import::ArtistAssignment::New { .. } => None,
+        })
+    {
+        if out.contains_key(artist_id) {
+            continue;
+        }
+        let artist = library_manager
+            .get_artist_by_id(artist_id)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("selected artist {artist_id} no longer exists"),
+            })?;
+        out.insert(artist_id.clone(), artist);
+    }
+    Ok(out)
 }
 
 pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {

@@ -192,32 +192,18 @@ pub struct MetadataRef {
     pub source: MetadataSource,
 }
 
-/// The identity the user chose for a folder candidate — the pressing they
-/// picked, or the decision to read the folder's own tags. Persisted in
-/// `import_candidate_state`'s pick columns so an answered pane reopens
-/// answered after a restart; the seed and the mapping are re-derived from it
-/// against the archived documents, never stored.
+/// The metadata source chosen for an import candidate. Persisted in
+/// `import_candidate_state` so the editor and import worker consume the same
+/// source after a restart.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum IdentityPick {
-    Release {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum MetadataSeed {
+    ExternalRelease {
         source: MetadataSource,
         release_id: String,
     },
-    Unknown,
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-impl IdentityPick {
-    /// What committing this pick records as the release's identity.
-    pub fn choice(&self) -> IdentityChoice {
-        match self {
-            Self::Release { source, release_id } => IdentityChoice::Release {
-                release_ref: MetadataRef::new(release_id.clone(), *source),
-            },
-            Self::Unknown => IdentityChoice::Unknown,
-        }
-    }
+    FileTags,
+    Manual,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -245,41 +231,64 @@ pub struct ReleaseIdentity {
     pub source_release_id: String,
 }
 
-/// Where a release's metadata was seeded from, for the `releases` columns
-/// `metadata_source` / `metadata_source_release_id`. Pairing the source with
-/// its release_id makes "release_id is None iff source is FileTags" structural
-/// rather than a runtime check.
+/// A new metadata source chosen for a release already in the library.
 ///
-/// Input to `set_identity`. `IdentityChoice` plays the same role at import
-/// time.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MetadataPointer {
-    External {
-        source: MetadataSource,
-        release_id: String,
-    },
-    FileTags,
-}
-
-/// The user's identity claim from the import flow.
-///
-/// - **Release** — "this IS my pressing." The identity row carries
+/// - **ExternalRelease** — "this IS my pressing." The identity row carries
 ///   `source_release_id = release_ref.id`, and pressing-level metadata (year,
 ///   format, label, catalog number, country) seeds from the picked release,
 ///   as does `metadata_source_release_id` on the release row.
-/// - **Unknown** — no claim. Zero `release_identities` rows, `metadata_source`
+/// - **FileTags** — no claim. Zero `release_identities` rows, `metadata_source`
 ///   is `'file_tags'`, `metadata_source_release_id` is NULL, and the release
 ///   always gets a fresh album. Metadata seeds from embedded file tags.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IdentityChoice {
-    Release { release_ref: MetadataRef },
-    Unknown,
+pub enum ReleaseReseed {
+    ExternalRelease { release_ref: MetadataRef },
+    FileTags,
 }
 
-/// Every field the edit-metadata sheet may change. Plain values, not row IDs —
-/// the apply layer resolves artist names against the artist table and zips
-/// track edits to existing track IDs in order.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl ReleaseReseed {
+    pub fn metadata_seed(&self) -> MetadataSeed {
+        match self {
+            Self::ExternalRelease { release_ref } => MetadataSeed::ExternalRelease {
+                source: release_ref.source,
+                release_id: release_ref.id.clone(),
+            },
+            Self::FileTags => MetadataSeed::FileTags,
+        }
+    }
+}
+
+/// One artist selected for album or track credit.
+///
+/// Existing artists stay linked by their library ID. New artists carry the
+/// metadata needed to create them; source IDs are retained so commit can join
+/// an external credit to an existing library artist by an exact ID match.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ArtistAssignment {
+    Existing { artist_id: String },
+    New { seed: NewArtistSeed },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NewArtistSeed {
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+}
+
+/// Whether a track inherits its album artists or has its own ordered credits.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TrackArtistAssignments {
+    AlbumArtists,
+    Explicit(Vec<ArtistAssignment>),
+}
+
+/// Every field the edit-metadata sheet may change. Artist choices preserve
+/// whether the person selected a library artist or entered a new one; commit
+/// never guesses that relationship from a name.
 ///
 /// Identity is out of scope: `release_identities`, `metadata_source`, and
 /// `metadata_source_release_id` are untouched. So are the archived provider
@@ -292,13 +301,13 @@ pub enum IdentityChoice {
 /// instead, so they may outnumber the source's tracklist (audio it does not
 /// account for) or fall short of it (a track no audio backs).
 ///
-/// `album_artist_names` is positional — element 0 is the primary album artist,
-/// later elements get progressively higher `album_artists.position`. Empty is a
-/// validation error: every album has at least one artist.
+/// `album_artist_assignments` is positional — element 0 is the primary album
+/// artist, later elements get progressively higher `album_artists.position`.
+/// Empty is a validation error: every album has at least one artist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseUserEdit {
     pub album_title: String,
-    pub album_artist_names: Vec<String>,
+    pub album_artist_assignments: Vec<ArtistAssignment>,
     pub pressing: PressingEdit,
     pub tracks: Vec<TrackUserEdit>,
 }
@@ -368,15 +377,12 @@ impl AudioFile {
 /// tracks — element N edits track N (ordered as
 /// `Database::get_tracks_for_release` returns them).
 ///
-/// `artist_names` empty means the track shares the album artist (no
-/// per-track artist rows written). Otherwise the list is positional —
-/// element 0 is the primary track artist, etc.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrackUserEdit {
     pub title: String,
     pub side: i32,
     pub track_number: Option<i32>,
-    pub artist_names: Vec<String>,
+    pub artist_assignments: TrackArtistAssignments,
     /// Which audio holds this track's samples, when a slot bound one to it.
     ///
     /// An import's rows are the track slots the user saw, so a pairing they
@@ -389,9 +395,8 @@ pub struct TrackUserEdit {
 }
 
 /// Edit-metadata form values exactly as the editor holds them — text the user
-/// typed, not yet normalized. Artist fields are the comma-separated text the
-/// user sees; pressing fields are raw strings (empty means "not set"); `year`
-/// is text.
+/// typed, not yet normalized. Artist assignments retain their identity while
+/// pressing fields are raw strings (empty means "not set"); `year` is text.
 ///
 /// The editor binds directly to this shape and calls
 /// [`shape`](RawReleaseEdit::shape) both to gate its Save button and to build
@@ -401,8 +406,7 @@ pub struct TrackUserEdit {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RawReleaseEdit {
     pub album_title: String,
-    /// Comma-separated artist text in positional order, as typed.
-    pub album_artist_text: String,
+    pub album_artist_assignments: Vec<ArtistAssignment>,
     pub pressing: RawPressingEdit,
     pub tracks: Vec<RawTrackEdit>,
 }
@@ -424,13 +428,12 @@ pub struct RawPressingEdit {
 /// identity (existing track id post-commit, or a synthetic
 /// `{prefix}-{index}` from [`from_user_edit`](RawReleaseEdit::from_user_edit))
 /// — used only to diff rows in the UI; shaping drops it because wire
-/// tracks zip positionally to existing track IDs. `artist_text` empty
-/// means "share the album artist".
+/// tracks zip positionally to existing track IDs.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RawTrackEdit {
     pub id: String,
     pub title: String,
-    pub artist_text: String,
+    pub artist_assignments: TrackArtistAssignments,
     pub side: i32,
     pub track_number: Option<i32>,
     /// The audio bound to this row, carried through editing untouched. This is
@@ -448,25 +451,10 @@ pub enum EditValidationError {
     EmptyAlbumTitle,
     #[error("Album must have at least one artist")]
     NoAlbumArtist,
+    #[error("Artist name is required")]
+    EmptyArtistName,
     #[error("Year must be a number")]
     InvalidYear,
-}
-
-/// Split a comma-separated artist field into trimmed names, dropping
-/// empties. The inverse of `join_artists`; both must agree so a form
-/// seeded from `from_user_edit` round-trips.
-fn split_artists(raw: &str) -> Vec<String> {
-    raw.split(',')
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .collect()
-}
-
-/// Join positional names into the editor's comma-separated text. Inverse
-/// of `split_artists`.
-fn join_artists(names: &[String]) -> String {
-    names.join(", ")
 }
 
 /// Trim a raw pressing field; empty (after trim) becomes `None`.
@@ -493,10 +481,14 @@ impl ReleaseUserEdit {
     /// writing whatever it was handed. Idempotent.
     pub fn normalized(mut self) -> Self {
         self.album_title = self.album_title.trim().to_string();
-        self.album_artist_names = normalized_names(self.album_artist_names);
+        self.album_artist_assignments = self
+            .album_artist_assignments
+            .into_iter()
+            .map(ArtistAssignment::normalized)
+            .collect();
         for track in &mut self.tracks {
             track.title = track.title.trim().to_string();
-            track.artist_names = normalized_names(std::mem::take(&mut track.artist_names));
+            track.artist_assignments.normalize();
         }
         self
     }
@@ -514,27 +506,90 @@ impl ReleaseUserEdit {
         if self.album_title.trim().is_empty() {
             return Err(EditValidationError::EmptyAlbumTitle);
         }
-        if self.album_artist_names.iter().all(|n| n.trim().is_empty()) {
+        if self.album_artist_assignments.is_empty() {
             return Err(EditValidationError::NoAlbumArtist);
+        }
+        for assignment in self
+            .album_artist_assignments
+            .iter()
+            .chain(
+                self.tracks
+                    .iter()
+                    .flat_map(|track| match &track.artist_assignments {
+                        TrackArtistAssignments::AlbumArtists => [].as_slice(),
+                        TrackArtistAssignments::Explicit(assignments) => assignments.as_slice(),
+                    }),
+            )
+        {
+            if assignment.is_blank_new_artist() {
+                return Err(EditValidationError::EmptyArtistName);
+            }
         }
         Ok(())
     }
 }
 
-/// Trim each name and drop the blanks — what `split_artists` does to comma text,
-/// for a list that arrived already split.
-fn normalized_names(names: Vec<String>) -> Vec<String> {
-    names
-        .into_iter()
-        .map(|name| name.trim().to_string())
-        .filter(|name| !name.is_empty())
-        .collect()
+impl ArtistAssignment {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self::New {
+            seed: NewArtistSeed {
+                name: name.into(),
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: None,
+            },
+        }
+    }
+
+    pub fn existing(artist_id: impl Into<String>) -> Self {
+        Self::Existing {
+            artist_id: artist_id.into(),
+        }
+    }
+
+    fn normalized(self) -> Self {
+        match self {
+            Self::Existing { artist_id } => Self::Existing {
+                artist_id: artist_id.trim().to_string(),
+            },
+            Self::New { seed } => Self::New {
+                seed: NewArtistSeed {
+                    name: seed.name.trim().to_string(),
+                    sort_name: seed.sort_name.and_then(|value| trim_to_option(&value)),
+                    musicbrainz_artist_id: seed
+                        .musicbrainz_artist_id
+                        .and_then(|value| trim_to_option(&value)),
+                    discogs_artist_id: seed
+                        .discogs_artist_id
+                        .and_then(|value| trim_to_option(&value)),
+                },
+            },
+        }
+    }
+
+    fn is_blank_new_artist(&self) -> bool {
+        match self {
+            Self::Existing { artist_id } => artist_id.trim().is_empty(),
+            Self::New { seed } => seed.name.trim().is_empty(),
+        }
+    }
+}
+
+impl TrackArtistAssignments {
+    fn normalize(&mut self) {
+        if let Self::Explicit(assignments) = self {
+            *assignments = std::mem::take(assignments)
+                .into_iter()
+                .map(ArtistAssignment::normalized)
+                .collect();
+        }
+    }
 }
 
 impl RawReleaseEdit {
     /// Normalize and validate this raw form into a wire [`ReleaseUserEdit`]:
-    /// trim the album title, comma-split artist fields (dropping empties),
-    /// parse the year, and map empty pressing fields to `None`. `Ok` means the
+    /// trim the album title and new-artist names, parse the year, and map empty
+    /// pressing fields to `None`. `Ok` means the
     /// form is savable.
     ///
     /// Validation: the album title must be non-empty after trimming, the album
@@ -544,7 +599,7 @@ impl RawReleaseEdit {
     pub fn shape(&self) -> Result<ReleaseUserEdit, EditValidationError> {
         let edit = ReleaseUserEdit {
             album_title: self.album_title.clone(),
-            album_artist_names: split_artists(&self.album_artist_text),
+            album_artist_assignments: self.album_artist_assignments.clone(),
             pressing: self.pressing.shape()?,
             tracks: self
                 .tracks
@@ -553,7 +608,7 @@ impl RawReleaseEdit {
                     title: t.title.clone(),
                     side: t.side,
                     track_number: t.track_number,
-                    artist_names: split_artists(&t.artist_text),
+                    artist_assignments: t.artist_assignments.clone(),
                     file: t.file.clone(),
                 })
                 .collect(),
@@ -563,9 +618,9 @@ impl RawReleaseEdit {
         Ok(edit)
     }
 
-    /// Seed a raw editor form from a wire [`ReleaseUserEdit`]. Joins artist
-    /// lists into comma text and renders absent pressing fields as empty
-    /// strings — the inverse of `shape`. `track_id_prefix` provides the
+    /// Seed a raw editor form from a wire [`ReleaseUserEdit`]. Retains artist
+    /// assignments and renders absent pressing fields as empty strings.
+    /// `track_id_prefix` provides the
     /// editor row identities the wire edit lacks: track N becomes
     /// `{track_id_prefix}-{N}`.
     pub fn from_user_edit(edit: ReleaseUserEdit, track_id_prefix: &str) -> Self {
@@ -578,7 +633,7 @@ impl RawReleaseEdit {
 
         Self {
             album_title: edit.album_title,
-            album_artist_text: join_artists(&edit.album_artist_names),
+            album_artist_assignments: edit.album_artist_assignments,
             pressing: RawPressingEdit::from_pressing(&edit.pressing),
             tracks,
         }
@@ -587,13 +642,12 @@ impl RawReleaseEdit {
 
 impl RawTrackEdit {
     /// Seed one raw editor row from a wire [`TrackUserEdit`], under the row
-    /// identity `id`. Joins the artist list into comma text and carries the
-    /// bound audio through untouched.
+    /// identity `id`, retaining artist assignments and the audio binding.
     pub fn from_user_edit(edit: TrackUserEdit, id: String) -> Self {
         Self {
             id,
             title: edit.title,
-            artist_text: join_artists(&edit.artist_names),
+            artist_assignments: edit.artist_assignments,
             side: edit.side,
             track_number: edit.track_number,
             file: edit.file,
@@ -796,13 +850,14 @@ pub struct CueAnalyzedAudioFile {
 
 /// Import command sent to the service worker.
 ///
-/// Carries only identifiers, never payloads. For `IdentityChoice::Release`,
-/// the worker calls `prepare_release` at commit time, reading
+/// Carries only identifiers, never payloads. For
+/// `MetadataSeed::ExternalRelease`, the worker calls `prepare_release` at
+/// commit time, reading
 /// through the session-wide MB/Discogs LRU caches — normally a hit, since the
 /// UI's prefetch warmed them; a miss costs one round-trip. Cover bytes come
-/// through the same caching in the remote-image cache. For Unknown, the
-/// worker sources the release shape from the scanned candidate: CUE sheets for
-/// CUE-backed candidates, embedded tags for per-track-file candidates.
+/// through the same caching in the remote-image cache. File Tags consumes the
+/// candidate's stored tag snapshot. Manual derives blank metadata over the
+/// candidate's physical track slots.
 ///
 /// `user_edit` is an optional overlay from the confirmation-page editor; when
 /// present its fields override the seeded metadata after the choice
@@ -821,7 +876,7 @@ pub struct ImportCommand {
     /// cache. Ignored for `Local`. Never persisted — it rides the upload
     /// as the retain-pinned intent.
     pub pin: bool,
-    pub identity_choice: IdentityChoice,
+    pub metadata_seed: MetadataSeed,
     pub user_edit: Option<ReleaseUserEdit>,
 }
 

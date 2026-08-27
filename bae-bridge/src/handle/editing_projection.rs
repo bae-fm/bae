@@ -30,6 +30,7 @@ impl crate::types::BridgeValidationReason {
         match e {
             E::EmptyAlbumTitle => R::EmptyAlbumTitle,
             E::NoAlbumArtist => R::NoAlbumArtist,
+            E::EmptyArtistName => R::EmptyArtistName,
             E::InvalidYear => R::InvalidYear,
         }
     }

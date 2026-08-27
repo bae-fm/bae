@@ -21,7 +21,7 @@
 
 use super::folder_scanner::{FolderReleaseDecisionKey, ResolvedFolderReleaseBoundary};
 use super::search::{ImportSearchReleaseDetail, SourceTracks};
-use super::types::{IdentityChoice, IdentityPick, MetadataSource};
+use super::types::{MetadataSeed, MetadataSource};
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{IdentifyState, LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
@@ -68,7 +68,7 @@ pub fn place(
     skipped: bool,
     is_added: bool,
     import_status: Option<&TriageImportStatus>,
-    picked: Option<&IdentityPick>,
+    picked: Option<&MetadataSeed>,
     answer: &CandidateAnswer,
 ) -> TriagePlacement {
     // Spelled out rather than `is_some()`: each variant places the row

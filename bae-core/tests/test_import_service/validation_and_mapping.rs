@@ -75,7 +75,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Unknown,
+            metadata_seed: MetadataSeed::FileTags,
             user_edit: None,
         })
         .await
@@ -208,16 +208,17 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     )
     .await;
 
-    let choice = IdentityChoice::Release {
-        release_ref: MetadataRef::new(mb_id.clone(), MetadataSource::MusicBrainz),
+    let choice = MetadataSeed::ExternalRelease {
+        source: MetadataSource::MusicBrainz,
+                release_id: mb_id.clone(),
     };
 
     // The confirmation pane's form, unedited: what the commit reads back off
     // the pick when the user touches nothing.
     f.handle
-        .pick_candidate_identity(
+        .select_candidate_metadata_seed(
             candidate_key.clone(),
-            bae_core::import::IdentityPick::Release {
+            bae_core::import::MetadataSeed::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
             },
@@ -242,7 +243,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: choice,
+            metadata_seed: choice,
             user_edit: Some(user_edit),
         })
         .await
@@ -349,9 +350,9 @@ async fn pick_release_for_folder(
     .await;
 
     f.handle
-        .pick_candidate_identity(
+        .select_candidate_metadata_seed(
             candidate_key.clone(),
-            bae_core::import::IdentityPick::Release {
+            bae_core::import::MetadataSeed::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.to_string(),
             },
@@ -440,8 +441,9 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: mb_id,
             },
             user_edit: Some(edit_from_pane(&pane)),
         })
@@ -501,8 +503,9 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: mb_id,
             },
             user_edit: Some(edit_from_pane(&pane)),
         })
@@ -556,8 +559,9 @@ async fn a_corrected_pairing_survives_the_commit() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            identity_choice: IdentityChoice::Release {
-                release_ref: MetadataRef::new(mb_id, MetadataSource::MusicBrainz),
+            metadata_seed: MetadataSeed::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: mb_id,
             },
             user_edit: Some(edit),
         })
@@ -649,8 +653,9 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Release {
-            release_ref: MetadataRef::new(release_id_key, MetadataSource::MusicBrainz),
+        MetadataSeed::ExternalRelease {
+            source: MetadataSource::MusicBrainz,
+                release_id: release_id_key,
         },
     )
     .await
@@ -697,8 +702,9 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         StorageMode::Local,
-        IdentityChoice::Release {
-            release_ref: MetadataRef::new(release_id_key, MetadataSource::MusicBrainz),
+        MetadataSeed::ExternalRelease {
+            source: MetadataSource::MusicBrainz,
+                release_id: release_id_key,
         },
     )
     .await

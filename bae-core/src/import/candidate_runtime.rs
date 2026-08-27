@@ -340,7 +340,7 @@ impl CandidateRuntime {
             ImportEvent::Scan(
                 ScanEvent::WatchedFoldersChanged { .. }
                 | ScanEvent::CandidateSkipChanged { .. }
-                | ScanEvent::CandidateIdentityPicked { .. }
+                | ScanEvent::CandidateMetadataSeeded { .. }
                 | ScanEvent::FolderScanStatusChanged { .. }
                 | ScanEvent::Finished,
             )

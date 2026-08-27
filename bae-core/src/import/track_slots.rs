@@ -103,7 +103,7 @@ pub fn lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -> bool 
 pub struct SourceTrack {
     pub edit: TrackUserEdit,
     /// The source's own position string — `A1`, `1`, `1-2`, or arbitrary prose.
-    pub position: String,
+    pub position: Option<String>,
     /// How long the source says this track runs.
     pub duration_ms: Option<u64>,
 }
@@ -123,7 +123,7 @@ pub enum TrackSlot {
     /// The source names this track and audio on disk backs it.
     Paired {
         track: TrackUserEdit,
-        position: String,
+        position: Option<String>,
         source_duration_ms: Option<u64>,
         file: SlotFile,
     },
@@ -137,7 +137,7 @@ pub enum TrackSlot {
     /// A track the source names with no audio bound to it.
     TrackOnly {
         track: TrackUserEdit,
-        position: String,
+        position: Option<String>,
         source_duration_ms: Option<u64>,
     },
 }
@@ -293,6 +293,47 @@ pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
     units_of(&audio_layout(files))
 }
 
+/// Blank editable tracks over the candidate's physical audio layout. Manual
+/// metadata entry names nothing from files or sheets, but sheet slicing and
+/// disc assignment remain physical facts about where the samples live.
+pub(crate) fn manual_track_rows(files: &CategorizedFiles) -> Vec<TrackUserEdit> {
+    let sheet_discs: HashMap<&str, i32> = files
+        .carving_sheets()
+        .into_iter()
+        .map(|sheet| {
+            let disc = sheet
+                .disc_number()
+                .expect("a carving sheet has a disc assignment");
+            (
+                sheet.file.relative_path.as_str(),
+                i32::try_from(disc).expect("sheet disc fits the database column"),
+            )
+        })
+        .collect();
+    let mut next_number: HashMap<i32, i32> = HashMap::new();
+
+    audio_units(files)
+        .into_iter()
+        .map(|audio| {
+            let side = match &audio {
+                AudioFile::Standalone { .. } => 1,
+                AudioFile::SheetSlice { sheet_id, .. } => *sheet_discs
+                    .get(sheet_id.as_str())
+                    .expect("a sheet slice belongs to a carving sheet"),
+            };
+            let number = next_number.entry(side).or_insert(0);
+            *number += 1;
+            TrackUserEdit {
+                title: String::new(),
+                side,
+                track_number: Some(*number),
+                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                file: Some(audio),
+            }
+        })
+        .collect()
+}
+
 /// Which of the folder's audio one bound sheet speaks for.
 ///
 /// A sheet that names one file for the whole disc speaks for the audio it is
@@ -362,7 +403,7 @@ pub(crate) fn map_source_rows(
                     title: String::new(),
                     side,
                     track_number,
-                    artist_names: Vec::new(),
+                    artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                     file: Some(unit.clone()),
                 });
             }

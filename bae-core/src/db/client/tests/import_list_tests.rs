@@ -14,7 +14,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::list::{ImportListItem, ImportListRequest, ImportListView};
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::{IdentityPick, PayloadSource, TriageTab};
+use crate::import::{MetadataSeed, PayloadSource, TriageTab};
 use coven::FixedClock;
 use std::path::PathBuf;
 
@@ -120,7 +120,7 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
                 durations: crate::import::probe::ProbedDurations::totalling(1_000),
             },
             expected_edit_revision: 0,
-            identity_pick: None,
+            metadata_seed: None,
         })
         .await
         .unwrap());
@@ -186,10 +186,10 @@ async fn a_picked_row_leads_with_the_archived_document() {
     }])
     .await
     .unwrap();
-    db.save_candidate_identity_pick(
+    db.save_candidate_metadata_seed(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
-        &IdentityPick::Release {
+        &MetadataSeed::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-picked".to_string(),
         },
@@ -219,10 +219,10 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
     let root = root.to_str().unwrap();
     let candidate = scanned(&db, root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
-    db.save_candidate_identity_pick(
+    db.save_candidate_metadata_seed(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
-        &IdentityPick::Release {
+        &MetadataSeed::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-never-fetched".to_string(),
         },
@@ -237,7 +237,7 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
     let row = rows(&projection).remove(0);
     assert!(row.matched.is_none());
     assert!(
-        row.picked.is_some(),
+        row.metadata_seed.is_some(),
         "the decision itself is still on the row"
     );
 }
