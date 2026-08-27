@@ -21,9 +21,6 @@ struct TriageRowView: View {
     /// `row` again so the list content is the one place selection state
     /// (`UiStore`) meets the row.
     let selection: Binding<Bool>?
-    /// Select this row — what a click does, and what "Import Anyway" aliases:
-    /// it opens the main pane exactly as selecting the row would.
-    let onSelect: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
     let onReleaseDecision:
         (
@@ -38,7 +35,6 @@ struct TriageRowView: View {
         row: BridgeTriageRow,
         coverContent: ImageContent?,
         selection: Binding<Bool>?,
-        onSelect: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
         onReleaseDecision:
             @escaping (
@@ -49,7 +45,6 @@ struct TriageRowView: View {
         self.row = row
         self.coverContent = coverContent
         self.selection = selection
-        self.onSelect = onSelect
         self.onSkip = onSkip
         self.onReleaseDecision = onReleaseDecision
     }
@@ -58,19 +53,7 @@ struct TriageRowView: View {
         HStack(alignment: .top, spacing: 10) {
             checkbox
             cover
-            VStack(alignment: .leading, spacing: 0) {
-                meta
-                if !rowActions.isEmpty {
-                    HStack(spacing: 6) {
-                        ForEach(rowActions.indices, id: \.self) { index in
-                            let action = rowActions[index]
-                            Button(action.label, action: action.action)
-                                .buttonStyle(RowActionPillStyle())
-                        }
-                    }
-                    .padding(.top, 7)
-                }
-            }
+            meta
             Spacer(minLength: 4)
             trailing
                 .padding(.top, 2)
@@ -216,8 +199,8 @@ struct TriageRowView: View {
     }
 }
 
-/// The row's actions and its trailing column. In an extension so the view's
-/// body and the layout it composes stay readable as one piece.
+/// The row's metadata and trailing column. In an extension so the view's body
+/// and the layout it composes stay readable as one piece.
 extension TriageRowView {
     /// The second line: the matched release's metadata, a disagreement
     /// sentence, the still-identifying phase, or an import failure —
@@ -312,25 +295,6 @@ extension TriageRowView {
         case .error(let error):
             return error.displayLine
         }
-    }
-
-    // MARK: - Row actions
-
-    private struct RowAction {
-        let label: LocalizedStringKey
-        let action: () -> Void
-    }
-
-    /// The pill row under the meta column: what this row is asking for right
-    /// now. How the folder around it is read is not one of those — that lives
-    /// on the group header, or in this row's own menu where the folder is
-    /// this row.
-    private var rowActions: [RowAction] {
-        guard case .needsYou(.alreadyInLibrary, .disagreement) = row.placement
-        else {
-            return []
-        }
-        return [RowAction(label: "Import Anyway", action: onSelect)]
     }
 
     // MARK: - Trailing
@@ -438,23 +402,6 @@ extension TriageRowView {
     }
 }
 
-/// The row-action pill button style: an outlined capsule beside the row's meta
-/// column, quiet enough that it reads as an offer rather than the row's point.
-private struct RowActionPillStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 12, weight: .medium))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
-            .foregroundStyle(.secondary)
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.secondary.opacity(0.4))
-            )
-            .opacity(configuration.isPressed ? 0.7 : 1)
-    }
-}
-
 #if DEBUG
 
     // MARK: - Previews
@@ -468,7 +415,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowReady
                 ),
                 selection: .constant(true),
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -477,7 +423,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowPickAPressing
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -486,7 +431,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -495,7 +439,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -504,7 +447,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowNoMatch
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -513,7 +455,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowStillIdentifying
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -522,7 +463,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowDoneImported
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -531,7 +471,6 @@ private struct RowActionPillStyle: ButtonStyle {
                     for: PreviewData.triageRowFailed
                 ),
                 selection: nil,
-                onSelect: {},
                 onSkip: { _ in }
             )
         }

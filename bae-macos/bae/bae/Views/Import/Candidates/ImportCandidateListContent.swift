@@ -343,7 +343,6 @@ extension ImportCandidateListContent {
             row: row,
             coverContent: importStore.sidebarCover(for: row),
             selection: row.selectable ? readySelection(for: row) : nil,
-            onSelect: { selectedKeys = [row.candidateKey] },
             onSkip: { onSkip(row.candidateKey, $0) },
             onReleaseDecision: onReleaseDecision
         )
