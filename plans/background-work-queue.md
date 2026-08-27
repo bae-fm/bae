@@ -194,3 +194,12 @@ Completed in `e14568a3e`.
 - Keep viewport bookkeeping as value state; reference identity did not change
   the hosted timeout and must not remain as an unrelated mechanism.
 - Keep the person's running application independent from test verification.
+
+### Windows import-list subscription test contract
+
+- Keep the import-list failure regression compiling against the generated
+  `IImportListSubscription` contract on every Windows architecture.
+- Model unsupported view reconfiguration in the failure-only test double by
+  failing loudly instead of fabricating a request revision.
+- Preserve the regression where an initial list read fails before the first
+  page registers and the later page still receives that failure.

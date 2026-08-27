@@ -23,7 +23,9 @@ public sealed class ImportListPageSourceFailureTests
             throw new BridgeException.Diagnostic(
                 new BridgeErrorCategory.Database(), "no such column: by_catalog");
 
-        public void SetView(BridgeImportListView view) { }
+        public ulong SetView(BridgeImportListView view) =>
+            throw new NotSupportedException(
+                "The failing subscription does not support view changes");
 
         public void SetWindows(BridgeLibraryPageWindow[] windows) { }
     }
