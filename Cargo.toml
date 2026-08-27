@@ -50,12 +50,12 @@ strip = true
 split-debuginfo = "packed"
 debug = "line-tables-only"
 
-# Optimize the CPU-heavy audio loudness dependency even in dev/test builds.
-# ebur128's pure-Rust true-peak interpolator runs ~80x slower unoptimized, which
-# made loudness measurement of a full album take minutes in `run.sh` debug
-# builds. It's a leaf dependency (compiled once, cached), so dev iteration on
-# bae's own code stays fast.
-[profile.dev.package.ebur128]
+# Keep dependency implementations optimized in Debug builds while bae's
+# workspace crates retain debug assertions and full debuggability. Several
+# dependencies perform CPU-heavy work whose unoptimized implementations distort
+# app behavior: audio true-peak interpolation, retained replay parsing and
+# decompression, SQLite traversal, hashing, and signature verification.
+[profile.dev.package."*"]
 opt-level = 3
 
 # Fork carrying the Swift `Task.cancel()` propagation work we're upstreaming
