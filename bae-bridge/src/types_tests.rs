@@ -184,6 +184,39 @@ mod conversion_roundtrip {
     }
 
     #[test]
+    fn artist_search_result_keeps_identity_fields() {
+        let core = bae_core::album_detail::ArtistSearchResult {
+            artist: bae_core::db::DbArtist {
+                id: "artist-1".to_string(),
+                name: "Artist Name".to_string(),
+                sort_name: Some("Name, Artist".to_string()),
+                discogs_artist_id: Some("discogs-1".to_string()),
+                musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
+                created_at: "2026-01-01T00:00:00Z".parse().unwrap(),
+            },
+            image: Some(bae_core::album_detail::ImageRef {
+                id: "artist-1".to_string(),
+                version: "image-1".to_string(),
+                image_type: bae_core::db::LibraryImageType::Artist,
+            }),
+        };
+
+        let bridge = BridgeArtistSearchResult::from_core(core);
+        assert_eq!(bridge.artist_id, "artist-1");
+        assert_eq!(bridge.name, "Artist Name");
+        assert_eq!(bridge.sort_name.as_deref(), Some("Name, Artist"));
+        assert_eq!(bridge.discogs_artist_id.as_deref(), Some("discogs-1"));
+        assert_eq!(
+            bridge.musicbrainz_artist_id.as_deref(),
+            Some("musicbrainz-1")
+        );
+        assert_eq!(
+            bridge.image.map(|image| image.id),
+            Some("artist-1".to_string())
+        );
+    }
+
+    #[test]
     fn export_preset_round_trips_and_re_derives_extension() {
         let core = bae_core::config::SavePreset {
             id: "preset-1".to_string(),

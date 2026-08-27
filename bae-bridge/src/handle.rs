@@ -16,16 +16,16 @@ use crate::types::BridgeHomeStorage;
 use crate::types::BridgeRemoteCover;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
-    BridgeArtistSortCriterion, BridgeArtistSummary, BridgeCloudHomeKeyState, BridgeComposerDetail,
-    BridgeComposerSortCriterion, BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig,
-    BridgeCoverSelection, BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource,
-    BridgeMetadataSource, BridgePairingDevice, BridgePlaybackValues, BridgeQueueSnapshot,
-    BridgeQueueUpcomingPage, BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary,
-    BridgeRepeatMode, BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion,
-    BridgeStorageFilter, BridgeStoragePage, BridgeStorageRow, BridgeStorageSort,
-    BridgeSyncStatusSnapshot, BridgeTrack, BridgeTrackGroup, BridgeTrackRoleSummary,
-    BridgeTrackSearchResult, BridgeWorkDetail, BridgeWorkReleaseSummary, BridgeWorkSummary,
-    BridgeWorkTrackSummary,
+    BridgeArtistSearchResult, BridgeArtistSortCriterion, BridgeArtistSummary,
+    BridgeCloudHomeKeyState, BridgeComposerDetail, BridgeComposerSortCriterion,
+    BridgeComposerSummary, BridgeComposerWorkGroup, BridgeConfig, BridgeCoverSelection,
+    BridgeError, BridgeFile, BridgeGalleryItem, BridgeGallerySource, BridgeMetadataSource,
+    BridgePairingDevice, BridgePlaybackValues, BridgeQueueSnapshot, BridgeQueueUpcomingPage,
+    BridgeRelease, BridgeReleaseRoleSummary, BridgeReleaseSummary, BridgeRepeatMode,
+    BridgeSaveSyncConfig, BridgeSearchResults, BridgeSortCriterion, BridgeStorageFilter,
+    BridgeStoragePage, BridgeStorageRow, BridgeStorageSort, BridgeSyncStatusSnapshot, BridgeTrack,
+    BridgeTrackGroup, BridgeTrackRoleSummary, BridgeTrackSearchResult, BridgeWorkDetail,
+    BridgeWorkReleaseSummary, BridgeWorkSummary, BridgeWorkTrackSummary,
 };
 #[cfg(feature = "desktop")]
 use crate::types::{BridgeMcpServerStatus, BridgeStorageMode, BridgeSubsonicServerStatus};

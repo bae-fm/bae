@@ -18,7 +18,7 @@ impl BridgeArtistAssignment {
         }
     }
 
-    pub(super) fn into_core(self) -> bae_core::import::ArtistAssignment {
+    pub(crate) fn into_core(self) -> bae_core::import::ArtistAssignment {
         match self {
             Self::Existing { artist_id } => {
                 bae_core::import::ArtistAssignment::Existing { artist_id }

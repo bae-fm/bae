@@ -606,6 +606,28 @@ impl AppHandle {
         .await
     }
 
+    /// Replace the candidate's ordered album-artist choices. Existing artists
+    /// are carried by library ID; new artists carry their explicit metadata.
+    pub async fn set_candidate_album_artists(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        assignments: Vec<crate::types::BridgeArtistAssignment>,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_album_artists(
+                    &candidate_key,
+                    assignments
+                        .into_iter()
+                        .map(crate::types::BridgeArtistAssignment::into_core)
+                        .collect(),
+                )
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
     /// Take one mapping-table row out of the import.
     pub async fn drop_candidate_track(
         self: std::sync::Arc<Self>,

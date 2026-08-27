@@ -148,6 +148,40 @@ pub struct BridgeArtistSummary {
     pub image: Option<BridgeImageRef>,
 }
 
+/// One existing library artist offered by an artist picker. This keeps every
+/// stored identity field so equal display names remain distinguishable.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeArtistSearchResult {
+    pub artist_id: String,
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+    pub image: Option<BridgeImageRef>,
+}
+
+impl BridgeArtistSearchResult {
+    pub(crate) fn from_core(result: bae_core::album_detail::ArtistSearchResult) -> Self {
+        let bae_core::album_detail::ArtistSearchResult { artist, image } = result;
+        let bae_core::db::DbArtist {
+            id: artist_id,
+            name,
+            sort_name,
+            discogs_artist_id,
+            musicbrainz_artist_id,
+            created_at: _,
+        } = artist;
+        Self {
+            artist_id,
+            name,
+            sort_name,
+            musicbrainz_artist_id,
+            discogs_artist_id,
+            image: image.map(BridgeImageRef::from_core),
+        }
+    }
+}
+
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtistDetail {
     pub artist: BridgeArtistSummary,

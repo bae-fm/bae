@@ -317,6 +317,30 @@ impl AppHandle {
         std::sync::Arc::new(crate::LiveSubscription::new(task))
     }
 
+    /// Existing library artists matching a name or exact stored ID. A blank
+    /// query is not a search and returns no suggestions.
+    pub async fn search_artists(
+        self: std::sync::Arc<Self>,
+        query: String,
+    ) -> Result<Vec<BridgeArtistSearchResult>, BridgeError> {
+        self.run_exported(move |this| async move {
+            let Some(query) = bae_core::library::LibrarySearchQuery::parse(&query) else {
+                return Ok(Vec::new());
+            };
+            this.services
+                .search_artists(&query)
+                .await
+                .map(|results| {
+                    results
+                        .into_iter()
+                        .map(BridgeArtistSearchResult::from_core)
+                        .collect()
+                })
+                .map_err(BridgeError::database)
+        })
+        .await
+    }
+
     // =========================================================================
     // Playback
     // =========================================================================
