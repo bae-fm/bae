@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,7 +48,9 @@ import androidx.compose.ui.unit.sp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
+import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
+import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeArtistSortCriterion
 import uniffi.bae_bridge.BridgeArtistSortField
 import uniffi.bae_bridge.BridgeComposerSortCriterion
@@ -63,6 +66,8 @@ internal fun LibraryErrorBanner(
     syncError: String?,
     session: OpenLibrary,
 ) {
+    val scope = rememberCoroutineScope()
+    val reconnect: () -> Unit = { scope.launch { reconnectFailedSync(session.appHandle) } }
     val appendError = if (page.rows.isNotEmpty()) page.error else null
     val banner = appendError?.message ?: appError ?: syncError ?: return
     ErrorBanner(
@@ -70,7 +75,7 @@ internal fun LibraryErrorBanner(
         onRetry =
             when {
                 appendError != null -> appendError.onRetry
-                appError == null && syncError != null -> ({ session.appHandle.triggerSync() })
+                appError == null && syncError != null -> reconnect
                 else -> null
             },
     )
@@ -82,10 +87,17 @@ internal fun LibraryGlobalErrorBanner(
     syncError: String?,
     session: OpenLibrary,
 ) {
+    val scope = rememberCoroutineScope()
+    val reconnect: () -> Unit = { scope.launch { reconnectFailedSync(session.appHandle) } }
     val banner = appError ?: syncError ?: return
     ErrorBanner(
         message = banner,
-        onRetry = if (appError == null && syncError != null) ({ session.appHandle.triggerSync() }) else null,
+        onRetry =
+            if (appError == null && syncError != null) {
+                reconnect
+            } else {
+                null
+            },
     )
 }
 

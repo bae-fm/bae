@@ -25,6 +25,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
 import fm.bae.app.localizedLine
+import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.launch
@@ -87,7 +88,9 @@ internal fun SyncConnectedControls(
     SettingsSyncStatusRow(
         indicator = indicator,
         syncError = syncError,
-        onReconnect = { session.appHandle.triggerSync() },
+        onReconnect = {
+            scope.launch { reconnectFailedSync(session.appHandle) }
+        },
     )
 
     SyncUploadPauseControl(session)
