@@ -68,15 +68,17 @@ Completed in `4da9a75c5`.
 - Permit scrolling only for explicit navigation commands that reveal a target.
 - Keep the revealed target as the retained anchor for later page deliveries.
 
-## Active and ordered queue
-
 ### Import hierarchy checkbox hit area
+
+Completed in `2040d107a`.
 
 - Keep Pending's selection checkbox inside the row and its hit-testing area.
 - Preserve the member and nonmember content alignment established by the
   hierarchy indentation change.
 - Apply hierarchy alignment to row content without displacing List-owned
   selection controls.
+
+## Active and ordered queue
 
 ### Identity mode navigation
 
