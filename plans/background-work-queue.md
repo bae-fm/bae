@@ -112,15 +112,20 @@ Completed in `8cd52f717`.
 - On failure, keep the sheet open and surface the error.
 - Prevent a late completion from dismissing a newer modal.
 
-## Active and ordered queue
-
 ### File-backed evidence provenance
 
-- Show a Barcode badge on the exact image from which the barcode was extracted.
+Completed in `6985a5cd9`.
+
+- Show a Barcode badge on the exact image from which the barcode was
+  extracted.
 - Show a Disc ID badge on the exact `.log` or `.cue` source used to compute it.
 - Keep these badges independent of whether a pressing has been selected.
-- Model extracted-signal provenance separately from evidence that supports the
-  selected pressing.
+- Keep extracted-signal provenance separate from evidence that supports a
+  search result.
+- Preserve every extracted value when one file supplies multiple values of the
+  same signal kind.
+
+## Active and ordered queue
 
 ### Files table columns
 
