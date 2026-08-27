@@ -125,14 +125,19 @@ Completed in `6985a5cd9`.
 - Preserve every extracted value when one file supplies multiple values of the
   same signal kind.
 
-## Active and ordered queue
-
 ### Files table columns
+
+Completed in `45dd0408d`.
 
 - Remove the Length and Role columns from the Files table.
 - Remove fixed role chips such as Document and Other.
-- Keep useful file sizes inline with Name and give the removed-column width
-  back to it.
+- Keep file sizes and evidence badges inline with Name and give the
+  removed-column width back to it.
+- Preserve actionable role choices inline without reserving a column for
+  fixed labels.
+- Give Files and Tracks explicit per-section column models.
+
+## Active and ordered queue
 
 ### Tracks table source-first layout
 
