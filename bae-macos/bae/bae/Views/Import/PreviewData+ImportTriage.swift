@@ -440,7 +440,9 @@
                             entryCount: UInt32(triageGroupedRows.count)
                         )
                     ]
-                    + triageGroupedRows.map(candidateItem)
+                    + triageGroupedRows.map {
+                        candidateItem($0, isGroupMember: true)
+                    }
             case .done:
                 return importTabDoneRows.map(candidateItem)
             case .skipped:

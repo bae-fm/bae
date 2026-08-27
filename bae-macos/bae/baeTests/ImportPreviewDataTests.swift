@@ -9,15 +9,38 @@ struct ImportPreviewDataTests {
     func importListHierarchyInsets() {
         let root = ImportListHierarchyLayout.insets(isGroupMember: false)
         #expect(root.top == 0)
-        #expect(root.leading == -64)
+        #expect(root.leading == 0)
         #expect(root.bottom == 0)
-        #expect(root.trailing == 64)
+        #expect(root.trailing == 0)
 
         let member = ImportListHierarchyLayout.insets(isGroupMember: true)
         #expect(member.top == 0)
-        #expect(member.leading == 0)
+        #expect(member.leading == 32)
         #expect(member.bottom == 0)
         #expect(member.trailing == 0)
+    }
+
+    @MainActor
+    @Test("smoke preview marks every row below its group as a child")
+    func smokePreviewExercisesGroupHierarchy() throws {
+        let items = PreviewData.importTabItems(.pending)
+        let groupIndex = try #require(
+            items.firstIndex { item in
+                if case .groupHeader = item { return true }
+                return false
+            }
+        )
+
+        let childFlags = items[(groupIndex + 1)...]
+            .compactMap { item in
+                if case .candidate(_, _, let isGroupMember) = item {
+                    return isGroupMember
+                }
+                return nil
+            }
+
+        #expect(!childFlags.isEmpty)
+        #expect(childFlags.allSatisfy { $0 })
     }
 
     @MainActor

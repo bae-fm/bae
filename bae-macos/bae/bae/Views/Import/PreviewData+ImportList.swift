@@ -26,10 +26,17 @@
         static func candidateItem(
             _ row: BridgeTriageRow
         ) -> BridgeImportListItem {
+            candidateItem(row, isGroupMember: false)
+        }
+
+        static func candidateItem(
+            _ row: BridgeTriageRow,
+            isGroupMember: Bool
+        ) -> BridgeImportListItem {
             .candidate(
                 stableKey: "candidate:\(row.candidateKey)",
                 row: row,
-                isGroupMember: false
+                isGroupMember: isGroupMember
             )
         }
 

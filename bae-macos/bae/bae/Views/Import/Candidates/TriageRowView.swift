@@ -58,15 +58,15 @@ struct TriageRowView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             rowContent
-                .padding(
-                    ImportListHierarchyLayout.insets(
-                        isGroupMember: isGroupMember
-                    )
-                )
             checkboxControl
                 .padding(.top, 10)
                 .padding(.leading, 9)
         }
+        .padding(
+            ImportListHierarchyLayout.insets(
+                isGroupMember: isGroupMember
+            )
+        )
         .opacity(isPending ? 0.6 : 1)
         .contentShape(Rectangle())
         .contextMenu {

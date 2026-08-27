@@ -10,9 +10,9 @@ func releaseGroupDisclosureID(
 enum ImportListHierarchyLayout {
     static func insets(isGroupMember: Bool) -> EdgeInsets {
         if isGroupMember {
-            return EdgeInsets()
+            return EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 0)
         }
-        return EdgeInsets(top: 0, leading: -64, bottom: 0, trailing: 64)
+        return EdgeInsets()
     }
 }
 
