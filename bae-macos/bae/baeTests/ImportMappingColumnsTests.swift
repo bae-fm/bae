@@ -130,4 +130,40 @@ struct ImportMappingColumnsTests {
             previous = columns
         }
     }
+
+    @Test(
+        "Tracks cells are Source, number, title, artist, length",
+        arguments: [
+            ImportMappingColumns.minimumTableWidth,
+            ImportMappingColumns.idealTableWidth,
+            1200,
+        ] as [CGFloat]
+    )
+    func tracksCellOriginsAreSourceFirst(width: CGFloat) {
+        let tracks = ImportMappingColumns.resolved(tableWidth: width).tracks
+
+        #expect(
+            tracks.positionOrigin
+                == tracks.source + ImportMappingColumns.spacing
+        )
+        #expect(
+            tracks.titleOrigin
+                == tracks.positionOrigin + ImportMappingColumns.position
+                + ImportMappingColumns.spacing
+        )
+        #expect(
+            tracks.artistOrigin
+                == tracks.titleOrigin + tracks.title
+                + ImportMappingColumns.spacing
+        )
+        #expect(
+            tracks.lengthOrigin
+                == tracks.artistOrigin + tracks.artist
+                + ImportMappingColumns.spacing
+        )
+        #expect(
+            tracks.lengthOrigin + ImportMappingColumns.length
+                + ImportMappingColumns.rowPadding * 2 == width
+        )
+    }
 }

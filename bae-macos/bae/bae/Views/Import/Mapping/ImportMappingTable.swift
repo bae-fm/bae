@@ -135,6 +135,8 @@ struct ImportMappingTable: View {
 
     private var trackHeaderRow: some View {
         headerRow {
+            eyebrow("ui.import.mapping.column.source")
+                .frame(width: columns.tracks.source, alignment: .leading)
             FormEyebrow(text: Text(verbatim: "#"))
                 .frame(
                     width: ImportMappingColumns.position,
@@ -146,8 +148,6 @@ struct ImportMappingTable: View {
                 .frame(width: columns.tracks.artist, alignment: .leading)
             eyebrow("ui.import.slots.column.length")
                 .frame(width: ImportMappingColumns.length, alignment: .trailing)
-            eyebrow("ui.import.mapping.column.source")
-                .frame(width: columns.tracks.source, alignment: .leading)
         }
     }
 
@@ -238,21 +238,40 @@ extension View {
 /// control. Keeping those section shapes explicit prevents hidden Files
 /// columns from reserving width for values the section does not show.
 ///
-/// `#` and Length are fixed — a track number and a duration have a known size
-/// and squeezing them says nothing. Title, Artist and Source give up width in
+/// Source leads because the file is the origin of every mapping row. `#` and
+/// Length are fixed — a track number and a duration have a known size and
+/// squeezing them says nothing. Source, Title, and Artist give up width in
 /// proportion as the pane narrows, each down to a floor below which it stops
 /// being a column and starts being an ellipsis.
 struct ImportMappingColumns {
     struct Tracks {
+        let source: CGFloat
         let title: CGFloat
         let artist: CGFloat
-        let source: CGFloat
 
-        /// What a track-sheet heading spans instead of a number, title, and
-        /// artist. Its length and disc assignment still occupy their columns.
-        var groupName: CGFloat {
+        /// The mapped track fields a track-sheet heading replaces. Its Source
+        /// cell still owns the descriptor and audio association, while this
+        /// span owns the disc assignment that shapes the resulting tracks.
+        var mappedTrack: CGFloat {
             ImportMappingColumns.position + title + artist
                 + ImportMappingColumns.spacing * 2
+        }
+
+        var positionOrigin: CGFloat {
+            source + ImportMappingColumns.spacing
+        }
+
+        var titleOrigin: CGFloat {
+            positionOrigin + ImportMappingColumns.position
+                + ImportMappingColumns.spacing
+        }
+
+        var artistOrigin: CGFloat {
+            titleOrigin + title + ImportMappingColumns.spacing
+        }
+
+        var lengthOrigin: CGFloat {
+            artistOrigin + artist + ImportMappingColumns.spacing
         }
     }
 
@@ -297,15 +316,15 @@ struct ImportMappingColumns {
         let artist = shrunk(idealArtist, to: floorArtist, by: given)
         return ImportMappingColumns(
             tracks: Tracks(
-                title: title,
-                artist: artist,
-                // What the others leave. Stating the last share as the
-                // remainder rather than as its own number is what keeps the
-                // five columns summing to the table's width at every size.
+                // What the others leave. Stating the leading flexible share as
+                // the remainder keeps all five columns summing to the table's
+                // width at every size.
                 source: max(
                     floorSource,
                     width - rigid - chrome - title - artist
-                )
+                ),
+                title: title,
+                artist: artist
             ),
             files: Files(name: width - rowPadding * 2)
         )

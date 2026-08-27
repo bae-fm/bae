@@ -5,6 +5,8 @@ import SwiftUI
 /// whole, one entry of a track sheet, or nothing at all where the release names
 /// a track this folder has no audio for.
 struct ImportMappingSourceCell: View {
+    static let auditionTargetSize: CGFloat = 24
+
     let source: BridgeMappingSource
     let previewingPath: String?
     /// Whether the folder and the release disagree about how long this row
@@ -24,25 +26,28 @@ struct ImportMappingSourceCell: View {
     }
 
     var body: some View {
-        switch source {
-        case .file(let file):
-            fileCell(file)
-        case .sheetEntry(let entry):
-            entryCell(entry)
-        case .missing:
-            Text(coreString("ui.import.slots.no_file"))
-                .font(.system(size: 12))
-                .foregroundStyle(.quaternary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 5)
-                        .strokeBorder(
-                            style: StrokeStyle(lineWidth: 1, dash: [3, 3])
-                        )
-                        .foregroundStyle(.quaternary)
-                }
+        Group {
+            switch source {
+            case .file(let file):
+                fileCell(file)
+            case .sheetEntry(let entry):
+                entryCell(entry)
+            case .missing:
+                Text(coreString("ui.import.slots.no_file"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.quaternary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5)
+                            .strokeBorder(
+                                style: StrokeStyle(lineWidth: 1, dash: [3, 3])
+                            )
+                            .foregroundStyle(.quaternary)
+                    }
+            }
         }
+        .frame(minHeight: Self.auditionTargetSize)
     }
 
     private func fileCell(_ file: BridgeMappingFile) -> some View {
@@ -136,17 +141,25 @@ struct ImportMappingSourceCell: View {
             isPreviewing ? actions.stopPreview() : actions.preview(path)
         } label: {
             Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
-                .font(.system(size: 9))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(
                     isPreviewing
                         ? AnyShapeStyle(Theme.accent)
                         : AnyShapeStyle(.secondary)
                 )
-                .frame(width: 14, height: 14)
+                .frame(
+                    width: Self.auditionTargetSize,
+                    height: Self.auditionTargetSize
+                )
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(
+            isPreviewing
+                ? coreString("ui.import.slots.stop")
+                : coreString("ui.import.slots.play")
+        )
+        .accessibilityLabel(
             isPreviewing
                 ? coreString("ui.import.slots.stop")
                 : coreString("ui.import.slots.play")

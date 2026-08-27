@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One of the release's tracks: its number, what it will be called, who it is
-/// by, how long it runs, and the file behind it.
+/// One of the release's tracks: the file behind it, its number, what it will be
+/// called, who it is by, and how long it runs.
 ///
 /// The title and artist are edited in place — this is the release being
 /// written, not a report of it. The control that re-points the row at another
@@ -54,6 +54,7 @@ struct ImportMappingTrackRow: View {
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
+            sourceCell
             Text(position)
                 .font(.system(size: 12))
                 .monospacedDigit()
@@ -76,7 +77,6 @@ struct ImportMappingTrackRow: View {
                     width: ImportMappingColumns.length,
                     alignment: .trailing
                 )
-            sourceCell
         }
         .onHover { hovering = $0 }
     }

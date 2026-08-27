@@ -45,7 +45,7 @@ struct ImportSheetBindingMenu: View {
                 .truncationMode(.middle)
             }
             .menuStyle(.borderlessButton)
-            .fixedSize()
+            .frame(minWidth: 24)
             .foregroundStyle(.secondary)
         }
     }
@@ -59,6 +59,8 @@ struct ImportSheetBindingMenu: View {
             Button {
             } label: {
                 Text(verbatim: "\(option.fileId): \(refusal)")
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             }
             .disabled(true)
         }
@@ -78,9 +80,13 @@ struct ImportSheetBindingMenu: View {
     private func checkable(_ label: String, selected: Bool) -> some View {
         if selected {
             Label(label, systemImage: "checkmark")
+                .lineLimit(1)
+                .truncationMode(.middle)
         }
         else {
             Text(label)
+                .lineLimit(1)
+                .truncationMode(.middle)
         }
     }
 }

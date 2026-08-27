@@ -25,54 +25,65 @@ struct ImportMappingSheetRow: View {
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
-            HStack(spacing: 8) {
-                Image(systemName: "list.bullet.rectangle")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                Button {
-                    actions.openDocument(sheet.name, sheet.localPath)
-                } label: {
-                    Text(sheet.name)
-                        .font(.system(size: 12, design: .monospaced))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                .buttonStyle(.plain)
-                ImportSheetBindingMenu(
+            sourceCell
+                .frame(width: columns.source, alignment: .leading)
+            HStack {
+                ImportSheetDiscMenu(
                     sheet: sheet,
-                    options: options,
-                    onBind: { actions.bindSheet(sheet.sheetId, $0) },
+                    onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
                 )
-                // Why a sheet is on nothing, where it is on nothing: the
-                // directive's own text, or the codec bae cannot carve.
-                if let reason = sheet.bound.reasonLine {
-                    Text(reason)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
-                if let size = sheet.bound.containerSizeText {
-                    Text(size)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                ForEach(ImportEvidence.badges(evidence)) { badge in
-                    ImportEvidenceChip(signal: badge.signal)
-                        .fixedSize()
-                        .help(ImportEvidence.hoverText(badge.evidence))
-                }
                 Spacer(minLength: 0)
             }
-            .frame(width: columns.groupName, alignment: .leading)
-            // The slices below fill the length; the header only holds the
-            // column open so the group and its rows line up.
+            .frame(width: columns.mappedTrack, alignment: .leading)
+            // The slices below fill Length; the heading only holds the column
+            // open so its entries stay aligned with ordinary track rows.
             Spacer().frame(width: ImportMappingColumns.length)
-            ImportSheetDiscMenu(
+        }
+    }
+
+    private var sourceCell: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "list.bullet.rectangle")
+                .font(.system(size: 11))
+                .foregroundStyle(.tertiary)
+                .fixedSize()
+            Button {
+                actions.openDocument(sheet.name, sheet.localPath)
+            } label: {
+                Text(sheet.name)
+                    .font(.system(size: 12, design: .monospaced))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            .buttonStyle(.plain)
+            .layoutPriority(1)
+            ImportSheetBindingMenu(
                 sheet: sheet,
-                onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
+                options: options,
+                onBind: { actions.bindSheet(sheet.sheetId, $0) },
             )
-            .frame(width: columns.source, alignment: .leading)
+            // Why a sheet is on nothing, where it is on nothing: the
+            // directive's own text, or the codec bae cannot carve.
+            if let reason = sheet.bound.reasonLine {
+                Text(reason)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            if let size = sheet.bound.containerSizeText {
+                Text(size)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            ForEach(ImportEvidence.badges(evidence)) { badge in
+                ImportEvidenceChip(signal: badge.signal)
+                    .fixedSize()
+                    .help(ImportEvidence.hoverText(badge.evidence))
+            }
+            Spacer(minLength: 0)
         }
     }
 }
