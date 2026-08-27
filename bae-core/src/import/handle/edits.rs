@@ -35,6 +35,21 @@ impl ImportServiceHandle {
         Ok(())
     }
 
+    /// Replace the ordered album credits with existing library artists, new
+    /// artist seeds, or both. The stored assignments remain typed until import
+    /// resolves them, so matching names never imply identity.
+    pub async fn set_candidate_album_artists(
+        &self,
+        candidate_key: &str,
+        assignments: Vec<crate::import::ArtistAssignment>,
+    ) -> Result<(), crate::import::ImportError> {
+        let hash = self.edited_candidate_hash(candidate_key).await?;
+        self.library_manager
+            .replace_import_candidate_album_artists(&hash, &assignments)
+            .await?;
+        Ok(())
+    }
+
     /// Record one mapping-table row as the user left it.
     pub async fn set_candidate_track_edit(
         &self,

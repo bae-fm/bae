@@ -381,6 +381,36 @@ async fn an_edit_with_nothing_picked_is_refused() {
     shut_down(handle).await;
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let existing = make_artist("Existing Artist", Some("discogs-existing"), None);
+    handle
+        .library_manager
+        .insert_artist(&existing)
+        .await
+        .unwrap();
+    let assignments = vec![
+        crate::import::ArtistAssignment::existing(&existing.id),
+        crate::import::ArtistAssignment::new("New Artist"),
+    ];
+
+    handle
+        .set_candidate_album_artists(&key, assignments.clone())
+        .await
+        .unwrap();
+
+    assert_eq!(
+        pane(&handle, &key)
+            .await
+            .edit
+            .expect("a metadata seed draws the form")
+            .album_artist_assignments,
+        assignments
+    );
+    shut_down(handle).await;
+}
+
 /// An edited row comes back edited and its neighbours come back untouched.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edited_track_row_redraws_alone() {

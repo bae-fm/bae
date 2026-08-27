@@ -128,6 +128,48 @@ impl Database {
             .await
     }
 
+    /// Search every stored artist, including artists without an album link.
+    /// Library and provider IDs join exact name or sort-name matches ahead of
+    /// prefixes, then substrings; name and library ID stabilize each rank.
+    pub async fn search_artists(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<DbArtist>, DbError> {
+        let query = query.to_string();
+        self.read(move |sql| {
+            sql.query(
+                r#"
+                    SELECT *
+                    FROM artists
+                    WHERE id = ?1
+                       OR discogs_artist_id = ?1
+                       OR musicbrainz_artist_id = ?1
+                       OR instr(lower(name), lower(?1)) > 0
+                       OR instr(lower(COALESCE(sort_name, '')), lower(?1)) > 0
+                    ORDER BY
+                        CASE
+                            WHEN id = ?1
+                              OR discogs_artist_id = ?1
+                              OR musicbrainz_artist_id = ?1
+                              OR lower(name) = lower(?1)
+                              OR lower(COALESCE(sort_name, '')) = lower(?1) THEN 0
+                            WHEN substr(lower(name), 1, length(?1)) = lower(?1)
+                              OR substr(lower(COALESCE(sort_name, '')), 1, length(?1)) = lower(?1) THEN 1
+                            ELSE 2
+                        END,
+                        name COLLATE NOCASE,
+                        id
+                    LIMIT ?2
+                    "#,
+                params![query, limit as i64],
+                row_to_artist,
+            )
+            .map_err(DbError::from)
+        })
+        .await
+    }
+
     pub async fn get_composer_count(&self) -> Result<u64, DbError> {
         self.read(|sql| composer_count_on(&sql)).await
     }

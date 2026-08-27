@@ -28,10 +28,10 @@ use tokio::sync::broadcast;
 use tracing::{debug, warn};
 
 use crate::album_detail::{
-    join_artist_names, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSummary, ComposerDetail,
-    ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail, ReleaseResolveCtx,
-    ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary, SearchResults, StoragePage,
-    StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
+    join_artist_names, AlbumDetail, AlbumSummary, ArtistDetail, ArtistSearchResult, ArtistSummary,
+    ComposerDetail, ComposerSummary, ComposerWorkGroup, GallerySource, ImageRef, ReleaseDetail,
+    ReleaseResolveCtx, ReleaseStorageAction, ReleaseStorageState, ReleaseStorageSummary,
+    SearchResults, StoragePage, StorageRow, WorkDetail, WorkReleaseSummary, WorkSummary,
 };
 #[cfg(feature = "oauth-providers")]
 use crate::config::CloudProvider;

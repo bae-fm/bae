@@ -36,6 +36,31 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
+    /// Search existing artists by library ID, provider ID, display name, or
+    /// sort name. The parsed query and result limit are shared with library
+    /// search, while this result set includes artists without album links.
+    pub async fn search_artists(
+        &self,
+        query: &crate::library::LibrarySearchQuery,
+    ) -> Result<Vec<ArtistSearchResult>, LibraryError> {
+        let artists = self
+            .database
+            .search_artists(query.as_str(), crate::library::SEARCH_RESULT_LIMIT)
+            .await?;
+        let artist_ids = artists
+            .iter()
+            .map(|artist| artist.id.clone())
+            .collect::<Vec<_>>();
+        let images = self.artist_image_refs(&artist_ids).await?;
+        Ok(artists
+            .into_iter()
+            .map(|artist| {
+                let image = images.get(&artist.id).cloned();
+                ArtistSearchResult { artist, image }
+            })
+            .collect())
+    }
+
     pub async fn get_artist_count(&self) -> Result<u64, LibraryError> {
         Ok(self.database.get_artist_count().await?)
     }
@@ -177,10 +202,10 @@ impl LibraryManager {
     /// insert. `ids` comes back in input order, so a caller can zip it with `artists`
     /// to map parsed IDs to DB IDs.
     ///
-    /// Lookup chain: the cross-source Various Artists alias, `discogs_artist_id`,
-    /// `musicbrainz_artist_id`, then a case-insensitive name match guarded by a
-    /// source-ID conflict check; failing all of those, a deferred insert. A match
-    /// carries any new source IDs out as a deferred COALESCE update.
+    /// Lookup chain: the cross-source Various Artists alias,
+    /// `discogs_artist_id`, then `musicbrainz_artist_id`; failing those, a
+    /// deferred insert. A match carries any new source IDs out as a deferred
+    /// COALESCE update.
     pub(crate) async fn resolve_artists_for_import(
         &self,
         artists: &[DbArtist],

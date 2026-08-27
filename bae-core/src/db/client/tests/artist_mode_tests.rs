@@ -62,6 +62,69 @@ async fn seeded_db() -> (Database, tempfile::TempDir) {
 }
 
 #[tokio::test]
+async fn artist_search_ranks_exact_prefix_and_substring_matches() {
+    let (db, _tmp) = seeded_db().await;
+    db.call(|conn| {
+        conn.execute_batch(
+            "
+            INSERT INTO artists (id, name, sort_name, discogs_artist_id, musicbrainz_artist_id, _updated_at, created_at)
+            VALUES
+                ('0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b', 'Artist Search', NULL, 'discogs-exact', 'mb-exact', 'stamp', '2026-01-01T00:00:00Z'),
+                ('6b312597-2c63-454e-9341-065704bd5f9f', 'Artist Search Alpha', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('ef0f40c5-83b9-4e14-be41-210438e73ef1', 'Artist Search Beta', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('d5cfb57f-0df4-4c99-9a1a-a634161c2e2c', 'Name With Artist Search Inside', NULL, NULL, NULL, 'stamp', '2026-01-01T00:00:00Z'),
+                ('1dd8239d-493b-434a-b0dd-d2838a9b404a', 'Displayed Name', 'Artist Search Sort', NULL, NULL, 'stamp', '2026-01-01T00:00:00Z');
+            ",
+        )
+        .map(|_| ())
+        .map_err(DbError::from)
+    })
+    .await
+    .unwrap();
+
+    let matches = db.search_artists("artist search", 10).await.unwrap();
+    let ids = matches
+        .iter()
+        .map(|artist| artist.id.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        ids,
+        vec![
+            "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b",
+            "6b312597-2c63-454e-9341-065704bd5f9f",
+            "ef0f40c5-83b9-4e14-be41-210438e73ef1",
+            "1dd8239d-493b-434a-b0dd-d2838a9b404a",
+            "d5cfb57f-0df4-4c99-9a1a-a634161c2e2c",
+        ]
+    );
+    assert_eq!(
+        matches[0].discogs_artist_id.as_deref(),
+        Some("discogs-exact")
+    );
+    assert_eq!(
+        matches[0].musicbrainz_artist_id.as_deref(),
+        Some("mb-exact")
+    );
+
+    let by_musicbrainz_id = db.search_artists("mb-exact", 10).await.unwrap();
+    assert_eq!(by_musicbrainz_id.len(), 1);
+    assert_eq!(
+        by_musicbrainz_id[0].id,
+        "0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b"
+    );
+
+    let by_library_id = db
+        .search_artists("0d3d77ce-a3ea-4d31-b5ff-e10facb0cc0b", 10)
+        .await
+        .unwrap();
+    assert_eq!(by_library_id.len(), 1);
+    assert_eq!(
+        by_library_id[0].discogs_artist_id.as_deref(),
+        Some("discogs-exact")
+    );
+}
+
+#[tokio::test]
 async fn artist_page_lists_album_artists_with_distinct_album_counts() {
     let (db, _tmp) = seeded_db().await;
 

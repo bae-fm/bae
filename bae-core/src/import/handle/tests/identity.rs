@@ -29,7 +29,7 @@ async fn test_same_mb_id_reuses_existing() {
 }
 
 #[tokio::test]
-async fn test_same_name_no_ids_reuses_existing() {
+async fn test_same_name_without_ids_creates_a_distinct_artist() {
     let (manager, _tmp) = setup_test_manager().await;
     let existing = make_artist("Artist One", None, None);
     manager.insert_artist(&existing).await.unwrap();
@@ -40,7 +40,8 @@ async fn test_same_name_no_ids_reuses_existing() {
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], existing.id);
+    assert_eq!(resolved[0], incoming.id);
+    assert_ne!(resolved[0], existing.id);
 }
 
 #[tokio::test]
@@ -123,29 +124,38 @@ async fn test_same_name_different_discogs_id_creates_new() {
 }
 
 #[tokio::test]
-async fn test_name_match_accumulates_ids() {
+async fn test_disjoint_source_ids_do_not_merge_by_name() {
     let (manager, _tmp) = setup_test_manager().await;
     // Existing has discogs ID only
     let existing = make_artist("Artist One", Some("d456"), None);
     manager.insert_artist(&existing).await.unwrap();
 
-    // Incoming has MB ID only — no conflict, should merge
+    // A matching display name is not identity. Only an explicit existing
+    // assignment or a shared provider ID may join these rows.
     let incoming = make_artist("Artist One", None, Some("mb-xyz"));
     let resolved = manager
         .find_or_create_artists(std::slice::from_ref(&incoming))
         .await
         .unwrap();
 
-    assert_eq!(resolved[0], existing.id);
+    assert_eq!(resolved[0], incoming.id);
+    assert_ne!(resolved[0], existing.id);
 
-    // Verify the existing artist now has both IDs
-    let updated = manager
+    let unchanged = manager
         .get_artist_by_id(&existing.id)
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(updated.discogs_artist_id.as_deref(), Some("d456"));
-    assert_eq!(updated.musicbrainz_artist_id.as_deref(), Some("mb-xyz"));
+    assert_eq!(unchanged.discogs_artist_id.as_deref(), Some("d456"));
+    assert_eq!(unchanged.musicbrainz_artist_id, None);
+
+    let inserted = manager
+        .get_artist_by_id(&incoming.id)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(inserted.discogs_artist_id, None);
+    assert_eq!(inserted.musicbrainz_artist_id.as_deref(), Some("mb-xyz"));
 }
 
 #[tokio::test]

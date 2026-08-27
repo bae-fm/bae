@@ -486,6 +486,18 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn replace_import_candidate_album_artists(
+        &self,
+        content_hash: &str,
+        assignments: &[crate::import::ArtistAssignment],
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .replace_import_candidate_album_artists(content_hash, assignments)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn save_import_candidate_track_edit(
         &self,
         content_hash: &str,

@@ -8,6 +8,45 @@ use crate::import::{
 };
 
 impl AppServices {
+    delegate_async!(import, import_add_watched_folder => add_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
+    delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);
+    delegate_sync!(import, import_watched_folders => watched_folders() -> Vec<crate::import::WatchedFolder>);
+    #[cfg(any(test, feature = "test-utils"))]
+    delegate_sync!(import, import_emit_event_for_test => emit_event_for_test(event: crate::import::ImportEvent) -> ());
+    delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
+    delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
+    delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(path: String, skipped: bool) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
+    delegate_async!(import, import_preview_file_tags_for_folder => preview_file_tags_for_folder(candidate_key: String) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError>);
+    delegate_async!(import, import_start_import => start_import(candidate_key: &str, storage_mode: crate::import::StorageMode, pin: bool) -> Result<String, crate::import::ImportError>);
+    delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
+    delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
+    delegate_sync!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_select_candidate_metadata_seed => select_candidate_metadata_seed(candidate_key: String, pick: crate::import::MetadataSeed) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_folder_release_decision => set_folder_release_decision(key: crate::import::FolderReleaseDecisionKey, decision: crate::import::FolderReleaseDecision) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_sheet_binding_options => sheet_binding_options(candidate_key: String, sheet_file_id: String) -> Result<Vec<crate::import::folder_scanner::SheetBindingOption>, crate::import::ImportError>);
+    delegate_async!(import, import_set_sheet_binding => set_sheet_binding(candidate_key: String, sheet_file_id: String, audio_file_id: Option<String>) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_sheet_disc => set_sheet_disc(candidate_key: String, sheet_file_id: String, disc: crate::import::folder_scanner::SheetDisc) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_file_role => set_file_role(candidate_key: String, file_id: String, choice: crate::import::folder_scanner::FileRoleChoice) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_fetch_remote_covers => fetch_remote_covers(release_id: &str) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError>);
+    delegate_async!(import, import_fetch_remote_image_bytes => fetch_remote_image_bytes(url: String) -> Result<Option<crate::import::cover_art::RemoteImage>, crate::import::ImportError>);
+    delegate_async!(import, import_set_candidate_cover => set_candidate_cover(candidate_key: &str, cover: crate::import::CoverSelection) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_candidate_edit_field => set_candidate_edit_field(candidate_key: &str, field: crate::import::CandidateEditField, value: String) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_candidate_album_artists => set_candidate_album_artists(candidate_key: &str, assignments: Vec<crate::import::ArtistAssignment>) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_probe_candidate_durations => probe_candidate_durations(candidate_key: &str, units: Vec<crate::import::AudioFile>) -> Result<(), crate::import::ImportError>);
+    delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
+    delegate_sync!(identify, identify_start => start(run: crate::identify::IdentifyRunId, key: String, priority: crate::util::rate_limiter::CallPriority) -> ());
+    delegate_sync!(identify, identify_cancel => cancel(key: &str) -> ());
+    delegate_sync!(identify, identify_toggle_signal => toggle_signal(key: &str, signal: crate::identify::SignalToggle) -> ());
+    delegate_sync!(identify, identify_rerun => rerun(key: &str) -> ());
+    delegate_sync!(extraction, extraction_register_analyzer => register_analyzer(analyzer: std::sync::Arc<dyn crate::signals::ArtworkAnalyzer>) -> ());
+    delegate_sync!(extraction, extraction_start => start(key: String, source: crate::signals::ExtractionSource, priority: crate::util::rate_limiter::CallPriority) -> ());
+    delegate_sync!(extraction, extraction_cancel => cancel(key: &str) -> ());
+
     pub(crate) fn subscribe_import_events(
         &self,
     ) -> tokio::sync::broadcast::Receiver<crate::import::ImportEvent> {
