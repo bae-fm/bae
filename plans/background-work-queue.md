@@ -78,9 +78,9 @@ Completed in `2040d107a`.
 - Apply hierarchy alignment to row content without displacing List-owned
   selection controls.
 
-## Active and ordered queue
-
 ### Identity mode navigation
+
+Completed in `0005f913e`.
 
 - Do not show Find or Change release controls while File Tags is active.
 - Make the Lookup segment switch to the inline Lookup view without opening a
@@ -91,6 +91,8 @@ Completed in `2040d107a`.
   instead of duplicating candidate state in the view.
 - Preserve an existing picked release and the row-level pending state while
   changing modes.
+
+## Active and ordered queue
 
 ### Storage Manager inspector
 
