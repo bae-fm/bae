@@ -382,7 +382,8 @@ public sealed class ImportSectionViewTests
     private static List<BridgeImportListItem> MatchedItems(
         BridgeTriagePlacement placement,
         BridgeTriageSkipAction? skipAction,
-        BridgeTriageImportStatus? importStatus = null) => new()
+        BridgeTriageImportStatus? importStatus = null,
+        bool isGroupMember = false) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -420,7 +421,8 @@ public sealed class ImportSectionViewTests
                     ? new BridgeIdentityChoice.Release(
                         "rel-matched",
                         BridgeMetadataSource.MusicBrainz)
-                    : null)),
+                    : null),
+            IsGroupMember: isGroupMember),
     };
 
     private static BridgeImportQueueSummary MatchedSummary(
@@ -457,7 +459,10 @@ public sealed class ImportSectionViewTests
                 true,
                 1),
         };
-        items.AddRange(MatchedItems(new BridgeTriagePlacement.Ready(), BridgeTriageSkipAction.Skip));
+        items.AddRange(MatchedItems(
+            new BridgeTriagePlacement.Ready(),
+            BridgeTriageSkipAction.Skip,
+            isGroupMember: true));
         items.Add(new BridgeImportListItem.Invalid(
             $"invalid:{PreviewData.ImportRoot}/Broken",
             new BridgeInvalidCandidate(
@@ -466,7 +471,8 @@ public sealed class ImportSectionViewTests
                 PreviewData.ImportRoot,
                 "Broken",
                 Array.Empty<BridgeResolvedFolderReleaseBoundary>(),
-                new BridgeInvalidReason.NoValidAudio())));
+                new BridgeInvalidReason.NoValidAudio()),
+            IsGroupMember: false));
         return items;
     }
 

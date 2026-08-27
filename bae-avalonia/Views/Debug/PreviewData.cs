@@ -41,9 +41,15 @@ internal static class PreviewData
             ImportRoot,
             true,
             2),
-        ImportCandidateItem("Release 01", "Collection/Release 01"),
-        ImportCandidateItem("Release 02", "Collection/Release 02"),
-        ImportCandidateItem("Release 03", "Release 03"),
+        ImportCandidateItem(
+            "Release 01",
+            "Collection/Release 01",
+            isGroupMember: true),
+        ImportCandidateItem(
+            "Release 02",
+            "Collection/Release 02",
+            isGroupMember: true),
+        ImportCandidateItem("Release 03", "Release 03", isGroupMember: false),
     };
 
     internal static BridgeImportQueueSummary ImportSummary { get; } = Summary(
@@ -114,7 +120,8 @@ internal static class PreviewData
                 Selectable: true,
                 ImportStatus: null,
                 Picked: null,
-                Claim: null)),
+                Claim: null),
+            IsGroupMember: true),
     };
 
     internal static BridgeImportQueueSummary ImportResolvedSummary { get; } = Summary(
@@ -130,10 +137,14 @@ internal static class PreviewData
     internal static string GroupStableKey(BridgeFolderReleaseDecisionKey key) =>
         $"group:{key.WatchedFolderPath.Length}{key.WatchedFolderPath}{key.RelativeFolderPath}";
 
-    private static BridgeImportListItem ImportCandidateItem(string name, string displayPath) =>
+    private static BridgeImportListItem ImportCandidateItem(
+        string name,
+        string displayPath,
+        bool isGroupMember) =>
         new BridgeImportListItem.Candidate(
             CandidateStableKey($"{ImportRoot}/{displayPath}"),
-            ImportRow(name, displayPath));
+            ImportRow(name, displayPath),
+            IsGroupMember: isGroupMember);
 
     private static BridgeReadyRowRef ReadyRow(string displayPath) => new(
         $"{ImportRoot}/{displayPath}",
