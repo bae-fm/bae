@@ -97,6 +97,10 @@ run_check "restricted-path Rust visibility" scripts/check-rust-visibility.sh || 
     exit 1
 }
 
+run_check "owner dependency boundary" scripts/owner-dependency-boundary.sh || {
+    exit 1
+}
+
 run_check "UniFFI runtime boundary" scripts/check-uniffi-runtime-boundary.py || {
     exit 1
 }
