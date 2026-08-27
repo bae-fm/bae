@@ -1,13 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Bottom-pane section showing the in-memory download (pin) queue: a header
-/// band with the summary, a pause/resume toggle, and a "Retry now" action, plus
-/// one row per release (title, file count, size, a Queued/Active/Failed
-/// badge, and a cancel button). Hidden when the queue is idle. Reads
-/// `DownloadStore` at the leaf; the download projection is the sole writer, so
-/// actions don't optimistically mutate — the download subscription delivers
-/// each queue change.
+/// Compact queue-wide download status and controls. Release-keyed operation
+/// details live in `StorageTransferInspector`.
 struct DownloadsSection: View {
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -18,34 +13,19 @@ struct DownloadsSection: View {
         let snapshot = downloadStore.snapshot
         if !snapshot.downloads.isEmpty {
             Divider()
-            VStack(spacing: 0) {
-                QueueSectionHeader(
-                    icon: "arrow.down.circle",
-                    title: "Downloads",
-                    pauseRequested: snapshot.paused,
-                    pauseStatusText: snapshot.paused
-                        ? String(localized: "Paused") : nil,
-                    summaryText: snapshot.summaryText,
-                    retryDisabled: snapshot.total.failed == 0,
-                    onSetPaused: { downloads.setDownloadsPaused($0) },
-                    onRetry: { downloads.retryDownloads() }
-                )
-                Divider()
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(snapshot.downloads, id: \.releaseId) { op in
-                            DownloadRow(op: op) {
-                                downloads.cancelDownload(op.releaseId)
-                            }
-                            Divider()
-                        }
-                    }
-                }
-                .frame(maxHeight: 180)
-            }
+            QueueSectionHeader(
+                icon: "arrow.down.circle",
+                title: "Downloads",
+                pauseRequested: snapshot.paused,
+                pauseStatusText: snapshot.paused
+                    ? String(localized: "Paused") : nil,
+                summaryText: snapshot.summaryText,
+                retryDisabled: snapshot.total.failed == 0,
+                onSetPaused: { downloads.setDownloadsPaused($0) },
+                onRetry: { downloads.retryDownloads() }
+            )
         }
     }
-
 }
 
 #if DEBUG

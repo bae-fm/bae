@@ -18,10 +18,9 @@ struct StorageManagerView: View {
     private var outputs
     @Environment(ConfigStore.self)
     private var configStore
-    // OutboxSection / DownloadsSection / OutputSection read their stores and
-    // services at the leaf; uiStore is read here to surface outbox action errors
-    // in this window (it's a separate scene from MainAppView, which owns the
-    // other error alert).
+    // The queue sections and inspector read their stores at the leaf; uiStore
+    // is read here to surface queue action errors in this window (it's a
+    // separate scene from MainAppView, which owns the other error alert).
     @Environment(UiStore.self)
     private var uiStore
 
@@ -57,31 +56,44 @@ struct StorageManagerView: View {
                     }
                 }
                 else {
-                    StorageTableView(
-                        list: list,
-                        selection: $selection,
-                        sort: $sort,
-                        sortingEnabled: filter != .uploading,
-                        libraryStore: libraryStore,
-                        library: library,
-                        runner: runner,
-                    )
+                    HSplitView {
+                        VStack(spacing: 0) {
+                            StorageTableView(
+                                list: list,
+                                selection: $selection,
+                                sort: $sort,
+                                sortingEnabled: filter != .uploading,
+                                libraryStore: libraryStore,
+                                library: library,
+                                runner: runner,
+                            )
 
-                    Divider()
-                    StorageFooter(
-                        list: list,
-                        totalSize: storageManagerStore.totalSize
-                    )
+                            DownloadsSection()
+                            OutputSection()
+                            OutboxSection()
+                            Divider()
+                            StorageFooter(
+                                list: list,
+                                totalSize: storageManagerStore.totalSize
+                            )
+                        }
+                        .frame(minWidth: 480)
+
+                        if let releaseId = StorageTransferInspector.releaseId(
+                            in: selection
+                        ) {
+                            StorageTransferInspector(
+                                releaseId: releaseId,
+                                selection: $selection
+                            )
+                        }
+                    }
                 }
             }
             else {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-
-            DownloadsSection()
-            OutputSection()
-            OutboxSection()
         }
         .frame(minWidth: 700, minHeight: 400)
         .onAppear {

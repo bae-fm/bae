@@ -10,10 +10,9 @@ struct QueueSectionHeaderStatus: Equatable {
     }
 }
 
-/// Header band shared by the three queue panes: optional leading slot
-/// (the outbox pane's collapse chevron), icon, title, pause status and queue
-/// summary, pause/resume, and retry.
-struct QueueSectionHeader<Leading: View>: View {
+/// Header band shared by the three queue-wide status sections. Status uses its
+/// own line so the controls stay readable when the manager is narrow.
+struct QueueSectionHeader: View {
     let icon: String
     let title: LocalizedStringKey
     let pauseRequested: Bool
@@ -22,62 +21,38 @@ struct QueueSectionHeader<Leading: View>: View {
     let retryDisabled: Bool
     let onSetPaused: (Bool) -> Void
     let onRetry: () -> Void
-    @ViewBuilder
-    let leading: () -> Leading
-
     var body: some View {
         let status = QueueSectionHeaderStatus(
             pauseStatusText: pauseStatusText,
             summaryText: summaryText
         )
-        HStack(spacing: 8) {
-            leading()
-            Image(systemName: icon)
-                .foregroundStyle(.secondary)
-            Text(title).font(.callout.weight(.medium))
-            if let pauseText = status.pauseText {
-                Label(pauseText, systemImage: "pause.circle.fill")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundStyle(.secondary)
+                Text(title).font(.callout.weight(.medium))
+                if let pauseText = status.pauseText {
+                    Label(pauseText, systemImage: "pause.circle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                }
+                Spacer()
+                Button(pauseRequested ? "Resume" : "Pause") {
+                    onSetPaused(!pauseRequested)
+                }
+                Button("Retry now", action: onRetry)
+                    .disabled(retryDisabled)
             }
             if let summaryText = status.summaryText {
                 Text(summaryText)
-                    .font(.callout)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
-            Spacer()
-            Button(pauseRequested ? "Resume" : "Pause") {
-                onSetPaused(!pauseRequested)
-            }
-            Button("Retry now", action: onRetry)
-                .disabled(retryDisabled)
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
-    }
-}
-
-extension QueueSectionHeader where Leading == EmptyView {
-    init(
-        icon: String,
-        title: LocalizedStringKey,
-        pauseRequested: Bool,
-        pauseStatusText: String?,
-        summaryText: String,
-        retryDisabled: Bool,
-        onSetPaused: @escaping (Bool) -> Void,
-        onRetry: @escaping () -> Void
-    ) {
-        self.init(
-            icon: icon,
-            title: title,
-            pauseRequested: pauseRequested,
-            pauseStatusText: pauseStatusText,
-            summaryText: summaryText,
-            retryDisabled: retryDisabled,
-            onSetPaused: onSetPaused,
-            onRetry: onRetry
-        ) { EmptyView() }
+        .controlSize(.small)
     }
 }
 
@@ -96,7 +71,7 @@ extension QueueSectionHeader where Leading == EmptyView {
         .frame(width: 640)
     }
 
-    #Preview("Paused, with leading slot") {
+    #Preview("Paused") {
         QueueSectionHeader(
             icon: "arrow.up.arrow.down.circle",
             title: "Sync queue",
@@ -105,11 +80,7 @@ extension QueueSectionHeader where Leading == EmptyView {
             summaryText: "",
             retryDisabled: false,
             onSetPaused: { _ in },
-            onRetry: {},
-            leading: {
-                Image(systemName: "chevron.down")
-                    .foregroundStyle(.secondary)
-            }
+            onRetry: {}
         )
         .frame(width: 640)
     }
