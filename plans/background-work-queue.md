@@ -166,7 +166,7 @@ Completed in `c825b094d`.
 
 ### Hosted candidate viewport regression and test lifecycle
 
-Completed across `3dfc25eae` and the hosted-window lifecycle repair.
+Completed in `ed919ddd6`.
 
 - Preserve the hosted viewport regression that verifies live page deliveries
   keep the visible candidate anchored.
