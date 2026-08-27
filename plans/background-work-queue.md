@@ -60,6 +60,18 @@ fix.
 - Find the source among selection handling, row identity, pagination updates,
   and row-height changes; fix it at the owning layer.
 
+### Identity mode navigation
+
+- Do not show Find or Change release controls while File Tags is active.
+- Make the Lookup segment switch to the inline Lookup view without opening a
+  modal.
+- Open release search only from an explicit Find or Change action inside
+  Lookup.
+- Model lookup presentation and settled import identity at their owning layer
+  instead of duplicating candidate state in the view.
+- Preserve an existing picked release and the row-level pending state while
+  changing modes.
+
 ### Storage Manager inspector
 
 - Keep the transfer list compact.
