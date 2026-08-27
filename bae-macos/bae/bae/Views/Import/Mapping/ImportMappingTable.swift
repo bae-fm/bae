@@ -105,7 +105,7 @@ struct ImportMappingTable: View {
         case .sheet(let sheet, let entries):
             ImportMappingSheetRow(
                 sheet: sheet,
-                columns: columns,
+                columns: columns.tracks,
                 options: bindingOptions[sheet.sheetId],
                 evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
                 actions: actions,
@@ -120,7 +120,7 @@ struct ImportMappingTable: View {
     private func trackRow(_ unit: BridgeMappingUnit) -> some View {
         ImportMappingTrackRow(
             unit: unit,
-            columns: columns,
+            columns: columns.tracks,
             audioChoices: table.audioChoices,
             previewingPath: previewingPath,
             isMeasuring: unit.source.audio.map(unprobed.contains) ?? false,
@@ -141,13 +141,13 @@ struct ImportMappingTable: View {
                     alignment: .leading
                 )
             eyebrow("ui.import.mapping.column.title")
-                .frame(width: columns.title, alignment: .leading)
+                .frame(width: columns.tracks.title, alignment: .leading)
             eyebrow("ui.import.mapping.column.artist")
-                .frame(width: columns.artist, alignment: .leading)
+                .frame(width: columns.tracks.artist, alignment: .leading)
             eyebrow("ui.import.slots.column.length")
                 .frame(width: ImportMappingColumns.length, alignment: .trailing)
             eyebrow("ui.import.mapping.column.source")
-                .frame(width: columns.source, alignment: .leading)
+                .frame(width: columns.tracks.source, alignment: .leading)
         }
     }
 
@@ -162,15 +162,18 @@ struct ImportMappingTable: View {
         case .unit(let unit):
             ImportMappingFileRow(
                 unit: unit,
-                columns: columns,
+                columns: columns.files,
                 previewingPath: previewingPath,
                 evidence: evidenceFor(unit),
                 actions: actions,
             )
             .rowChrome()
         case .directory(let directory):
-            ImportMappingDirectoryRow(directory: directory, columns: columns)
-                .rowChrome()
+            ImportMappingDirectoryRow(
+                directory: directory,
+                columns: columns.files
+            )
+            .rowChrome()
         case .sheet:
             EmptyView()
         }
@@ -179,11 +182,7 @@ struct ImportMappingTable: View {
     private var fileHeaderRow: some View {
         headerRow {
             eyebrow("ui.import.mapping.column.name")
-                .frame(width: columns.name, alignment: .leading)
-            eyebrow("ui.import.slots.column.length")
-                .frame(width: ImportMappingColumns.length, alignment: .trailing)
-            eyebrow("ui.import.roles.column.role")
-                .frame(width: columns.source, alignment: .leading)
+                .frame(width: columns.files.name, alignment: .leading)
         }
     }
 
@@ -234,28 +233,36 @@ extension View {
 
 /// The widths the mapping table resolves for one pane.
 ///
-/// Two sections share one resolution so their headers and rows line up down
-/// the pane: a track row's Source cell and a file row's Name cell start at the
-/// same x, which is what makes the two lists read as one table of the folder
-/// rather than two unrelated grids.
+/// Tracks have five columns. Files have one: its Name cell owns the whole inner
+/// table, including the inline size, evidence badges, and any actionable role
+/// control. Keeping those section shapes explicit prevents hidden Files
+/// columns from reserving width for values the section does not show.
 ///
 /// `#` and Length are fixed — a track number and a duration have a known size
 /// and squeezing them says nothing. Title, Artist and Source give up width in
 /// proportion as the pane narrows, each down to a floor below which it stops
 /// being a column and starts being an ellipsis.
 struct ImportMappingColumns {
-    let title: CGFloat
-    let artist: CGFloat
-    let source: CGFloat
+    struct Tracks {
+        let title: CGFloat
+        let artist: CGFloat
+        let source: CGFloat
 
-    /// What a name spans where a row has one instead of a number, a title and
-    /// an artist — a file, a collapsed directory, a sheet heading its slices.
-    /// The three Tracks columns and the gaps between them, so a name starts
-    /// where a track's number does.
-    var name: CGFloat {
-        ImportMappingColumns.position + title + artist
-            + ImportMappingColumns.spacing * 2
+        /// What a track-sheet heading spans instead of a number, title, and
+        /// artist. Its length and disc assignment still occupy their columns.
+        var groupName: CGFloat {
+            ImportMappingColumns.position + title + artist
+                + ImportMappingColumns.spacing * 2
+        }
     }
+
+    struct Files {
+        /// The Files section's only column: the whole inner table width.
+        let name: CGFloat
+    }
+
+    let tracks: Tracks
+    let files: Files
 
     static let position: CGFloat = 34
     static let length: CGFloat = 64
@@ -289,15 +296,18 @@ struct ImportMappingColumns {
         let title = shrunk(idealTitle, to: floorTitle, by: given)
         let artist = shrunk(idealArtist, to: floorArtist, by: given)
         return ImportMappingColumns(
-            title: title,
-            artist: artist,
-            // What the others leave. Stating the last share as the remainder
-            // rather than as its own number is what keeps the five columns
-            // summing to the table's width at every size.
-            source: max(
-                floorSource,
-                width - rigid - chrome - title - artist
-            )
+            tracks: Tracks(
+                title: title,
+                artist: artist,
+                // What the others leave. Stating the last share as the
+                // remainder rather than as its own number is what keeps the
+                // five columns summing to the table's width at every size.
+                source: max(
+                    floorSource,
+                    width - rigid - chrome - title - artist
+                )
+            ),
+            files: Files(name: width - rowPadding * 2)
         )
     }
 
@@ -310,42 +320,30 @@ struct ImportMappingColumns {
     }
 }
 
-/// A directory whose files all do the same job, as the one row core decided it
-/// should be. Each fact under the header it belongs to: the directory and its
-/// size where a file's name and size go, what it holds where a role goes, and
-/// what becomes of it where every other row says so.
+/// A collapsed directory as the one Files row core decided it should be: its
+/// path and aggregate size in the section's one Name column.
 struct ImportMappingDirectoryRow: View {
     let directory: BridgeCollapsedDirectory
-    let columns: ImportMappingColumns
+    let columns: ImportMappingColumns.Files
 
     var body: some View {
-        HStack(spacing: ImportMappingColumns.spacing) {
-            HStack(spacing: 8) {
-                Image(systemName: "folder")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                Text(directory.dirPrefix)
-                    .font(.system(size: 12, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(
-                    Int64(directory.totalSize)
-                        .formatted(.byteCount(style: .file))
-                )
-                .font(.caption)
+        HStack(spacing: 8) {
+            Image(systemName: "folder")
+                .font(.system(size: 11))
                 .foregroundStyle(.tertiary)
-                Spacer(minLength: 0)
-            }
-            .frame(width: columns.name, alignment: .leading)
-            Spacer().frame(width: ImportMappingColumns.length)
+            Text(directory.dirPrefix)
+                .font(.system(size: 12, design: .monospaced))
+                .lineLimit(1)
+                .truncationMode(.middle)
             Text(
-                bridgeFileRowKindText(directory.kind, count: directory.count)
+                Int64(directory.totalSize)
+                    .formatted(.byteCount(style: .file))
             )
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .lineLimit(1)
-            .frame(width: columns.source, alignment: .leading)
+            .font(.caption)
+            .foregroundStyle(.tertiary)
+            Spacer(minLength: 0)
         }
+        .frame(width: columns.name, alignment: .leading)
     }
 }
 

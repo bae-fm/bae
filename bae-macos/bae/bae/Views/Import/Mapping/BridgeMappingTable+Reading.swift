@@ -216,11 +216,6 @@ func bridgeSlotReconciliationText(
     }
 }
 
-/// What a collapsed directory holds, in the user's language — "14 images".
-func bridgeFileRowKindText(_ kind: BridgeFileRowKind, count: UInt32) -> String {
-    coreString(bridgeFileRowKindKey(kind: kind), Int(count))
-}
-
 /// A duration in milliseconds as a clock label, or an em dash where there is no
 /// number. Never a zero: an unknown length and a zero-length file are different
 /// facts, and only one of them is real.

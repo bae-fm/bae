@@ -6,18 +6,36 @@ import Testing
 /// The mapping table's column widths, against the width the table has to lay
 /// them out in.
 ///
-/// The one that matters is that they add up: seven columns, six gaps and two
-/// leading edges came to a fixed 1042pt whatever the pane was, so a pane at any
-/// ordinary window size had the length and the row's actions past its right
-/// edge with no way to reach them.
+/// The one that matters is that each section adds up: Tracks uses its five
+/// columns and Files uses one full-width Name column. Neither may reserve an
+/// invisible slice past the pane's right edge.
 struct ImportMappingColumnsTests {
     /// Every column, the gaps between them and the row's two leading edges, as
     /// the row lays them out.
     private func rowWidth(_ columns: ImportMappingColumns) -> CGFloat {
-        columns.title + columns.artist + columns.source
+        columns.tracks.title + columns.tracks.artist + columns.tracks.source
             + ImportMappingColumns.position + ImportMappingColumns.length
             + ImportMappingColumns.spacing * 4
             + ImportMappingColumns.rowPadding * 2
+    }
+
+    @Test(
+        "the Files name occupies the whole inner table",
+        arguments: [
+            0,
+            ImportMappingColumns.minimumTableWidth,
+            ImportMappingColumns.idealTableWidth,
+            1200,
+        ] as [CGFloat]
+    )
+    func filesNameUsesTheHiddenColumns(width: CGFloat) {
+        let columns = ImportMappingColumns.resolved(tableWidth: width)
+
+        #expect(
+            columns.files.name
+                == max(width, ImportMappingColumns.minimumTableWidth)
+                - ImportMappingColumns.rowPadding * 2
+        )
     }
 
     @Test(
@@ -56,26 +74,25 @@ struct ImportMappingColumnsTests {
         )
 
         #expect(rowWidth(columns) == ImportMappingColumns.minimumTableWidth)
-        #expect(columns.source == atMinimum.source)
-        #expect(columns.title == atMinimum.title)
-        #expect(columns.artist == atMinimum.artist)
+        #expect(columns.tracks.source == atMinimum.tracks.source)
+        #expect(columns.tracks.title == atMinimum.tracks.title)
+        #expect(columns.tracks.artist == atMinimum.tracks.artist)
     }
 
-    /// Wide enough and every column has the width it asks for, with the surplus
-    /// going to the file names and nowhere else — the layout the table has
-    /// always drawn at a wide window, unchanged.
+    /// Wide enough and every Tracks column has the width it asks for, with the
+    /// surplus going to Source and nowhere else.
     @Test(arguments: [0, 1, 200, 900] as [CGFloat])
     func theSurplusAboveTheIdealWidthIsAllTheSource(surplus: CGFloat) {
         let columns = ImportMappingColumns.resolved(
             tableWidth: ImportMappingColumns.idealTableWidth + surplus
         )
 
-        #expect(columns.title == 220)
-        #expect(columns.artist == 180)
-        #expect(columns.source == 260 + surplus)
+        #expect(columns.tracks.title == 220)
+        #expect(columns.tracks.artist == 180)
+        #expect(columns.tracks.source == 260 + surplus)
     }
 
-    /// Narrowing takes from all four at once. A column that kept its width
+    /// Narrowing takes from all three at once. A column that kept its width
     /// while its neighbour collapsed would be the same bug in miniature: the
     /// row still fits, and one cell has stopped saying anything.
     @Test
@@ -91,12 +108,12 @@ struct ImportMappingColumnsTests {
             tableWidth: ImportMappingColumns.minimumTableWidth
         )
 
-        #expect(middle.source < wide.source)
-        #expect(middle.title < wide.title)
-        #expect(middle.artist < wide.artist)
-        #expect(narrow.source < middle.source)
-        #expect(narrow.title < middle.title)
-        #expect(narrow.artist < middle.artist)
+        #expect(middle.tracks.source < wide.tracks.source)
+        #expect(middle.tracks.title < wide.tracks.title)
+        #expect(middle.tracks.artist < wide.tracks.artist)
+        #expect(narrow.tracks.source < middle.tracks.source)
+        #expect(narrow.tracks.title < middle.tracks.title)
+        #expect(narrow.tracks.artist < middle.tracks.artist)
     }
 
     /// Widening never narrows a column and narrowing never widens one, at every
@@ -107,9 +124,9 @@ struct ImportMappingColumnsTests {
         var previous = ImportMappingColumns.resolved(tableWidth: 300)
         for width in stride(from: 301.0, through: 2000.0, by: 1) {
             let columns = ImportMappingColumns.resolved(tableWidth: width)
-            #expect(columns.source >= previous.source)
-            #expect(columns.title >= previous.title)
-            #expect(columns.artist >= previous.artist)
+            #expect(columns.tracks.source >= previous.tracks.source)
+            #expect(columns.tracks.title >= previous.tracks.title)
+            #expect(columns.tracks.artist >= previous.tracks.artist)
             previous = columns
         }
     }

@@ -49,4 +49,11 @@ enum SnapshotTestSupport {
         return try #require(bitmap.representation(using: .png, properties: [:]))
     }
 
+    /// Every AppKit view below `view`, depth first. SwiftUI controls may be
+    /// nested below private hosting containers, so interaction tests use the
+    /// full hosted tree rather than assuming one framework-specific depth.
+    @MainActor
+    static func descendants(of view: NSView) -> [NSView] {
+        view.subviews.flatMap { [$0] + descendants(of: $0) }
+    }
 }

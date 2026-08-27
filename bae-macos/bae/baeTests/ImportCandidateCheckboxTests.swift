@@ -66,7 +66,7 @@ struct ImportCandidateCheckboxTests {
         await Task.yield()
         host.layoutSubtreeIfNeeded()
 
-        let buttons: [NSButton] = descendants(of: host)
+        let buttons: [NSButton] = SnapshotTestSupport.descendants(of: host)
             .compactMap {
                 $0 as? NSButton
             }
@@ -104,10 +104,6 @@ struct ImportCandidateCheckboxTests {
         }
     }
 
-    @MainActor
-    private func descendants(of view: NSView) -> [NSView] {
-        view.subviews.flatMap { [$0] + descendants(of: $0) }
-    }
 }
 
 @MainActor

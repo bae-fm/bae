@@ -13,7 +13,7 @@ struct ImportMappingSheetRow: View {
     let sheet: BridgeSheetGroup
     /// The widths the table resolved for this pane, so the group header holds
     /// its entries' columns open at the width they are drawn at.
-    let columns: ImportMappingColumns
+    let columns: ImportMappingColumns.Tracks
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core. `nil` until it has been asked for; empty means there is nothing to
     /// offer, so no menu appears.
@@ -64,7 +64,7 @@ struct ImportMappingSheetRow: View {
                 }
                 Spacer(minLength: 0)
             }
-            .frame(width: columns.name, alignment: .leading)
+            .frame(width: columns.groupName, alignment: .leading)
             // The slices below fill the length; the header only holds the
             // column open so the group and its rows line up.
             Spacer().frame(width: ImportMappingColumns.length)

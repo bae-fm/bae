@@ -153,27 +153,3 @@ struct ImportMappingSourceCell: View {
         )
     }
 }
-
-/// The job in force for a mapping row's file, and the control that changes it
-/// where the job is a decision. A sheet's entries carry no role of their own —
-/// their group header holds the sheet's decisions — and neither does a track
-/// the folder has nothing for.
-struct ImportMappingRoleCell: View {
-    let source: BridgeMappingSource
-    let actions: ImportMappingActions
-
-    var body: some View {
-        if case .file(let file) = source {
-            if file.alternatives.isEmpty {
-                ImportRoleChip(role: file.role.fileRole)
-            }
-            else {
-                ImportRoleChoiceControl(
-                    alternatives: file.alternatives,
-                    inForce: file.roleChoice,
-                    onPick: { actions.setRole(file.fileId, $0) },
-                )
-            }
-        }
-    }
-}

@@ -13,7 +13,7 @@ struct ImportMappingTrackRow: View {
     let unit: BridgeMappingUnit
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
-    let columns: ImportMappingColumns
+    let columns: ImportMappingColumns.Tracks
     /// Every audio unit the folder offers — what a row with nothing behind it
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
