@@ -25,6 +25,24 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
+    /// Present one side of the metadata section. File Tags is also a stored
+    /// identity choice; Lookup only navigates to the inline lookup surface.
+    @MainActor
+    static func setIdentity(
+        _ identity: ImportIdentity,
+        for candidate: Candidate,
+        services: ImportMappingServices
+    ) {
+        services.importStore.presentIdentity(identity, forKey: candidate.key)
+        guard identity == .unknown else { return }
+        ImportSearchFlow.decideIdentity(
+            importer: services.importer,
+            importStore: services.importStore,
+            key: candidate.key,
+            pick: .unknown
+        )
+    }
+
     @MainActor
     static func actions(
         key: String,

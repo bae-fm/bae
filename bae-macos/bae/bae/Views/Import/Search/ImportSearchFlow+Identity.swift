@@ -24,8 +24,10 @@ extension ImportSearchFlow {
             candidate.pickInFlight = pick
         }
         Task { @MainActor in
+            var didLand = false
             do {
                 try await importer.pickCandidateIdentity(key, pick)
+                didLand = true
             }
             catch is CancellationError {
                 logger.debug("Identity pick cancelled for key: \(key)")
@@ -53,6 +55,9 @@ extension ImportSearchFlow {
             }
             importStore.mutateCandidate(forKey: key) { candidate in
                 if candidate.pickInFlight == pick {
+                    if !didLand {
+                        candidate.presentedIdentity = candidate.identity
+                    }
                     candidate.pickInFlight = nil
                 }
             }

@@ -88,7 +88,7 @@ struct ImportMappingPane: View {
     /// re-pick leaves the table and the album fields in place but nothing
     /// settled to commit them under.
     private var commitControls: ImportCommitControls? {
-        guard candidate.hasSettled else {
+        guard candidate.presentedIdentityHasSettled else {
             return nil
         }
         return ImportCommitControls(
@@ -103,7 +103,7 @@ struct ImportMappingPane: View {
 
     private var identitySection: some View {
         ImportIdentitySection(
-            identity: candidate.identity,
+            identity: candidate.presentedIdentity,
             releaseSummary: candidate.edit.map {
                 ImportReleaseSummary(candidate: candidate, editValues: $0)
             },
@@ -114,7 +114,7 @@ struct ImportMappingPane: View {
             editValues: candidate.edit,
             editActions: editActions,
             matchOptions: matchOptions,
-            hasSettled: candidate.hasSettled,
+            hasSettled: candidate.presentedIdentityHasSettled,
             commit: commitControls,
             onSetIdentity: onSetIdentity,
             onFindRelease: onFindRelease,
@@ -128,8 +128,8 @@ struct ImportMappingPane: View {
     /// clicked row carries the spinner and the list stays put — and hand over
     /// to the release card only when the read lands and settles the identity.
     private var matchOptions: ImportMatchOptions? {
-        guard candidate.identity == .release,
-            !candidate.hasSettled,
+        guard candidate.presentedIdentity == .release,
+            !candidate.presentedIdentityHasSettled,
             case .found(let groups, let libraryStatuses, _, let provenance) =
                 identifyState
         else {

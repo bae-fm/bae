@@ -153,6 +153,10 @@ struct Candidate: Equatable, Identifiable {
     /// The pick currently being read. The initiating row uses its identity for
     /// selection feedback while the pane keeps showing stored data.
     var pickInFlight: BridgeIdentityPick?
+    /// Which metadata source the mapping pane is showing. This is session
+    /// navigation, separate from the stored pick: Lookup can be open while
+    /// the stored verdict still says to use the folder's file tags.
+    var presentedIdentity: ImportIdentity = .release
 
     var loadingReleaseId: String? {
         guard case .release(_, let releaseId) = pickInFlight else { return nil }
@@ -188,6 +192,7 @@ struct Candidate: Equatable, Identifiable {
         )
         row = detail.row
         self.detail = detail
+        presentedIdentity = identity
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,
@@ -198,6 +203,7 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.error = existing.error
         copy.pickInFlight = existing.pickInFlight
+        copy.presentedIdentity = existing.presentedIdentity
         copy.search = existing.search
         copy.searchTask = existing.searchTask
         return copy
@@ -266,9 +272,7 @@ struct Candidate: Equatable, Identifiable {
         detail?.pickedLibraryStatus
     }
 
-    /// What the folder is being read as. The picker's two sides are the two
-    /// kinds of pick, so the control shows what is stored rather than a copy
-    /// of what was clicked.
+    /// What the folder's stored verdict reads it as.
     var identity: ImportIdentity {
         if case .unknown = detail?.row.picked {
             return .unknown
@@ -288,6 +292,12 @@ struct Candidate: Equatable, Identifiable {
     /// render on it.
     var hasSettled: Bool {
         detail?.row.picked != nil
+    }
+
+    /// Whether the metadata surface being shown is the stored verdict. Opening
+    /// the other side is navigation, so it does not make that side settled.
+    var presentedIdentityHasSettled: Bool {
+        hasSettled && presentedIdentity == identity
     }
 
     /// The signals identification settled on for this candidate's files, as

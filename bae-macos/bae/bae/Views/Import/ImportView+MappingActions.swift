@@ -26,31 +26,15 @@ extension ImportView {
         )
     }
 
-    /// Switch what the folder is read as. Unknown reads its own file tags;
-    /// Release re-picks the release the candidate already holds, and opens the
-    /// search when it holds none — there is nothing to go back to then.
+    /// Switch which metadata source the pane presents. File Tags also stores
+    /// that verdict; Lookup presents its inline choices without opening its
+    /// explicit search editor.
     func setIdentity(_ identity: ImportIdentity, for candidate: Candidate) {
-        switch (identity, candidate.pickedRelease) {
-        case (.unknown, _):
-            ImportSearchFlow.decideIdentity(
-                importer: importer,
-                importStore: importStore,
-                key: candidate.key,
-                pick: .unknown
-            )
-        case (.release, .some(let picked)):
-            ImportSearchFlow.decideIdentity(
-                importer: importer,
-                importStore: importStore,
-                key: candidate.key,
-                pick: .release(
-                    source: picked.source,
-                    releaseId: picked.releaseId
-                )
-            )
-        case (.release, .none):
-            presentSearch(for: candidate)
-        }
+        ImportMappingFlow.setIdentity(
+            identity,
+            for: candidate,
+            services: mappingServices
+        )
     }
 
     private func openDocument(name: String, at path: String) {

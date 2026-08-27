@@ -42,9 +42,8 @@ struct ImportIdentitySection: View {
     /// is in, when the folder reads as Unknown, or when there is nothing
     /// matched to offer.
     let matchOptions: ImportMatchOptions?
-    /// Whether anything has been settled for this folder — a release picked or
-    /// its own tags read. Nothing settled and no matches to offer leaves only
-    /// the one thing to do: find the release.
+    /// Whether the presented side has been settled. A stored File Tags verdict
+    /// does not settle Lookup; that side still offers matches or Find.
     let hasSettled: Bool
     /// The card's commit row, once there is something to commit.
     let commit: ImportCommitControls?
@@ -78,10 +77,15 @@ struct ImportIdentitySection: View {
                     .buttonStyle(.bordered)
                     .disabled(isReading)
                 }
-                else if hasSettled {
+                else if hasSettled
+                    || (identity == .unknown && releaseSummary != nil)
+                {
                     ImportReleaseHeader(
                         releaseSummary: settledReleaseSummary,
-                        hasPick: hasPick,
+                        searchControl: ImportReleaseSearchControl(
+                            identity: identity,
+                            hasPick: hasPick
+                        ),
                         isReading: isReading,
                         coverContent: coverContent,
                         hasCoverOptions: hasCoverOptions,
@@ -92,7 +96,7 @@ struct ImportIdentitySection: View {
                         onFindRelease: onFindRelease,
                     )
                 }
-                else {
+                else if identity == .release {
                     // Nothing settled and nothing matched: the folder line at
                     // the top of the pane already says what this is, so no
                     // card — just the one thing left to do.
@@ -107,6 +111,11 @@ struct ImportIdentitySection: View {
                     }
                     .disabled(isReading)
                 }
+                else {
+                    ProgressView()
+                        .controlSize(.small)
+                        .opacity(isReading ? 1 : 0)
+                }
             }
         }
     }
@@ -120,9 +129,8 @@ struct ImportIdentitySection: View {
         return releaseSummary
     }
 
-    /// The one control that switches sides. Picking file tags reads the
-    /// folder's own; picking lookup re-picks the release the candidate already
-    /// holds, or opens the search when it holds none.
+    /// The one control that switches sides. File Tags reads the folder's own
+    /// values; Lookup shows its inline matches or explicit Find action.
     private var identityPicker: some View {
         Picker(
             coreString("ui.import.metadata.title"),

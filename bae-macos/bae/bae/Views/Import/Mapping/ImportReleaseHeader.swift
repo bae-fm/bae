@@ -16,17 +16,27 @@ struct ImportCommitControls {
     let actions: ImportCommitActions
 }
 
+enum ImportReleaseSearchControl: Equatable {
+    case find
+    case change
+
+    init?(identity: ImportIdentity, hasPick: Bool) {
+        guard identity == .release else { return nil }
+        self = hasPick ? .change : .find
+    }
+}
+
 /// The identity section's card: the cover, what the release is, what
 /// identified it, and the commit itself.
 ///
 /// Search is this card's editor rather than a pane mounted beside it — the
 /// change control opens it, and picking a release fills the mapping table's
 /// BECOMES column in place. Before anything is picked the same control reads
-/// "Find this release".
+/// "Find this release" while Lookup is presented. File Tags omits that editor
+/// action entirely.
 struct ImportReleaseHeader: View {
     let releaseSummary: ImportReleaseSummary
-    /// Whether a release has been picked.
-    let hasPick: Bool
+    let searchControl: ImportReleaseSearchControl?
     /// Whether a read is in flight — the change control says so and stays put
     /// rather than the card being replaced by a placeholder.
     let isReading: Bool
@@ -160,13 +170,13 @@ struct ImportReleaseHeader: View {
             ProgressView()
                 .controlSize(.small)
                 .opacity(isReading ? 1 : 0)
-            if hasPick {
+            if searchControl == .change {
                 Button(coreString("ui.import.header.change_release")) {
                     onFindRelease()
                 }
                 .buttonStyle(.bordered)
             }
-            else {
+            else if searchControl == .find {
                 Button(coreString("ui.import.header.find_release")) {
                     onFindRelease()
                 }
@@ -214,7 +224,7 @@ struct ImportReleaseHeader: View {
                 candidate: PreviewData.mappingCandidate,
                 editValues: PreviewData.confirmEditValues
             ),
-            hasPick: true,
+            searchControl: .change,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: true,

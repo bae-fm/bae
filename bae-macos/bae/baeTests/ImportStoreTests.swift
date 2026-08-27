@@ -273,6 +273,7 @@ struct ImportStoreCandidateDetailTests {
             releaseId: "rel-1"
         )
         existing.pickInFlight = pendingPick
+        existing.presentedIdentity = .unknown
         existing.search.searchAlbum = "typed album"
         store.selectedCandidates["/w1/a"] = existing
 
@@ -293,6 +294,7 @@ struct ImportStoreCandidateDetailTests {
         #expect(merged.libraryStatuses["rel-1"] != nil)
         #expect(merged.error == "the last command failed")
         #expect(merged.pickInFlight == pendingPick)
+        #expect(merged.presentedIdentity == .unknown)
         #expect(merged.search.searchAlbum == "typed album")
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")

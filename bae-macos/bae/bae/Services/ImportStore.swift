@@ -214,6 +214,12 @@ class ImportStore {
         }
     }
 
+    func presentIdentity(_ identity: ImportIdentity, forKey key: String) {
+        mutateCandidate(forKey: key) {
+            $0.presentedIdentity = identity
+        }
+    }
+
     @MainActor
     func refreshLibraryStatusSubscriptions(
         importer: Importer,
