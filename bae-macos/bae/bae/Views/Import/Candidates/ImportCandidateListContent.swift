@@ -525,12 +525,12 @@ extension ImportCandidateListContent {
             importStore: importStore,
             coverContent: importStore.sidebarCover(for: row),
             selection: row.selectable ? readySelection(for: row) : nil,
+            isGroupMember: isGroupMember,
             onSkip: { onSkip(row.candidateKey, $0) },
             onReleaseDecision: onReleaseDecision
         )
         .tag(row.candidateKey)
         .disabled(!row.actionable)
-        .padding(ImportListHierarchyLayout.insets(isGroupMember: isGroupMember))
     }
 
     /// An invalid folder isn't selectable — selecting its key is a no-op

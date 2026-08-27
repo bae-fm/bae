@@ -10,6 +10,19 @@ struct ImportCandidateCheckboxTests {
     @MainActor
     @Test("an unchecked candidate can be checked inside the selectable list")
     func uncheckedCandidateCanBeChecked() async throws {
+        try await assertCheckboxCanBeChecked(isGroupMember: false)
+    }
+
+    @MainActor
+    @Test("a group member checkbox stays inside the selectable list")
+    func groupedCandidateCanBeChecked() async throws {
+        try await assertCheckboxCanBeChecked(isGroupMember: true)
+    }
+
+    @MainActor
+    private func assertCheckboxCanBeChecked(
+        isGroupMember: Bool
+    ) async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
         // One Ready row, so the first checkbox in the rendered list is the one
@@ -20,7 +33,14 @@ struct ImportCandidateCheckboxTests {
         let slot = ImportListSlot.preview(
             importStore: store,
             uiStore: uiStore,
-            items: [PreviewData.candidateItem(PreviewData.triageRowReady)]
+            items: [
+                .candidate(
+                    stableKey:
+                        "candidate:\(PreviewData.triageRowReady.candidateKey)",
+                    row: PreviewData.triageRowReady,
+                    isGroupMember: isGroupMember
+                )
+            ]
         )
         let listSelection = CandidateListSelection()
         let size = NSSize(width: 400, height: 320)
@@ -51,6 +71,17 @@ struct ImportCandidateCheckboxTests {
                 $0 as? NSButton
             }
         let checkbox = try #require(buttons.first)
+        try click(checkbox, in: window)
+        await Task.yield()
+
+        #expect(
+            uiStore.selectedReadyCandidates
+                == [PreviewData.triageRowReady.candidateKey]
+        )
+    }
+
+    @MainActor
+    private func click(_ checkbox: NSButton, in window: NSWindow) throws {
         let checkboxCenter = checkbox.convert(
             NSPoint(x: checkbox.bounds.midX, y: checkbox.bounds.midY),
             to: nil
@@ -71,12 +102,6 @@ struct ImportCandidateCheckboxTests {
             )
             window.sendEvent(event)
         }
-        await Task.yield()
-
-        #expect(
-            uiStore.selectedReadyCandidates
-                == [PreviewData.triageRowReady.candidateKey]
-        )
     }
 
     @MainActor

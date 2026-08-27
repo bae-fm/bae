@@ -22,6 +22,7 @@ struct TriageRowView: View {
     /// `row` again so the list content is the one place selection state
     /// (`UiStore`) meets the row.
     let selection: Binding<Bool>?
+    let isGroupMember: Bool
     let onSkip: (_ skipped: Bool) -> Void
     let onReleaseDecision:
         (
@@ -37,6 +38,7 @@ struct TriageRowView: View {
         importStore: ImportStore,
         coverContent: ImageContent?,
         selection: Binding<Bool>?,
+        isGroupMember: Bool,
         onSkip: @escaping (_ skipped: Bool) -> Void,
         onReleaseDecision:
             @escaping (
@@ -48,22 +50,23 @@ struct TriageRowView: View {
         self.importStore = importStore
         self.coverContent = coverContent
         self.selection = selection
+        self.isGroupMember = isGroupMember
         self.onSkip = onSkip
         self.onReleaseDecision = onReleaseDecision
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            checkbox
-            cover
-            meta
-            Spacer(minLength: 4)
-            trailing
-                .padding(.top, 2)
+        ZStack(alignment: .topLeading) {
+            rowContent
+                .padding(
+                    ImportListHierarchyLayout.insets(
+                        isGroupMember: isGroupMember
+                    )
+                )
+            checkboxControl
+                .padding(.top, 10)
+                .padding(.leading, 9)
         }
-        .padding(.vertical, 7)
-        .padding(.leading, 9)
-        .padding(.trailing, 10)
         .opacity(isPending ? 0.6 : 1)
         .contentShape(Rectangle())
         .contextMenu {
@@ -96,6 +99,20 @@ struct TriageRowView: View {
         }
     }
 
+    private var rowContent: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Color.clear.frame(width: 18)
+            cover
+            meta
+            Spacer(minLength: 4)
+            trailing
+                .padding(.top, 2)
+        }
+        .padding(.vertical, 7)
+        .padding(.leading, 9)
+        .padding(.trailing, 10)
+    }
+
     /// The folders this row is the whole of, read as one release. Each offers
     /// to be read as several again.
     private var combinedBoundaries: [BridgeResolvedFolderReleaseBoundary] {
@@ -112,7 +129,7 @@ struct TriageRowView: View {
     // MARK: - Leading
 
     @ViewBuilder
-    private var checkbox: some View {
+    private var checkboxControl: some View {
         if let selection {
             Toggle(isOn: selection) {}
                 .labelsHidden()
@@ -368,6 +385,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowReady
                 ),
                 selection: .constant(true),
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -377,6 +395,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowPickAPressing
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -386,6 +405,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -395,6 +415,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -404,6 +425,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowNoMatch
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -413,6 +435,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowStillIdentifying
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -422,6 +445,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowDoneImported
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -431,6 +455,7 @@ extension TriageRowView {
                     for: PreviewData.triageRowFailed
                 ),
                 selection: nil,
+                isGroupMember: false,
                 onSkip: { _ in }
             )
         }
