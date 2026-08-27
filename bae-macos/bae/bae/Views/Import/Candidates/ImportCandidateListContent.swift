@@ -306,10 +306,11 @@ extension ImportCandidateListContent {
                     .font(.system(size: 12.5, weight: .semibold))
                 Spacer(minLength: 0)
             }
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .overlay(alignment: .trailing) {
+        .contextMenu {
             // The rows below are this folder read as several releases, and
             // this is where it is read as one instead — once, for the folder,
             // rather than on each of the rows it produced. A header that only
@@ -319,8 +320,6 @@ extension ImportCandidateListContent {
                 Button("Combine as One Release") {
                     onReleaseDecision(group.key, .combineAsOneRelease)
                 }
-                .buttonStyle(.link)
-                .font(.system(size: 11))
             }
         }
     }
