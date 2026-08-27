@@ -33,6 +33,60 @@ fn fixtures_dir() -> PathBuf {
 }
 
 #[test]
+fn stored_file_tag_facts_project_without_opening_the_source_file() {
+    use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
+
+    let path = PathBuf::from("/source-does-not-exist/01.flac");
+    let files = CategorizedFiles {
+        files: vec![CandidateFile {
+            file: ScannedFile::new(path, "01.flac".to_string(), 123),
+            role: FileRole::Audio,
+            proposed_audio: true,
+        }],
+        format_label: "FLAC".to_string(),
+    };
+    let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
+        scan_generation: 7,
+        file_edit_revision: 3,
+        files: vec![crate::import::file_tag_snapshot::FileTagFact {
+            observation: crate::import::file_tag_snapshot::FileObservation {
+                relative_path: "01.flac".to_string(),
+                size: 123,
+                modified_at_ns: 456,
+            },
+            content_type: Some(ContentType::Flac),
+            title: Some("Track Alpha".to_string()),
+            track_artist: Some("Artist Alpha".to_string()),
+            album_title: Some("Album Alpha".to_string()),
+            album_artist: Some("Artist Alpha".to_string()),
+            year: Some(2001),
+            track_number: Some(1),
+            disc_number: None,
+        }],
+        embedded_cover: None,
+    };
+    let clock = FixedClock(
+        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc),
+    );
+    let ids = SequentialIdProvider::new("snapshot");
+
+    let parsed = map_file_tag_snapshot_to_db(
+        &files,
+        &snapshot,
+        Some("Folder Alpha"),
+        &clock,
+        &ids,
+    )
+    .unwrap();
+
+    assert_eq!(parsed.album.title, "Album Alpha");
+    assert_eq!(parsed.tracks[0].title, "Track Alpha");
+    assert_eq!(parsed.release.pressing.format.as_deref(), Some("FLAC"));
+}
+
+#[test]
 fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
     use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
     let mk = |number: u32, title: &str| CueTrack {

@@ -21,6 +21,8 @@ mod file_evidence;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod file_tag_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) mod file_tag_snapshot;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod file_validation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod folder_registry;

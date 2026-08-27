@@ -1,16 +1,14 @@
-//! File-tag metadata seeding for Unknown imports.
+//! Projects stored file-tag readings into editable import metadata.
 //!
 //! Reads embedded ID3v1/ID3v2/Vorbis-comment/MP4-ilst tags from a rip's audio
 //! files and projects them into the same `ParsedAlbum` shape that
-//! `map_mb_response_to_db` and `map_discogs_to_db` produce. Used when no external
-//! identification is available: the user opts in via "Add as Unknown", and the
-//! editable confirmation page lets them correct anything the tags got wrong.
+//! `map_mb_response_to_db` and `map_discogs_to_db` produce. The editable
+//! confirmation page lets the user correct anything the tags got wrong.
 //!
-//! `ParsedAlbum::identities` is always empty — an Unknown import makes no
-//! identity claim — so `metadata_source` lands as `FileTags` and
-//! `metadata_source_release_id` stays NULL on the release row. Signals
-//! (`disc_id`, `barcode`, `catalog_number`) are out of scope; they flow through
-//! the signal pipeline regardless of seed source.
+//! `ParsedAlbum::identities` is always empty because file tags make no external
+//! identity claim. `metadata_source` lands as `FileTags` and
+//! `metadata_source_release_id` stays NULL on the release row. Lookup signals
+//! such as OCR, DiscID, and barcode are not part of this path.
 //!
 //! Format comes from the probed codec, year from any tag carrying a date. Both
 //! stay `None` when not determinable rather than being defaulted.
@@ -18,32 +16,22 @@
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr, TrackNumber,
 };
+use super::file_tag_snapshot::{
+    extract_file_tag_snapshot, non_empty, probe_content_type, FileTagFact, FileTagSnapshot,
+    LoftyFileTagReader,
+};
 use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
 use crate::db::{Pressing, ReleaseMetadataSource};
-use crate::import::folder_scanner::CategorizedFiles;
+use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
 use crate::import::ImportError;
+#[cfg(test)]
 use crate::util::content_type::ContentType;
 use coven::Clock;
 use coven::IdProvider;
-use lofty::prelude::*;
-use lofty::probe::Probe;
 use std::path::{Path, PathBuf};
 
-/// Per-file extracted tag set. One produced per audio file before the
-/// mapper aggregates them into album/track shape.
-#[derive(Debug, Clone)]
-struct FileTags {
-    path: PathBuf,
-    content_type: Option<ContentType>,
-    title: Option<String>,
-    track_artist: Option<String>,
-    album_title: Option<String>,
-    album_artist: Option<String>,
-    track_number: Option<u32>,
-    disc_number: Option<u32>,
-    year: Option<u16>,
-}
+pub use super::file_tag_snapshot::read_embedded_cover;
 
 /// Map the embedded tags of a rip's audio files to a `ParsedAlbum`.
 ///
@@ -73,10 +61,38 @@ pub fn map_file_tags_to_db(
         });
     }
 
-    let extracted: Vec<FileTags> = audio_files
+    let scanned = audio_files
         .iter()
-        .map(|p| read_tags(p))
-        .collect::<Result<_, _>>()?;
+        .map(|path| -> Result<ScannedFile, ImportError> {
+            let size = std::fs::metadata(path)
+                .map_err(|error| ImportError::FileTags {
+                    detail: format!("failed to stat {}: {error}", path.display()),
+                })?
+                .len();
+            let relative_path = path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .ok_or_else(|| ImportError::FileTags {
+                    detail: format!("audio file path {} has no filename", path.display()),
+                })?;
+            Ok(ScannedFile::new(path.clone(), relative_path, size))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let snapshot = extract_file_tag_snapshot(&scanned, 0, 0, &LoftyFileTagReader)?;
+    map_file_tag_facts_to_db(&snapshot.files, folder_name, clock, ids)
+}
+
+fn map_file_tag_facts_to_db(
+    extracted: &[FileTagFact],
+    folder_name: Option<&str>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    if extracted.is_empty() {
+        return Err(ImportError::FileTags {
+            detail: "file-tag seeding requires at least one audio file".to_string(),
+        });
+    }
 
     // A blank title here is a prompt to the user, not a committed value — the
     // editable form gates save on a non-empty one.
@@ -112,7 +128,7 @@ pub fn map_file_tags_to_db(
     // side with tagged ones would collide with the real values (an untagged file
     // landing on position 1 beside a TRACKNUMBER=1 file). On a partially-tagged
     // side the untagged files stay `None` for the user to assign.
-    let side_of = |t: &FileTags| match t.disc_number {
+    let side_of = |t: &FileTagFact| match t.disc_number {
         Some(0) | None => 1,
         Some(d) if d > i32::MAX as u32 => i32::MAX,
         Some(d) => d as i32,
@@ -131,10 +147,10 @@ pub fn map_file_tags_to_db(
             // every path here has a stem. A `None` would mean that invariant broke
             // upstream — panic rather than fabricate a "Track N" placeholder.
             let title = t.title.clone().unwrap_or_else(|| {
-                t.path
+                Path::new(&t.observation.relative_path)
                     .file_stem()
                     .map(|s| s.to_string_lossy().into_owned())
-                    .expect("audio file path has a stem")
+                    .expect("scanned audio file relative path has a stem")
             });
 
             let side = side_of(t);
@@ -236,10 +252,37 @@ pub fn map_unknown_candidate_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
+    let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
+    let snapshot = extract_file_tag_snapshot(&audio_files, 0, 0, &LoftyFileTagReader)?;
+    map_file_tag_snapshot_to_db(categorized, &snapshot, folder_name, clock, ids)
+}
+
+pub(crate) fn map_file_tag_snapshot_to_db(
+    categorized: &CategorizedFiles,
+    snapshot: &FileTagSnapshot,
+    folder_name: Option<&str>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let audio_file_ids = categorized
+        .audio()
+        .map(|file| file.relative_path.as_str())
+        .collect::<Vec<_>>();
+    let snapshot_file_ids = snapshot
+        .files
+        .iter()
+        .map(|fact| fact.observation.relative_path.as_str())
+        .collect::<Vec<_>>();
+    if audio_file_ids != snapshot_file_ids {
+        return Err(ImportError::FileTags {
+            detail: "file-tag snapshot does not describe the candidate's current audio files"
+                .to_string(),
+        });
+    }
+
     let mut carving = categorized.carving_sheets();
     if carving.is_empty() {
-        let audio_files = categorized.audio_paths();
-        return map_file_tags_to_db(&audio_files, folder_name, clock, ids);
+        return map_file_tag_facts_to_db(&snapshot.files, folder_name, clock, ids);
     }
     // Sorted by the disc each sheet is assigned to, not by the name it or its
     // container happens to carry, so this tracklist comes out in the same order
@@ -251,11 +294,14 @@ pub fn map_unknown_candidate_to_db(
             .then_with(|| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path))
     });
     let sheets = carving.iter().map(|b| b.sheet).collect::<Vec<_>>();
-    let audio = carving
+    let first_carving_audio = carving[0].audio.relative_path.as_str();
+    let format = snapshot
+        .files
         .iter()
-        .map(|b| b.audio.path.as_path())
-        .collect::<Vec<_>>();
-    map_cue_sheets_to_db(&sheets, &audio, folder_name, clock, ids)
+        .find(|fact| fact.observation.relative_path == first_carving_audio)
+        .and_then(|fact| fact.content_type.as_ref())
+        .map(|content_type| content_type.display_name().to_string());
+    map_cue_sheets_with_format(&sheets, folder_name, format, clock, ids)
 }
 
 /// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the Unknown
@@ -270,6 +316,20 @@ pub fn map_cue_sheets_to_db(
     sheets: &[&CueSheet],
     audio_files: &[&Path],
     folder_name: Option<&str>,
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let format = audio_files
+        .first()
+        .and_then(|path| probe_content_type(path))
+        .map(|content_type| content_type.display_name().to_string());
+    map_cue_sheets_with_format(sheets, folder_name, format, clock, ids)
+}
+
+fn map_cue_sheets_with_format(
+    sheets: &[&CueSheet],
+    folder_name: Option<&str>,
+    format: Option<String>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
@@ -294,12 +354,6 @@ pub fn map_cue_sheets_to_db(
     let year = sheets
         .iter()
         .find_map(|s| year_from_cue_date(s.date.as_deref()));
-
-    // The actual codec of the first audio file; absent if it can't be probed.
-    let format = audio_files
-        .first()
-        .and_then(|p| probe_content_type(p))
-        .map(|content_type| content_type.display_name().to_string());
 
     // Each sheet is one side and its playable tracks are already in order, so
     // per-side numbering by the assembler reproduces `position + 1` exactly.
@@ -339,186 +393,6 @@ fn year_from_cue_date(date: Option<&str>) -> Option<i32> {
             .parse::<i32>()
             .expect("four ASCII digits parse as i32"),
     )
-}
-
-/// Probe a file's codec through FFmpeg. Used to derive editable format labels
-/// from decoder identity rather than from the extension or container.
-fn probe_content_type(path: &Path) -> Option<ContentType> {
-    let Some(path_str) = path.to_str() else {
-        tracing::warn!("failed to probe audio format of non-UTF-8 path: {path:?}");
-        return None;
-    };
-    match crate::audio_codec::probe_audio_from_path(path_str) {
-        Some(probe) => Some(probe.content_type),
-        None => {
-            tracing::warn!("failed to probe audio format of {}", path.display());
-            None
-        }
-    }
-}
-
-/// The embedded front-cover picture from the first audio file that carries one,
-/// mapped to the library's [`ContentType`]. Prefers a `PictureType::CoverFront`,
-/// falling back to the first embedded picture of any type.
-///
-/// The lowest-priority cover source for an Unknown import — the caller uses it
-/// only when neither an explicit selection nor a folder image supplies one.
-/// `Ok(None)` when no file carries a picture, or its MIME isn't an image type
-/// the library stores as a cover (lofty's `Tiff`, say): either way there's
-/// nothing to seed. `Err` when a file can't be opened or its tags can't be read.
-pub fn read_embedded_cover(
-    audio_files: &[PathBuf],
-) -> Result<Option<(Vec<u8>, ContentType)>, ImportError> {
-    for path in audio_files {
-        let probe = match Probe::open(path) {
-            Ok(probe) => probe,
-            Err(e) => {
-                return Err(ImportError::FileTags {
-                    detail: format!(
-                        "failed to open {} for embedded cover read: {e}",
-                        path.display()
-                    ),
-                });
-            }
-        };
-        let tagged = match probe.read() {
-            Ok(tagged) => tagged,
-            Err(e) => {
-                return Err(ImportError::FileTags {
-                    detail: format!(
-                        "failed to read embedded cover tags from {}: {e}",
-                        path.display()
-                    ),
-                });
-            }
-        };
-        let Some(tag) = tagged.primary_tag().or_else(|| tagged.first_tag()) else {
-            continue;
-        };
-
-        let pictures = tag.pictures();
-        let picture = pictures
-            .iter()
-            .find(|p| p.pic_type() == lofty::picture::PictureType::CoverFront)
-            .or_else(|| pictures.first());
-        let Some(picture) = picture else {
-            continue;
-        };
-
-        match picture.mime_type().and_then(image_content_type) {
-            Some(content_type) => return Ok(Some((picture.data().to_vec(), content_type))),
-            // A picture in a MIME type the library can't store as a cover
-            // (e.g. TIFF) — skip this file and try the next.
-            None => continue,
-        }
-    }
-    Ok(None)
-}
-
-/// Map a lofty picture MIME to the library's [`ContentType`], for the
-/// image types the cover store supports. Returns `None` for anything else
-/// — lofty's `Tiff`, an unrecognized `Unknown(..)` MIME, etc.
-fn image_content_type(mime: &lofty::picture::MimeType) -> Option<ContentType> {
-    use lofty::picture::MimeType;
-    match mime {
-        MimeType::Jpeg => Some(ContentType::Jpeg),
-        MimeType::Png => Some(ContentType::Png),
-        MimeType::Gif => Some(ContentType::Gif),
-        MimeType::Bmp => Some(ContentType::Bmp),
-        // lofty has no WebP variant; rippers that embed WebP land here.
-        MimeType::Unknown(s) => match ContentType::from_mime(s) {
-            ct @ (ContentType::Jpeg
-            | ContentType::Png
-            | ContentType::Gif
-            | ContentType::Bmp
-            | ContentType::Webp) => Some(ct),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-/// Extract embedded tag values from a single audio file.
-fn read_tags(path: &Path) -> Result<FileTags, ImportError> {
-    let probe = Probe::open(path).map_err(|e| ImportError::FileTags {
-        detail: format!("failed to open {}: {}", path.display(), e),
-    })?;
-    let tagged = probe.read().map_err(|e| ImportError::FileTags {
-        detail: format!("failed to read tags from {}: {}", path.display(), e),
-    })?;
-
-    let content_type = probe_content_type(path);
-
-    // The format's primary tag (ID3v2 on MP3, Vorbis on FLAC), else whichever tag
-    // is present — `first_tag` covers the ID3v1-only files some rippers produce.
-    let tag = tagged.primary_tag().or_else(|| tagged.first_tag());
-
-    let (title, track_artist, album_title, album_artist, track_number, disc_number, year) =
-        if let Some(tag) = tag {
-            (
-                non_empty(tag.title().map(|c| c.to_string())),
-                non_empty(tag.artist().map(|c| c.to_string())),
-                non_empty(tag.album().map(|c| c.to_string())),
-                non_empty(tag.get_string(ItemKey::AlbumArtist).map(|s| s.to_string())),
-                tag.track(),
-                tag.disk(),
-                year_from_tag(tag),
-            )
-        } else {
-            (None, None, None, None, None, None, None)
-        };
-
-    Ok(FileTags {
-        path: path.to_path_buf(),
-        content_type,
-        title,
-        track_artist,
-        album_title,
-        album_artist,
-        track_number,
-        disc_number,
-        year,
-    })
-}
-
-/// Drop a tag string to `None` when it's empty or whitespace-only. Lofty returns
-/// `Some("")` for a present-but-blank tag (an `ALBUM=` line in Vorbis comments);
-/// treating that as present would let blank titles and artist names slip past
-/// the required-field validation downstream.
-fn non_empty(s: Option<String>) -> Option<String> {
-    s.and_then(|v| {
-        let trimmed = v.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed.to_string())
-        }
-    })
-}
-
-/// Read a year from the tag, accepting any of the fields it might live in:
-/// lofty's structured `date()` (the preferred ID3v2.4 / Vorbis "DATE"), then
-/// `Year`, `ReleaseDate` (TDRL), and `OriginalReleaseDate`.
-fn year_from_tag(tag: &lofty::tag::Tag) -> Option<u16> {
-    if let Some(ts) = tag.date() {
-        return Some(ts.year);
-    }
-    if let Some(s) = tag.get_string(ItemKey::Year) {
-        if let Ok(y) = s.parse::<u16>() {
-            return Some(y);
-        }
-    }
-    if let Some(s) = tag.get_string(ItemKey::ReleaseDate) {
-        if let Some(y) = s.split('-').next().and_then(|y| y.parse::<u16>().ok()) {
-            return Some(y);
-        }
-    }
-    if let Some(s) = tag.get_string(ItemKey::OriginalReleaseDate) {
-        if let Some(y) = s.split('-').next().and_then(|y| y.parse::<u16>().ok()) {
-            return Some(y);
-        }
-    }
-    None
 }
 
 #[cfg(test)]
