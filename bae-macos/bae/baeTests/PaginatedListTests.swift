@@ -743,8 +743,11 @@ final class ImportCandidateViewportTests: XCTestCase {
         let root = candidateList(store: store, uiStore: uiStore, slot: slot)
         let hosting = NSHostingView(rootView: root)
         let window = makeWindow(hosting: hosting)
-        defer { window.close() }
-        await settleViewportLayout(in: hosting)
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        drainViewportLayout()
 
         let table = try XCTUnwrap(
             descendants(of: hosting).compactMap { $0 as? NSTableView }.first
@@ -755,7 +758,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             to: table.rect(ofRow: anchorIndex).origin
         )
         scrollView.reflectScrolledClipView(scrollView.contentView)
-        await settleViewportLayout(in: hosting)
+        drainViewportLayout()
         let anchor = try XCTUnwrap(list.idAt(topRow(in: table)))
 
         uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
@@ -764,7 +767,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 index < 20 ? groupHeaderItem(index) : candidateItem(index)
             }
         await source.replaceItems(changed)
-        await settleViewportLayout(in: hosting)
+        drainViewportLayout()
 
         XCTAssertEqual(list.idAt(topRow(in: table)), anchor)
     }
@@ -918,10 +921,9 @@ final class ImportCandidateViewportTests: XCTestCase {
         [view] + view.subviews.flatMap { descendants(of: $0) }
     }
 
-    private func settleViewportLayout(in hosting: NSView) async {
+    private func drainViewportLayout() {
         for _ in 0..<20 {
-            hosting.layoutSubtreeIfNeeded()
-            await Task.yield()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
         }
     }
 

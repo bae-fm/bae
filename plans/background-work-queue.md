@@ -164,14 +164,19 @@ Completed in `c825b094d`.
   clears a stale filter, opens the target's folder group, and reveals and
   selects the same candidate after the exact list revision arrives.
 
-### Hosted candidate viewport regression
+### Hosted candidate viewport regression and test lifecycle
 
-Completed in `3dfc25eae`.
+Completed across `3dfc25eae` and the hosted-window lifecycle repair.
 
 - Preserve the hosted viewport regression that verifies live page deliveries
   keep the visible candidate anchored.
-- Keep viewport bookkeeping in a stable non-observable reference so geometry
-  preference delivery cannot invalidate SwiftUI rendering.
+- Retain the visible anchor by stable row key and content revision while
+  keeping explicit reveal navigation independent from ordinary page delivery.
+- Keep viewport bookkeeping as value state; reference identity did not change
+  the hosted failure and is not part of the mechanism.
+- Detach the hosted content and order its test window out without closing the
+  application host before XCTest records the result.
+- Keep the person's running application independent from test verification.
 
 ### Import release header preview environment
 
@@ -183,19 +188,9 @@ Completed in `e14568a3e`.
   release-header preview root so its `Importer` and runtime publisher follow
   the same dependency path as other candidate previews.
 
-## Active and ordered queue
-
-### Hosted candidate viewport test settling
-
-- Preserve the real hosted-list assertion that a live page delivery retains
-  the visible candidate.
-- Let SwiftUI and AppKit layout settle through their asynchronous main-actor
-  delivery instead of driving a nested main run loop from the test.
-- Keep viewport bookkeeping as value state; reference identity did not change
-  the hosted timeout and must not remain as an unrelated mechanism.
-- Keep the person's running application independent from test verification.
-
 ### Windows import-list subscription test contract
+
+Completed in `4c999988f`.
 
 - Keep the import-list failure regression compiling against the generated
   `IImportListSubscription` contract on every Windows architecture.
@@ -206,11 +201,17 @@ Completed in `e14568a3e`.
 
 ### Linux runner disk capacity
 
+Completed in `6a7bbb101`.
+
 - Reclaim GitHub-hosted Ubuntu toolchains that bae's Linux and Android jobs do
   not use before either job starts compiling.
 - Put the cleanup in one local composite action so both disk-heavy jobs use the
   same fixed set of runner-owned paths.
 - Keep the Linux lint, documentation, debug-test, and release CPU-test gates
-  intact; the runner must retain enough disk to reach and execute all of them.
-- Report disk capacity before and after cleanup so a later runner-image change
-  leaves direct evidence in the job log.
+  intact.
+- Report disk capacity before and after cleanup so runner-image changes leave
+  direct evidence in the job log.
+
+## Active and ordered queue
+
+No queued items.
