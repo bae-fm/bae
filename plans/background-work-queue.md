@@ -168,10 +168,14 @@ Completed in `c825b094d`.
 
 ### Hosted candidate viewport regression
 
-- Preserve the hosted viewport regression that verifies live page deliveries
-  keep the visible candidate anchored.
-- Keep viewport bookkeeping outside SwiftUI's render-invalidating state: row
-  geometry updates do not change rendered content and must not request another
-  preference delivery.
-- Run the focused macOS tests and normal commit checks before handing the
+Completed in `3dfc25eae`.
+
+### Import release header preview environment
+
+- Keep the release-header preview's full view chain loadable when its commit
+  action reaches the candidate runtime reader.
+- Compose the existing import and candidate-reader preview environments at the
+  release-header preview root so its `Importer` and runtime publisher follow
+  the same dependency path as other candidate previews.
+- Run the missing-environment audit and normal commit checks before handing the
   focused commit to the main checkout.
