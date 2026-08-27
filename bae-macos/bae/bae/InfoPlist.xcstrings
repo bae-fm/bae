@@ -1,388 +1,412 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "NSCameraUsageDescription": {
-      "comment": "System prompt explaining why code scanning needs camera access.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يستخدم bae الكاميرا لمسح الرموز عند إقران مكتبة أو استعادتها."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae използва камерата за сканиране на кодове при сдвояване или възстановяване на библиотека."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "একটি লাইব্রেরি জোড়া লাগানো বা পুনরুদ্ধারের সময় কোড স্ক্যান করতে bae ক্যামেরা ব্যবহার করে।"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae používá fotoaparát ke skenování kódů při párování nebo obnovení knihovny."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae verwendet die Kamera, um beim Koppeln oder Wiederherstellen einer Mediathek Codes zu scannen."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae uses the camera to scan codes when pairing or recovering a library."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae usa la cámara para escanear códigos al vincular o restaurar una biblioteca."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae utilise la caméra pour scanner des codes lors de l’association ou de la restauration d’une bibliothèque."
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "લાઇબ્રેરીને જોડતી અથવા પુનઃસ્થાપિત કરતી વખતે કોડ સ્કૅન કરવા bae કૅમેરાનો ઉપયોગ કરે છે."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "‏bae משתמש במצלמה כדי לסרוק קודים בעת צימוד או שחזור של ספרייה."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "लाइब्रेरी को पेयर या रीस्टोर करते समय कोड स्कैन करने के लिए bae कैमरे का उपयोग करता है।"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae koristi kameru za skeniranje kodova pri uparivanju ili vraćanju biblioteke."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae usa la fotocamera per scansionare i codici durante l’abbinamento o il ripristino di una libreria."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae は、ライブラリのペアリングまたは復元時にコードをスキャンするためにカメラを使用します。"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಲೈಬ್ರರಿಯನ್ನು ಜೋಡಿಸುವಾಗ ಅಥವಾ ಮರುಸ್ಥಾಪಿಸುವಾಗ ಕೋಡ್‌ಗಳನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಲು bae ಕ್ಯಾಮೆರಾವನ್ನು ಬಳಸುತ್ತದೆ."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae는 보관함을 페어링하거나 복원할 때 코드를 스캔하기 위해 카메라를 사용합니다."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ലൈബ്രറി ജോടിയാക്കുമ്പോഴോ പുനഃസ്ഥാപിക്കുമ്പോഴോ കോഡുകൾ സ്കാൻ ചെയ്യാൻ bae ക്യാമറ ഉപയോഗിക്കുന്നു."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "लायब्ररी जोडताना किंवा पुनर्संचयित करताना कोड स्कॅन करण्यासाठी bae कॅमेरा वापरते."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae gebruikt de camera om codes te scannen bij het koppelen of herstellen van een bibliotheek."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਜੋੜਨ ਜਾਂ ਮੁੜ-ਬਹਾਲ ਕਰਨ ਵੇਲੇ ਕੋਡ ਸਕੈਨ ਕਰਨ ਲਈ bae ਕੈਮਰਾ ਵਰਤਦਾ ਹੈ।"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae używa aparatu do skanowania kodów podczas parowania lub odtwarzania biblioteki."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O bae usa a câmera para escanear códigos ao emparelhar ou restaurar uma biblioteca."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "நூலகத்தை இணைக்கும்போது அல்லது மீட்டெடுக்கும்போது குறியீடுகளை ஸ்கேன் செய்ய bae கேமராவைப் பயன்படுத்துகிறது."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "లైబ్రరీని జత చేసేటప్పుడు లేదా పునరుద్ధరించేటప్పుడు కోడ్‌లను స్కాన్ చేయడానికి bae కెమెరాను ఉపయోగిస్తుంది."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ใช้กล้องเพื่อสแกนรหัสเมื่อจับคู่หรือกู้คืนคลัง"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae, bir arşivi eşlerken veya geri yüklerken kodları taramak için kamerayı kullanır."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae використовує камеру для сканування кодів під час сполучення або відновлення медіатеки."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لائبریری کو جوڑنے یا بحال کرنے کے دوران کوڈ اسکین کرنے کے لیے bae کیمرا استعمال کرتا ہے۔"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae sử dụng camera để quét mã khi ghép nối hoặc khôi phục thư viện."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae 使用相机扫描用于配对或恢复资料库的代码。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae 使用相機掃描用於配對或回復資料庫的代碼。"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "bae"
           }
         }
       }
     },
-    "NSLocalNetworkUsageDescription": {
-      "comment": "System prompt explaining why device pairing and local playback need access.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يقترن bae بالأجهزة ويعثر على مكبرات الصوت وأجهزة التلفزيون على شبكتك المحلية."
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "bae"
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "comment" : "System prompt explaining why code scanning needs camera access.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم bae الكاميرا لمسح الرموز عند إقران مكتبة أو استعادتها."
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae сдвоява устройства и намира високоговорители и телевизори в локалната ви мрежа."
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae използва камерата за сканиране на кодове при сдвояване или възстановяване на библиотека."
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ডিভাইস জোড়া লাগায় এবং আপনার স্থানীয় নেটওয়ার্কে স্পিকার ও টিভি খুঁজে পায়।"
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "একটি লাইব্রেরি জোড়া লাগানো বা পুনরুদ্ধারের সময় কোড স্ক্যান করতে bae ক্যামেরা ব্যবহার করে।"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae páruje zařízení a vyhledává reproduktory a televizory ve vaší místní síti."
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae používá fotoaparát ke skenování kódů při párování nebo obnovení knihovny."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae koppelt Geräte und findet Lautsprecher und Fernseher in deinem lokalen Netzwerk."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae verwendet die Kamera, um beim Koppeln oder Wiederherstellen einer Mediathek Codes zu scannen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae pairs devices and finds speakers and TVs on your local network."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae uses the camera to scan codes when pairing or recovering a library."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae vincula dispositivos y busca altavoces y televisores en tu red local."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae usa la cámara para escanear códigos al vincular o restaurar una biblioteca."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae associe des appareils et recherche des enceintes et téléviseurs sur votre réseau local."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae utilise la caméra pour scanner des codes lors de l’association ou de la restauration d’une bibliothèque."
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ઉપકરણોને જોડે છે અને તમારા સ્થાનિક નેટવર્ક પર સ્પીકર અને ટીવી શોધે છે."
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "લાઇબ્રેરીને જોડતી અથવા પુનઃસ્થાપિત કરતી વખતે કોડ સ્કૅન કરવા bae કૅમેરાનો ઉપયોગ કરે છે."
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "‏bae מצמד מכשירים ומאתר רמקולים וטלוויזיות ברשת המקומית שלך."
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‏bae משתמש במצלמה כדי לסרוק קודים בעת צימוד או שחזור של ספרייה."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae डिवाइस पेयर करता है और आपके स्थानीय नेटवर्क पर स्पीकर व टीवी ढूँढता है।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "लाइब्रेरी को पेयर या रीस्टोर करते समय कोड स्कैन करने के लिए bae कैमरे का उपयोग करता है।"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae uparuje uređaje i pronalazi zvučnike i televizore na vašoj lokalnoj mreži."
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae koristi kameru za skeniranje kodova pri uparivanju ili vraćanju biblioteke."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae abbina i dispositivi e trova altoparlanti e TV sulla rete locale."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae usa la fotocamera per scansionare i codici durante l’abbinamento o il ripristino di una libreria."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae はデバイスをペアリングし、ローカルネットワーク上のスピーカーやテレビを見つけます。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae は、ライブラリのペアリングまたは復元時にコードをスキャンするためにカメラを使用します。"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ಸಾಧನಗಳನ್ನು ಜೋಡಿಸುತ್ತದೆ ಮತ್ತು ನಿಮ್ಮ ಸ್ಥಳೀಯ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿ ಸ್ಪೀಕರ್‌ಗಳು ಹಾಗೂ ಟಿವಿಗಳನ್ನು ಹುಡುಕುತ್ತದೆ."
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಲೈಬ್ರರಿಯನ್ನು ಜೋಡಿಸುವಾಗ ಅಥವಾ ಮರುಸ್ಥಾಪಿಸುವಾಗ ಕೋಡ್‌ಗಳನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಲು bae ಕ್ಯಾಮೆರಾವನ್ನು ಬಳಸುತ್ತದೆ."
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae는 기기를 페어링하고 로컬 네트워크에서 스피커와 TV를 찾습니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae는 보관함을 페어링하거나 복원할 때 코드를 스캔하기 위해 카메라를 사용합니다."
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ഉപകരണങ്ങൾ ജോടിയാക്കുകയും നിങ്ങളുടെ ലോക്കൽ നെറ്റ്‌വർക്കിലെ സ്പീക്കറുകളും ടിവികളും കണ്ടെത്തുകയും ചെയ്യുന്നു."
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ലൈബ്രറി ജോടിയാക്കുമ്പോഴോ പുനഃസ്ഥാപിക്കുമ്പോഴോ കോഡുകൾ സ്കാൻ ചെയ്യാൻ bae ക്യാമറ ഉപയോഗിക്കുന്നു."
           }
         },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae डिव्हाइस जोडते आणि तुमच्या स्थानिक नेटवर्कवरील स्पीकर व टीव्ही शोधते."
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "लायब्ररी जोडताना किंवा पुनर्संचयित करताना कोड स्कॅन करण्यासाठी bae कॅमेरा वापरते."
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae koppelt apparaten en zoekt speakers en tv’s in je lokale netwerk."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae gebruikt de camera om codes te scannen bij het koppelen of herstellen van een bibliotheek."
           }
         },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ਡਿਵਾਈਸਾਂ ਨੂੰ ਜੋੜਦਾ ਹੈ ਅਤੇ ਤੁਹਾਡੇ ਸਥਾਨਕ ਨੈੱਟਵਰਕ ’ਤੇ ਸਪੀਕਰ ਤੇ ਟੀਵੀ ਲੱਭਦਾ ਹੈ।"
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਲਾਇਬ੍ਰੇਰੀ ਨੂੰ ਜੋੜਨ ਜਾਂ ਮੁੜ-ਬਹਾਲ ਕਰਨ ਵੇਲੇ ਕੋਡ ਸਕੈਨ ਕਰਨ ਲਈ bae ਕੈਮਰਾ ਵਰਤਦਾ ਹੈ।"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae paruje urządzenia oraz wyszukuje głośniki i telewizory w sieci lokalnej."
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae używa aparatu do skanowania kodów podczas parowania lub odtwarzania biblioteki."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O bae emparelha dispositivos e encontra alto-falantes e TVs na sua rede local."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae usa a câmera para escanear códigos ao emparelhar ou restaurar uma biblioteca."
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae சாதனங்களை இணைத்து, உங்கள் உள்ளூர் நெட்வொர்க்கில் ஸ்பீக்கர்களையும் தொலைக்காட்சிகளையும் கண்டறிகிறது."
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நூலகத்தை இணைக்கும்போது அல்லது மீட்டெடுக்கும்போது குறியீடுகளை ஸ்கேன் செய்ய bae கேமராவைப் பயன்படுத்துகிறது."
           }
         },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae పరికరాలను జత చేసి, మీ స్థానిక నెట్‌వర్క్‌లో స్పీకర్లు మరియు టీవీలను కనుగొంటుంది."
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "లైబ్రరీని జత చేసేటప్పుడు లేదా పునరుద్ధరించేటప్పుడు కోడ్‌లను స్కాన్ చేయడానికి bae కెమెరాను ఉపయోగిస్తుంది."
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae จับคู่อุปกรณ์และค้นหาลำโพงกับทีวีในเครือข่ายภายในของคุณ"
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ใช้กล้องเพื่อสแกนรหัสเมื่อจับคู่หรือกู้คืนคลัง"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae cihazları eşler ve yerel ağınızdaki hoparlörlerle televizyonları bulur."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae, bir arşivi eşlerken veya geri yüklerken kodları taramak için kamerayı kullanır."
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae сполучає пристрої та знаходить колонки й телевізори у вашій локальній мережі."
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae використовує камеру для сканування кодів під час сполучення або відновлення медіатеки."
           }
         },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae آلات کو جوڑتا ہے اور آپ کے مقامی نیٹ ورک پر اسپیکر اور ٹی وی تلاش کرتا ہے۔"
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لائبریری کو جوڑنے یا بحال کرنے کے دوران کوڈ اسکین کرنے کے لیے bae کیمرا استعمال کرتا ہے۔"
           }
         },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae ghép nối thiết bị và tìm loa cùng TV trên mạng cục bộ của bạn."
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae sử dụng camera để quét mã khi ghép nối hoặc khôi phục thư viện."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae 会配对设备，并查找你本地网络中的扬声器和电视。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 使用相机扫描用于配对或恢复资料库的代码。"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "bae 會配對裝置，並尋找你區域網路中的喇叭和電視。"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 使用相機掃描用於配對或回復資料庫的代碼。"
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "System prompt explaining why device pairing and local playback need access.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يقترن bae بالأجهزة ويعثر على مكبرات الصوت وأجهزة التلفزيون على شبكتك المحلية."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae сдвоява устройства и намира високоговорители и телевизори в локалната ви мрежа."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ডিভাইস জোড়া লাগায় এবং আপনার স্থানীয় নেটওয়ার্কে স্পিকার ও টিভি খুঁজে পায়।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae páruje zařízení a vyhledává reproduktory a televizory ve vaší místní síti."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae koppelt Geräte und findet Lautsprecher und Fernseher in deinem lokalen Netzwerk."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae pairs devices and finds speakers and TVs on your local network."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae vincula dispositivos y busca altavoces y televisores en tu red local."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae associe des appareils et recherche des enceintes et téléviseurs sur votre réseau local."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ઉપકરણોને જોડે છે અને તમારા સ્થાનિક નેટવર્ક પર સ્પીકર અને ટીવી શોધે છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‏bae מצמד מכשירים ומאתר רמקולים וטלוויזיות ברשת המקומית שלך."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae डिवाइस पेयर करता है और आपके स्थानीय नेटवर्क पर स्पीकर व टीवी ढूँढता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae uparuje uređaje i pronalazi zvučnike i televizore na vašoj lokalnoj mreži."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae abbina i dispositivi e trova altoparlanti e TV sulla rete locale."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae はデバイスをペアリングし、ローカルネットワーク上のスピーカーやテレビを見つけます。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ಸಾಧನಗಳನ್ನು ಜೋಡಿಸುತ್ತದೆ ಮತ್ತು ನಿಮ್ಮ ಸ್ಥಳೀಯ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿ ಸ್ಪೀಕರ್‌ಗಳು ಹಾಗೂ ಟಿವಿಗಳನ್ನು ಹುಡುಕುತ್ತದೆ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae는 기기를 페어링하고 로컬 네트워크에서 스피커와 TV를 찾습니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ഉപകരണങ്ങൾ ജോടിയാക്കുകയും നിങ്ങളുടെ ലോക്കൽ നെറ്റ്‌വർക്കിലെ സ്പീക്കറുകളും ടിവികളും കണ്ടെത്തുകയും ചെയ്യുന്നു."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae डिव्हाइस जोडते आणि तुमच्या स्थानिक नेटवर्कवरील स्पीकर व टीव्ही शोधते."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae koppelt apparaten en zoekt speakers en tv’s in je lokale netwerk."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ਡਿਵਾਈਸਾਂ ਨੂੰ ਜੋੜਦਾ ਹੈ ਅਤੇ ਤੁਹਾਡੇ ਸਥਾਨਕ ਨੈੱਟਵਰਕ ’ਤੇ ਸਪੀਕਰ ਤੇ ਟੀਵੀ ਲੱਭਦਾ ਹੈ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae paruje urządzenia oraz wyszukuje głośniki i telewizory w sieci lokalnej."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O bae emparelha dispositivos e encontra alto-falantes e TVs na sua rede local."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae சாதனங்களை இணைத்து, உங்கள் உள்ளூர் நெட்வொர்க்கில் ஸ்பீக்கர்களையும் தொலைக்காட்சிகளையும் கண்டறிகிறது."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae పరికరాలను జత చేసి, మీ స్థానిక నెట్‌వర్క్‌లో స్పీకర్లు మరియు టీవీలను కనుగొంటుంది."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae จับคู่อุปกรณ์และค้นหาลำโพงกับทีวีในเครือข่ายภายในของคุณ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae cihazları eşler ve yerel ağınızdaki hoparlörlerle televizyonları bulur."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae сполучає пристрої та знаходить колонки й телевізори у вашій локальній мережі."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae آلات کو جوڑتا ہے اور آپ کے مقامی نیٹ ورک پر اسپیکر اور ٹی وی تلاش کرتا ہے۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae ghép nối thiết bị và tìm loa cùng TV trên mạng cục bộ của bạn."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 会配对设备，并查找你本地网络中的扬声器和电视。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bae 會配對裝置，並尋找你區域網路中的喇叭和電視。"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
