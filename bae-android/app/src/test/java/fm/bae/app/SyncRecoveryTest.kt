@@ -1,10 +1,10 @@
 package fm.bae.app
 
-import java.lang.reflect.Proxy
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.AppHandleInterface
+import java.lang.reflect.Proxy
 
 class SyncRecoveryTest {
     @Test
