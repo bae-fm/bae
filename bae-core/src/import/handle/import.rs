@@ -4,26 +4,25 @@ use crate::import::payloads::ReleasePayloads;
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
-    /// Project an Unknown import candidate into a `ReleaseUserEdit` so the
+    /// Project a File Tags candidate into a `ReleaseUserEdit` so the
     /// edit-metadata form can seed itself from what's on disk: the parsed CUE
     /// track layout for CUE-backed candidates, embedded tags for per-track-file
-    /// ones. This backs "Add as Unknown" — the UI previews, then shows the editor
+    /// ones. This backs "Use File Tags" — the UI previews, then shows the editor
     /// for verification before commit.
     ///
-    /// This is only the seed. The worker re-scans the folder and re-runs the same
-    /// Unknown mapper at commit time, so for any field the user touched, their
-    /// edits (carried by the command's `user_edit` overlay) are what wins.
+    /// This is only the seed. Import consumes the same stored snapshot, so the
+    /// editor and commit agree on the file facts under the user's edits.
     pub async fn preview_file_tags_for_folder(
         &self,
         candidate_key: String,
     ) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError> {
-        Ok(self.unknown_seed(&candidate_key).await?.0)
+        Ok(self.file_tag_seed(&candidate_key).await?.0)
     }
 
     /// The release the folder's own files describe: the parsed CUE track layout
     /// for CUE-backed candidates, embedded tags for per-track-file ones, with
     /// the files it was read from.
-    async fn unknown_seed(
+    async fn file_tag_seed(
         &self,
         candidate_key: &str,
     ) -> Result<
@@ -51,7 +50,7 @@ impl ImportServiceHandle {
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("unknown preview projection task failed: {e}"),
+            detail: format!("file-tag preview projection task failed: {e}"),
         })?
     }
 
