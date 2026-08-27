@@ -8,10 +8,14 @@ use super::columns::*;
 use super::write::StoredEntry;
 use super::*;
 use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
+use crate::import::file_tag_snapshot::{
+    EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
+};
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseDecisionKey,
     InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem, ScannedFile,
 };
+use crate::util::content_type::ContentType;
 
 /// One stored entry: the key it is addressed by, the scan generation that
 /// wrote it, and the item itself.
@@ -19,6 +23,18 @@ pub(crate) struct StoredScanItem {
     pub(crate) key: String,
     pub(crate) generation: u64,
     pub(crate) item: ScanItem,
+}
+
+struct StoredFileTagSnapshotRow {
+    scan_generation: i64,
+    file_edit_revision: i64,
+    embedded_cover: StoredEmbeddedCoverColumns,
+}
+
+struct StoredEmbeddedCoverColumns {
+    source_relative_path: Option<String>,
+    content_type: Option<String>,
+    data: Option<Vec<u8>>,
 }
 
 /// Every entry stored under one watched root, in persisted-key order.
@@ -81,6 +97,173 @@ pub(crate) fn load_item_by_key(
         };
     }
     Ok(None)
+}
+
+/// The candidate's current scan stamp and any snapshot stored under it. The
+/// stored snapshot is returned even when its stamp is older so the caller can
+/// distinguish an absent reading from one invalidated by a newer scan or file
+/// decision.
+pub(crate) fn load_candidate_file_tag_snapshot(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    candidate_path: &str,
+) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
+    let mut current = load_candidate_items(sql, watched_folder_path, Some(candidate_path))?;
+    let Some(stored_candidate) = current.pop() else {
+        return Ok(None);
+    };
+    validate_scan_item_ownership(
+        watched_folder_path,
+        &stored_candidate.key,
+        &stored_candidate.item,
+    )?;
+    let ScanItem::Valid(candidate) = stored_candidate.item else {
+        return Ok(None);
+    };
+
+    let stored: Option<StoredFileTagSnapshotRow> = sql
+        .query_row(
+            "SELECT scan_generation, file_edit_revision, \
+                    embedded_cover_source_relative_path, embedded_cover_content_type, \
+                    embedded_cover_data \
+             FROM scan_candidate_tag_snapshot \
+             WHERE watched_folder_path = ? AND candidate_path = ?",
+            params![watched_folder_path, candidate_path],
+            |row| {
+                Ok(StoredFileTagSnapshotRow {
+                    scan_generation: row.get(0)?,
+                    file_edit_revision: row.get(1)?,
+                    embedded_cover: StoredEmbeddedCoverColumns {
+                        source_relative_path: row.get(2)?,
+                        content_type: row.get(3)?,
+                        data: row.get(4)?,
+                    },
+                })
+            },
+        )
+        .optional()?;
+    let snapshot = stored
+        .map(|stored| {
+                let embedded_cover = match (
+                    stored.embedded_cover.source_relative_path,
+                    stored.embedded_cover.content_type,
+                    stored.embedded_cover.data,
+                ) {
+                    (None, None, None) => None,
+                    (Some(source_relative_path), Some(content_type), Some(data)) => {
+                        Some(EmbeddedCoverFact {
+                            source_relative_path,
+                            content_type: ContentType::from_mime(&content_type),
+                            data,
+                        })
+                    }
+                    columns => {
+                        return Err(DbError::Message(format!(
+                            "candidate {candidate_path}'s embedded cover is only partly stored: {columns:?}"
+                        )))
+                    }
+                };
+                Ok(FileTagSnapshot {
+                    scan_generation: to_u64(
+                        stored.scan_generation,
+                        "a file-tag snapshot's scan generation",
+                    )?,
+                    file_edit_revision: to_u64(
+                        stored.file_edit_revision,
+                        "a file-tag snapshot's file edit revision",
+                    )?,
+                    files: load_file_tag_facts(sql, watched_folder_path, candidate_path)?,
+                    embedded_cover,
+                })
+            })
+        .transpose()?;
+
+    Ok(Some(DbCandidateFileTagSnapshot {
+        scan_generation: stored_candidate.generation,
+        candidate,
+        snapshot,
+    }))
+}
+
+fn load_file_tag_facts(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    candidate_path: &str,
+) -> Result<Vec<FileTagFact>, DbError> {
+    let rows = sql.query(
+        "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, tags.content_type, \
+                tags.title, tags.track_artist, tags.album_title, tags.album_artist, \
+                tags.year, tags.track_number, tags.disc_number \
+         FROM scan_candidate_file_tag AS tags \
+         INNER JOIN scan_candidate_file AS files \
+             ON files.watched_folder_path = tags.watched_folder_path \
+            AND files.candidate_path = tags.candidate_path \
+            AND files.relative_path = tags.relative_path \
+         WHERE tags.watched_folder_path = ? AND tags.candidate_path = ? \
+         ORDER BY files.position",
+        params![watched_folder_path, candidate_path],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, Option<String>>(7)?,
+                row.get::<_, Option<i64>>(8)?,
+                row.get::<_, Option<i64>>(9)?,
+                row.get::<_, Option<i64>>(10)?,
+            ))
+        },
+    )?;
+    rows.into_iter()
+        .map(
+            |(
+                relative_path,
+                size,
+                modified_at_ns,
+                content_type,
+                title,
+                track_artist,
+                album_title,
+                album_artist,
+                year,
+                track_number,
+                disc_number,
+            )| {
+                Ok(FileTagFact {
+                    observation: FileObservation {
+                        relative_path,
+                        size: to_u64(size, "a file-tag observation's size")?,
+                        modified_at_ns,
+                    },
+                    content_type: content_type.as_deref().map(ContentType::from_mime),
+                    title,
+                    track_artist,
+                    album_title,
+                    album_artist,
+                    year: year
+                        .map(|value| {
+                            u16::try_from(value).map_err(|_| {
+                                DbError::Message(
+                                    "a file-tag year is outside the range it counts over"
+                                        .to_string(),
+                                )
+                            })
+                        })
+                        .transpose()?,
+                    track_number: track_number
+                        .map(|value| to_u32(value, "a file-tag track number"))
+                        .transpose()?,
+                    disc_number: disc_number
+                        .map(|value| to_u32(value, "a file-tag disc number"))
+                        .transpose()?,
+                })
+            },
+        )
+        .collect()
 }
 
 /// Every stored entry under one root, as the key it is addressed by and the

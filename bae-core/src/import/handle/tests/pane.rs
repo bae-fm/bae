@@ -118,6 +118,161 @@ async fn shut_down(handle: ImportServiceHandle) {
         .unwrap();
 }
 
+struct CountingFileTagReader {
+    reads: std::sync::atomic::AtomicUsize,
+    first_read: Option<(
+        std::sync::mpsc::SyncSender<()>,
+        std::sync::Arc<std::sync::Barrier>,
+    )>,
+}
+
+impl CountingFileTagReader {
+    fn immediate() -> Self {
+        Self {
+            reads: std::sync::atomic::AtomicUsize::new(0),
+            first_read: None,
+        }
+    }
+
+    fn blocking(
+        entered: std::sync::mpsc::SyncSender<()>,
+        resume: std::sync::Arc<std::sync::Barrier>,
+    ) -> Self {
+        Self {
+            reads: std::sync::atomic::AtomicUsize::new(0),
+            first_read: Some((entered, resume)),
+        }
+    }
+
+    fn read_count(&self) -> usize {
+        self.reads.load(std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
+impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
+    fn read(
+        &self,
+        _path: &std::path::Path,
+    ) -> Result<crate::import::file_tag_snapshot::FileTagRead, crate::import::ImportError> {
+        let index = self
+            .reads
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        if index == 0 {
+            if let Some((entered, resume)) = &self.first_read {
+                entered.send(()).unwrap();
+                resume.wait();
+            }
+        }
+        Ok(crate::import::file_tag_snapshot::FileTagRead {
+            content_type: Some(crate::util::content_type::ContentType::Flac),
+            title: Some(format!("Track Title {}", index + 1)),
+            track_artist: Some("Artist Name".to_string()),
+            album_title: Some("Album Title".to_string()),
+            album_artist: Some("Album Artist".to_string()),
+            year: Some(2020),
+            track_number: Some(u32::try_from(index + 1).unwrap()),
+            disc_number: Some(1),
+            embedded_cover: None,
+        })
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+
+    let first = handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .unwrap();
+    assert_eq!(reader.read_count(), 2);
+    let preview = handle
+        .preview_file_tags_for_folder(key.clone())
+        .await
+        .unwrap();
+    assert_eq!(preview.album_title, "Album Title");
+    assert_eq!(
+        preview
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect::<Vec<_>>(),
+        vec!["Track Title 1", "Track Title 2"]
+    );
+    let second = handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .unwrap();
+
+    assert_eq!(second, first);
+    assert_eq!(
+        reader.read_count(),
+        2,
+        "an exact stored observation avoids opening the audio tags again"
+    );
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let (entered_tx, entered_rx) = std::sync::mpsc::sync_channel(1);
+    let resume = std::sync::Arc::new(std::sync::Barrier::new(2));
+    let reader = std::sync::Arc::new(CountingFileTagReader::blocking(
+        entered_tx,
+        resume.clone(),
+    ));
+    let operation = tokio::spawn({
+        let handle = handle.clone();
+        let key = key.clone();
+        async move {
+            handle
+                .file_tag_snapshot_with_reader(&key, reader)
+                .await
+        }
+    });
+    entered_rx
+        .recv_timeout(std::time::Duration::from_secs(2))
+        .expect("the tag reader reached the first audio file");
+
+    let root = candidate.watched_folder_path.clone();
+    let generation = manager.begin_folder_scan(&root).await.unwrap();
+    manager
+        .save_folder_scan_item(
+            &root,
+            generation,
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
+        )
+        .await
+        .unwrap();
+    manager
+        .finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+    resume.wait();
+
+    let error = operation
+        .await
+        .unwrap()
+        .expect_err("the earlier scan stamp cannot land after a newer scan");
+    assert!(
+        error.to_string().contains("changed while its file tags were being read"),
+        "the refusal names the changed candidate: {error}"
+    );
+    shut_down(handle).await;
+}
+
 /// The rows of the table that become tracks, in order — what a person edits.
 fn track_rows(table: &crate::import::MappingTable) -> Vec<crate::import::RawTrackEdit> {
     use crate::import::mapping::{MappingBecomes, MappingRow};

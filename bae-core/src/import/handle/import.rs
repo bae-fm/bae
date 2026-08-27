@@ -33,24 +33,16 @@ impl ImportServiceHandle {
         ),
         crate::import::ImportError,
     > {
-        let Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        }) = self.get_candidate(candidate_key).await?
-        else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
-        };
+        let (candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
         let folder_name = Some(candidate.name);
         let categorized = candidate.files;
 
         let clock = self.clock.clone();
         let ids = self.ids.clone();
         tokio::task::spawn_blocking(move || {
-            let parsed = crate::import::file_tag_mapper::map_unknown_candidate_to_db(
+            let parsed = crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
                 &categorized,
+                &snapshot,
                 folder_name.as_deref(),
                 clock.as_ref(),
                 ids.as_ref(),
@@ -61,6 +53,99 @@ impl ImportServiceHandle {
         .map_err(|e| crate::import::ImportError::Internal {
             detail: format!("unknown preview projection task failed: {e}"),
         })?
+    }
+
+    async fn file_tag_snapshot(
+        &self,
+        candidate_key: &str,
+    ) -> Result<
+        (
+            crate::import::folder_scanner::FolderCandidate,
+            crate::import::file_tag_snapshot::FileTagSnapshot,
+        ),
+        crate::import::ImportError,
+    > {
+        self.file_tag_snapshot_with_reader(
+            candidate_key,
+            std::sync::Arc::new(crate::import::file_tag_snapshot::LoftyFileTagReader),
+        )
+        .await
+    }
+
+    pub(super) async fn file_tag_snapshot_with_reader(
+        &self,
+        candidate_key: &str,
+        reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
+    ) -> Result<
+        (
+            crate::import::folder_scanner::FolderCandidate,
+            crate::import::file_tag_snapshot::FileTagSnapshot,
+        ),
+        crate::import::ImportError,
+    > {
+        let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let watched_folder_path = candidate.watched_folder_path;
+        let Some(stored) = self
+            .library_manager
+            .load_candidate_file_tag_snapshot(&watched_folder_path, candidate_key)
+            .await?
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let crate::db::DbCandidateFileTagSnapshot {
+            scan_generation,
+            candidate,
+            snapshot: stored_snapshot,
+        } = stored;
+        let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
+        let file_edit_revision = candidate.file_edit_revision;
+        let (snapshot, extracted) = tokio::task::spawn_blocking(move || {
+            let observations = crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
+            if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
+                snapshot.scan_generation == scan_generation
+                    && snapshot.file_edit_revision == file_edit_revision
+                    && snapshot
+                        .files
+                        .iter()
+                        .map(|fact| &fact.observation)
+                        .eq(observations.iter())
+            }) {
+                return Ok::<_, crate::import::ImportError>((snapshot, false));
+            }
+            Ok((
+                crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+                    &audio_files,
+                    scan_generation,
+                    file_edit_revision,
+                    reader.as_ref(),
+                )?,
+                true,
+            ))
+        })
+        .await
+        .map_err(|error| crate::import::ImportError::Internal {
+            detail: format!("file-tag snapshot task failed: {error}"),
+        })??;
+
+        if extracted
+            && !self
+                .library_manager
+                .replace_candidate_file_tag_snapshot(&watched_folder_path, candidate_key, &snapshot)
+                .await?
+        {
+            return Err(crate::import::ImportError::FileTags {
+                detail: format!(
+                    "{candidate_key} changed while its file tags were being read; open it again"
+                ),
+            });
+        }
+        Ok((candidate, snapshot))
     }
 
     /// Build an import command from what the candidate stores and enqueue it.

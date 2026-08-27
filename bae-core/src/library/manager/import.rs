@@ -230,6 +230,31 @@ impl LibraryManager {
         Ok(self.database.load_folder_scan_item(entry_key).await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn load_candidate_file_tag_snapshot(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+    ) -> Result<Option<crate::db::DbCandidateFileTagSnapshot>, LibraryError> {
+        Ok(self
+            .database
+            .load_candidate_file_tag_snapshot(watched_folder_path, candidate_path)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn replace_candidate_file_tag_snapshot(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .replace_candidate_file_tag_snapshot(watched_folder_path, candidate_path, snapshot)
+            .await?)
+    }
+
     /// Insert all of an import's data in one transaction, so the release either
     /// exists complete or does not exist at all. Nothing of it is in the DB yet
     /// except the import record.

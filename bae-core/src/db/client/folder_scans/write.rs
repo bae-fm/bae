@@ -39,6 +39,79 @@ pub(crate) fn delete_entry(
     Ok(())
 }
 
+/// Replace one candidate's stored file-tag reading. The caller has already
+/// compared the snapshot stamp with the current candidate inside this write
+/// transaction, so deleting first cannot expose a partial replacement.
+pub(crate) fn replace_candidate_file_tag_snapshot(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    candidate_path: &str,
+    snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM scan_candidate_tag_snapshot \
+         WHERE watched_folder_path = ? AND candidate_path = ?",
+        params![watched_folder_path, candidate_path],
+    )?;
+    let (cover_source, cover_content_type, cover_data) = match &snapshot.embedded_cover {
+        Some(cover) => (
+            Some(cover.source_relative_path.as_str()),
+            Some(cover.content_type.as_str()),
+            Some(cover.data.as_slice()),
+        ),
+        None => (None, None, None),
+    };
+    sql.execute(
+        "INSERT INTO scan_candidate_tag_snapshot \
+             (watched_folder_path, candidate_path, scan_generation, file_edit_revision, \
+              embedded_cover_source_relative_path, embedded_cover_content_type, \
+              embedded_cover_data) \
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+        params![
+            watched_folder_path,
+            candidate_path,
+            to_i64(
+                snapshot.scan_generation,
+                "a file-tag snapshot's scan generation"
+            )?,
+            to_i64(
+                snapshot.file_edit_revision,
+                "a file-tag snapshot's file edit revision"
+            )?,
+            cover_source,
+            cover_content_type,
+            cover_data,
+        ],
+    )?;
+    for fact in &snapshot.files {
+        sql.execute(
+            "INSERT INTO scan_candidate_file_tag \
+                 (watched_folder_path, candidate_path, relative_path, file_size, \
+                  modified_at_ns, content_type, title, track_artist, album_title, \
+                  album_artist, year, track_number, disc_number) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            params![
+                watched_folder_path,
+                candidate_path,
+                fact.observation.relative_path,
+                to_i64(fact.observation.size, "a file-tag observation's size")?,
+                fact.observation.modified_at_ns,
+                fact.content_type
+                    .as_ref()
+                    .map(|content_type| content_type.as_str()),
+                fact.title,
+                fact.track_artist,
+                fact.album_title,
+                fact.album_artist,
+                fact.year.map(i64::from),
+                fact.track_number.map(i64::from),
+                fact.disc_number.map(i64::from),
+            ],
+        )?;
+    }
+    Ok(())
+}
+
 /// Delete every row not written in `generation`, and say which keys went.
 pub(super) fn prune_other_generations(
     sql: &SqlContext<'_, '_>,

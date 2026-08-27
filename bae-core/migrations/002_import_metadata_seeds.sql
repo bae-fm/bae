@@ -308,13 +308,23 @@ CREATE TABLE import_candidate_track_artist_assignment (
 ) STRICT;
 
 CREATE TABLE scan_candidate_tag_snapshot (
-    watched_folder_path TEXT NOT NULL,
-    candidate_path      TEXT NOT NULL,
-    scan_generation     INTEGER NOT NULL CHECK (scan_generation >= 0),
-    file_edit_revision  INTEGER NOT NULL CHECK (file_edit_revision >= 0),
+    watched_folder_path                TEXT NOT NULL,
+    candidate_path                     TEXT NOT NULL,
+    scan_generation                    INTEGER NOT NULL CHECK (scan_generation >= 0),
+    file_edit_revision                 INTEGER NOT NULL CHECK (file_edit_revision >= 0),
+    embedded_cover_source_relative_path TEXT,
+    embedded_cover_content_type        TEXT,
+    embedded_cover_data                BLOB,
     PRIMARY KEY (watched_folder_path, candidate_path),
     FOREIGN KEY (watched_folder_path, candidate_path)
-        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE
+        REFERENCES scan_candidate (watched_folder_path, path) ON DELETE CASCADE,
+    CHECK (
+        (embedded_cover_source_relative_path IS NULL
+            AND embedded_cover_content_type IS NULL AND embedded_cover_data IS NULL)
+        OR
+        (embedded_cover_source_relative_path IS NOT NULL
+            AND embedded_cover_content_type IS NOT NULL AND embedded_cover_data IS NOT NULL)
+    )
 ) STRICT;
 
 CREATE TABLE scan_candidate_file_tag (
@@ -322,8 +332,8 @@ CREATE TABLE scan_candidate_file_tag (
     candidate_path      TEXT NOT NULL,
     relative_path       TEXT NOT NULL,
     file_size           INTEGER NOT NULL CHECK (file_size >= 0),
-    modified_at_ns      INTEGER NOT NULL,
-    content_type        TEXT NOT NULL,
+    modified_at_ns      INTEGER NOT NULL CHECK (modified_at_ns >= 0),
+    content_type        TEXT,
     title               TEXT,
     track_artist        TEXT,
     album_title         TEXT,

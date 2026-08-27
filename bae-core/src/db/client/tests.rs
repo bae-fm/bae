@@ -113,3 +113,6 @@ mod queue_cover_tests;
 
 #[cfg(test)]
 mod live_query_tests;
+
+#[cfg(test)]
+mod file_tag_snapshot_tests;

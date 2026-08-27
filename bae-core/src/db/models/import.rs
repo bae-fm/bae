@@ -4,6 +4,17 @@
 
 use super::*;
 
+/// The current scan stamp for one candidate and whatever file-tag snapshot is
+/// stored beneath it. The stored snapshot may carry an older stamp: callers
+/// compare the two before reuse, while replacement uses the current pair as a
+/// compare-and-set expectation.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct DbCandidateFileTagSnapshot {
+    pub scan_generation: u64,
+    pub candidate: crate::import::folder_scanner::FolderCandidate,
+    pub snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+}
+
 /// What a caller supplies to record one candidate's identify verdict via
 /// [`crate::db::Database::save_import_candidate_verdict`] — the identify
 /// columns of `import_candidate_state` except `identified_at`. That column is

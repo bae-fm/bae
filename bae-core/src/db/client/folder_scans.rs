@@ -100,6 +100,97 @@ fn generation_column(generation: u64) -> Result<i64, DbError> {
 }
 
 impl Database {
+    /// Load the candidate's current scan stamp and whatever complete file-tag
+    /// snapshot is stored beneath it. The two stamps are deliberately not
+    /// collapsed: a caller must distinguish never-read from invalidated.
+    pub(crate) async fn load_candidate_file_tag_snapshot(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+    ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let candidate_path = candidate_path.to_string();
+        self.read(move |sql| {
+            read::load_candidate_file_tag_snapshot(&sql, &watched_folder_path, &candidate_path)
+        })
+        .await
+    }
+
+    /// Atomically replace a candidate's complete file-tag snapshot if its
+    /// durable scan generation and file-decision revision still match what was
+    /// read. `false` means the candidate moved before the write; nothing was
+    /// deleted or inserted.
+    pub(crate) async fn replace_candidate_file_tag_snapshot(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+    ) -> Result<bool, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let candidate_path = candidate_path.to_string();
+        let snapshot = snapshot.clone();
+        self.call(move |sql| {
+            let expected_generation = generation_column(snapshot.scan_generation)?;
+            let expected_file_edit_revision = columns::to_i64(
+                snapshot.file_edit_revision,
+                "a file-tag snapshot's file edit revision",
+            )?;
+            let matched = sql.execute(
+                "UPDATE scan_candidate SET generation = generation \
+                 WHERE watched_folder_path = ? AND path = ? \
+                   AND generation = ? AND file_edit_revision = ?",
+                params![
+                    watched_folder_path,
+                    candidate_path,
+                    expected_generation,
+                    expected_file_edit_revision
+                ],
+            )?;
+            if matched == 0 {
+                return Ok(false);
+            }
+
+            let audio_files: Vec<(String, i64)> = sql.query(
+                "SELECT relative_path, size FROM scan_candidate_file \
+                 WHERE watched_folder_path = ? AND candidate_path = ? AND role = 'audio' \
+                 ORDER BY position",
+                params![watched_folder_path, candidate_path],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
+            if audio_files.len() != snapshot.files.len()
+                || audio_files.iter().zip(&snapshot.files).any(
+                    |((relative_path, size), fact)| {
+                        relative_path != &fact.observation.relative_path
+                            || u64::try_from(*size).ok() != Some(fact.observation.size)
+                    },
+                )
+            {
+                return Err(DbError::Message(format!(
+                    "file-tag snapshot for {candidate_path} does not cover its current audio files"
+                )));
+            }
+            if snapshot.embedded_cover.as_ref().is_some_and(|cover| {
+                !snapshot
+                    .files
+                    .iter()
+                    .any(|fact| fact.observation.relative_path == cover.source_relative_path)
+            }) {
+                return Err(DbError::Message(format!(
+                    "file-tag snapshot for {candidate_path} names an embedded cover outside its audio files"
+                )));
+            }
+
+            write::replace_candidate_file_tag_snapshot(
+                sql,
+                &watched_folder_path,
+                &candidate_path,
+                &snapshot,
+            )?;
+            Ok(true)
+        })
+        .await
+    }
+
     /// The root's generation as the read connection sees it. A scan that is no
     /// longer the root's writes nothing, and finding that out is a read — the
     /// writes below open only once this generation is the one in force.
