@@ -97,6 +97,8 @@ fix.
 - Put the playable source filename at the far left as the primary origin field.
 - Preserve playback behavior, alignment, truncation, accessibility, and
   responsive column widths.
+- Increase the visible play/pause glyph and its pointer target while keeping
+  every playback state vertically centered in a stable row height.
 - Give Tracks and Files their real per-section column models if they currently
   share a grid shape that prevents the correct order.
 
