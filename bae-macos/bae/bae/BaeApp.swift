@@ -496,7 +496,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let runtime: AppRuntime
     private(set) var applicationServices: ApplicationServices?
     var appService: AppService?
-    fileprivate var requiredApplicationServices: ApplicationServices {
+    var requiredApplicationServices: ApplicationServices {
         guard let applicationServices else {
             preconditionFailure(
                 "Application services are unavailable in the inert app host"
