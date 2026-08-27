@@ -11,9 +11,12 @@ with local verification on its own branch. The main checkout audits each commit,
 fast-forwards `main`, and pushes it directly. Do not create pull requests or
 additional worktrees.
 
-## Active work
+## Completed work
 
 ### Cloud attachment startup delay
+
+Completed in `4a1bbf129`. Returning-user attachment fell from 4.734 seconds to
+0.863 seconds while retaining protocol and replay-image validation.
 
 Find and remove the delay between opening the local library and attaching cloud
 sync for a returning user.
@@ -37,9 +40,11 @@ Use the measurement to identify the confirmed cause. Remove all diagnostic
 instrumentation and local dependency overrides before committing the product
 fix.
 
-## Ordered queue
+## Completed queue items
 
 ### Folder group actions and hit area
+
+Completed in `091f0712f`.
 
 - Remove the inline **Combine as One Release** action from folder headers.
 - Keep the action in the folder header context menu when the group can be
@@ -49,9 +54,13 @@ fix.
 
 ### Import hierarchy indentation
 
+Completed in `c9c83e167`.
+
 - Indent only candidates that are actually members of a folder group.
 - Align candidates outside that group with the outer hierarchy guide rather
   than the grouped-child guide.
+
+## Active and ordered queue
 
 ### Candidate selection viewport stability
 
