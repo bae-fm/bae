@@ -5,7 +5,9 @@
 //! pick. All three are read for the entries inside a requested window and for
 //! the one key a selection names — never for the queue.
 
-use super::super::folder_scans::{load_item_by_key, load_resolved_boundaries};
+use super::super::folder_scans::{
+    load_candidate_file_tag_snapshot, load_item_by_key, load_resolved_boundaries,
+};
 use super::super::identity::check_releases_in_library_on;
 use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::payloads::load_release_payloads_on;
@@ -326,16 +328,41 @@ fn pane_of(
             )
             .map_err(message)?
         }
-        MetadataSeed::FileTags => crate::import::pane::unknown_pane(
-            &candidate.files,
-            Some(&candidate.name),
-            durations,
-            &rows.edit,
-            &rows.track_edits,
-            clock,
-            ids,
-        )
-        .map_err(message)?,
+        MetadataSeed::FileTags => {
+            let candidate_path = candidate.path.to_string_lossy();
+            let stored = load_candidate_file_tag_snapshot(
+                sql,
+                &candidate.watched_folder_path,
+                &candidate_path,
+            )?
+            .ok_or_else(|| {
+                DbError::Message(format!(
+                    "{} is picked for File Tags but is not a stored candidate",
+                    candidate.path.display()
+                ))
+            })?;
+            let snapshot = stored.snapshot.filter(|snapshot| {
+                snapshot.scan_generation == stored.scan_generation
+                    && snapshot.file_edit_revision == candidate.file_edit_revision
+            });
+            let snapshot = snapshot.ok_or_else(|| {
+                DbError::Message(format!(
+                    "{} is picked for File Tags but has no current metadata snapshot",
+                    candidate.path.display()
+                ))
+            })?;
+            crate::import::pane::file_tags_pane(
+                &candidate.files,
+                &snapshot,
+                Some(&candidate.name),
+                durations,
+                &rows.edit,
+                &rows.track_edits,
+                clock,
+                ids,
+            )
+            .map_err(message)?
+        }
         MetadataSeed::Manual => crate::import::pane::manual_pane(
             &candidate.files,
             durations,

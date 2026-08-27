@@ -210,12 +210,14 @@ async fn selected_local_cover_path_must_match_discovered_file() {
             folder.to_string_lossy().into_owned(),
             folder,
             crate::import::folder_scanner::ReleaseFileScope::Recursive,
-            expected_content_hash,
-            0,
+            super::ImportExpectation::Candidate {
+                content_hash: expected_content_hash,
+                edit_revision: 0,
+            },
             Some(CoverSelection::Local("cover.bmp".to_string())),
             StorageMode::Local,
             false,
-            crate::import::MetadataSeed::FileTags,
+            crate::import::MetadataSeed::Manual,
             None,
         )
         .await;
@@ -239,7 +241,7 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
     .unwrap();
 
     let import_id = "import-1".to_string();
-    let expectation = super::ImportExpectation {
+    let expectation = super::ImportExpectation::Candidate {
         content_hash: crate::import::folder_scanner::collect_release_candidate_files_with_scope(
             &folder,
             crate::import::ReleaseFileScope::Recursive,
@@ -262,7 +264,7 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
                 )),
                 storage_mode: StorageMode::Local,
                 pin: false,
-                metadata_seed: crate::import::MetadataSeed::FileTags,
+                metadata_seed: crate::import::MetadataSeed::Manual,
                 user_edit: None,
             },
             expectation,

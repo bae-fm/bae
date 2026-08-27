@@ -86,17 +86,16 @@ impl ImportService {
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
-        let content_hash = expectation.content_hash.clone();
+        let content_hash = expectation.content_hash().to_string();
         let folder_path = command.folder.to_string_lossy().into_owned();
-        let edit_revision = expectation.edit_revision;
+        let edit_revision = expectation.edit_revision();
         let result = self
             .prepare_and_run_folder_import(
                 import_id.clone(),
                 candidate_key.clone(),
                 command.folder,
                 command.scope,
-                expectation.content_hash,
-                expectation.edit_revision,
+                expectation,
                 command.selected_cover,
                 command.storage_mode,
                 command.pin,
@@ -145,8 +144,7 @@ impl ImportService {
         candidate_key: String,
         folder: PathBuf,
         scope: crate::import::folder_scanner::ReleaseFileScope,
-        expected_content_hash: String,
-        expected_edit_revision: u64,
+        expectation: ImportExpectation,
         selected_cover: Option<CoverSelection>,
         storage_mode: StorageMode,
         pin: bool,
@@ -154,6 +152,8 @@ impl ImportService {
         user_edit: Option<crate::import::ReleaseUserEdit>,
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
+        let expected_content_hash = expectation.content_hash().to_string();
+        let expected_edit_revision = expectation.edit_revision();
 
         let import_start = std::time::Instant::now();
         let mut step_times: Vec<(&str, std::time::Duration)> = Vec::new();
@@ -202,6 +202,48 @@ impl ImportService {
             });
         }
 
+        let file_tag_snapshot = match (&metadata_seed, &expectation) {
+            (
+                crate::import::MetadataSeed::FileTags,
+                ImportExpectation::FileTags { snapshot, .. },
+            ) => {
+                let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
+                let current_observations = tokio::task::spawn_blocking(move || {
+                    crate::import::file_tag_snapshot::observe_audio_files(&audio_files)
+                })
+                .await
+                .map_err(|error| crate::import::ImportError::Internal {
+                    detail: format!("file-tag validation task failed: {error}"),
+                })??;
+                if !snapshot
+                    .files
+                    .iter()
+                    .map(|fact| &fact.observation)
+                    .eq(current_observations.iter())
+                {
+                    return Err(crate::import::ImportError::FileTags {
+                        detail: format!(
+                            "{candidate_key}'s audio changed after its file tags were read"
+                        ),
+                    });
+                }
+                Some(snapshot)
+            }
+            (crate::import::MetadataSeed::FileTags, ImportExpectation::Candidate { .. }) => {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key}'s File Tags import has no metadata snapshot"),
+                });
+            }
+            (_, ImportExpectation::FileTags { .. }) => {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!(
+                        "{candidate_key}'s metadata source changed after its file tags were read"
+                    ),
+                });
+            }
+            (_, ImportExpectation::Candidate { .. }) => None,
+        };
+
         // Overwrites a prior import of the same files (below), then gets stamped
         // onto the new release row.
         let content_hash = categorized.content_hash();
@@ -247,9 +289,13 @@ impl ImportService {
                 let clock = self.clock.clone();
                 let ids = self.ids.clone();
                 let categorized_for_seed = categorized.clone();
+                let snapshot = file_tag_snapshot
+                    .expect("File Tags was paired with its snapshot above")
+                    .clone();
                 let parsed = tokio::task::spawn_blocking(move || {
-                    crate::import::file_tag_mapper::map_unknown_candidate_to_db(
+                    crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
                         &categorized_for_seed,
+                        &snapshot,
                         folder_name.as_deref(),
                         clock.as_ref(),
                         ids.as_ref(),
@@ -259,7 +305,7 @@ impl ImportService {
                 .map_err(|e| crate::import::ImportError::Internal {
                     detail: format!("unknown-seed mapping task failed: {e}"),
                 })??;
-                // An Unknown import claims no source release, so there is no
+                // A File Tags import claims no source release, so there is no
                 // release cover to derive: its art comes from the folder or the
                 // files' own tags.
                 (parsed, None)
@@ -387,19 +433,14 @@ impl ImportService {
 
         // Embedded cover art is the lowest-priority source: `run_import` uses it
         // only when neither an explicit pick nor a folder image supplies one.
-        // Only tagged rips carry a picture, which is the Unknown path, so a
-        // source-backed import skips the read entirely.
+        // File Tags captured its embedded image in the same snapshot that
+        // seeded the pane, so the worker never opens the tags a second time.
         let embedded_cover = if selected_cover.is_none()
             && matches!(metadata_seed, crate::import::MetadataSeed::FileTags)
         {
-            let audio_paths = categorized.audio_paths();
-            tokio::task::spawn_blocking(move || {
-                crate::import::file_tag_mapper::read_embedded_cover(&audio_paths)
-            })
-            .await
-            .map_err(|e| crate::import::ImportError::Internal {
-                detail: format!("embedded-cover read task failed: {e}"),
-            })??
+            file_tag_snapshot
+                .and_then(|snapshot| snapshot.embedded_cover.as_ref())
+                .map(|cover| (cover.data.clone(), cover.content_type.clone()))
         } else {
             None
         };

@@ -214,13 +214,26 @@ impl ImportServiceHandle {
         candidate_key: String,
         pick: crate::import::MetadataSeed,
     ) -> Result<(), crate::import::ImportError> {
-        let Some((files, _)) = self.actionable_candidate_files(&candidate_key).await? else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            });
+        let content_hash = match &pick {
+            crate::import::MetadataSeed::FileTags => self
+                .file_tag_snapshot(&candidate_key)
+                .await?
+                .0
+                .files
+                .content_hash(),
+            crate::import::MetadataSeed::ExternalRelease { .. }
+            | crate::import::MetadataSeed::Manual => {
+                let Some((files, _)) = self.actionable_candidate_files(&candidate_key).await?
+                else {
+                    return Err(crate::import::ImportError::Internal {
+                        detail: format!("{candidate_key} is not an actionable folder candidate"),
+                    });
+                };
+                files.content_hash()
+            }
         };
         self.library_manager
-            .save_candidate_metadata_seed(&files.content_hash(), &candidate_key, &pick)
+            .save_candidate_metadata_seed(&content_hash, &candidate_key, &pick)
             .await?;
         Ok(())
     }

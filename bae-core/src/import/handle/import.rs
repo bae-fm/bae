@@ -55,7 +55,7 @@ impl ImportServiceHandle {
         })?
     }
 
-    async fn file_tag_snapshot(
+    pub(super) async fn file_tag_snapshot(
         &self,
         candidate_key: &str,
     ) -> Result<
@@ -156,8 +156,8 @@ impl ImportServiceHandle {
     /// values the pane drew. The caller says only where the files should live.
     ///
     /// The worker sources the release itself — `prepare_release` for a picked
-    /// release, reading the documents the pick archived; the folder's own
-    /// files for Unknown.
+    /// release, reading the documents the pick archived; the stored snapshot
+    /// for File Tags.
     pub async fn start_import(
         &self,
         candidate_key: &str,
@@ -191,17 +191,30 @@ impl ImportServiceHandle {
             .load_import_candidate_pane_rows(&content_hash)
             .await?;
 
+        let file_tag_snapshot = if matches!(pick, crate::import::MetadataSeed::FileTags) {
+            let (snapshot_candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
+            if snapshot_candidate.files.content_hash() != content_hash
+                || snapshot_candidate.file_edit_revision != candidate.file_edit_revision
+            {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!(
+                        "{candidate_key} changed while its file-tag snapshot was being read"
+                    ),
+                });
+            }
+            Some(snapshot)
+        } else {
+            None
+        };
+
         let seed_for_pane = pick.clone();
         let files = candidate.files.clone();
         let folder_name = candidate.name.clone();
         let clock = self.clock.clone();
         let ids = self.ids.clone();
-        // Reading the archived documents and the folder's own tags is the same
-        // work the pane's query does, off the async executor because the
-        // Unknown path opens every audio file's tags.
         enum PaneSeed {
             ExternalRelease(ReleasePayloads),
-            FileTags,
+            FileTags(crate::import::file_tag_snapshot::FileTagSnapshot),
             Manual,
         }
         let pane_seed = match &seed_for_pane {
@@ -214,7 +227,11 @@ impl ImportServiceHandle {
                 )
                 .await?,
             ),
-            crate::import::MetadataSeed::FileTags => PaneSeed::FileTags,
+            crate::import::MetadataSeed::FileTags => PaneSeed::FileTags(
+                file_tag_snapshot
+                    .clone()
+                    .expect("File Tags always creates its snapshot before projection"),
+            ),
             crate::import::MetadataSeed::Manual => PaneSeed::Manual,
         };
         let pane = tokio::task::spawn_blocking(move || match pane_seed {
@@ -227,8 +244,9 @@ impl ImportServiceHandle {
                 clock.as_ref(),
                 ids.as_ref(),
             ),
-            PaneSeed::FileTags => crate::import::pane::unknown_pane(
+            PaneSeed::FileTags(snapshot) => crate::import::pane::file_tags_pane(
                 &files,
+                &snapshot,
                 Some(&folder_name),
                 &durations,
                 &rows.edit,
@@ -259,6 +277,16 @@ impl ImportServiceHandle {
         });
 
         let import_id = self.library_manager.new_id();
+        let expectation = match file_tag_snapshot {
+            Some(snapshot) => crate::import::service::ImportExpectation::FileTags {
+                content_hash: content_hash.clone(),
+                snapshot,
+            },
+            None => crate::import::service::ImportExpectation::Candidate {
+                content_hash: content_hash.clone(),
+                edit_revision: candidate.file_edit_revision,
+            },
+        };
         let command = ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
@@ -271,14 +299,8 @@ impl ImportServiceHandle {
             user_edit: Some(user_edit),
         };
 
-        self.send_command_with_expectation(
-            command,
-            crate::import::service::ImportExpectation {
-                content_hash,
-                edit_revision: candidate.file_edit_revision,
-            },
-        )
-        .await?;
+        self.send_command_with_expectation(command, expectation)
+            .await?;
         Ok(import_id)
     }
 
@@ -362,14 +384,34 @@ impl ImportServiceHandle {
                 command.scope,
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )?;
-        self.send_command_with_expectation(
-            command,
-            crate::import::service::ImportExpectation {
+        let content_hash = categorized.content_hash();
+        let expectation = if matches!(command.metadata_seed, crate::import::MetadataSeed::FileTags)
+        {
+            let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
+            let snapshot = tokio::task::spawn_blocking(move || {
+                crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+                    &audio_files,
+                    0,
+                    0,
+                    &crate::import::file_tag_snapshot::LoftyFileTagReader,
+                )
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("file-tag snapshot task failed: {error}"),
+            })??;
+            crate::import::service::ImportExpectation::FileTags {
                 content_hash: categorized.content_hash(),
+                snapshot,
+            }
+        } else {
+            crate::import::service::ImportExpectation::Candidate {
+                content_hash,
                 edit_revision: 0,
-            },
-        )
-        .await
+            }
+        };
+        self.send_command_with_expectation(command, expectation)
+            .await
     }
 
     /// The one way an import command reaches the worker, and so the one place
@@ -391,7 +433,7 @@ impl ImportServiceHandle {
         // Whatever the last attempt left is about to be answered by this one,
         // so the pane stops offering Retry the moment the work is queued.
         self.library_manager
-            .clear_import_candidate_failure(&expectation.content_hash)
+            .clear_import_candidate_failure(expectation.content_hash())
             .await?;
         self.claim_candidate_for_import(&candidate_key).await;
         if self

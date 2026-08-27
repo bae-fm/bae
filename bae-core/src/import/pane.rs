@@ -73,12 +73,10 @@ pub fn release_pane(
     })
 }
 
-/// The pane for a folder committed as its own files describe it.
-///
-/// Reads the audio's embedded tags, so it is blocking; both callers run it off
-/// the async executor.
-pub fn unknown_pane(
+/// The pane for a folder committed as its stored file-tag snapshot describes it.
+pub(crate) fn file_tags_pane(
     files: &CategorizedFiles,
+    snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
     folder_name: Option<&str>,
     durations: &ProbedDurations,
     overlay: &CandidateEditOverlay,
@@ -86,8 +84,9 @@ pub fn unknown_pane(
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<PanePick, ImportError> {
-    let parsed = crate::import::file_tag_mapper::map_unknown_candidate_to_db(
+    let parsed = crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
         files,
+        snapshot,
         folder_name,
         clock,
         ids,

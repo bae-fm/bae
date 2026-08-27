@@ -87,9 +87,32 @@ pub(crate) enum ImportWorkerMessage {
     Shutdown,
 }
 
-pub(crate) struct ImportExpectation {
-    pub content_hash: String,
-    pub edit_revision: u64,
+pub(crate) enum ImportExpectation {
+    Candidate {
+        content_hash: String,
+        edit_revision: u64,
+    },
+    FileTags {
+        content_hash: String,
+        snapshot: crate::import::file_tag_snapshot::FileTagSnapshot,
+    },
+}
+
+impl ImportExpectation {
+    pub(crate) fn content_hash(&self) -> &str {
+        match self {
+            Self::Candidate { content_hash, .. } | Self::FileTags { content_hash, .. } => {
+                content_hash
+            }
+        }
+    }
+
+    pub(crate) fn edit_revision(&self) -> u64 {
+        match self {
+            Self::Candidate { edit_revision, .. } => *edit_revision,
+            Self::FileTags { snapshot, .. } => snapshot.file_edit_revision,
+        }
+    }
 }
 
 pub struct ImportService {

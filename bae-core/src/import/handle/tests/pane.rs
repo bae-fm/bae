@@ -101,6 +101,10 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
+    handle
+        .preview_file_tags_for_folder(key.clone())
+        .await
+        .unwrap();
     (handle, tmp, key, hash)
 }
 
