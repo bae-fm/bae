@@ -212,15 +212,17 @@ Completed in `6a7bbb101`.
 - Report disk capacity before and after cleanup so runner-image changes leave
   direct evidence in the job log.
 
-## Active and ordered queue
-
 ### Metadata reset eligibility
+
+Completed in `372b5db4b`.
 
 - Derive Reset to Source eligibility from the stored release metadata source.
 - Do not offer Reset to Source for Manual releases.
 - Keep provider and File Tags releases resettable.
 - Carry the decision from core through the bridge; platform views do not infer
   it from source fields.
+
+## Active and ordered queue
 
 ### Artist assignment identity presentation
 
