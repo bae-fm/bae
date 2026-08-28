@@ -46,7 +46,7 @@ public sealed class ImportMappingPaneTests
         // show it in.
         Assert.Single(
             pane.GetLogicalDescendants().OfType<Image>(),
-            image => image.Width == ImportIdentitySection.CoverSize);
+            image => image.Width == ImportMetadataSourceSection.CoverSize);
     }
 
     // The pane leads with the folder it is about — the one fact nothing below
@@ -58,6 +58,85 @@ public sealed class ImportMappingPaneTests
 
         Assert.Contains("Album", Texts(pane));
         Assert.Contains("FLAC", Texts(pane));
+    }
+
+    [AvaloniaFact]
+    public void SelectingACandidateDoesNotStartLookup()
+    {
+        var identified = new List<string>();
+
+        Show(Detail(), identified: identified);
+
+        Assert.Empty(identified);
+    }
+
+    [AvaloniaFact]
+    public void ExplicitLookupStartsLookupWithoutReplacingTheStoredSeed()
+    {
+        var identified = new List<string>();
+        var history = new List<BridgeImportMetadataMode>();
+        var detail = Detail(new BridgeMetadataSeed.FileTags());
+        var (pane, _) = Show(
+            detail,
+            identified: identified,
+            modeHistory: history);
+
+        pane.GetLogicalDescendants().OfType<Button>()
+            .First(button => Equals(
+                button.Content,
+                Loc.Core("ui.import.metadata.lookup")))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.Equal(new[] { CandidateKey }, identified);
+        Assert.Equal(new[] { BridgeImportMetadataMode.Lookup }, history);
+        Assert.IsType<BridgeMetadataSeed.FileTags>(detail.Row.MetadataSeed);
+    }
+
+    [AvaloniaFact]
+    public void ManualMetadataIsNotLabeledAsFileTags()
+    {
+        var (pane, _) = Show(Detail(new BridgeMetadataSeed.Manual()));
+
+        Assert.Contains(Loc.Core("ui.import.metadata.manual"), Texts(pane));
+        Assert.DoesNotContain(
+            Loc.Core("ui.import.metadata.from_file_tags"),
+            Texts(pane));
+    }
+
+    [AvaloniaFact]
+    public void ManualBeforeSelectionShowsBlankProjectedMetadata()
+    {
+        var (pane, _) = Show(Detail(metadataSeed: null));
+
+        Click(pane, Loc.Core("ui.import.metadata.manual"));
+
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.FontSize == 16
+                && text.Text == Loc.Core("ui.import.slots.untitled"));
+    }
+
+    [AvaloniaFact]
+    public void FileTagsAndManualAreSelectedOnlyByTheirAffirmativeActions()
+    {
+        var seeds = new List<BridgeMetadataSeed>();
+        var (fileTagsPane, _) = Show(
+            Detail(metadataSeed: null),
+            selectedSeeds: seeds);
+
+        Click(fileTagsPane, Loc.Core("ui.import.metadata.file_tags"));
+        Click(fileTagsPane, Loc.Chrome("import.metadata.use_file_tags"));
+
+        var (manualPane, _) = Show(
+            Detail(metadataSeed: null),
+            selectedSeeds: seeds);
+        Click(manualPane, Loc.Core("ui.import.metadata.manual"));
+        Click(manualPane, Loc.Chrome("import.metadata.enter_manually"));
+
+        Assert.Collection(
+            seeds,
+            seed => Assert.IsType<BridgeMetadataSeed.FileTags>(seed),
+            seed => Assert.IsType<BridgeMetadataSeed.Manual>(seed));
     }
 
     // A failure that outlived the process is on the pane with the one action
@@ -136,7 +215,10 @@ public sealed class ImportMappingPaneTests
     private static (ImportMappingPane Pane, AppService App) Show(
         BridgeImportCandidateDetail detail,
         Action<string, BridgeCandidateEditField, string>? onEditField = null,
-        BridgeCandidateRuntimeSnapshot? running = null)
+        BridgeCandidateRuntimeSnapshot? running = null,
+        List<string>? identified = null,
+        List<BridgeImportMetadataMode>? modeHistory = null,
+        List<BridgeMetadataSeed>? selectedSeeds = null)
     {
         // Controls may only be built on the headless session's dispatcher
         // thread, which [AvaloniaFact] is what supplies.
@@ -155,7 +237,19 @@ public sealed class ImportMappingPaneTests
                 onEditField?.Invoke(key, field, value);
                 return Task.FromResult((true, (string?)null));
             },
-            AutoIdentifyFolder = _ => Task.FromResult(true),
+            AutoIdentifyFolder = key =>
+            {
+                identified?.Add(key);
+                return Task.FromResult(true);
+            },
+            PreviewFileTags = _ => Task.FromResult((
+                true,
+                ((BridgeReleaseUserEdit?)FileTagsEdit(), (string?)null))),
+            SelectCandidateMetadataSeed = (_, seed) =>
+            {
+                selectedSeeds?.Add(seed);
+                return Task.FromResult((true, (string?)null));
+            },
             // The run the pane and the progress line both read. Absent leaves
             // the candidate at rest, where the card offers the Import button.
             CandidateRuntime = _ => running,
@@ -166,21 +260,31 @@ public sealed class ImportMappingPaneTests
             new LibraryService(),
             import,
             new PlaybackService { PreviewStop = () => true },
-            new SettingsService { GetSettings = () => (true, new Settings()) });
+            new SettingsService
+            {
+                GetSettings = () => (true, new Settings()),
+                SetLastImportMetadataMode = mode =>
+                {
+                    modeHistory?.Add(mode);
+                    return (true, null);
+                },
+            });
+        var candidate = new ImportCandidate
+        {
+            Key = CandidateKey,
+            Name = "Album",
+            FolderPath = CandidateKey,
+            Files = detail.Candidate.Files,
+            Detail = detail,
+        };
+        candidate.ResolvePresentedMetadataMode(BridgeImportMetadataMode.Lookup);
         app.ImportStore.SeedPreview(
             Array.Empty<BridgeImportListItem>(),
             PreviewData.ImportSummary,
             BridgeTriageTab.Pending,
             new[]
             {
-                new ImportCandidate
-                {
-                    Key = CandidateKey,
-                    Name = "Album",
-                    FolderPath = CandidateKey,
-                    Files = detail.Candidate.Files,
-                    Detail = detail,
-                },
+                candidate,
             });
         var pane = new ImportMappingPane(
             app,
@@ -215,6 +319,15 @@ public sealed class ImportMappingPaneTests
     /// over what the release states, two measured tracks, and a chosen cover.
     /// </summary>
     private static BridgeImportCandidateDetail Detail(BridgeImportFailure? failure = null) =>
+        Detail(
+            new BridgeMetadataSeed.ExternalRelease(
+                BridgeMetadataSource.MusicBrainz,
+                "rel-1"),
+            failure);
+
+    private static BridgeImportCandidateDetail Detail(
+        BridgeMetadataSeed? metadataSeed,
+        BridgeImportFailure? failure = null) =>
         new(
             Candidate: new BridgeFolderCandidate(
                 FolderPath: CandidateKey,
@@ -229,15 +342,18 @@ public sealed class ImportMappingPaneTests
                 IsAdded: false),
             Actionable: true,
             ResumedIdentifyState: new BridgeIdentifyState.Idle(),
-            Row: Row(),
+            Row: Row(metadataSeed),
             Release: null,
             PickedLibraryStatus: null,
             FileEvidence: Array.Empty<BridgeFileEvidence>(),
-            Edit: new BridgeRawReleaseEdit(
-                "Typed Over The Release",
-                "Artist Name",
-                new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", string.Empty),
-                Array.Empty<BridgeRawTrackEdit>()),
+            Edit: metadataSeed is null
+                ? null
+                : new BridgeRawReleaseEdit(
+                    "Typed Over The Release",
+                    ArtistAssignments(),
+                    new BridgeRawPressingEdit(
+                        "1996", "CD", "Label Name", "CAT-1", "UK", string.Empty),
+                    Array.Empty<BridgeRawTrackEdit>()),
             Mapping: new BridgeMappingTable(
                 Array.Empty<BridgeMappingImage>(),
                 new[] { TrackRow("01.flac", "Track One"), TrackRow("02.flac", "Track Two") },
@@ -250,7 +366,7 @@ public sealed class ImportMappingPaneTests
             Signals: null,
             Failure: failure);
 
-    private static BridgeTriageRow Row() => new(
+    private static BridgeTriageRow Row(BridgeMetadataSeed? metadataSeed) => new(
         CandidateKey: CandidateKey,
         FolderName: "Album",
         WatchedFolderPath: "/Music/Incoming",
@@ -263,10 +379,7 @@ public sealed class ImportMappingPaneTests
         Matched: null,
         Selectable: true,
         ImportStatus: null,
-        Picked: new BridgeIdentityPick.Release(
-            BridgeMetadataSource.MusicBrainz,
-            "rel-1"),
-        Claim: new BridgeIdentityChoice.Release("rel-1", BridgeMetadataSource.MusicBrainz));
+        MetadataSeed: metadataSeed);
 
     private static BridgeMappingRow TrackRow(string fileId, string title) =>
         new BridgeMappingRow.Unit(new BridgeMappingUnit(
@@ -283,12 +396,30 @@ public sealed class ImportMappingPaneTests
                 new BridgeRawTrackEdit(
                     fileId,
                     title,
-                    "Artist Name",
+                    new BridgeTrackArtistAssignments.Explicit(ArtistAssignments()),
                     1,
                     null,
                     new BridgeAudioFile.Standalone(fileId)),
                 SourcePosition: null,
                 SourceDurationMs: null)));
+
+    private static BridgeArtistAssignment[] ArtistAssignments() =>
+    [
+        new BridgeArtistAssignment.New(
+            new BridgeNewArtistSeed("Artist Name", null, null, null)),
+    ];
+
+    private static BridgeReleaseUserEdit FileTagsEdit() => new(
+        "Album Title",
+        ArtistAssignments(),
+        new BridgePressingEdit(1996, "CD", "Label Name", "CAT-1", "UK", null),
+        Array.Empty<BridgeTrackUserEdit>());
+
+    private static void Click(Control pane, string label) =>
+        Assert.Single(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, label))
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
     private static IReadOnlyList<string> Fields(Control pane) =>
         pane.GetLogicalDescendants().OfType<TextBox>()

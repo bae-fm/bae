@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Запуск сполучення…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Очікування схвалення…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Відбиток: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Використати теги файлів</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Ввести вручну</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Виконавець альбому</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Додати</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Видалити</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Відкривати кандидати без вибраного джерела у</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Востаннє використане</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Автоматично визначати кандидатів пошуку</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Автоматичне визначення читає текст обкладинки, штрихкоди й ідентифікатори дисків, лише коли кандидат використовує «Пошук». «Теги файлів» і «Вручну» ніколи його не запускають.</value></data>
 </root>

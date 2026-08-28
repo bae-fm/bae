@@ -23,6 +23,22 @@ public sealed class Settings
     public string? SyncAccount { get; set; }
     public bool PauseBetweenSides { get; set; }
 
+    /// <summary>Whether unseeded Lookup candidates identify automatically.</summary>
+    public bool AutomaticImportMetadataLookup { get; set; }
+
+    /// <summary>The configured presentation policy for unseeded candidates.</summary>
+    internal BridgeDefaultImportMetadataMode DefaultImportMetadataMode { get; set; } =
+        BridgeDefaultImportMetadataMode.Lookup;
+
+    /// <summary>The last metadata surface explicitly selected by the user.</summary>
+    internal BridgeImportMetadataMode LastImportMetadataMode { get; set; } =
+        BridgeImportMetadataMode.Lookup;
+
+    /// <summary>The metadata surface core resolves for a newly selected
+    /// unseeded candidate.</summary>
+    internal BridgeImportMetadataMode ResolvedImportMetadataMode { get; set; } =
+        BridgeImportMetadataMode.Lookup;
+
     /// <summary>Whether the seek bar's leading label counts down the time
     /// remaining instead of showing the time elapsed. A synced preference, so it
     /// follows the user to every device.</summary>

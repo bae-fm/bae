@@ -119,8 +119,7 @@ internal static class PreviewData
                 Matched: null,
                 Selectable: true,
                 ImportStatus: null,
-                Picked: null,
-                Claim: null),
+                MetadataSeed: null),
             IsGroupMember: true),
     };
 
@@ -148,7 +147,7 @@ internal static class PreviewData
 
     private static BridgeReadyRowRef ReadyRow(string displayPath) => new(
         $"{ImportRoot}/{displayPath}",
-        new BridgeIdentityChoice.Unknown(),
+        new BridgeMetadataSeed.FileTags(),
         null);
 
     private static BridgeImportQueueSummary Summary(
@@ -176,7 +175,6 @@ internal static class PreviewData
             Matched: null,
             Selectable: true,
             ImportStatus: null,
-            Picked: null,
-            Claim: null);
+            MetadataSeed: null);
 }
 #endif

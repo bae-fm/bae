@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>กำลังเริ่มจับคู่…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>กำลังรอการอนุมัติ…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ลายนิ้วมือ: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ใช้แท็กของไฟล์</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>ป้อนด้วยตนเอง</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>ศิลปินอัลบั้ม</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>เพิ่ม</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>ลบ</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>เปิดรายการที่ยังไม่ได้เลือกแหล่งข้อมูลใน</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>ใช้ล่าสุด</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>ระบุรายการที่ใช้การค้นหาโดยอัตโนมัติ</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>การระบุอัตโนมัติจะอ่านข้อความบนปก บาร์โค้ด และ ID แผ่นดิสก์เฉพาะเมื่อรายการใช้การค้นหาเท่านั้น แท็กของไฟล์และการป้อนด้วยตนเองจะไม่เรียกใช้การระบุอัตโนมัติ</value></data>
 </root>

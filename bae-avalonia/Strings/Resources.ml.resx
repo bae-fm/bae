@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>പെയറിംഗ് ആരംഭിക്കുന്നു…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>അനുമതിക്കായി കാത്തിരിക്കുന്നു…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>വിരലടയാളം: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ഫയൽ ടാഗുകൾ ഉപയോഗിക്കുക</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>മാനുവലായി നൽകുക</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റ്</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>ചേർക്കുക</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>ഉറവിടം തിരഞ്ഞെടുത്തിട്ടില്ലാത്ത ഇനങ്ങൾ ഇതിൽ തുറക്കുക</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>അവസാനം ഉപയോഗിച്ചത്</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup സ്ഥാനാർഥികളെ സ്വയമേവ തിരിച്ചറിയുക</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>ഒരു സ്ഥാനാർഥി Lookup ഉപയോഗിക്കുമ്പോൾ മാത്രമേ സ്വയമേവയുള്ള തിരിച്ചറിയൽ കവർ വാചകം, ബാർകോഡുകൾ, ഡിസ്ക് ID-കൾ എന്നിവ വായിക്കൂ. ഫയൽ ടാഗുകളും മാനുവലും ഇത് ഒരിക്കലും പ്രവർത്തിപ്പിക്കില്ല.</value></data>
 </root>

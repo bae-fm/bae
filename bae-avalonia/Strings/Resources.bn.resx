@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>পেয়ারিং শুরু হচ্ছে…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>অনুমোদনের অপেক্ষায়…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ফিঙ্গারপ্রিন্ট: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ফাইলের ট্যাগ ব্যবহার করুন</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>ম্যানুয়ালি লিখুন</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>অ্যালবাম শিল্পী</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>যোগ করুন</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>সরান</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>উৎস নির্বাচন না করা প্রার্থীগুলি এখানে খুলুন</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>সর্বশেষ ব্যবহৃত</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>লুকআপ প্রার্থীদের স্বয়ংক্রিয়ভাবে শনাক্ত করুন</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>কোনো প্রার্থী লুকআপ ব্যবহার করলেই শুধু স্বয়ংক্রিয় শনাক্তকরণ প্রচ্ছদের লেখা, বারকোড ও ডিস্ক আইডি পড়ে। ফাইলের ট্যাগ এবং ম্যানুয়াল কখনো এটি চালায় না।</value></data>
 </root>

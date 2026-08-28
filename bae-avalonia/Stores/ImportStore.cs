@@ -19,6 +19,7 @@ namespace Bae.Desktop;
 internal sealed class ImportStore : IDisposable
 {
     private readonly ImportService _import;
+    private readonly SettingsStore _settings;
     private readonly Action<string, string> _showError;
     private readonly IMediaControl _mediaControls;
     private readonly Action<Action> _dispatch;
@@ -118,11 +119,13 @@ internal sealed class ImportStore : IDisposable
 
     public ImportStore(
         ImportService import,
+        SettingsStore settings,
         Action<string, string> showError,
         IMediaControl mediaControls,
         Action<Action> dispatch)
     {
         _import = import;
+        _settings = settings;
         _showError = showError;
         _mediaControls = mediaControls;
         _dispatch = dispatch;
@@ -385,9 +388,102 @@ internal sealed class ImportStore : IDisposable
             return;
         }
         _details[key] = detail;
-        _candidates[key] = _import.ProjectFolderCandidate(detail);
+        var candidate = _import.ProjectFolderCandidate(detail);
+        if (_candidates.TryGetValue(key, out var existing))
+        {
+            candidate.PreserveSessionState(existing);
+        }
+        else
+        {
+            var mode = _settings.Current?.ResolvedImportMetadataMode
+                ?? throw new InvalidOperationException(
+                    "candidate detail arrived before the settings snapshot");
+            candidate.ResolvePresentedMetadataMode(mode);
+        }
+        _candidates[key] = candidate;
         Changed?.Invoke();
     }
+
+    /// <summary>Present one metadata surface for the active candidate without
+    /// changing its stored seed.</summary>
+    public void PresentMetadataMode(string key, BridgeImportMetadataMode mode)
+    {
+        if (_candidates.TryGetValue(key, out var candidate))
+        {
+            candidate.PresentMetadataMode(mode);
+            Changed?.Invoke();
+        }
+    }
+
+    public object? BeginFileTagsPreview(string key)
+    {
+        if (!_candidates.TryGetValue(key, out var candidate))
+        {
+            return null;
+        }
+        var session = candidate.BeginFileTagsPreview();
+        if (session is not null)
+        {
+            Changed?.Invoke();
+        }
+        return session;
+    }
+
+    public void CompleteFileTagsPreview(
+        string key, object session, BridgeReleaseUserEdit edit)
+    {
+        if (_candidates.TryGetValue(key, out var candidate)
+            && candidate.CompleteFileTagsPreview(session, edit))
+        {
+            Changed?.Invoke();
+        }
+    }
+
+    public void FailFileTagsPreview(string key, object session, string? error)
+    {
+        if (_candidates.TryGetValue(key, out var candidate)
+            && candidate.FailFileTagsPreview(session, error))
+        {
+            Changed?.Invoke();
+        }
+    }
+
+    /// <summary>Read File Tags for this candidate without selecting them. The
+    /// session token prevents a late result from changing a replacement
+    /// candidate.</summary>
+    public async Task LoadFileTagsPreview(string key)
+    {
+        var session = BeginFileTagsPreview(key);
+        if (session is null)
+        {
+            return;
+        }
+        var (current, result) = await _import.PreviewFileTags(key);
+        if (!current)
+        {
+            FailFileTagsPreview(key, session, null);
+            return;
+        }
+        if (result.Error is { } error)
+        {
+            FailFileTagsPreview(key, session, error);
+            return;
+        }
+        if (result.Edit is null)
+        {
+            FailFileTagsPreview(key, session, Loc.Chrome("import.failed"));
+            return;
+        }
+        CompleteFileTagsPreview(key, session, result.Edit);
+    }
+
+    public async Task<bool> SelectCandidateMetadataSeed(
+        string key, BridgeMetadataSeed seed) =>
+        await Write(() => _import.SelectCandidateMetadataSeed(key, seed));
+
+    public async Task<bool> SetCandidateAlbumArtists(
+        string key, IReadOnlyList<BridgeArtistAssignment> assignments) =>
+        await Write(() => _import.SetCandidateAlbumArtists(key, assignments));
 
     /// <summary>The candidate at a key, when its own query is open for it.</summary>
     public ImportCandidate? Candidate(string key) =>
@@ -730,9 +826,10 @@ internal sealed class ImportStore : IDisposable
     public System.Threading.Tasks.Task<(bool Current, string? Result)> ScanFolder(string path) =>
         _import.ScanFolder(path);
 
-    // Kick off auto-identification for an as-yet unidentified candidate — the
-    // click gate for a row whose phase is still Queued.
-    public System.Threading.Tasks.Task<bool> AutoIdentify(string candidateKey) =>
+    // Explicitly enter Lookup for an idle candidate. The bridge operation is
+    // shared with the configured background sweep, but this call is owned by
+    // the person's Lookup action.
+    public System.Threading.Tasks.Task<bool> StartInteractiveLookup(string candidateKey) =>
         _import.AutoIdentifyFolder(candidateKey);
 
     // Scan candidates, watched folders, and selection are per-library in-memory

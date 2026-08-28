@@ -28,6 +28,7 @@ internal sealed class ImportMappingTable
     private readonly Func<string, Task<List<ImportSheetBindingOption>>> _bindingOptions;
     private readonly Func<string?> _previewingPath;
     private readonly ImportMappingActions _actions;
+    private readonly LibraryService _library;
     private readonly IReadOnlyList<ImportAudioChoice> _audioChoices;
 
     // The audio units nothing has read yet. Their rows say so while the read
@@ -51,6 +52,7 @@ internal sealed class ImportMappingTable
         BridgeMappingTable table,
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
         Func<string?> previewingPath,
+        LibraryService library,
         ImportMappingActions actions,
         IReadOnlyList<BridgeAudioFile>? unprobed = null,
         IReadOnlyList<BridgeFileEvidence>? evidence = null)
@@ -58,6 +60,7 @@ internal sealed class ImportMappingTable
         _table = table;
         _bindingOptions = bindingOptions;
         _previewingPath = previewingPath;
+        _library = library;
         _actions = actions;
         _audioChoices = table.AudioChoices();
         _unprobed = unprobed ?? Array.Empty<BridgeAudioFile>();
@@ -371,7 +374,23 @@ internal sealed class ImportMappingTable
         grid.Children.Add(position);
 
         var title = Field(track.Title, Loc.Core("ui.import.slots.untitled"));
-        var artist = Field(track.ArtistText, Loc.Core("ui.import.mapping.column.artist"));
+        var currentArtistAssignments = track.ArtistAssignments;
+        var explicitArtists = currentArtistAssignments as BridgeTrackArtistAssignments.Explicit;
+        var artist = new ArtistAssignmentsField(
+            explicitArtists?.Assignments ?? Array.Empty<BridgeArtistAssignment>(),
+            _library,
+            assignments =>
+            {
+                currentArtistAssignments = new BridgeTrackArtistAssignments.Explicit(
+                    assignments.ToArray());
+                WriteBack();
+            },
+            inheritsAlbumArtists: currentArtistAssignments is BridgeTrackArtistAssignments.AlbumArtists,
+            onUseAlbumArtists: () =>
+            {
+                currentArtistAssignments = new BridgeTrackArtistAssignments.AlbumArtists();
+                WriteBack();
+            });
         // Both fields write the row back whole. A keystroke does not rebuild the
         // table — the field being typed in has to keep its focus and its caret —
         // so each handler reads what its sibling currently holds rather than
@@ -380,10 +399,9 @@ internal sealed class ImportMappingTable
         void WriteBack() => _actions.EditTrack(track with
         {
             Title = title.Text ?? string.Empty,
-            ArtistText = artist.Text ?? string.Empty,
+            ArtistAssignments = currentArtistAssignments,
         });
         title.TextChanged += (_, _) => WriteBack();
-        artist.TextChanged += (_, _) => WriteBack();
         Avalonia.Controls.Grid.SetColumn(title, 1);
         grid.Children.Add(title);
         Avalonia.Controls.Grid.SetColumn(artist, 2);

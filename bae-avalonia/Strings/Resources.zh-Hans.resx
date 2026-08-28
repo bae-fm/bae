@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>正在开始配对…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>正在等待批准…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>指纹：{fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>使用文件标签</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>手动输入</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>专辑艺术家</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>添加</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>在以下模式中打开未选择来源的候选项</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>上次使用</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>自动识别“查找”候选项</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>自动识别仅在候选项使用“查找”时读取封面文字、条码和光盘 ID。“文件标签”和“手动”从不运行自动识别。</value></data>
 </root>

@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>पेअरिंग सुरू होत आहे…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>मंजुरीची प्रतीक्षा करत आहे…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>बोटखूण: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>फाइल टॅग वापरा</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>मॅन्युअली प्रविष्ट करा</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>अल्बम कलाकार</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>जोडा</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>काढा</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>स्रोत न निवडलेले उमेदवार यामध्ये उघडा</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>शेवटचे वापरलेले</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>लुकअप उमेदवार आपोआप ओळखा</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>उमेदवार लुकअप वापरत असतानाच स्वयंचलित ओळख कव्हरवरील मजकूर, बारकोड आणि डिस्क आयडी वाचते. फाइल टॅग आणि मॅन्युअल ती कधीही चालवत नाहीत.</value></data>
 </root>

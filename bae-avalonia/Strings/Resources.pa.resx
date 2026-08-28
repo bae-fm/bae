@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>ਪੇਅਰਿੰਗ ਸ਼ੁਰੂ ਹੋ ਰਹੀ ਹੈ…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>ਮਨਜ਼ੂਰੀ ਦੀ ਉਡੀਕ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ਉਂਗਲ-ਛਾਪ: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ਫਾਈਲ ਟੈਗ ਵਰਤੋ</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>ਹੱਥੀਂ ਦਾਖਲ ਕਰੋ</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>ਐਲਬਮ ਕਲਾਕਾਰ</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>ਸ਼ਾਮਲ ਕਰੋ</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>ਹਟਾਓ</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>ਚੁਣੇ ਸਰੋਤ ਤੋਂ ਬਿਨਾਂ ਉਮੀਦਵਾਰਾਂ ਨੂੰ ਇਸ ਵਿੱਚ ਖੋਲ੍ਹੋ</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>ਆਖਰੀ ਵਾਰ ਵਰਤਿਆ</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>ਲੁੱਕਅੱਪ ਉਮੀਦਵਾਰਾਂ ਦੀ ਆਪਣੇ ਆਪ ਪਛਾਣ ਕਰੋ</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>ਸਵੈਚਲਿਤ ਪਛਾਣ ਕਵਰ ਦਾ ਟੈਕਸਟ, ਬਾਰਕੋਡ ਅਤੇ ਡਿਸਕ ID ਸਿਰਫ਼ ਉਦੋਂ ਪੜ੍ਹਦੀ ਹੈ ਜਦੋਂ ਕੋਈ ਉਮੀਦਵਾਰ ਲੁੱਕਅੱਪ ਵਰਤਦਾ ਹੈ। ਫਾਈਲ ਟੈਗ ਅਤੇ ਹੱਥੀਂ ਇਸਨੂੰ ਕਦੇ ਨਹੀਂ ਚਲਾਉਂਦੇ।</value></data>
 </root>

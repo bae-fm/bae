@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Kopplung wird gestartet…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Warten auf Bestätigung…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Fingerabdruck: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Datei-Tags verwenden</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Manuell eingeben</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albuminterpret</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Hinzufügen</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Kandidaten ohne gewählte Quelle öffnen in</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Zuletzt verwendet</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup-Kandidaten automatisch erkennen</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Die automatische Erkennung liest Covertext, Barcodes und Disc-IDs nur, wenn ein Kandidat „Nachschlagen“ verwendet. Datei-Tags und „Manuell“ starten sie nie.</value></data>
 </root>

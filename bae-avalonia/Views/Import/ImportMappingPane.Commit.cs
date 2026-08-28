@@ -28,7 +28,7 @@ internal sealed partial class ImportMappingPane
 
     private TextBlock? _unansweredText;
 
-    /// <summary>The identity card's foot: what is still unanswered, storage,
+    /// <summary>The selected metadata card's foot: what is still unanswered, storage,
     /// and the Import action — the commit lives on the card that states what
     /// will be committed.</summary>
     private Control BuildCommitRow()

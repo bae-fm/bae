@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Iniciando emparejamiento…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Esperando aprobación…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Huella: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Usar etiquetas de archivo</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Introducir manualmente</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Artista del álbum</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Añadir</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Eliminar</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Abrir candidatos sin fuente seleccionada en</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Último usado</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Identificar automáticamente los candidatos de búsqueda</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>La identificación automática lee el texto de la portada, los códigos de barras y los ID de disco solo cuando un candidato usa Búsqueda. Etiquetas de archivo y Manual nunca la ejecutan.</value></data>
 </root>

@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>正在開始配對…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>正在等待核准…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>指紋：{fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>使用檔案標籤</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>手動輸入</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>專輯演出者</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>加入</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>在以下模式中開啟未選擇來源的候選項</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>上次使用</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>自動識別「查詢」候選項</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>自動識別僅在候選項使用「查詢」時讀取封面文字、條碼和光碟 ID。「檔案標籤」和「手動」從不執行自動識別。</value></data>
 </root>

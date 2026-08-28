@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Eşleştirme başlatılıyor…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Onay bekleniyor…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Parmak izi: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Dosya etiketlerini kullan</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Elle gir</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albüm sanatçısı</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Ekle</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Kaldır</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Kaynağı seçilmemiş adayları şurada aç</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Son kullanılan</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Arama adaylarını otomatik olarak tanımla</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Otomatik tanımlama kapak metnini, barkodları ve disk kimliklerini yalnızca bir aday Arama’yı kullandığında okur. Dosya etiketleri ve Elle bunu hiçbir zaman çalıştırmaz.</value></data>
 </root>

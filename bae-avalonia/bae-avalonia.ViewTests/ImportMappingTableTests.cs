@@ -360,7 +360,13 @@ public sealed class ImportMappingTableTests
 
     private static BridgeMappingBecomes TrackBecomes(string id, string title, BridgeAudioFile? file) =>
         new BridgeMappingBecomes.Track(
-            new BridgeRawTrackEdit(id, title, string.Empty, 1, null, file),
+            new BridgeRawTrackEdit(
+                id,
+                title,
+                new BridgeTrackArtistAssignments.AlbumArtists(),
+                1,
+                null,
+                file),
             SourcePosition: null,
             SourceDurationMs: null);
 
@@ -378,6 +384,7 @@ public sealed class ImportMappingTableTests
             table,
             _ => Task.FromResult(new List<ImportSheetBindingOption>()),
             () => null,
+            new LibraryService(),
             new ImportMappingActions(
                 SetRole: (_, _) => { },
                 BindSheet: (_, _) => { },

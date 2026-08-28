@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>جوڑی بنانا شروع ہو رہا ہے…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>منظوری کا انتظار ہے…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>فنگرپرنٹ: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>فائل ٹیگز استعمال کریں</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>دستی درج کریں</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>البم فنکار</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>شامل کریں</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>ہٹائیں</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>بغیر منتخب ماخذ والے امیدواروں کو اس میں کھولیں</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>آخری بار استعمال شدہ</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>تلاش کے امیدواروں کی خودکار شناخت کریں</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>خودکار شناخت سرورق کا متن، بارکوڈز اور ڈسک آئی ڈیز صرف اس وقت پڑھتی ہے جب کوئی امیدوار تلاش استعمال کرے۔ فائل ٹیگز اور دستی اسے کبھی نہیں چلاتے۔</value></data>
 </root>

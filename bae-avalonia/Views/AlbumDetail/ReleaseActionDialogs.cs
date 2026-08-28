@@ -70,7 +70,7 @@ internal sealed class ReleaseActionDialogs
 
     private Control BuildEditMetadata(string releaseId, BridgeRawReleaseEdit seed, Action close)
     {
-        var form = new ReleaseEditForm(seed, 460);
+        var form = new ReleaseEditForm(seed, 460, _app.Library);
         var column = DialogUi.Column();
         column.MinWidth = 460;
         column.Children.Add(DialogUi.Title(Loc.Chrome("album.edit.title")));
@@ -147,7 +147,7 @@ internal sealed class ReleaseActionDialogs
             var searchButton = new Button { Content = Loc.Chrome("action.search") };
 
             // The pressing the user picked, pending the confirm that commits
-            // it — re-identify writes the same IdentityChoice an import does.
+            // it as the release's selected external-release metadata seed.
             var pickedIndex = -1;
 
             var candidates = new List<ReleaseCandidateChoice>();
@@ -247,7 +247,7 @@ internal sealed class ReleaseActionDialogs
                 }
                 var picked = candidates[pickedIndex];
                 var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(
-                    releaseId, new BridgeIdentityChoice.Release(picked.ReleaseId, picked.Source));
+                    releaseId, new BridgeReleaseReseed.ExternalRelease(picked.ReleaseId, picked.Source));
                 if (!current)
                 {
                     return;
@@ -265,7 +265,7 @@ internal sealed class ReleaseActionDialogs
             var skip = new Button { Content = Loc.Chrome("identify.skip") };
             skip.Click += async (_, _) =>
             {
-                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, new BridgeIdentityChoice.Unknown());
+                var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(releaseId, new BridgeReleaseReseed.FileTags());
                 if (!current)
                 {
                     return;
@@ -314,7 +314,7 @@ internal sealed class ReleaseActionDialogs
         }
     }
 
-    // After a source-backed identity commit, offer to reseed the metadata from the
+    // After a source-backed metadata commit, offer to reseed the metadata from the
     // newly-pointed source (overwriting prior edits by design); Keep leaves it.
     private Task ShowRefreshPrompt(string releaseId) => _host.Show(close =>
     {

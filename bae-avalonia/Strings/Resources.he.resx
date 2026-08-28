@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>מתחיל צימוד…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>בהמתנה לאישור…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>טביעת אצבע: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>שימוש בתגיות הקבצים</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>הזנה ידנית</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>אמן האלבום</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>הוסף</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>הסר</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>פתיחת מועמדים ללא מקור שנבחר ב־</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>בשימוש לאחרונה</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>זיהוי אוטומטי של מועמדי חיפוש</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>זיהוי אוטומטי קורא טקסט מהעטיפה, ברקודים ומזהי דיסק רק כשמועמד משתמש בחיפוש. תגיות הקבצים וידני לעולם אינם מפעילים אותו.</value></data>
 </root>

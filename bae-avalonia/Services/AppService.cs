@@ -131,6 +131,7 @@ internal sealed class AppService : IDisposable
         SettingsStore = new SettingsStore(Settings);
         ImportStore = new ImportStore(
             Import,
+            SettingsStore,
             ShowError,
             MediaControl,
             action => dispatcher.Post(action));

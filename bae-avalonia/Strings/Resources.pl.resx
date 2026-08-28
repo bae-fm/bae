@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Rozpoczynanie parowania…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Oczekiwanie na zatwierdzenie…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Odcisk: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Użyj tagów plików</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Wprowadź ręcznie</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Wykonawca albumu</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Dodaj</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Usuń</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Otwieraj kandydatów bez wybranego źródła w</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Ostatnio używane</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Automatycznie identyfikuj kandydatów wyszukiwania</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Automatyczna identyfikacja odczytuje tekst okładki, kody kreskowe i identyfikatory dysków tylko wtedy, gdy kandydat używa Wyszukiwania. Tagi plików i Ręcznie nigdy jej nie uruchamiają.</value></data>
 </root>

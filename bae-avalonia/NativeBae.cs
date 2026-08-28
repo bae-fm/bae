@@ -588,6 +588,18 @@ internal static partial class NativeBae
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
 
+    internal static string? SetAutomaticImportMetadataLookup(
+        AppHandle handle, bool enabled) =>
+        CaptureError(() => handle.SetAutomaticImportMetadataLookup(enabled));
+
+    internal static string? SetDefaultImportMetadataMode(
+        AppHandle handle, BridgeDefaultImportMetadataMode mode) =>
+        CaptureError(() => handle.SetDefaultImportMetadataMode(mode));
+
+    internal static string? SetLastImportMetadataMode(
+        AppHandle handle, BridgeImportMetadataMode mode) =>
+        CaptureError(() => handle.SetLastImportMetadataMode(mode));
+
     internal static BridgeConfig GetConfig(AppHandle handle) => handle.GetConfig();
 
     internal static string? SetMaxConcurrentUploads(AppHandle handle, uint n) =>
@@ -743,7 +755,7 @@ internal static partial class NativeBae
         CaptureBridgeValue(() => CandidateChoices(Await(() => handle.SearchForCandidate(
             new BridgeSearchQuery.General(artist, album, MetadataSource(source))))));
 
-    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeIdentityChoice choice) =>
+    internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeReleaseReseed choice) =>
         CaptureError(() => Await(() => handle.ReIdentifyRelease(releaseId, choice)));
 
     // What a candidate's track sheet may be bound to: the folder's audio, each
@@ -844,16 +856,28 @@ internal static partial class NativeBae
 
     internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
 
-    /// <summary>Decide the candidate's identity: persist the choice and come
-    /// back with the seeded edit — the same payload the selection query
-    /// serves, so a fresh launch renders exactly what the click rendered.</summary>
-    /// <summary>Decide the candidate's identity. Nothing comes back: the
-    /// per-candidate read delivers the pane's next value.</summary>
-    internal static string? PickCandidateIdentity(
+    /// <summary>Select the candidate's metadata seed. The per-candidate read
+    /// delivers the pane's next value.</summary>
+    internal static string? SelectCandidateMetadataSeed(
         AppHandle handle,
         string candidateKey,
-        BridgeIdentityPick pick) =>
-        CaptureError(() => Await(() => handle.PickCandidateIdentity(candidateKey, pick)));
+        BridgeMetadataSeed seed) =>
+        CaptureError(() => Await(() => handle.SelectCandidateMetadataSeed(candidateKey, seed)));
+
+    internal static (BridgeReleaseUserEdit? Edit, string? Error) PreviewFileTags(
+        AppHandle handle, string candidateKey) =>
+        CaptureBridgeValue(() => Await(() => handle.PreviewFileTagsForFolder(candidateKey)));
+
+    internal static string? SetCandidateAlbumArtists(
+        AppHandle handle,
+        string candidateKey,
+        IReadOnlyList<BridgeArtistAssignment> assignments) =>
+        CaptureError(() => Await(() => handle.SetCandidateAlbumArtists(
+            candidateKey, assignments.ToArray())));
+
+    internal static (BridgeArtistSearchResult[]? Artists, string? Error) SearchArtists(
+        AppHandle handle, string query) =>
+        CaptureBridgeValue(() => Await(() => handle.SearchArtists(query)));
 
     /// <summary>Record the cover this candidate commits with.</summary>
     internal static string? SetCandidateCover(

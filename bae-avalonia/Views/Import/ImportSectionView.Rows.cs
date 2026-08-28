@@ -656,21 +656,13 @@ internal sealed partial class ImportSectionView
 
     // ── Row-click activation ────────────────────────────────────────────────
 
-    // Activate a row: kick off auto-identify for a candidate that hasn't been
-    // looked at yet (there is nothing to map until it has been looked at),
-    // otherwise put it under the mapping pane, read fresh for this key.
+    // Activate a row by opening its candidate query. Automatic Lookup belongs
+    // to core's configured background sweep; selection itself starts no source
+    // read.
     private void OnRowActivated(BridgeTriageRow row)
     {
         if (!row.Actionable)
         {
-            return;
-        }
-        if (row.Placement is BridgeTriagePlacement.NeedsYou
-            {
-                Reason: BridgeNeedsYouReason.StillIdentifying { Phase: BridgeIdentifyPhase.Queued },
-            })
-        {
-            _ = _import.AutoIdentify(row.CandidateKey);
             return;
         }
         SelectCandidate(row.CandidateKey);

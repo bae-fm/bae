@@ -55,6 +55,11 @@ internal sealed class LibraryService
     public Func<IReadOnlyList<string>, Task<(bool Current, (List<string>? Value, string? Error) Result)>> ResolveToTrackIds { get; init; }
         = _ => throw new InvalidOperationException("LibraryService stub: ResolveToTrackIds not wired");
 
+    /// <summary>Existing library artists matching a typed name or exact stored
+    /// ID, retaining every identity field for the assignment picker.</summary>
+    public Func<string, Task<(bool Current, (List<BridgeArtistSearchResult>? Artists, string? Error) Result)>> SearchArtists { get; init; }
+        = _ => throw new InvalidOperationException("LibraryService stub: SearchArtists not wired");
+
     /// <summary>Whether the library page spans the window's full width instead of a
     /// width-capped column. The config subscription re-renders the page.</summary>
     public Func<bool, (bool Current, string? Error)> SetLibraryFullWidth { get; init; }
@@ -97,6 +102,12 @@ internal sealed class LibraryService
         },
         ResolveToTrackIds = ids =>
             session.RunForCurrentHandle(handle => NativeBae.ResolveToTrackIds(handle, ids)),
+        SearchArtists = query =>
+            session.RunForCurrentHandle(handle =>
+            {
+                var (artists, error) = NativeBae.SearchArtists(handle, query);
+                return (artists?.ToList(), error);
+            }),
         SetLibraryFullWidth = enabled =>
             session.WithCurrentHandle(handle => NativeBae.SetLibraryFullWidth(handle, enabled)),
     };

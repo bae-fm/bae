@@ -24,7 +24,7 @@ internal sealed class ReleaseEditForm
     internal TextBlock ErrorText { get; }
 
     private readonly TextBox _titleBox;
-    private readonly TextBox _artistBox;
+    private readonly ArtistAssignmentsField _artistField;
     private readonly TextBox _yearBox;
     private readonly TextBox _formatBox;
     private readonly TextBox _labelBox;
@@ -32,19 +32,30 @@ internal sealed class ReleaseEditForm
     private readonly TextBox _countryBox;
     private readonly TextBox _barcodeBox;
 
-    private readonly List<(BridgeRawTrackEdit Track, TextBox Title, TextBox Artist, TextBox Side, TextBox Number)> _trackBoxes = new();
+    private readonly List<(BridgeRawTrackEdit Track, TextBox Title, ArtistAssignmentsField Artists, TextBox Side, TextBox Number)> _trackBoxes = new();
     private readonly List<Grid> _trackRows = new();
+    private readonly LibraryService _library;
 
     private BridgeRawReleaseEdit _edit;
 
-    internal ReleaseEditForm(BridgeRawReleaseEdit seed, double width)
+    internal ReleaseEditForm(
+        BridgeRawReleaseEdit seed,
+        double width,
+        LibraryService library)
     {
+        _library = library;
         _edit = seed;
         ErrorText = DialogUi.Danger();
 
         Panel = new StackPanel { Spacing = 8, Width = width };
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.album_title"), out _titleBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.album_artists"), out _artistBox));
+        _artistField = new ArtistAssignmentsField(
+            seed.AlbumArtistAssignments,
+            library,
+            _ => { });
+        Panel.Children.Add(LabeledControl(
+            Loc.Chrome("edit.field.album_artists"),
+            _artistField));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.year"), out _yearBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.format"), out _formatBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.label"), out _labelBox));
@@ -97,7 +108,7 @@ internal sealed class ReleaseEditForm
     {
         _edit = edit;
         _titleBox.Text = edit.AlbumTitle;
-        _artistBox.Text = edit.AlbumArtistText;
+        _artistField.SetAssignments(edit.AlbumArtistAssignments);
         _yearBox.Text = edit.Pressing.Year;
         _formatBox.Text = edit.Pressing.Format;
         _labelBox.Text = edit.Pressing.Label;
@@ -117,7 +128,13 @@ internal sealed class ReleaseEditForm
         {
             var row = TrackGrid();
             var titleCell = new TextBox { Text = track.Title };
-            var artistCell = new TextBox { Text = track.ArtistText, Watermark = Loc.Chrome("edit.tracks.artist_placeholder") };
+            var explicitArtists = track.ArtistAssignments as BridgeTrackArtistAssignments.Explicit;
+            var artistCell = new ArtistAssignmentsField(
+                explicitArtists?.Assignments ?? Array.Empty<BridgeArtistAssignment>(),
+                _library,
+                _ => { },
+                inheritsAlbumArtists: track.ArtistAssignments is BridgeTrackArtistAssignments.AlbumArtists,
+                onUseAlbumArtists: () => { });
             var sideCell = new TextBox { Text = track.Side.ToString() };
             var numberCell = new TextBox { Text = track.TrackNumber?.ToString() ?? string.Empty };
             Grid.SetColumn(titleCell, 0);
@@ -150,7 +167,10 @@ internal sealed class ReleaseEditForm
             tracks.Add(new BridgeRawTrackEdit(
                 track.Id,
                 titleCell.Text ?? string.Empty,
-                artistCell.Text ?? string.Empty,
+                artistCell.InheritsAlbumArtists
+                    ? new BridgeTrackArtistAssignments.AlbumArtists()
+                    : new BridgeTrackArtistAssignments.Explicit(
+                        artistCell.Assignments.ToArray()),
                 side,
                 int.TryParse(numberCell.Text, out var number) ? number : null,
                 track.File));
@@ -158,7 +178,7 @@ internal sealed class ReleaseEditForm
 
         _edit = new BridgeRawReleaseEdit(
             _titleBox.Text ?? string.Empty,
-            _artistBox.Text ?? string.Empty,
+            _artistField.Assignments.ToArray(),
             new BridgeRawPressingEdit(
                 _yearBox.Text ?? string.Empty,
                 _formatBox.Text ?? string.Empty,
@@ -169,4 +189,15 @@ internal sealed class ReleaseEditForm
             tracks.ToArray());
         return _edit;
     }
+
+    private static Control LabeledControl(string label, Control control) =>
+        new StackPanel
+        {
+            Spacing = 4,
+            Children =
+            {
+                new TextBlock { Text = label, FontSize = 12.5 },
+                control,
+            },
+        };
 }

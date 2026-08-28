@@ -4928,7 +4928,7 @@ pa = "ਮੈਟਾਡੇਟਾ"
 th = "ข้อมูลเมตา"
 
 [messages."ui.import.metadata.lookup"]
-comment = "Import metadata control: take the metadata from a release looked up on a metadata source. One of two sides of the control."
+comment = "Import metadata control: take the metadata from a release looked up on a metadata source. One of three presentation modes."
 value = "Lookup"
 
 [messages."ui.import.metadata.lookup".translations]
@@ -4964,7 +4964,7 @@ pa = "ਖੋਜ"
 th = "การค้นหา"
 
 [messages."ui.import.metadata.file_tags"]
-comment = "Import metadata control: take the metadata from the folder's own audio files — their embedded tags, or the track sheets they come with. The other side of the control."
+comment = "Import metadata control: take the metadata from the folder's own audio files — their embedded tags, or the track sheets they come with. One of three presentation modes."
 value = "File tags"
 
 [messages."ui.import.metadata.file_tags".translations]
@@ -4999,8 +4999,44 @@ ml = "ഫയൽ ടാഗുകൾ"
 pa = "ਫਾਈਲ ਟੈਗ"
 th = "แท็กของไฟล์"
 
+[messages."ui.import.metadata.manual"]
+comment = "Import metadata control: enter the release metadata without reading a metadata source. One of three presentation modes."
+value = "Manual"
+
+[messages."ui.import.metadata.manual".translations]
+es = "Manual"
+fr = "Manuel"
+de = "Manuell"
+"pt-BR" = "Manual"
+ja = "手動"
+ko = "수동"
+"zh-Hans" = "手动"
+ar = "يدوي"
+he = "ידני"
+uk = "Вручну"
+bg = "Ръчно"
+pl = "Ręcznie"
+cs = "Ručně"
+hr = "Ručno"
+"zh-Hant" = "手動"
+it = "Manuale"
+tr = "Elle"
+vi = "Thủ công"
+nl = "Handmatig"
+hi = "मैन्युअल"
+bn = "ম্যানুয়াল"
+ta = "கைமுறை"
+te = "మాన్యువల్"
+mr = "मॅन्युअल"
+ur = "دستی"
+gu = "મેન્યુઅલ"
+kn = "ಹಸ್ತಚಾಲಿತ"
+ml = "മാനുവൽ"
+pa = "ਹੱਥੀਂ"
+th = "ด้วยตนเอง"
+
 [messages."ui.import.metadata.from_file_tags"]
-comment = "Import identity card: where the metadata came from when the folder is read as Unknown — the embedded tags of its own audio files, not a release."
+comment = "Import metadata card: where the selected metadata came from when it was read from the folder's embedded audio-file tags."
 value = "From file tags"
 
 [messages."ui.import.metadata.from_file_tags".translations]

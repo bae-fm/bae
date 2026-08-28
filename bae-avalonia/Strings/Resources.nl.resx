@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Koppelen wordt gestart…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Wachten op goedkeuring…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Vingerafdruk: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Bestandstags gebruiken</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Handmatig invoeren</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albumartiest</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Voeg toe</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Kandidaten zonder gekozen bron openen in</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Laatst gebruikt</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup-kandidaten automatisch identificeren</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Automatische identificatie leest hoestekst, barcodes en de Disc ID alleen wanneer een kandidaat Opzoeken gebruikt. Bestandstags en Handmatig voeren dit nooit uit.</value></data>
 </root>

@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Pokretanje uparivanja…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Čekanje odobrenja…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Otisak: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Upotrijebi oznake datoteka</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Unesi ručno</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Izvođač albuma</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Dodaj</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Ukloni</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Otvori kandidate bez odabranog izvora u</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Zadnje korišteno</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Automatski prepoznaj kandidate pretraživanja</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Automatsko prepoznavanje čita tekst omota, crtične kodove i ID-ove diskova samo dok kandidat koristi Pretraživanje. Oznake datoteka i Ručno nikad ga ne pokreću.</value></data>
 </root>

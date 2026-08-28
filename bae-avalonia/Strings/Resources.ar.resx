@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>بدء الاقتران…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>في انتظار الموافقة…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>البصمة: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>استخدام وسوم الملفات</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>إدخال يدويًا</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>فنان الألبوم</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>إضافة</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>إزالة</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>فتح المرشحين بدون مصدر محدد في</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>آخر استخدام</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>تحديد مرشحي البحث تلقائيًا</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>يقرأ التعرّف التلقائي نص الغلاف والرموز الشريطية ومعرّفات الأقراص فقط عندما يستخدم العنصر المرشّح «البحث». لا تشغّله وسوم الملفات والوضع اليدوي مطلقًا.</value></data>
 </root>

@@ -77,21 +77,137 @@ public sealed class ImportCandidate
     /// <summary>The last import of this candidate that failed.</summary>
     internal BridgeImportFailure? Failure => Detail?.Failure;
 
-    /// <summary>What the folder is being read as. The picker's two sides are
-    /// the two kinds of pick, so the control shows what is stored rather than a
-    /// copy of what was clicked.</summary>
-    internal ImportIdentity Identity =>
-        Detail?.Row.Picked is BridgeIdentityPick.Unknown
-            ? ImportIdentity.Unknown
-            : ImportIdentity.Release;
+    /// <summary>The metadata seed this candidate will commit, where one has
+    /// been selected.</summary>
+    internal BridgeMetadataSeed? MetadataSeed => Detail?.Row.MetadataSeed;
 
-    /// <summary>The release this candidate is picked as, where it names one.</summary>
-    internal BridgeIdentityPick.Release? PickedRelease =>
-        Detail?.Row.Picked as BridgeIdentityPick.Release;
+    /// <summary>The release this candidate is selected as, where the seed names
+    /// one.</summary>
+    internal BridgeMetadataSeed.ExternalRelease? PickedRelease =>
+        MetadataSeed as BridgeMetadataSeed.ExternalRelease;
 
-    /// <summary>Whether anything is settled for this folder — a release picked,
-    /// or the decision to read its own tags.</summary>
-    internal bool HasSettled => Detail?.Row.Picked is not null;
+    /// <summary>The presentation mode corresponding to the stored seed.</summary>
+    internal BridgeImportMetadataMode? SelectedMetadataMode =>
+        MetadataMode(MetadataSeed);
+
+    /// <summary>Which metadata surface this candidate's pane is showing. This
+    /// is session navigation, separate from the stored seed.</summary>
+    internal BridgeImportMetadataMode PresentedMetadataMode { get; private set; } =
+        BridgeImportMetadataMode.Lookup;
+
+    /// <summary>Whether the presented surface is the source selected for
+    /// import.</summary>
+    internal bool PresentedMetadataModeHasSelectedSeed =>
+        SelectedMetadataMode == PresentedMetadataMode;
+
+    /// <summary>Whether any metadata seed has been selected.</summary>
+    internal bool HasSelectedMetadataSeed => MetadataSeed is not null;
+
+    /// <summary>The state of this candidate's lazy File Tags preview.</summary>
+    internal ImportFileTagsPreviewStatus FileTagsPreviewStatus { get; private set; } =
+        ImportFileTagsPreviewStatus.Unloaded;
+
+    internal BridgeReleaseUserEdit? FileTagsPreview { get; private set; }
+    internal string? FileTagsPreviewError { get; private set; }
+    private object? _fileTagsPreviewSession;
+
+    internal void ResolvePresentedMetadataMode(BridgeImportMetadataMode unseededMode) =>
+        PresentedMetadataMode = ResolvePresentedMetadataMode(
+            MetadataSeed,
+            unseededMode);
+
+    internal static BridgeImportMetadataMode ResolvePresentedMetadataMode(
+        BridgeMetadataSeed? seed,
+        BridgeImportMetadataMode unseededMode) =>
+        MetadataMode(seed) ?? unseededMode;
+
+    private static BridgeImportMetadataMode? MetadataMode(
+        BridgeMetadataSeed? seed) => seed switch
+        {
+            BridgeMetadataSeed.ExternalRelease => BridgeImportMetadataMode.Lookup,
+            BridgeMetadataSeed.FileTags => BridgeImportMetadataMode.FileTags,
+            BridgeMetadataSeed.Manual => BridgeImportMetadataMode.Manual,
+            null => null,
+            _ => throw new System.ArgumentOutOfRangeException(
+                nameof(seed), seed, "Unknown metadata seed"),
+        };
+
+    internal void PresentMetadataMode(BridgeImportMetadataMode mode) =>
+        PresentedMetadataMode = mode;
+
+    /// <summary>Carry navigation and the lazy preview over a fresh live detail
+    /// for this same candidate. A changed file set invalidates the preview.</summary>
+    internal void PreserveSessionState(ImportCandidate existing)
+    {
+        PresentedMetadataMode = existing.PresentedMetadataMode;
+        if (!SameFiles(existing.Files, Files))
+        {
+            return;
+        }
+        FileTagsPreviewStatus = existing.FileTagsPreviewStatus;
+        FileTagsPreview = existing.FileTagsPreview;
+        FileTagsPreviewError = existing.FileTagsPreviewError;
+        _fileTagsPreviewSession = existing._fileTagsPreviewSession;
+    }
+
+    internal object? BeginFileTagsPreview()
+    {
+        if (FileTagsPreviewStatus == ImportFileTagsPreviewStatus.Loading)
+        {
+            return null;
+        }
+        var session = new object();
+        _fileTagsPreviewSession = session;
+        FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Loading;
+        FileTagsPreviewError = null;
+        return session;
+    }
+
+    internal bool CompleteFileTagsPreview(object session, BridgeReleaseUserEdit edit)
+    {
+        if (!ReferenceEquals(_fileTagsPreviewSession, session))
+        {
+            return false;
+        }
+        _fileTagsPreviewSession = null;
+        FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Loaded;
+        FileTagsPreview = edit;
+        FileTagsPreviewError = null;
+        return true;
+    }
+
+    internal bool FailFileTagsPreview(object session, string? error)
+    {
+        if (!ReferenceEquals(_fileTagsPreviewSession, session))
+        {
+            return false;
+        }
+        _fileTagsPreviewSession = null;
+        FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Failed;
+        FileTagsPreview = null;
+        FileTagsPreviewError = error;
+        return true;
+    }
+
+    private static bool SameFiles(BridgeCandidateFiles? lhs, BridgeCandidateFiles? rhs)
+    {
+        if (lhs is null || rhs is null || lhs.Files.Length != rhs.Files.Length)
+        {
+            return lhs is null && rhs is null;
+        }
+        for (var index = 0; index < lhs.Files.Length; index++)
+        {
+            var left = lhs.Files[index].File;
+            var right = rhs.Files[index].File;
+            if (left.Name != right.Name
+                || left.Size != right.Size
+                || left.LocalPath != right.LocalPath)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 
     /// <summary>The on-disk folder to identify/import.</summary>
     public string FolderPath { get; set; } = string.Empty;
@@ -116,6 +232,14 @@ public sealed class ImportCandidate
         var line = string.Join("  ·  ", parts);
         return string.IsNullOrEmpty(Status) ? line : $"{line}  —  {Status}";
     }
+}
+
+internal enum ImportFileTagsPreviewStatus
+{
+    Unloaded,
+    Loading,
+    Loaded,
+    Failed,
 }
 
 /// <summary>A candidate's readable evidence file (CUE sheet, rip log, info

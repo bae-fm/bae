@@ -40,7 +40,8 @@ for scene in \
     import-release-ambiguity-narrow \
     import-release-queue-collapsed \
     import-release-scanning-refresh \
-    import-release-resolved-reversal
+    import-release-resolved-reversal \
+    import-metadata-sources
 do
     png="$OUT_DIR/${scene}@${platform}.png"
     if [[ ! -s "$png" ]]; then

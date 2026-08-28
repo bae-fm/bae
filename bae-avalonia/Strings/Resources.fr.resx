@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Démarrage de l’association…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>En attente d’approbation…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Empreinte : {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Utiliser les tags des fichiers</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Saisir manuellement</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Artiste de l'album</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Ajouter</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Supprimer</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Ouvrir les candidats sans source sélectionnée dans</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Dernière utilisation</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Identifier automatiquement les candidats de recherche</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>L’identification automatique lit le texte de la pochette, les codes-barres et les identifiants de disque uniquement lorsqu’un candidat utilise Recherche. Tags des fichiers et Manuel ne la lancent jamais.</value></data>
 </root>

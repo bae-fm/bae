@@ -100,6 +100,11 @@ internal static class ShotCapture
                 PreviewData.ImportResolvedSummary,
                 BridgeTriageTab.Pending,
                 refreshingRoot: null)),
+        new Scene(
+            "import-metadata-sources",
+            1200,
+            820,
+            BuildImportMetadataSources),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -300,6 +305,117 @@ internal static class ShotCapture
         app.ImportStore.SeedPreview(items, summary, tab);
         return view;
     }
+
+    private static Control BuildImportMetadataSources()
+    {
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,*,*"),
+            RowDefinitions = new RowDefinitions("Auto,Auto"),
+            ColumnSpacing = 14,
+            RowSpacing = 14,
+            Margin = new Thickness(18),
+        };
+        AddMetadataSource(
+            grid, 0, 0, BridgeImportMetadataMode.Lookup);
+        AddMetadataSource(
+            grid, 1, 0, BridgeImportMetadataMode.FileTags);
+        AddMetadataSource(
+            grid, 2, 0, BridgeImportMetadataMode.FileTags,
+            fileTagsPreview: PreviewMetadata());
+        AddMetadataSource(
+            grid, 0, 1, BridgeImportMetadataMode.FileTags,
+            selectedEdit: PreviewRawMetadata());
+        AddMetadataSource(
+            grid, 1, 1, BridgeImportMetadataMode.Manual);
+        AddMetadataSource(
+            grid, 2, 1, BridgeImportMetadataMode.Manual,
+            selectedEdit: PreviewRawMetadata());
+        return new ScrollViewer { Content = grid };
+    }
+
+    private static void AddMetadataSource(
+        Grid grid,
+        int column,
+        int row,
+        BridgeImportMetadataMode mode,
+        BridgeRawReleaseEdit? selectedEdit = null,
+        BridgeReleaseUserEdit? fileTagsPreview = null)
+    {
+        var section = new ImportMetadataSourceSection
+        {
+            Mode = mode,
+            HasSelectedSeed = selectedEdit is not null,
+            Title = selectedEdit?.AlbumTitle
+                ?? (mode == BridgeImportMetadataMode.Manual
+                    ? Loc.Core("ui.import.slots.untitled")
+                    : "Album Title"),
+            Edit = selectedEdit,
+            MetaLine = mode == BridgeImportMetadataMode.Manual
+                ? Loc.Core("ui.import.metadata.manual")
+                : Loc.Core("ui.import.metadata.from_file_tags"),
+            PickedSource = null,
+            IsReading = false,
+            FileTagsPreview = fileTagsPreview,
+            FileTagsMetaLine = Loc.Core("ui.import.metadata.from_file_tags"),
+            FileTagsError = null,
+            LookupOptions = null,
+            LoadCover = null,
+            HasCoverOptions = false,
+            CommitRow = null,
+            Library = new LibraryService(),
+            OnPresentMode = _ => { },
+            OnFindRelease = () => { },
+            OnReadFileTags = () => { },
+            OnUseFileTags = () => { },
+            OnEnterManually = () => { },
+            OnEditCover = () => { },
+            OnEditField = (_, _) => { },
+            OnEditArtists = _ => { },
+        }.Build();
+        var card = new Border
+        {
+            Padding = new Thickness(10),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Child = section,
+        };
+        card[!Border.BorderBrushProperty] =
+            new DynamicResourceExtension("BaeHairlineBrush");
+        Grid.SetColumn(card, column);
+        Grid.SetRow(card, row);
+        grid.Children.Add(card);
+    }
+
+    private static BridgeReleaseUserEdit PreviewMetadata() => new(
+        "Album Title",
+        PreviewArtists(),
+        new BridgePressingEdit(
+            1996,
+            "CD",
+            "Label Name",
+            "CAT-1",
+            "UK",
+            "0123456789012"),
+        Array.Empty<BridgeTrackUserEdit>());
+
+    private static BridgeRawReleaseEdit PreviewRawMetadata() => new(
+        "Album Title",
+        PreviewArtists(),
+        new BridgeRawPressingEdit(
+            "1996",
+            "CD",
+            "Label Name",
+            "CAT-1",
+            "UK",
+            "0123456789012"),
+        Array.Empty<BridgeRawTrackEdit>());
+
+    private static BridgeArtistAssignment[] PreviewArtists() =>
+    [
+        new BridgeArtistAssignment.New(
+            new BridgeNewArtistSeed("Artist Name", null, null, null)),
+    ];
 
     // A LibraryService whose album/composer/artist subscriptions publish empty
     // pages. Every other read stays a fail-loud stub.

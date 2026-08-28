@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>페어링 시작 중…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>승인 대기 중…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>지문: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>파일 태그 사용</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>수동으로 입력</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>앨범 아티스트</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>추가</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>제거</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>소스를 선택하지 않은 후보를 다음에서 열기</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>마지막 사용</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>조회 후보 자동 식별</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>자동 식별은 후보가 조회를 사용할 때만 커버 텍스트, 바코드 및 디스크 ID를 읽습니다. 파일 태그와 수동에서는 실행되지 않습니다.</value></data>
 </root>

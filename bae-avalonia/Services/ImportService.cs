@@ -132,11 +132,20 @@ internal sealed class ImportService
     public Func<string, string, string, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
 
-    /// <summary>Decide the candidate's identity — a release, or the folder's
-    /// own tags. Nothing comes back: the per-candidate read delivers the pane's
-    /// next value.</summary>
-    public Func<string, BridgeIdentityPick, Task<(bool Current, string? Error)>> PickCandidateIdentity { get; init; }
-        = (_, _) => throw new InvalidOperationException("ImportService stub: PickCandidateIdentity not wired");
+    /// <summary>Select the metadata seed this candidate will import. The
+    /// per-candidate read delivers the pane's next value.</summary>
+    public Func<string, BridgeMetadataSeed, Task<(bool Current, string? Error)>> SelectCandidateMetadataSeed { get; init; }
+        = (_, _) => throw new InvalidOperationException(
+            "ImportService stub: SelectCandidateMetadataSeed not wired");
+
+    /// <summary>Read the folder's embedded tags without selecting them.</summary>
+    public Func<string, Task<(bool Current, (BridgeReleaseUserEdit? Edit, string? Error) Result)>> PreviewFileTags { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: PreviewFileTags not wired");
+
+    /// <summary>Replace the candidate's ordered album-artist assignments.</summary>
+    public Func<string, IReadOnlyList<BridgeArtistAssignment>, Task<(bool Current, string? Error)>> SetCandidateAlbumArtists { get; init; }
+        = (_, _) => throw new InvalidOperationException(
+            "ImportService stub: SetCandidateAlbumArtists not wired");
 
     /// <summary>Record the cover this candidate commits with.</summary>
     public Func<string, BridgeCoverSelection, Task<(bool Current, string? Error)>> SetCandidateCover { get; init; }
@@ -233,9 +242,16 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
         SearchReleases = (source, artist, album) =>
             session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
-        PickCandidateIdentity = (candidateKey, pick) =>
+        SelectCandidateMetadataSeed = (candidateKey, seed) =>
             session.RunForCurrentHandle(handle =>
-                NativeBae.PickCandidateIdentity(handle, candidateKey, pick)),
+                NativeBae.SelectCandidateMetadataSeed(handle, candidateKey, seed)),
+        PreviewFileTags = candidateKey =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.PreviewFileTags(handle, candidateKey)),
+        SetCandidateAlbumArtists = (candidateKey, assignments) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetCandidateAlbumArtists(
+                    handle, candidateKey, assignments)),
         SetCandidateCover = (candidateKey, cover) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.SetCandidateCover(handle, candidateKey, cover)),

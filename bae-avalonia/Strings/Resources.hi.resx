@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>पेयरिंग शुरू हो रही है…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>मंज़ूरी की प्रतीक्षा…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>फिंगरप्रिंट: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>फ़ाइल टैग इस्तेमाल करें</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>मैन्युअल रूप से दर्ज करें</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>एल्बम कलाकार</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>जोड़ें</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>हटाएं</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>बिना चुने स्रोत वाले उम्मीदवारों को इसमें खोलें</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>पिछली बार इस्तेमाल किया गया</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>लुकअप उम्मीदवारों की अपने आप पहचान करें</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>अपने आप पहचान कवर का टेक्स्ट, बारकोड और डिस्क आईडी केवल तब पढ़ती है जब कोई उम्मीदवार लुकअप इस्तेमाल करता है। फ़ाइल टैग और मैन्युअल इसे कभी नहीं चलाते।</value></data>
 </root>

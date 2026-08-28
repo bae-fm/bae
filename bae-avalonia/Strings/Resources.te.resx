@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>జత చేయడం ప్రారంభమవుతోంది…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>ఆమోదం కోసం వేచి ఉంది…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ఫింగర్‌ప్రింట్: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ఫైల్ ట్యాగ్‌లను ఉపయోగించు</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>మాన్యువల్‌గా నమోదు చేయండి</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>ఆల్బమ్ కళాకారుడు</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>జోడించు</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>తీసివేయి</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>మూలం ఎంచుకోని అభ్యర్థులను ఇందులో తెరవండి</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>చివరిగా ఉపయోగించినది</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup అభ్యర్థులను ఆటోమేటిక్‌గా గుర్తించు</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>అభ్యర్థి Lookup ఉపయోగిస్తున్నప్పుడు మాత్రమే ఆటోమేటిక్ గుర్తింపు కవర్ టెక్స్ట్, బార్‌కోడ్‌లు మరియు డిస్క్ IDలను చదువుతుంది. ఫైల్ ట్యాగ్‌లు మరియు మాన్యువల్ దీన్ని ఎప్పుడూ అమలు చేయవు.</value></data>
 </root>

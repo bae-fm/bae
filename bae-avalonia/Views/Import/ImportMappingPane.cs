@@ -19,8 +19,8 @@ namespace Bae.Desktop;
 ///
 /// There is no identify⇄confirm layout flip. The table is the same table before
 /// and after a release is picked — picking one fills its BECOMES column in
-/// place, and the identity control switches between the release and the folder's
-/// own tags without emptying it. Nothing in the commit bar ever disables the
+/// place, and the metadata-source control switches between Lookup, File Tags,
+/// and Manual without emptying it. Nothing in the commit bar ever disables the
 /// commit: a disagreement is stated, and the one refusal left in the whole
 /// import is audio that will not decode, which core raises.
 ///
@@ -50,6 +50,7 @@ internal sealed partial class ImportMappingPane : UserControl
     // filters it to its own key.
     private string? _key;
     private ImportCandidate? _candidate;
+    private string _candidatePresentationFingerprint = string.Empty;
     private BridgeCandidateRuntimeSnapshot? _runtime;
 
     // Whether a pick is in flight. The control that started it says so; the
@@ -95,26 +96,13 @@ internal sealed partial class ImportMappingPane : UserControl
         StopPreview();
         _key = row.CandidateKey;
         _candidate = _import.Candidate(row.CandidateKey);
+        _candidatePresentationFingerprint = CandidatePresentationFingerprint(_candidate);
         // The subscription is already open, so this read cannot be undone by a
         // change that was on its way.
         _runtime = _import.CandidateRuntime(row.CandidateKey);
         ResetSession();
         ObserveRelease();
-        // Nothing picked is the question the search editor answers, so a row
-        // that has not been decided lands on it.
-        _searchOpen = _candidate is { HasSettled: false };
         Render();
-
-        // An idle identify state on a folder nothing is settled for means the
-        // session's runtime hasn't seen this candidate yet — its answer, if it
-        // has one, lives in the stored verdict. Asking core to identify
-        // resumes that verdict instantly with no network (an unanswered folder
-        // starts a real run), and the matches arrive on the queue tick the
-        // broadcast causes. A folder that is already picked is not asking.
-        if (_runtime is null && _candidate is { RowStatus.Kind: "", HasSettled: false })
-        {
-            _ = _import.AutoIdentify(row.CandidateKey);
-        }
         return Task.CompletedTask;
     }
 
@@ -129,17 +117,20 @@ internal sealed partial class ImportMappingPane : UserControl
             return;
         }
         var refreshed = _import.Candidate(key);
+        var presentationFingerprint = CandidatePresentationFingerprint(refreshed);
         if (Equals(refreshed?.Detail, _candidate?.Detail)
-            && IdentifyFingerprint(refreshed) == IdentifyFingerprint(_candidate))
+            && IdentifyFingerprint(refreshed) == IdentifyFingerprint(_candidate)
+            && presentationFingerprint == _candidatePresentationFingerprint)
         {
             return;
         }
-        var pickChanged = !Equals(refreshed?.PickedRelease, _candidate?.PickedRelease);
+        var pickChanged = !Equals(refreshed?.MetadataSeed, _candidate?.MetadataSeed);
         _candidate = refreshed;
+        _candidatePresentationFingerprint = presentationFingerprint;
         if (pickChanged)
         {
             ObserveRelease();
-            _searchOpen = _candidate is { HasSettled: false };
+            _searchOpen = false;
         }
         Render();
     }
@@ -204,6 +195,12 @@ internal sealed partial class ImportMappingPane : UserControl
             : candidate.RowStatus.Kind + "|"
                 + string.Join(",", candidate.Matches.Select(choice => choice.ReleaseId));
 
+    private static string CandidatePresentationFingerprint(ImportCandidate? candidate) =>
+        candidate is null
+            ? string.Empty
+            : $"{candidate.PresentedMetadataMode}|{candidate.FileTagsPreviewStatus}"
+                + $"|{candidate.FileTagsPreviewError}";
+
     // Watch the picked release's library membership, so the banner above the
     // table says when this folder is already in the library.
     private void ObserveRelease()
@@ -230,6 +227,7 @@ internal sealed partial class ImportMappingPane : UserControl
         StopPreview();
         _key = null;
         _candidate = null;
+        _candidatePresentationFingerprint = string.Empty;
         ResetSession();
         Render();
         Cleared?.Invoke();
@@ -259,13 +257,9 @@ internal sealed partial class ImportMappingPane : UserControl
         _commitError = string.Empty;
     }
 
-    // ── Deciding the identity ────────────────────────────────────────────────
+    // ── Selecting and presenting metadata sources ──────────────────────────
 
-    /// <summary>Decide the candidate's identity — a pressing, or the folder's
-    /// own tags. Core archives the release's documents, stores the pick, and
-    /// the per-candidate read delivers the pane's next value; nothing is
-    /// seeded from the call.</summary>
-    private async Task DecideIdentity(BridgeIdentityPick pick)
+    private async Task SelectMetadataSeed(BridgeMetadataSeed seed)
     {
         if (_key is not { } key)
         {
@@ -275,15 +269,7 @@ internal sealed partial class ImportMappingPane : UserControl
         Render();
         try
         {
-            var (current, error) = await _app.Import.PickCandidateIdentity(key, pick);
-            if (!current)
-            {
-                return;
-            }
-            if (error is not null)
-            {
-                _app.ShowError(Loc.Chrome("import.error.load_release"), error);
-            }
+            await _import.SelectCandidateMetadataSeed(key, seed);
         }
         finally
         {
@@ -292,27 +278,42 @@ internal sealed partial class ImportMappingPane : UserControl
         }
     }
 
-    /// <summary>Switch what the folder is read as. Unknown reads its own file
-    /// tags; Release re-picks the release the candidate already holds, and opens
-    /// the search when it holds none — there is nothing to go back to
-    /// then.</summary>
-    private async Task SetIdentity(ImportIdentity identity)
+    /// <summary>Present one source without selecting it. Only this explicit
+    /// segment action writes mode history or starts source-specific work.</summary>
+    private void PresentMetadataMode(BridgeImportMetadataMode mode)
     {
-        if (identity == ImportIdentity.Unknown)
+        if (_key is not { } key || _candidate is not { } candidate)
         {
-            await DecideIdentity(new BridgeIdentityPick.Unknown());
             return;
         }
-        if (_candidate?.PickedRelease is { } picked)
+        _import.PresentMetadataMode(key, mode);
+        var (current, error) = _app.Settings.SetLastImportMetadataMode(mode);
+        if (current && error is not null)
         {
-            await DecideIdentity(
-                new BridgeIdentityPick.Release(picked.Source, picked.ReleaseId));
-            return;
+            _app.ShowError(Loc.Chrome("import.error_title"), error);
         }
-        _searchOpen = true;
-        _searchManual = false;
-        Render();
+        switch (mode)
+        {
+            case BridgeImportMetadataMode.Lookup:
+                if (ShownIdentifyState is BridgeIdentifyState.Idle)
+                {
+                    _ = _import.StartInteractiveLookup(key);
+                }
+                break;
+            case BridgeImportMetadataMode.FileTags:
+                _ = _import.LoadFileTagsPreview(key);
+                break;
+            case BridgeImportMetadataMode.Manual:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mode), mode, "Unknown metadata mode");
+        }
     }
+
+    private BridgeIdentifyState ShownIdentifyState =>
+        _runtime?.IdentifyState
+            ?? _candidate?.Detail?.ResumedIdentifyState
+            ?? new BridgeIdentifyState.Idle();
 
     private void OnPreviewChanged() => _table?.ApplyPreviewAccent();
 
@@ -337,7 +338,7 @@ internal sealed partial class ImportMappingPane : UserControl
         var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };
         sections.Children.Add(FolderLine());
         sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.metadata.title")));
-        sections.Children.Add(BuildIdentity().Build());
+        sections.Children.Add(BuildMetadataSource().Build());
         if (_searchOpen)
         {
             sections.Children.Add(BuildSearchEditor());
@@ -351,7 +352,7 @@ internal sealed partial class ImportMappingPane : UserControl
             sections.Children.Add(BuildFailureBanner(failure));
         }
         _table = null;
-        if (_candidate?.Detail is not null)
+        if (_candidate is { Detail: not null, PresentedMetadataModeHasSelectedSeed: true })
         {
             var mapping = _candidate.Mapping;
             var actions = MappingActions();
@@ -368,6 +369,7 @@ internal sealed partial class ImportMappingPane : UserControl
                 mapping,
                 sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
                 () => _import.PreviewingPath,
+                _app.Library,
                 actions,
                 _candidate.Detail!.Unprobed,
                 _candidate.FileEvidence);
@@ -472,29 +474,58 @@ internal sealed partial class ImportMappingPane : UserControl
 
     // ── Section 1: metadata ──────────────────────────────────────────────────
 
-    private ImportIdentitySection BuildIdentity() => new()
+    private ImportMetadataSourceSection BuildMetadataSource() => new()
     {
-        Identity = _candidate?.Identity ?? ImportIdentity.Release,
-        HasSettled = _candidate?.HasSettled ?? false,
-        CommitRow = _candidate is { HasSettled: true } ? BuildCommitRow() : null,
-        Title = _candidate?.Edit?.AlbumTitle is { Length: > 0 } title
-            ? title
-            : _candidate?.Name ?? string.Empty,
+        Mode = _candidate?.PresentedMetadataMode ?? BridgeImportMetadataMode.Lookup,
+        HasSelectedSeed = _candidate?.PresentedMetadataModeHasSelectedSeed ?? false,
+        CommitRow = _candidate is { PresentedMetadataModeHasSelectedSeed: true }
+            ? BuildCommitRow()
+            : null,
+        Title = MetadataTitle(),
         Edit = _candidate?.Edit,
         MetaLine = MetaLine(),
-        HasPick = _candidate?.PickedRelease is not null,
         PickedSource = _candidate?.PickedRelease?.Source,
-        IsReading = _pickInFlight,
+        IsReading = _pickInFlight
+            || _candidate?.FileTagsPreviewStatus == ImportFileTagsPreviewStatus.Loading,
+        FileTagsPreview = _candidate?.FileTagsPreview,
+        FileTagsMetaLine = FileTagsMetaLine(),
+        FileTagsError = _candidate?.FileTagsPreviewError,
+        LookupOptions = LookupOptions(),
         LoadCover = _candidate?.Cover is { } cover
             ? image => _app.Images.Bind(
                 image, ImportDialogs.CoverChoiceContent(cover), ImageWidths.PickerTile)
             : null,
-        HasCoverOptions = _candidate is { HasSettled: true },
-        OnSetIdentity = identity => _ = SetIdentity(identity),
+        HasCoverOptions = _candidate is { HasSelectedMetadataSeed: true },
+        Library = _app.Library,
+        OnPresentMode = PresentMetadataMode,
         OnFindRelease = () => { _searchOpen = true; _searchManual = false; Render(); },
+        OnReadFileTags = () =>
+        {
+            if (_key is { } key)
+            {
+                _ = _import.LoadFileTagsPreview(key);
+            }
+        },
+        OnUseFileTags = () => _ = SelectMetadataSeed(new BridgeMetadataSeed.FileTags()),
+        OnEnterManually = () => _ = SelectMetadataSeed(new BridgeMetadataSeed.Manual()),
         OnEditCover = () => _ = ChooseCover(),
         OnEditField = (field, value) => _ = SetEditField(field, value),
+        OnEditArtists = assignments => _ = SetAlbumArtists(assignments),
     };
+
+    private Control? LookupOptions()
+    {
+        if (_candidate is not
+            {
+                PresentedMetadataMode: BridgeImportMetadataMode.Lookup,
+                PresentedMetadataModeHasSelectedSeed: false,
+            })
+        {
+            return null;
+        }
+        var matches = EffectiveMatches;
+        return matches.Count == 0 ? null : ChoiceList(matches);
+    }
 
     private async Task SetEditField(BridgeCandidateEditField field, string value)
     {
@@ -504,10 +535,18 @@ internal sealed partial class ImportMappingPane : UserControl
         }
     }
 
+    private async Task SetAlbumArtists(IReadOnlyList<BridgeArtistAssignment> assignments)
+    {
+        if (_key is { } key)
+        {
+            await _import.SetCandidateAlbumArtists(key, assignments);
+        }
+    }
+
     /// <summary>"CD · 1996 · XE · 463360 2 · 10 tracks", from the live edit and
     /// the live table so it tracks what is being committed. Empty pressing
-    /// fields drop out rather than leaving stray separators, and reading the
-    /// folder as Unknown says so where a pressing would be.</summary>
+    /// fields drop out rather than leaving stray separators; File Tags and
+    /// Manual name their source where a pressing would be.</summary>
     private string MetaLine()
     {
         if (_candidate?.Edit is not { } edit)
@@ -515,20 +554,54 @@ internal sealed partial class ImportMappingPane : UserControl
             return _candidate?.Files?.FormatLabel ?? string.Empty;
         }
         var mapping = _candidate.Mapping;
-        var lead = _candidate.Identity == ImportIdentity.Unknown
-            ? new[] { Loc.Core("ui.import.metadata.from_file_tags") }
-            : new[]
-            {
+        string[] lead = _candidate.MetadataSeed switch
+        {
+            BridgeMetadataSeed.ExternalRelease =>
+            [
                 edit.Pressing.Format,
                 edit.Pressing.Year,
                 edit.Pressing.Country,
                 edit.Pressing.CatalogNumber,
-            };
+            ],
+            BridgeMetadataSeed.FileTags =>
+                [Loc.Core("ui.import.metadata.from_file_tags")],
+            BridgeMetadataSeed.Manual =>
+                [Loc.Core("ui.import.metadata.manual")],
+            null => throw new InvalidOperationException(
+                "an editable candidate must have a metadata seed"),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(_candidate.MetadataSeed),
+                _candidate.MetadataSeed,
+                "Unknown metadata seed"),
+        };
         return string.Join(
             "  ·  ",
             lead
                 .Append(Loc.Chrome("import.candidate.tracks", "count", mapping.WillWriteCount()))
                 .Where(part => part.Length > 0));
+    }
+
+    private string FileTagsMetaLine()
+    {
+        if (_candidate?.FileTagsPreview is not { } preview)
+        {
+            return _candidate?.Files?.FormatLabel ?? string.Empty;
+        }
+        return string.Join(
+            "  ·  ",
+            Loc.Core("ui.import.metadata.from_file_tags"),
+            Loc.Chrome("import.candidate.tracks", "count", preview.Tracks.LongLength));
+    }
+
+    private string MetadataTitle()
+    {
+        if (_candidate?.Edit?.AlbumTitle is { Length: > 0 } title)
+        {
+            return title;
+        }
+        return _candidate?.PresentedMetadataMode == BridgeImportMetadataMode.Manual
+            ? Loc.Core("ui.import.slots.untitled")
+            : _candidate?.Name ?? string.Empty;
     }
 
     private async Task ChooseCover()
@@ -606,7 +679,7 @@ internal sealed partial class ImportMappingPane : UserControl
             _searchManual = false;
             if (_key is { } key)
             {
-                _ = _import.AutoIdentify(key);
+                _ = _import.StartInteractiveLookup(key);
             }
             Render();
         };
@@ -676,7 +749,8 @@ internal sealed partial class ImportMappingPane : UserControl
     }
 
     // The pressings on offer, whichever half produced them. Picking one
-    // decides the identity, which is what closes the editor.
+    // selects its external-release metadata seed, which closes the editor when
+    // the candidate subscription delivers that seed.
     private Control ChoiceList(List<ReleaseCandidateChoice> choices)
     {
         var results = new ListBox { SelectionMode = SelectionMode.Single, MaxHeight = 190 };
@@ -688,8 +762,8 @@ internal sealed partial class ImportMappingPane : UserControl
                 return;
             }
             var chosen = choices[results.SelectedIndex];
-            await DecideIdentity(
-                new BridgeIdentityPick.Release(chosen.Source, chosen.ReleaseId));
+            await SelectMetadataSeed(
+                new BridgeMetadataSeed.ExternalRelease(chosen.Source, chosen.ReleaseId));
         };
         return results;
     }
@@ -697,7 +771,7 @@ internal sealed partial class ImportMappingPane : UserControl
     private Button CancelButton()
     {
         var cancel = ImportPaneUi.RowButton(Loc.Chrome("action.cancel"));
-        cancel.IsEnabled = _candidate is { HasSettled: true };
+        cancel.IsEnabled = _candidate is { HasSelectedMetadataSeed: true };
         cancel.Click += (_, _) => { _searchOpen = false; Render(); };
         return cancel;
     }

@@ -70,6 +70,7 @@ public sealed class LiveQueryOwnershipTests
         };
         using var store = new ImportStore(
             import,
+            new SettingsStore(new SettingsService()),
             (_, _) => reportedErrors += 1,
             new NoopMediaControl(),
             apply => apply());

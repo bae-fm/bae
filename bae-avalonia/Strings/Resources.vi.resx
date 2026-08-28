@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Đang bắt đầu ghép đôi…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Đang chờ phê duyệt…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Dấu vân tay: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Dùng thẻ của tệp</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>Nhập thủ công</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>Nghệ sĩ album</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>Thêm</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>Xóa</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Mở các mục chưa chọn nguồn trong</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>Dùng gần đây nhất</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Tự động nhận dạng các mục dùng Tra cứu</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Tính năng nhận dạng tự động chỉ đọc chữ trên bìa, mã vạch và ID đĩa khi một mục dùng Tra cứu. Thẻ của tệp và Thủ công không bao giờ chạy tính năng này.</value></data>
 </root>

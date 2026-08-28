@@ -460,4 +460,13 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>ಜೋಡಣೆ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ಬೆರಳಚ್ಚು: {fingerprint}</value></data>
+  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳನ್ನು ಬಳಸಿ</value></data>
+  <data name="import.metadata.enter_manually" xml:space="preserve"><value>ಹಸ್ತಚಾಲಿತವಾಗಿ ನಮೂದಿಸಿ</value></data>
+  <data name="artist.assignments.album_artist" xml:space="preserve"><value>ಆಲ್ಬಮ್ ಕಲಾವಿದ</value></data>
+  <data name="artist.assignments.add" xml:space="preserve"><value>ಸೇರಿಸಿ</value></data>
+  <data name="artist.assignments.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
+  <data name="settings.import.open_unseeded" xml:space="preserve"><value>ಮೂಲ ಆಯ್ಕೆ ಮಾಡದ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಇಲ್ಲಿ ತೆರೆಯಿರಿ</value></data>
+  <data name="settings.import.last_used" xml:space="preserve"><value>ಕೊನೆಯದಾಗಿ ಬಳಸಿದ್ದು</value></data>
+  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>ಲುಕ್‌ಅಪ್ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
+  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯು ಲುಕ್‌ಅಪ್ ಬಳಸುವಾಗ ಮಾತ್ರ ಸ್ವಯಂಚಾಲಿತ ಗುರುತಿಸುವಿಕೆಯು ಕವರ್ ಪಠ್ಯ, ಬಾರ್‌ಕೋಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್ ID ಗಳನ್ನು ಓದುತ್ತದೆ. ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳು ಮತ್ತು ಹಸ್ತಚಾಲಿತವು ಇದನ್ನು ಎಂದಿಗೂ ಚಲಾಯಿಸುವುದಿಲ್ಲ.</value></data>
 </root>

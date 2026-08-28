@@ -40,10 +40,9 @@ public sealed class ImportSectionViewTests
     {
         var view = BuildView(PreviewData.ImportResolvedItems, PreviewData.ImportResolvedSummary);
 
-        Assert.Empty(CandidateRow(view)
-            .GetLogicalDescendants()
-            .OfType<Button>()
-            .Where(button => Equals(button.Content, Loc.Chrome("import.release.one"))));
+        Assert.DoesNotContain(
+            CandidateRow(view).GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("import.release.one")));
         Assert.NotNull(DecisionButton(view));
     }
 
@@ -323,7 +322,7 @@ public sealed class ImportSectionViewTests
             // Nothing about selecting a row decides an identity: what a pick
             // produced is already stored. A test that sees a call here has
             // found the pane deciding on the user's behalf.
-            PickCandidateIdentity = (key, _) =>
+            SelectCandidateMetadataSeed = (key, _) =>
             {
                 resumed?.Add(key);
                 return Task.FromResult((true, (string?)null));
@@ -408,19 +407,12 @@ public sealed class ImportSectionViewTests
                         BridgeMatchedSignal.DiscId)),
                 Selectable: placement is BridgeTriagePlacement.Ready,
                 ImportStatus: importStatus,
-                Picked: placement
+                MetadataSeed: placement
                     is BridgeTriagePlacement.Ready
                         or BridgeTriagePlacement.Done
-                    ? new BridgeIdentityPick.Release(
+                    ? new BridgeMetadataSeed.ExternalRelease(
                         BridgeMetadataSource.MusicBrainz,
                         "rel-matched")
-                    : null,
-                Claim: placement
-                    is BridgeTriagePlacement.Ready
-                        or BridgeTriagePlacement.Done
-                    ? new BridgeIdentityChoice.Release(
-                        "rel-matched",
-                        BridgeMetadataSource.MusicBrainz)
                     : null),
             IsGroupMember: isGroupMember),
     };
@@ -440,7 +432,9 @@ public sealed class ImportSectionViewTests
             {
                 new BridgeReadyRowRef(
                     CandidateKey,
-                    new BridgeIdentityChoice.Release("rel-matched", BridgeMetadataSource.MusicBrainz),
+                    new BridgeMetadataSeed.ExternalRelease(
+                        BridgeMetadataSource.MusicBrainz,
+                        "rel-matched"),
                     null),
             }
             : Array.Empty<BridgeReadyRowRef>(),

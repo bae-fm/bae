@@ -46,10 +46,10 @@ internal sealed class ReleaseEditorService
     public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ResetMetadataToSource { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetMetadataToSource not wired");
 
-    /// <summary>Commit a re-identify: point the release at a chosen source pressing
-    /// (exact or metadata-only) or clear its identity. Open subscriptions deliver
-    /// the updated release.</summary>
-    public Func<string, BridgeIdentityChoice, Task<(bool Current, string? Error)>> ReidentifyRelease { get; init; }
+    /// <summary>Commit a re-identify: point the release at a chosen source
+    /// pressing or reseed it from its file tags. Open subscriptions deliver the
+    /// updated release.</summary>
+    public Func<string, BridgeReleaseReseed, Task<(bool Current, string? Error)>> ReidentifyRelease { get; init; }
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ReidentifyRelease not wired");
 
     /// <summary>Reseed the release's metadata from its (just re-pointed) source,
