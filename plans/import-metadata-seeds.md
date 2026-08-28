@@ -356,8 +356,16 @@ pub struct NewArtistSeed {
     pub discogs_artist_id: Option<String>,
 }
 
+pub struct ExistingArtist {
+    pub artist_id: String,
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+}
+
 pub enum ArtistAssignment {
-    Existing { artist_id: String },
+    Existing { artist: ExistingArtist },
     New { seed: NewArtistSeed },
 }
 
@@ -401,10 +409,11 @@ assignment rows are an ordered replacement of the seed's album credits. A
 track edit explicitly says whether it inherits album artists or owns an ordered
 list, so zero explicit artists cannot be confused with an untouched seed.
 
-The candidate tables do not foreign-key `artist_id` to `artists`: a temporary
-candidate choice must not keep a library artist alive. Reads and commit verify
-that every `Existing` ID still exists and fail with that artist ID if it does
-not.
+The candidate assignment tables foreign-key `artist_id` to `artists` with
+`ON DELETE RESTRICT`. A pending choice is a real reference: deleting an artist
+must first resolve every candidate assignment that names it. Candidate reads
+join the canonical artist row and return an `ExistingArtist`; only `artist_id`
+is persisted in the assignment row.
 
 Artist resolution follows authoritative state:
 
