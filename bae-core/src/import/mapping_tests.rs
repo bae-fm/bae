@@ -486,14 +486,14 @@ fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
         &files,
         Some(PickedTracklist {
             slots: &slots,
-            track_id_prefix: "unknown-track",
+            track_id_prefix: "file-tag-track",
             source: TracklistSource::CandidateFiles,
         }),
         &durations,
     );
     assert!(table.reconciliation.is_none());
 
-    let table = mapping_without_track(table, "unknown-track-0");
+    let table = mapping_without_track(table, "file-tag-track-0");
 
     assert_eq!(mapping_tracks(&table).len(), 1);
     assert!(table.reconciliation.is_none());

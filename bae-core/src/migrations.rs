@@ -3,6 +3,15 @@
 //! at open; the applied version becomes the wire `schema_version`.
 
 const IMPORT_METADATA_SEEDS_SQL: &str = include_str!("../migrations/002_import_metadata_seeds.sql");
+const VERSION_ONE_FILE_TAG_TRACK_PREFIX: &str = "unknown-track-";
+const FILE_TAG_TRACK_PREFIX: &str = "file-tag-track-";
+
+struct VersionOneTrackEdit {
+    content_hash: String,
+    old_track_id: String,
+    track_id: String,
+    artist_names: Option<Vec<String>>,
+}
 
 /// The ordered migration ladder. Versions are 1-based and contiguous.
 pub fn all() -> Vec<coven::Migration> {
@@ -19,29 +28,48 @@ fn migrate_import_metadata_seeds(sql: &coven::MigrationContext<'_>) -> Result<()
         [],
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
     )?;
-    let track_artist_edits = sql.query(
-        "SELECT content_hash, track_id, artist_text FROM import_candidate_track_edit \
-         WHERE dropped = 0 ORDER BY content_hash, track_id",
+    let track_edits = sql.query(
+        "SELECT edit.content_hash, edit.track_id, state.pick_kind, edit.artist_text \
+         FROM import_candidate_track_edit AS edit \
+         JOIN import_candidate_state AS state USING (content_hash) \
+         ORDER BY edit.content_hash, edit.track_id",
         [],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
             ))
         },
     )?;
 
     let album_artist_edits = parse_v1_artist_edits(album_artist_edits, "album")?;
-    let track_artist_edits = track_artist_edits
+    let track_edits = track_edits
         .into_iter()
-        .map(|(content_hash, track_id, text)| {
-            let names = parse_v1_artist_text(&text);
-            Ok((content_hash, track_id, names))
+        .map(|(content_hash, old_track_id, pick_kind, artist_text)| {
+            let track_id = version_two_track_id(pick_kind.as_deref(), &old_track_id);
+            let artist_names = artist_text.map(|text| parse_v1_artist_text(&text));
+            VersionOneTrackEdit {
+                content_hash,
+                old_track_id,
+                track_id,
+                artist_names,
+            }
         })
-        .collect::<Result<Vec<_>, coven::DbError>>()?;
+        .collect::<Vec<_>>();
 
     sql.execute_batch(IMPORT_METADATA_SEEDS_SQL)?;
+
+    for edit in &track_edits {
+        if edit.old_track_id != edit.track_id {
+            sql.execute(
+                "UPDATE import_candidate_track_edit SET track_id = ? \
+                 WHERE content_hash = ? AND track_id = ?",
+                coven::rusqlite::params![edit.track_id, edit.content_hash, edit.old_track_id],
+            )?;
+        }
+    }
 
     for (content_hash, names) in album_artist_edits {
         for (position, name) in names.into_iter().enumerate() {
@@ -54,15 +82,17 @@ fn migrate_import_metadata_seeds(sql: &coven::MigrationContext<'_>) -> Result<()
             )?;
         }
     }
-    for (content_hash, track_id, names) in track_artist_edits {
-        for (position, name) in names.into_iter().enumerate() {
-            sql.execute(
-                "INSERT INTO import_candidate_track_artist_assignment \
-                 (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name, \
-                  musicbrainz_artist_id, discogs_artist_id) \
-                 VALUES (?, ?, ?, 'new', NULL, ?, NULL, NULL, NULL)",
-                coven::rusqlite::params![content_hash, track_id, position as i64, name],
-            )?;
+    for edit in track_edits {
+        if let Some(names) = edit.artist_names {
+            for (position, name) in names.into_iter().enumerate() {
+                sql.execute(
+                    "INSERT INTO import_candidate_track_artist_assignment \
+                     (content_hash, track_id, position, assignment_kind, artist_id, name, sort_name, \
+                      musicbrainz_artist_id, discogs_artist_id) \
+                     VALUES (?, ?, ?, 'new', NULL, ?, NULL, NULL, NULL)",
+                    coven::rusqlite::params![edit.content_hash, edit.track_id, position as i64, name],
+                )?;
+            }
         }
     }
 
@@ -93,6 +123,16 @@ fn migrate_import_metadata_seeds(sql: &coven::MigrationContext<'_>) -> Result<()
         )));
     }
     Ok(())
+}
+
+fn version_two_track_id(pick_kind: Option<&str>, track_id: &str) -> String {
+    match (
+        pick_kind,
+        track_id.strip_prefix(VERSION_ONE_FILE_TAG_TRACK_PREFIX),
+    ) {
+        (Some("unknown"), Some(index)) => format!("{FILE_TAG_TRACK_PREFIX}{index}"),
+        _ => track_id.to_string(),
+    }
 }
 
 fn parse_v1_artist_edits(
@@ -332,6 +372,54 @@ mod tests {
             })
             .await
             .expect("read migrated candidate graph");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn migration_two_renames_file_tag_track_edit_ids() {
+        let temp = tempfile::tempdir().expect("temp store");
+        let store_dir = StoreDir::new_ephemeral(temp.path());
+        let handle = open(store_dir.clone(), "migration-track-ids", version_one())
+            .expect("open version one");
+        handle
+            .write(|sql| {
+                sql.execute_batch(
+                    "INSERT INTO import_candidate_state (
+                         content_hash, folder_path, pick_kind, identity_pick_author
+                     ) VALUES ('tags-hash', '/candidate/tags', 'unknown', 'user');
+                     INSERT INTO import_candidate_track_edit (
+                         content_hash, track_id, dropped, title, artist_text, side,
+                         track_number, file_kind, file_id, sheet_id, slice_index
+                     ) VALUES (
+                         'tags-hash', 'unknown-track-0', 0, 'Track Title',
+                         'Artist Name', 1, 1, 'standalone', '01.flac', NULL, NULL
+                     );",
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("seed version-one File Tags edit");
+        drop(handle);
+
+        let handle = open(store_dir, "migration-track-ids", all()).expect("migrate File Tags edit");
+        handle
+            .read(|sql| {
+                let track_id: String = sql.query_row(
+                    "SELECT track_id FROM import_candidate_track_edit",
+                    [],
+                    |row| row.get(0),
+                )?;
+                assert_eq!(track_id, "file-tag-track-0");
+                let assignment_track_id: String = sql.query_row(
+                    "SELECT track_id FROM import_candidate_track_artist_assignment",
+                    [],
+                    |row| row.get(0),
+                )?;
+                assert_eq!(assignment_track_id, "file-tag-track-0");
+                Ok(())
+            })
+            .await
+            .expect("read migrated File Tags edit");
     }
 
     #[tokio::test]

@@ -23,8 +23,8 @@ use crate::import::{parsed_album_to_user_edit, ImportError};
 /// names them.
 pub const IMPORT_TRACK_ID_PREFIX: &str = "import-track";
 
-/// The row identity they carry when the folder's own files name them.
-pub const UNKNOWN_TRACK_ID_PREFIX: &str = "unknown-track";
+/// The row identity they carry when the folder's file tags name them.
+pub const FILE_TAG_TRACK_ID_PREFIX: &str = "file-tag-track";
 
 /// The row identity the mapping table's tracks carry for manual entry.
 pub const MANUAL_TRACK_ID_PREFIX: &str = "manual-track";
@@ -108,13 +108,13 @@ pub(crate) fn file_tags_pane(
         files,
         durations,
         &source_tracks,
-        UNKNOWN_TRACK_ID_PREFIX,
+        FILE_TAG_TRACK_ID_PREFIX,
         TracklistSource::CandidateFiles,
         track_edits,
     );
     Ok(PanePick {
         release: None,
-        edit: edit_form(seed, UNKNOWN_TRACK_ID_PREFIX, overlay),
+        edit: edit_form(seed, FILE_TAG_TRACK_ID_PREFIX, overlay),
         mapping,
     })
 }
