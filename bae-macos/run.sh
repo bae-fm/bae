@@ -38,12 +38,13 @@ done
 
 cd "$(dirname "$0")/.."
 
-# FFmpeg comes from the bae-ffmpeg fork's prebuilt dist (populated by
-# scripts/setup-ffmpeg.sh). The shipped .pc files carry a CI-baked prefix
-# (/Users/runner/...), so point ffmpeg-sys-next at the dist directly via
-# FFMPEG_DIR: it reads headers from $FFMPEG_DIR/include and emits the link search
-# for $FFMPEG_DIR/lib, bypassing pkg-config's dead prefix.
-FFMPEG_DIR="$PWD/bae-ffmpeg/dist"
+# FFmpeg comes from the configured bae-ffmpeg distribution, or the local
+# distribution populated by scripts/setup-ffmpeg.sh when none is configured.
+# The shipped .pc files carry a CI-baked prefix (/Users/runner/...), so point
+# ffmpeg-sys-next at the distribution directly via FFMPEG_DIR: it reads headers
+# from $FFMPEG_DIR/include and emits the link search for $FFMPEG_DIR/lib,
+# bypassing pkg-config's dead prefix.
+FFMPEG_DIR="${FFMPEG_DIR:-$PWD/bae-ffmpeg/dist}"
 export FFMPEG_DIR
 
 if [[ ! -f "$FFMPEG_DIR/include/libavutil/avutil.h" ]]; then

@@ -7,22 +7,33 @@ trap 'rm -rf "$test_root"' EXIT
 
 stub_bin="$test_root/bin"
 capture="$test_root/xcodebuild-arguments"
-mkdir -p "$stub_bin"
+ffmpeg_capture="$test_root/ffmpeg-dir"
+configured_ffmpeg="$test_root/ffmpeg"
+mkdir -p "$stub_bin" "$configured_ffmpeg/include/libavutil"
+: > "$configured_ffmpeg/include/libavutil/avutil.h"
 
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$stub_bin/xcodegen"
 printf '%s\n' \
     '#!/usr/bin/env bash' \
     "printf '%s\\n' \"\$@\" > \"\$BAE_RUN_ISOLATION_CAPTURE\"" \
+    "printf '%s\\n' \"\$FFMPEG_DIR\" > \"\$BAE_RUN_ISOLATION_FFMPEG_CAPTURE\"" \
     > "$stub_bin/xcodebuild"
 chmod +x "$stub_bin/xcodegen" "$stub_bin/xcodebuild"
 
 (
     cd "$repo_root"
     PATH="$stub_bin:$PATH" \
+        FFMPEG_DIR="$configured_ffmpeg" \
         BAE_RUN_ISOLATION_CAPTURE="$capture" \
+        BAE_RUN_ISOLATION_FFMPEG_CAPTURE="$ffmpeg_capture" \
         BAE_MACOS_DERIVED_DATA_PATH="$test_root/derived-data" \
         ./bae-macos/run.sh --skip-rust --no-open
 )
+
+if [[ "$(< "$ffmpeg_capture")" != "$configured_ffmpeg" ]]; then
+    echo "run.sh did not preserve the configured FFMPEG_DIR" >&2
+    exit 1
+fi
 
 require_argument() {
     local expected="$1"
