@@ -4,7 +4,7 @@ fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
     ArtistAssignment::New {
         seed: bae_core::import::NewArtistSeed {
             name: name.to_string(),
-            sort_name: Some(name.to_string()),
+            sort_name: None,
             musicbrainz_artist_id: None,
             discogs_artist_id: None,
         },
@@ -178,6 +178,10 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
         .iter()
         .map(|artist| file_tag_artist_assignment(&artist.name))
         .collect();
+    assert!(album_detail
+        .artists
+        .iter()
+        .all(|artist| artist.sort_name.is_none()));
     assert_eq!(
         preview.album_artist_assignments,
         committed_album_artist_assignments
