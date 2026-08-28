@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Utiliser les tags des fichiers</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Saisir manuellement</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Artiste de l'album</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Bibliothèque</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Nouveau</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Ajouter</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Supprimer</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>Ouvrir les candidats sans source sélectionnée dans</value></data>

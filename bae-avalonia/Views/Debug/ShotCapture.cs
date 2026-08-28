@@ -363,7 +363,7 @@ internal static class ShotCapture
             LoadCover = null,
             HasCoverOptions = false,
             CommitRow = null,
-            Library = new LibraryService(),
+            Library = PreviewArtistLibrary(),
             OnPresentMode = _ => { },
             OnFindRelease = () => { },
             OnReadFileTags = () => { },
@@ -412,10 +412,15 @@ internal static class ShotCapture
         Array.Empty<BridgeRawTrackEdit>());
 
     private static BridgeArtistAssignment[] PreviewArtists() =>
-    [
-        new BridgeArtistAssignment.New(
-            new BridgeNewArtistSeed("Artist Name", null, null, null)),
-    ];
+        PreviewData.ArtistAssignments;
+
+    private static LibraryService PreviewArtistLibrary() => new()
+    {
+        SearchArtists = _ => Task.FromResult((
+            true,
+            ((List<BridgeArtistSearchResult>?)PreviewData.SameNameArtistSearchResults,
+                (string?)null))),
+    };
 
     // A LibraryService whose album/composer/artist subscriptions publish empty
     // pages. Every other read stays a fail-loud stub.

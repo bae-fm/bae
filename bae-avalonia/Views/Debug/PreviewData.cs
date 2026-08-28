@@ -30,6 +30,27 @@ internal static class PreviewData
     internal static BridgeFolderReleaseDecisionKey ImportGroupKey { get; } =
         new(ImportRoot, "Collection");
 
+    internal static BridgeArtistAssignment[] ArtistAssignments { get; } =
+    [
+        new BridgeArtistAssignment.Existing(
+            new BridgeExistingArtist(
+                "artist-1", "Artist Name", null, null, null)),
+        new BridgeArtistAssignment.New(
+            new BridgeNewArtistSeed("New Artist Name", null, null, null)),
+    ];
+
+    internal static List<BridgeArtistSearchResult> SameNameArtistSearchResults { get; } =
+    [
+        new(
+            new BridgeExistingArtist(
+                "artist-1", "Artist Name", "Name, Artist", null, null),
+            null),
+        new(
+            new BridgeExistingArtist(
+                "artist-2", "Artist Name", "Name, Artist", null, null),
+            null),
+    ];
+
     // One window of the import list: the group header core emits before the run
     // of rows it holds, two grouped rows, an ungrouped row, and a boundary
     // still waiting on a decision.

@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳನ್ನು ಬಳಸಿ</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>ಹಸ್ತಚಾಲಿತವಾಗಿ ನಮೂದಿಸಿ</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ಆಲ್ಬಮ್ ಕಲಾವಿದ</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>ಲೈಬ್ರರಿ</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>ಹೊಸದು</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>ಸೇರಿಸಿ</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>ಮೂಲ ಆಯ್ಕೆ ಮಾಡದ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಇಲ್ಲಿ ತೆರೆಯಿರಿ</value></data>

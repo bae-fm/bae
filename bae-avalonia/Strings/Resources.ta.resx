@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>கோப்புக் குறிச்சொற்களைப் பயன்படுத்து</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>கைமுறையாக உள்ளிடு</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ஆல்பம் கலைஞர்</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>நூலகம்</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>புதியது</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>சேர்</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>நீக்கு</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>மூலம் தேர்ந்தெடுக்கப்படாதவற்றை இதில் திறக்கவும்</value></data>

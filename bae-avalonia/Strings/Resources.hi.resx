@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>फ़ाइल टैग इस्तेमाल करें</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>मैन्युअल रूप से दर्ज करें</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>एल्बम कलाकार</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>लाइब्रेरी</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>नया</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>जोड़ें</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>हटाएं</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>बिना चुने स्रोत वाले उम्मीदवारों को इसमें खोलें</value></data>

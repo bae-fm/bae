@@ -65,19 +65,35 @@ internal sealed class ArtistAssignmentsField : UserControl
 
     private void RenderField()
     {
-        var text = new TextBlock
-        {
-            Text = _inheritsAlbumArtists
-                ? Loc.Chrome("artist.assignments.album_artist")
-                : ArtistAssignmentDisplay.Join(_assignments),
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            MaxLines = 1,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
+        Control value;
         if (_inheritsAlbumArtists || _assignments.Count == 0)
         {
+            var text = new TextBlock
+            {
+                Text = _inheritsAlbumArtists
+                ? Loc.Chrome("artist.assignments.album_artist")
+                : string.Empty,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                MaxLines = 1,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
             text[!TextBlock.ForegroundProperty] =
                 new DynamicResourceExtension("BaeTextSecondaryBrush");
+            value = text;
+        }
+        else
+        {
+            value = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                ClipToBounds = true,
+            };
+            var row = (StackPanel)value;
+            foreach (var assignment in _assignments)
+            {
+                row.Children.Add(ArtistAssignmentDisplay.Label(assignment));
+            }
         }
         var arrow = new TextBlock
         {
@@ -92,7 +108,7 @@ internal sealed class ArtistAssignmentsField : UserControl
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
             Children =
             {
-                text,
+                value,
                 arrow.WithGridColumn(1),
             },
         };
@@ -176,17 +192,14 @@ internal sealed class ArtistAssignmentsField : UserControl
                 next.RemoveAt(assignmentIndex);
                 SetExplicit(next);
             };
-            var name = new TextBlock
-            {
-                Text = ArtistAssignmentDisplay.Name(_assignments[index]),
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxLines = 1,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
             _tokens.Children.Add(new Grid
             {
                 ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-                Children = { name, remove.WithGridColumn(1) },
+                Children =
+                {
+                    ArtistAssignmentDisplay.Label(_assignments[index]),
+                    remove.WithGridColumn(1),
+                },
             });
         }
     }
@@ -250,10 +263,7 @@ internal sealed class ArtistAssignmentsField : UserControl
     {
         var text = new TextBlock
         {
-            Text = artist.SortName
-                ?? artist.MusicbrainzArtistId
-                ?? artist.DiscogsArtistId
-                ?? artist.ArtistId,
+            Text = artist.ArtistId,
             FontSize = 11,
         };
         text[!TextBlock.ForegroundProperty] =
@@ -298,6 +308,47 @@ internal static class ArtistAssignmentDisplay
         string.Join(
             $"{CultureInfo.CurrentCulture.TextInfo.ListSeparator} ",
             assignments.Select(Name));
+
+    internal static Control Label(BridgeArtistAssignment assignment)
+    {
+        var name = new TextBlock
+        {
+            Text = Name(assignment),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            MaxLines = 1,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var identity = new TextBlock
+        {
+            Text = assignment switch
+            {
+                BridgeArtistAssignment.Existing _ =>
+                    Loc.Chrome("artist.assignments.library"),
+                BridgeArtistAssignment.New _ =>
+                    Loc.Chrome("artist.assignments.new"),
+                _ => throw new ArgumentOutOfRangeException(
+                    nameof(assignment), assignment, "Unknown artist assignment"),
+            },
+            FontSize = 10,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        identity[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var badge = new Border
+        {
+            Padding = new Avalonia.Thickness(5, 2),
+            CornerRadius = new Avalonia.CornerRadius(4),
+            Child = identity,
+        };
+        badge[!Border.BackgroundProperty] =
+            new DynamicResourceExtension("BaeElevatedBrush");
+        return new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnSpacing = 5,
+            Children = { name, badge.WithGridColumn(1) },
+        };
+    }
 }
 
 internal static class ArtistAssignmentGridExtensions

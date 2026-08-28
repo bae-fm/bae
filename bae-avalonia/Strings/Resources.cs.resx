@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Použít značky souborů</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Zadat ručně</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Interpret alba</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Knihovna</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Nový</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Přidat</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Odebrat</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>Otevírat kandidáty bez zvoleného zdroje v</value></data>

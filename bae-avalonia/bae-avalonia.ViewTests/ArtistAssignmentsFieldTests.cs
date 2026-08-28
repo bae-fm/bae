@@ -15,6 +15,68 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ArtistAssignmentsFieldTests
 {
     [AvaloniaFact]
+    public void LinkedAndNewAssignmentsRemainVisiblyDistinct()
+    {
+        var field = Attach(new ArtistAssignmentsField(
+            [
+                new BridgeArtistAssignment.Existing(new BridgeExistingArtist(
+                    "artist-1", "Artist Name", null, null, null)),
+                new BridgeArtistAssignment.New(new BridgeNewArtistSeed(
+                    "Artist Name", null, null, null)),
+            ],
+            new LibraryService(),
+            _ => { }));
+
+        Open(field);
+
+        var labels = Editor(field).GetLogicalDescendants()
+            .OfType<TextBlock>()
+            .Select(text => text.Text)
+            .ToList();
+        Assert.Contains(Loc.Chrome("artist.assignments.library"), labels);
+        Assert.Contains(Loc.Chrome("artist.assignments.new"), labels);
+    }
+
+    [AvaloniaFact]
+    public void SameNameSearchResultsExposeTheirExactLibraryIdentity()
+    {
+        var first = new BridgeExistingArtist(
+            "artist-1", "Artist Name", "Name, Artist", null, null);
+        var second = new BridgeExistingArtist(
+            "artist-2", "Artist Name", "Name, Artist", null, null);
+        IReadOnlyList<BridgeArtistAssignment>? written = null;
+        var field = Attach(new ArtistAssignmentsField(
+            Array.Empty<BridgeArtistAssignment>(),
+            new LibraryService
+            {
+                SearchArtists = _ => Task.FromResult((
+                    true,
+                    ((List<BridgeArtistSearchResult>?)
+                        [new(first, null), new(second, null)],
+                        (string?)null))),
+            },
+            assignments => written = assignments));
+
+        Open(field);
+        Query(field).Text = "Artist";
+        Click(field, Loc.Chrome("action.search"));
+
+        var details = Editor(field).GetLogicalDescendants()
+            .OfType<TextBlock>()
+            .Select(text => text.Text)
+            .ToList();
+        Assert.Contains(details, text => text?.Contains("artist-1") == true);
+        Assert.Contains(details, text => text?.Contains("artist-2") == true);
+
+        Click(field, "artist-2");
+        var selected = Assert.Single(Assert.IsAssignableFrom<
+            IReadOnlyList<BridgeArtistAssignment>>(written));
+        Assert.Equal(
+            "artist-2",
+            Assert.IsType<BridgeArtistAssignment.Existing>(selected).Artist.ArtistId);
+    }
+
+    [AvaloniaFact]
     public void ChoosingASearchResultKeepsTheExistingArtistIdentity()
     {
         var existing = new BridgeExistingArtist(

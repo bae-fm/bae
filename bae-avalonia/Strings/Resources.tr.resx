@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Dosya etiketlerini kullan</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Elle gir</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albüm sanatçısı</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Arşiv</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Yeni</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Ekle</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Kaldır</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>Kaynağı seçilmemiş adayları şurada aç</value></data>

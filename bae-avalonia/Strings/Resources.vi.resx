@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Dùng thẻ của tệp</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Nhập thủ công</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Nghệ sĩ album</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Thư viện</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Mới</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Thêm</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Xóa</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>Mở các mục chưa chọn nguồn trong</value></data>

@@ -231,6 +231,50 @@ extension BridgeArtistAssignment {
         case .new(let seed): seed.name
         }
     }
+
+    var identityLabel: String {
+        switch self {
+        case .existing: String(localized: "Library")
+        case .new: String(localized: "New")
+        }
+    }
+}
+
+/// One assigned artist's name and its source-owned identity kind. The badge
+/// switches on the bridge enum itself, so equal names never imply linkage.
+struct ArtistAssignmentLabel: View {
+    let assignment: BridgeArtistAssignment
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(assignment.displayName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text(assignment.identityLabel)
+                .font(.system(size: 9.5, weight: .medium))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 2)
+                .background(.quaternary, in: Capsule())
+                .fixedSize()
+        }
+    }
+}
+
+/// A library search choice retains its exact library ID beneath the display
+/// name, so otherwise identical result names remain independently selectable.
+struct ArtistSearchResultLabel: View {
+    let artist: BridgeExistingArtist
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(artist.name)
+            Text(verbatim: artist.artistId)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 }
 
 /// Ordered artist choices shared by the library editor and import mapping.
@@ -262,10 +306,7 @@ struct ArtistAssignmentsField: View {
             isPresented = true
         } label: {
             HStack(spacing: 6) {
-                Text(displayText)
-                    .foregroundStyle(hasExplicitArtists ? .primary : .tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                fieldValue
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .semibold))
@@ -281,17 +322,26 @@ struct ArtistAssignmentsField: View {
         }
     }
 
-    private var hasExplicitArtists: Bool {
-        !assignments.isEmpty && !inheritsAlbumArtists
-    }
-
-    private var displayText: String {
+    @ViewBuilder
+    private var fieldValue: some View {
         if inheritsAlbumArtists {
-            return String(localized: "Album artist")
+            Text("Album artist")
+                .foregroundStyle(.tertiary)
         }
-        let names = assignments.map(\.displayName)
-        return names.isEmpty
-            ? placeholder : ListFormatter.localizedString(byJoining: names)
+        else if assignments.isEmpty {
+            Text(placeholder)
+                .foregroundStyle(.tertiary)
+        }
+        else {
+            HStack(spacing: 8) {
+                ForEach(Array(assignments.enumerated()), id: \.offset) {
+                    _,
+                    assignment in
+                    ArtistAssignmentLabel(assignment: assignment)
+                }
+            }
+            .lineLimit(1)
+        }
     }
 
     private var editor: some View {
@@ -304,8 +354,7 @@ struct ArtistAssignmentsField: View {
                 index,
                 assignment in
                 HStack(spacing: 8) {
-                    Text(assignment.displayName)
-                        .lineLimit(1)
+                    ArtistAssignmentLabel(assignment: assignment)
                     Spacer(minLength: 0)
                     Button {
                         var next = assignments
@@ -339,13 +388,7 @@ struct ArtistAssignmentsField: View {
                     onChange(assignments + [.existing(artist: result.artist)])
                     query = ""
                 } label: {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(result.artist.name)
-                        Text(verbatim: artistDetail(result.artist))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ArtistSearchResultLabel(artist: result.artist)
                 }
                 .buttonStyle(.plain)
             }
@@ -399,13 +442,6 @@ struct ArtistAssignmentsField: View {
             errorMessage = error.displayLine
         }
     }
-
-    private func artistDetail(_ artist: BridgeExistingArtist) -> String {
-        artist.sortName
-            ?? artist.musicbrainzArtistId
-            ?? artist.discogsArtistId
-            ?? artist.artistId
-    }
 }
 
 #if DEBUG
@@ -420,6 +456,6 @@ struct ArtistAssignmentsField: View {
         .frame(width: 640, height: 520)
         .background(Theme.background)
         .preferredColorScheme(.dark)
-        .environment(Library.stub())
+        .environment(PreviewData.artistAssignmentsLibrary())
     }
 #endif

@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ఫైల్ ట్యాగ్‌లను ఉపయోగించు</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>మాన్యువల్‌గా నమోదు చేయండి</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ఆల్బమ్ కళాకారుడు</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>లైబ్రరీ</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>కొత్తది</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>జోడించు</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>తీసివేయి</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>మూలం ఎంచుకోని అభ్యర్థులను ఇందులో తెరవండి</value></data>

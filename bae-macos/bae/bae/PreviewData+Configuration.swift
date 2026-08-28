@@ -72,7 +72,10 @@
         ) -> BridgeRawReleaseEdit {
             BridgeRawReleaseEdit(
                 albumTitle: "Album Title",
-                albumArtistAssignments: [newArtist("Artist Name")],
+                albumArtistAssignments: [
+                    existingArtist("Artist Name", artistId: "artist-1"),
+                    newArtist("New Artist Name"),
+                ],
                 pressing: BridgeRawPressingEdit(
                     year: "1997",
                     format: "CD",
@@ -110,6 +113,48 @@
                     discogsArtistId: nil
                 )
             )
+        }
+
+        static func existingArtist(
+            _ name: String,
+            artistId: String
+        ) -> BridgeArtistAssignment {
+            .existing(
+                artist: BridgeExistingArtist(
+                    artistId: artistId,
+                    name: name,
+                    sortName: nil,
+                    musicbrainzArtistId: nil,
+                    discogsArtistId: nil
+                )
+            )
+        }
+
+        static func artistAssignmentsLibrary() -> Library {
+            Library(searchArtists: { _ in
+                [
+                    BridgeArtistSearchResult(
+                        artist: BridgeExistingArtist(
+                            artistId: "artist-1",
+                            name: "Artist Name",
+                            sortName: "Name, Artist",
+                            musicbrainzArtistId: nil,
+                            discogsArtistId: nil
+                        ),
+                        image: nil
+                    ),
+                    BridgeArtistSearchResult(
+                        artist: BridgeExistingArtist(
+                            artistId: "artist-2",
+                            name: "Artist Name",
+                            sortName: "Name, Artist",
+                            musicbrainzArtistId: nil,
+                            discogsArtistId: nil
+                        ),
+                        image: nil
+                    ),
+                ]
+            })
         }
     }
 #endif

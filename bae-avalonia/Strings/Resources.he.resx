@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>שימוש בתגיות הקבצים</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>הזנה ידנית</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>אמן האלבום</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>ספרייה</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>חדש</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>הוסף</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>הסר</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>פתיחת מועמדים ללא מקור שנבחר ב־</value></data>

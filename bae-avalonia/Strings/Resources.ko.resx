@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>파일 태그 사용</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>수동으로 입력</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>앨범 아티스트</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>라이브러리</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>신규</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>추가</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>제거</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>소스를 선택하지 않은 후보를 다음에서 열기</value></data>

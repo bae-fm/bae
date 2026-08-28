@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Використати теги файлів</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Ввести вручну</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Виконавець альбому</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>Медіатека</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>Новий</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Додати</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Видалити</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>Відкривати кандидати без вибраного джерела у</value></data>

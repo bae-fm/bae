@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>使用文件标签</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>手动输入</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>专辑艺术家</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>资料库</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>新建</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>添加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>在以下模式中打开未选择来源的候选项</value></data>

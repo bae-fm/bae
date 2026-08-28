@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ഫയൽ ടാഗുകൾ ഉപയോഗിക്കുക</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>മാനുവലായി നൽകുക</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റ്</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>ലൈബ്രറി</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>പുതിയത്</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>ചേർക്കുക</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>ഉറവിടം തിരഞ്ഞെടുത്തിട്ടില്ലാത്ത ഇനങ്ങൾ ഇതിൽ തുറക്കുക</value></data>

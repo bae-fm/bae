@@ -463,6 +463,8 @@
   <data name="import.metadata.use_file_tags" xml:space="preserve"><value>فائل ٹیگز استعمال کریں</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>دستی درج کریں</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>البم فنکار</value></data>
+  <data name="artist.assignments.library" xml:space="preserve"><value>لائبریری</value></data>
+  <data name="artist.assignments.new" xml:space="preserve"><value>نیا</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>شامل کریں</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>ہٹائیں</value></data>
   <data name="settings.import.open_unseeded" xml:space="preserve"><value>بغیر منتخب ماخذ والے امیدواروں کو اس میں کھولیں</value></data>
