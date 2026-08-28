@@ -1,9 +1,9 @@
 ---
 title: Import
-description: Spárujte své složky se skutečnými vydáními
+description: Vyberte, jak každá složka dodává svá metadata importu
 ---
 
-Složka ripů o sobě ví skoro nic. Vydání, ze kterého pochází, lisování, vydavatelství, kredity, kde stopa 12 skutečně končí: to všechno žije v databázích jako MusicBrainz a Discogs, ne v názvech vašich souborů. Import je způsob, jak bae propojí obojí: ukážete jí hudbu, ona zjistí, které vydání každá složka je, a knihovna složku zapíše jako toto vydání.
+Složka poskytuje audio a další soubory pro import. Můžete si vybrat, zda jeho upravitelná metadata začínají online vydáním, vlastními tagy souborů nebo prázdným formulářem.
 
 Import probíhá na desktopu (macOS, Windows). Vaše soubory se čtou, nikdy nemění: bae nic nepřesouvá, nepřejmenovává, nepřepisuje tagy ani znovu nekóduje. Kde soubory žijí po importu, popisuje [Úložiště a offline](/cs/guide/storage).
 
@@ -22,32 +22,23 @@ Sken rozpoznává vydání ve tvarech, jaké ripy skutečně mívají:
 
 bae importuje formáty, které přehrává: FLAC, MP3, APE, ALAC a AAC v `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack a DSD (`.dsf`/`.dff`). Obrázky a dokumenty (CUE sheety, logy ripu, textové soubory) ve složce rozpozná a ponechá u vydání.
 
-## Identifikace vydání
+## Vyberte zdroj metadat
 
-Vyberte kandidáta a bae ho začne identifikovat. Místo hádání z tagů přečte důkazy ve složce a každý z nich vyhledá:
+Každý kandidát nabízí tři rovnocenné zdroje metadat: **Vyhledání**, **Značky souborů** a **Ručně**. Otevření zdroje pouze zobrazí příslušnou obrazovku; zdroj, který kandidát použije při importu, se tím nezmění. Zdroj se stane základem metadat až tehdy, když výslovně zvolíte konkrétní vydání, **Použít značky souborů** nebo **Zadat ručně**.
 
-- **Disc ID.** Otisk přesného rozložení stop na CD, spočítaný z logu ripu nebo z CUE sheetu. Když se shoduje, identifikuje přesnou edici CD.
-- **Čárový kód.** Přečtený ze skenů obalu ve složce pomocí rozpoznávání textu nebo z CUE sheetu.
-- **Katalogová čísla a text.** Katalogová čísla nalezená na obrázcích a v názvech souborů a složek, použitá ke zúžení výsledků.
+### Vyhledání
 
-Signály se vyhledávají proti MusicBrainz a Discogs současně a výsledky se křížově kontrolují. Každý signál se objeví jako štítek nad výsledky: vidíte, co se našlo, odkud to pochází (najetím zobrazíte původ: disc TOC, CUE sheet, sken obalu, název složky) a můžete jednotlivé signály vypnout, pokud některý zavádí.
+Vyhledávání je jediný zdroj, který identifikuje vydání. Čte ID disku z rip logu nebo listu CUE, rozpoznává čárové kódy a text katalogu, dotazuje se MusicBrainz a Discogs a porovnává výsledky. Automatická identifikace používá stejnou cestu. Spustí se jen tehdy, když je zapnuté **Automaticky identifikovat kandidáty ve Vyhledání** a výchozí režim se vyhodnotí jako Vyhledání. Výslovné otevření Vyhledání a spuštění hledání funguje bez ohledu na toto nastavení. Ve Značkách souborů ani v Ručním režimu se tato práce nespouští.
 
-Tři výsledky:
+### Značky souborů
 
-- **Nalezeno.** Důkazy se shodují na jedné skupině vydání. Přesné lisování vyberete z jejího seznamu.
-- **Konflikt.** Dva signály ukazují na různá vydání, třeba když se Disc ID a čárový kód neshodnou. bae zobrazí obě strany a vy zvolíte, které věřit, nebo signál ignorujete.
-- **Nic nenalezeno.** Hledejte ručně: interpret a album, katalogové číslo nebo čárový kód, proti jedné nebo druhé databázi. Text rozpoznaný z obrázků se nabízí jako automatické doplňování.
+Značky souborů čte vložené audio tagy a metadata CUE pouze tehdy, když je otevřete a požádáte bae, aby je přečetl. Prohlédněte si náhled a poté vyberte **Použít značky souborů** pro uložení přesného snímku jako výchozí. Import se nezdaří před zápisem do knihovny, pokud se kandidátské nebo pozorované zvukové soubory po náhledu změní.
 
-Můžete také **skip identifying** a importovat jako neznámé vydání. bae pak použije vložené tagy vašich souborů jako zdroj názvů a můžete znovu identifikovat později, až vydání bude v databázi nebo budete mít lepší důkazy.
+### Ručně
 
-## Přesná nebo přibližná shoda
+Manuál nečte žádné štítky, důkazy složek ani online poskytovatele. Vyberte **Zadat ručně** a začněte s prázdnou editovatelnou verzí a fyzickým rozložením stopy kandidáta.
 
-Když vyberete shodu, bae ji porovná s vašimi soubory a upozorní na odlišný počet stop. Potom určíte, jaká shoda to je:
-
-- **Exact**: vaše soubory jsou toto lisování.
-- **Jen metadata**: správné album, ale ne nutně přesně toto lisování. bae použije metadata a zapamatuje si, že lisování je přibližné.
-
-Pokud už vydání ve vaší knihovně je, nebo je tam jiné lisování stejného alba, bae vás před importem duplicity upozorní.
+V nastavení importu určuje **Otevřít kandidáty bez zdroje v**, která obrazovka se zobrazí jako první. **Naposledy použité** znamená poslední zdroj, který jste výslovně otevřeli. Toto nastavení vybírá obrazovku, nikoli zdroj metadat; importovaný zdroj se potvrdí až výslovnou akcí v daném zdroji.
 
 ## Potvrzení a import
 

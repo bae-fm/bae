@@ -1,9 +1,9 @@
 ---
 title: Pipeline di importazione
-description: Scansione, prove, triangolazione e commit atomico
+description: Scansione, seed di metadati e commit atomico
 ---
 
-L'importazione trasforma una cartella di file in una voce di catalogo accurata per release senza modificare un byte dei file. Questa pagina è la pipeline dietro il flusso descritto nella [guida d'uso](/it/guide/importing).
+L'importazione trasforma una cartella di file in una voce di catalogo senza modificare un byte dei file. Questa pagina è la pipeline dietro il flusso descritto nella [guida all'uso](/it/guide/importing).
 
 ## Scansione
 
@@ -11,17 +11,25 @@ Le cartelle osservate sono monitorate dagli eventi del file system della piattaf
 
 Un foglio CUE trasforma un'immagine audio in una lista tracce. Il parser gestisce pregap e postgap, performer e ISRC per traccia, e sia immagini a file singolo sia layout CUE con un file per traccia. I confini delle tracce vengono convertiti da frame CUE (1/75 di secondo) a posizioni di campione esatte, che poi diventano le finestre di byte e campioni usate dalla riproduzione.
 
-## Prove, non tag
+## Semi di metadati
 
-L'identificazione legge tre tipi di prove dalla cartella in un solo passaggio:
+Ogni candidato ha un seed di metadati esplicito: una versione esterna scelta in **Ricerca**, uno snapshot archiviato di **Tag file** o una voce **Manuale**. Cambiare superficie non riscrive quel seme.
 
-- un **disc ID**, l'impronta MusicBrainz della disposizione esatta delle tracce di un CD, calcolata da un log di rip o dal foglio CUE;
-- **codici a barre**, decodificati dalle scansioni della grafica dal framework di visione della piattaforma e letti dai campi catalogo CUE;
-- **testo**: numeri di catalogo e testo libero da OCR della grafica, nomi di cartelle e file, e file di testo nel rip.
+### Ricerca
 
-I tag audio incorporati non sono deliberatamente prove: descrivono ciò che credeva chi ha taggato, non quale sia la stampa. (Alimentano i metadati di ripiego quando l'utente importa una release come sconosciuta.)
+La ricerca è l'unico percorso che estrae un ID disco, riconosce i codici a barre e il testo del catalogo, interroga i fornitori e abbina i risultati. La scansione in background esegue questo percorso solo quando la ricerca automatica è abilitata e l'impostazione predefinita configurata si risolve in Ricerca. Un'azione Ricerca esplicita può eseguirla indipendentemente da tale impostazione. L'apertura dei tag dei file o del manuale non avvia mai l'estrazione, le query del provider o la corrispondenza.
 
-Disc ID e codice a barre vengono cercati in parallelo, il Disc ID su MusicBrainz, il codice a barre su MusicBrainz e Discogs insieme, e i risultati vengono triangolati: i risultati che concordano su un gruppo di release convergono, le corrispondenze di numero di catalogo restringono la lista delle stampe, e il disaccordo tra segnali emerge come conflitto esplicito per l'utente invece che come ipotesi silenziosa. Ogni risultato porta la sua provenienza (trovato per Disc ID, per codice a barre, corrispondenza catalogo) così la UI può dire perché viene proposta una riga.
+I tag audio incorporati non sono prove di ricerca: descrivono ciò in cui credeva un tagger, non ciò che è stato premuto. I risultati della ricerca riportano la loro provenienza in modo che l'interfaccia possa spiegare perché viene offerto ciascun risultato.
+
+### Tag dei file
+
+I tag dei file leggono pigramente i tag audio incorporati e i metadati CUE. L'anteprima memorizza un'istantanea contrassegnata con la generazione della scansione del candidato, la revisione della modifica del file e i file audio osservati. Scegliendo **Utilizza tag file** si seleziona l'istantanea. Il commit consuma la stessa istantanea e fallisce prima che la libreria scriva se il suo timbro o le sue osservazioni sono cambiati; non legge silenziosamente una risposta diversa.
+
+### Manuale
+
+Il manuale non esegue input o output di metadati. Scegliendo **Inserisci manualmente** si crea una versione modificabile vuota mantenendo il layout della traccia fisica scansionata.
+
+L'impostazione **Apri candidati senza seed in** seleziona la superficie iniziale per i candidati senza seed. Le sue scelte fisse sono Ricerca, Tag file e Manuale; **Ultimo utilizzo** si risolve nell'ultima modalità scelta esplicitamente dall'utente. La presentazione rimane separata dal seme immagazzinato.
 
 ## Fonti
 

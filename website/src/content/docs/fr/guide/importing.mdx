@@ -1,9 +1,9 @@
 ---
 title: Importation
-description: Associer vos dossiers à de vraies sorties
+description: Choisissez comment chaque dossier fournit ses métadonnées d'importation
 ---
 
-Un dossier de rips sait très peu de choses sur lui-même. La sortie dont il vient, le pressage, le label, les crédits, l’endroit où la piste 12 se termine réellement : tout cela vit dans des bases de données comme MusicBrainz et Discogs, pas dans vos noms de fichiers. L’importation est la manière dont bae relie les deux : vous lui indiquez votre musique, il détermine quelle sortie correspond à chaque dossier, et la bibliothèque enregistre le dossier comme cette sortie.
+Un dossier fournit les fichiers audio et autres pour une importation. Vous choisissez si ses métadonnées modifiables commencent par une version en ligne, les propres balises des fichiers ou un formulaire vierge.
 
 L’importation se fait sur ordinateur (macOS, Windows). Vos fichiers sont lus, jamais modifiés : bae ne déplace, ne renomme, ne retague et ne réencode rien. Consultez [Stockage et hors ligne](/fr/guide/storage) pour savoir où les fichiers vivent après l’importation.
 
@@ -22,32 +22,23 @@ Une analyse reconnaît les sorties dans les formes que prennent réellement les 
 
 bae importe les formats qu’il lit : FLAC, MP3, APE, ALAC et AAC dans `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack et DSD (`.dsf`/`.dff`). Les illustrations et documents (fiches CUE, journaux de rip, fichiers texte) dans le dossier sont reconnus et conservés avec la sortie.
 
-## Identifier une sortie
+## Choisissez une source de métadonnées
 
-Sélectionnez un candidat et bae commence à l’identifier. Au lieu de deviner à partir des tags, il lit les indices dans le dossier et recherche chaque élément :
+Chaque candidat propose trois sources de métadonnées équivalentes : **Recherche**, **Tags des fichiers** et **Manuel**. Ouvrir une source affiche uniquement la vue correspondante ; cela ne change pas la source utilisée lors de l'importation. Une source devient la base des métadonnées seulement lorsque vous choisissez explicitement un pressage précis, **Utiliser les tags des fichiers** ou **Entrer manuellement**.
 
-- **Disc ID.** Une empreinte de la disposition exacte des pistes du CD, calculée depuis le journal de rip ou la fiche CUE. Quand elle correspond, elle identifie l’édition CD précise.
-- **Code-barres.** Lu sur les scans de pochette dans le dossier à l’aide de la reconnaissance de texte, ou depuis la fiche CUE.
-- **Numéros de catalogue et texte.** Numéros de catalogue trouvés sur les illustrations et dans les noms de fichiers et de dossiers, utilisés pour réduire les résultats.
+### Recherche
 
-Les signaux sont recherchés en même temps dans MusicBrainz et Discogs, puis les résultats sont vérifiés entre eux. Chaque signal apparaît sous forme de badge au-dessus des résultats : vous pouvez voir ce qui a été trouvé, d’où cela vient (survolez pour voir l’origine : table des matières du disque, fiche CUE, scan de pochette, nom de dossier), et désactiver des signaux individuels si l’un d’eux induit en erreur.
+La recherche est la seule source qui identifie une version. Il lit un ID de disque à partir d'un journal d'extraction ou d'une feuille CUE, reconnaît les codes-barres et le texte du catalogue, interroge MusicBrainz et Discogs et fait correspondre les résultats. L'identification automatique utilise ce même chemin de recherche. Il s'exécute uniquement lorsque **Identifier automatiquement les candidats à la recherche** est activé et que la surface par défaut est résolue en Recherche. Entrer Recherche et lancer une recherche peut l’exécuter explicitement quel que soit ce paramètre. Aucun de ces travaux ne s'exécute dans les balises de fichier ou dans le manuel.
 
-Trois résultats possibles :
+### Tags des fichiers
 
-- **Trouvé.** Les indices s’accordent sur un groupe de sorties. Vous choisissez le pressage exact dans sa liste.
-- **Conflit.** Deux signaux pointent vers des sorties différentes, par exemple si le Disc ID et le code-barres ne sont pas d’accord. bae affiche les deux côtés et vous choisissez lequel croire, ou ignorez un signal.
-- **Rien trouvé.** Recherchez à la main : artiste et album, numéro de catalogue ou code-barres, dans l’une ou l’autre base de données. Le texte reconnu dans les illustrations est proposé en saisie semi-automatique.
+Tags des fichiers lit les balises audio intégrées et les métadonnées CUE uniquement lorsque vous l'ouvrez et demandez à bae de les lire. Examinez l'aperçu, puis sélectionnez **Utiliser les balises de fichier** pour stocker cet instantané exact en tant que graine. L'importation échoue avant l'écriture dans la bibliothèque si les fichiers audio candidats ou observés changent après l'aperçu.
 
-Vous pouvez aussi **ignorer l’identification** et importer comme sortie inconnue. bae se replie alors sur les tags intégrés de vos fichiers pour les noms, et vous pouvez réidentifier plus tard, quand la sortie existe dans une base de données ou quand vous avez de meilleurs indices.
+### Manuel
 
-## Exact ou approximatif
+Le manuel ne lit aucune balise, aucune preuve de dossier ou aucun fournisseur en ligne. Sélectionnez **Entrer manuellement** pour commencer avec une version modifiable vierge et la disposition physique de la piste du candidat.
 
-Quand vous sélectionnez une correspondance, bae la compare à vos fichiers et signale une différence de nombre de pistes. Vous déclarez ensuite la nature de la correspondance :
-
-- **Exact** : vos fichiers sont ce pressage.
-- **Métadonnées seulement** : le bon album, mais pas nécessairement ce pressage exact. bae utilise les métadonnées et mémorise que le pressage est approximatif.
-
-Si la sortie est déjà dans votre bibliothèque, ou si un autre pressage du même album l’est, bae vous le signale avant que vous n’importiez un doublon.
+Dans les paramètres d'importation, **Ouvrir les candidats sans source dans** choisit la vue affichée en premier. **Dernière utilisation** correspond à la dernière source que vous avez ouverte explicitement. Ce paramètre choisit une vue, pas la source des métadonnées ; une action explicite dans la source confirme toujours ce que l'importation utilisera.
 
 ## Confirmer et importer
 

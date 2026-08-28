@@ -1,9 +1,9 @@
 ---
 title: Pipeline nhập
-description: Quét, bằng chứng, đối chiếu tam giác và commit nguyên tử
+description: Quét, nguồn siêu dữ liệu và ghi nguyên tử
 ---
 
-Nhập biến một thư mục tệp thành một mục catalog đúng theo bản phát hành mà không sửa một byte nào của tệp. Trang này là pipeline phía sau luồng được mô tả trong [hướng dẫn sử dụng](/vi/guide/importing).
+Nhập biến một thư mục tệp thành một mục trong danh mục mà không sửa một byte nào của tệp. Trang này mô tả quy trình phía sau luồng trong [hướng dẫn sử dụng](/vi/guide/importing).
 
 ## Quét
 
@@ -11,17 +11,25 @@ Thư mục được theo dõi được giám sát bằng sự kiện hệ thốn
 
 Một CUE sheet biến một ảnh âm thanh thành danh sách track. Parser xử lý pregap và postgap, performer và ISRC theo từng track, cả ảnh một tệp và bố cục CUE một tệp mỗi track. Ranh giới track chuyển từ frame CUE (1/75 giây) sang vị trí sample chính xác, thứ sau đó trở thành các cửa sổ byte và sample mà phát lại dùng.
 
-## Bằng chứng, không phải thẻ
+## Nguồn siêu dữ liệu
 
-Nhận diện đọc ba loại bằng chứng từ thư mục trong một lượt:
+Mỗi ứng viên có một nguồn siêu dữ liệu được chọn rõ ràng: một bản phát hành bên ngoài được chọn trong **Tra cứu**, một bản chụp **Thẻ tệp** đã lưu, hoặc **Thủ công**. Chuyển giữa các chế độ hiển thị không ghi đè nguồn đã chọn.
 
-- một **disc ID**, vân tay MusicBrainz của bố cục track chính xác của CD, tính từ log rip hoặc từ CUE sheet;
-- **mã vạch**, giải mã từ ảnh quét artwork bằng framework thị giác của nền tảng và đọc từ trường catalog của CUE;
-- **văn bản**: số catalog và văn bản tự do từ OCR artwork, tên thư mục và tệp, và tệp văn bản trong bản rip.
+### Tra cứu
 
-Tag âm thanh nhúng cố ý không phải bằng chứng: chúng mô tả điều một trình tag tin, không phải lần phát hành là gì. (Chúng cấp siêu dữ liệu dự phòng khi người dùng nhập một bản phát hành như chưa biết.)
+Tra cứu là đường duy nhất tính Disc ID, nhận dạng mã vạch và văn bản danh mục, truy vấn nhà cung cấp và đối chiếu kết quả. Quét nền chỉ chạy đường này khi tra cứu tự động được bật và chế độ mặc định được phân giải thành Tra cứu. Một thao tác Tra cứu rõ ràng vẫn có thể chạy nó bất kể cài đặt đó. Mở Thẻ tệp hoặc Thủ công không bao giờ bắt đầu trích xuất, truy vấn nhà cung cấp hay đối chiếu.
 
-Disc ID và mã vạch được tra cứu đồng thời, disc ID trên MusicBrainz, mã vạch trên cả MusicBrainz và Discogs cùng lúc, và kết quả được đối chiếu tam giác: kết quả đồng thuận trên một nhóm bản phát hành hội tụ, kết quả khớp số catalog thu hẹp danh sách lần phát hành, và bất đồng giữa tín hiệu hiện ra như xung đột rõ ràng cho người dùng thay vì đoán tốt nhất im lặng. Mỗi kết quả mang nguồn gốc của nó (tìm bằng disc ID, bằng mã vạch, khớp catalog) để giao diện có thể nói vì sao một hàng được đưa ra.
+Thẻ âm thanh nhúng không phải bằng chứng Tra cứu: chúng mô tả điều trình gắn thẻ tin, không phải lần ép đĩa thực tế. Kết quả Tra cứu giữ nguồn gốc để giao diện giải thích vì sao từng kết quả được đưa ra.
+
+### Thẻ của tệp
+
+Thẻ tệp chỉ đọc thẻ âm thanh nhúng và siêu dữ liệu CUE khi cần. Bản xem trước lưu một bản chụp gắn với thế hệ quét, phiên bản chỉnh sửa tệp và các tệp âm thanh đã quan sát của ứng viên. Chọn **Dùng Thẻ tệp** sẽ chọn bản chụp đó. Khi ghi, bae dùng chính bản chụp này và dừng trước khi ghi vào thư viện nếu dấu phiên bản hoặc các quan sát đã thay đổi; bae không âm thầm đọc một câu trả lời khác.
+
+### Thủ công
+
+Thủ công không đọc hay ghi siêu dữ liệu từ nguồn nào. Chọn **Nhập thủ công** tạo một bản phát hành trống có thể chỉnh sửa nhưng vẫn giữ bố cục track vật lý đã quét.
+
+Cài đặt **Mở ứng viên chưa chọn nguồn trong** quyết định chế độ hiển thị ban đầu cho ứng viên chưa có nguồn. Các lựa chọn cố định là Tra cứu, Thẻ tệp và Thủ công; **Dùng gần nhất** được phân giải thành chế độ cuối cùng người dùng đã chọn rõ ràng. Chế độ hiển thị vẫn tách biệt với nguồn đã lưu.
 
 ## Nguồn
 

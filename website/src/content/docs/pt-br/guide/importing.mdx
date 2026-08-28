@@ -1,9 +1,9 @@
 ---
 title: Importação
-description: Associe suas pastas a lançamentos reais
+description: Escolha como cada pasta fornece seus metadados de importação
 ---
 
-Uma pasta de rips sabe quase nada sobre si mesma. O lançamento de onde veio, a prensagem, o selo, os créditos, onde a faixa 12 realmente termina: tudo isso vive em bancos de dados como MusicBrainz e Discogs, não nos nomes dos seus arquivos. Importação é como bae conecta os dois: você aponta para sua música, ele descobre qual lançamento cada pasta é, e a biblioteca registra a pasta como esse lançamento.
+Uma pasta fornece o áudio e outros arquivos para uma importação. Você escolhe se seus metadados editáveis ​​começam com um lançamento online, com as próprias tags dos arquivos ou com um formulário em branco.
 
 A importação acontece no desktop (macOS, Windows). Seus arquivos são lidos, nunca alterados: bae não move, renomeia, muda tags nem recodifica nada. Veja [Armazenamento e offline](/pt-br/guide/storage) para saber onde os arquivos vivem depois da importação.
 
@@ -22,32 +22,23 @@ Um escaneamento reconhece lançamentos nos formatos que rips realmente assumem:
 
 bae importa os formatos que reproduz: FLAC, MP3, APE, ALAC e AAC em `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack e DSD (`.dsf`/`.dff`). Arte e documentos (folhas CUE, logs de rip, arquivos de texto) na pasta são reconhecidos e mantidos com o lançamento.
 
-## Identificando um lançamento
+## Escolha uma fonte de metadados
 
-Selecione um candidato e bae começa a identificá-lo. Em vez de adivinhar por tags, ele lê as evidências na pasta e consulta cada peça:
+Cada candidato oferece três fontes de metadados iguais: **Pesquisa**, **Tags de arquivo** e **Manual**. Abrir uma fonte mostra apenas sua superfície; isso não altera a fonte que o candidato irá importar. Uma fonte se torna a semente de metadados do candidato somente quando você escolhe explicitamente uma prensagem, seleciona **Usar tags de arquivo** ou seleciona **Inserir manualmente**.
 
-- **Disc ID.** Uma impressão digital do layout exato de faixas do CD, calculada a partir do log de rip ou da folha CUE. Quando corresponde, identifica a edição precisa do CD.
-- **Código de barras.** Lido de scans de capa na pasta usando reconhecimento de texto, ou da folha CUE.
-- **Números de catálogo e texto.** Números de catálogo encontrados em arte e em nomes de arquivos e pastas, usados para estreitar resultados.
+### Busca
 
-Os sinais são consultados contra MusicBrainz e Discogs ao mesmo tempo, e os resultados são conferidos entre si. Cada sinal aparece como uma etiqueta acima dos resultados: você pode ver o que foi encontrado, de onde veio (passe o mouse para a origem: TOC do disco, folha CUE, scan de capa, nome da pasta), e desligar sinais individuais se algum enganar.
+Busca é a única fonte que identifica uma versão. Ele lê um ID de disco de um registro de extração ou folha CUE, reconhece códigos de barras e texto de catálogo, consulta MusicBrainz e Discogs e compara os resultados. A identificação automática usa esse mesmo caminho de pesquisa. Ele é executado somente quando **Identificar candidatos de pesquisa automaticamente** está habilitado e a superfície padrão resolve para Pesquisa. Entrar em Pesquisa e iniciar uma pesquisa pode executá-la explicitamente, independentemente dessa configuração. Nenhum deste trabalho é executado em tags de arquivo ou manual.
 
-Três resultados:
+### Tags dos arquivos
 
-- **Encontrado.** A evidência concorda em um grupo de lançamentos. Você escolhe a prensagem exata na lista.
-- **Conflito.** Dois sinais apontam para lançamentos diferentes, por exemplo o Disc ID e o código de barras discordam. bae mostra os dois lados e você escolhe em qual confiar, ou ignora um sinal.
-- **Nada encontrado.** Busque manualmente: artista e álbum, número de catálogo ou código de barras, contra qualquer banco de dados. Texto reconhecido da arte é oferecido como autocompletar.
+Tags dos arquivos lê tags de áudio incorporadas e metadados CUE somente quando você o abre e pede para bae lê-los. Revise a visualização e selecione **Usar tags de arquivo** para armazenar esse instantâneo exato como a semente. A importação falhará antes de gravar na biblioteca se os arquivos de áudio candidatos ou observados mudarem após a visualização.
 
-Você também pode **pular a identificação** e importar como um lançamento desconhecido. bae então recorre às tags embutidas dos seus arquivos para nomes, e você pode reidentificar depois, quando o lançamento existir em um banco de dados ou você tiver evidência melhor.
+### Manual
 
-## Exato ou aproximado
+O manual não lê tags, evidências de pasta ou provedores on-line. Selecione **Inserir manualmente** para começar com uma versão editável em branco e o layout físico da pista do candidato.
 
-Quando você seleciona uma correspondência, bae a confere contra seus arquivos e sinaliza divergência na contagem de faixas. Você então declara o que a correspondência é:
-
-- **Exato**: seus arquivos são esta prensagem.
-- **Só metadados**: álbum certo, mas não necessariamente esta prensagem exata. bae usa os metadados e lembra que a prensagem é aproximada.
-
-Se o lançamento já estiver na sua biblioteca, ou outra prensagem do mesmo álbum estiver, bae avisa antes de você importar uma duplicata.
+Nas configurações de importação, **Abrir candidatos não propagados em** escolhe qual superfície um candidato não propagado abre primeiro. **Último uso** resolve para a última fonte que você abriu explicitamente. Esta configuração escolhe uma superfície, não uma semente; a ação de origem explícita ainda confirma o que a importação usará.
 
 ## Confirmar e importar
 

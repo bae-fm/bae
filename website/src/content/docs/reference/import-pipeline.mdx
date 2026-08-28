@@ -1,6 +1,6 @@
 ---
 title: Import pipeline
-description: Scanning, evidence, triangulation, and the atomic commit
+description: Scanning, metadata seeds, and the atomic commit
 ---
 
 Import turns a folder of files into a release-accurate catalog entry without modifying a byte of the files. This page is the pipeline behind the flow described in the [use guide](/guide/importing).
@@ -11,17 +11,33 @@ Watched folders are monitored by the platform's file-system events, debounced, a
 
 A CUE sheet turns one audio image into a track list. The parser handles pregaps and postgaps, per-track performers and ISRCs, and both single-file images and one-file-per-track CUE layouts. Track boundaries convert from CUE frames (1/75th of a second) to exact sample positions, which later become the byte and sample windows playback uses.
 
-## Evidence, not tags
+## Metadata seeds
 
-Identification reads three kinds of evidence out of the folder in one pass:
+Each candidate has one explicit metadata seed: an external release chosen in **Lookup**, a stored **File Tags** snapshot, or **Manual** entry. Switching surfaces does not rewrite that seed.
+
+### Lookup
+
+Lookup is the only path that runs identification. It reads three kinds of evidence out of the folder in one pass:
 
 - a **disc ID**, the MusicBrainz fingerprint of a CD's exact track layout, computed from a rip log or from the CUE sheet;
 - **barcodes**, decoded from artwork scans by the platform's vision framework and read from CUE catalog fields;
 - **text**: catalog numbers and free text from artwork OCR, folder and file names, and text files in the rip.
 
-Embedded audio tags are deliberately not evidence: they describe what a tagger believed, not what the pressing is. (They seed the fallback metadata when the user imports a release as unknown.)
+Embedded audio tags are deliberately not Lookup evidence: they describe what a tagger believed, not what the pressing is.
 
 Disc ID and barcode are looked up concurrently, the disc ID against MusicBrainz, the barcode against MusicBrainz and Discogs at once, and the results are triangulated: results that agree on a release group converge, catalog-number matches narrow the pressing list, and disagreement between signals surfaces as an explicit conflict for the user rather than a silent best guess. Every result carries its provenance (found by disc ID, by barcode, catalog match) so the UI can say why a row is being offered.
+
+The background sweep runs this path only when automatic Lookup is enabled and the configured default resolves to Lookup. An explicit Lookup action can run it regardless of that setting. Opening File Tags or Manual never starts extraction, provider queries, or matching.
+
+### File Tags
+
+File Tags reads embedded audio tags and CUE metadata lazily. The preview stores a snapshot stamped with the candidate's scan generation, file-edit revision, and observed audio files. Choosing **Use File Tags** selects that snapshot. Commit consumes the same snapshot and fails before library writes if its stamp or observations changed; it does not silently read a different answer.
+
+### Manual
+
+Manual performs no metadata I/O. Choosing **Enter Manually** creates a blank editable release while retaining the scanned physical track layout.
+
+The **Open unseeded candidates in** setting selects the initial surface for candidates without a seed. Its fixed choices are Lookup, File Tags, and Manual; **Last Used** resolves to the last mode explicitly chosen by the user. Presentation remains separate from the stored seed.
 
 ## Sources
 

@@ -1,9 +1,9 @@
 ---
 title: Importing
-description: Match your folders to real releases
+description: Choose how each folder supplies its import metadata
 ---
 
-A folder of rips knows almost nothing about itself. The release it came from, the pressing, the label, the credits, where track 12 actually ends: all of that lives in databases like MusicBrainz and Discogs, not in your filenames. Importing is how bae connects the two: you point it at your music, it works out which release each folder is, and the library records the folder as that release.
+A folder supplies the audio and other files for an import. You choose whether its editable metadata begins with an online release, the files' own tags, or a blank form.
 
 Importing happens on desktop (macOS, Windows). Your files are read, never changed: bae does not move, rename, retag, or re-encode anything. See [Storage and offline](/guide/storage) for where files live after import.
 
@@ -22,9 +22,13 @@ A scan recognizes releases in the shapes rips actually take:
 
 bae imports the formats it plays: FLAC, MP3, APE, ALAC and AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack, and DSD (`.dsf`/`.dff`). Artwork and documents (CUE sheets, rip logs, text files) in the folder are recognized and kept with the release.
 
-## Identifying a release
+## Choose a metadata source
 
-Select a candidate and bae starts identifying it. Rather than guessing from tags, it reads the evidence in the folder and looks each piece up:
+Every candidate offers three equal metadata sources: **Lookup**, **File Tags**, and **Manual**. Opening a source only shows its surface; it does not change the source the candidate will import. A source becomes the candidate's metadata seed only when you explicitly choose a pressing, select **Use File Tags**, or select **Enter Manually**.
+
+### Lookup
+
+Lookup is the only source that identifies a release. It reads evidence from the folder and looks each piece up:
 
 - **Disc ID.** A fingerprint of the CD's exact track layout, computed from the rip log or the CUE sheet. When it matches, it identifies the precise CD edition.
 - **Barcode.** Read off cover scans in the folder using text recognition, or from the CUE sheet.
@@ -38,16 +42,17 @@ Three outcomes:
 - **Conflict.** Two signals point at different releases, say the disc ID and the barcode disagree. bae shows both sides and you choose which to trust, or ignore a signal.
 - **Nothing found.** Search by hand: artist and album, catalog number, or barcode, against either database. Text recognized from the artwork is offered as autocomplete.
 
-You can also **skip identifying** and import as an unknown release. bae then falls back to your files' embedded tags for names, and you can re-identify later, when the release exists in a database or you have better evidence.
+Automatic identification uses this same Lookup path. It runs only when **Identify Lookup candidates automatically** is enabled and the default surface resolves to Lookup. Entering Lookup and starting a search can run it explicitly regardless of that setting. Disc ID extraction, barcode and catalog-text recognition, provider queries, and result matching never run in File Tags or Manual.
 
-## Exact or approximate
+### File Tags
 
-When you select a match, bae checks it against your files, and flags a track count mismatch. You then declare what the match is:
+File Tags reads embedded audio tags and CUE metadata only when you open it and ask bae to read them. Review the preview, then select **Use File Tags** to store that exact snapshot as the seed. Import fails before writing to the library if the candidate or observed audio files change after the preview.
 
-- **Exact**: your files are this pressing.
-- **Metadata only**: right album, but not necessarily this exact pressing. bae uses the metadata and remembers that the pressing is approximate.
+### Manual
 
-If the release is already in your library, or another pressing of the same album is, bae tells you before you import a duplicate.
+Manual reads no tags, folder evidence, or online providers. Select **Enter Manually** to start with a blank editable release and the candidate's physical track layout.
+
+In Import settings, **Open unseeded candidates in** chooses which surface an unseeded candidate opens first. **Last Used** resolves to the last source you explicitly opened. This setting chooses a surface, not a seed; the explicit source action still confirms what the import will use.
 
 ## Confirm and import
 

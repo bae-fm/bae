@@ -1,9 +1,9 @@
 ---
 title: Importní postup
-description: Skenování, důkazy, triangulace a atomické uložení
+description: Skenování, semena metadat a atomické potvrzení
 ---
 
-Import mění složku souborů na katalogovou položku přesnou na vydání, aniž by změnil jediný bajt souborů. Tato stránka popisuje postup za tokem uvedeným v [uživatelské příručce](/cs/guide/importing).
+Import změní složku souborů na položku katalogu bez úpravy bajtu souborů. Tato stránka je potrubím za tokem popsaným v [příručce k použití](/cs/guide/importing).
 
 ## Skenování
 
@@ -11,17 +11,25 @@ Sledované složky jsou monitorovány událostmi souborového systému platformy
 
 CUE sheet mění jeden zvukový obraz na seznam stop. Parser zpracuje pregapy a postgapy, interprety a ISRC pro jednotlivé stopy a rozložení CUE s jedním obrazem i jedním souborem na stopu. Hranice stop se převedou z CUE framů (1/75 sekundy) na přesné pozice vzorků, které se později stanou okny bajtů a vzorků používanými přehráváním.
 
-## Důkazy, ne tagy
+## Semínka metadat
 
-Identifikace v jednom průchodu čte ze složky tři druhy důkazů:
+Každý kandidát má jeden explicitní zdroj metadat: externí vydání vybrané v **Vyhledání**, uložený snímek **Značky souborů** nebo **Manuální** záznam. Přepínání povrchů toto semeno nepřepíše.
 
-- **Disc ID**, otisk MusicBrainz přesného rozložení stop na CD, spočítaný z logu ripu nebo z CUE sheetu;
-- **čárové kódy**, dekódované ze skenů obalu frameworkem platformy pro rozpoznávání obrazu a přečtené z katalogových polí CUE;
-- **text**: katalogová čísla a volný text z OCR obrázků, názvů složek a souborů a textových souborů v ripu.
+### Vyhledání
 
-Vložené audio tagy záměrně nejsou důkaz: popisují, čemu věřil tagger, ne co je lisování. (Použijí se pro náhradní metadata, když uživatel importuje vydání jako neznámé.)
+Vyhledávání je jediná cesta, která extrahuje ID disku, rozpozná čárové kódy a text katalogu, dotazuje se poskytovatelů a shoduje se s výsledky. Čištění na pozadí spustí tuto cestu pouze v případě, že je povoleno automatické vyhledávání a nakonfigurované výchozí nastavení se převede na vyhledávání. Explicitní akce vyhledávání ji může spustit bez ohledu na toto nastavení. Otevřením značek souborů nebo manuálu se nikdy nespustí extrakce, dotazy na poskytovatele ani párování.
 
-Disc ID a čárový kód se vyhledávají souběžně, Disc ID proti MusicBrainz, čárový kód proti MusicBrainz a Discogs zároveň, a výsledky se triangulují: výsledky shodující se na skupině vydání se sbíhají, shody katalogových čísel zužují seznam lisování a neshoda mezi signály se zobrazí uživateli jako výslovný konflikt místo tichého nejlepšího odhadu. Každý výsledek nese původ (nalezeno podle Disc ID, podle čárového kódu, katalogové shody), aby uživatelské rozhraní mohlo říct, proč je řádek nabízen.
+Vložené audio tagy nejsou důkazem vyhledávání: popisují, čemu tagger věřil, ne co je lisování. Výsledky vyhledávání mají svůj původ, takže rozhraní může vysvětlit, proč je každý výsledek nabízen.
+
+### Značky souborů
+
+Značky souborů načítají vložené audio tagy a CUE metadata až na vyžádání. Náhled uloží snímek označený generací skenu kandidáta, revizí úprav souborů a pozorovanými zvukovými soubory. Výběrem možnosti **Použít značky souborů** se zvolí právě tento snímek. Potvrzení použije stejný snímek a před zápisem do knihovny selže, pokud se jeho označení nebo pozorování změnila; jinou odpověď potichu nenačte.
+
+### Ručně
+
+Manuál neprovádí žádný vstup ani výstup metadat. Výběrem **Zadat ručně** vytvoříte prázdnou editovatelnou verzi při zachování naskenovaného fyzického rozvržení stopy.
+
+Nastavení **Otevřít nenasazené kandidáty v** vybere počáteční povrch pro kandidáty bez semene. Jeho pevné možnosti jsou Vyhledat, Značky souborů a Ručně; **Naposledy použité** se převede na poslední režim explicitně zvolený uživatelem. Úprava zůstává oddělená od skladovaného semene.
 
 ## Zdroje
 

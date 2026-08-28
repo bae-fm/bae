@@ -1,9 +1,9 @@
 ---
 title: Importazione
-description: Abbina le tue cartelle a release reali
+description: Scegli il modo in cui ciascuna cartella fornisce i metadati di importazione
 ---
 
-Una cartella di rip sa quasi nulla di sé. La release da cui proviene, la stampa, l'etichetta, i crediti, dove finisce davvero la traccia 12: tutto questo vive in database come MusicBrainz e Discogs, non nei nomi dei tuoi file. L'importazione è il modo in cui bae collega le due cose: gli indichi la musica, capisce quale release è ogni cartella, e la libreria registra la cartella come quella release.
+Una cartella fornisce l'audio e altri file per un'importazione. Scegli se i suoi metadati modificabili iniziano con una versione online, i tag propri dei file o un modulo vuoto.
 
 L'importazione avviene su desktop (macOS, Windows). I tuoi file vengono letti, mai cambiati: bae non sposta, rinomina, ritagga o ricodifica nulla. Vedi [Archiviazione e offline](/it/guide/storage) per sapere dove vivono i file dopo l'importazione.
 
@@ -22,32 +22,23 @@ Una scansione riconosce le release nelle forme reali dei rip:
 
 bae importa i formati che riproduce: FLAC, MP3, APE, ALAC e AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack e DSD (`.dsf`/`.dff`). Grafica e documenti (fogli CUE, log di rip, file di testo) nella cartella vengono riconosciuti e conservati con la release.
 
-## Identificare una release
+## Scegli una fonte di metadati
 
-Seleziona un candidato e bae inizia a identificarlo. Invece di indovinare dai tag, legge le prove nella cartella e cerca ogni elemento:
+Ogni candidato offre tre fonti di metadati equivalenti: **Ricerca**, **Tag file** e **Manuale**. Aprire una fonte mostra soltanto la relativa vista; non cambia la fonte usata durante l'importazione. La fonte diventa la base dei metadati soltanto quando si sceglie esplicitamente una determinata edizione, **Utilizza tag file** oppure **Inserisci manualmente**.
 
-- **Disc ID.** Un'impronta della disposizione esatta delle tracce del CD, calcolata dal log di rip o dal foglio CUE. Quando corrisponde, identifica l'edizione CD precisa.
-- **Codice a barre.** Letto dalle scansioni della copertina nella cartella tramite riconoscimento del testo, o dal foglio CUE.
-- **Numeri di catalogo e testo.** Numeri di catalogo trovati nella grafica e nei nomi di file e cartelle, usati per restringere i risultati.
+### Ricerca
 
-I segnali vengono cercati su MusicBrainz e Discogs nello stesso momento, e i risultati vengono confrontati. Ogni segnale appare come un badge sopra i risultati: puoi vedere cosa è stato trovato, da dove proviene (passa sopra per l'origine: TOC del disco, foglio CUE, scansione copertina, nome cartella) e disattivare singoli segnali se uno è fuorviante.
+La ricerca è l'unica fonte che identifica una versione. Legge un ID disco da un registro rip o da un foglio CUE, riconosce i codici a barre e il testo del catalogo, interroga MusicBrainz e Discogs e abbina i risultati. L'identificazione automatica utilizza lo stesso percorso di ricerca. Viene eseguito solo quando **Identifica automaticamente i candidati alla ricerca** è abilitato e la superficie predefinita si risolve in Ricerca. Accedendo a Ricerca e avviando una ricerca è possibile eseguirla esplicitamente indipendentemente da tale impostazione. Niente di tutto questo lavoro viene eseguito nei Tag dei file o in Manuale.
 
-Tre esiti:
+### Tag dei file
 
-- **Trovata.** Le prove concordano su un gruppo di release. Scegli la stampa esatta dalla sua lista.
-- **Conflitto.** Due segnali puntano a release diverse, per esempio Disc ID e codice a barre non concordano. bae mostra entrambi i lati e scegli di quale fidarti, oppure ignori un segnale.
-- **Nessun risultato.** Cerca a mano: artista e album, numero di catalogo o codice a barre, in uno dei due database. Il testo riconosciuto dalla grafica viene offerto come completamento automatico.
+Tag dei file legge i tag audio incorporati e i metadati CUE solo quando lo apri e chiedi a bae di leggerli. Esamina l'anteprima, quindi seleziona **Utilizza tag file** per archiviare l'istantanea esatta come seme. L'importazione non riesce prima della scrittura nella libreria se i file audio candidati o osservati cambiano dopo l'anteprima.
 
-Puoi anche **saltare l'identificazione** e importare come release sconosciuta. bae usa allora come ripiego i tag incorporati nei tuoi file per i nomi, e puoi identificarla di nuovo più tardi, quando la release esiste in un database o hai prove migliori.
+### Manuale
 
-## Esatta o approssimata
+Il manuale non legge tag, prove di cartelle o provider online. Seleziona **Inserisci manualmente** per iniziare con una versione modificabile vuota e il layout della pista fisica del candidato.
 
-Quando selezioni una corrispondenza, bae la confronta con i tuoi file e segnala una differenza nel numero di tracce. Poi dichiari cos'è la corrispondenza:
-
-- **Esatta**: i tuoi file sono questa stampa.
-- **Solo metadati**: l'album è giusto, ma non necessariamente questa stampa esatta. bae usa i metadati e ricorda che la stampa è approssimata.
-
-Se la release è già nella tua libreria, o lo è un'altra stampa dello stesso album, bae te lo dice prima che importi un duplicato.
+Nelle impostazioni di importazione, **Apri i candidati senza fonte in** sceglie quale vista appare per prima. **Ultimo utilizzo** indica l'ultima fonte aperta esplicitamente. Questa impostazione sceglie una vista, non la fonte dei metadati; un'azione esplicita nella fonte conferma ciò che verrà usato dall'importazione.
 
 ## Confermare e importare
 

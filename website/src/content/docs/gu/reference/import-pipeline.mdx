@@ -1,9 +1,9 @@
 ---
 title: Import pipeline
-description: Scanning, evidence, triangulation, અને atomic commit
+description: સ્કેનિંગ, મેટાડેટા સીડ્સ અને એટોમિક કમિટ
 ---
 
-Import files ના folder ને files નો એક byte પણ બદલ્યા વગર release-accurate catalog entry માં ફેરવે છે. આ page [use guide](/gu/guide/importing) માં વર્ણવેલા flow પાછળની pipeline છે.
+આયાત ફાઇલોના બાઇટમાં ફેરફાર કર્યા વિના ફાઇલોના ફોલ્ડરને કેટલોગ એન્ટ્રીમાં ફેરવે છે. આ પૃષ્ઠ [ઉપયોગ માર્ગદર્શિકા](/gu/guide/importing) માં વર્ણવેલ પ્રવાહની પાછળની પાઇપલાઇન છે.
 
 ## Scanning
 
@@ -11,17 +11,25 @@ Watched folders platform ના file-system events દ્વારા monitored 
 
 CUE sheet એક audio image ને track list માં ફેરવે છે. Parser pregaps અને postgaps, per-track performers અને ISRCs, અને single-file images તથા one-file-per-track CUE layouts બંને handle કરે છે. Track boundaries CUE frames (second નો 1/75th) માંથી exact sample positions માં convert થાય છે, જે પછી playback વાપરે તે byte અને sample windows બને છે.
 
-## Evidence, tags નહીં
+## મેટાડેટા બીજ
 
-Identification folder માંથી એક pass માં ત્રણ પ્રકારનું evidence વાંચે છે:
+દરેક ઉમેદવાર પાસે એક સ્પષ્ટ મેટાડેટા સીડ છે: **લુકઅપ** માં પસંદ કરેલ બાહ્ય પ્રકાશન, સંગ્રહિત **ફાઇલ ટૅગ્સ** સ્નેપશોટ અથવા **મેન્યુઅલ** એન્ટ્રી. સરફેસ સ્વિચ કરવાથી તે બીજ ફરીથી લખાતું નથી.
 
-- **disc ID**, CD ના exact track layout નો MusicBrainz fingerprint, rip log અથવા CUE sheet પરથી computed;
-- **barcodes**, platform ના vision framework દ્વારા artwork scans માંથી decoded અને CUE catalog fields માંથી read;
-- **text**: artwork OCR, folder અને file names, અને rip માંની text files માંથી catalog numbers અને free text.
+### શોધ
 
-Embedded audio tags ઇરાદાપૂર્વક evidence નથી: તેઓ tagger એ શું માન્યું તે કહે છે, pressing શું છે તે નહીં. (User unknown release તરીકે import કરે ત્યારે fallback metadata માટે seed આપે છે.)
+લુકઅપ એ એકમાત્ર પાથ છે જે ડિસ્ક ID ને એક્સ્ટ્રેક્ટ કરે છે, બારકોડ્સ અને કેટલોગ ટેક્સ્ટને ઓળખે છે, ક્વેરીઝ પ્રદાતાઓ અને પરિણામો સાથે મેળ ખાય છે. બેકગ્રાઉન્ડ સ્વીપ આ પાથને ત્યારે જ ચલાવે છે જ્યારે સ્વચાલિત લુકઅપ સક્ષમ હોય અને રૂપરેખાંકિત ડિફૉલ્ટ લુકઅપને ઉકેલે છે. એક સ્પષ્ટ લુકઅપ ક્રિયા તે સેટિંગને ધ્યાનમાં લીધા વિના તેને ચલાવી શકે છે. ફાઇલ ટૅગ્સ અથવા મેન્યુઅલ ખોલવાથી ક્યારેય નિષ્કર્ષણ, પ્રદાતા ક્વેરી અથવા મેચિંગ શરૂ થતું નથી.
 
-Disc ID અને barcode concurrently lookup થાય છે, disc ID MusicBrainz સામે, barcode MusicBrainz અને Discogs સામે એકસાથે, અને results triangulated થાય છે: release group પર agree કરતાં results converge થાય છે, catalog-number matches pressing list narrow કરે છે, અને signals વચ્ચે disagreement silent best guess કરતાં user માટે explicit conflict તરીકે surface થાય છે. દરેક result provenance ધરાવે છે (disc ID થી found, barcode થી, catalog match) જેથી UI કહી શકે કે row શા માટે offered છે.
+એમ્બેડેડ ઑડિયો ટૅગ્સ લુકઅપ પુરાવા નથી: તેઓ વર્ણવે છે કે ટેગર શું માને છે, દબાવવું શું છે તે નહીં. લુકઅપ પરિણામો તેમના મૂળને ધરાવે છે જેથી ઇન્ટરફેસ સમજાવી શકે કે દરેક પરિણામ શા માટે ઓફર કરવામાં આવે છે.
+
+### ફાઇલ ટૅગ
+
+ફાઇલ ટૅગ્સ એમ્બેડેડ ઑડિયો ટૅગ્સ અને CUE મેટાડેટાને આળસપૂર્વક વાંચે છે. પૂર્વાવલોકન ઉમેદવારની સ્કેન જનરેશન, ફાઇલ-એડિટ રિવિઝન અને અવલોકન કરેલ ઑડિઓ ફાઇલો સાથે સ્ટેમ્પ થયેલ સ્નેપશોટ સ્ટોર કરે છે. **ફાઇલ ટૅગ્સનો ઉપયોગ કરો** પસંદ કરવાથી તે સ્નેપશોટ પસંદ થાય છે. કમિટ એ જ સ્નેપશોટનો ઉપયોગ કરે છે અને લાઇબ્રેરી લખે તે પહેલાં નિષ્ફળ જાય છે જો તેની સ્ટેમ્પ અથવા અવલોકનો બદલાય છે; તે ચુપચાપ કોઈ અલગ જવાબ વાંચતો નથી.
+
+### મેન્યુઅલ
+
+મેન્યુઅલ કોઈ મેટાડેટા ઇનપુટ અથવા આઉટપુટ કરતું નથી. **મેન્યુઅલી એન્ટર** પસંદ કરવાથી સ્કેન કરેલા ફિઝિકલ ટ્રૅક લેઆઉટને જાળવી રાખીને ખાલી સંપાદનયોગ્ય રિલીઝ બનાવવામાં આવે છે.
+
+**બીજ વગરના ઉમેદવારોને આમાં ખોલો** સેટિંગ બીજ વગરના ઉમેદવાર માટે શરૂઆતનો મોડ પસંદ કરે છે. તેની નિશ્ચિત પસંદગીઓ શોધ, ફાઇલ ટૅગ અને મેન્યુઅલ છે; **છેલ્લે વપરાયેલ** વપરાશકર્તાએ સ્પષ્ટ રીતે પસંદ કરેલો છેલ્લો મોડ દર્શાવે છે. પ્રસ્તુતિ સંગ્રહિત બીજથી અલગ રહે છે.
 
 ## Sources
 

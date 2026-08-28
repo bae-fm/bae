@@ -1,9 +1,9 @@
 ---
 title: Importing
-description: તમારા folders ને real releases સાથે match કરો
+description: દરેક ફોલ્ડર તેના આયાત મેટાડેટાને કેવી રીતે સપ્લાય કરે છે તે પસંદ કરો
 ---
 
-Rips નો folder પોતાના વિશે લગભગ કશું જાણતો નથી. તે કયા release માંથી આવ્યો, pressing, label, credits, track 12 ખરેખર ક્યાં પૂરો થાય છે: આ બધું MusicBrainz અને Discogs જેવા databases માં રહે છે, તમારા filenames માં નહીં. Importing એ રીતે bae બંનેને જોડે છે: તમે તેને તમારા music તરફ બતાવો છો, તે શોધે છે કે દરેક folder કયો release છે, અને library folder ને તે release તરીકે record કરે છે.
+ફોલ્ડર આયાત માટે ઑડિયો અને અન્ય ફાઇલો સપ્લાય કરે છે. તમે પસંદ કરો છો કે તેનો સંપાદનયોગ્ય મેટાડેટા ઓનલાઈન રિલીઝ, ફાઈલોના પોતાના ટૅગ્સ અથવા ખાલી ફોર્મથી શરૂ થાય છે.
 
 Importing desktop (macOS, Windows) પર થાય છે. તમારી files read થાય છે, ક્યારેય બદલાતી નથી: bae કશું move, rename, retag અથવા re-encode કરતું નથી. Import પછી files ક્યાં રહે છે તે માટે [Storage અને offline](/gu/guide/storage) જુઓ.
 
@@ -22,32 +22,23 @@ Scan releases ને rips ખરેખર જે shapes લે છે તેમ�
 
 bae જે formats વગાડે છે તે import કરે છે: FLAC, MP3, APE, ALAC અને `.m4a` માં AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack, અને DSD (`.dsf`/`.dff`). Folder માં artwork અને documents (CUE sheets, rip logs, text files) ઓળખાય છે અને release સાથે રાખવામાં આવે છે.
 
-## Release ઓળખવું
+## મેટાડેટા સ્ત્રોત પસંદ કરો
 
-Candidate પસંદ કરો અને bae તેને ઓળખવાનું શરૂ કરે છે. Tags પરથી guess કરવા કરતાં, તે folder માં evidence વાંચે છે અને દરેક ભાગ lookup કરે છે:
+દરેક ઉમેદવાર ત્રણ સમાન મેટાડેટા સ્ત્રોતો ઑફર કરે છે: **લુકઅપ**, **ફાઇલ ટૅગ્સ** અને **મેન્યુઅલ**. સ્ત્રોત ખોલવાથી માત્ર તેની સપાટી દેખાય છે; તે ઉમેદવાર આયાત કરશે તે સ્ત્રોતને બદલતું નથી. જ્યારે તમે સ્પષ્ટપણે દબાવીને પસંદ કરો, **ફાઇલ ટૅગ્સનો ઉપયોગ કરો** પસંદ કરો અથવા **મેન્યુઅલી દાખલ કરો** પસંદ કરો ત્યારે જ સ્રોત ઉમેદવારનો મેટાડેટા સીડ બની જાય છે.
 
-- **Disc ID.** CD ના exact track layout નો fingerprint, rip log અથવા CUE sheet પરથી computed. Match થાય ત્યારે તે precise CD edition ઓળખે છે.
-- **Barcode.** Folder માં cover scans પરથી text recognition વાપરીને, અથવા CUE sheet માંથી વાંચેલો.
-- **Catalog numbers અને text.** Artwork તથા file અને folder names માં મળેલા catalog numbers, results narrow કરવા માટે વપરાય છે.
+### શોધ
 
-Signals ને MusicBrainz અને Discogs સામે એક જ સમયે lookup કરવામાં આવે છે, અને results cross-check થાય છે. દરેક signal results ઉપર badge તરીકે દેખાય છે: શું મળ્યું, ક્યાંથી આવ્યું (origin માટે hover: disc TOC, CUE sheet, cover scan, folder name), અને કોઈ signal misleading હોય તો તેને બંધ કરી શકો છો.
+લુકઅપ એ એકમાત્ર સ્ત્રોત છે જે રિલીઝને ઓળખે છે. તે રિપ લોગ અથવા CUE શીટમાંથી ડિસ્ક ID વાંચે છે, બારકોડ્સ અને કેટલોગ ટેક્સ્ટને ઓળખે છે, મ્યુઝિકબ્રેન્ઝ અને ડિસ્કોગ્સ ક્વેરીઝ કરે છે અને પરિણામો સાથે મેળ ખાય છે. સ્વચાલિત ઓળખ આ જ લુકઅપ પાથનો ઉપયોગ કરે છે. તે ત્યારે જ ચાલે છે જ્યારે **આપમેળે લુકઅપ ઉમેદવારોને ઓળખો** સક્ષમ હોય અને ડિફૉલ્ટ સપાટી લુકઅપ માટે ઉકેલાઈ જાય. લુકઅપ દાખલ કરવું અને શોધ શરૂ કરવાથી તે સેટિંગને ધ્યાનમાં લીધા વિના સ્પષ્ટપણે ચલાવી શકાય છે. આમાંથી કોઈ પણ કાર્ય ફાઇલ ટૅગ્સ અથવા મેન્યુઅલમાં ચાલતું નથી.
 
-ત્રણ outcomes:
+### ફાઇલ ટૅગ
 
-- **Found.** Evidence એક release group પર agree કરે છે. તમે તેની list માંથી exact pressing પસંદ કરો છો.
-- **Conflict.** બે signals જુદા releases તરફ બતાવે છે, જેમ કે disc ID અને barcode disagree કરે. bae બંને sides બતાવે છે અને તમે કયા પર trust કરવું તે પસંદ કરો છો, અથવા signal ignore કરો છો.
-- **Nothing found.** હાથથી search કરો: artist અને album, catalog number, અથવા barcode, બંને databaseમાંથી કોઈ સામે. Artwork માંથી ઓળખાયેલ text autocomplete તરીકે આપવામાં આવે છે.
+ફાઇલ ટૅગ્સ એમ્બેડેડ ઑડિયો ટૅગ્સ અને CUE મેટાડેટા ત્યારે જ વાંચે છે જ્યારે તમે તેને ખોલો અને bae ને વાંચવા માટે કહો. પૂર્વાવલોકનની સમીક્ષા કરો, પછી તે ચોક્કસ સ્નેપશોટને બીજ તરીકે સંગ્રહિત કરવા માટે **ફાઇલ ટૅગ્સનો ઉપયોગ કરો** પસંદ કરો. જો ઉમેદવાર અથવા અવલોકન કરેલ ઑડિઓ ફાઇલો પૂર્વાવલોકન પછી બદલાય તો પુસ્તકાલયમાં લખતા પહેલા આયાત નિષ્ફળ જાય છે.
 
-તમે **skip identifying** પણ કરી શકો છો અને unknown release તરીકે import કરી શકો છો. પછી bae names માટે તમારી files ના embedded tags પર પાછું જાય છે, અને database માં release હોય અથવા તમારા પાસે વધુ સારું evidence હોય ત્યારે તમે પછીથી re-identify કરી શકો છો.
+### મેન્યુઅલ
 
-## Exact અથવા approximate
+મેન્યુઅલ કોઈ ટૅગ્સ, ફોલ્ડર પુરાવા અથવા ઑનલાઇન પ્રદાતાઓ વાંચતું નથી. ખાલી સંપાદનયોગ્ય પ્રકાશન અને ઉમેદવારના ભૌતિક ટ્રૅક લેઆઉટ સાથે પ્રારંભ કરવા માટે **મેન્યુઅલી દાખલ કરો** પસંદ કરો.
 
-તમે match પસંદ કરો ત્યારે bae તેને તમારી files સામે check કરે છે, અને track count mismatch flag કરે છે. પછી તમે declare કરો છો કે match શું છે:
-
-- **Exact**: તમારી files આ pressing છે.
-- **Metadata only**: album સાચો છે, પણ જરૂરી નથી કે આ જ exact pressing હોય. bae metadata વાપરે છે અને pressing approximate છે તે યાદ રાખે છે.
-
-જો release પહેલેથી તમારી library માં હોય, અથવા એ જ album નું બીજું pressing હોય, તો duplicate import કરતાં પહેલાં bae તમને કહે છે.
+આયાત સેટિંગ્સમાં, **ઓપન બિનસીડ્ડ ઉમેદવારો** માં પસંદ કરે છે કે બિનસીડિત ઉમેદવાર કઈ સપાટી પર પ્રથમ ખુલે છે. **છેલ્લે વપરાયેલ** તમે સ્પષ્ટપણે ખોલેલા છેલ્લા સ્ત્રોતને ઉકેલે છે. આ સેટિંગ સપાટી પસંદ કરે છે, બીજ નહીં; સ્પષ્ટ સ્ત્રોત ક્રિયા હજુ પણ પુષ્ટિ કરે છે કે આયાત શું ઉપયોગ કરશે.
 
 ## Confirm અને import
 

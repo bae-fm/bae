@@ -1,9 +1,9 @@
 ---
 title: Importieren
-description: Ordne deine Ordner echten Releases zu
+description: Wählen Sie aus, wie jeder Ordner seine Importmetadaten bereitstellt
 ---
 
-Ein Ordner mit Rips weiß fast nichts über sich selbst. Das Release, von dem er stammt, die Pressung, das Label, die Mitwirkenden, wo Track 12 tatsächlich endet: All das lebt in Datenbanken wie MusicBrainz und Discogs, nicht in deinen Dateinamen. Importieren ist, wie bae beides verbindet: Du zeigst auf deine Musik, bae findet heraus, welches Release jeder Ordner ist, und die Mediathek erfasst den Ordner als dieses Release.
+Ein Ordner stellt die Audio- und andere Dateien für einen Import bereit. Sie wählen, ob die bearbeitbaren Metadaten mit einer Online-Veröffentlichung, den eigenen Tags der Datei oder einem leeren Formular beginnen.
 
 Importieren geschieht auf dem Desktop (macOS, Windows). Deine Dateien werden gelesen, nie verändert: bae verschiebt, benennt, taggt oder kodiert nichts neu. Siehe [Speicher und offline](/de/guide/storage), um zu erfahren, wo Dateien nach dem Import liegen.
 
@@ -22,32 +22,23 @@ Ein Scan erkennt Releases in den Formen, die Rips tatsächlich haben:
 
 bae importiert die Formate, die es abspielt: FLAC, MP3, APE, ALAC und AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack und DSD (`.dsf`/`.dff`). Artwork und Dokumente (CUE-Sheets, Rip-Logs, Textdateien) im Ordner werden erkannt und mit dem Release behalten.
 
-## Ein Release identifizieren
+## Metadatenquelle auswählen
 
-Wähle einen Kandidaten aus, und bae beginnt, ihn zu identifizieren. Statt aus Tags zu raten, liest es die Belege im Ordner und schlägt jedes Stück nach:
+Jeder Kandidat bietet drei gleichwertige Metadatenquellen: **Suche**, **Datei-Tags** und **Manuell**. Das Öffnen einer Quelle zeigt nur die zugehörige Ansicht; die beim Import verwendete Quelle ändert sich dadurch nicht. Eine Quelle wird erst dann zur Metadatengrundlage des Kandidaten, wenn du ausdrücklich eine bestimmte Ausgabe, **Datei-Tags verwenden** oder **Manuell eingeben** auswählst.
 
-- **Disc ID.** Ein Fingerabdruck des exakten Tracklayouts der CD, berechnet aus dem Rip-Log oder dem CUE-Sheet. Wenn sie passt, identifiziert sie die genaue CD-Ausgabe.
-- **Barcode.** Von Cover-Scans im Ordner per Texterkennung gelesen oder aus dem CUE-Sheet.
-- **Katalognummern und Text.** Katalognummern, die auf Artwork sowie in Datei- und Ordnernamen gefunden werden, zum Eingrenzen der Ergebnisse.
+### Nachschlagen
 
-Die Signale werden gleichzeitig gegen MusicBrainz und Discogs nachgeschlagen, und die Ergebnisse werden gegengeprüft. Jedes Signal erscheint als Abzeichen über den Ergebnissen: Du siehst, was gefunden wurde, woher es kam (mit der Maus darüber: Disc-TOC, CUE-Sheet, Cover-Scan, Ordnername), und kannst einzelne Signale ausschalten, wenn eines in die Irre führt.
+Die Suche ist die einzige Quelle, die eine Veröffentlichung identifiziert. Sie liest eine Disc-ID aus einem Rip-Log oder einem CUE-Blatt, erkennt Barcodes und Katalogtext, fragt MusicBrainz und Discogs ab und gleicht die Ergebnisse ab. Die automatische Identifizierung verwendet denselben Suchweg. Sie läuft nur, wenn **Suchkandidaten automatisch identifizieren** aktiviert ist und die Standardansicht auf Suche gesetzt ist. Wenn du die Suche öffnest und ausdrücklich startest, läuft sie unabhängig von dieser Einstellung. In Datei-Tags und Manuell findet keine dieser Arbeiten statt.
 
-Drei Ergebnisse:
+### Datei-Tags
 
-- **Gefunden.** Die Belege stimmen in einer Release-Gruppe überein. Du wählst die genaue Pressung aus deren Liste.
-- **Konflikt.** Zwei Signale zeigen auf verschiedene Releases, etwa wenn Disc ID und Barcode nicht übereinstimmen. bae zeigt beide Seiten, und du wählst, welchem du vertraust, oder ignorierst ein Signal.
-- **Nichts gefunden.** Suche von Hand: Künstler und Album, Katalognummer oder Barcode, in einer der beiden Datenbanken. Aus dem Artwork erkannter Text wird als Autovervollständigung angeboten.
+Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten nur, wenn du die Ansicht öffnest und bae zum Lesen aufforderst. Prüfe die Vorschau und wähle dann **Datei-Tags verwenden**, um genau diesen Datenstand als Grundlage zu speichern. Wenn sich der Kandidat oder eine beobachtete Audiodatei nach der Vorschau ändert, schlägt der Import fehl, bevor etwas in die Bibliothek geschrieben wird.
 
-Du kannst die Identifizierung auch **überspringen** und als unbekanntes Release importieren. bae fällt dann für Namen auf die eingebetteten Tags deiner Dateien zurück, und du kannst später neu identifizieren, wenn das Release in einer Datenbank existiert oder du bessere Belege hast.
+### Manuell
 
-## Exakt oder ungefähr
+Manuell liest keine Tags, Ordnerhinweise oder Online-Dienste. Wähle **Manuell eingeben**, um mit einer leeren, bearbeitbaren Veröffentlichung und dem physischen Track-Layout des Kandidaten zu beginnen.
 
-Wenn du einen Treffer auswählst, prüft bae ihn gegen deine Dateien und markiert eine abweichende Trackanzahl. Dann legst du fest, was der Treffer ist:
-
-- **Exakt**: Deine Dateien sind diese Pressung.
-- **Nur Metadaten**: richtiges Album, aber nicht zwingend genau diese Pressung. bae nutzt die Metadaten und merkt sich, dass die Pressung ungefähr ist.
-
-Wenn das Release bereits in deiner Mediathek ist oder eine andere Pressung desselben Albums dort ist, sagt bae dir das, bevor du ein Duplikat importierst.
+In den Importeinstellungen bestimmt **Kandidaten ohne Quelle öffnen in**, welche Ansicht zuerst erscheint. **Zuletzt verwendet** steht für die Quelle, die du zuletzt ausdrücklich geöffnet hast. Diese Einstellung wählt eine Ansicht, nicht die Metadatengrundlage; erst eine ausdrückliche Aktion in der Quelle bestätigt, was der Import verwendet.
 
 ## Bestätigen und importieren
 

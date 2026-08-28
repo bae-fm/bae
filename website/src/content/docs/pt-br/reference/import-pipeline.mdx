@@ -1,9 +1,9 @@
 ---
 title: Pipeline de importação
-description: Escaneamento, evidência, triangulação e gravação atômica
+description: Varredura, sementes de metadados e commit atômico
 ---
 
-A importação transforma uma pasta de arquivos em uma entrada de catálogo fiel ao lançamento sem modificar um byte dos arquivos. Esta página é o pipeline por trás do fluxo descrito no [guia de uso](/pt-br/guide/importing).
+A importação transforma uma pasta de arquivos em uma entrada de catálogo sem modificar um byte dos arquivos. Esta página é o pipeline por trás do fluxo descrito no [guia de uso](/pt-br/guide/importing).
 
 ## Escaneamento
 
@@ -11,17 +11,25 @@ Pastas monitoradas são observadas pelos eventos de sistema de arquivos da plata
 
 Uma folha CUE transforma uma imagem de áudio em lista de faixas. O parser lida com pregaps e postgaps, intérpretes e ISRCs por faixa, e tanto imagens de arquivo único quanto layouts CUE de um arquivo por faixa. Limites de faixa convertem de quadros CUE (1/75 de segundo) para posições exatas de amostra, que depois viram as janelas de bytes e amostras usadas pela reprodução.
 
-## Evidência, não tags
+## Sementes de metadados
 
-A identificação lê três tipos de evidência da pasta em uma passada:
+Cada candidato tem uma semente de metadados explícita: uma versão externa escolhida em **Pesquisa**, um instantâneo de **Tags de arquivo** armazenado ou uma entrada **Manual**. Trocar superfícies não reescreve essa semente.
 
-- um **Disc ID**, a impressão digital MusicBrainz do layout exato de faixas de um CD, calculada a partir de um log de rip ou da folha CUE;
-- **códigos de barras**, decodificados de scans de arte pelo framework de visão da plataforma e lidos de campos catalog da CUE;
-- **texto**: números de catálogo e texto livre de OCR de arte, nomes de pastas e arquivos, e arquivos de texto no rip.
+### Busca
 
-Tags embutidas de áudio deliberadamente não são evidência: elas descrevem o que um marcador acreditou, não o que a prensagem é. (Elas alimentam os metadados de fallback quando o usuário importa um lançamento como desconhecido.)
+Busca é o único caminho que extrai um ID de disco, reconhece códigos de barras e texto de catálogo, consulta provedores e compara resultados. A varredura em segundo plano executa esse caminho somente quando a Pesquisa automática está habilitada e o padrão configurado é resolvido para Pesquisa. Uma ação de pesquisa explícita pode ser executada independentemente dessa configuração. A abertura de tags de arquivo ou manual nunca inicia a extração, consultas de provedor ou correspondência.
 
-Disc ID e código de barras são consultados concorrentemente, o Disc ID contra MusicBrainz, o código de barras contra MusicBrainz e Discogs ao mesmo tempo, e os resultados são triangulados: resultados que concordam em um grupo de lançamentos convergem, correspondências de número de catálogo estreitam a lista de prensagens, e discordância entre sinais aparece como conflito explícito para o usuário em vez de melhor palpite silencioso. Todo resultado carrega sua procedência (encontrado por Disc ID, por código de barras, correspondência de catálogo) para que a interface possa dizer por que uma linha está sendo oferecida.
+Tags de áudio incorporadas não são evidências de pesquisa: elas descrevem o que o etiquetador acredita, não o que é pressionado. Os resultados da pesquisa carregam sua origem para que a interface possa explicar por que cada resultado é oferecido.
+
+### Tags dos arquivos
+
+Tags dos arquivos lê tags de áudio incorporadas e metadados CUE preguiçosamente. A visualização armazena um instantâneo carimbado com a geração de digitalização do candidato, revisão de edição de arquivo e arquivos de áudio observados. Escolher **Usar tags de arquivo** seleciona esse instantâneo. A confirmação consome o mesmo instantâneo e falha antes da gravação da biblioteca se seu carimbo ou observações forem alterados; ele não lê silenciosamente uma resposta diferente.
+
+### Manual
+
+Manual não executa entrada ou saída de metadados. Escolher **Inserir manualmente** cria uma versão editável em branco, mantendo o layout da trilha física digitalizada.
+
+A configuração **Abrir candidatos sem seed em** seleciona a superfície inicial para candidatos sem seed. Suas opções fixas são Pesquisa, Tags de arquivo e Manual; **Último uso** resolve para o último modo escolhido explicitamente pelo usuário. A apresentação permanece separada da semente armazenada.
 
 ## Fontes
 

@@ -1,9 +1,9 @@
 ---
 title: Nhập
-description: Khớp thư mục của bạn với bản phát hành thật
+description: Chọn cách mỗi thư mục cung cấp siêu dữ liệu nhập của nó
 ---
 
-Một thư mục bản rip gần như không biết gì về chính nó. Bản phát hành mà nó đến từ, lần phát hành, hãng đĩa, ghi công, nơi track 12 thật sự kết thúc: tất cả những thứ đó nằm trong cơ sở dữ liệu như MusicBrainz và Discogs, không nằm trong tên tệp của bạn. Nhập là cách bae nối hai phía: bạn trỏ nó tới nhạc của bạn, nó xác định mỗi thư mục là bản phát hành nào, và thư viện ghi thư mục đó dưới dạng bản phát hành ấy.
+Một thư mục cung cấp âm thanh và các tệp khác để nhập. Bạn chọn xem siêu dữ liệu có thể chỉnh sửa của nó bắt đầu bằng bản phát hành trực tuyến, thẻ riêng của tệp hay biểu mẫu trống.
 
 Nhập diễn ra trên desktop (macOS, Windows). Tệp của bạn được đọc, không bao giờ bị thay đổi: bae không di chuyển, đổi tên, gắn lại tag hay mã hóa lại bất cứ thứ gì. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage) để biết tệp nằm ở đâu sau khi nhập.
 
@@ -22,32 +22,23 @@ Một lượt quét nhận ra bản phát hành theo các hình dạng mà bản
 
 bae nhập các định dạng nó phát: FLAC, MP3, APE, ALAC và AAC trong `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack và DSD (`.dsf`/`.dff`). Artwork và tài liệu (CUE sheet, log rip, tệp văn bản) trong thư mục được nhận ra và giữ cùng bản phát hành.
 
-## Nhận diện bản phát hành
+## Chọn nguồn siêu dữ liệu
 
-Chọn một ứng viên và bae bắt đầu nhận diện nó. Thay vì đoán từ tag, nó đọc bằng chứng trong thư mục và tra cứu từng phần:
+Mỗi ứng viên đều cung cấp ba nguồn siêu dữ liệu như nhau: **Tra cứu**, **Thẻ tệp** và **Thủ công**. Mở ra một nguồn chỉ lộ ra bề ngoài của nó; nó không thay đổi nguồn mà ứng viên sẽ nhập. Nguồn chỉ trở thành hạt giống siêu dữ liệu của ứng viên khi bạn chọn cách nhấn một cách rõ ràng, chọn **Sử dụng thẻ tệp** hoặc chọn **Nhập thủ công**.
 
-- **Disc ID.** Vân tay của bố cục track chính xác của CD, tính từ log rip hoặc CUE sheet. Khi khớp, nó nhận diện đúng phiên bản CD cụ thể.
-- **Mã vạch.** Đọc từ ảnh quét bìa trong thư mục bằng nhận dạng văn bản, hoặc từ CUE sheet.
-- **Số catalog và văn bản.** Số catalog tìm thấy trên artwork và trong tên tệp, tên thư mục, dùng để thu hẹp kết quả.
+### Tra cứu
 
-Các tín hiệu được tra cứu đồng thời trên MusicBrainz và Discogs, rồi kết quả được đối chiếu chéo. Mỗi tín hiệu xuất hiện như một huy hiệu phía trên kết quả: bạn có thể thấy đã tìm thấy gì, nó đến từ đâu (di chuột để xem nguồn: disc TOC, CUE sheet, ảnh quét bìa, tên thư mục), và tắt từng tín hiệu riêng nếu một tín hiệu gây hiểu sai.
+Tra cứu là nguồn duy nhất xác định một bản phát hành. Nó đọc ID đĩa từ nhật ký trích xuất hoặc trang CUE, nhận dạng mã vạch và văn bản danh mục, truy vấn MusicBrainz và Discogs, đồng thời khớp kết quả. Nhận dạng tự động sử dụng cùng đường dẫn Tra cứu này. Nó chỉ chạy khi **Xác định các ứng viên Tra cứu tự động** được bật và bề mặt mặc định chuyển thành Tra cứu. Việc nhập Tra cứu và bắt đầu tìm kiếm có thể chạy nó một cách rõ ràng bất kể cài đặt đó. Không có tác phẩm nào trong số này chạy trong Thẻ tệp hoặc Thủ công.
 
-Ba kết quả:
+### Thẻ của tệp
 
-- **Đã tìm thấy.** Bằng chứng đồng thuận trên một nhóm bản phát hành. Bạn chọn đúng lần phát hành từ danh sách của nó.
-- **Xung đột.** Hai tín hiệu trỏ tới các bản phát hành khác nhau, chẳng hạn disc ID và mã vạch không khớp. bae hiển thị cả hai phía và bạn chọn tin phía nào, hoặc bỏ qua một tín hiệu.
-- **Không tìm thấy.** Tìm bằng tay: nghệ sĩ và album, số catalog, hoặc mã vạch, trên một trong hai cơ sở dữ liệu. Văn bản nhận ra từ artwork được đưa ra làm gợi ý tự hoàn thành.
+Thẻ tệp chỉ đọc thẻ âm thanh được nhúng và siêu dữ liệu CUE khi bạn mở nó và yêu cầu bae đọc chúng. Xem lại bản xem trước, sau đó chọn **Sử dụng thẻ tệp** để lưu trữ ảnh chụp nhanh chính xác đó làm hạt giống. Quá trình nhập không thành công trước khi ghi vào thư viện nếu tệp âm thanh dự kiến ​​hoặc được quan sát thay đổi sau khi xem trước.
 
-Bạn cũng có thể **skip identifying** và nhập như một bản phát hành chưa biết. Khi đó bae quay về dùng tag nhúng trong tệp của bạn cho tên, và bạn có thể nhận diện lại sau, khi bản phát hành có trong cơ sở dữ liệu hoặc bạn có bằng chứng tốt hơn.
+### Thủ công
 
-## Chính xác hoặc xấp xỉ
+Thủ công không đọc thẻ, bằng chứng trong thư mục hay nhà cung cấp trực tuyến. Chọn **Nhập thủ công** để bắt đầu với một bản phát hành trống có thể chỉnh sửa và bố cục track vật lý của ứng viên.
 
-Khi bạn chọn một kết quả khớp, bae kiểm tra nó với tệp của bạn, và báo nếu số track không khớp. Sau đó bạn khai báo kết quả khớp là gì:
-
-- **Exact**: tệp của bạn là lần phát hành này.
-- **Chỉ siêu dữ liệu**: đúng album, nhưng không nhất thiết đúng lần phát hành cụ thể này. bae dùng siêu dữ liệu và nhớ rằng lần phát hành là xấp xỉ.
-
-Nếu bản phát hành đã có trong thư viện của bạn, hoặc một lần phát hành khác của cùng album đã có, bae báo cho bạn trước khi bạn nhập bản trùng.
+Trong cài đặt Nhập, **Mở các ứng cử viên chưa được xếp hạt giống trong** chọn bề mặt nào mà một ứng cử viên chưa được xếp hạt giống sẽ mở trước. **Được sử dụng lần cuối** giải quyết nguồn cuối cùng mà bạn đã mở một cách rõ ràng. Cài đặt này chọn bề mặt chứ không phải hạt giống; hành động nguồn rõ ràng vẫn xác nhận nội dung nhập sẽ sử dụng.
 
 ## Xác nhận và nhập
 

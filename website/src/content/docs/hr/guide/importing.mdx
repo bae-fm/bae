@@ -1,9 +1,9 @@
 ---
 title: Uvoz
-description: Povežite svoje mape sa stvarnim izdanjima
+description: Odaberite kako svaka mapa isporučuje svoje metapodatke za uvoz
 ---
 
-Mapa ripova zna o sebi gotovo ništa. Izdanje iz kojeg je nastala, tiskanje, izdavač, zasluge, gdje pjesma 12 zapravo završava: sve to živi u bazama podataka poput MusicBrainza i Discogsa, ne u imenima vaših datoteka. Uvoz je način na koji bae spaja to dvoje: pokažete mu svoju glazbu, on utvrdi koje je izdanje svaka mapa, a biblioteka zapiše mapu kao to izdanje.
+Mapa sadrži audio i druge datoteke za uvoz. Vi birate hoće li metapodaci koje je moguće uređivati ​​započeti mrežnim izdanjem, vlastitim oznakama datoteke ili praznim obrascem.
 
 Uvoz se događa na desktopu (macOS, Windows). Vaše se datoteke čitaju, nikad ne mijenjaju: bae ništa ne premješta, ne preimenuje, ne mijenja oznake i ne rekodira. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage) za to gdje datoteke žive nakon uvoza.
 
@@ -22,32 +22,23 @@ Skeniranje prepoznaje izdanja u oblicima koje ripovi stvarno imaju:
 
 bae uvozi formate koje reproducira: FLAC, MP3, APE, ALAC i AAC u `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack i DSD (`.dsf`/`.dff`). Grafika i dokumenti (CUE listovi, zapisnici ripanja, tekstne datoteke) u mapi prepoznaju se i čuvaju s izdanjem.
 
-## Identifikacija izdanja
+## Odaberite izvor metapodataka
 
-Odaberite kandidata i bae ga počinje identificirati. Umjesto pogađanja iz oznaka, čita dokaze u mapi i traži svaki dio:
+Svaki kandidat nudi tri ravnopravna izvora metapodataka: **Traženje**, **Oznake datoteke** i **Ručno**. Otvaranje izvora samo prikazuje pripadajući zaslon; ne mijenja izvor koji će se koristiti pri uvozu. Izvor postaje osnova metapodataka tek kada izričito odaberete određeno izdanje, **Koristi oznake datoteke** ili **Unesi ručno**.
 
-- **Disc ID.** Otisak točnog rasporeda pjesama CD-a, izračunat iz zapisnika ripanja ili CUE lista. Kad se podudara, identificira točno CD izdanje.
-- **Barkod.** Pročitan s naslovnica u mapi pomoću prepoznavanja teksta ili iz CUE lista.
-- **Kataloški brojevi i tekst.** Kataloški brojevi pronađeni na grafici i u imenima datoteka i mapa, upotrijebljeni za sužavanje rezultata.
+### Pretraga
 
-Signali se istodobno traže prema MusicBrainzu i Discogsu, a rezultati se međusobno provjeravaju. Svaki signal pojavljuje se kao značka iznad rezultata: možete vidjeti što je pronađeno, odakle je došlo (zadržite pokazivač za izvor: TOC diska, CUE list, sken omota, ime mape) i isključiti pojedine signale ako neki zavodi.
+Pretraživanje je jedini izvor koji identificira izdanje. Čita ID diska iz zapisa kopiranja ili CUE lista, prepoznaje bar kodove i kataloški tekst, postavlja upite MusicBrainzu i Discogsu i uspoređuje rezultate. Automatska identifikacija koristi isti put pretraživanja. Pokreće se samo kada je **Automatski identificiraj kandidate za traženje** omogućeno i zadana površina rješava na traženje. Ulaskom u Pretraga i pokretanjem pretraživanja možete ga eksplicitno pokrenuti bez obzira na tu postavku. Ništa od ovog posla ne radi u oznakama datoteka ili ručnom načinu.
 
-Tri ishoda:
+### Oznake datoteka
 
-- **Pronađeno.** Dokazi se slažu oko jedne grupe izdanja. Odabirete točno tiskanje s njezina popisa.
-- **Sukob.** Dva signala upućuju na različita izdanja, recimo Disc ID i barkod se ne slažu. bae prikazuje obje strane, a vi birate čemu vjerovati ili zanemarujete signal.
-- **Ništa nije pronađeno.** Pretražujte ručno: izvođač i album, kataloški broj ili barkod, prema bilo kojoj bazi podataka. Tekst prepoznat s grafike nudi se kao automatska dopuna.
+Oznake datoteke čitaju ugrađene audio oznake i CUE metapodatke samo kada je otvorite i tražite od bae da ih pročita. Pregledajte pregled, a zatim odaberite **Upotrijebi oznake datoteke** da biste pohranili točnu snimku kao početnu. Uvoz ne uspijeva prije pisanja u knjižnicu ako se kandidatske ili promatrane audio datoteke promijene nakon pregleda.
 
-Možete i **preskočiti identifikaciju** i uvesti kao nepoznato izdanje. bae se tada vraća na ugrađene oznake vaših datoteka za nazive, a vi se možete ponovno identificirati poslije, kad izdanje postoji u bazi podataka ili imate bolji dokaz.
+### Ručno
 
-## Točno ili približno
+Ručno ne očitava oznake, dokaze mape ili mrežne pružatelje usluga. Odaberite **Unesi ručno** za početak s praznim izdanjem koje je moguće uređivati ​​i fizičkim izgledom staze kandidata.
 
-Kad odaberete podudaranje, bae ga provjerava prema vašim datotekama i označava nepodudaranje broja pjesama. Zatim izjavljujete što je podudaranje:
-
-- **Točno**: vaše datoteke jesu ovo tiskanje.
-- **Samo metapodaci**: pravi album, ali ne nužno ovo točno tiskanje. bae koristi metapodatke i pamti da je tiskanje približno.
-
-Ako je izdanje već u vašoj biblioteci, ili drugo tiskanje istog albuma jest, bae vam kaže prije uvoza duplikata.
+U postavkama uvoza **Otvori kandidate bez izvora u** određuje koji se zaslon prvi prikazuje. **Zadnje korišteno** znači zadnji izvor koji ste izričito otvorili. Ova postavka bira zaslon, a ne izvor metapodataka; tek izričita radnja u izvoru potvrđuje što će uvoz koristiti.
 
 ## Potvrda i uvoz
 

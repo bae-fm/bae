@@ -1,9 +1,9 @@
 ---
 title: Importación
-description: Empareja tus carpetas con lanzamientos reales
+description: Elija cómo cada carpeta proporciona sus metadatos de importación
 ---
 
-Una carpeta de copias sabe casi nada sobre sí misma. El lanzamiento del que salió, la edición, el sello, los créditos, dónde termina realmente la pista 12: todo eso vive en bases de datos como MusicBrainz y Discogs, no en tus nombres de archivo. Importar es como bae conecta ambos lados: le apuntas a tu música, averigua qué lanzamiento es cada carpeta, y la biblioteca registra la carpeta como ese lanzamiento.
+Una carpeta proporciona el audio y otros archivos para una importación. Tú eliges si sus metadatos editables comienzan con una publicación en línea, las etiquetas propias de los archivos o un formulario en blanco.
 
 La importación ocurre en escritorio (macOS, Windows). Tus archivos se leen, nunca se cambian: bae no mueve, renombra, cambia etiquetas ni recodifica nada. Consulta [Almacenamiento y sin conexión](/es/guide/storage) para saber dónde viven los archivos después de importarlos.
 
@@ -22,32 +22,23 @@ Un análisis reconoce lanzamientos con las formas que toman las copias reales:
 
 bae importa los formatos que reproduce: FLAC, MP3, APE, ALAC y AAC en `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack y DSD (`.dsf`/`.dff`). Las imágenes y documentos (hojas CUE, registros de copia, archivos de texto) en la carpeta se reconocen y se conservan con el lanzamiento.
 
-## Identificar un lanzamiento
+## Elige una fuente de metadatos
 
-Selecciona un candidato y bae empieza a identificarlo. En vez de adivinar por etiquetas, lee las pruebas de la carpeta y busca cada pieza:
+Cada candidato ofrece tres fuentes de metadatos equivalentes: **Búsqueda**, **Etiquetas de archivo** y **Manual**. Abrir una fuente solo muestra su vista; no cambia la fuente que se usará al importar. La fuente se convierte en la base de los metadatos cuando eliges expresamente una edición concreta, **Usar etiquetas de archivo** o **Ingresar manualmente**.
 
-- **Disc ID.** Una huella de la disposición exacta de pistas del CD, calculada desde el registro de copia o la hoja CUE. Cuando coincide, identifica la edición precisa del CD.
-- **Código de barras.** Leído de escaneos de portada en la carpeta mediante reconocimiento de texto, o desde la hoja CUE.
-- **Números de catálogo y texto.** Números de catálogo encontrados en imágenes y en nombres de archivos y carpetas, usados para reducir los resultados.
+### Búsqueda
 
-Las señales se buscan en MusicBrainz y Discogs al mismo tiempo, y los resultados se contrastan. Cada señal aparece como una insignia sobre los resultados: puedes ver que se encontró, de dónde vino (pasa el cursor para ver el origen: TOC del disco, hoja CUE, escaneo de portada, nombre de carpeta), y desactivar señales individuales si una confunde.
+La búsqueda es la única fuente que identifica una versión. Lee una ID de disco de un registro de extracción o de una hoja CUE, reconoce códigos de barras y texto de catálogo, consulta MusicBrainz y Discogs y compara los resultados. La identificación automática utiliza esta misma ruta de búsqueda. Se ejecuta solo cuando **Identificar candidatos de búsqueda automáticamente** está habilitado y la superficie predeterminada se resuelve en Búsqueda. Al ingresar a Búsqueda e iniciar una búsqueda, se puede ejecutar explícitamente independientemente de esa configuración. Nada de este trabajo se ejecuta en Etiquetas de archivo o Manual.
 
-Tres resultados:
+### Etiquetas de archivo
 
-- **Encontrado.** Las pruebas coinciden en un grupo de lanzamientos. Eliges la edición exacta de su lista.
-- **Conflicto.** Dos señales apuntan a lanzamientos distintos, por ejemplo el disc ID y el código de barras no concuerdan. bae muestra ambos lados y eliges en cuál confiar, o ignoras una señal.
-- **No se encontró nada.** Busca a mano: artista y álbum, número de catálogo o código de barras, en cualquiera de las dos bases de datos. El texto reconocido de las imágenes se ofrece como autocompletado.
+Etiquetas de archivo lee etiquetas de audio incrustadas y metadatos CUE solo cuando lo abres y le pides a bae que los lea. Revise la vista previa y luego seleccione **Usar etiquetas de archivo** para almacenar esa instantánea exacta como semilla. La importación falla antes de escribir en la biblioteca si los archivos de audio candidatos o observados cambian después de la vista previa.
 
-También puedes **omitir la identificación** e importar como lanzamiento desconocido. bae recurre entonces a las etiquetas incrustadas de tus archivos para los nombres, y puedes volver a identificarlo más tarde, cuando el lanzamiento exista en una base de datos o tengas mejores pruebas.
+### Manual
 
-## Exacto o aproximado
+El manual no lee etiquetas, evidencia de carpetas ni proveedores en línea. Seleccione **Ingresar manualmente** para comenzar con una versión editable en blanco y el diseño físico de la pista del candidato.
 
-Cuando seleccionas una coincidencia, bae la compara con tus archivos y señala una diferencia en el número de pistas. Entonces declaras que es la coincidencia:
-
-- **Exacto**: tus archivos son esta edición.
-- **Solo metadatos**: álbum correcto, pero no necesariamente esta edición exacta. bae usa los metadatos y recuerda que la edición es aproximada.
-
-Si el lanzamiento ya está en tu biblioteca, o hay otra edición del mismo álbum, bae te lo dice antes de que importes un duplicado.
+En la configuración de importación, **Abrir candidatos sin fuente en** elige qué vista se muestra primero. **Último uso** representa la última fuente que abriste expresamente. Esta opción elige una vista, no la fuente de metadatos; una acción explícita dentro de la fuente sigue siendo necesaria para confirmar qué usará la importación.
 
 ## Confirmar e importar
 

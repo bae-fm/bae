@@ -1,9 +1,9 @@
 ---
 title: Import-Pipeline
-description: Scannen, Belege, Abgleich und die atomare Festschreibung
+description: Scannen, Metadaten-Seeds und der atomare Commit
 ---
 
-Import verwandelt einen Ordner aus Dateien in einen releasegenauen Katalogeintrag, ohne ein Byte der Dateien zu verändern. Diese Seite ist die Pipeline hinter dem Ablauf aus der [Anleitung](/de/guide/importing).
+Der Import verwandelt einen Ordner mit Dateien in einen Katalogeintrag, ohne ein Byte der Dateien zu ändern. Diese Seite ist die Pipeline hinter dem im [Gebrauchsleitfaden](/de/guide/importing) beschriebenen Ablauf.
 
 ## Scannen
 
@@ -11,17 +11,25 @@ Import verwandelt einen Ordner aus Dateien in einen releasegenauen Katalogeintra
 
 Ein CUE-Sheet verwandelt ein Audio-Image in eine Trackliste. Der Parser behandelt Pregaps und Postgaps, Performer und ISRCs pro Track sowie Ein-Datei-Images und CUE-Layouts mit einer Datei pro Track. Trackgrenzen werden von CUE-Frames (1/75 Sekunde) in exakte Samplepositionen umgerechnet, aus denen später die Byte- und Sample-Fenster werden, die die Wiedergabe nutzt.
 
-## Belege, nicht Tags
+## Metadaten-Seeds
 
-Die Identifizierung liest drei Arten von Belegen in einem Durchgang aus dem Ordner:
+Jeder Kandidat verfügt über einen expliziten Metadaten-Seed: eine in **Nachschlagen** ausgewählte externe Version, einen gespeicherten **Datei-Tags**-Snapshot oder einen **manuellen** Eintrag. Durch das Wechseln von Oberflächen wird dieser Samen nicht neu geschrieben.
 
-- eine **Disc ID**, der MusicBrainz-Fingerabdruck des exakten Tracklayouts einer CD, berechnet aus einem Rip-Log oder aus dem CUE-Sheet;
-- **Barcodes**, aus Artwork-Scans durch das Vision-Framework der Plattform dekodiert und aus CUE-Katalogfeldern gelesen;
-- **Text**: Katalognummern und freier Text aus Artwork-OCR, Ordner- und Dateinamen sowie Textdateien im Rip.
+### Nachschlagen
 
-Eingebettete Audiotags sind absichtlich keine Belege: Sie beschreiben, was ein Tagger glaubte, nicht was die Pressung ist. (Sie liefern die Start-Metadaten, wenn der Benutzer ein Release als unbekannt importiert.)
+Die Suche ist der einzige Pfad, der eine Disc-ID extrahiert, Barcodes und Katalogtext erkennt, Anbieter abfragt und Ergebnisse abgleicht. Der Hintergrund-Sweep führt diesen Pfad nur aus, wenn die automatische Suche aktiviert ist und die konfigurierte Standardeinstellung in „Suche“ aufgelöst wird. Eine explizite Suchaktion kann es unabhängig von dieser Einstellung ausführen. Durch das Öffnen von Datei-Tags oder manuell werden niemals die Extraktion, Anbieterabfragen oder der Abgleich gestartet.
 
-Disc ID und Barcode werden gleichzeitig nachgeschlagen, die Disc ID gegen MusicBrainz, der Barcode zugleich gegen MusicBrainz und Discogs, und die Ergebnisse werden abgeglichen: Ergebnisse, die in einer Release-Gruppe übereinstimmen, laufen zusammen, Katalognummerntreffer grenzen die Pressungsliste ein, und Uneinigkeit zwischen Signalen wird dem Benutzer als ausdrücklicher Konflikt gezeigt statt als stille beste Vermutung. Jedes Ergebnis trägt seine Herkunft (gefunden per Disc ID, per Barcode, Katalogtreffer), damit die Oberfläche sagen kann, warum eine Zeile angeboten wird.
+Eingebettete Audio-Tags sind keine Nachschlagen-Beweise: Sie beschreiben, was ein Tagger geglaubt hat, nicht, was der Druck war. Suchergebnisse tragen ihre Herkunft, sodass die Benutzeroberfläche erklären kann, warum jedes Ergebnis angeboten wird.
+
+### Datei-Tags
+
+Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten träge. In der Vorschau wird ein Schnappschuss gespeichert, der mit der Scan-Generierung des Kandidaten, der Dateibearbeitungsrevision und den beobachteten Audiodateien versehen ist. Wenn Sie **Datei-Tags verwenden** wählen, wird dieser Snapshot ausgewählt. Das Festschreiben verwendet denselben Snapshot und schlägt fehl, bevor die Bibliothek schreibt, wenn sich ihr Stempel oder ihre Beobachtungen geändert haben. Es liest nicht stillschweigend eine andere Antwort.
+
+### Manuell
+
+Manuell führt keine Metadateneingabe oder -ausgabe durch. Wenn Sie **Manuell eingeben** wählen, wird eine leere bearbeitbare Version erstellt, während das gescannte physische Gleislayout beibehalten wird.
+
+Die Einstellung **Unseed-Kandidaten öffnen in** wählt die anfängliche Oberfläche für Kandidaten ohne Seed aus. Die festen Optionen sind „Suchen“, „Datei-Tags“ und „Manuell“. **Zuletzt verwendet** wird in den zuletzt vom Benutzer explizit ausgewählten Modus aufgelöst. Die Präsentation bleibt getrennt vom gespeicherten Saatgut.
 
 ## Quellen
 

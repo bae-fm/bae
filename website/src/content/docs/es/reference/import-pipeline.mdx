@@ -1,9 +1,9 @@
 ---
 title: Proceso de importación
-description: Análisis, pruebas, triangulación y confirmación atómica
+description: Escaneo, semillas de metadatos y confirmación atómica
 ---
 
-La importación convierte una carpeta de archivos en una entrada de catálogo precisa por lanzamiento sin modificar ni un byte de los archivos. Esta página es el proceso detrás del flujo descrito en la [guía de uso](/es/guide/importing).
+Importar convierte una carpeta de archivos en una entrada de catálogo sin modificar un byte de los archivos. Esta página es el conducto detrás del flujo descrito en la [guía de uso](/es/guide/importing).
 
 ## Análisis
 
@@ -11,17 +11,25 @@ Las carpetas vigiladas se observan mediante eventos del sistema de archivos de l
 
 Una hoja CUE convierte una imagen de audio en una lista de pistas. El parser maneja pregaps y postgaps, interpretes e ISRCs por pista, y tanto imágenes de archivo único como disposiciones CUE de un archivo por pista. Los límites de pista se convierten de frames CUE (1/75 de segundo) a posiciones exactas de muestra, que luego se convierten en las ventanas de bytes y muestras que usa la reproducción.
 
-## Pruebas, no etiquetas
+## Semillas de metadatos
 
-La identificación lee tres tipos de prueba de la carpeta en una pasada:
+Cada candidato tiene una semilla de metadatos explícita: una versión externa elegida en **Búsqueda**, una instantánea de **Etiquetas de archivo** almacenada o una entrada **Manual**. Cambiar de superficie no reescribe esa semilla.
 
-- un **disc ID**, la huella MusicBrainz de la disposición exacta de pistas de un CD, calculada desde un registro de copia o desde la hoja CUE;
-- **códigos de barras**, descodificados de escaneos de imágenes por el marco de visión de la plataforma y leídos de campos catalog de CUE;
-- **texto**: números de catálogo y texto libre de OCR de imágenes, nombres de carpetas y archivos, y archivos de texto de la copia.
+### Búsqueda
 
-Las etiquetas de audio incrustadas no son prueba deliberadamente: describen lo que creyó quien etiquetó, no qué edición es. (Alimentan los metadatos de respaldo cuando el usuario importa un lanzamiento como desconocido.)
+La búsqueda es la única ruta que extrae una ID de disco, reconoce códigos de barras y texto de catálogo, consulta proveedores y compara resultados. El barrido en segundo plano ejecuta esta ruta solo cuando la búsqueda automática está habilitada y el valor predeterminado configurado se resuelve en Búsqueda. Una acción de búsqueda explícita puede ejecutarlo independientemente de esa configuración. Al abrir Etiquetas de archivo o Manual nunca se inicia la extracción, las consultas al proveedor ni la coincidencia.
 
-Disc ID y código de barras se buscan de forma concurrente, el disc ID en MusicBrainz, el código de barras en MusicBrainz y Discogs a la vez, y los resultados se triangulan: los resultados que coinciden en un grupo de lanzamientos convergen, las coincidencias de número de catálogo reducen la lista de ediciones, y el desacuerdo entre señales aparece como conflicto explícito para el usuario en vez de una mejor suposición silenciosa. Cada resultado lleva su procedencia (encontrado por disc ID, por código de barras, coincidencia de catálogo) para que la UI pueda decir por qué se ofrece una fila.
+Las etiquetas de audio incrustadas no son evidencia de búsqueda: describen lo que creía el etiquetador, no cuál es la presión. Los resultados de la búsqueda llevan su procedencia para que la interfaz pueda explicar por qué se ofrece cada resultado.
+
+### Etiquetas de archivo
+
+Etiquetas de archivo lee perezosamente etiquetas de audio incrustadas y metadatos CUE. La vista previa almacena una instantánea estampada con la generación de escaneo del candidato, la revisión de edición de archivos y los archivos de audio observados. Al elegir **Usar etiquetas de archivo**, se selecciona esa instantánea. La confirmación consume la misma instantánea y falla antes de que la biblioteca escriba si su sello u observaciones cambiaron; no lee en silencio una respuesta diferente.
+
+### Manual
+
+Manual no realiza entrada ni salida de metadatos. Al elegir **Ingresar manualmente** se crea una versión editable en blanco y al mismo tiempo se conserva el diseño de la pista física escaneada.
+
+La configuración **Abrir candidatos no sembrados en** selecciona la superficie inicial para los candidatos sin semilla. Sus opciones fijas son Búsqueda, Etiquetas de archivo y Manual; **Último uso** se resuelve en el último modo elegido explícitamente por el usuario. La presentación permanece separada de la semilla almacenada.
 
 ## Fuentes
 

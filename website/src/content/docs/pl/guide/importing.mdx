@@ -1,9 +1,9 @@
 ---
 title: Import
-description: Dopasuj foldery do rzeczywistych wydań
+description: Wybierz sposób, w jaki każdy folder dostarcza metadane importu
 ---
 
-Folder z ripami wie o sobie prawie nic. Wydanie, z którego pochodzi, tłoczenie, wytwórnia, przypisania, miejsce, w którym naprawdę kończy się dwunasty utwór: to wszystko żyje w bazach takich jak MusicBrainz i Discogs, nie w nazwach plików. Import jest sposobem, w jaki bae łączy te dwie strony: wskazujesz muzykę, ono ustala, którym wydaniem jest każdy folder, a biblioteka zapisuje folder jako to wydanie.
+Folder zawiera pliki audio i inne do zaimportowania. Ty decydujesz, czy edytowalne metadane rozpoczynają się od wersji online, własnych tagów plików, czy też od pustego formularza.
 
 Import odbywa się na komputerze (macOS, Windows). Twoje pliki są czytane, nigdy zmieniane: bae niczego nie przenosi, nie zmienia nazw, nie przepisuje tagów ani nie koduje ponownie. Zobacz [Przechowywanie i offline](/pl/guide/storage), aby dowiedzieć się, gdzie pliki mieszkają po imporcie.
 
@@ -22,32 +22,23 @@ Skan rozpoznaje wydania w kształtach, jakie ripy rzeczywiście przyjmują:
 
 bae importuje formaty, które odtwarza: FLAC, MP3, APE, ALAC i AAC w `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack oraz DSD (`.dsf`/`.dff`). Grafiki i dokumenty (arkusze CUE, logi ripu, pliki tekstowe) w folderze są rozpoznawane i trzymane z wydaniem.
 
-## Identyfikacja wydania
+## Wybierz źródło metadanych
 
-Wybierz kandydata, a bae zacznie go identyfikować. Zamiast zgadywać z tagów, czyta dowody w folderze i wyszukuje każdy z nich:
+Każdy kandydat oferuje trzy równe źródła metadanych: **Wyszukiwanie**, **Tagi plików** i **Instrukcja**. Otwarcie źródła ukazuje jedynie jego powierzchnię; nie zmienia to źródła, które kandydat zaimportuje. Źródło staje się zalążkiem metadanych kandydata tylko wtedy, gdy wyraźnie wybierzesz naciśnięcie, wybierzesz **Użyj znaczników pliku** lub wybierz **Wprowadź ręcznie**.
 
-- **Disc ID.** Odcisk dokładnego układu utworów CD, wyliczony z logu ripu albo arkusza CUE. Gdy pasuje, identyfikuje dokładne wydanie CD.
-- **Kod kreskowy.** Odczytany ze skanów okładek w folderze przez rozpoznawanie tekstu albo z arkusza CUE.
-- **Numery katalogowe i tekst.** Numery katalogowe znalezione na grafikach oraz w nazwach plików i folderów, używane do zawężania wyników.
+### Wyszukiwanie
 
-Sygnały są jednocześnie wyszukiwane w MusicBrainz i Discogs, a wyniki są porównywane. Każdy sygnał pojawia się jako znacznik nad wynikami: możesz zobaczyć, co znaleziono, skąd pochodzi (najedź, aby zobaczyć źródło: spis treści płyty, arkusz CUE, skan okładki, nazwa folderu), i wyłączyć pojedyncze sygnały, jeśli któryś wprowadza w błąd.
+Wyszukiwanie jest jedynym źródłem identyfikującym wersję. Odczytuje identyfikator płyty z dziennika zgrania lub arkusza CUE, rozpoznaje kody kreskowe i tekst katalogu, wysyła zapytania do MusicBrainz i Discogs i dopasowuje wyniki. Automatyczna identyfikacja korzysta z tej samej ścieżki wyszukiwania. Działa tylko wtedy, gdy włączona jest opcja **Automatycznie identyfikuj kandydatów do wyszukiwania**, a domyślna powierzchnia zmienia się na opcję Wyszukaj. Wpisanie opcji Wyszukaj i rozpoczęcie wyszukiwania może spowodować jego jawne uruchomienie niezależnie od tego ustawienia. Żadna z tych prac nie działa w tagach plików ani w trybie ręcznym.
 
-Trzy wyniki:
+### Tagi plików
 
-- **Found.** Dowody zgadzają się na jedną grupę wydań. Wybierasz dokładne tłoczenie z jej listy.
-- **Conflict.** Dwa sygnały wskazują różne wydania, na przykład Disc ID i kod kreskowy się nie zgadzają. bae pokazuje obie strony, a Ty wybierasz, której zaufać, albo ignorujesz sygnał.
-- **Nothing found.** Szukaj ręcznie: wykonawca i album, numer katalogowy albo kod kreskowy, w jednej z baz. Tekst rozpoznany z grafiki jest proponowany jako autouzupełnianie.
+Tagi plików odczytują osadzone znaczniki audio i metadane CUE tylko wtedy, gdy je otworzysz i poprosisz o ich przeczytanie. Przejrzyj podgląd, a następnie wybierz opcję **Użyj znaczników plików**, aby zapisać dokładnie tę migawkę jako materiał źródłowy. Import nie powiedzie się przed zapisaniem do biblioteki, jeśli potencjalne lub zaobserwowane pliki audio ulegną zmianie po podglądzie.
 
-Możesz też **skip identifying** i zaimportować jako nieznane wydanie. bae wtedy wraca do osadzonych tagów plików dla nazw, a Ty możesz zidentyfikować wydanie później, gdy będzie już istnieć w bazie albo będziesz mieć lepsze dowody.
+### Ręcznie
 
-## Dokładne albo przybliżone
+Instrukcja nie odczytuje żadnych tagów, dowodów w folderach ani dostawców online. Wybierz opcję **Wprowadź ręcznie**, aby rozpocząć od pustej, edytowalnej wersji i fizycznego układu ścieżki kandydata.
 
-Gdy wybierzesz dopasowanie, bae sprawdza je względem Twoich plików i oznacza niezgodność liczby utworów. Potem określasz, czym jest dopasowanie:
-
-- **Exact**: Twoje pliki są tym tłoczeniem.
-- **Metadata only**: właściwy album, ale niekoniecznie to dokładne tłoczenie. bae używa metadanych i pamięta, że tłoczenie jest przybliżone.
-
-Jeśli wydanie jest już w bibliotece albo jest w niej inne tłoczenie tego samego albumu, bae powie Ci o tym przed importem duplikatu.
+W ustawieniach importu opcja **Otwórz nieobsadzonych kandydatów w** wybiera powierzchnię, którą niewykorzystany kandydat otworzy jako pierwszy. **Ostatnio używane** odnosi się do ostatniego jawnie otwartego źródła. To ustawienie wybiera powierzchnię, a nie ziarno; jawna akcja źródłowa nadal potwierdza, czego użyje import.
 
 ## Potwierdzenie i import
 

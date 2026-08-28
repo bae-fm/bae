@@ -1,9 +1,9 @@
 ---
 title: İçe aktarma boru hattı
-description: Tarama, kanıt, üçgenleme ve atomik kayıt
+description: Tarama, meta veri tohumları ve atomik taahhüt
 ---
 
-İçe aktarma, dosya klasörünü dosyaların tek baytını değiştirmeden sürüme uygun bir katalog girdisine dönüştürür. Bu sayfa, [kullanım kılavuzunda](/tr/guide/importing) anlatılan akışın arkasındaki boru hattıdır.
+İçe aktarma, dosyaların bir baytını değiştirmeden bir dosya klasörünü katalog girişine dönüştürür. Bu sayfa, [kılavuzu kullanın](REHBERURL)'de açıklanan akışın ardındaki kanaldır.
 
 ## Tarama
 
@@ -11,17 +11,25 @@ description: Tarama, kanıt, üçgenleme ve atomik kayıt
 
 Bir CUE sayfası tek bir ses imajını parça listesine dönüştürür. Ayrıştırıcı pregap'leri ve postgap'leri, parça başına performers ve ISRC'leri, hem tek dosyalı imajları hem de parça başına tek dosya CUE yerleşimlerini işler. Parça sınırları CUE frame'lerinden (saniyenin 1/75'i) kesin örnek konumlarına dönüştürülür; bunlar daha sonra çalmanın kullandığı bayt ve örnek pencereleri olur.
 
-## Etiket değil kanıt
+## Meta veri tohumları
 
-Tanımlama klasörden üç tür kanıtı tek geçişte okur:
+Her adayın açık bir meta veri kaynağı vardır: **Arama**'da seçilen harici bir sürüm, depolanan **Dosya Etiketleri** anlık görüntüsü veya **Elle** girişi. Yüzeyleri değiştirmek o tohumu yeniden yazmaz.
 
-- **disc ID**, CD'nin tam parça yerleşiminin MusicBrainz parmak izi; rip günlüğünden veya CUE sayfasından hesaplanır;
-- **barcodes**, platformun görüntü sistemiyle görsel taramalardan çözülür ve CUE catalog alanlarından okunur;
-- **text**: görsel OCR'ından katalog numaraları ve serbest metin, klasör ve dosya adları, rip içindeki metin dosyaları.
+### Arama
 
-Gömülü ses etiketleri bilinçli olarak kanıt değildir: baskının ne olduğunu değil, etiketleyenin neye inandığını anlatır. (Kullanıcı bir sürümü bilinmeyen olarak içe aktardığında yedek üst veriyi bunlar başlatır.)
+Arama, Disk Kimliğini çıkaran, barkodları ve katalog metnini tanıyan, sağlayıcıları sorgulayan ve sonuçları eşleştiren tek yoldur. Arka plan taraması bu yolu yalnızca otomatik Arama etkinleştirildiğinde ve yapılandırılmış varsayılan Arama olarak çözümlendiğinde çalıştırılır. Açık bir Arama eylemi, bu ayardan bağımsız olarak onu çalıştırabilir. Dosya Etiketlerini veya Kılavuzu açmak hiçbir zaman ayıklamayı, sağlayıcı sorgularını veya eşleştirmeyi başlatmaz.
 
-Disc ID ve barcode eşzamanlı aranır; disc ID MusicBrainz'e karşı, barcode MusicBrainz ve Discogs'a aynı anda karşı. Sonuçlar üçgenlenir: bir sürüm grubunda anlaşan sonuçlar birleşir, katalog numarası eşleşmeleri baskı listesini daraltır ve sinyaller arasındaki uyuşmazlık sessiz en iyi tahmin yerine kullanıcıya açık çakışma olarak gösterilir. Her sonuç kökenini taşır (disc ID ile bulundu, barcode ile bulundu, catalog match), böylece UI bir satırın neden sunulduğunu söyleyebilir.
+Gömülü ses etiketleri Arama kanıtı değildir: baskının ne olduğunu değil, etiketleyicinin neye inandığını tanımlarlar. Arama sonuçları kökenlerini taşır, böylece arayüz her sonucun neden sunulduğunu açıklayabilir.
+
+### Dosya etiketleri
+
+Dosya etiketleri, gömülü ses etiketlerini ve CUE meta verilerini yalnızca istendiğinde okur. Önizleme; tarama kuşağı, dosya düzenleme sürümü ve gözlemlenen ses dosyalarıyla ilişkili bir anlık görüntü saklar. **Dosya etiketlerini kullan** bu görüntüyü seçer. Onaylama aynı görüntüyü kullanır ve işareti ya da gözlemleri değişmişse kitaplığa yazmadan önce başarısız olur; farklı bir yanıt sessizce okunmaz.
+
+### Elle
+
+Elle, meta veri girişi veya çıkışı gerçekleştirmez. **Elle Olarak Girin**'in seçilmesi, taranan fiziksel parça düzenini korurken boş, düzenlenebilir bir yayın oluşturur.
+
+**Başlatılmamış adayları şurada aç** ayarı, çekirdeksiz adaylar için başlangıç ​​yüzeyini seçer. Sabit seçenekleri Arama, Dosya Etiketleri ve El Kitabıdır; **Son Kullanılan**, kullanıcı tarafından açıkça seçilen son moda çözümlenir. Sunum depolanan tohumdan ayrı kalır.
 
 ## Kaynaklar
 

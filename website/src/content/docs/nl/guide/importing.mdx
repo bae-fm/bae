@@ -1,9 +1,9 @@
 ---
 title: Importeren
-description: Koppel je mappen aan echte releases
+description: Kies hoe elke map de importmetagegevens levert
 ---
 
-Een map met rips weet bijna niets over zichzelf. De release waar hij vandaan komt, de persing, het label, de credits, waar track 12 echt eindigt: dat staat allemaal in databases zoals MusicBrainz en Discogs, niet in je bestandsnamen. Importeren is hoe bae de twee verbindt: je wijst naar je muziek, bae zoekt uit welke release elke map is, en de bibliotheek legt de map vast als die release.
+Een map levert de audio- en andere bestanden voor import. U kiest of de bewerkbare metagegevens beginnen met een online release, de eigen tags van de bestanden of een leeg formulier.
 
 Importeren gebeurt op desktop (macOS, Windows). Je bestanden worden gelezen, nooit gewijzigd: bae verplaatst, hernoemt, hertagt of hercodeert niets. Zie [Opslag en offline](/nl/guide/storage) voor waar bestanden na import staan.
 
@@ -22,32 +22,23 @@ Een scan herkent releases in de vormen die rips echt hebben:
 
 bae importeert de formaten die het afspeelt: FLAC, MP3, APE, ALAC en AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack en DSD (`.dsf`/`.dff`). Artwork en documenten (CUE-sheets, riplogs, tekstbestanden) in de map worden herkend en bij de release bewaard.
 
-## Een release identificeren
+## Kies een metadatabron
 
-Selecteer een kandidaat en bae begint hem te identificeren. In plaats van uit tags te raden, leest het het bewijs in de map en zoekt elk stuk op:
+Elke kandidaat biedt drie gelijke metadatabronnen: **Opzoeken**, **Bestandstags** en **Handmatig**. Als je een bron opent, zie je alleen de oppervlakte ervan; het verandert niets aan de bron die de kandidaat zal importeren. Een bron wordt alleen het metadatazaad van de kandidaat als u expliciet een persing kiest, **Bestandstags gebruiken** selecteert of **Handmatig invoeren** selecteert.
 
-- **Disc ID.** Een vingerafdruk van de exacte trackindeling van de CD, berekend uit de riplog of de CUE-sheet. Als hij matcht, identificeert hij de precieze CD-editie.
-- **Barcode.** Gelezen uit hoes-scans in de map met tekstherkenning, of uit de CUE-sheet.
-- **Catalogusnummers en tekst.** Catalogusnummers gevonden op artwork en in bestands- en mapnamen, gebruikt om resultaten te beperken.
+### Opzoeken
 
-De signalen worden tegelijk opgezocht in MusicBrainz en Discogs, en de resultaten worden tegen elkaar gecontroleerd. Elk signaal verschijnt als een badge boven de resultaten: je kunt zien wat is gevonden, waar het vandaan kwam (hover voor de oorsprong: disc-TOC, CUE-sheet, hoes-scan, mapnaam), en individuele signalen uitzetten als er een misleidend is.
+Opzoeken is de enige bron die een release identificeert. Het leest een schijf-ID uit een riplog of CUE-blad, herkent streepjescodes en catalogustekst, vraagt ​​MusicBrainz en Discogs op en vergelijkt de resultaten. Automatische identificatie gebruikt hetzelfde opzoekpad. Het wordt alleen uitgevoerd als **Opzoekkandidaten automatisch identificeren** is ingeschakeld en het standaardoppervlak wordt omgezet in Opzoeken. Door Opzoeken in te voeren en een zoekopdracht te starten, kan deze expliciet worden uitgevoerd, ongeacht die instelling. Niets van dit werk wordt uitgevoerd in Bestandstags of Handmatig.
 
-Drie uitkomsten:
+### Bestandstags
 
-- **Gevonden.** Het bewijs wijst naar een releasegroep. Je kiest de exacte persing uit de lijst.
-- **Conflict.** Twee signalen wijzen naar verschillende releases, bijvoorbeeld de disc ID en de barcode zijn het oneens. bae toont beide kanten en jij kiest welk signaal je vertrouwt, of negeert een signaal.
-- **Niets gevonden.** Zoek met de hand: artiest en album, catalogusnummer, of barcode, in een van beide databases. Tekst die uit het artwork is herkend wordt als autocomplete aangeboden.
+Bestandstags lezen ingebedde audiotags en CUE-metagegevens alleen wanneer u deze opent en bae vraagt deze te lezen. Bekijk het voorbeeld en selecteer vervolgens **Bestandstags gebruiken** om de exacte momentopname als kiem op te slaan. Het importeren mislukt voordat er naar de bibliotheek wordt geschreven als de kandidaat of de waargenomen audiobestanden na de preview veranderen.
 
-Je kunt ook **skip identifying** en importeren als onbekende release. bae valt dan terug op de ingesloten tags van je bestanden voor namen, en je kunt later opnieuw identificeren, wanneer de release in een database staat of je beter bewijs hebt.
+### Handmatig
 
-## Exact of bij benadering
+Handleiding leest geen tags, mapbewijs of online providers. Selecteer **Handmatig invoeren** om te beginnen met een lege, bewerkbare release en de fysieke tracklay-out van de kandidaat.
 
-Wanneer je een match selecteert, controleert bae die tegen je bestanden en markeert een afwijkend aantal tracks. Daarna verklaar je wat de match is:
-
-- **Exact**: je bestanden zijn deze persing.
-- **Alleen metadata**: het juiste album, maar niet noodzakelijk deze exacte persing. bae gebruikt de metadata en onthoudt dat de persing bij benadering is.
-
-Als de release al in je bibliotheek staat, of een andere persing van hetzelfde album, vertelt bae dat voordat je een duplicaat importeert.
+In Importinstellingen kiest **Open niet-geplaatste kandidaten in** welk oppervlak een niet-geplaatste kandidaat het eerst opent. **Laatst gebruikt** wordt omgezet naar de laatste bron die u expliciet hebt geopend. Deze instelling kiest een oppervlak, geen zaadje; de expliciete bronactie bevestigt nog steeds wat de import zal gebruiken.
 
 ## Bevestigen en importeren
 

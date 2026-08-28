@@ -1,9 +1,9 @@
 ---
 title: İçe aktarma
-description: Klasörlerinizi gerçek sürümlerle eşleştirin
+description: Her klasörün içe aktarma meta verilerini nasıl sağlayacağını seçin
 ---
 
-Rip klasörü kendi hakkında çok az şey bilir. Geldiği sürüm, baskı, plak şirketi, krediler, 12. parçanın gerçekte nerede bittiği: bunların hepsi dosya adlarınızda değil MusicBrainz ve Discogs gibi veritabanlarında yaşar. İçe aktarma, bae'in ikisini bağlama yoludur: müziğinizi gösterirsiniz, her klasörün hangi sürüm olduğunu çözer ve kitaplık klasörü o sürüm olarak kaydeder.
+Bir klasör, içe aktarma için ses ve diğer dosyaları sağlar. Düzenlenebilir meta verilerinin çevrimiçi bir sürümle mi, dosyaların kendi etiketleriyle mi yoksa boş bir formla mı başlayacağını siz seçersiniz.
 
 İçe aktarma masaüstünde gerçekleşir (macOS, Windows). Dosyalarınız okunur, asla değiştirilmez: bae hiçbir şeyi taşımaz, yeniden adlandırmaz, yeniden etiketlemez veya yeniden kodlamaz. İçe aktarmadan sonra dosyaların nerede yaşadığı için [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
 
@@ -22,32 +22,23 @@ Tarama, rip'lerin gerçekte aldığı biçimlerde sürümleri tanır:
 
 bae çaldığı biçimleri içe aktarır: FLAC, MP3, APE, `.m4a` içinde ALAC ve AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack ve DSD (`.dsf`/`.dff`). Klasördeki görseller ve belgeler (CUE sayfaları, rip günlükleri, metin dosyaları) tanınır ve sürümle birlikte tutulur.
 
-## Sürüm tanımlama
+## Bir meta veri kaynağı seçin
 
-Bir aday seçin; bae onu tanımlamaya başlar. Etiketlerden tahmin etmek yerine klasördeki kanıtı okur ve her parçayı arar:
+Her aday üç eşdeğer meta veri kaynağı sunar: **Arama**, **Dosya Etiketleri** ve **Elle**. Bir kaynağı açmak yalnızca ilgili görünümü gösterir; içe aktarmada kullanılacak kaynağı değiştirmez. Kaynak ancak belirli bir sürümü, **Dosya Etiketlerini Kullan** seçeneğini veya **Elle Olarak Girin** seçeneğini açıkça seçtiğinizde adayın meta veri temeli olur.
 
-- **Disc ID.** CD'nin tam parça yerleşiminin parmak izi; rip günlüğünden veya CUE sayfasından hesaplanır. Eşleştiğinde kesin CD edisyonunu tanımlar.
-- **Barcode.** Klasördeki kapak taramalarından metin tanıma ile veya CUE sayfasından okunur.
-- **Catalog numbers and text.** Görsellerde, dosya ve klasör adlarında bulunan katalog numaraları, sonuçları daraltmak için kullanılır.
+### Arama
 
-Sinyaller aynı anda MusicBrainz ve Discogs'a karşı aranır ve sonuçlar çapraz denetlenir. Her sinyal sonuçların üstünde bir rozet olarak görünür: ne bulunduğunu, nereden geldiğini (kaynak için üzerine gelin: disc TOC, CUE sheet, cover scan, folder name) görebilir ve yanıltıcıysa tek tek sinyalleri kapatabilirsiniz.
+Arama, bir sürümü tanımlayan tek kaynaktır. Bir rip günlüğünden veya CUE sayfasından Disk Kimliğini okur, barkodları ve katalog metnini tanır, MusicBrainz ve Discogs'u sorgular ve sonuçları eşleştirir. Otomatik tanımlama aynı Arama yolunu kullanır. Yalnızca **Arama adaylarını otomatik olarak tanımla** etkinleştirildiğinde ve varsayılan görünüm Arama olduğunda çalışır. Aramayı açıp açıkça başlatmak bu ayardan bağımsız olarak çalışır. Bu işlemlerin hiçbiri Dosya Etiketleri veya Elle modunda çalışmaz.
 
-Üç sonuç vardır:
+### Dosya etiketleri
 
-- **Bulundu.** Kanıt bir sürüm grubunda birleşir. Listedeki kesin baskıyı seçersiniz.
-- **Çakışma.** İki sinyal farklı sürümleri gösterir; örneğin disc ID ve barcode uyuşmaz. bae iki tarafı da gösterir; hangisine güveneceğinizi seçer veya bir sinyali yok sayarsınız.
-- **Hiçbir şey bulunamadı.** Elle arayın: sanatçı ve albüm, katalog numarası veya barcode; iki veritabanından birine karşı. Görselden tanınan metin otomatik tamamlama olarak sunulur.
+Dosya Etiketleri, gömülü ses etiketlerini ve CUE meta verilerini yalnızca açtığınızda ve bae'den bunları okumasını istediğinizde okur. Önizlemeyi inceleyin ve ardından tam anlık görüntüyü çekirdek olarak depolamak için **Dosya Etiketlerini Kullan** seçeneğini seçin. Aday veya gözlemlenen ses dosyaları önizlemeden sonra değişirse kitaplığa yazılmadan önce içe aktarma başarısız olur.
 
-Ayrıca **skip identifying** seçip bilinmeyen sürüm olarak içe aktarabilirsiniz. bae bu durumda adlar için dosyalarınızın gömülü etiketlerine döner; sürüm bir veritabanında bulunduğunda veya daha iyi kanıtınız olduğunda sonra yeniden tanımlayabilirsiniz.
+### Elle
 
-## Kesin veya yaklaşık
+Elle modu hiçbir etiketi, klasör kanıtını veya çevrimiçi sağlayıcıyı okumaz. Boş ve düzenlenebilir bir sürüm ile adayın fiziksel parça düzeninden başlamak için **Elle Olarak Girin**'i seçin.
 
-Bir eşleşme seçtiğinizde bae onu dosyalarınıza göre denetler ve parça sayısı uyuşmazlığını işaretler. Sonra eşleşmenin ne olduğunu siz belirtirsiniz:
-
-- **Exact**: dosyalarınız bu baskıdır.
-- **Yalnızca üst veri**: doğru albüm, ancak mutlaka bu kesin baskı değil. bae üst veriyi kullanır ve baskının yaklaşık olduğunu hatırlar.
-
-Sürüm zaten kitaplığınızdaysa veya aynı albümün başka bir baskısı varsa bae kopya içe aktarmadan önce bunu söyler.
+İçe aktarma ayarlarındaki **Kaynağı olmayan adayları şurada aç** seçeneği, ilk gösterilecek görünümü belirler. **Son Kullanılan**, açıkça açtığınız son kaynağı ifade eder. Bu ayar meta veri kaynağını değil görünümü seçer; içe aktarmanın ne kullanacağını kaynak içindeki açık bir işlem doğrular.
 
 ## Onaylama ve içe aktarma
 

@@ -1,9 +1,9 @@
 ---
 title: Importpijplijn
-description: Scannen, bewijs, driehoekscontrole en de atomaire commit
+description: Scannen, metadata-seeds en de atomaire commit
 ---
 
-Import maakt van een map met bestanden een release-accurate catalogusvermelding zonder een byte van de bestanden te wijzigen. Deze pagina is de pijplijn achter de stroom die in de [gebruiksgids](/nl/guide/importing) wordt beschreven.
+Importeren verandert een map met bestanden in een catalogusitem zonder een byte van de bestanden te wijzigen. Deze pagina is de pijplijn achter de stroom die wordt beschreven in de [gebruiksgids](/nl/guide/importing).
 
 ## Scannen
 
@@ -11,17 +11,25 @@ Bewaakte mappen worden gemonitord via de bestandssysteemevents van het platform,
 
 Een CUE-sheet maakt van een audio-image een tracklijst. De parser behandelt pregaps en postgaps, performers en ISRCs per track, en zowel images met een bestand als CUE-indelingen met een bestand per track. Trackgrenzen worden van CUE-frames (1/75e seconde) naar exacte sampleposities geconverteerd, die later de byte- en samplevensters worden die afspelen gebruikt.
 
-## Bewijs, geen tags
+## Metadatazaden
 
-Identificatie leest drie soorten bewijs uit de map in een pass:
+Elke kandidaat heeft één expliciete metadata-seed: een externe release gekozen in **Opzoeken**, een opgeslagen momentopname van **Bestandstags** of **Handmatige** invoer. Het wisselen van oppervlak herschrijft dat zaad niet.
 
-- een **disc ID**, de MusicBrainz-vingerafdruk van de exacte trackindeling van een CD, berekend uit een riplog of uit de CUE-sheet;
-- **barcodes**, gedecodeerd uit artworkscans door het vision-framework van het platform en gelezen uit CUE-catalogusvelden;
-- **tekst**: catalogusnummers en vrije tekst uit artwork-OCR, map- en bestandsnamen, en tekstbestanden in de rip.
+### Opzoeken
 
-Ingesloten audiotags zijn bewust geen bewijs: ze beschrijven wat een tagger geloofde, niet wat de persing is. (Ze vullen de fallbackmetadata wanneer de gebruiker een release als onbekend importeert.)
+Opzoeken is het enige pad dat een schijf-ID extraheert, streepjescodes en catalogustekst herkent, zoekopdrachten naar providers uitvoert en resultaten vergelijkt. De achtergrondcontrole voert dit pad alleen uit als automatisch opzoeken is ingeschakeld en de geconfigureerde standaard wordt omgezet in Zoeken. Een expliciete opzoekactie kan deze uitvoeren, ongeacht die instelling. Het openen van bestandstags of de handleiding start nooit het uitpakken, het opvragen van providers of het matchen.
 
-Disc ID en barcode worden gelijktijdig opgezocht, de disc ID in MusicBrainz, de barcode tegelijk in MusicBrainz en Discogs, en de resultaten worden driehoekig gecontroleerd: resultaten die het eens zijn over een releasegroep komen samen, catalogusnummermatches beperken de persingslijst, en onenigheid tussen signalen verschijnt als een expliciet conflict voor de gebruiker in plaats van een stille beste gok. Elk resultaat draagt zijn herkomst (gevonden via disc ID, via barcode, catalogusmatch) zodat de UI kan zeggen waarom een rij wordt aangeboden.
+Ingebedde audiotags zijn geen opzoekbewijs: ze beschrijven wat een tagger geloofde, niet wat de dringende reden is. Opzoekresultaten hebben hun herkomst, zodat de interface kan uitleggen waarom elk resultaat wordt aangeboden.
+
+### Bestandstags
+
+Bestandstags lezen ingebedde audiotags en CUE-metagegevens pas op verzoek. Het voorbeeld bewaart een momentopname met de scangeneratie, de revisie van de bestandsbewerking en de waargenomen audiobestanden. **Bestandstags gebruiken** kiest die momentopname. Bevestigen gebruikt dezelfde momentopname en mislukt vóór de bibliotheek wordt geschreven als de markering of waarnemingen zijn gewijzigd; er wordt niet stilzwijgend een ander antwoord gelezen.
+
+### Handmatig
+
+Handmatig voert geen invoer of uitvoer van metagegevens uit. Als u **Handmatig invoeren** kiest, wordt een blanco, bewerkbare release aangemaakt, terwijl de gescande fysieke tracklay-out behouden blijft.
+
+Met de instelling **Open ongeplaatste kandidaten in** selecteert u het initiële oppervlak voor kandidaten zonder zaad. De vaste keuzes zijn Opzoeken, Bestandstags en Handmatig; **Laatst gebruikt** gaat over naar de laatste modus die expliciet door de gebruiker is gekozen. Presentatie blijft gescheiden van het opgeslagen zaad.
 
 ## Bronnen
 
