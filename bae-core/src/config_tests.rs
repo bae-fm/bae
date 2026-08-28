@@ -155,6 +155,40 @@ fn last_used_import_metadata_mode_roundtrips_and_resolves() {
     );
 }
 
+#[test]
+fn every_import_metadata_default_resolves_to_a_concrete_mode() {
+    let tmp = TempDir::new().unwrap();
+    let mut config = make_test_config("lib", tmp.path().to_path_buf());
+
+    for (default_mode, expected) in [
+        (
+            DefaultImportMetadataMode::Lookup,
+            ImportMetadataMode::Lookup,
+        ),
+        (
+            DefaultImportMetadataMode::FileTags,
+            ImportMetadataMode::FileTags,
+        ),
+        (
+            DefaultImportMetadataMode::Manual,
+            ImportMetadataMode::Manual,
+        ),
+    ] {
+        config.default_import_metadata_mode = default_mode;
+        assert_eq!(config.resolved_unseeded_import_metadata_mode(), expected);
+    }
+
+    config.default_import_metadata_mode = DefaultImportMetadataMode::LastUsed;
+    for remembered in [
+        ImportMetadataMode::Lookup,
+        ImportMetadataMode::FileTags,
+        ImportMetadataMode::Manual,
+    ] {
+        config.last_import_metadata_mode = remembered;
+        assert_eq!(config.resolved_unseeded_import_metadata_mode(), remembered);
+    }
+}
+
 /// A hand-edited `0` is refused at load rather than reaching coven — the
 /// `NonZeroU32` field makes the deadlocking value unrepresentable.
 #[test]
