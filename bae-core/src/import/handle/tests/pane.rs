@@ -224,6 +224,58 @@ async fn matching_file_observations_reuse_the_stored_tag_snapshot() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
+    let (handle, tmp, key, _hash) = pane_fixture().await;
+    let root = tmp.path().join("watched").to_string_lossy().into_owned();
+    let before = handle
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root, &key)
+        .await
+        .unwrap()
+        .expect("the candidate remains stored")
+        .snapshot
+        .expect("the pane read stored a complete snapshot");
+
+    let changed_audio = tmp.path().join("watched/Album/01 Track.flac");
+    let audio = std::fs::OpenOptions::new()
+        .write(true)
+        .open(&changed_audio)
+        .unwrap();
+    audio
+        .set_times(
+            std::fs::FileTimes::new().set_modified(
+                std::time::SystemTime::now() + std::time::Duration::from_secs(5),
+            ),
+        )
+        .unwrap();
+
+    let result = handle
+        .start_import(&key, crate::import::StorageMode::Local, false)
+        .await;
+    let after = handle
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root, &key)
+        .await
+        .unwrap()
+        .expect("the candidate remains stored")
+        .snapshot
+        .expect("a refused import preserves the pane snapshot");
+    shut_down(handle).await;
+
+    assert_eq!(
+        after, before,
+        "refusing import must not replace the snapshot the pane displayed"
+    );
+    let error = result.expect_err("import must not reread changed tags behind the pane");
+    assert!(
+        error
+            .to_string()
+            .contains("audio changed after its file tags were read"),
+        "the refusal names the stale File Tags reading: {error}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
     let (manager, tmp) = setup_test_manager().await;
     let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;

@@ -3,6 +3,36 @@ use crate::discogs::DiscogsClient;
 use crate::import::payloads::ReleasePayloads;
 use crate::util::rate_limiter::CallPriority;
 
+#[derive(PartialEq, Eq)]
+enum FileTagSnapshotMatch {
+    Current,
+    CandidateChanged,
+    AudioChanged,
+}
+
+fn file_tag_snapshot_match(
+    snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+    scan_generation: u64,
+    file_edit_revision: u64,
+    observations: &[crate::import::file_tag_snapshot::FileObservation],
+) -> FileTagSnapshotMatch {
+    if snapshot.scan_generation != scan_generation
+        || snapshot.file_edit_revision != file_edit_revision
+    {
+        return FileTagSnapshotMatch::CandidateChanged;
+    }
+    if snapshot
+        .files
+        .iter()
+        .map(|fact| &fact.observation)
+        .eq(observations)
+    {
+        FileTagSnapshotMatch::Current
+    } else {
+        FileTagSnapshotMatch::AudioChanged
+    }
+}
+
 impl ImportServiceHandle {
     /// Project a File Tags candidate into a `ReleaseUserEdit` so the
     /// edit-metadata form can seed itself from what's on disk: the parsed CUE
@@ -107,13 +137,12 @@ impl ImportServiceHandle {
         let (snapshot, extracted) = tokio::task::spawn_blocking(move || {
             let observations = crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
             if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
-                snapshot.scan_generation == scan_generation
-                    && snapshot.file_edit_revision == file_edit_revision
-                    && snapshot
-                        .files
-                        .iter()
-                        .map(|fact| &fact.observation)
-                        .eq(observations.iter())
+                file_tag_snapshot_match(
+                    snapshot,
+                    scan_generation,
+                    file_edit_revision,
+                    &observations,
+                ) == FileTagSnapshotMatch::Current
             }) {
                 return Ok::<_, crate::import::ImportError>((snapshot, false));
             }
@@ -191,15 +220,69 @@ impl ImportServiceHandle {
             .await?;
 
         let file_tag_snapshot = if matches!(pick, crate::import::MetadataSeed::FileTags) {
-            let (snapshot_candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
+            let Some(stored) = self
+                .library_manager
+                .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
+                .await?
+            else {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} is not an actionable folder candidate"),
+                });
+            };
+            let crate::db::DbCandidateFileTagSnapshot {
+                scan_generation,
+                candidate: snapshot_candidate,
+                snapshot,
+            } = stored;
             if snapshot_candidate.files.content_hash() != content_hash
                 || snapshot_candidate.file_edit_revision != candidate.file_edit_revision
             {
-                return Err(crate::import::ImportError::Internal {
+                return Err(crate::import::ImportError::FileTags {
                     detail: format!(
-                        "{candidate_key} changed while its file-tag snapshot was being read"
+                        "{candidate_key} changed after its file tags were read; open it again"
                     ),
                 });
+            }
+            let Some(snapshot) = snapshot else {
+                return Err(crate::import::ImportError::FileTags {
+                    detail: format!(
+                        "{candidate_key}'s file tags have not been read; open File Tags again"
+                    ),
+                });
+            };
+            let audio_files = snapshot_candidate
+                .files
+                .audio()
+                .cloned()
+                .collect::<Vec<_>>();
+            let observations = tokio::task::spawn_blocking(move || {
+                crate::import::file_tag_snapshot::observe_audio_files(&audio_files)
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("file-tag validation task failed: {error}"),
+            })??;
+            match file_tag_snapshot_match(
+                &snapshot,
+                scan_generation,
+                snapshot_candidate.file_edit_revision,
+                &observations,
+            ) {
+                FileTagSnapshotMatch::Current => {}
+                FileTagSnapshotMatch::CandidateChanged => {
+                    return Err(crate::import::ImportError::FileTags {
+                        detail: format!(
+                            "{candidate_key} changed after its file tags were read; open it again"
+                        ),
+                    });
+                }
+                FileTagSnapshotMatch::AudioChanged => {
+                    return Err(crate::import::ImportError::FileTags {
+                        detail: format!(
+                            "{candidate_key}'s audio changed after its file tags were read; open File Tags again"
+                        ),
+                    });
+                }
             }
             Some(snapshot)
         } else {
