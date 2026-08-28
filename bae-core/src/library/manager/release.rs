@@ -71,7 +71,7 @@ impl LibraryManager {
     ///    across sources, so an MB-rooted import that carried a cross-link Discogs
     ///    row is reachable from a later Discogs-rooted import of the same master.
     ///
-    /// Empty `identities` (Unknown) skips both lookups — an Unknown import always
+    /// Empty `identities` skips both lookups — File Tags and Manual imports always
     /// gets a fresh album.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
@@ -212,7 +212,7 @@ impl LibraryManager {
     ///   track rows, and a mismatch errors before the identity write — a 12-track
     ///   release can't replace a 10-track rip. Album/release/track row data is not
     ///   touched: the identity pointer flips, the rows stay as the user last had them.
-    /// - **Unknown** — empty identities, `metadata_source = file_tags`,
+    /// - **File Tags** — empty identities, `metadata_source = file_tags`,
     ///   `metadata_source_release_id = NULL`; the release always
     ///   lands on a fresh album. The old source's album/release/track rows would
     ///   still show its metadata, so the same call reseeds them from the local file
@@ -270,7 +270,7 @@ impl LibraryManager {
         self.set_identity(release_id, new_identities, metadata_pointer)
             .await?;
 
-        // Unknown flips the pointer to FileTags but leaves the old source's rows
+        // File Tags flips the pointer to FileTags but leaves the old source's rows
         // in place, still showing the prior metadata. Reseed them here by projecting
         // through the now-FileTags pointer. A tag-sparse rip projects to a
         // blank-but-editable title/artist — the prompt the user answers in the
@@ -850,7 +850,7 @@ impl LibraryManager {
 }
 
 /// Project the embedded tags of a release's local audio files into a `ParsedAlbum`,
-/// as the Unknown import path does. Errors if any audio file is unreachable on disk
+/// as the File Tags import path does. Errors if any audio file is unreachable on disk
 /// (a cloud-only release with no local copy).
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 async fn project_file_tags(

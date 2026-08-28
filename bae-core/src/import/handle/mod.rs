@@ -660,7 +660,7 @@ pub(crate) fn remap_links<T: Clone>(
 
 /// Project a parsed album (mapper output) into the editor's `ReleaseUserEdit`
 /// shape. The one way the edit-metadata form is seeded, from every path: a
-/// source-backed import (the prefetch's `seed`), an Unknown import's local
+/// source-backed import (the prefetch's `seed`), a File Tags import's local
 /// evidence, and reset-to-source's cached source payload.
 ///
 /// It projects the very `ParsedAlbum` the commit worker applies the editor's

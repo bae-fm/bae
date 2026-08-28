@@ -795,7 +795,7 @@ pub(super) fn collect_scoped_entries(
 /// Collect one explicit release boundary and give every owned file its role,
 /// preserving relative paths, with stored file decisions applied.
 ///
-/// Every caller that re-derives a folder — the commit, the Unknown-import seed,
+/// Every caller that re-derives a folder — the commit, the File Tags seed,
 /// the signal fast pass — goes through here, so none of them can see a shape
 /// the user has already corrected.
 pub fn collect_release_candidate_files_with_scope(

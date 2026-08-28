@@ -112,7 +112,7 @@ pub struct ParsedAlbum {
     pub release_artist_roles: Vec<DbReleaseArtistRole>,
     pub track_artist_roles: Vec<DbTrackArtistRole>,
     /// One element per source the parser resolved for this release.
-    /// Empty for Unknown imports (file-tag-only).
+    /// Empty for File Tags and Manual imports, which claim no external identity.
     pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 

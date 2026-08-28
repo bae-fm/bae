@@ -95,9 +95,9 @@ struct ImportSearchSheet: View {
             ),
             mode: $mode,
             openSettings: { openSettings() },
-            // Reading the folder as Unknown is the mapping pane's own identity
+            // Reading the folder from File Tags is the mapping pane's own source
             // control, always visible there — not a link inside the search.
-            onAddAsUnknown: nil,
+            onUseFileTags: nil,
             onSelect: { result in
                 ImportSearchFlow.chooseReleaseFromSearchSheet(
                     result,

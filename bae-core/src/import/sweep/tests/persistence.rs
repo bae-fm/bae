@@ -554,15 +554,15 @@ async fn a_pick_reads_back_as_the_same_answer() {
         }
     );
 
-    // A person deciding Unknown replaces the record, and the pane reads the
+    // A person deciding File Tags replaces the record, and the pane reads the
     // folder's own files instead of a release.
     fixture
         .import
         .select_candidate_metadata_seed(key.clone(), crate::import::MetadataSeed::FileTags)
         .await
-        .expect("deciding Unknown succeeds");
+        .expect("deciding File Tags succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
-    assert!(resumed.release.is_none(), "Unknown names no release");
+    assert!(resumed.release.is_none(), "File Tags names no external release");
     assert!(
         resumed.edit.is_some(),
         "and still draws a form, seeded from the folder's own tags"

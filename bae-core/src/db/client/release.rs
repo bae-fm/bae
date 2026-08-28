@@ -672,7 +672,7 @@ impl Database {
 
                     insert_release_row(tx, &release, &reg)?;
 
-                    // Per-source identity rows, empty for an Unknown import.
+                    // Per-source identity rows, empty without an external identity.
                     // `release_identities` is uniquely keyed on `(release_id,
                     // source)`, so a release never carries two rows for one source.
                     for identity in &identities {

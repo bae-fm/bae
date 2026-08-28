@@ -427,7 +427,7 @@ pub(super) fn categorize_files_from_tree(
     // than after every capitalized name — the order a person reading the
     // folder expects. It has to be
     // one order because separate consumers zip against each other: the track
-    // slots lay the audio down in this order, and the Unknown import reads
+    // slots lay the audio down in this order, and the File Tags import reads
     // embedded tags in it, so a second ordering rule anywhere would pair a
     // file's tags with a different file's samples.
     proposed.sort_by(|a, b| natord::compare_ignore_case(&a.0.relative_path, &b.0.relative_path));

@@ -58,7 +58,7 @@ struct PreparedMetadata {
     artists: Vec<crate::db::DbArtist>,
     artist_external_id_updates: Vec<(String, crate::db::DbArtist)>,
     artist_images: Vec<(crate::db::DbLibraryImage, Vec<u8>)>,
-    /// Per-source identity rows for the release. Empty for Unknown.
+    /// Per-source external identity rows. Empty for File Tags and Manual.
     /// Commit writes one `release_identities` row per element.
     identities: Vec<crate::import::types::ReleaseIdentity>,
     album_title: String,

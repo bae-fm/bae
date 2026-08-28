@@ -210,7 +210,7 @@ fn file_tag_credit_events(artist: Option<&str>) -> Vec<TrackEvent> {
 }
 
 /// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. `identities`
-/// is always empty (Unknown makes no identity claim); `metadata_source` is
+/// is always empty (File Tags makes no external identity claim); `metadata_source` is
 /// `FileTags`; `album_artist_scope` is `FullPool` so a divergent per-track
 /// artist also becomes an album artist.
 fn file_tag_release_ir(
@@ -241,20 +241,6 @@ fn file_tag_release_ir(
         tracks,
         identities: Vec::new(),
     }
-}
-
-/// Map an Unknown import candidate to the metadata seed used by preview and
-/// commit. A candidate with a bound track sheet takes track layout and names
-/// from the parsed sheet; otherwise they come from the files' embedded tags.
-pub fn map_unknown_candidate_to_db(
-    categorized: &CategorizedFiles,
-    folder_name: Option<&str>,
-    clock: &dyn Clock,
-    ids: &dyn IdProvider,
-) -> Result<ParsedAlbum, ImportError> {
-    let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
-    let snapshot = extract_file_tag_snapshot(&audio_files, 0, 0, &LoftyFileTagReader)?;
-    map_file_tag_snapshot_to_db(categorized, &snapshot, folder_name, clock, ids)
 }
 
 pub(crate) fn map_file_tag_snapshot_to_db(
@@ -304,7 +290,7 @@ pub(crate) fn map_file_tag_snapshot_to_db(
     map_cue_sheets_with_format(&sheets, folder_name, format, clock, ids)
 }
 
-/// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the Unknown
+/// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the File Tags
 /// path. Where [`map_file_tags_to_db`] seeds one track per file, here the track
 /// structure comes from the playable CUE `TRACK` entries: title from each
 /// `TITLE`, per-track artist from each `PERFORMER`. Album-level fields come from
@@ -339,7 +325,7 @@ fn map_cue_sheets_with_format(
         });
     }
 
-    // Blank is allowed — the editable Unknown form gates save on a title.
+    // Blank is allowed — the editable File Tags form gates save on a title.
     let album_title = sheets
         .iter()
         .find_map(|s| non_empty(s.title.clone()))

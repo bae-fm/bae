@@ -17,8 +17,8 @@ struct SignalsToolbarView: View {
     let onRerun: () -> Void
     let onSearchManually: () -> Void
     /// `nil` suppresses the "Skip identifying" pill — a CD carries no local
-    /// data to seed an Unknown import until it's ripped.
-    let onAddAsUnknown: (() -> Void)?
+    /// data to seed a File Tags import until it's ripped.
+    let onUseFileTags: (() -> Void)?
 
     /// The pipeline is still identifying while any badge is looking up. Drives
     /// the header spinner vs. the `Auto` link.
@@ -79,11 +79,11 @@ struct SignalsToolbarView: View {
                     label: "Search manually",
                     action: onSearchManually
                 )
-                if let onAddAsUnknown {
+                if let onUseFileTags {
                     GhostPill(
                         icon: nil,
                         label: "Skip identifying",
-                        action: onAddAsUnknown
+                        action: onUseFileTags
                     )
                 }
             }
@@ -128,7 +128,7 @@ struct SignalsToolbarView: View {
             onToggle: { _ in },
             onRerun: {},
             onSearchManually: {},
-            onAddAsUnknown: {},
+            onUseFileTags: {},
         )
         .frame(width: 720)
         .windowBackground()
@@ -140,7 +140,7 @@ struct SignalsToolbarView: View {
             onToggle: { _ in },
             onRerun: {},
             onSearchManually: {},
-            onAddAsUnknown: {},
+            onUseFileTags: {},
         )
         .frame(width: 720)
         .windowBackground()
@@ -152,7 +152,7 @@ struct SignalsToolbarView: View {
             onToggle: { _ in },
             onRerun: {},
             onSearchManually: {},
-            onAddAsUnknown: {},
+            onUseFileTags: {},
         )
         .frame(width: 720)
         .windowBackground()
@@ -164,7 +164,7 @@ struct SignalsToolbarView: View {
             onToggle: { _ in },
             onRerun: {},
             onSearchManually: {},
-            onAddAsUnknown: {},
+            onUseFileTags: {},
         )
         .frame(width: 720)
         .windowBackground()
@@ -176,7 +176,7 @@ struct SignalsToolbarView: View {
             onToggle: { _ in },
             onRerun: {},
             onSearchManually: {},
-            onAddAsUnknown: nil,
+            onUseFileTags: nil,
         )
         .frame(width: 720)
         .windowBackground()

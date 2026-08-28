@@ -384,7 +384,7 @@ async fn test_no_match_returns_none() {
         .unwrap();
     assert_eq!(result, None);
 
-    // Empty identity vec (Unknown) → skip lookup.
+    // Empty identity vec (File Tags or Manual) → skip lookup.
     let result_unknown = manager.find_existing_album_for_import(&[]).await.unwrap();
     assert_eq!(result_unknown, None);
 }
@@ -468,8 +468,8 @@ async fn test_cross_source_merge_via_path_2_inverse() {
 }
 
 #[tokio::test]
-async fn test_unknown_import_skips_lookup() {
-    // Unknown imports never deduplicate against existing releases —
+async fn test_file_tags_import_skips_lookup() {
+    // File Tags imports never deduplicate against existing releases —
     // they always create a fresh album.
     let (manager, _tmp) = setup_test_db_with_artist().await;
     let album = make_album("Existing Album");

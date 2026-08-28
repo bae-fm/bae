@@ -27,8 +27,8 @@ struct ImportSearchPane: View {
     let onSearch: () -> Void
     let onOpenSettings: () -> Void
     /// Set when the candidate can seed from local files (folder imports always
-    /// can). `nil` suppresses the "Add as Unknown" link.
-    let onAddAsUnknown: (() -> Void)?
+    /// can). `nil` suppresses the "Skip identifying" action.
+    let onUseFileTags: (() -> Void)?
     /// Act on a signal in the toolbar — take the disc ID or barcode in or out
     /// of the run, or pick which extracted catalog number the run looks up.
     /// The state the import projection delivers is re-derived from what is
@@ -98,7 +98,7 @@ struct ImportSearchPane: View {
                 onToggle: onToggleSignal,
                 onRerun: onRerun,
                 onSearchManually: { mode = .manual },
-                onAddAsUnknown: onAddAsUnknown,
+                onUseFileTags: onUseFileTags,
             )
         }
     }
@@ -300,7 +300,7 @@ struct ImportSearchPane: View {
                 searchBarcode: .constant(""),
                 onSearch: {},
                 onOpenSettings: {},
-                onAddAsUnknown: {},
+                onUseFileTags: {},
                 onToggleSignal: { _ in },
                 onRerun: {},
                 onSelect: { _ in },

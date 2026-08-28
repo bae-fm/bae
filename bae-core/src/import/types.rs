@@ -217,7 +217,7 @@ impl MetadataRef {
 }
 
 /// A single source's claim about which release this is. A release in
-/// memory carries a `Vec<ReleaseIdentity>` — zero rows means Unknown
+/// memory carries a `Vec<ReleaseIdentity>` — zero rows means no external identity
 /// (no identity claim), one row per source for identified releases.
 ///
 /// Every row names a specific pressing within its group: picking a release is
@@ -338,7 +338,7 @@ pub struct ReleaseUserEdit {
 
 /// Per-pressing fields a release carries. Grouped because they share one
 /// identity-claim rule: either all six come from a picked release, or the user
-/// starts with all six blank and fills in what they know (an Unknown import).
+/// starts with all six blank and fills in what they know (File Tags or Manual).
 /// A per-field `None` means "not known yet" within whichever case the editor
 /// is in; the whole-block "no pressing claim" is [`PressingEdit::blank()`], so
 /// no caller has to spell out six `None`s.
@@ -354,7 +354,7 @@ pub struct PressingEdit {
 
 impl PressingEdit {
     /// All fields `None`. Pre-fill for editors where the user hasn't
-    /// claimed a specific pressing yet (Unknown imports).
+    /// claimed a specific pressing yet (File Tags and Manual imports).
     pub fn blank() -> Self {
         Self {
             year: None,

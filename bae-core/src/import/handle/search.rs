@@ -148,7 +148,7 @@ impl ImportServiceHandle {
     /// from fetching the release document that carries the URL.
     ///
     /// Covers come back in resolution order and the picker renders them as-is.
-    /// An Unknown import has no identity rows, so it returns an empty list —
+    /// A release without an external identity has no identity rows, so it returns an empty list —
     /// there's no source to query.
     pub async fn fetch_remote_covers(
         &self,

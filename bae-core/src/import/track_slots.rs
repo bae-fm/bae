@@ -287,7 +287,7 @@ pub(crate) fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<A
 /// The audio the folder offers, one entry per track it can produce.
 ///
 /// The order is the scan's own, which is what "disk order" means everywhere
-/// else in the import — the same order the Unknown path reads embedded tags in,
+/// else in the import — the same order the File Tags path reads embedded tags in,
 /// so the two cannot pair a file's tags with another file's samples.
 pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
     units_of(&audio_layout(files))

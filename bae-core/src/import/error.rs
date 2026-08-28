@@ -55,7 +55,7 @@ pub enum ImportError {
         detail: String,
     },
 
-    /// Local file-tag evidence can't seed an Unknown import (no audio files,
+    /// Local file-tag evidence can't seed a File Tags import (no audio files,
     /// a file failed to open / parse, embedded-cover read failure).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error("file tags cannot be read: {detail}")]

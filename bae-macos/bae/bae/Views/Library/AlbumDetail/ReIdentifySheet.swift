@@ -169,14 +169,14 @@ struct ReIdentifySheet: View {
                 mode: $searchMode,
                 openSettings: { openSettings() },
                 // Re-identify "Skip identifying" diverges from the
-                // import flow: it commits Unknown in one click (no
+                // import flow: it commits File Tags in one click (no
                 // editable seed page). The identity flips to FileTags
                 // and the rows are reseeded from the rip's file tags as
                 // part of the commit (graceful seeding), so the release
                 // immediately reflects its own tags rather than the
                 // prior source's metadata — there's no post-commit
-                // refresh prompt for Unknown.
-                onAddAsUnknown: { commit(.fileTags) },
+                // refresh prompt for File Tags.
+                onUseFileTags: { commit(.fileTags) },
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers
                 // post-commit edits). Picking a pressing claims it, and the
@@ -221,7 +221,7 @@ struct ReIdentifySheet: View {
 
     // MARK: - Refresh prompt
 
-    // Only reachable after a source-backed commit. An Unknown commit reseeds
+    // Only reachable after a source-backed commit. A File Tags commit reseeds
     // its rows from the rip's file tags inside `re_identify_release`, so it has
     // nothing to confirm and never lands here.
     private var refreshPrompt: some View {
@@ -252,7 +252,7 @@ struct ReIdentifySheet: View {
 
     /// Close the sheet, then navigate the album grid to whichever album
     /// the release lives on now. set_identity may have moved it: a
-    /// cross-source merge lands it on a sibling album, an Unknown commit
+    /// cross-source merge lands it on a sibling album, a File Tags commit
     /// always opens a fresh one. The grid follows the release so the
     /// user lands looking at the same content they re-identified. When
     /// the user dismisses before any commit landed (`landingAlbumId`
@@ -328,7 +328,7 @@ extension ReIdentifySheet {
                 switch choice {
                 case .fileTags:
                     // `re_identify_release` reseeds the rows from the rip's
-                    // file tags as part of an Unknown commit, so there's
+                    // file tags as part of a File Tags commit, so there's
                     // nothing to confirm — go straight to the new album.
                     closeAndNavigate()
                 case .externalRelease:

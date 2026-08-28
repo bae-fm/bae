@@ -12,7 +12,7 @@
 //!
 //! Embedded audio metadata (artist/album/year from tags) is deliberately NOT
 //! a signal here: it isn't used to look up or narrow external matches. It
-//! seeds the "Add as Unknown" import path instead.
+//! seeds the File Tags import path instead.
 //!
 //! The identify pipeline consumes `Signals` (looking up the disc ID and
 //! barcodes, narrowing by catalog number); the search UI surfaces the found

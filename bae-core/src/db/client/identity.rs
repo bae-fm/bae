@@ -25,7 +25,7 @@ impl Database {
     }
 
     /// All identity rows for a release. Empty if the release has no
-    /// `release_identities` rows (Unknown identity).
+    /// `release_identities` rows (no external identity).
     pub async fn get_release_identities(
         &self,
         release_id: &str,

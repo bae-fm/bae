@@ -14,15 +14,15 @@ impl ImportService {
     /// import, and remap parsed artist IDs to their real DB IDs. Pure DB work and
     /// string remapping — no network. The caller has already run the mapper its
     /// identity choice calls for, so the input is a mapped `ParsedAlbum` plus its
-    /// raw metadata pairs (empty for Unknown).
+    /// raw external metadata pairs (empty for File Tags and Manual).
     ///
     /// The mapper's output carries the identity rows as they stand: a
     /// **Release** choice keeps the picked pressing's `source_release_id`, and
-    /// **Unknown** arrives with an empty identity vec, so the album lookup is
+    /// **File Tags and Manual** arrive with an empty identity vec, so the album lookup is
     /// skipped and the release lands on a fresh album.
     ///
     /// For a Release choice, `metadata_source` and
-    /// `metadata_source_release_id` point at the picked release. Unknown
+    /// `metadata_source_release_id` point at the picked release. File Tags and Manual
     /// arrives with those columns already set by its mapper.
     ///
     /// The confirmation-page `user_edit` overlay applies last, so the user's

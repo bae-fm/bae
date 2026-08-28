@@ -3,7 +3,7 @@
 use super::*;
 
 impl LibraryManager {
-    /// All `release_identities` rows for a release. Empty for Unknown.
+    /// All external `release_identities` rows. Empty for File Tags and Manual.
     pub async fn get_release_identities(
         &self,
         release_id: &str,
@@ -29,7 +29,7 @@ impl LibraryManager {
     /// moving the release between albums when the new identity doesn't fit its
     /// current one.
     ///
-    /// `new_identities` is empty (Unknown), or carries the already-cross-linked
+    /// `new_identities` is empty (File Tags), or carries the already-cross-linked
     /// `(source, source_group_id, source_release_id)` rows. `metadata_pointer` sets
     /// the `metadata_source` / `metadata_source_release_id` columns a later
     /// re-projection reads to replay the seed. Nothing about the archived
@@ -106,7 +106,7 @@ impl LibraryManager {
         current_album_id: &str,
         new_identities: &[crate::import::ReleaseIdentity],
     ) -> Result<IdentityTargetAlbum, LibraryError> {
-        // Unknown — always a fresh album holding only this release.
+        // No external identity — always a fresh album holding only this release.
         if new_identities.is_empty() {
             let new_album = self.fresh_album_for_release(current_album_id).await?;
             return Ok(IdentityTargetAlbum {

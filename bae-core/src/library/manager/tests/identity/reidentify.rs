@@ -2,7 +2,7 @@
 //
 // Exact / Approximate fetch through MB / Discogs, so these tests seed the release
 // cache and the cover-art lookups first and `prepare_release` reads locally
-// instead of hitting the network. The Unknown path makes no source claim, so it
+// instead of hitting the network. The File Tags path makes no external source claim, so it
 // needs no seeding.
 
 /// The archived documents under one source release's own key.
@@ -447,7 +447,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
 async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
     // A release carrying MusicBrainz-shaped rows, with local audio
     // files whose embedded tags say something different. Re-identifying
-    // as Unknown must reseed the album/track rows from those tags — not
+    // as File Tags must reseed the album/track rows from those tags — not
     // leave the old MB metadata displayed under a "use my files" claim.
     use crate::import::ReleaseReseed;
     use lofty::config::WriteOptions;

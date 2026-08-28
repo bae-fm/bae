@@ -539,7 +539,7 @@ impl AppHandle {
     }
 
     /// Project the embedded tags of a folder's audio files into the
-    /// editor's user-edit shape. Used by the "Add as Unknown"
+    /// editor's user-edit shape. Used by the File Tags source
     /// affordance: the UI calls this to populate the editor before
     /// the user verifies/edits and commits with
     /// `BridgeReleaseReseed::FileTags`.

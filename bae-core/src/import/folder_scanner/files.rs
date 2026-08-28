@@ -541,7 +541,7 @@ impl CategorizedFiles {
     }
 
     /// The bound sheets that carve the release's tracks — the ones the
-    /// tracklist, the disc IDs and the Unknown seed are all read from.
+    /// tracklist, the disc IDs and the File Tags seed are all read from.
     pub fn carving_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
         self.bound_sheets()
             .into_iter()
@@ -563,7 +563,7 @@ impl CategorizedFiles {
         }
     }
 
-    /// This release's audio file paths, in `relative_path` order. The Unknown
+    /// This release's audio file paths, in `relative_path` order. The File Tags
     /// import path reads embedded cover art from these, and the signal fast pass
     /// probes their durations.
     pub fn audio_paths(&self) -> Vec<PathBuf> {

@@ -349,7 +349,7 @@ fn flac_with_vorbis_comments_basic() {
 
     assert!(
         parsed.identities.is_empty(),
-        "Unknown imports never claim identity"
+        "File Tags imports never claim external identity"
     );
 }
 
@@ -570,7 +570,7 @@ fn partial_tracknumber_side_leaves_untagged_none() {
 /// The album-title ladder (ALBUM tag → folder name → empty) and the
 /// album-artist ladder (ALBUMARTIST → ARTIST → empty), with blank and
 /// whitespace-only tags dropping to `None` and taking the same ladder.
-/// The Unknown path never hard-fails on a missing album-level tag — the
+/// The File Tags path never hard-fails on a missing album-level tag — the
 /// editable form gates save on the non-empty fields.
 #[test]
 fn album_and_artist_fallback_ladder() {

@@ -1,11 +1,11 @@
-// ── "Add as Unknown" ────────────────────────────────────────────────────────
+// ── File Tags metadata source ────────────────────────────────────────────────
 
-/// Unknown commit reads embedded tags, writes zero `release_identities`
+/// File Tags commit reads embedded tags, writes zero `release_identities`
 /// rows, sets `metadata_source = file_tags`, leaves
 /// `metadata_source_release_id = NULL`, and seeds the album / tracks
 /// from what's on disk. No external source consulted.
 #[tokio::test]
-async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
+async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -56,7 +56,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
     );
     assert!(
         release.metadata_source_release_id.is_none(),
-        "Unknown imports must leave metadata_source_release_id NULL, got {:?}",
+        "File Tags imports must leave metadata_source_release_id NULL, got {:?}",
         release.metadata_source_release_id,
     );
     assert_eq!(release.pressing.year, Some(2003));
@@ -65,7 +65,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
     let identities = f.db.get_release_identities(&release_id).await.unwrap();
     assert!(
         identities.is_empty(),
-        "Unknown imports must write zero identity rows, got {identities:?}",
+        "File Tags imports must write zero external identity rows, got {identities:?}",
     );
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
@@ -78,7 +78,7 @@ async fn unknown_import_seeds_from_file_tags_and_writes_no_identity() {
 }
 
 #[tokio::test]
-async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
+async fn file_tags_preview_for_cue_matches_commit_layout() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -199,7 +199,7 @@ async fn unknown_preview_for_cue_matches_unknown_commit_layout() {
 /// A tagged rip whose only artwork is embedded in the audio (no folder
 /// image, no remote selection) gets that embedded picture as its cover.
 #[tokio::test]
-async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
+async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -263,7 +263,7 @@ async fn unknown_import_seeds_embedded_cover_when_no_folder_image() {
 /// A folder image outranks the embedded picture: when both exist, the
 /// folder artwork is the cover and the embedded picture is ignored.
 #[tokio::test]
-async fn unknown_import_folder_image_wins_over_embedded_cover() {
+async fn file_tags_import_folder_image_wins_over_embedded_cover() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -316,11 +316,11 @@ async fn unknown_import_folder_image_wins_over_embedded_cover() {
     );
 }
 
-/// Unknown imports never deduplicate against existing releases — even
+/// File Tags imports never deduplicate against existing releases — even
 /// when an identified release with the same album title is already in
-/// the library, an Unknown import lands on a fresh album.
+/// the library, a File Tags import lands on a fresh album.
 #[tokio::test]
-async fn unknown_import_always_creates_a_fresh_album() {
+async fn file_tags_import_always_creates_a_fresh_album() {
     support::tracing_init();
 
     // First import: identified, lands on its own album.
@@ -353,12 +353,12 @@ async fn unknown_import_always_creates_a_fresh_album() {
     let mut rx = f.handle.subscribe_import(import_id);
     let (_, identified_album_id) = support::wait_for_import_complete(&mut rx).await;
 
-    // Second import: Unknown, same album title in tags. Must NOT
+    // Second import: File Tags, same album title in tags. Must NOT
     // attach to the identified album.
-    let unknown_dir = f.temp_path().join("unknown");
-    fs::create_dir_all(&unknown_dir).unwrap();
+    let file_tags_dir = f.temp_path().join("file-tags");
+    fs::create_dir_all(&file_tags_dir).unwrap();
     generate_tagged_album_files(
-        &unknown_dir,
+        &file_tags_dir,
         "Album Title",
         "Artist Name",
         None,
@@ -373,8 +373,8 @@ async fn unknown_import_always_creates_a_fresh_album() {
     f.handle
         .send_command(ImportCommand {
             import_id: import_id2.clone(),
-            candidate_key: "unknown".to_string(),
-            folder: unknown_dir,
+            candidate_key: "file-tags".to_string(),
+            folder: file_tags_dir,
             scope: bae_core::import::ReleaseFileScope::Recursive,
             selected_cover: None,
             storage_mode: StorageMode::Local,
@@ -385,11 +385,11 @@ async fn unknown_import_always_creates_a_fresh_album() {
         .await
         .unwrap();
     let mut rx2 = f.handle.subscribe_import(import_id2);
-    let (_, unknown_album_id) = support::wait_for_import_complete(&mut rx2).await;
+    let (_, file_tags_album_id) = support::wait_for_import_complete(&mut rx2).await;
 
     assert_ne!(
-        identified_album_id, unknown_album_id,
-        "Unknown import must land on a fresh album",
+        identified_album_id, file_tags_album_id,
+        "File Tags import must land on a fresh album",
     );
 }
 
@@ -398,7 +398,7 @@ async fn unknown_import_always_creates_a_fresh_album() {
 /// titles via the editor before commit. Persisted metadata reflects
 /// the edits.
 #[tokio::test]
-async fn unknown_import_with_user_edit_overlay() {
+async fn file_tags_import_with_user_edit_overlay() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -471,7 +471,7 @@ async fn unknown_import_with_user_edit_overlay() {
     let identities = f.db.get_release_identities(&release_id).await.unwrap();
     assert!(
         identities.is_empty(),
-        "user_edit must not introduce identity rows for Unknown",
+        "user_edit must not introduce external identity rows for File Tags",
     );
 
     let album = f.db.find_album_by_id(&album_id).await.unwrap().unwrap();
@@ -482,13 +482,13 @@ async fn unknown_import_with_user_edit_overlay() {
     assert_eq!(tracks[0].title, "Edited Track Title");
 }
 
-/// Unknown commit of a rip with no usable album-level tags seeds the
+/// File Tags commit of a rip with no usable album-level tags seeds the
 /// album title from the containing folder name rather than failing —
 /// the permissive file-tag projection never hard-fails on a missing
 /// ALBUM tag (the editable confirmation form gates a blank title before
 /// save). The artist falls back to empty for the user to fill.
 #[tokio::test]
-async fn unknown_import_with_no_tags_seeds_title_from_folder_name() {
+async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
