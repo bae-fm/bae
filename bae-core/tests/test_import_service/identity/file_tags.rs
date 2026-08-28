@@ -1,5 +1,16 @@
 // ── File Tags metadata source ────────────────────────────────────────────────
 
+fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
+    ArtistAssignment::New {
+        seed: bae_core::import::NewArtistSeed {
+            name: name.to_string(),
+            sort_name: Some(name.to_string()),
+            musicbrainz_artist_id: None,
+            discogs_artist_id: None,
+        },
+    }
+}
+
 /// File Tags commit reads embedded tags, writes zero `release_identities`
 /// rows, sets `metadata_source = file_tags`, leaves
 /// `metadata_source_release_id = NULL`, and seeds the album / tracks
@@ -104,7 +115,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
     assert_eq!(preview.album_title, "Test Album");
     assert_eq!(
         preview.album_artist_assignments,
-        vec![ArtistAssignment::new("Test Artist")]
+        vec![file_tag_artist_assignment("Test Artist")]
     );
     assert_eq!(preview.pressing.year, None);
     assert_eq!(preview.pressing.format.as_deref(), Some("FLAC"));
@@ -119,15 +130,15 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
         vec![
             (
                 "Track One (Silence)".to_string(),
-                TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Test Artist")]),
+                TrackArtistAssignments::Explicit(vec![file_tag_artist_assignment("Test Artist")]),
             ),
             (
                 "Track Two (White Noise)".to_string(),
-                TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Test Artist")]),
+                TrackArtistAssignments::Explicit(vec![file_tag_artist_assignment("Test Artist")]),
             ),
             (
                 "Track Three (Brown Noise)".to_string(),
-                TrackArtistAssignments::Explicit(vec![ArtistAssignment::new("Test Artist")]),
+                TrackArtistAssignments::Explicit(vec![file_tag_artist_assignment("Test Artist")]),
             ),
         ],
     );
@@ -165,7 +176,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
     let committed_album_artist_assignments: Vec<ArtistAssignment> = album_detail
         .artists
         .iter()
-        .map(|artist| ArtistAssignment::new(&artist.name))
+        .map(|artist| file_tag_artist_assignment(&artist.name))
         .collect();
     assert_eq!(
         preview.album_artist_assignments,
@@ -187,7 +198,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
                     track
                         .artists
                         .iter()
-                        .map(|artist| ArtistAssignment::new(&artist.name))
+                        .map(|artist| file_tag_artist_assignment(&artist.name))
                         .collect(),
                 ),
             )
