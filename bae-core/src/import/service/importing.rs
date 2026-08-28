@@ -303,7 +303,7 @@ impl ImportService {
                 })
                 .await
                 .map_err(|e| crate::import::ImportError::Internal {
-                    detail: format!("unknown-seed mapping task failed: {e}"),
+                    detail: format!("File Tags mapping task failed: {e}"),
                 })??;
                 // A File Tags import claims no source release, so there is no
                 // release cover to derive: its art comes from the folder or the
