@@ -214,4 +214,20 @@ Completed in `6a7bbb101`.
 
 ## Active and ordered queue
 
-No queued items.
+### Metadata reset eligibility
+
+- Derive Reset to Source eligibility from the stored release metadata source.
+- Do not offer Reset to Source for Manual releases.
+- Keep provider and File Tags releases resettable.
+- Carry the decision from core through the bridge; platform views do not infer
+  it from source fields.
+
+### Artist assignment identity presentation
+
+- Mark artist assignments that refer to an existing library artist on macOS
+  and Avalonia.
+- Keep typed names visibly distinct as new-artist assignments.
+- Add production preview data for linked and new artists and ambiguous
+  same-name library search results.
+- Add view tests for the identity indicator and same-name choices on both
+  desktop platforms.
