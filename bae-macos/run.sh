@@ -83,25 +83,20 @@ fi
 if [[ "$RELEASE" == true ]]; then
     CONFIG=Release
 else
-    CONFIG=Local
+    CONFIG=Debug
 fi
 
 cd bae-macos/bae && xcodegen && cd ../..
 
-# Build into the same derived-data cache the pre-commit/post-checkout hooks
-# use (they run xcodebuild from bae-macos/bae with -derivedDataPath
-# .build/derivedData, overridable via BAE_MACOS_DERIVED_DATA_PATH; relative
-# overrides resolve against bae-macos/bae, matching the hooks). Caveat: the
-# hooks build with CODE_SIGNING_ALLOWED=NO while this script signs, so
-# alternating a hook build and a run.sh build invalidates some incremental
-# state — the module caches and SourcePackages checkouts, the bulk of the
-# cache, are still shared.
-DERIVED_DATA="${BAE_MACOS_DERIVED_DATA_PATH:-.build/derivedData}"
+# Keep this runnable app separate from Xcode's preview and test app host. Both
+# use the Debug configuration, so Swift packages receive the same DEBUG
+# compilation condition, while separate DerivedData roots prevent either build
+# from replacing the other's app bundle or build records.
+DERIVED_DATA="${BAE_MACOS_RUN_DERIVED_DATA_PATH:-.build/runDerivedData}"
 DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
 
-# The Local configuration has its own product directory, separate from Debug
-# XCTest and preview hosts. Keep the installed app identity explicit here for
-# both Local and Release builds.
+# Keep the installed app identity explicit for runnable Debug and Release
+# products; the Xcode-owned Debug host has a separate identity in project.yml.
 xcodebuild -project bae-macos/bae/bae.xcodeproj \
     -scheme bae \
     -configuration "$CONFIG" \

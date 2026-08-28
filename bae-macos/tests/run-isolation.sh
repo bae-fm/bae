@@ -9,6 +9,7 @@ stub_bin="$test_root/bin"
 capture="$test_root/xcodebuild-arguments"
 ffmpeg_capture="$test_root/ffmpeg-dir"
 configured_ffmpeg="$test_root/ffmpeg"
+run_derived_data="$test_root/run-derived-data"
 mkdir -p "$stub_bin" "$configured_ffmpeg/include/libavutil"
 : > "$configured_ffmpeg/include/libavutil/avutil.h"
 
@@ -26,7 +27,7 @@ chmod +x "$stub_bin/xcodegen" "$stub_bin/xcodebuild"
         FFMPEG_DIR="$configured_ffmpeg" \
         BAE_RUN_ISOLATION_CAPTURE="$capture" \
         BAE_RUN_ISOLATION_FFMPEG_CAPTURE="$ffmpeg_capture" \
-        BAE_MACOS_DERIVED_DATA_PATH="$test_root/derived-data" \
+        BAE_MACOS_RUN_DERIVED_DATA_PATH="$run_derived_data" \
         ./bae-macos/run.sh --skip-rust --no-open
 )
 
@@ -44,7 +45,9 @@ require_argument() {
 }
 
 require_argument "-configuration"
-require_argument "Local"
+require_argument "Debug"
+require_argument "-derivedDataPath"
+require_argument "$run_derived_data"
 require_argument "PRODUCT_BUNDLE_IDENTIFIER=fm.bae.desktop"
 require_argument "PRODUCT_NAME=bae"
 require_argument "GENERATE_INFOPLIST_FILE=NO"
@@ -60,26 +63,8 @@ show_build_settings() {
         -showBuildSettings 2>&1
 }
 
-if ! local_settings="$(show_build_settings Local)"; then
-    echo "$local_settings" >&2
-    exit 1
-fi
-
 if ! debug_settings="$(show_build_settings Debug)"; then
     echo "$debug_settings" >&2
-    exit 1
-fi
-
-if ! grep -Eq '^[[:space:]]*CONFIGURATION = Local$' <<< "$local_settings"; then
-    echo "The bae scheme has no Local build configuration" >&2
-    exit 1
-fi
-
-if ! grep -Eq \
-    '^[[:space:]]*PRODUCT_BUNDLE_IDENTIFIER = fm\.bae\.desktop$' \
-    <<< "$local_settings"
-then
-    echo "The Local build does not use fm.bae.desktop" >&2
     exit 1
 fi
 
@@ -109,21 +94,5 @@ if ! grep -Eq \
     <<< "$debug_settings"
 then
     echo "The Debug test and preview host appears in the Dock" >&2
-    exit 1
-fi
-
-local_product_dir="$(
-    awk -F ' = ' '/^[[:space:]]*CONFIGURATION_BUILD_DIR = / { print $2; exit }' \
-        <<< "$local_settings"
-)"
-debug_product_dir="$(
-    awk -F ' = ' '/^[[:space:]]*CONFIGURATION_BUILD_DIR = / { print $2; exit }' \
-        <<< "$debug_settings"
-)"
-
-if [[ -z "$local_product_dir" || -z "$debug_product_dir" \
-    || "$local_product_dir" == "$debug_product_dir" ]]
-then
-    echo "Local and Debug must write separate app products" >&2
     exit 1
 fi

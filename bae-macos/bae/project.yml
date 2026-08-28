@@ -6,7 +6,6 @@ options:
   xcodeVersion: "26.0"
 configs:
   Debug: debug
-  Local: debug
   Release: release
 settings:
   base:
@@ -31,7 +30,6 @@ targets:
     # for DEVELOPMENT_TEAM, so the team isn't committed (see Signing.xcconfig).
     configFiles:
       Debug: Signing.xcconfig
-      Local: Signing.xcconfig
       Release: Signing.xcconfig
     sources:
       # The generated bindings live in the BaeKit package (BaeBridge target),
@@ -141,11 +139,6 @@ targets:
           GENERATE_INFOPLIST_FILE: YES
           INFOPLIST_FILE: ""
           INFOPLIST_KEY_LSUIElement: YES
-        Local:
-          # run.sh builds into its own product directory while retaining the
-          # installed app identity. XCTest hosts remain under Debug and cannot
-          # be mistaken for this app by LaunchServices.
-          PRODUCT_BUNDLE_IDENTIFIER: fm.bae.desktop
   baeTests:
     type: bundle.unit-test
     platform: macOS
