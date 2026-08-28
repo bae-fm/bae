@@ -264,14 +264,15 @@ struct ImportStoreCandidateDetailTests {
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         existing.error = "the last command failed"
-        let pendingSeed = BridgeMetadataSeed.externalRelease(
+        let pendingPick = BridgeMetadataSeed.externalRelease(
             source: .musicBrainz,
             releaseId: "rel-1"
         )
         existing.metadataSeedSession = CandidateMetadataSeedSession(
-            seed: pendingSeed
+            seed: pendingPick
         )
-        existing.presentedIdentity = .unknown
+        existing.presentedMetadataMode = .fileTags
+        existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
         existing.search.searchAlbum = "typed album"
         store.selectedCandidates["/w1/a"] = existing
 
@@ -291,8 +292,9 @@ struct ImportStoreCandidateDetailTests {
         // folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
         #expect(merged.error == "the last command failed")
-        #expect(merged.seedInFlight == pendingSeed)
-        #expect(merged.presentedIdentity == .unknown)
+        #expect(merged.seedInFlight == pendingPick)
+        #expect(merged.presentedMetadataMode == .fileTags)
+        #expect(merged.fileTagsPreview.edit == MappingFixtures.albumSeed)
         #expect(merged.search.searchAlbum == "typed album")
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")

@@ -24,8 +24,8 @@ extension ImportView {
 
     // MARK: - Main pane
 
-    /// The mapping pane for the selected candidate: identity, the mapping
-    /// table, commit bar.
+    /// The mapping pane for the selected candidate: metadata source, mapping
+    /// table, and commit bar.
     func mainPane(for candidate: Candidate) -> some View {
         CandidateRuntimeReader(key: candidate.key) { runtime in
             mappingPane(for: candidate, runtime: runtime)
@@ -52,8 +52,16 @@ extension ImportView {
                 confirmImport: { commitConfirmedImport(candidate: candidate) },
                 viewInLibrary: { uiStore.navigateToAlbum($0) },
             ),
-            onSetIdentity: { setIdentity($0, for: candidate) },
+            onPresentMetadataMode: {
+                presentMetadataMode($0, for: candidate)
+            },
             onFindRelease: { presentSearch(for: candidate) },
+            onReadFileTags: {
+                ImportMappingFlow.loadFileTagsPreview(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
             onPickRelease: { result in
                 ImportSearchFlow.selectMetadataSeed(
                     importer: importer,
@@ -63,6 +71,18 @@ extension ImportView {
                         source: result.source,
                         releaseId: result.releaseId
                     )
+                )
+            },
+            onUseFileTags: {
+                ImportMappingFlow.useFileTags(
+                    key: candidate.key,
+                    services: mappingServices
+                )
+            },
+            onEnterManually: {
+                ImportMappingFlow.enterManually(
+                    key: candidate.key,
+                    services: mappingServices
                 )
             },
             onEditCover: { presentCoverPicker(for: candidate) },

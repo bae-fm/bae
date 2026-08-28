@@ -128,6 +128,58 @@ mod conversion_roundtrip {
     }
 
     #[test]
+    fn import_metadata_modes_cross_the_bridge_unchanged() {
+        for core in [
+            bae_core::config::ImportMetadataMode::Lookup,
+            bae_core::config::ImportMetadataMode::FileTags,
+            bae_core::config::ImportMetadataMode::Manual,
+        ] {
+            let bridge = BridgeImportMetadataMode::from_core(core);
+            assert_eq!(bridge.into_core(), core);
+        }
+
+        for core in [
+            bae_core::config::DefaultImportMetadataMode::Lookup,
+            bae_core::config::DefaultImportMetadataMode::FileTags,
+            bae_core::config::DefaultImportMetadataMode::Manual,
+            bae_core::config::DefaultImportMetadataMode::LastUsed,
+        ] {
+            let bridge = BridgeDefaultImportMetadataMode::from_core(core);
+            assert_eq!(bridge.into_core(), core);
+        }
+    }
+
+    #[test]
+    fn config_exposes_cores_resolved_import_metadata_mode() {
+        use bae_core::config::{
+            Config, DefaultImportMetadataMode as DefaultMode, ImportMetadataMode as Mode,
+        };
+
+        for (default_mode, last_mode, expected) in [
+            (DefaultMode::Lookup, Mode::Manual, Mode::Lookup),
+            (DefaultMode::FileTags, Mode::Lookup, Mode::FileTags),
+            (DefaultMode::Manual, Mode::Lookup, Mode::Manual),
+            (DefaultMode::LastUsed, Mode::Lookup, Mode::Lookup),
+            (DefaultMode::LastUsed, Mode::FileTags, Mode::FileTags),
+            (DefaultMode::LastUsed, Mode::Manual, Mode::Manual),
+        ] {
+            let mut config = Config::with_defaults(
+                "library".to_string(),
+                "device".to_string(),
+                std::path::PathBuf::from("/library"),
+                "Library".to_string(),
+            );
+            config.default_import_metadata_mode = default_mode;
+            config.last_import_metadata_mode = last_mode;
+
+            assert_eq!(
+                BridgeConfig::from_core(&config).resolved_import_metadata_mode,
+                BridgeImportMetadataMode::from_core(expected),
+            );
+        }
+    }
+
+    #[test]
     fn cloud_setup_failure_reason_crosses_the_bridge_unchanged() {
         use bae_core::ui::UiErrorCategory;
         use coven::CloudHomeSetupFailure as Core;

@@ -13,15 +13,6 @@ enum CandidateSource: Equatable {
     case releaseReIdentify(releaseId: String)
 }
 
-// MARK: - ImportIdentity
-
-/// What a folder is being read as. `release` covers the identify phase too:
-/// there the open question is *which* release, not whether there is one.
-enum ImportIdentity: Equatable {
-    case release
-    case unknown
-}
-
 // MARK: - SearchTab
 
 enum SearchTab: Hashable {
@@ -57,10 +48,8 @@ final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
     }
 }
 
-/// One candidate identity choice from its click until both the bridge command
-/// and the authoritative candidate-detail delivery have confirmed it. Release
-/// picks wait for that delivery because it carries the fetched release data;
-/// File Tags has no remote release read, so the command result settles it.
+/// One candidate metadata-source choice from its click until both the bridge
+/// command and authoritative candidate-detail delivery have confirmed it.
 final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
     let seed: BridgeMetadataSeed
 
@@ -75,11 +64,7 @@ final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
     ) {
         self.seed = seed
         self.onConfirmed = onConfirmed
-        detailDelivered =
-            switch seed {
-            case .externalRelease: false
-            case .fileTags, .manual: true
-            }
+        detailDelivered = false
     }
 
     func install(_ task: Task<Void, Never>) {
@@ -114,6 +99,43 @@ final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
         rhs: CandidateMetadataSeedSession
     ) -> Bool {
         lhs === rhs
+    }
+}
+
+final class CandidateFileTagsPreviewSession: Equatable, @unchecked Sendable {
+    private var task: Task<Void, Never>?
+
+    func install(_ task: Task<Void, Never>) {
+        precondition(self.task == nil)
+        self.task = task
+    }
+
+    deinit {
+        task?.cancel()
+    }
+
+    static func == (
+        lhs: CandidateFileTagsPreviewSession,
+        rhs: CandidateFileTagsPreviewSession
+    ) -> Bool {
+        lhs === rhs
+    }
+}
+
+enum CandidateFileTagsPreviewState: Equatable {
+    case unloaded
+    case loading(CandidateFileTagsPreviewSession)
+    case loaded(BridgeReleaseUserEdit)
+    case failed
+
+    var isLoading: Bool {
+        if case .loading = self { return true }
+        return false
+    }
+
+    var edit: BridgeReleaseUserEdit? {
+        guard case .loaded(let edit) = self else { return nil }
+        return edit
     }
 }
 
@@ -191,7 +213,7 @@ struct Candidate: Equatable, Identifiable {
     /// candidate-runtime signal rather than from here.
     var resumedIdentifyState: IdentifyState = .idle
     /// Everything the pane draws, as core reads it back for this key: the
-    /// picked release, the metadata form, the mapping table, the cover, the
+    /// selected metadata seed, its form, the mapping table, the cover, the
     /// last failed import. `nil` until the per-candidate
     /// read has answered, and for a re-identify session, which has no folder.
     ///
@@ -206,17 +228,21 @@ struct Candidate: Equatable, Identifiable {
     var libraryStatusSubscriptions:
         [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
             [:]
-    /// The last command this pane ran, when it failed — a pick whose fetch
+    /// The last command this pane ran, when it failed — a selection whose read
     /// dropped, a write that would not land, a commit the fields do not
     /// support. Shown in the banner and cleared by the next command.
     var error: String?
-    /// The pick currently being read. The initiating row uses its identity for
-    /// selection feedback while the pane keeps showing stored data.
+    /// The metadata source currently being selected. A release row uses its
+    /// release ID for selection feedback while the pane keeps showing stored
+    /// data.
     var metadataSeedSession: CandidateMetadataSeedSession?
     /// Which metadata source the mapping pane is showing. This is session
-    /// navigation, separate from the stored pick: Lookup can be open while
+    /// navigation, separate from the stored seed: Lookup can be open while
     /// the stored verdict still says to use the folder's file tags.
-    var presentedIdentity: ImportIdentity = .release
+    var presentedMetadataMode: BridgeImportMetadataMode = .lookup
+    /// The lazy File Tags read for this candidate. It is session state rather
+    /// than candidate detail: reading tags does not choose that seed.
+    var fileTagsPreview: CandidateFileTagsPreviewState = .unloaded
 
     var seedInFlight: BridgeMetadataSeed? {
         metadataSeedSession?.seed
@@ -251,14 +277,17 @@ struct Candidate: Equatable, Identifiable {
 
     /// One read of a selected candidate: the folder, its resumed identify
     /// state, and the row the sidebar places it as.
-    init(detail: BridgeImportCandidateDetail) {
+    init(
+        detail: BridgeImportCandidateDetail,
+        unseededMetadataMode: BridgeImportMetadataMode
+    ) {
         self.init(bridge: detail.candidate)
         resumedIdentifyState = IdentifyState(
             bridge: detail.resumedIdentifyState
         )
         row = detail.row
         self.detail = detail
-        presentedIdentity = identity
+        presentedMetadataMode = selectedMetadataMode ?? unseededMetadataMode
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,
@@ -269,7 +298,9 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.error = existing.error
         copy.metadataSeedSession = existing.metadataSeedSession
-        copy.presentedIdentity = existing.presentedIdentity
+        copy.presentedMetadataMode = existing.presentedMetadataMode
+        copy.fileTagsPreview =
+            files == existing.files ? existing.fileTagsPreview : .unloaded
         copy.search = existing.search
         copy.searchTask = existing.searchTask
         return copy
@@ -297,7 +328,7 @@ struct Candidate: Equatable, Identifiable {
         )
     }
 
-    /// The picked release as its archived documents describe it.
+    /// The selected external release as its archived documents describe it.
     var release: BridgeReleaseDetail? {
         detail?.release
     }
@@ -308,8 +339,7 @@ struct Candidate: Equatable, Identifiable {
         detail?.fileEvidence ?? []
     }
 
-    /// The metadata form: the pick's own values with whatever has been typed
-    /// over them. `nil` while nothing is picked — there is nothing to edit.
+    /// The selected metadata source's values with stored edits applied.
     var edit: BridgeRawReleaseEdit? {
         detail?.edit
     }
@@ -338,34 +368,40 @@ struct Candidate: Equatable, Identifiable {
         detail?.pickedLibraryStatus
     }
 
-    /// What the folder's stored verdict reads it as.
-    var identity: ImportIdentity {
-        if case .fileTags = detail?.row.metadataSeed {
-            return .unknown
+    /// The seed this candidate will commit, where one has been chosen.
+    var metadataSeed: BridgeMetadataSeed? {
+        detail?.row.metadataSeed
+    }
+
+    /// The presentation mode corresponding to the chosen seed.
+    var selectedMetadataMode: BridgeImportMetadataMode? {
+        switch metadataSeed {
+        case .externalRelease: .lookup
+        case .fileTags: .fileTags
+        case .manual: .manual
+        case nil: nil
         }
-        return .release
     }
 
     /// The release this candidate is picked as, where it names one.
     var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
         guard
-            case .externalRelease(let source, let releaseId) =
-                detail?.row.metadataSeed
+            case .externalRelease(let source, let releaseId) = metadataSeed
         else { return nil }
         return (source: source, releaseId: releaseId)
     }
 
-    /// Whether anything is settled for this folder — a release picked, or the
-    /// decision to read its own tags. The commit bar and the release card
-    /// render on it.
-    var hasSettled: Bool {
-        detail?.row.metadataSeed != nil
+    /// Whether anything is settled for this folder — a release picked, its
+    /// file tags selected, or manual metadata chosen. The commit bar and
+    /// metadata card render on it.
+    var hasSelectedMetadataSeed: Bool {
+        metadataSeed != nil
     }
 
     /// Whether the metadata surface being shown is the stored verdict. Opening
     /// the other side is navigation, so it does not make that side settled.
-    var presentedIdentityHasSettled: Bool {
-        hasSettled && presentedIdentity == identity
+    var presentedMetadataModeHasSelectedSeed: Bool {
+        selectedMetadataMode == presentedMetadataMode
     }
 
     /// The signals identification settled on for this candidate's files, as

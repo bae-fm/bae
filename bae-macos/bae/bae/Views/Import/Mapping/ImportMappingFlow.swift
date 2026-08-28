@@ -25,24 +25,113 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
-    /// Present one side of the metadata section. File Tags is also a stored
-    /// identity choice; Lookup only navigates to the inline lookup surface.
+    /// Present one metadata source without choosing it. Opening File Tags
+    /// starts its lazy preview read; only that surface's affirmative action
+    /// stores the seed.
     @MainActor
-    static func setIdentity(
-        _ identity: ImportIdentity,
+    static func presentMetadataMode(
+        _ mode: BridgeImportMetadataMode,
         for candidate: Candidate,
         services: ImportMappingServices
     ) {
-        services.importStore.presentIdentity(identity, forKey: candidate.key)
-        guard identity == .unknown else { return }
+        services.importStore.presentMetadataMode(mode, forKey: candidate.key)
+        do {
+            try services.importer.setLastMetadataMode(mode)
+        }
+        catch {
+            if let line = error.displayLine {
+                services.onError(line)
+            }
+        }
+
+        switch mode {
+        case .lookup:
+            guard
+                case .idle = shownIdentifyState(
+                    resumed: candidate.resumedIdentifyState,
+                    runtime: services.importer.candidateRuntime(candidate.key)
+                )
+            else { return }
+            services.importer.identifyForExplicitLookup(candidate.key)
+        case .fileTags:
+            loadFileTagsPreview(key: candidate.key, services: services)
+        case .manual:
+            break
+        }
+    }
+
+    @MainActor
+    static func loadFileTagsPreview(
+        key: String,
+        services: ImportMappingServices
+    ) {
+        guard
+            let session = services.importStore.beginFileTagsPreview(key: key)
+        else { return }
+        let task = Task { @MainActor [weak session] in
+            do {
+                let edit = try await services.importer.previewFileTags(key)
+                guard let session else { return }
+                services.importStore.fileTagsPreviewSucceeded(
+                    key: key,
+                    session: session,
+                    edit: edit
+                )
+            }
+            catch is CancellationError {
+                guard let session else { return }
+                services.importStore.fileTagsPreviewFailed(
+                    key: key,
+                    session: session,
+                    error: nil
+                )
+            }
+            catch {
+                guard let session else { return }
+                services.importStore.fileTagsPreviewFailed(
+                    key: key,
+                    session: session,
+                    error: error.displayLine.map {
+                        String(localized: "Couldn't read file tags: \($0)")
+                    }
+                )
+            }
+        }
+        session.install(task)
+    }
+
+    @MainActor
+    static func useFileTags(
+        key: String,
+        services: ImportMappingServices
+    ) {
+        guard
+            services.importStore.candidate(forKey: key)?
+                .fileTagsPreview.edit != nil
+        else { return }
         ImportSearchFlow.selectMetadataSeed(
             importer: services.importer,
             importStore: services.importStore,
-            key: candidate.key,
+            key: key,
             seed: .fileTags
         )
     }
 
+    @MainActor
+    static func enterManually(
+        key: String,
+        services: ImportMappingServices
+    ) {
+        ImportSearchFlow.selectMetadataSeed(
+            importer: services.importer,
+            importStore: services.importStore,
+            key: key,
+            seed: .manual
+        )
+    }
+}
+
+extension ImportMappingFlow {
     @MainActor
     static func actions(
         key: String,
@@ -155,8 +244,8 @@ enum ImportMappingFlow {
         }
     }
 
-    /// Put a file in a role, or put it back.    /// Put a file in a role, or put it back. Core persists it and drops the
-    /// candidate's stored identify verdict; a file that has changed jobs is a
+    /// Put a file in a role, or put it back. Core persists it and drops the
+    /// candidate's stored metadata seed; a file that has changed jobs is a
     /// different set of rows, and the per-candidate read draws them.
     @MainActor
     static func setRole(
@@ -174,7 +263,7 @@ enum ImportMappingFlow {
     }
 
     /// Name the audio `sheetFileId` describes, or clear it with `nil`. Core
-    /// persists the decision and drops the candidate's stored identify verdict.
+    /// persists the decision and drops the candidate's stored metadata seed.
     ///
     /// A binding changes what the folder's audio *is*: one container becomes a
     /// dozen entries. The rows the person was editing are a different set

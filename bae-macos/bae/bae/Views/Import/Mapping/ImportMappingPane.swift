@@ -6,10 +6,9 @@ import SwiftUI
 /// from; section two is every source unit it offers alongside the track
 /// committing makes of it.
 ///
-/// There is no identify⇄confirm layout flip. The table is the same table before
-/// and after a release is picked — picking one fills its BECOMES column in
-/// place, and the identity control switches between the release and the
-/// folder's own tags without emptying it.
+/// There is no source⇄confirm layout flip. The table is the same table before
+/// and after a metadata source is selected — selecting one fills its BECOMES
+/// column in place.
 struct ImportMappingPane: View {
     let candidate: Candidate
     /// What is in flight for this candidate: the run whose state the pane
@@ -32,11 +31,14 @@ struct ImportMappingPane: View {
     var storagePinned: Bool
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
-    let onSetIdentity: (ImportIdentity) -> Void
+    let onPresentMetadataMode: (BridgeImportMetadataMode) -> Void
     let onFindRelease: () -> Void
+    let onReadFileTags: () -> Void
     /// Pick one of identification's matched pressings from the inline options
     /// — the same pick a search-sheet row click runs.
     let onPickRelease: (BridgeMetadataResult) -> Void
+    let onUseFileTags: () -> Void
+    let onEnterManually: () -> Void
     let onEditCover: () -> Void
     let onNavigateToPlacement: (String) -> Void
 
@@ -66,23 +68,25 @@ struct ImportMappingPane: View {
                         onNavigateToPlacement(candidate.key)
                     }
                 )
-                identitySection
+                metadataSourceSection
                 banners
-                if !mapping.images.isEmpty {
-                    ImportMappingGallery(
-                        images: mapping.images,
+                if candidate.presentedMetadataModeHasSelectedSeed {
+                    if !mapping.images.isEmpty {
+                        ImportMappingGallery(
+                            images: mapping.images,
+                            evidence: candidate.fileEvidence,
+                            actions: mappingActions
+                        )
+                    }
+                    ImportMappingTable(
+                        table: mapping,
+                        bindingOptions: bindingOptions,
+                        previewingPath: previewingPath,
+                        unprobed: Set(candidate.detail?.unprobed ?? []),
                         evidence: candidate.fileEvidence,
-                        actions: mappingActions
+                        actions: mappingActions,
                     )
                 }
-                ImportMappingTable(
-                    table: mapping,
-                    bindingOptions: bindingOptions,
-                    previewingPath: previewingPath,
-                    unprobed: Set(candidate.detail?.unprobed ?? []),
-                    evidence: candidate.fileEvidence,
-                    actions: mappingActions,
-                )
             }
             .padding(20)
         }
@@ -93,7 +97,7 @@ struct ImportMappingPane: View {
     /// re-pick leaves the table and the album fields in place but nothing
     /// settled to commit them under.
     private var commitControls: ImportCommitControls? {
-        guard candidate.presentedIdentityHasSettled else {
+        guard candidate.presentedMetadataModeHasSelectedSeed else {
             return nil
         }
         return ImportCommitControls(
@@ -106,35 +110,40 @@ struct ImportMappingPane: View {
         )
     }
 
-    private var identitySection: some View {
-        ImportIdentitySection(
-            identity: candidate.presentedIdentity,
-            releaseSummary: candidate.edit.map {
-                ImportReleaseSummary(candidate: candidate, editValues: $0)
+    private var metadataSourceSection: some View {
+        ImportMetadataSourceSection(
+            mode: candidate.presentedMetadataMode,
+            releaseSummary: candidate.presentedMetadataModeHasSelectedSeed
+                ? candidate.edit.map {
+                    ImportReleaseSummary(candidate: candidate, editValues: $0)
+                } : nil,
+            fileTagsPreviewSummary: candidate.fileTagsPreview.edit.map {
+                ImportReleaseSummary(candidate: candidate, fileTags: $0)
             },
-            hasPick: candidate.pickedRelease != nil,
-            isReading: candidate.seedInFlight != nil,
+            isReading: candidate.seedInFlight != nil
+                || candidate.fileTagsPreview.isLoading,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editValues: candidate.edit,
             editActions: editActions,
             matchOptions: matchOptions,
-            hasSettled: candidate.presentedIdentityHasSettled,
+            hasSelectedSeed: candidate.presentedMetadataModeHasSelectedSeed,
             commit: commitControls,
-            onSetIdentity: onSetIdentity,
+            onPresentMode: onPresentMetadataMode,
             onFindRelease: onFindRelease,
+            onReadFileTags: onReadFileTags,
+            onUseFileTags: onUseFileTags,
+            onEnterManually: onEnterManually,
             onEditCover: onEditCover,
         )
     }
 
-    /// Identification's matches, offered inline while the pick is still open:
-    /// the folder reading as a release, a `Found` state to offer, and no
-    /// settled identity. They stay up through the pick's own read — the
-    /// clicked row carries the spinner and the list stays put — and hand over
-    /// to the release card only when the read lands and settles the identity.
+    /// Identification's matches, offered inline while Lookup has no selected
+    /// release. They stay up through the release read — the clicked row carries
+    /// the spinner — and hand over to the release card after its detail lands.
     private var matchOptions: ImportMatchOptions? {
-        guard candidate.presentedIdentity == .release,
-            !candidate.presentedIdentityHasSettled,
+        guard candidate.presentedMetadataMode == .lookup,
+            !candidate.presentedMetadataModeHasSelectedSeed,
             case .found(let groups, let libraryStatuses, _, let provenance) =
                 identifyState
         else {

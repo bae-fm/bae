@@ -257,7 +257,7 @@ enum MappingFixtures {
 
     /// What the folder's own tags say it is: two tracks, no release behind
     /// them, so the table carries no tally.
-    static let unknownTable = BridgeMappingTable(
+    static let fileTagsTable = BridgeMappingTable(
         images: [],
         rows: (1...2)
             .map { index in
@@ -266,7 +266,7 @@ enum MappingFixtures {
                         source: .file(file: audioFile(index)),
                         becomes: .track(
                             track: BridgeRawTrackEdit(
-                                id: "unknown-track-\(index - 1)",
+                                id: "file-tags-track-\(index - 1)",
                                 title: "Track \(index)",
                                 artistAssignments: .albumArtists,
                                 side: 1,
@@ -358,11 +358,13 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         edit: BridgeRawReleaseEdit? = albumEdit,
         metadataSeed: BridgeMetadataSeed? = seed,
-        failure: BridgeImportFailure? = nil
+        failure: BridgeImportFailure? = nil,
+        candidateKey key: String = MappingFixtures.candidateKey,
+        folderName: String = "Walkthrough"
     ) -> BridgeImportCandidateDetail {
         let folder = BridgeFolderCandidate(
-            folderPath: candidateKey,
-            sourceFolderName: "Walkthrough",
+            folderPath: key,
+            sourceFolderName: folderName,
             watchedFolderPath: "/Music/Downloads",
             files: emptyFiles,
             trackCount: 13,
@@ -374,10 +376,10 @@ extension MappingFixtures {
             actionable: true,
             resumedIdentifyState: .idle,
             row: BridgeTriageRow(
-                candidateKey: candidateKey,
-                folderName: "Walkthrough",
+                candidateKey: key,
+                folderName: folderName,
                 watchedFolderPath: "/Music/Downloads",
-                displayPath: "Walkthrough",
+                displayPath: folderName,
                 resolvedBoundaries: [],
                 combineAncestorKey: nil,
                 actionable: true,
@@ -413,11 +415,14 @@ extension MappingFixtures {
     /// A store holding one folder candidate read as the release picked for it,
     /// with `mapping` as the table core answers with.
     @MainActor
-    static func store(mapping: BridgeMappingTable?) -> ImportStore {
+    static func store(
+        mapping: BridgeMappingTable?,
+        metadataSeed: BridgeMetadataSeed? = seed
+    ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
             key: candidateKey,
-            detail: detail(mapping: mapping)
+            detail: detail(mapping: mapping, metadataSeed: metadataSeed)
         )
         return store
     }
@@ -440,5 +445,21 @@ extension MappingFixtures {
         edit.tracks = bridgeMappingTracks(table: candidate.mapping)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
+    }
+}
+
+extension ImportStore {
+    /// Existing tests that do not exercise metadata-source defaults install
+    /// their fixture under the canonical Lookup default explicitly.
+    @MainActor
+    func applyCandidateDetail(
+        key: String,
+        detail: BridgeImportCandidateDetail
+    ) {
+        applyCandidateDetail(
+            key: key,
+            detail: detail,
+            unseededMetadataMode: .lookup
+        )
     }
 }

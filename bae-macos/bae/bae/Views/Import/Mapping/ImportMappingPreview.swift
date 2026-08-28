@@ -45,9 +45,12 @@
                     confirmImport: {},
                     viewInLibrary: { _ in },
                 ),
-                onSetIdentity: { _ in },
+                onPresentMetadataMode: { _ in },
                 onFindRelease: {},
+                onReadFileTags: {},
                 onPickRelease: { _ in },
+                onUseFileTags: {},
+                onEnterManually: {},
                 onEditCover: {},
                 onNavigateToPlacement: { _ in },
             )
@@ -105,7 +108,23 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — File tags, not selected") {
+    #Preview("Mapping pane — File tags, before read") {
+        @Previewable
+        @State
+        var storageCloud = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.unreadFileTagsMappingCandidate,
+            storageCloud: $storageCloud,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 700)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — File tags read, not selected") {
         @Previewable
         @State
         var storageCloud = true
@@ -118,6 +137,54 @@
             storagePinned: $storagePinned
         )
         .frame(width: 1212, height: 700)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — File tags loading") {
+        @Previewable
+        @State
+        var storageCloud = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.loadingFileTagsMappingCandidate,
+            storageCloud: $storageCloud,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 700)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — Manual, not selected") {
+        @Previewable
+        @State
+        var storageCloud = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.manualMappingCandidate,
+            storageCloud: $storageCloud,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 700)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Mapping pane — Manual selected") {
+        @Previewable
+        @State
+        var storageCloud = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.selectedManualMappingCandidate,
+            storageCloud: $storageCloud,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 900)
         .importPreviewEnvironment()
     }
 
@@ -191,7 +258,7 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — read as Unknown") {
+    #Preview("Mapping pane — File tags selected") {
         @Previewable
         @State
         var storageCloud = true
@@ -199,7 +266,7 @@
         @State
         var storagePinned = true
         ImportMappingPreview.make(
-            candidate: PreviewData.unknownMappingCandidate,
+            candidate: PreviewData.fileTagsMappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )

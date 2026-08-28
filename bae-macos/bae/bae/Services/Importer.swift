@@ -49,11 +49,13 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String, String?) async throws -> Void
     let selectCandidateMetadataSeed:
         @Sendable (String, BridgeMetadataSeed) async throws -> Void
+    let previewFileTags:
+        @Sendable (String) async throws -> BridgeReleaseUserEdit
     let setSheetDisc:
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
     let setFileRole:
         @Sendable (String, String, BridgeFileRoleChoice) async throws -> Void
-    let autoIdentifyFolder: @Sendable (String) -> Void
+    let identifyForExplicitLookup: @MainActor @Sendable (String) -> Void
     let autoIdentifyRelease: @Sendable (String, String) -> Void
     let cancelAutoIdentify: @Sendable (String) -> Void
     let searchForCandidate:
@@ -80,6 +82,11 @@ private struct ImportOperations: Sendable {
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
+    let setAutomaticMetadataLookup: @MainActor @Sendable (Bool) throws -> Void
+    let setDefaultMetadataMode:
+        @MainActor @Sendable (BridgeDefaultImportMetadataMode) throws -> Void
+    let setLastMetadataMode:
+        @MainActor @Sendable (BridgeImportMetadataMode) throws -> Void
 
     // Flat forwarding from AppHandleProtocol into immutable operation values.
     // swiftlint:disable:next function_body_length
@@ -122,6 +129,9 @@ private struct ImportOperations: Sendable {
                     pick: $1
                 )
             },
+            previewFileTags: {
+                try await handle.previewFileTagsForFolder(candidateKey: $0)
+            },
             setSheetDisc: {
                 try await handle.setSheetDisc(
                     candidateKey: $0,
@@ -136,7 +146,7 @@ private struct ImportOperations: Sendable {
                     choice: $2
                 )
             },
-            autoIdentifyFolder: {
+            identifyForExplicitLookup: {
                 handle.autoIdentifyFolder(candidateKey: $0)
             },
             autoIdentifyRelease: {
@@ -203,6 +213,15 @@ private struct ImportOperations: Sendable {
                     storageMode: request.storageMode,
                     pin: request.pin
                 )
+            },
+            setAutomaticMetadataLookup: {
+                try handle.setAutomaticImportMetadataLookup(enabled: $0)
+            },
+            setDefaultMetadataMode: {
+                try handle.setDefaultImportMetadataMode(mode: $0)
+            },
+            setLastMetadataMode: {
+                try handle.setLastImportMetadataMode(mode: $0)
             }
         )
     }
@@ -239,13 +258,17 @@ final class Importer: Sendable, Observable {
         selectCandidateMetadataSeed:
             @escaping @Sendable (String, BridgeMetadataSeed) async throws
             -> Void = { _, _ in },
+        previewFileTags:
+            @escaping @Sendable (String) async throws -> BridgeReleaseUserEdit =
+            { _ in throw StubError.notImplemented },
         setSheetDisc:
             @escaping @Sendable (String, String, BridgeSheetDisc) async throws
             -> Void = { _, _, _ in },
         setFileRole:
             @escaping @Sendable (String, String, BridgeFileRoleChoice)
             async throws -> Void = { _, _, _ in },
-        autoIdentifyFolder: @escaping @Sendable (String) -> Void = { _ in },
+        identifyForExplicitLookup:
+            @escaping @MainActor @Sendable (String) -> Void = { _ in },
         autoIdentifyRelease: @escaping @Sendable (String, String) -> Void = {
             _,
             _ in
@@ -297,6 +320,17 @@ final class Importer: Sendable, Observable {
         startImport:
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
+            },
+        setAutomaticMetadataLookup:
+            @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
+        setDefaultMetadataMode:
+            @escaping @MainActor @Sendable (BridgeDefaultImportMetadataMode)
+            throws -> Void =
+            { _ in },
+        setLastMetadataMode:
+            @escaping @MainActor @Sendable (BridgeImportMetadataMode) throws ->
+            Void = {
+                _ in
             }
     ) {
         operations = ImportOperations(
@@ -308,9 +342,10 @@ final class Importer: Sendable, Observable {
             sheetBindingOptions: sheetBindingOptions,
             setSheetBinding: setSheetBinding,
             selectCandidateMetadataSeed: selectCandidateMetadataSeed,
+            previewFileTags: previewFileTags,
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
-            autoIdentifyFolder: autoIdentifyFolder,
+            identifyForExplicitLookup: identifyForExplicitLookup,
             autoIdentifyRelease: autoIdentifyRelease,
             cancelAutoIdentify: cancelAutoIdentify,
             searchForCandidate: searchForCandidate,
@@ -324,14 +359,19 @@ final class Importer: Sendable, Observable {
             dropCandidateTrack: dropCandidateTrack,
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
-            startImport: startImport
+            startImport: startImport,
+            setAutomaticMetadataLookup: setAutomaticMetadataLookup,
+            setDefaultMetadataMode: setDefaultMetadataMode,
+            setLastMetadataMode: setLastMetadataMode
         )
     }
 
     private init(operations: ImportOperations) {
         self.operations = operations
     }
+}
 
+extension Importer {
     func addWatchedFolder(_ path: String) async throws {
         try await operations.addWatchedFolder(path)
     }
@@ -373,13 +413,20 @@ final class Importer: Sendable, Observable {
         )
     }
 
-    /// Select this candidate's metadata seed. Nothing comes back: the
-    /// per-candidate read delivers the pane's next value.
+    /// Choose the metadata seed this candidate commits. The per-candidate read
+    /// delivers the selected pane after core stores the choice.
     func selectCandidateMetadataSeed(
         _ candidateKey: String,
         _ seed: BridgeMetadataSeed
     ) async throws {
         try await operations.selectCandidateMetadataSeed(candidateKey, seed)
+    }
+
+    /// Read the candidate's file-tag snapshot without choosing it as the seed.
+    func previewFileTags(_ candidateKey: String) async throws
+        -> BridgeReleaseUserEdit
+    {
+        try await operations.previewFileTags(candidateKey)
     }
 
     func setSheetDisc(
@@ -398,8 +445,9 @@ final class Importer: Sendable, Observable {
         try await operations.setFileRole(candidateKey, fileId, choice)
     }
 
-    func autoIdentifyFolder(_ candidateKey: String) {
-        operations.autoIdentifyFolder(candidateKey)
+    @MainActor
+    func identifyForExplicitLookup(_ candidateKey: String) {
+        operations.identifyForExplicitLookup(candidateKey)
     }
 
     func autoIdentifyRelease(_ candidateKey: String, _ releaseId: String) {
@@ -485,6 +533,22 @@ final class Importer: Sendable, Observable {
 
     func startImport(_ request: ImportCommitRequest) async throws {
         try await operations.startImport(request)
+    }
+
+    @MainActor
+    func setAutomaticMetadataLookup(_ enabled: Bool) throws {
+        try operations.setAutomaticMetadataLookup(enabled)
+    }
+
+    @MainActor
+    func setDefaultMetadataMode(_ mode: BridgeDefaultImportMetadataMode) throws
+    {
+        try operations.setDefaultMetadataMode(mode)
+    }
+
+    @MainActor
+    func setLastMetadataMode(_ mode: BridgeImportMetadataMode) throws {
+        try operations.setLastMetadataMode(mode)
     }
 
     convenience init(handle: any AppHandleProtocol) {

@@ -95,7 +95,7 @@ struct UiEventDispatcherOutcomeTests {
 // MARK: - Shared fixtures
 
 private let unhandledEvents: [BridgeUiEvent] = [
-    .importQueueIdentifyProgress(identified: 0, total: 1),
+    .importQueueIdentifyProgress(identified: 0, total: 1)
 ]
 
 private let handledEvents: [BridgeUiEvent] = [
@@ -133,6 +133,10 @@ private func makeAppService(handle: FakeAppHandle = FakeAppHandle())
             pauseBetweenSides: false,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
+            automaticImportMetadataLookup: true,
+            defaultImportMetadataMode: .lookup,
+            lastImportMetadataMode: .lookup,
+            resolvedImportMetadataMode: .lookup,
             showRemainingTime: false,
             libraryFullWidth: false,
             savePresets: [],

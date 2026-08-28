@@ -212,8 +212,8 @@
             reconciliation: .moreTracks(files: 1, tracks: 10)
         )
 
-        /// The same folder before a release is picked: what each file is, with
-        /// what its audio becomes left open.
+        /// The same folder before a metadata seed is selected: what each file
+        /// is, with what its audio becomes left open.
         static let awaitingPickTable = BridgeMappingTable(
             images: mappingImages,
             rows: (1...9)
@@ -316,7 +316,7 @@
 
         /// What the folder's own tags say it is: nine tracks, and no release to
         /// tally them against.
-        static let unknownMappingTable = BridgeMappingTable(
+        static let fileTagsMappingTable = BridgeMappingTable(
             images: [],
             rows: (1...9)
                 .map { index in
@@ -325,7 +325,7 @@
                             source: .file(file: mappingAudio(index)),
                             becomes: .track(
                                 track: BridgeRawTrackEdit(
-                                    id: "unknown-track-\(index - 1)",
+                                    id: "file-tags-track-\(index - 1)",
                                     title: "Track Title \(index)",
                                     artistAssignments: .albumArtists,
                                     side: 1,
@@ -408,12 +408,13 @@
                     cover: cover,
                     signals: nil,
                     failure: failure
-                )
+                ),
+                unseededMetadataMode: .lookup
             )
         }
 
-        /// A candidate with a release picked: the identity card states what
-        /// identified it, the mapping table pairs nine files with nine tracks,
+        /// A candidate with a release selected: the metadata card states what
+        /// it is, the mapping table pairs nine files with nine tracks,
         /// and the commit bar counts them.
         @MainActor
         static let mappingCandidate: Candidate = paneCandidate(
@@ -431,7 +432,7 @@
             cover: releaseDetailBridge.defaultCover,
         )
 
-        /// Nothing picked yet: the identity card offers to find the release,
+        /// Nothing selected yet: the metadata card offers to find the release,
         /// the table says what each file is with its BECOMES half open, and
         /// there is nothing to commit.
         @MainActor
@@ -443,17 +444,44 @@
             mapping: awaitingPickTable,
         )
 
-        /// The same unresolved folder with File Tags presented before those
-        /// tags have been chosen as its identity.
+        /// The same unresolved folder immediately after File Tags is opened,
+        /// before its lazy read begins.
         @MainActor
-        static let unidentifiedFileTagsMappingCandidate: Candidate = {
+        static let unreadFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.presentedIdentity = .unknown
+            candidate.presentedMetadataMode = .fileTags
             return candidate
         }()
 
-        /// The same unpicked folder with identification settled on several
-        /// pressings — the identity section offers them inline.
+        /// The same unresolved folder after its tags have been read, before
+        /// they are selected as its metadata seed.
+        @MainActor
+        static let unidentifiedFileTagsMappingCandidate: Candidate = {
+            var candidate = unidentifiedMappingCandidate
+            candidate.presentedMetadataMode = .fileTags
+            candidate.fileTagsPreview = .loaded(releaseSeedBridge)
+            return candidate
+        }()
+
+        @MainActor
+        static let loadingFileTagsMappingCandidate: Candidate = {
+            var candidate = unidentifiedMappingCandidate
+            candidate.presentedMetadataMode = .fileTags
+            candidate.fileTagsPreview = .loading(
+                CandidateFileTagsPreviewSession()
+            )
+            return candidate
+        }()
+
+        @MainActor
+        static let manualMappingCandidate: Candidate = {
+            var candidate = unidentifiedMappingCandidate
+            candidate.presentedMetadataMode = .manual
+            return candidate
+        }()
+
+        /// The same unresolved folder with identification settled on several
+        /// pressings — the metadata section offers them inline.
         @MainActor
         static let severalMatchesMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
@@ -530,14 +558,69 @@
         /// The folder read as its own file tags: no release, and a table with
         /// no tally to state.
         @MainActor
-        static let unknownMappingCandidate: Candidate = paneCandidate(
+        static let fileTagsMappingCandidate: Candidate = paneCandidate(
             folder: mappingFolder(
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
             metadataSeed: .fileTags,
             edit: confirmEditValues,
-            mapping: unknownMappingTable,
+            mapping: fileTagsMappingTable,
+        )
+
+        /// Manual starts with blank editable metadata while retaining the
+        /// candidate's physical audio-to-track mapping.
+        private static let manualEditValues = BridgeRawReleaseEdit(
+            albumTitle: "",
+            albumArtistAssignments: [],
+            pressing: BridgeRawPressingEdit(
+                year: "",
+                format: "",
+                label: "",
+                catalogNumber: "",
+                country: "",
+                barcode: ""
+            ),
+            tracks: (1...9)
+                .map { index in
+                    BridgeRawTrackEdit(
+                        id: "manual-track-\(index - 1)",
+                        title: "",
+                        artistAssignments: .albumArtists,
+                        side: 1,
+                        trackNumber: Int32(index),
+                        file: .standalone(fileId: "Track \(index).flac")
+                    )
+                }
+        )
+
+        private static let manualMappingTable = BridgeMappingTable(
+            images: mappingImages,
+            rows: manualEditValues.tracks.enumerated()
+                .map { index, track in
+                    BridgeMappingRow.unit(
+                        unit: BridgeMappingUnit(
+                            source: .file(file: mappingAudio(index + 1)),
+                            becomes: .track(
+                                track: track,
+                                sourcePosition: nil,
+                                sourceDurationMs: nil
+                            )
+                        )
+                    )
+                },
+            reconciliation: nil
+        )
+
+        @MainActor
+        static let selectedManualMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            ),
+            metadataSeed: .manual,
+            edit: manualEditValues,
+            mapping: manualMappingTable,
         )
     }
 #endif

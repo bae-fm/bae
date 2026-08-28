@@ -1,10 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// The two device-local transfer-concurrency settings: how many uploads the
-/// sync drain runs at once and how many downloads a pin fetches at once. Each
-/// write lands in the config and on the open store together, so the next
-/// drain pass or pin runs under the new limit.
+/// Import metadata defaults and device-local transfer concurrency. Every
+/// control writes through core; the config value stream redraws the stored
+/// value.
 struct ImportSettingsTab: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -12,11 +11,41 @@ struct ImportSettingsTab: View {
     private var downloads
     @Environment(Sync.self)
     private var sync
+    @Environment(Importer.self)
+    private var importer
     @Environment(UiStore.self)
     private var uiStore
 
     var body: some View {
         Form {
+            Section {
+                Picker(
+                    "Open unseeded candidates in",
+                    selection: defaultMetadataMode
+                ) {
+                    Text(coreString("ui.import.metadata.lookup"))
+                        .tag(BridgeDefaultImportMetadataMode.lookup)
+                    Text(coreString("ui.import.metadata.file_tags"))
+                        .tag(BridgeDefaultImportMetadataMode.fileTags)
+                    Text("Manual").tag(BridgeDefaultImportMetadataMode.manual)
+                    Text("Last used")
+                        .tag(BridgeDefaultImportMetadataMode.lastUsed)
+                }
+                Toggle(
+                    "Identify Lookup candidates automatically",
+                    isOn: automaticMetadataLookup
+                )
+            } header: {
+                Text("Metadata")
+            } footer: {
+                Text(
+                    "Automatic identification reads cover text, barcodes, and disc IDs only while a candidate uses Lookup. File tags and Manual never run it."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             Section {
                 control(
                     label: "Simultaneous uploads",
@@ -40,6 +69,34 @@ struct ImportSettingsTab: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var automaticMetadataLookup: Binding<Bool> {
+        Binding(
+            get: { configStore.config.automaticImportMetadataLookup },
+            set: { enabled in
+                do {
+                    try importer.setAutomaticMetadataLookup(enabled)
+                }
+                catch {
+                    uiStore.showError(error)
+                }
+            }
+        )
+    }
+
+    private var defaultMetadataMode: Binding<BridgeDefaultImportMetadataMode> {
+        Binding(
+            get: { configStore.config.defaultImportMetadataMode },
+            set: { mode in
+                do {
+                    try importer.setDefaultMetadataMode(mode)
+                }
+                catch {
+                    uiStore.showError(error)
+                }
+            }
+        )
     }
 
     private func control(
@@ -66,7 +123,8 @@ struct ImportSettingsTab: View {
             .environment(PreviewData.configStore())
             .environment(Downloads.stub())
             .environment(Sync.stub())
+            .environment(PreviewData.importTabImporter())
             .environment(UiStore())
-            .frame(width: 500, height: 300)
+            .frame(width: 500, height: 500)
     }
 #endif

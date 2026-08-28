@@ -173,9 +173,13 @@ class ImportStore {
     /// work the session has done on it.
     func applyCandidateDetail(
         key: String,
-        detail: BridgeImportCandidateDetail
+        detail: BridgeImportCandidateDetail,
+        unseededMetadataMode: BridgeImportMetadataMode
     ) {
-        var incoming = Candidate(detail: detail)
+        var incoming = Candidate(
+            detail: detail,
+            unseededMetadataMode: unseededMetadataMode
+        )
         if let existing = selectedCandidates[key] {
             incoming = incoming.withSessionState(from: existing)
         }
@@ -187,7 +191,7 @@ class ImportStore {
         }
         selectedCandidates[key] = incoming
         if let deliveredSession {
-            finishMetadataSeedIfConfirmed(
+            finishMetadataSeedSelectionIfConfirmed(
                 key: key,
                 session: deliveredSession
             )
@@ -214,9 +218,9 @@ class ImportStore {
         return session
     }
 
-    /// Record that the bridge command returned successfully. A release choice
-    /// still remains pending until its exact picked detail has also landed.
-    func metadataSeedCommandSucceeded(
+    /// Record that the bridge command returned successfully. The choice stays
+    /// pending until its exact candidate detail has also landed.
+    func metadataSeedSelectionCommandSucceeded(
         key: String,
         session: CandidateMetadataSeedSession
     ) {
@@ -224,7 +228,7 @@ class ImportStore {
             return
         }
         session.recordCommandSuccess()
-        finishMetadataSeedIfConfirmed(key: key, session: session)
+        finishMetadataSeedSelectionIfConfirmed(key: key, session: session)
     }
 
     /// End only the session that raised this failure. A replacement choice may
@@ -241,12 +245,11 @@ class ImportStore {
             if let error {
                 candidate.error = error
             }
-            candidate.presentedIdentity = candidate.identity
             candidate.metadataSeedSession = nil
         }
     }
 
-    private func finishMetadataSeedIfConfirmed(
+    private func finishMetadataSeedSelectionIfConfirmed(
         key: String,
         session: CandidateMetadataSeedSession
     ) {
@@ -259,6 +262,59 @@ class ImportStore {
             candidate.metadataSeedSession = nil
         }
         confirmation?()
+    }
+}
+
+extension ImportStore {
+    func beginFileTagsPreview(key: String) -> CandidateFileTagsPreviewSession? {
+        guard let candidate = candidate(forKey: key),
+            candidate.metadataSeed != .fileTags
+        else { return nil }
+        switch candidate.fileTagsPreview {
+        case .loading, .loaded:
+            return nil
+        case .unloaded, .failed:
+            break
+        }
+        let session = CandidateFileTagsPreviewSession()
+        mutateCandidate(forKey: key) { candidate in
+            candidate.error = nil
+            candidate.fileTagsPreview = .loading(session)
+        }
+        return session
+    }
+
+    func fileTagsPreviewSucceeded(
+        key: String,
+        session: CandidateFileTagsPreviewSession,
+        edit: BridgeReleaseUserEdit
+    ) {
+        guard
+            case .loading(let current) = candidate(forKey: key)?
+                .fileTagsPreview,
+            current === session
+        else { return }
+        mutateCandidate(forKey: key) {
+            $0.fileTagsPreview = .loaded(edit)
+        }
+    }
+
+    func fileTagsPreviewFailed(
+        key: String,
+        session: CandidateFileTagsPreviewSession,
+        error: String?
+    ) {
+        guard
+            case .loading(let current) = candidate(forKey: key)?
+                .fileTagsPreview,
+            current === session
+        else { return }
+        mutateCandidate(forKey: key) { candidate in
+            candidate.fileTagsPreview = .failed
+            if let error {
+                candidate.error = error
+            }
+        }
     }
 
     private func mutateSelectedCandidate(
@@ -293,9 +349,12 @@ class ImportStore {
         }
     }
 
-    func presentIdentity(_ identity: ImportIdentity, forKey key: String) {
+    func presentMetadataMode(
+        _ mode: BridgeImportMetadataMode,
+        forKey key: String
+    ) {
         mutateCandidate(forKey: key) {
-            $0.presentedIdentity = identity
+            $0.presentedMetadataMode = mode
         }
     }
 

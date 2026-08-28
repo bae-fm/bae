@@ -26,12 +26,13 @@ extension ImportView {
         )
     }
 
-    /// Switch which metadata source the pane presents. File Tags also stores
-    /// that verdict; Lookup presents its inline choices without opening its
-    /// explicit search editor.
-    func setIdentity(_ identity: ImportIdentity, for candidate: Candidate) {
-        ImportMappingFlow.setIdentity(
-            identity,
+    /// Switch which metadata source the pane presents without choosing it.
+    func presentMetadataMode(
+        _ mode: BridgeImportMetadataMode,
+        for candidate: Candidate
+    ) {
+        ImportMappingFlow.presentMetadataMode(
+            mode,
             for: candidate,
             services: mappingServices
         )

@@ -11,6 +11,46 @@ struct ImportReleaseSummary {
     let source: BridgeMetadataSource?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
+        guard let seed = candidate.metadataSeed else {
+            preconditionFailure(
+                "an editable candidate must have a metadata seed"
+            )
+        }
+        title = Self.title(
+            values.albumTitle,
+            seed: seed,
+            candidateName: candidate.displayName
+        )
+        let artistNames = values.albumArtistAssignments.map(\.displayName)
+        artist =
+            artistNames.isEmpty
+            ? nil : ListFormatter.localizedString(byJoining: artistNames)
+        let count = candidate.mapping.willWriteCount
+        let trackText = String(localized: "\(count) tracks")
+        switch seed {
+        case .externalRelease(let source, _):
+            factsLine = Self.factsLine([
+                values.pressing.format,
+                values.pressing.year,
+                values.pressing.country,
+                values.pressing.catalogNumber,
+                trackText,
+            ])
+            self.source = source
+        case .fileTags:
+            factsLine = Self.factsLine([
+                coreString("ui.import.metadata.from_file_tags"), trackText,
+            ])
+            source = nil
+        case .manual:
+            factsLine = Self.factsLine([
+                coreString("ui.import.metadata.manual"), trackText,
+            ])
+            source = nil
+        }
+    }
+
+    init(candidate: Candidate, fileTags values: BridgeReleaseUserEdit) {
         title =
             values.albumTitle.isEmpty
             ? candidate.displayName : values.albumTitle
@@ -18,19 +58,30 @@ struct ImportReleaseSummary {
         artist =
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
-        let count = candidate.mapping.willWriteCount
-        let trackText = String(localized: "\(count) tracks")
-        let lead =
-            candidate.identity == .unknown
-            ? [coreString("ui.import.metadata.from_file_tags")]
-            : [
-                values.pressing.format,
-                values.pressing.year,
-                values.pressing.country,
-                values.pressing.catalogNumber,
-            ]
-        factsLine = Self.factsLine(lead + [trackText])
-        source = candidate.pickedRelease?.source
+        factsLine = Self.factsLine([
+            coreString("ui.import.metadata.from_file_tags"),
+            String(localized: "\(values.tracks.count) tracks"),
+        ])
+        source = nil
+    }
+
+    static let manual = ImportReleaseSummary(
+        title: coreString("ui.import.slots.untitled"),
+        artist: nil,
+        factsLine: coreString("ui.import.metadata.manual"),
+        source: nil
+    )
+
+    private init(
+        title: String,
+        artist: String?,
+        factsLine: String,
+        source: BridgeMetadataSource?
+    ) {
+        self.title = title
+        self.artist = artist
+        self.factsLine = factsLine
+        self.source = source
     }
 
     init?(row: BridgeTriageRow) {
@@ -58,6 +109,18 @@ struct ImportReleaseSummary {
     private static func factsLine(_ facts: [String?]) -> String {
         facts.compactMap { $0?.isEmpty == false ? $0 : nil }
             .joined(separator: " \u{00b7} ")
+    }
+
+    private static func title(
+        _ title: String,
+        seed: BridgeMetadataSeed,
+        candidateName: String
+    ) -> String {
+        guard title.isEmpty else { return title }
+        return switch seed {
+        case .manual: coreString("ui.import.slots.untitled")
+        case .externalRelease, .fileTags: candidateName
+        }
     }
 }
 

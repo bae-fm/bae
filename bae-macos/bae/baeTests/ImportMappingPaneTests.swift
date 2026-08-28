@@ -426,7 +426,7 @@ extension ImportMappingPaneTests {
         #expect(candidate.error != nil)
         #expect(candidate.seedInFlight == nil)
         #expect(candidate.detail == before)
-        #expect(candidate.hasSettled)
+        #expect(candidate.hasSelectedMetadataSeed)
     }
 
     // 4c. Typing in a release field writes that one field, once, as the field
@@ -560,12 +560,11 @@ extension ImportMappingPaneTests {
         #expect(mapping.willWriteCount == 1)
     }
 
-    // 8. The identity toggle is the one control, and both directions are one
-    //    pick core stores. Which side it shows is read off the stored pick, so
-    //    the control cannot disagree with what will be committed.
+    // 8. Explicit source affirmations are the writes core stores. Navigation
+    //    among source modes is covered separately.
     @MainActor
-    @Test("switching release to Unknown and back is two picks")
-    func switchingIdentityIsTwoPicks() async throws {
+    @Test("selecting File Tags and Lookup releases writes both seeds")
+    func selectingMetadataSourcesWritesBothSeeds() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
@@ -583,14 +582,14 @@ extension ImportMappingPaneTests {
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
-                mapping: MappingFixtures.unknownTable,
+                mapping: MappingFixtures.fileTagsTable,
                 metadataSeed: .fileTags
             )
         )
         var candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.identity == .unknown)
+        #expect(candidate.metadataSeed == .fileTags)
         #expect(candidate.mapping.rows.count == 2)
         #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)
@@ -613,7 +612,7 @@ extension ImportMappingPaneTests {
         candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.identity == .release)
+        #expect(candidate.metadataSeed == MappingFixtures.seed)
         #expect(candidate.mapping.rows.count == 13)
         #expect(candidate.mapping.willWriteCount == 13)
         #expect(

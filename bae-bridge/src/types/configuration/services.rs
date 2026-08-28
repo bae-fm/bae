@@ -11,6 +11,16 @@ pub struct BridgeConfig {
     pub max_concurrent_uploads: u32,
     /// How many blob downloads a pin fetches at once. Device-local; range 1..=8.
     pub max_concurrent_downloads: u32,
+    /// Whether unseeded Lookup candidates run signal extraction and provider
+    /// matching without an explicit user action.
+    pub automatic_import_metadata_lookup: bool,
+    /// Which metadata surface opens for an unseeded import candidate.
+    pub default_import_metadata_mode: BridgeDefaultImportMetadataMode,
+    /// The last metadata surface the user explicitly selected.
+    pub last_import_metadata_mode: BridgeImportMetadataMode,
+    /// The metadata surface core resolves for a newly selected candidate with
+    /// no stored seed, after applying the fixed or Last Used default.
+    pub resolved_import_metadata_mode: BridgeImportMetadataMode,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.
@@ -44,6 +54,21 @@ pub struct BridgeConfig {
     /// broken. Does not imply sync is working: runtime status lives in
     /// `BridgeSyncStatusSnapshot`, not config.
     pub sync: Option<BridgeSyncConfig>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeImportMetadataMode {
+    Lookup,
+    FileTags,
+    Manual,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDefaultImportMetadataMode {
+    Lookup,
+    FileTags,
+    Manual,
+    LastUsed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

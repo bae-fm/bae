@@ -126,7 +126,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             importStore: importStore,
             outputStore: outputStore,
             uiStore: uiStore,
-            importer: importer
+            configStore: configStore
         )
         desktopEvents = DesktopEventHandler(
             importStore: importStore,

@@ -104823,6 +104823,1152 @@
           }
         }
       }
+    },
+    "Manual" : {
+      "comment" : "Import metadata source: enter release metadata without Lookup or File tags.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يدوي"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ръчно"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ম্যানুয়াল"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ručně"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuell"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuel"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "મેન્યુઅલ"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ידני"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मैन्युअल"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ručno"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manuale"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಹಸ್ತಚಾಲಿತ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "수동"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "മാനുവൽ"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मॅन्युअल"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Handmatig"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਹੱਥੀਂ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ręcznie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manual"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "கைமுறை"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మాన్యువల్"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ด้วยตนเอง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elle"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вручну"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "دستی"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thủ công"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手动"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "手動"
+          }
+        }
+      }
+    },
+    "Open unseeded candidates in" : {
+      "comment" : "Import settings: presentation mode used when a candidate has no selected metadata seed.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح المرشحين بدون مصدر محدد في"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отваряне на кандидатите без избран източник в"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "উৎস নির্বাচন না করা প্রার্থীগুলি এখানে খুলুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otevírat kandidáty bez zvoleného zdroje v"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandidaten ohne gewählte Quelle öffnen in"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open unseeded candidates in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir candidatos sin fuente seleccionada en"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir les candidats sans source sélectionnée dans"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "સ્રોત ન પસંદ કરેલા ઉમેદવારોને આમાં ખોલો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פתיחת מועמדים ללא מקור שנבחר ב־"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बिना चुने स्रोत वाले उम्मीदवारों को इसमें खोलें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otvori kandidate bez odabranog izvora u"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri i candidati senza fonte selezionata in"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ソース未選択の候補を次で開く"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಮೂಲ ಆಯ್ಕೆ ಮಾಡದ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಇಲ್ಲಿ ತೆರೆಯಿರಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "소스를 선택하지 않은 후보를 다음에서 열기"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഉറവിടം തിരഞ്ഞെടുത്തിട്ടില്ലാത്ത ഇനങ്ങൾ ഇതിൽ തുറക്കുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "स्रोत न निवडलेले उमेदवार यामध्ये उघडा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kandidaten zonder gekozen bron openen in"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਚੁਣੇ ਸਰੋਤ ਤੋਂ ਬਿਨਾਂ ਉਮੀਦਵਾਰਾਂ ਨੂੰ ਇਸ ਵਿੱਚ ਖੋਲ੍ਹੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwieraj kandydatów bez wybranego źródła w"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir candidatos sem fonte selecionada em"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "மூலம் தேர்ந்தெடுக்கப்படாதவற்றை இதில் திறக்கவும்"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మూలం ఎంచుకోని అభ్యర్థులను ఇందులో తెరవండి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปิดรายการที่ยังไม่ได้เลือกแหล่งข้อมูลใน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kaynağı seçilmemiş adayları şurada aç"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Відкривати кандидати без вибраного джерела у"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بغیر منتخب ماخذ والے امیدواروں کو اس میں کھولیں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mở các mục chưa chọn nguồn trong"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在以下模式中打开未选择来源的候选项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在以下模式中開啟未選擇來源的候選項"
+          }
+        }
+      }
+    },
+    "Last used" : {
+      "comment" : "Import settings: follow the metadata source most recently chosen by the user.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آخر استخدام"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последно използвано"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সর্বশেষ ব্যবহৃত"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naposledy použité"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuletzt verwendet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last used"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Último usado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière utilisation"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "છેલ્લે વપરાયેલ"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בשימוש לאחרונה"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "पिछली बार इस्तेमाल किया गया"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadnje korišteno"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultimo utilizzo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前回使用"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಕೊನೆಯದಾಗಿ ಬಳಸಿದ್ದು"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "마지막 사용"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "അവസാനം ഉപയോഗിച്ചത്"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "शेवटचे वापरलेले"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Laatst gebruikt"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਆਖਰੀ ਵਾਰ ਵਰਤਿਆ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ostatnio używane"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usado por último"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "கடைசியாக பயன்படுத்தியது"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "చివరిగా ఉపయోగించినది"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใช้ล่าสุด"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son kullanılan"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Востаннє використане"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "آخری بار استعمال شدہ"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng gần đây nhất"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上次使用"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上次使用"
+          }
+        }
+      }
+    },
+    "Identify Lookup candidates automatically" : {
+      "comment" : "Import settings: whether Lookup candidates run automatic identification.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تحديد مرشحي البحث تلقائيًا"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматично идентифициране на кандидатите за търсене"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "লুকআপ প্রার্থীদের স্বয়ংক্রিয়ভাবে শনাক্ত করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automaticky identifikovat kandidáty Vyhledání"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lookup-Kandidaten automatisch erkennen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identify Lookup candidates automatically"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar automáticamente los candidatos de búsqueda"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifier automatiquement les candidats de recherche"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "લુકઅપ ઉમેદવારોને આપમેળે ઓળખો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זיהוי אוטומטי של מועמדי חיפוש"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "लुकअप उम्मीदवारों की अपने आप पहचान करें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatski prepoznaj kandidate pretraživanja"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifica automaticamente i candidati di ricerca"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "検索候補を自動識別"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಲುಕ್‌ಅಪ್ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "조회 후보 자동 식별"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lookup സ്ഥാനാർഥികളെ സ്വയമേവ തിരിച്ചറിയുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "लुकअप उमेदवार आपोआप ओळखा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lookup-kandidaten automatisch identificeren"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਲੁੱਕਅੱਪ ਉਮੀਦਵਾਰਾਂ ਦੀ ਆਪਣੇ ਆਪ ਪਛਾਣ ਕਰੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatycznie identyfikuj kandydatów wyszukiwania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar candidatos de busca automaticamente"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தேடல் தேர்வுகளைத் தானாக அடையாளம் காண்"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lookup అభ్యర్థులను ఆటోమేటిక్‌గా గుర్తించు"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ระบุรายการที่ใช้การค้นหาโดยอัตโนมัติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arama adaylarını otomatik olarak tanımla"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматично визначати кандидатів пошуку"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تلاش کے امیدواروں کی خودکار شناخت کریں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tự động nhận dạng các mục dùng Tra cứu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动识别“查找”候选项"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動識別「查詢」候選項"
+          }
+        }
+      }
+    },
+    "Metadata" : {
+      "comment" : "Settings section title for import metadata behavior.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "البيانات الوصفية"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метаданни"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "মেটাডেটা"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadata"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadaten"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadata"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadatos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Métadonnées"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "મેટાડેટા"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מטא-נתונים"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मेटाडेटा"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metapodaci"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadati"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メタデータ"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಮೆಟಾಡೇಟಾ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메타데이터"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "മെറ്റാഡാറ്റ"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मेटाडेटा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadata"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਮੈਟਾਡਾਟਾ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadane"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadados"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "மெட்டாடேட்டா"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మెటాడేటా"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้อมูลเมตา"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meta veriler"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Метадані"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "میٹا ڈیٹا"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Siêu dữ liệu"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "元数据"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "中繼資料"
+          }
+        }
+      }
+    },
+    "Automatic identification reads cover text, barcodes, and disc IDs only while a candidate uses Lookup. File tags and Manual never run it." : {
+      "comment" : "Import settings: explains which source mode runs automatic identification.",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يقرأ التعرّف التلقائي نص الغلاف والرموز الشريطية ومعرّفات الأقراص فقط عندما يستخدم العنصر المرشّح «البحث». لا تشغّله وسوم الملفات والوضع اليدوي مطلقًا."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматичното идентифициране чете текста на обложката, баркодовете и идентификаторите на дискове само когато кандидатът използва „Търсене“. „Етикети на файловете“ и „Ръчно“ никога не го стартират."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কোনো প্রার্থী লুকআপ ব্যবহার করলেই শুধু স্বয়ংক্রিয় শনাক্তকরণ প্রচ্ছদের লেখা, বারকোড ও ডিস্ক আইডি পড়ে। ফাইলের ট্যাগ এবং ম্যানুয়াল কখনো এটি চালায় না।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatická identifikace čte text obalu, čárové kódy a ID disků pouze tehdy, když kandidát používá Vyhledání. Značky souborů ani Ručně ji nikdy nespouštějí."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die automatische Erkennung liest Covertext, Barcodes und Disc-IDs nur, wenn ein Kandidat „Nachschlagen“ verwendet. Datei-Tags und „Manuell“ starten sie nie."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatic identification reads cover text, barcodes, and disc IDs only while a candidate uses Lookup. File tags and Manual never run it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La identificación automática lee el texto de la portada, los códigos de barras y los ID de disco solo cuando un candidato usa Búsqueda. Etiquetas de archivo y Manual nunca la ejecutan."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identification automatique lit le texte de la pochette, les codes-barres et les identifiants de disque uniquement lorsqu’un candidat utilise Recherche. Tags des fichiers et Manuel ne la lancent jamais."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "સ્વચાલિત ઓળખ કવરનું લખાણ, બારકોડ અને ડિસ્ક ID માત્ર ત્યારે વાંચે છે જ્યારે ઉમેદવાર લુકઅપ વાપરે. ફાઇલ ટૅગ અને મેન્યુઅલ તેને ક્યારેય ચલાવતા નથી."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זיהוי אוטומטי קורא טקסט מהעטיפה, ברקודים ומזהי דיסק רק כשמועמד משתמש בחיפוש. תגיות הקבצים וידני לעולם אינם מפעילים אותו."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अपने आप पहचान कवर का टेक्स्ट, बारकोड और डिस्क आईडी केवल तब पढ़ती है जब कोई उम्मीदवार लुकअप इस्तेमाल करता है। फ़ाइल टैग और मैन्युअल इसे कभी नहीं चलाते।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatsko prepoznavanje čita tekst omota, crtične kodove i ID-ove diskova samo dok kandidat koristi Pretraživanje. Oznake datoteka i Ručno nikad ga ne pokreću."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identificazione automatica legge il testo della copertina, i codici a barre e gli ID disco solo quando un candidato usa Ricerca. Tag dei file e Manuale non la eseguono mai."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動識別でカバーの文字、バーコード、ディスクIDを読み取るのは、候補が「検索」を使用している場合のみです。「ファイルのタグ」と「手動」では実行されません。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಅಭ್ಯರ್ಥಿಯು ಲುಕ್‌ಅಪ್ ಬಳಸುವಾಗ ಮಾತ್ರ ಸ್ವಯಂಚಾಲಿತ ಗುರುತಿಸುವಿಕೆಯು ಕವರ್ ಪಠ್ಯ, ಬಾರ್‌ಕೋಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್ ID ಗಳನ್ನು ಓದುತ್ತದೆ. ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳು ಮತ್ತು ಹಸ್ತಚಾಲಿತವು ಇದನ್ನು ಎಂದಿಗೂ ಚಲಾಯಿಸುವುದಿಲ್ಲ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "자동 식별은 후보가 조회를 사용할 때만 커버 텍스트, 바코드 및 디스크 ID를 읽습니다. 파일 태그와 수동에서는 실행되지 않습니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഒരു സ്ഥാനാർഥി Lookup ഉപയോഗിക്കുമ്പോൾ മാത്രമേ സ്വയമേവയുള്ള തിരിച്ചറിയൽ കവർ വാചകം, ബാർകോഡുകൾ, ഡിസ്ക് ID-കൾ എന്നിവ വായിക്കൂ. ഫയൽ ടാഗുകളും മാനുവലും ഇത് ഒരിക്കലും പ്രവർത്തിപ്പിക്കില്ല."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "उमेदवार लुकअप वापरत असतानाच स्वयंचलित ओळख कव्हरवरील मजकूर, बारकोड आणि डिस्क आयडी वाचते. फाइल टॅग आणि मॅन्युअल ती कधीही चालवत नाहीत."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatische identificatie leest hoestekst, barcodes en de Disc ID alleen wanneer een kandidaat Opzoeken gebruikt. Bestandstags en Handmatig voeren dit nooit uit."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਸਵੈਚਲਿਤ ਪਛਾਣ ਕਵਰ ਦਾ ਟੈਕਸਟ, ਬਾਰਕੋਡ ਅਤੇ ਡਿਸਕ ID ਸਿਰਫ਼ ਉਦੋਂ ਪੜ੍ਹਦੀ ਹੈ ਜਦੋਂ ਕੋਈ ਉਮੀਦਵਾਰ ਲੁੱਕਅੱਪ ਵਰਤਦਾ ਹੈ। ਫਾਈਲ ਟੈਗ ਅਤੇ ਹੱਥੀਂ ਇਸਨੂੰ ਕਦੇ ਨਹੀਂ ਚਲਾਉਂਦੇ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatyczna identyfikacja odczytuje tekst okładki, kody kreskowe i identyfikatory dysków tylko wtedy, gdy kandydat używa Wyszukiwania. Tagi plików i Ręcznie nigdy jej nie uruchamiają."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A identificação automática lê o texto da capa, códigos de barras e IDs de disco somente quando um candidato usa Busca. Tags dos arquivos e Manual nunca a executam."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ஒரு தேர்வு தேடலைப் பயன்படுத்தும்போது மட்டுமே தானியங்கு அடையாளம் அட்டை உரை, பட்டைக்குறியீடுகள் மற்றும் வட்டு ID-களைப் படிக்கும். கோப்புக் குறிச்சொற்களும் கைமுறையும் அதை ஒருபோதும் இயக்காது."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "అభ్యర్థి Lookup ఉపయోగిస్తున్నప్పుడు మాత్రమే ఆటోమేటిక్ గుర్తింపు కవర్ టెక్స్ట్, బార్‌కోడ్‌లు మరియు డిస్క్ IDలను చదువుతుంది. ఫైల్ ట్యాగ్‌లు మరియు మాన్యువల్ దీన్ని ఎప్పుడూ అమలు చేయవు."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การระบุอัตโนมัติจะอ่านข้อความบนปก บาร์โค้ด และ ID แผ่นดิสก์เฉพาะเมื่อรายการใช้การค้นหาเท่านั้น แท็กของไฟล์และการป้อนด้วยตนเองจะไม่เรียกใช้การระบุอัตโนมัติ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otomatik tanımlama kapak metnini, barkodları ve disk kimliklerini yalnızca bir aday Arama’yı kullandığında okur. Dosya etiketleri ve Elle bunu hiçbir zaman çalıştırmaz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматичне визначення читає текст обкладинки, штрихкоди й ідентифікатори дисків, лише коли кандидат використовує «Пошук». «Теги файлів» і «Вручну» ніколи його не запускають."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "خودکار شناخت سرورق کا متن، بارکوڈز اور ڈسک آئی ڈیز صرف اس وقت پڑھتی ہے جب کوئی امیدوار تلاش استعمال کرے۔ فائل ٹیگز اور دستی اسے کبھی نہیں چلاتے۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tính năng nhận dạng tự động chỉ đọc chữ trên bìa, mã vạch và ID đĩa khi một mục dùng Tra cứu. Thẻ của tệp và Thủ công không bao giờ chạy tính năng này."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动识别仅在候选项使用“查找”时读取封面文字、条码和光盘 ID。“文件标签”和“手动”从不运行自动识别。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動識別僅在候選項使用「查詢」時讀取封面文字、條碼和光碟 ID。「檔案標籤」和「手動」從不執行自動識別。"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

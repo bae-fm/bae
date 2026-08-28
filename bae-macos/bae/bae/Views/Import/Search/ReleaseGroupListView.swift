@@ -40,7 +40,7 @@ struct ReleaseGroupListView: View {
 
 /// One release group: its card with the pressing rows hanging beneath on a
 /// connecting rule. The search list stacks one per group; the mapping pane's
-/// identity section mounts a single one inline while a pick is still open.
+/// Lookup section mounts a single one inline while a selection is still open.
 struct ReleaseGroupSection: View {
     let group: ReleaseGroup
     let isImporting: Bool

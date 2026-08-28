@@ -6,8 +6,8 @@ import Testing
 @testable import bae
 
 @MainActor
-@Suite("ImportSearchFlow identity picks")
-struct ImportSearchFlowIdentityTests {
+@Suite("ImportSearchFlow metadata seed selection")
+struct ImportSearchFlowMetadataSeedTests {
     @Test("command return keeps the sheet open until detail delivery")
     func commandReturnWaitsForDetailDelivery() async throws {
         let store = unsettledStore()
@@ -113,7 +113,7 @@ struct ImportSearchFlowIdentityTests {
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
-                mapping: MappingFixtures.unknownTable,
+                mapping: MappingFixtures.fileTagsTable,
                 metadataSeed: .externalRelease(
                     source: MappingFixtures.source,
                     releaseId: "rel-other"

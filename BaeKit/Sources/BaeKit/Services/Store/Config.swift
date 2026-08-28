@@ -24,6 +24,16 @@ public struct Config: Equatable {
     /// reads them here and writes through the bridge setters.
     public let maxConcurrentUploads: UInt32
     public let maxConcurrentDownloads: UInt32
+    /// Whether unseeded Lookup candidates identify themselves without an
+    /// explicit user action.
+    public let automaticImportMetadataLookup: Bool
+    /// Which metadata surface an unseeded import candidate opens in.
+    public let defaultImportMetadataMode: BridgeDefaultImportMetadataMode
+    /// The last metadata surface explicitly selected in the import pane.
+    public let lastImportMetadataMode: BridgeImportMetadataMode
+    /// The metadata surface core resolves for an unseeded candidate after
+    /// applying the fixed or Last Used default.
+    public let resolvedImportMetadataMode: BridgeImportMetadataMode
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, so the bar
     /// reads it here rather than keeping its own copy per device.
@@ -57,6 +67,10 @@ public struct Config: Equatable {
         pauseBetweenSides = bridge.pauseBetweenSides
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
+        automaticImportMetadataLookup = bridge.automaticImportMetadataLookup
+        defaultImportMetadataMode = bridge.defaultImportMetadataMode
+        lastImportMetadataMode = bridge.lastImportMetadataMode
+        resolvedImportMetadataMode = bridge.resolvedImportMetadataMode
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth
         savePresets = bridge.savePresets

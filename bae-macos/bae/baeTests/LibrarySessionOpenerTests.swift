@@ -66,7 +66,9 @@ struct LibrarySessionOpenerTests {
         let outcome = await waiter.value()
 
         guard case .failed = outcome else {
-            Issue.record("a broken keyring should yield .failed, got \(outcome)")
+            Issue.record(
+                "a broken keyring should yield .failed, got \(outcome)"
+            )
             return
         }
     }
@@ -229,15 +231,23 @@ struct LibrarySessionOpenerTests {
             pauseBetweenSides: false,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
+            automaticImportMetadataLookup: true,
+            defaultImportMetadataMode: .lookup,
+            lastImportMetadataMode: .lookup,
+            resolvedImportMetadataMode: .lookup,
             showRemainingTime: false,
-                    libraryFullWidth: false,
+            libraryFullWidth: false,
             savePresets: [],
             defaultTrackSavePreset: "flac",
             defaultReleaseSavePreset: "flac",
             castEnabled: false,
             mcp: BridgeMcpConfig(enabled: false, port: 47777),
             subsonic: BridgeSubsonicConfig(
-                enabled: false, port: 4533, username: "", bindAddress: "127.0.0.1"),
+                enabled: false,
+                port: 4533,
+                username: "",
+                bindAddress: "127.0.0.1"
+            ),
             discogsTokenStatus: .notConfigured,
             discogsUsable: false,
             sync: nil

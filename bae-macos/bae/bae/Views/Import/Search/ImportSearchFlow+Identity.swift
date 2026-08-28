@@ -4,14 +4,11 @@ import os.log
 private let logger = Logger.bae("ImportSearchFlow")
 
 extension ImportSearchFlow {
-    // MARK: - Deciding the identity
+    // MARK: - Selecting the metadata seed
 
-    /// Decide the candidate's identity — a pressing, or the folder's own tags.
-    ///
-    /// Nothing is seeded from the answer: core archives the release's
-    /// documents, stores the pick, and the per-candidate read delivers the
-    /// pane's next value. All this holds is the flag the clicked control reads
-    /// as pending, and the line a failure leaves on the banner.
+    /// Select one candidate metadata source. Core stores the seed and the
+    /// per-candidate read delivers its projected form and mapping. This holds
+    /// only the command session and a failure line for the banner.
     @MainActor
     static func selectMetadataSeed(
         importer: Importer,
@@ -27,7 +24,7 @@ extension ImportSearchFlow {
                 onConfirmed: onConfirmed
             )
         else {
-            logger.debug("Identity pick ignored for missing key: \(key)")
+            logger.debug("Metadata seed ignored for missing key: \(key)")
             return
         }
 
@@ -35,13 +32,13 @@ extension ImportSearchFlow {
             do {
                 try await importer.selectCandidateMetadataSeed(key, seed)
                 guard let session else { return }
-                importStore.metadataSeedCommandSucceeded(
+                importStore.metadataSeedSelectionCommandSucceeded(
                     key: key,
                     session: session
                 )
             }
             catch is CancellationError {
-                logger.debug("Identity pick cancelled for key: \(key)")
+                logger.debug("Metadata seed cancelled for key: \(key)")
                 guard let session else { return }
                 importStore.metadataSeedSelectionFailed(
                     key: key,
@@ -51,7 +48,7 @@ extension ImportSearchFlow {
             }
             catch {
                 logger.error(
-                    "Identity pick failed: \(error.localizedDescription)"
+                    "Metadata seed failed: \(error.localizedDescription)"
                 )
                 guard let session else { return }
                 let line = error.displayLine.map {
@@ -64,7 +61,9 @@ extension ImportSearchFlow {
                     case .fileTags:
                         String(localized: "Couldn't read file tags: \($0)")
                     case .manual:
-                        String(localized: "Couldn't save that change: \($0)")
+                        String(
+                            localized: "Couldn't save that change: \($0)"
+                        )
                     }
                 }
                 importStore.metadataSeedSelectionFailed(

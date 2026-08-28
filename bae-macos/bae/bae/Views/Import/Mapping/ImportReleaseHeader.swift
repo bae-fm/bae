@@ -16,18 +16,32 @@ struct ImportCommitControls {
     let actions: ImportCommitActions
 }
 
-enum ImportReleaseSearchControl: Equatable {
-    case find
-    case change
+enum ImportReleaseHeaderAction: Equatable {
+    case changeRelease
+    case useFileTags
+    case enterManually
 
-    init?(identity: ImportIdentity, hasPick: Bool) {
-        guard identity == .release else { return nil }
-        self = hasPick ? .change : .find
+    var title: String {
+        switch self {
+        case .changeRelease:
+            coreString("ui.import.header.change_release")
+        case .useFileTags:
+            coreString("ui.import.metadata.file_tags")
+        case .enterManually:
+            coreString("ui.import.metadata.manual")
+        }
+    }
+
+    var isProminent: Bool {
+        switch self {
+        case .useFileTags, .enterManually: true
+        case .changeRelease: false
+        }
     }
 }
 
-/// The identity section's card: the cover, what the release is, what
-/// identified it, and the commit itself.
+/// The metadata-source section's card: the cover, what the release is, and the
+/// commit itself.
 ///
 /// Search is this card's editor rather than a pane mounted beside it — the
 /// change control opens it, and picking a release fills the mapping table's
@@ -36,7 +50,7 @@ enum ImportReleaseSearchControl: Equatable {
 /// action entirely.
 struct ImportReleaseHeader: View {
     let releaseSummary: ImportReleaseSummary
-    let searchControl: ImportReleaseSearchControl?
+    let action: ImportReleaseHeaderAction?
     /// Whether a read is in flight — the change control says so and stays put
     /// rather than the card being replaced by a placeholder.
     let isReading: Bool
@@ -54,7 +68,7 @@ struct ImportReleaseHeader: View {
     /// settled to commit them under.
     let commit: ImportCommitControls?
     let onEditCover: () -> Void
-    let onFindRelease: () -> Void
+    let onAction: () -> Void
 
     /// The cover the card leads with. Big enough to read the artwork as
     /// artwork — at a thumbnail's size it was an icon beside the title, and
@@ -74,7 +88,7 @@ struct ImportReleaseHeader: View {
                     summary: releaseSummary,
                     style: .card
                 )
-                changeControl
+                actionControl
             }
             if let editValues {
                 details(editValues)
@@ -165,22 +179,24 @@ struct ImportReleaseHeader: View {
     /// one thing left to do — and quiet once a release is in. While a read is
     /// in flight it goes quiet with a spinner beside it: the pane keeps showing
     /// what it already has.
-    private var changeControl: some View {
+    private var actionControl: some View {
         HStack(spacing: 8) {
             ProgressView()
                 .controlSize(.small)
                 .opacity(isReading ? 1 : 0)
-            if searchControl == .change {
-                Button(coreString("ui.import.header.change_release")) {
-                    onFindRelease()
+            if let action {
+                if action.isProminent {
+                    Button(action.title) {
+                        onAction()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.bordered)
-            }
-            else if searchControl == .find {
-                Button(coreString("ui.import.header.find_release")) {
-                    onFindRelease()
+                else {
+                    Button(action.title) {
+                        onAction()
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.borderedProminent)
             }
         }
         .disabled(isReading)
@@ -224,7 +240,7 @@ struct ImportReleaseHeader: View {
                 candidate: PreviewData.mappingCandidate,
                 editValues: PreviewData.confirmEditValues
             ),
-            searchControl: .change,
+            action: .changeRelease,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: true,
@@ -232,7 +248,7 @@ struct ImportReleaseHeader: View {
             editActions: ReleaseFieldWriter { _, _ in },
             commit: nil,
             onEditCover: {},
-            onFindRelease: {},
+            onAction: {},
         )
         .padding(24)
         .frame(width: 900, height: 360)

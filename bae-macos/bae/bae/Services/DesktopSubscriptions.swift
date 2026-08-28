@@ -65,7 +65,7 @@ private final class ImportCandidateSink: ImportCandidateCallback,
 /// A read that says the folder is gone drops the key from the selection, which
 /// is what clears a row the scan removed.
 @MainActor
-private final class ImportSelectionObservations {
+final class ImportSelectionObservations {
     private struct Observation {
         let identity: UUID
         let subscription: LiveSubscription
@@ -74,19 +74,19 @@ private final class ImportSelectionObservations {
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private let importer: Importer
+    private let configStore: ConfigStore
     private var observations: [String: Observation] = [:]
 
     init(
         appHandle: AppHandle,
         importStore: ImportStore,
         uiStore: UiStore,
-        importer: Importer
+        configStore: ConfigStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
         self.uiStore = uiStore
-        self.importer = importer
+        self.configStore = configStore
     }
 
     func selectionChanged(_ keys: Set<String>) {
@@ -130,19 +130,12 @@ private final class ImportSelectionObservations {
             uiStore.removeFolderCandidateSelection([key])
             return
         }
-        let isFirstRead = importStore.selectedCandidates[key] == nil
-        importStore.applyCandidateDetail(key: key, detail: detail)
-        guard isFirstRead,
-            let candidate = importStore.selectedCandidates[key],
-            case .idle = shownIdentifyState(
-                resumed: candidate.resumedIdentifyState,
-                runtime: importer.candidateRuntime(key)
-            )
-        else { return }
-        // The first selection of a folder nothing has run for starts its
-        // identification; a later selection finds a state that is no longer
-        // idle and starts nothing.
-        importer.autoIdentifyFolder(key)
+        importStore.applyCandidateDetail(
+            key: key,
+            detail: detail,
+            unseededMetadataMode: configStore.config
+                .resolvedImportMetadataMode
+        )
     }
 
     deinit {
@@ -169,7 +162,7 @@ final class DesktopSubscriptions {
         importStore: ImportStore,
         outputStore: OutputStore,
         uiStore: UiStore,
-        importer: Importer
+        configStore: ConfigStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
@@ -179,7 +172,7 @@ final class DesktopSubscriptions {
             appHandle: appHandle,
             importStore: importStore,
             uiStore: uiStore,
-            importer: importer
+            configStore: configStore
         )
         // A watched folder that could not be read. Wired before anything can
         // deliver a summary, and fed from the list's live query rather than a
