@@ -15,8 +15,8 @@ struct ImportSearchFlowIdentityTests {
         let presentation = presentModal(in: uiStore)
         let recorder = PickRecorder()
         let importer = Importer(
-            pickCandidateIdentity: { _, pick in
-                await recorder.record(pick)
+            selectCandidateMetadataSeed: { _, seed in
+                await recorder.record(seed)
             }
         )
 
@@ -29,11 +29,11 @@ struct ImportSearchFlowIdentityTests {
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .identityPickSession?
+                .metadataSeedSession?
                 .commandSucceeded == true
         }
 
-        #expect(recorder.picks == [MappingFixtures.pick])
+        #expect(recorder.seeds == [MappingFixtures.seed])
         #expect(uiStore.modalPresentation === presentation)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
@@ -47,7 +47,7 @@ struct ImportSearchFlowIdentityTests {
         )
         #expect(delivered.error == nil)
         #expect(delivered.pickedRelease?.releaseId == MappingFixtures.releaseId)
-        #expect(delivered.pickInFlight == nil)
+        #expect(delivered.seedInFlight == nil)
         #expect(uiStore.modalBuilder == nil)
     }
 
@@ -59,8 +59,8 @@ struct ImportSearchFlowIdentityTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            pickCandidateIdentity: { _, pick in
-                await recorder.record(pick)
+            selectCandidateMetadataSeed: { _, seed in
+                await recorder.record(seed)
                 for await _ in gate { break }
             }
         )
@@ -72,21 +72,21 @@ struct ImportSearchFlowIdentityTests {
             key: MappingFixtures.candidateKey,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
-        await waitUntil { recorder.picks == [MappingFixtures.pick] }
+        await waitUntil { recorder.seeds == [MappingFixtures.seed] }
 
         deliverPickedDetail(to: store)
 
         #expect(uiStore.modalPresentation === presentation)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .pickInFlight == MappingFixtures.pick
+                .seedInFlight == MappingFixtures.seed
         )
 
         releaseGate.finish()
         await waitUntil { uiStore.modalBuilder == nil }
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .pickInFlight == nil
+                .seedInFlight == nil
         )
     }
 
@@ -106,7 +106,7 @@ struct ImportSearchFlowIdentityTests {
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .identityPickSession?
+                .metadataSeedSession?
                 .commandSucceeded == true
         }
 
@@ -114,7 +114,7 @@ struct ImportSearchFlowIdentityTests {
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.unknownTable,
-                picked: .release(
+                metadataSeed: .externalRelease(
                     source: MappingFixtures.source,
                     releaseId: "rel-other"
                 )
@@ -124,7 +124,7 @@ struct ImportSearchFlowIdentityTests {
         #expect(uiStore.modalPresentation === presentation)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .pickInFlight == MappingFixtures.pick
+                .seedInFlight == MappingFixtures.seed
         )
 
         deliverPickedDetail(to: store)
@@ -137,7 +137,9 @@ struct ImportSearchFlowIdentityTests {
         let uiStore = UiStore()
         let presentation = presentModal(in: uiStore)
         let importer = Importer(
-            pickCandidateIdentity: { _, _ in throw StubError.notImplemented }
+            selectCandidateMetadataSeed: { _, _ in
+                throw StubError.notImplemented
+            }
         )
 
         ImportSearchFlow.chooseReleaseFromSearchSheet(
@@ -155,7 +157,7 @@ struct ImportSearchFlowIdentityTests {
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
         #expect(after.error != nil)
-        #expect(after.pickInFlight == nil)
+        #expect(after.seedInFlight == nil)
         #expect(after.pickedRelease == nil)
         #expect(uiStore.modalPresentation === presentation)
     }
@@ -178,7 +180,7 @@ struct ImportSearchFlowIdentityTests {
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .identityPickSession?
+                .metadataSeedSession?
                 .commandSucceeded == true
         }
         uiStore.dismissModal(searchPresentation)
@@ -194,7 +196,7 @@ struct ImportSearchFlowIdentityTests {
         let store = ImportStore()
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
-            detail: MappingFixtures.detail(mapping: nil, picked: nil)
+            detail: MappingFixtures.detail(mapping: nil, metadataSeed: nil)
         )
         return store
     }
@@ -234,10 +236,10 @@ struct ImportSearchFlowIdentityTests {
 
 @MainActor
 private final class PickRecorder {
-    var picks: [BridgeIdentityPick] = []
+    var seeds: [BridgeMetadataSeed] = []
 
-    func record(_ pick: BridgeIdentityPick) {
-        picks.append(pick)
+    func record(_ seed: BridgeMetadataSeed) {
+        seeds.append(seed)
     }
 }
 

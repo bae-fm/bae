@@ -35,11 +35,11 @@ enum ImportMappingFlow {
     ) {
         services.importStore.presentIdentity(identity, forKey: candidate.key)
         guard identity == .unknown else { return }
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.selectMetadataSeed(
             importer: services.importer,
             importStore: services.importStore,
             key: candidate.key,
-            pick: .unknown
+            seed: .fileTags
         )
     }
 

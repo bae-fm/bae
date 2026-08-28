@@ -61,8 +61,8 @@ final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
 /// and the authoritative candidate-detail delivery have confirmed it. Release
 /// picks wait for that delivery because it carries the fetched release data;
 /// File Tags has no remote release read, so the command result settles it.
-final class CandidateIdentityPickSession: Equatable, @unchecked Sendable {
-    let pick: BridgeIdentityPick
+final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
+    let seed: BridgeMetadataSeed
 
     private(set) var commandSucceeded = false
     private(set) var detailDelivered: Bool
@@ -70,15 +70,15 @@ final class CandidateIdentityPickSession: Equatable, @unchecked Sendable {
     private var onConfirmed: (@Sendable () -> Void)?
 
     init(
-        pick: BridgeIdentityPick,
+        seed: BridgeMetadataSeed,
         onConfirmed: (@Sendable () -> Void)? = nil
     ) {
-        self.pick = pick
+        self.seed = seed
         self.onConfirmed = onConfirmed
         detailDelivered =
-            switch pick {
-            case .release: false
-            case .unknown: true
+            switch seed {
+            case .externalRelease: false
+            case .fileTags, .manual: true
             }
     }
 
@@ -110,8 +110,8 @@ final class CandidateIdentityPickSession: Equatable, @unchecked Sendable {
     }
 
     static func == (
-        lhs: CandidateIdentityPickSession,
-        rhs: CandidateIdentityPickSession
+        lhs: CandidateMetadataSeedSession,
+        rhs: CandidateMetadataSeedSession
     ) -> Bool {
         lhs === rhs
     }
@@ -212,18 +212,20 @@ struct Candidate: Equatable, Identifiable {
     var error: String?
     /// The pick currently being read. The initiating row uses its identity for
     /// selection feedback while the pane keeps showing stored data.
-    var identityPickSession: CandidateIdentityPickSession?
+    var metadataSeedSession: CandidateMetadataSeedSession?
     /// Which metadata source the mapping pane is showing. This is session
     /// navigation, separate from the stored pick: Lookup can be open while
     /// the stored verdict still says to use the folder's file tags.
     var presentedIdentity: ImportIdentity = .release
 
-    var pickInFlight: BridgeIdentityPick? {
-        identityPickSession?.pick
+    var seedInFlight: BridgeMetadataSeed? {
+        metadataSeedSession?.seed
     }
 
     var loadingReleaseId: String? {
-        guard case .release(_, let releaseId) = pickInFlight else { return nil }
+        guard case .externalRelease(_, let releaseId) = seedInFlight else {
+            return nil
+        }
         return releaseId
     }
     var search: CandidateSearchState = .init()
@@ -266,7 +268,7 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.error = existing.error
-        copy.identityPickSession = existing.identityPickSession
+        copy.metadataSeedSession = existing.metadataSeedSession
         copy.presentedIdentity = existing.presentedIdentity
         copy.search = existing.search
         copy.searchTask = existing.searchTask
@@ -338,7 +340,7 @@ struct Candidate: Equatable, Identifiable {
 
     /// What the folder's stored verdict reads it as.
     var identity: ImportIdentity {
-        if case .unknown = detail?.row.picked {
+        if case .fileTags = detail?.row.metadataSeed {
             return .unknown
         }
         return .release
@@ -346,7 +348,9 @@ struct Candidate: Equatable, Identifiable {
 
     /// The release this candidate is picked as, where it names one.
     var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
-        guard case .release(let source, let releaseId) = detail?.row.picked
+        guard
+            case .externalRelease(let source, let releaseId) =
+                detail?.row.metadataSeed
         else { return nil }
         return (source: source, releaseId: releaseId)
     }
@@ -355,7 +359,7 @@ struct Candidate: Equatable, Identifiable {
     /// decision to read its own tags. The commit bar and the release card
     /// render on it.
     var hasSettled: Bool {
-        detail?.row.picked != nil
+        detail?.row.metadataSeed != nil
     }
 
     /// Whether the metadata surface being shown is the stored verdict. Opening

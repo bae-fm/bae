@@ -81,11 +81,11 @@
                 .map { row in
                     BridgeReadyRowRef(
                         candidateKey: row.candidateKey,
-                        claim: row.claim
-                            ?? .release(
+                        metadataSeed: row.metadataSeed
+                            ?? .externalRelease(
+                                source: .musicBrainz,
                                 releaseId: row.matched?.releaseId
-                                    ?? row.candidateKey,
-                                source: .musicBrainz
+                                    ?? row.candidateKey
                             ),
                         coverThumbnailUrl: row.matched?.coverThumbnailUrl
                     )

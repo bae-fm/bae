@@ -115,9 +115,14 @@ struct ImportMappingTrackRow: View {
         if let track {
             CommittedTextField(
                 placeholder: coreString("ui.import.mapping.column.artist"),
-                value: track.artistText,
+                value: track.artistAssignments.editorText,
                 boxed: false,
-                onCommit: { commit(track, \.artistText, $0) },
+                onCommit: { value in
+                    var edited = track
+                    edited.artistAssignments = track.artistAssignments
+                        .replacingEditorText(value)
+                    actions.editTrack(edited)
+                },
             )
             .frame(width: columns.artist)
         }

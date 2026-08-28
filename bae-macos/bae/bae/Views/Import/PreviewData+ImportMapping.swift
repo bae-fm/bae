@@ -139,7 +139,7 @@
             source: .musicBrainz,
             sourceGroupId: "rg-more-tracks",
             title: moreTracksEditValues.albumTitle,
-            artist: moreTracksEditValues.albumArtistText,
+            artist: "Artist Name",
             year: 1997,
             format: "CD",
             label: "Some Label",
@@ -327,7 +327,7 @@
                                 track: BridgeRawTrackEdit(
                                     id: "unknown-track-\(index - 1)",
                                     title: "Track Title \(index)",
-                                    artistText: "",
+                                    artistAssignments: .albumArtists,
                                     side: 1,
                                     trackNumber: Int32(index),
                                     file: .standalone(
@@ -366,7 +366,7 @@
         @MainActor
         static func paneCandidate(
             folder: BridgeFolderCandidate,
-            picked: BridgeIdentityPick? = nil,
+            metadataSeed: BridgeMetadataSeed? = nil,
             release: BridgeReleaseDetail? = nil,
             edit: BridgeRawReleaseEdit? = nil,
             mapping: BridgeMappingTable,
@@ -387,7 +387,7 @@
                         resolvedBoundaries: [],
                         combineAncestorKey: nil,
                         actionable: true,
-                        placement: picked == nil
+                        placement: metadataSeed == nil
                             ? .needsYou(
                                 group: .noMatch,
                                 reason: .disagreement(disagreement: .noMatch)
@@ -395,10 +395,9 @@
                             : .ready,
                         skipAction: .skip,
                         matched: nil,
-                        selectable: picked != nil,
+                        selectable: metadataSeed != nil,
                         importStatus: nil,
-                        picked: picked,
-                        claim: nil
+                        metadataSeed: metadataSeed
                     ),
                     release: release,
                     pickedLibraryStatus: nil,
@@ -422,7 +421,7 @@
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            picked: .release(
+            metadataSeed: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -475,7 +474,7 @@
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            picked: .release(
+            metadataSeed: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -498,7 +497,7 @@
                 skipped: false,
                 isAdded: false
             ),
-            picked: .release(
+            metadataSeed: .externalRelease(
                 source: moreTracksReleaseDetail.source,
                 releaseId: moreTracksReleaseDetail.releaseId
             ),
@@ -518,7 +517,7 @@
                 name: "Album Title One",
                 files: bridgeCandidateFiles
             ),
-            picked: .release(
+            metadataSeed: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -536,7 +535,7 @@
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            picked: .unknown,
+            metadataSeed: .fileTags,
             edit: confirmEditValues,
             mapping: unknownMappingTable,
         )

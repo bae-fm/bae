@@ -113,7 +113,7 @@ struct ImportMappingPane: View {
                 ImportReleaseSummary(candidate: candidate, editValues: $0)
             },
             hasPick: candidate.pickedRelease != nil,
-            isReading: candidate.pickInFlight != nil,
+            isReading: candidate.seedInFlight != nil,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editValues: candidate.edit,

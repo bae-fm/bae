@@ -128,8 +128,7 @@ private func readyRow(
         ),
         selectable: true,
         importStatus: nil,
-        picked: nil,
-        claim: nil
+        metadataSeed: nil
     )
 }
 
@@ -153,8 +152,7 @@ private func needsYouRow(
         matched: nil,
         selectable: false,
         importStatus: nil,
-        picked: nil,
-        claim: nil
+        metadataSeed: nil
     )
 }
 
@@ -172,8 +170,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
-        picked: nil,
-        claim: nil
+        metadataSeed: nil
     )
 }
 
@@ -191,8 +188,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: nil,
         selectable: false,
         importStatus: nil,
-        picked: nil,
-        claim: nil
+        metadataSeed: nil
     )
 }
 
@@ -268,12 +264,12 @@ struct ImportStoreCandidateDetailTests {
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         existing.error = "the last command failed"
-        let pendingPick = BridgeIdentityPick.release(
+        let pendingSeed = BridgeMetadataSeed.externalRelease(
             source: .musicBrainz,
             releaseId: "rel-1"
         )
-        existing.identityPickSession = CandidateIdentityPickSession(
-            pick: pendingPick
+        existing.metadataSeedSession = CandidateMetadataSeedSession(
+            seed: pendingSeed
         )
         existing.presentedIdentity = .unknown
         existing.search.searchAlbum = "typed album"
@@ -295,7 +291,7 @@ struct ImportStoreCandidateDetailTests {
         // folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
         #expect(merged.error == "the last command failed")
-        #expect(merged.pickInFlight == pendingPick)
+        #expect(merged.seedInFlight == pendingSeed)
         #expect(merged.presentedIdentity == .unknown)
         #expect(merged.search.searchAlbum == "typed album")
         // Scan fields come from the incoming read.

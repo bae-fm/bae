@@ -47,8 +47,8 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String) async throws -> [BridgeSheetBindingOption]
     let setSheetBinding:
         @Sendable (String, String, String?) async throws -> Void
-    let pickCandidateIdentity:
-        @Sendable (String, BridgeIdentityPick) async throws -> Void
+    let selectCandidateMetadataSeed:
+        @Sendable (String, BridgeMetadataSeed) async throws -> Void
     let setSheetDisc:
         @Sendable (String, String, BridgeSheetDisc) async throws -> Void
     let setFileRole:
@@ -72,6 +72,8 @@ private struct ImportOperations: Sendable {
     let setCandidateEditField:
         @Sendable (String, BridgeCandidateEditField, String) async throws ->
             Void
+    let setCandidateAlbumArtists:
+        @Sendable (String, [BridgeArtistAssignment]) async throws -> Void
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
     let dropCandidateTrack: @Sendable (String, String) async throws -> Void
@@ -114,8 +116,8 @@ private struct ImportOperations: Sendable {
                     audioFileId: $2
                 )
             },
-            pickCandidateIdentity: {
-                try await handle.pickCandidateIdentity(
+            selectCandidateMetadataSeed: {
+                try await handle.selectCandidateMetadataSeed(
                     candidateKey: $0,
                     pick: $1
                 )
@@ -168,6 +170,12 @@ private struct ImportOperations: Sendable {
                     candidateKey: $0,
                     field: $1,
                     value: $2
+                )
+            },
+            setCandidateAlbumArtists: {
+                try await handle.setCandidateAlbumArtists(
+                    candidateKey: $0,
+                    assignments: $1
                 )
             },
             setCandidateTrackEdit: {
@@ -228,8 +236,8 @@ final class Importer: Sendable, Observable {
         setSheetBinding:
             @escaping @Sendable (String, String, String?) async throws -> Void =
             { _, _, _ in },
-        pickCandidateIdentity:
-            @escaping @Sendable (String, BridgeIdentityPick) async throws
+        selectCandidateMetadataSeed:
+            @escaping @Sendable (String, BridgeMetadataSeed) async throws
             -> Void = { _, _ in },
         setSheetDisc:
             @escaping @Sendable (String, String, BridgeSheetDisc) async throws
@@ -269,6 +277,9 @@ final class Importer: Sendable, Observable {
         setCandidateEditField:
             @escaping @Sendable (String, BridgeCandidateEditField, String)
             async throws -> Void = { _, _, _ in },
+        setCandidateAlbumArtists:
+            @escaping @Sendable (String, [BridgeArtistAssignment]) async throws
+            -> Void = { _, _ in },
         setCandidateTrackEdit:
             @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
             Void = { _, _ in },
@@ -296,7 +307,7 @@ final class Importer: Sendable, Observable {
             setCandidateSkipped: setCandidateSkipped,
             sheetBindingOptions: sheetBindingOptions,
             setSheetBinding: setSheetBinding,
-            pickCandidateIdentity: pickCandidateIdentity,
+            selectCandidateMetadataSeed: selectCandidateMetadataSeed,
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
             autoIdentifyFolder: autoIdentifyFolder,
@@ -308,6 +319,7 @@ final class Importer: Sendable, Observable {
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
+            setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
             dropCandidateTrack: dropCandidateTrack,
             candidateRuntime: candidateRuntime,
@@ -361,13 +373,13 @@ final class Importer: Sendable, Observable {
         )
     }
 
-    /// Decide this candidate's identity. Nothing comes back: the per-candidate
-    /// read delivers the pane's next value.
-    func pickCandidateIdentity(
+    /// Select this candidate's metadata seed. Nothing comes back: the
+    /// per-candidate read delivers the pane's next value.
+    func selectCandidateMetadataSeed(
         _ candidateKey: String,
-        _ pick: BridgeIdentityPick
+        _ seed: BridgeMetadataSeed
     ) async throws {
-        try await operations.pickCandidateIdentity(candidateKey, pick)
+        try await operations.selectCandidateMetadataSeed(candidateKey, seed)
     }
 
     func setSheetDisc(
@@ -445,6 +457,14 @@ final class Importer: Sendable, Observable {
         _ value: String
     ) async throws {
         try await operations.setCandidateEditField(candidateKey, field, value)
+    }
+
+    /// Replace the ordered album artists this candidate commits with.
+    func setCandidateAlbumArtists(
+        _ candidateKey: String,
+        _ assignments: [BridgeArtistAssignment]
+    ) async throws {
+        try await operations.setCandidateAlbumArtists(candidateKey, assignments)
     }
 
     /// Record one mapping-table row as the user left it.

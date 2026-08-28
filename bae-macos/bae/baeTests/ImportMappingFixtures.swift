@@ -14,10 +14,21 @@ enum MappingFixtures {
     static let candidateKey = "/Music/Downloads/Walkthrough"
     static let releaseId = "rel-walkthrough"
     static let source: BridgeMetadataSource = .musicBrainz
-    static let pick: BridgeIdentityPick = .release(
+    static let seed: BridgeMetadataSeed = .externalRelease(
         source: source,
         releaseId: releaseId
     )
+
+    static func newArtist(_ name: String) -> BridgeArtistAssignment {
+        .new(
+            seed: BridgeNewArtistSeed(
+                name: name,
+                sortName: nil,
+                musicbrainzArtistId: nil,
+                discogsArtistId: nil
+            )
+        )
+    }
 
     // MARK: - Thirteen files, twelve tracks
 
@@ -42,7 +53,7 @@ enum MappingFixtures {
         BridgeRawTrackEdit(
             id: "import-track-\(index)",
             title: title,
-            artistText: "",
+            artistAssignments: .albumArtists,
             side: 1,
             trackNumber: nil,
             file: file
@@ -257,7 +268,7 @@ enum MappingFixtures {
                             track: BridgeRawTrackEdit(
                                 id: "unknown-track-\(index - 1)",
                                 title: "Track \(index)",
-                                artistText: "",
+                                artistAssignments: .albumArtists,
                                 side: 1,
                                 trackNumber: Int32(index),
                                 file: .standalone(fileId: "\(index).flac")
@@ -270,12 +281,15 @@ enum MappingFixtures {
             },
         reconciliation: nil
     )
+}
+
+extension MappingFixtures {
 
     // MARK: - The album fields alongside the table
 
     static let albumSeed = BridgeReleaseUserEdit(
         albumTitle: "Album Title",
-        albumArtistNames: ["Artist Name"],
+        albumArtistAssignments: [newArtist("Artist Name")],
         pressing: BridgePressingEdit(
             year: 1996,
             format: "CD",
@@ -289,7 +303,7 @@ enum MappingFixtures {
 
     static let albumEdit = BridgeRawReleaseEdit(
         albumTitle: "Album Title",
-        albumArtistText: "Artist Name",
+        albumArtistAssignments: [newArtist("Artist Name")],
         pressing: BridgeRawPressingEdit(
             year: "1996",
             format: "CD",
@@ -344,7 +358,7 @@ enum MappingFixtures {
     static func detail(
         mapping: BridgeMappingTable?,
         edit: BridgeRawReleaseEdit? = albumEdit,
-        picked: BridgeIdentityPick? = pick,
+        metadataSeed: BridgeMetadataSeed? = seed,
         failure: BridgeImportFailure? = nil
     ) -> BridgeImportCandidateDetail {
         let folder = BridgeFolderCandidate(
@@ -373,13 +387,17 @@ enum MappingFixtures {
                 matched: nil,
                 selectable: true,
                 importStatus: nil,
-                picked: picked,
-                claim: nil
+                metadataSeed: metadataSeed
             ),
-            release: picked == nil ? nil : releaseDetail,
+            release: {
+                if case .externalRelease = metadataSeed {
+                    return releaseDetail
+                }
+                return nil
+            }(),
             pickedLibraryStatus: nil,
             fileEvidence: [],
-            edit: picked == nil ? nil : edit,
+            edit: metadataSeed == nil ? nil : edit,
             mapping: mapping
                 ?? BridgeMappingTable(
                     images: [],

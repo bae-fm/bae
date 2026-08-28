@@ -217,7 +217,9 @@ extension ImportMappingTracksLayoutTests {
                 track: BridgeRawTrackEdit(
                     id: "track-1",
                     title: "Track Title",
-                    artistText: "Artist Name",
+                    artistAssignments: .explicit(
+                        assignments: [MappingFixtures.newArtist("Artist Name")]
+                    ),
                     side: 1,
                     trackNumber: 1,
                     file: .standalone(fileId: "track.flac")

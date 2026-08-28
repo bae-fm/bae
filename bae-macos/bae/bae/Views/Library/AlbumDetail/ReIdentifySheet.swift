@@ -176,7 +176,7 @@ struct ReIdentifySheet: View {
                 // immediately reflects its own tags rather than the
                 // prior source's metadata — there's no post-commit
                 // refresh prompt for Unknown.
-                onAddAsUnknown: { commit(.unknown) },
+                onAddAsUnknown: { commit(.fileTags) },
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers
                 // post-commit edits). Picking a pressing claims it, and the
@@ -203,7 +203,7 @@ struct ReIdentifySheet: View {
             Spacer(minLength: 0)
             Button("Set identity") {
                 commit(
-                    .release(
+                    .externalRelease(
                         releaseId: result.releaseId,
                         source: result.source
                     )
@@ -313,7 +313,7 @@ extension ReIdentifySheet {
         importer.autoIdentifyRelease(key, releaseId)
     }
 
-    fileprivate func commit(_ choice: BridgeIdentityChoice) {
+    fileprivate func commit(_ choice: BridgeReleaseReseed) {
         commitTask?.cancel()
         phase = .committing
         let releaseEditor = releaseEditor
@@ -326,12 +326,12 @@ extension ReIdentifySheet {
                 )
                 landingAlbumId = albumId
                 switch choice {
-                case .unknown:
+                case .fileTags:
                     // `re_identify_release` reseeds the rows from the rip's
                     // file tags as part of an Unknown commit, so there's
                     // nothing to confirm — go straight to the new album.
                     closeAndNavigate()
-                case .release:
+                case .externalRelease:
                     phase = .askRefresh
                 }
             }

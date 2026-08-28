@@ -14,9 +14,8 @@ struct ImportReleaseSummary {
         title =
             values.albumTitle.isEmpty
             ? candidate.displayName : values.albumTitle
-        artist =
-            values.albumArtistText.isEmpty
-            ? nil : values.albumArtistText
+        let albumArtists = values.albumArtistAssignments.editorText
+        artist = albumArtists.isEmpty ? nil : albumArtists
         let count = candidate.mapping.willWriteCount
         let trackText = String(localized: "\(count) tracks")
         let lead =

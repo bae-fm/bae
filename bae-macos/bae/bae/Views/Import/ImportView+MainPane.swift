@@ -55,11 +55,11 @@ extension ImportView {
             onSetIdentity: { setIdentity($0, for: candidate) },
             onFindRelease: { presentSearch(for: candidate) },
             onPickRelease: { result in
-                ImportSearchFlow.decideIdentity(
+                ImportSearchFlow.selectMetadataSeed(
                     importer: importer,
                     importStore: importStore,
                     key: candidate.key,
-                    pick: .release(
+                    seed: .externalRelease(
                         source: result.source,
                         releaseId: result.releaseId
                     )
@@ -83,20 +83,36 @@ extension ImportView {
     /// candidate, written as the field is left.
     private func editActions(for candidate: Candidate) -> ReleaseFieldWriter {
         let key = candidate.key
-        return ReleaseFieldWriter { field, value in
-            Task { @MainActor in
-                do {
+        return ReleaseFieldWriter(
+            { field, value in
+                saveCandidateEdit {
                     try await importer.setCandidateEditField(key, field, value)
                 }
-                catch is CancellationError {}
-                catch {
-                    if let line = error.displayLine {
-                        uiStore.showError(
-                            String(
-                                localized: "Couldn't save that change: \(line)"
-                            )
-                        )
-                    }
+            },
+            setAlbumArtists: { assignments in
+                saveCandidateEdit {
+                    try await importer.setCandidateAlbumArtists(
+                        key,
+                        assignments
+                    )
+                }
+            }
+        )
+    }
+
+    private func saveCandidateEdit(
+        _ save: @escaping @MainActor () async throws -> Void
+    ) {
+        Task { @MainActor in
+            do {
+                try await save()
+            }
+            catch is CancellationError {}
+            catch {
+                if let line = error.displayLine {
+                    uiStore.showError(
+                        String(localized: "Couldn't save that change: \(line)")
+                    )
                 }
             }
         }

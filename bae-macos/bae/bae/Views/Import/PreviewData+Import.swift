@@ -240,8 +240,7 @@
                 matched: nil,
                 selectable: true,
                 importStatus: nil,
-                picked: nil,
-                claim: nil
+                metadataSeed: nil
             )
         }
 

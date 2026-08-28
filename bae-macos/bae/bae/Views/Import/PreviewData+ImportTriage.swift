@@ -45,8 +45,7 @@
             matched: BridgeMatchedRelease?,
             selectable: Bool,
             importStatus: BridgeTriageImportStatus? = nil,
-            picked: BridgeIdentityPick? = nil,
-            claim: BridgeIdentityChoice? = nil
+            metadataSeed: BridgeMetadataSeed? = nil
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -61,8 +60,7 @@
                 matched: matched,
                 selectable: selectable,
                 importStatus: importStatus,
-                picked: picked,
-                claim: claim
+                metadataSeed: metadataSeed
             )
         }
 
@@ -185,7 +183,7 @@
                 skipped: false,
                 isAdded: false
             ),
-            picked: .release(
+            metadataSeed: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -219,13 +217,9 @@
                 trackCount: releaseDetailBridge.trackCount
             ),
             selectable: true,
-            picked: .release(
+            metadataSeed: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
-            ),
-            claim: .release(
-                releaseId: releaseDetailBridge.releaseId,
-                source: releaseDetailBridge.source
             )
         )
 
@@ -409,13 +403,9 @@
                     trackCount: releaseDetailBridge.trackCount
                 ),
                 selectable: true,
-                picked: .release(
+                metadataSeed: .externalRelease(
                     source: releaseDetailBridge.source,
                     releaseId: releaseDetailBridge.releaseId
-                ),
-                claim: .release(
-                    releaseId: releaseDetailBridge.releaseId,
-                    source: releaseDetailBridge.source
                 )
             ),
             triageRow(
@@ -767,13 +757,17 @@
                         title: "Track Title \(i)",
                         side: 1,
                         trackNumber: Int32(i),
-                        artistNames: i == 5 ? ["Featured Artist"] : [],
+                        artistAssignments: i == 5
+                            ? .explicit(
+                                assignments: [newArtist("Featured Artist")]
+                            )
+                            : .albumArtists,
                         file: .standalone(fileId: "Track \(i).flac")
                     )
                 }
             return BridgeReleaseUserEdit(
                 albumTitle: "Album Title One",
-                albumArtistNames: ["Artist Name"],
+                albumArtistAssignments: [newArtist("Artist Name")],
                 pressing: BridgePressingEdit(
                     year: 1996,
                     format: "CD",

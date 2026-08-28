@@ -13,17 +13,17 @@ extension ImportSearchFlow {
     /// pane's next value. All this holds is the flag the clicked control reads
     /// as pending, and the line a failure leaves on the banner.
     @MainActor
-    static func decideIdentity(
+    static func selectMetadataSeed(
         importer: Importer,
         importStore: ImportStore,
         key: String,
-        pick: BridgeIdentityPick,
+        seed: BridgeMetadataSeed,
         onConfirmed: (@Sendable () -> Void)? = nil
     ) {
         guard
-            let session = importStore.beginIdentityPick(
+            let session = importStore.beginMetadataSeedSelection(
                 key: key,
-                pick: pick,
+                seed: seed,
                 onConfirmed: onConfirmed
             )
         else {
@@ -33,9 +33,9 @@ extension ImportSearchFlow {
 
         let task = Task { @MainActor [weak session] in
             do {
-                try await importer.pickCandidateIdentity(key, pick)
+                try await importer.selectCandidateMetadataSeed(key, seed)
                 guard let session else { return }
-                importStore.identityPickCommandSucceeded(
+                importStore.metadataSeedCommandSucceeded(
                     key: key,
                     session: session
                 )
@@ -43,7 +43,7 @@ extension ImportSearchFlow {
             catch is CancellationError {
                 logger.debug("Identity pick cancelled for key: \(key)")
                 guard let session else { return }
-                importStore.identityPickFailed(
+                importStore.metadataSeedSelectionFailed(
                     key: key,
                     session: session,
                     error: nil
@@ -55,17 +55,19 @@ extension ImportSearchFlow {
                 )
                 guard let session else { return }
                 let line = error.displayLine.map {
-                    switch pick {
-                    case .release:
+                    switch seed {
+                    case .externalRelease:
                         String(
                             localized:
                                 "Failed to load release details: \($0)"
                         )
-                    case .unknown:
+                    case .fileTags:
                         String(localized: "Couldn't read file tags: \($0)")
+                    case .manual:
+                        String(localized: "Couldn't save that change: \($0)")
                     }
                 }
-                importStore.identityPickFailed(
+                importStore.metadataSeedSelectionFailed(
                     key: key,
                     session: session,
                     error: line
@@ -85,11 +87,11 @@ extension ImportSearchFlow {
         key: String,
         onConfirmed: @escaping @Sendable () -> Void
     ) {
-        decideIdentity(
+        selectMetadataSeed(
             importer: importer,
             importStore: importStore,
             key: key,
-            pick: .release(
+            seed: .externalRelease(
                 source: result.source,
                 releaseId: result.releaseId
             ),

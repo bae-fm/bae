@@ -9,22 +9,35 @@ import SwiftUI
 /// hand this the same eight fields.
 struct ReleaseFieldWriter {
     let setField: (BridgeCandidateEditField, String) -> Void
+    let setAlbumArtists: ([BridgeArtistAssignment]) -> Void
+
+    init(
+        _ setField: @escaping (BridgeCandidateEditField, String) -> Void,
+        setAlbumArtists: @escaping ([BridgeArtistAssignment]) -> Void = { _ in }
+    ) {
+        self.setField = setField
+        self.setAlbumArtists = setAlbumArtists
+    }
 
     /// Write into a form held in memory.
     static func binding(_ form: Binding<BridgeRawReleaseEdit>) -> Self {
-        Self { field, value in
-            switch field {
-            case .albumTitle: form.wrappedValue.albumTitle = value
-            case .albumArtistText: form.wrappedValue.albumArtistText = value
-            case .year: form.wrappedValue.pressing.year = value
-            case .format: form.wrappedValue.pressing.format = value
-            case .label: form.wrappedValue.pressing.label = value
-            case .catalogNumber:
-                form.wrappedValue.pressing.catalogNumber = value
-            case .country: form.wrappedValue.pressing.country = value
-            case .barcode: form.wrappedValue.pressing.barcode = value
+        Self(
+            { field, value in
+                switch field {
+                case .albumTitle: form.wrappedValue.albumTitle = value
+                case .year: form.wrappedValue.pressing.year = value
+                case .format: form.wrappedValue.pressing.format = value
+                case .label: form.wrappedValue.pressing.label = value
+                case .catalogNumber:
+                    form.wrappedValue.pressing.catalogNumber = value
+                case .country: form.wrappedValue.pressing.country = value
+                case .barcode: form.wrappedValue.pressing.barcode = value
+                }
+            },
+            setAlbumArtists: {
+                form.wrappedValue.albumArtistAssignments = $0
             }
-        }
+        )
     }
 }
 
@@ -84,13 +97,19 @@ struct ReleaseFieldsForm: View {
                     text: values.albumTitle,
                     width: .long,
                 ),
-                row(
-                    .albumArtistText,
+                FieldRow(
                     label: String(localized: "Artist"),
                     hint: String(localized: "comma-separated"),
                     placeholder: String(localized: "Album artist"),
-                    text: values.albumArtistText,
-                    width: .long,
+                    text: values.albumArtistAssignments.editorText,
+                    onCommit: {
+                        writer.setAlbumArtists(
+                            values.albumArtistAssignments.replacingEditorText(
+                                $0
+                            )
+                        )
+                    },
+                    width: .long
                 ),
             ],
         )

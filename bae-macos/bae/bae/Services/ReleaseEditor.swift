@@ -20,7 +20,7 @@ final class ReleaseEditor: Observable {
     let setPrimaryRelease:
         @Sendable (_ albumId: String, _ releaseId: String) async throws -> Void
     let reIdentifyRelease:
-        @Sendable (_ releaseId: String, _ identityChoice: BridgeIdentityChoice)
+        @Sendable (_ releaseId: String, _ reseed: BridgeReleaseReseed)
             async throws -> String
     let seedReleaseEdit:
         @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
@@ -54,7 +54,7 @@ final class ReleaseEditor: Observable {
                 _ in
             },
         reIdentifyRelease:
-            @escaping @Sendable (String, BridgeIdentityChoice) async throws ->
+            @escaping @Sendable (String, BridgeReleaseReseed) async throws ->
             String = { _, _ in "" },
         seedReleaseEdit:
             @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit =

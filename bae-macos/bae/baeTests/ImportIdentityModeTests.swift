@@ -5,12 +5,12 @@ import Testing
 
 @MainActor
 private final class IdentityModeRecorder {
-    var picks: [BridgeIdentityPick] = []
+    var seeds: [BridgeMetadataSeed] = []
 
     var importer: Importer {
         Importer(
-            pickCandidateIdentity: { [self] _, pick in
-                await MainActor.run { picks.append(pick) }
+            selectCandidateMetadataSeed: { [self] _, seed in
+                await MainActor.run { seeds.append(seed) }
             }
         )
     }
@@ -37,17 +37,17 @@ struct ImportIdentityModeTests {
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.unknownTable,
-                picked: .unknown
+                metadataSeed: .fileTags
             )
         )
         let recorder = IdentityModeRecorder()
-        let pendingPick = BridgeIdentityPick.release(
+        let pendingSeed = BridgeMetadataSeed.externalRelease(
             source: .musicBrainz,
             releaseId: "rel-loading"
         )
         store.mutateCandidate(forKey: MappingFixtures.candidateKey) {
-            $0.identityPickSession = CandidateIdentityPickSession(
-                pick: pendingPick
+            $0.metadataSeedSession = CandidateMetadataSeedSession(
+                seed: pendingSeed
             )
             $0.search.searchAlbum = "typed album"
         }
@@ -67,9 +67,9 @@ struct ImportIdentityModeTests {
         #expect(after.presentedIdentity == .release)
         #expect(after.identity == .unknown)
         #expect(!after.presentedIdentityHasSettled)
-        #expect(after.pickInFlight == pendingPick)
+        #expect(after.seedInFlight == pendingSeed)
         #expect(after.search.searchAlbum == "typed album")
-        #expect(recorder.picks.isEmpty)
+        #expect(recorder.seeds.isEmpty)
     }
 
     @Test("File Tags preserves the settled release while its pick is pending")
@@ -97,13 +97,13 @@ struct ImportIdentityModeTests {
         #expect(!pending.presentedIdentityHasSettled)
         #expect(pending.pickedRelease?.releaseId == MappingFixtures.releaseId)
         #expect(pending.detail == beforeDetail)
-        #expect(pending.pickInFlight == .unknown)
+        #expect(pending.seedInFlight == .fileTags)
 
         try await Task.sleep(for: .milliseconds(50))
-        #expect(recorder.picks == [.unknown])
+        #expect(recorder.seeds == [.fileTags])
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .pickInFlight == nil
+                .seedInFlight == nil
         )
     }
 
@@ -133,7 +133,9 @@ struct ImportIdentityModeTests {
         let candidate = PreviewData.folderCandidates[0]
         store.selectedCandidates[candidate.key] = candidate
         let importer = Importer(
-            pickCandidateIdentity: { _, _ in throw StubError.notImplemented }
+            selectCandidateMetadataSeed: { _, _ in
+                throw StubError.notImplemented
+            }
         )
         let services = ImportMappingServices(
             importer: importer,
@@ -153,7 +155,7 @@ struct ImportIdentityModeTests {
 
         let after = try #require(store.candidate(forKey: candidate.key))
         #expect(after.error != nil)
-        #expect(after.pickInFlight == nil)
+        #expect(after.seedInFlight == nil)
         #expect(after.presentedIdentity == after.identity)
     }
 }

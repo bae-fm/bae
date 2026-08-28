@@ -891,8 +891,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 matched: nil,
                 selectable: false,
                 importStatus: nil,
-                picked: nil,
-                claim: nil
+                metadataSeed: nil
             )
         )
     }

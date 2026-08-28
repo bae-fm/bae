@@ -68,7 +68,7 @@
         ) -> BridgeRawReleaseEdit {
             BridgeRawReleaseEdit(
                 albumTitle: "Album Title",
-                albumArtistText: "Artist Name",
+                albumArtistAssignments: [newArtist("Artist Name")],
                 pressing: BridgeRawPressingEdit(
                     year: "1997",
                     format: "CD",
@@ -82,13 +82,29 @@
                         BridgeRawTrackEdit(
                             id: "t-\(n)",
                             title: "Track Title \(n)",
-                            artistText: blankTrackArtists
-                                ? "" : "Track Artist \(n)",
+                            artistAssignments: blankTrackArtists
+                                ? .albumArtists
+                                : .explicit(
+                                    assignments: [
+                                        newArtist("Track Artist \(n)")
+                                    ]
+                                ),
                             side: 1,
                             trackNumber: Int32(n),
                             file: .standalone(fileId: "\(n).flac")
                         )
                     }
+            )
+        }
+
+        static func newArtist(_ name: String) -> BridgeArtistAssignment {
+            .new(
+                seed: BridgeNewArtistSeed(
+                    name: name,
+                    sortName: nil,
+                    musicbrainzArtistId: nil,
+                    discogsArtistId: nil
+                )
             )
         }
     }

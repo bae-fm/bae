@@ -116,7 +116,14 @@ extension EditMetadataForm {
             .frame(maxWidth: .infinity)
             MetadataField(
                 placeholder: trackArtistPlaceholder,
-                text: track.artistText,
+                text: Binding(
+                    get: { track.wrappedValue.artistAssignments.editorText },
+                    set: {
+                        track.wrappedValue.artistAssignments =
+                            track.wrappedValue.artistAssignments
+                            .replacingEditorText($0)
+                    }
+                ),
                 boxed: false,
             )
             .frame(maxWidth: .infinity)
@@ -144,8 +151,8 @@ extension EditMetadataForm {
     /// Empty track-artist fields inherit the album artist; surfacing it as
     /// the placeholder shows what a blank row will resolve to.
     private var trackArtistPlaceholder: String {
-        form.albumArtistText.isEmpty
-            ? String(localized: "Artist") : form.albumArtistText
+        let text = form.albumArtistAssignments.editorText
+        return text.isEmpty ? String(localized: "Artist") : text
     }
 
     private var trackOrdinalWidth: CGFloat { 34 }

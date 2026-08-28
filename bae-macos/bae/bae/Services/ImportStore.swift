@@ -179,62 +179,62 @@ class ImportStore {
         if let existing = selectedCandidates[key] {
             incoming = incoming.withSessionState(from: existing)
         }
-        let deliveredSession = incoming.identityPickSession.flatMap {
-            session -> CandidateIdentityPickSession? in
-            guard detail.row.picked == session.pick else { return nil }
+        let deliveredSession = incoming.metadataSeedSession.flatMap {
+            session -> CandidateMetadataSeedSession? in
+            guard detail.row.metadataSeed == session.seed else { return nil }
             session.recordDetailDelivery()
             return session
         }
         selectedCandidates[key] = incoming
         if let deliveredSession {
-            finishIdentityPickIfConfirmed(
+            finishMetadataSeedIfConfirmed(
                 key: key,
                 session: deliveredSession
             )
         }
     }
 
-    /// Start one identity-pick session before its bridge command is dispatched,
+    /// Start one metadata-seed session before its bridge command is dispatched,
     /// so an immediate candidate-detail delivery cannot outrun registration.
     /// Replacing a session drops its task owner and cancels the older command.
-    func beginIdentityPick(
+    func beginMetadataSeedSelection(
         key: String,
-        pick: BridgeIdentityPick,
+        seed: BridgeMetadataSeed,
         onConfirmed: (@Sendable () -> Void)? = nil
-    ) -> CandidateIdentityPickSession? {
+    ) -> CandidateMetadataSeedSession? {
         guard candidate(forKey: key) != nil else { return nil }
-        let session = CandidateIdentityPickSession(
-            pick: pick,
+        let session = CandidateMetadataSeedSession(
+            seed: seed,
             onConfirmed: onConfirmed
         )
         mutateCandidate(forKey: key) { candidate in
             candidate.error = nil
-            candidate.identityPickSession = session
+            candidate.metadataSeedSession = session
         }
         return session
     }
 
     /// Record that the bridge command returned successfully. A release choice
     /// still remains pending until its exact picked detail has also landed.
-    func identityPickCommandSucceeded(
+    func metadataSeedCommandSucceeded(
         key: String,
-        session: CandidateIdentityPickSession
+        session: CandidateMetadataSeedSession
     ) {
-        guard candidate(forKey: key)?.identityPickSession === session else {
+        guard candidate(forKey: key)?.metadataSeedSession === session else {
             return
         }
         session.recordCommandSuccess()
-        finishIdentityPickIfConfirmed(key: key, session: session)
+        finishMetadataSeedIfConfirmed(key: key, session: session)
     }
 
     /// End only the session that raised this failure. A replacement choice may
     /// already own the candidate by the time an older command returns.
-    func identityPickFailed(
+    func metadataSeedSelectionFailed(
         key: String,
-        session: CandidateIdentityPickSession,
+        session: CandidateMetadataSeedSession,
         error: String?
     ) {
-        guard candidate(forKey: key)?.identityPickSession === session else {
+        guard candidate(forKey: key)?.metadataSeedSession === session else {
             return
         }
         mutateCandidate(forKey: key) { candidate in
@@ -242,21 +242,21 @@ class ImportStore {
                 candidate.error = error
             }
             candidate.presentedIdentity = candidate.identity
-            candidate.identityPickSession = nil
+            candidate.metadataSeedSession = nil
         }
     }
 
-    private func finishIdentityPickIfConfirmed(
+    private func finishMetadataSeedIfConfirmed(
         key: String,
-        session: CandidateIdentityPickSession
+        session: CandidateMetadataSeedSession
     ) {
         guard session.isConfirmed,
-            candidate(forKey: key)?.identityPickSession === session
+            candidate(forKey: key)?.metadataSeedSession === session
         else { return }
         let confirmation = session.takeConfirmation()
         mutateCandidate(forKey: key) { candidate in
-            guard candidate.identityPickSession === session else { return }
-            candidate.identityPickSession = nil
+            guard candidate.metadataSeedSession === session else { return }
+            candidate.metadataSeedSession = nil
         }
         confirmation?()
     }

@@ -12,14 +12,19 @@ import Testing
 /// received, and the next value of the candidate is what would redraw it.
 @MainActor
 private final class Recorder {
-    var roleCalls:
-        [(key: String, fileId: String, choice: BridgeFileRoleChoice)] = []
+    struct RoleCall {
+        let key: String
+        let fileId: String
+        let choice: BridgeFileRoleChoice
+    }
+
+    var roleCalls: [RoleCall] = []
     var bindCalls: [(sheetFileId: String, audioFileId: String?)] = []
     var discCalls: [(sheetFileId: String, disc: BridgeSheetDisc)] = []
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
     var droppedTracks: [(key: String, trackId: String)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
-    var picks: [BridgeIdentityPick] = []
+    var seeds: [BridgeMetadataSeed] = []
     var played: [String] = []
     var stops = 0
     /// What the pick call throws, when the test is about a pick that fails.
@@ -34,9 +39,9 @@ private final class Recorder {
                     )
                 }
             },
-            pickCandidateIdentity: { [self] _, pick in
+            selectCandidateMetadataSeed: { [self] _, seed in
                 try await MainActor.run {
-                    picks.append(pick)
+                    seeds.append(seed)
                     if let pickFailure { throw pickFailure }
                 }
             },
@@ -48,7 +53,7 @@ private final class Recorder {
             setFileRole: { [self] key, fileId, choice in
                 await MainActor.run {
                     roleCalls.append(
-                        (key: key, fileId: fileId, choice: choice)
+                        RoleCall(key: key, fileId: fileId, choice: choice)
                     )
                 }
             },
@@ -93,6 +98,63 @@ private final class Recorder {
     }
 }
 
+@MainActor
+private struct MatchListScene {
+    let store: ImportStore
+    let key: String
+    let size: NSSize
+    let host: NSView
+
+    func capture() async throws -> Data {
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        return try await SnapshotTestSupport.capturePNG(host, size: size)
+    }
+
+    func capture(identifyState: BridgeIdentifyState) async throws -> Data {
+        store.candidateRuntimeSubject.send(
+            .updated(
+                key: key,
+                runtime: BridgeCandidateRuntimeSnapshot(
+                    identifyState: identifyState,
+                    signalsToolbar: BridgeSignalsToolbar(signals: []),
+                    import: nil
+                )
+            )
+        )
+        return try await capture()
+    }
+}
+
+@MainActor
+private func makeMatchListScene() -> MatchListScene {
+    let scene = PreviewData.importTabScene()
+    let store = scene.store
+    let key = PreviewData.importTabDisagreementCandidate.key
+    let uiStore = UiStore()
+    uiStore.setImportCandidateTab(.pending)
+    uiStore.setFolderCandidateSelection([key])
+    let size = NSSize(width: 1200, height: 760)
+    let (_, host) = SnapshotTestSupport.hostInWindow(
+        ImportView()
+            .environment(uiStore)
+            .importPreviewEnvironment()
+            .environment(uiStore)
+            .environment(scene.slot(uiStore: uiStore))
+            .environment(Library.stub())
+            .environment(PreviewAudio.stub())
+            .environment(store)
+            .environment(PreviewData.importTabImporter())
+            .environment(
+                \.candidateRuntimePublisher,
+                store.candidateRuntimeSubject.eraseToAnyPublisher()
+            ),
+        size: size
+    )
+    host.layoutSubtreeIfNeeded()
+    return MatchListScene(store: store, key: key, size: size, host: host)
+}
+
 @Suite("Import mapping pane")
 struct ImportMappingPaneTests {
     @MainActor
@@ -100,104 +162,30 @@ struct ImportMappingPaneTests {
         "restored and arriving match lists appear inline until identity settles"
     )
     func matchListsAppearInlineUntilIdentitySettles() async throws {
-        let scene = PreviewData.importTabScene()
-        let store = scene.store
-        let key = PreviewData.importTabDisagreementCandidate.key
-        let uiStore = UiStore()
-        uiStore.setImportCandidateTab(.pending)
-        uiStore.setFolderCandidateSelection([key])
-        let size = NSSize(width: 1200, height: 760)
-        let (_, host) = SnapshotTestSupport.hostInWindow(
-            ImportView()
-                .environment(uiStore)
-                .importPreviewEnvironment()
-                .environment(uiStore)
-                .environment(scene.slot(uiStore: uiStore))
-                .environment(Library.stub())
-                .environment(PreviewAudio.stub())
-                .environment(store)
-                .environment(PreviewData.importTabImporter())
-                .environment(
-                    \.candidateRuntimePublisher,
-                    store.candidateRuntimeSubject.eraseToAnyPublisher()
-                ),
-            size: size
+        let scene = makeMatchListScene()
+        let restoredMatches = try await scene.capture()
+        let before = try await scene.capture(
+            identifyState: .manualOnly(trackCount: 11)
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let restoredMatches = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: size
-        )
-
-        store.candidateRuntimeSubject.send(
-            .updated(
-                key: key,
-                runtime: BridgeCandidateRuntimeSnapshot(
-                    identifyState: .manualOnly(trackCount: 11),
-                    signalsToolbar: BridgeSignalsToolbar(signals: []),
-                    import: nil
-                )
-            )
-        )
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let before = try await SnapshotTestSupport.capturePNG(host, size: size)
-
         #expect(restoredMatches != before)
 
-        store.candidateRuntimeSubject.send(
-            .updated(
-                key: key,
-                runtime: BridgeCandidateRuntimeSnapshot(
-                    identifyState: PreviewData.bridgeDisagreementState,
-                    signalsToolbar: BridgeSignalsToolbar(signals: []),
-                    import: nil
-                )
-            )
+        let matches = try await scene.capture(
+            identifyState: PreviewData.bridgeDisagreementState
         )
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let matches = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: size
-        )
-
         #expect(matches != before)
 
         // A stored pick settles the identity: the match list gives way to the
         // release card, whatever the run left behind.
-        store.applyCandidateDetail(
-            key: key,
+        scene.store.applyCandidateDetail(
+            key: scene.key,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable
             )
         )
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let settledConflict = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: size
+        let settledConflict = try await scene.capture()
+        let settledWithoutConflict = try await scene.capture(
+            identifyState: .manualOnly(trackCount: 11)
         )
-
-        store.candidateRuntimeSubject.send(
-            .updated(
-                key: key,
-                runtime: BridgeCandidateRuntimeSnapshot(
-                    identifyState: .manualOnly(trackCount: 11),
-                    signalsToolbar: BridgeSignalsToolbar(signals: []),
-                    import: nil
-                )
-            )
-        )
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let settledWithoutConflict = try await SnapshotTestSupport.capturePNG(
-            host,
-            size: size
-        )
-
         #expect(settledConflict == settledWithoutConflict)
     }
 
@@ -349,6 +337,9 @@ struct ImportMappingPaneTests {
         )
         #expect(recorder.trackEdits.isEmpty)
     }
+}
+
+extension ImportMappingPaneTests {
 
     // 3. Excluding a file is one write: the role. Its rows leave because the
     //    folder they described is a different set now, which is core's answer
@@ -387,7 +378,8 @@ struct ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unanswered))
         #expect(
-            bridgeMappingTracks(table: MappingFixtures.mapping(of: unanswered)).count == 13
+            bridgeMappingTracks(table: MappingFixtures.mapping(of: unanswered))
+                .count == 13
         )
 
         // A release that names more tracks than the folder has anything for.
@@ -396,7 +388,10 @@ struct ImportMappingPaneTests {
         )
         #expect(MappingFixtures.isCommittable(unbacked))
         #expect(MappingFixtures.mapping(of: unbacked).willWriteCount == 1)
-        #expect(bridgeMappingTracks(table: MappingFixtures.mapping(of: unbacked)).count == 12)
+        #expect(
+            bridgeMappingTracks(table: MappingFixtures.mapping(of: unbacked))
+                .count == 12
+        )
     }
 
     // 4b. A pick whose fetch drops stores nothing, so the pane keeps showing
@@ -414,11 +409,11 @@ struct ImportMappingPaneTests {
         let recorder = Recorder()
         recorder.pickFailure = StubError.notImplemented
 
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.selectMetadataSeed(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: .release(
+            seed: .externalRelease(
                 source: MappingFixtures.source,
                 releaseId: "another-pressing"
             )
@@ -429,7 +424,7 @@ struct ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.error != nil)
-        #expect(candidate.pickInFlight == nil)
+        #expect(candidate.seedInFlight == nil)
         #expect(candidate.detail == before)
         #expect(candidate.hasSettled)
     }
@@ -463,7 +458,8 @@ struct ImportMappingPaneTests {
         // answered with.
         #expect(
             store.selectedCandidates[MappingFixtures.candidateKey]?
-                .edit?.pressing.year == MappingFixtures.albumEdit.pressing.year
+                .edit?
+                .pressing.year == MappingFixtures.albumEdit.pressing.year
         )
     }
 
@@ -575,20 +571,20 @@ struct ImportMappingPaneTests {
         )
         let recorder = Recorder()
 
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.selectMetadataSeed(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: .unknown
+            seed: .fileTags
         )
         try await Task.sleep(for: .milliseconds(50))
-        #expect(recorder.picks == [.unknown])
+        #expect(recorder.seeds == [.fileTags])
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.unknownTable,
-                picked: .unknown
+                metadataSeed: .fileTags
             )
         )
         var candidate = try #require(
@@ -599,14 +595,14 @@ struct ImportMappingPaneTests {
         #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)
 
-        ImportSearchFlow.decideIdentity(
+        ImportSearchFlow.selectMetadataSeed(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            pick: MappingFixtures.pick
+            seed: MappingFixtures.seed
         )
         try await Task.sleep(for: .milliseconds(50))
-        #expect(recorder.picks == [.unknown, MappingFixtures.pick])
+        #expect(recorder.seeds == [.fileTags, MappingFixtures.seed])
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
