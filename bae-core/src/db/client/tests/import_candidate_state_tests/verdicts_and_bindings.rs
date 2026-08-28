@@ -176,6 +176,56 @@ fn release_pick(release_id: &str) -> crate::import::MetadataSeed {
     }
 }
 
+#[tokio::test]
+async fn every_metadata_seed_variant_survives_a_database_reopen() {
+    let (db, tmp) = empty_db().await;
+    let cases = [
+        (
+            track_files_candidate(&[("01 Track.flac", 100_001)]).content_hash(),
+            "/music/Candidate A",
+            release_pick("release-a"),
+        ),
+        (
+            track_files_candidate(&[("01 Track.flac", 100_002)]).content_hash(),
+            "/music/Candidate B",
+            crate::import::MetadataSeed::FileTags,
+        ),
+        (
+            track_files_candidate(&[("01 Track.flac", 100_003)]).content_hash(),
+            "/music/Candidate C",
+            crate::import::MetadataSeed::Manual,
+        ),
+    ];
+
+    for (content_hash, folder_path, seed) in &cases {
+        db.save_candidate_metadata_seed(content_hash, folder_path, seed)
+            .await
+            .unwrap();
+    }
+    drop(db);
+
+    let path = tmp.path().join("test.db");
+    let reopened = Database::new_test(
+        path.to_str().unwrap(),
+        Arc::new(FixedClock(fixed_identified_at())),
+        Arc::new(coven::UuidProvider),
+    )
+    .await
+    .unwrap();
+    let loaded = reopened.load_import_candidate_states().await.unwrap();
+
+    for (content_hash, _, seed) in &cases {
+        assert_eq!(
+            loaded
+                .get(content_hash)
+                .expect("the candidate state survives the database reopen")
+                .metadata_seed
+                .as_ref(),
+            Some(seed)
+        );
+    }
+}
+
 fn found_nothing() -> TerminalVerdict {
     TerminalVerdict::NotFoundAnywhere
 }
