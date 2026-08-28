@@ -351,9 +351,15 @@ impl LibraryManager {
     pub async fn release_edit_seed(
         &self,
         release_id: &str,
-    ) -> Result<crate::import::RawReleaseEdit, LibraryError> {
+    ) -> Result<crate::import::ReleaseEditSeed, LibraryError> {
         let (album_id, release, album, existing_tracks) =
             self.load_release_for_edit(release_id).await?;
+        let can_reset_to_source = match release.metadata_source {
+            crate::db::ReleaseMetadataSource::MusicBrainz
+            | crate::db::ReleaseMetadataSource::Discogs
+            | crate::db::ReleaseMetadataSource::FileTags => true,
+            crate::db::ReleaseMetadataSource::Manual => false,
+        };
 
         let album_artist_assignments: Vec<crate::import::ArtistAssignment> = self
             .database
@@ -408,9 +414,10 @@ impl LibraryManager {
             tracks,
         };
 
-        Ok(crate::import::RawReleaseEdit::from_user_edit(
-            edit, release_id,
-        ))
+        Ok(crate::import::ReleaseEditSeed {
+            edit: crate::import::RawReleaseEdit::from_user_edit(edit, release_id),
+            can_reset_to_source,
+        })
     }
 
     /// Apply a user-supplied metadata edit to an existing release.

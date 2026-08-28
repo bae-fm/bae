@@ -557,6 +557,14 @@ pub struct BridgeRawReleaseEdit {
     pub tracks: Vec<BridgeRawTrackEdit>,
 }
 
+/// The raw edit form for one library release plus core's answer about whether
+/// its stored metadata source can be projected again.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditSeed {
+    pub edit: BridgeRawReleaseEdit,
+    pub can_reset_to_source: bool,
+}
+
 /// Raw pressing fields as the editor holds them. Mirrors
 /// `bae_core::import::RawPressingEdit`: each is the text the user typed,
 /// empty meaning "not set"; `year` is text (parsed at shape time).

@@ -435,6 +435,15 @@ pub struct RawReleaseEdit {
     pub tracks: Vec<RawTrackEdit>,
 }
 
+/// The current raw edit form for a library release, together with whether its
+/// stored metadata source can be projected again. Manual releases have no
+/// source payload to project; File Tags and external releases do.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditSeed {
+    pub edit: RawReleaseEdit,
+    pub can_reset_to_source: bool,
+}
+
 /// Raw pressing fields as the editor holds them: each is the text the user
 /// typed, empty meaning "not set". `year` is text because the form is
 /// text; `shape` parses it.

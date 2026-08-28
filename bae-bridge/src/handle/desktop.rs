@@ -661,20 +661,20 @@ impl AppHandle {
         .await
     }
 
-    /// Seed the EditMetadataSheet's raw form from a library release's current
-    /// metadata. bae-core does the projection (current state → wire edit → raw
-    /// form); this is pure type translation around the result.
+    /// Seed the edit-metadata form from a library release's current metadata,
+    /// including core's answer about whether its source can be projected again.
+    /// bae-core does the projection; this is pure type translation.
     pub async fn seed_release_edit(
         self: std::sync::Arc<Self>,
         release_id: String,
-    ) -> Result<crate::types::BridgeRawReleaseEdit, BridgeError> {
+    ) -> Result<crate::types::BridgeReleaseEditSeed, BridgeError> {
         self.run_exported(move |this| async move {
-            let raw = this
+            let seed = this
                 .services
                 .release_edit_seed(&release_id)
                 .await
                 .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeRawReleaseEdit::from_core(raw))
+            Ok(crate::types::BridgeReleaseEditSeed::from_core(seed))
         })
         .await
     }

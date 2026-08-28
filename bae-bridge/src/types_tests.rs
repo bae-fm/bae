@@ -382,6 +382,33 @@ mod conversion_roundtrip {
         );
     }
 
+    #[cfg(feature = "desktop")]
+    #[test]
+    fn release_edit_seed_keeps_cores_reset_eligibility() {
+        let edit = bae_core::import::RawReleaseEdit {
+            album_title: "Album Title".to_string(),
+            album_artist_assignments: vec![bae_core::import::ArtistAssignment::new("Artist Name")],
+            pressing: bae_core::import::RawPressingEdit {
+                year: String::new(),
+                format: String::new(),
+                label: String::new(),
+                catalog_number: String::new(),
+                country: String::new(),
+                barcode: String::new(),
+            },
+            tracks: Vec::new(),
+        };
+
+        for expected in [false, true] {
+            let bridge = BridgeReleaseEditSeed::from_core(bae_core::import::ReleaseEditSeed {
+                edit: edit.clone(),
+                can_reset_to_source: expected,
+            });
+            assert_eq!(bridge.can_reset_to_source, expected);
+            assert_eq!(bridge.edit.album_title, edit.album_title);
+        }
+    }
+
     /// The detail crosses the bridge outbound only — it is the picker's display
     /// shape, never a seed — so this pins the derived fields and the carried ones,
     /// not a round trip.

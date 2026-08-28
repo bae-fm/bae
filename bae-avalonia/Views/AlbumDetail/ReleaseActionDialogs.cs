@@ -60,7 +60,7 @@ internal sealed class ReleaseActionDialogs
         {
             return;
         }
-        if (result.Edit is not { } seed)
+        if (result.Seed is not { } seed)
         {
             await ShowMessage(Loc.Chrome("album.edit.title"), Loc.Chrome("album.edit.load_failed"));
             return;
@@ -68,9 +68,9 @@ internal sealed class ReleaseActionDialogs
         await _host.Show(close => BuildEditMetadata(releaseId, seed, close));
     }
 
-    private Control BuildEditMetadata(string releaseId, BridgeRawReleaseEdit seed, Action close)
+    private Control BuildEditMetadata(string releaseId, BridgeReleaseEditSeed seed, Action close)
     {
-        var form = new ReleaseEditForm(seed, 460, _app.Library);
+        var form = new ReleaseEditForm(seed.Edit, 460, _app.Library);
         var column = DialogUi.Column();
         column.MinWidth = 460;
         column.Children.Add(DialogUi.Title(Loc.Chrome("album.edit.title")));
@@ -94,28 +94,34 @@ internal sealed class ReleaseActionDialogs
                 form.ErrorText.IsVisible = true;
             }
         };
-        var reset = new Button { Content = Loc.Chrome("album.edit.reset") };
-        reset.Click += async (_, _) =>
-        {
-            var (current, result) = await _app.ReleaseEditor.ResetMetadataToSource(releaseId);
-            if (!current)
-            {
-                return;
-            }
-            if (result.Edit is { } fresh)
-            {
-                form.ErrorText.IsVisible = false;
-                form.Seed(fresh);
-            }
-            else
-            {
-                form.ErrorText.Text = Loc.Chrome("album.edit.reset_failed");
-                form.ErrorText.IsVisible = true;
-            }
-        };
         var cancel = new Button { Content = Loc.Chrome("action.cancel") };
         cancel.Click += (_, _) => close();
-        column.Children.Add(DialogUi.Actions(cancel, reset, save));
+        var actions = new List<Control> { cancel };
+        if (seed.CanResetToSource)
+        {
+            var reset = new Button { Content = Loc.Chrome("album.edit.reset") };
+            reset.Click += async (_, _) =>
+            {
+                var (current, result) = await _app.ReleaseEditor.ResetMetadataToSource(releaseId);
+                if (!current)
+                {
+                    return;
+                }
+                if (result.Edit is { } fresh)
+                {
+                    form.ErrorText.IsVisible = false;
+                    form.Seed(fresh);
+                }
+                else
+                {
+                    form.ErrorText.Text = Loc.Chrome("album.edit.reset_failed");
+                    form.ErrorText.IsVisible = true;
+                }
+            };
+            actions.Add(reset);
+        }
+        actions.Add(save);
+        column.Children.Add(DialogUi.Actions(actions.ToArray()));
         return column;
     }
 

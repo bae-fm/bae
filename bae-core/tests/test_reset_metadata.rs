@@ -116,6 +116,32 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
     }
 }
 
+#[tokio::test]
+async fn edit_seed_exposes_reset_eligibility_from_the_metadata_source() {
+    let (lm, db, _tmp) = setup().await;
+    let artist = make_artist("Artist Name");
+    db.insert_artist(&artist).await.unwrap();
+
+    for (index, (source, expected)) in [
+        (ReleaseMetadataSource::MusicBrainz, true),
+        (ReleaseMetadataSource::Discogs, true),
+        (ReleaseMetadataSource::FileTags, true),
+        (ReleaseMetadataSource::Manual, false),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let album = make_album(&artist.id, &format!("Album {index}"));
+        let mut release = make_release(&album.id);
+        release.metadata_source = source;
+        db.insert_album(&album).await.unwrap();
+        db.insert_release(&release).await.unwrap();
+
+        let seed = lm.release_edit_seed(&release.id).await.unwrap();
+        assert_eq!(seed.can_reset_to_source, expected, "source {source:?}");
+    }
+}
+
 // ── MusicBrainz ─────────────────────────────────────────────────────────
 
 /// Build a minimal-but-valid MB release JSON with a release group, an

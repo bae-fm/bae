@@ -23,7 +23,7 @@ final class ReleaseEditor: Observable {
         @Sendable (_ releaseId: String, _ reseed: BridgeReleaseReseed)
             async throws -> String
     let seedReleaseEdit:
-        @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
+        @Sendable (_ releaseId: String) async throws -> BridgeReleaseEditSeed
     let updateReleaseMetadataUserEdit:
         @Sendable (_ releaseId: String, _ edit: BridgeReleaseUserEdit)
             async throws -> Void
@@ -57,7 +57,7 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (String, BridgeReleaseReseed) async throws ->
             String = { _, _ in "" },
         seedReleaseEdit:
-            @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit =
+            @escaping @Sendable (String) async throws -> BridgeReleaseEditSeed =
             { _ in throw StubError.notImplemented },
         updateReleaseMetadataUserEdit:
             @escaping @Sendable (String, BridgeReleaseUserEdit) async throws ->

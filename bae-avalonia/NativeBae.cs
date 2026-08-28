@@ -736,7 +736,7 @@ internal static partial class NativeBae
     internal static string? RemoveMember(AppHandle handle, string publicKeyHex) =>
         CaptureError(() => Await(() => handle.RemoveMember(publicKeyHex)));
 
-    internal static (BridgeRawReleaseEdit? Edit, string? Error) ReleaseEditSeed(AppHandle handle, string releaseId) =>
+    internal static (BridgeReleaseEditSeed? Seed, string? Error) ReleaseEditSeed(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() => Await(() => handle.SeedReleaseEdit(releaseId)));
 
     internal static (BridgeRawReleaseEdit? Edit, string? Error) ResetMetadataToSource(AppHandle handle, string releaseId) =>

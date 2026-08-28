@@ -192,7 +192,8 @@ internal sealed class AppService : IDisposable
         LibraryService library,
         ImportService? import = null,
         PlaybackService? playback = null,
-        SettingsService? settings = null) =>
+        SettingsService? settings = null,
+        ReleaseEditorService? releaseEditor = null) =>
         new(
             session,
             dispatcher,
@@ -206,7 +207,7 @@ internal sealed class AppService : IDisposable
             new CastService(),
             settings ?? new SettingsService(),
             import ?? new ImportService(),
-            new ReleaseEditorService(),
+            releaseEditor ?? new ReleaseEditorService(),
             new DiscogsService(),
             new AutomationService(),
             new SubsonicService());

@@ -16,10 +16,10 @@ struct EditMetadataSheet: View {
     /// bae-core before calling this), and applies it.
     let onSave: (BridgeReleaseUserEdit) async throws -> Void
     /// Re-projects raw form values from the editor's source pointer
-    /// (current persisted state for post-commit). Returning `nil` means
-    /// the caller has no projection.
-    let onReset: (() async throws -> BridgeRawReleaseEdit?)?
+    /// (current persisted state for post-commit).
+    let onReset: () async throws -> BridgeRawReleaseEdit
     let onCancel: () -> Void
+    let canResetToSource: Bool
 
     @State
     private var form: BridgeRawReleaseEdit
@@ -35,15 +35,16 @@ struct EditMetadataSheet: View {
     private var resetTask: Task<Void, Never>?
 
     init(
-        initialForm: BridgeRawReleaseEdit,
+        seed: BridgeReleaseEditSeed,
         onSave: @escaping (BridgeReleaseUserEdit) async throws -> Void,
-        onReset: (() async throws -> BridgeRawReleaseEdit?)? = nil,
+        onReset: @escaping () async throws -> BridgeRawReleaseEdit,
         onCancel: @escaping () -> Void,
     ) {
         self.onSave = onSave
         self.onReset = onReset
         self.onCancel = onCancel
-        _form = State(initialValue: initialForm)
+        canResetToSource = seed.canResetToSource
+        _form = State(initialValue: seed.edit)
     }
 
     var body: some View {
@@ -92,7 +93,7 @@ struct EditMetadataSheet: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            if let onReset {
+            if resetButtonIsVisible {
                 Button("Reset to Source") {
                     triggerReset(onReset: onReset)
                 }
@@ -114,6 +115,10 @@ struct EditMetadataSheet: View {
             }
         }
         .padding()
+    }
+
+    var resetButtonIsVisible: Bool {
+        canResetToSource
     }
 
     // MARK: - Shaping
@@ -169,16 +174,14 @@ struct EditMetadataSheet: View {
     }
 
     private func triggerReset(
-        onReset: @escaping () async throws -> BridgeRawReleaseEdit?
+        onReset: @escaping () async throws -> BridgeRawReleaseEdit
     ) {
         resetTask?.cancel()
         errorMessage = nil
         resetting = true
         resetTask = Task {
             do {
-                if let projected = try await onReset() {
-                    form = projected
-                }
+                form = try await onReset()
                 resetting = false
             }
             catch is CancellationError {
@@ -199,8 +202,14 @@ struct EditMetadataSheet: View {
 
     #Preview("Edit Metadata") {
         EditMetadataSheet(
-            initialForm: PreviewData.editMetadataSeed(trackCount: 2),
+            seed: BridgeReleaseEditSeed(
+                edit: PreviewData.editMetadataSeed(trackCount: 2),
+                canResetToSource: true
+            ),
             onSave: { _ in },
+            onReset: {
+                PreviewData.editMetadataSeed(trackCount: 2)
+            },
             onCancel: {},
         )
         .environment(Library.stub())

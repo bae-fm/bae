@@ -270,3 +270,17 @@ impl BridgeRawReleaseEdit {
         }
     }
 }
+
+#[cfg(feature = "desktop")]
+impl BridgeReleaseEditSeed {
+    pub(crate) fn from_core(seed: bae_core::import::ReleaseEditSeed) -> Self {
+        let bae_core::import::ReleaseEditSeed {
+            edit,
+            can_reset_to_source,
+        } = seed;
+        Self {
+            edit: BridgeRawReleaseEdit::from_core(edit),
+            can_reset_to_source,
+        }
+    }
+}

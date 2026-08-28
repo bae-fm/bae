@@ -769,7 +769,7 @@ impl AppServices {
     #[cfg(feature = "oauth-providers")]
     delegate_async!(manager, sign_in_cloud_provider => sign_in_cloud_provider(provider: crate::config::CloudProvider, storage: crate::config::HomeStorage) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, get_album_id_for_release => get_album_id_for_release(release_id: &str) -> Result<String, crate::library::LibraryError>);
-    delegate_async!(manager, release_edit_seed => release_edit_seed(release_id: &str) -> Result<crate::import::RawReleaseEdit, crate::library::LibraryError>);
+    delegate_async!(manager, release_edit_seed => release_edit_seed(release_id: &str) -> Result<crate::import::ReleaseEditSeed, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, enqueue_export => enqueue_export(release_id: &str, target_dir: std::path::PathBuf) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

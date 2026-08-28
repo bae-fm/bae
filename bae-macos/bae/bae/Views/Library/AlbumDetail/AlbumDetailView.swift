@@ -336,12 +336,12 @@ extension AlbumDetailView {
         let releaseEditor = releaseEditor
         Task {
             do {
-                let initialForm = try await releaseEditor.seedReleaseEdit(
+                let seed = try await releaseEditor.seedReleaseEdit(
                     releaseId
                 )
                 uiStore.presentModal {
                     EditMetadataSheet(
-                        initialForm: initialForm,
+                        seed: seed,
                         onSave: { edit in
                             try await releaseEditor
                                 .updateReleaseMetadataUserEdit(releaseId, edit)

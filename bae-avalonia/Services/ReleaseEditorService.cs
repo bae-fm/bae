@@ -32,7 +32,7 @@ internal sealed class ReleaseEditorService
 
     /// <summary>The editable metadata seed for a release — album/pressing fields and
     /// the per-track table — the edit form populates from.</summary>
-    public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ReleaseEditSeed { get; init; }
+    public Func<string, Task<(bool Current, (BridgeReleaseEditSeed? Seed, string? Error) Result)>> ReleaseEditSeed { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ReleaseEditSeed not wired");
 
     /// <summary>Commit the edited metadata. Shaping and validation happen in core;
