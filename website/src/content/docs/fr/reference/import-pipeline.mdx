@@ -1,6 +1,6 @@
 ---
 title: Pipeline d’importation
-description: Analyse, graines de métadonnées et validation atomique
+description: Numérisation, brouillons de métadonnées et validation atomique
 ---
 
 L'importation transforme un dossier de fichiers en entrée de catalogue sans modifier un octet des fichiers. Cette page décrit le pipeline du [guide d'utilisation](/fr/guide/importing).
@@ -11,25 +11,23 @@ Les dossiers surveillés sont suivis par les événements de système de fichier
 
 Une fiche CUE transforme une image audio en liste de pistes. Le parseur gère pregaps et postgaps, interprètes et ISRC par piste, ainsi que les dispositions CUE à image unique et à un fichier par piste. Les limites de pistes sont converties depuis les frames CUE (1/75e de seconde) vers des positions d’échantillon exactes, qui deviennent ensuite les fenêtres d’octets et d’échantillons utilisées par la lecture.
 
-## Graines de métadonnées
+## Projets de métadonnées
 
-Chaque candidat dispose d'une graine de métadonnées explicite : une version externe choisie dans **Recherche**, un instantané **Tags des fichiers** stocké ou une entrée **Manuelle**. Changer de surface ne réécrit pas cette graine.
+Chaque candidat stocke un brouillon de métadonnées modifiable et une provenance optionnelle. Le brouillon peut être vide, rempli directement, rempli à partir d'une version externe ou rempli à partir d'un instantané de balises de fichier stocké. Les enregistrements de provenance indiquent où le brouillon actuel a commencé ; les modifications ultérieures ne l'effacent pas.
 
-### Recherche
+L'emplacement de métadonnées supérieur affiche soit le brouillon, soit le navigateur Rechercher en ligne, soit le navigateur Tags des fichiers. L'ouverture ou la fermeture d'un navigateur ne réécrit pas le brouillon. Appliquering une source remplace le brouillon, sa provenance et sa couverture source sélectionnée dans une transaction de base de données tout en conservant les rôles de fichier, les liaisons CUE, les affectations de disque et d'autres décisions de mappage.
 
-La recherche est le seul chemin qui extrait un ID de disque, reconnaît les codes-barres et le texte du catalogue, interroge les fournisseurs et fait correspondre les résultats. Le balayage en arrière-plan exécute ce chemin uniquement lorsque la recherche automatique est activée et que la valeur par défaut configurée est résolue en recherche. Une action de recherche explicite peut l'exécuter quel que soit ce paramètre. L’ouverture des balises de fichier ou du manuel ne démarre jamais l’extraction, les requêtes du fournisseur ou la correspondance.
+### Rechercher en ligne
 
-Les balises audio intégrées ne constituent pas une preuve de recherche : elles décrivent ce qu'un tagueur a cru, pas ce qu'est la pression. Les résultats de la recherche portent leur provenance afin que l'interface puisse expliquer pourquoi chaque résultat est proposé.
+Rechercher en ligne est le seul chemin qui exécute l'identification. Il calcule un ID de disque à partir d'un journal d'extraction ou d'une feuille CUE, reconnaît les codes-barres et le texte du catalogue avec OCR, interroge MusicBrainz et Discogs et fait correspondre les résultats.
+
+Le paramètre ** Source de métadonnées par défaut ** comporte trois valeurs. ** Aucune ** crée un brouillon vide et ne démarre aucun travail de métadonnées. ** Tags des fichiers ** lit et applique l’instantané de la balise. ** Rechercher en ligne ** ouvre le flux de travail en ligne. Lorsque ** Identifier automatiquement ** est activé, il met également en file d’attente l’extraction de preuves, les requêtes de fournisseurs et la correspondance.
 
 ### Tags des fichiers
 
-Les tags des fichiers ne sont lus qu'à la demande. L'aperçu stocke un instantané associé à la génération d'analyse, à la révision des fichiers et aux fichiers audio observés du candidat. Choisir **Utiliser les tags des fichiers** sélectionne cet instantané. La validation utilise le même instantané et échoue avant toute écriture dans la bibliothèque si son empreinte ou ses observations ont changé ; elle ne lit pas silencieusement une réponse différente.
+Tags des fichiers lit les balises audio intégrées et les métadonnées CUE de manière paresseuse, à moins qu’il ne s’agisse de la valeur par défaut configurée pour un candidat nouvellement découvert. L’aperçu stocke un instantané estampillé avec la génération de numérisation du candidat, la révision d’édition du fichier et les fichiers audio observés. Appliquerl’importer remplace le brouillon de cet instantané exact. L’importation consomme le même instantané et échoue avant que la bibliothèque n’écrive si son tampon ou ses observations ont changé ; elle ne lit pas une réponse différente.
 
-### Manuel
-
-Le manuel n’effectue aucune entrée ou sortie de métadonnées. Choisir **Entrer manuellement** crée une version modifiable vierge tout en conservant la disposition de la piste physique numérisée.
-
-Le paramètre **Ouvrir les candidats non prédéfinis dans** sélectionne la surface initiale pour les candidats sans graine. Ses choix fixes sont Recherche, Balises de fichier et Manuel ; **Dernier utilisé** correspond au dernier mode explicitement choisi par l'utilisateur. La présentation reste distincte de la graine stockée.
+Les champs de sortie et de piste du brouillon vierge sont modifiables immédiatement, et il devient importable lorsque les champs et les mappages requis sont validés. La liste de candidats ne traite pas la provenance manquante comme une erreur ou une demande d’attention.
 
 ## Sources
 

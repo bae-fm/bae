@@ -1,6 +1,6 @@
 ---
 title: Importní postup
-description: Skenování, semena metadat a atomické potvrzení
+description: Skenování, koncepty metadat a atomová revize
 ---
 
 Import změní složku souborů na položku katalogu bez úpravy bajtu souborů. Tato stránka je potrubím za tokem popsaným v [příručce k použití](/cs/guide/importing).
@@ -11,25 +11,23 @@ Sledované složky jsou monitorovány událostmi souborového systému platformy
 
 CUE sheet mění jeden zvukový obraz na seznam stop. Parser zpracuje pregapy a postgapy, interprety a ISRC pro jednotlivé stopy a rozložení CUE s jedním obrazem i jedním souborem na stopu. Hranice stop se převedou z CUE framů (1/75 sekundy) na přesné pozice vzorků, které se později stanou okny bajtů a vzorků používanými přehráváním.
 
-## Semínka metadat
+## Koncepty metadat
 
-Každý kandidát má jeden explicitní zdroj metadat: externí vydání vybrané v **Vyhledání**, uložený snímek **Značky souborů** nebo **Manuální** záznam. Přepínání povrchů toto semeno nepřepíše.
+Každý kandidát ukládá jeden upravitelný koncept metadat a volitelný původ. Koncepce může být prázdná, vyplněna přímo, vyplněna z externí verze nebo vyplněna z uloženého snímku souboru-značky. Původní záznamy, kde aktuální koncept začal; pozdější úpravy jej nevymažou. Přímý vstup a vyčištěný koncept nemají původ.
 
-### Vyhledání
+V horní části metadatového slotu se zobrazuje buď koncept, prohlížeč Najít online nebo prohlížeč Značky souborů.Otevřením nebo zavřením prohlížeče se koncept nepřepíše. Použíting zdroje nahradí koncept, jeho původ a jeho vybraný zdrojový obal v jedné databázové transakci při zachování rolí souborů, vazeb CUE, přiřazení disků a dalších rozhodnutí o mapování.
 
-Vyhledávání je jediná cesta, která extrahuje ID disku, rozpozná čárové kódy a text katalogu, dotazuje se poskytovatelů a shoduje se s výsledky. Čištění na pozadí spustí tuto cestu pouze v případě, že je povoleno automatické vyhledávání a nakonfigurované výchozí nastavení se převede na vyhledávání. Explicitní akce vyhledávání ji může spustit bez ohledu na toto nastavení. Otevřením značek souborů nebo manuálu se nikdy nespustí extrakce, dotazy na poskytovatele ani párování.
+### Najít online
 
-Vložené audio tagy nejsou důkazem vyhledávání: popisují, čemu tagger věřil, ne co je lisování. Výsledky vyhledávání mají svůj původ, takže rozhraní může vysvětlit, proč je každý výsledek nabízen.
+Najít online je jediná cesta, která spouští identifikaci. Vypočítá ID disku z protokolu rip nebo listu CUE, rozpozná čárové kódy a text katalogu pomocí OCR, dotazuje se MusicBrainz a Discogs a porovnává výsledky.
+
+Nastavení ** Výchozí zdroj metadat ** má tři hodnoty. ** Žádný ** vytvoří prázdný koncept a nezahájí práci s metadaty. ** Značky souborů ** načte a použije snímek značky. ** Najít online ** otevře online pracovní postup; je-li povoleno ** Automaticky identifikovat **, zařadí také do fronty extrakci důkazů, dotazy poskytovatelů a porovnání.
 
 ### Značky souborů
 
-Značky souborů načítají vložené audio tagy a CUE metadata až na vyžádání. Náhled uloží snímek označený generací skenu kandidáta, revizí úprav souborů a pozorovanými zvukovými soubory. Výběrem možnosti **Použít značky souborů** se zvolí právě tento snímek. Potvrzení použije stejný snímek a před zápisem do knihovny selže, pokud se jeho označení nebo pozorování změnila; jinou odpověď potichu nenačte.
+Značky souborů čte vložené zvukové značky a metadata CUE líní, pokud to není nakonfigurováno jako výchozí nastavení pro nově objeveného kandidáta. Náhled ukládá snímek označený generováním skenování kandidáta, revizí úpravy souboru a pozorovanými zvukovými soubory. Použít přepíše návrh z tohoto přesného snímku. Import spotřebuje stejný snímek a selže před zápisem knihovny, pokud se jeho razítko nebo pozorování změní; nečte jinou odpověď.
 
-### Ručně
-
-Manuál neprovádí žádný vstup ani výstup metadat. Výběrem **Zadat ručně** vytvoříte prázdnou editovatelnou verzi při zachování naskenovaného fyzického rozvržení stopy.
-
-Nastavení **Otevřít nenasazené kandidáty v** vybere počáteční povrch pro kandidáty bez semene. Jeho pevné možnosti jsou Vyhledat, Značky souborů a Ručně; **Naposledy použité** se převede na poslední režim explicitně zvolený uživatelem. Úprava zůstává oddělená od skladovaného semene.
+Při přímém zadávání nedochází k žádnému vstupu/výstupu metadat. Pole pro vydání a sledování prázdného konceptu lze upravovat okamžitě a po ověření požadovaných polí a mapování je možné importovat.Seznam kandidátů nepovažuje chybějící provenienci za chybu nebo žádost o pozornost.
 
 ## Zdroje
 

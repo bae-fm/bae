@@ -10,8 +10,8 @@ bae નો catalog સામાન્ય SQLite છે, [coven](https://coven.ba
 Schema નું synced heart:
 
 - **`artists`**, **`albums`**, **`works`**: grouping layer. Album તેના releases aggregate કરે છે અને primary one તરફ points કરે છે; works classical structure માટે parent/child graph બનાવે છે.
-- **`releases`**: central entity, દરેક pressing માટે એક row. Pressing facts (label, catalog number, barcode, country, format, year), metadata source, imported folder નો content hash, અને measured album loudness રાખે છે.
-- **`release_identities`**: source પ્રમાણે release *શું છે*. Rows ન હોય એટલે unknown; release ID સાથે MusicBrainz અથવા Discogs row એટલે exact; તેની વગર approximate. Release બંને sources માં identities એકસાથે રાખી શકે છે.
+- **`releases`**: કેન્દ્રીય એકમ, એક હરોળ પ્રતિ દબાવવાનું. દબાવવાની હકીકતો (લેબલ, કેટેલોગ નંબર, બારકોડ, દેશ, બંધારણ, વર્ષ), વૈકલ્પિક મેટાડેટા ઉત્પન્ન, આયાત થયેલ ફોલ્ડરનું સમાવિષ્ટ હેશ, અને માપાયેલ એલ્બમ અવાજને લઇ જાય છે. કોઈ ઉત્પન્નનો અર્થ એ નથી કે મેટાડેટા સીધી જ દાખલ થયેલ છે; બાહ્ય ઉત્પન્ન નામો ચોક્કસ સ્ત્રોત રિલીઝ છે, જ્યારે ફાઇલ ટૅગ સ્થાનિક સ્નેપશોટ સ્ત્રોત રેકોર્ડ કરે છે.
+- **`release_identities`**: બહારની ચોક્કસ ઓળખાણો માટે જે રિલીઝ * છે *. કોઈ હરોળોનો અર્થ બહારની ઓળખાણો નથી. દરેક હરોળ MusicBrainz અથવા Discogs રિલીઝ અને રિલીઝ જૂથનું નામ છે, અને રિલીઝ બંને સ્ત્રોતોમાં ઓળખાણો એક જ સમયે રાખી શકે છે. આ ઉત્પત્તિથી અલગ છે: ઓળખાણ એ દાવો કર્યા વગર બદલી શકાય છે કે વર્તમાન ફેરફાર કરી શકાય તેવી મેટાડેટા એ સ્ત્રોતમાંથી પુનઃસુયોજિત થયેલ છે.
 - **`tracks`** સાથે **`track_artists`**, ઉપરાંત **`release_artist_roles`** અને **`track_artist_roles`**: track lists અને credits, દરેક credit તેના source સાથે tagged.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recordings તેઓ perform કરે તે works સાથે linked.
 - **`audio_formats`** અને **`audio_format_segments`**: playback specs. Per track: codec, sample rate, bit depth, channels, measured loudness અને peak, અને pregap lengths. Segments track ને તેના source files ના ordered byte અને sample windows પર map કરે છે, તેથી CUE rip નો track, pregap સહિત, એક મોટી file ના regions અથવા અનેક files માં span કરી શકે છે.
@@ -25,7 +25,7 @@ Schema નું synced heart:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle અને repeat. Playback device fact છે.
 - **`imports`**: import operation tracking.
-- **`release_metadata`**: MusicBrainz અને Discogs માંથી archived raw JSON, future re-interpretation માટે kept.
+- **`source_release_payloads`**: MusicBrainz અને Discogs માંથી કાચા JSON ની પેટી, સ્થાનિક રિલીઝની જગ્યાએ પૂરૂં પાડનાર રિલીઝ દ્વારા કી થયેલ છે. તે સુમેળ થયેલ કેટેલોગ ગ્રાફને બદલ્યા વગર ચોક્કસ પુનઃસુયોજન અને પુનઃવ્યાખ્યાયિતને આધાર આપે છે.
 
 દરેક synced table `_updated_at` hybrid-logical-clock column ધરાવે છે, register જેનાથી coven concurrent edits ને field-by-field merge order કરે છે; test enforce કરે છે કે synced set અને clock-carrying set exactly equal છે.
 

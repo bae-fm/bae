@@ -22,29 +22,29 @@ Une analyse reconnaît les sorties dans les formes que prennent réellement les 
 
 bae importe les formats qu’il lit : FLAC, MP3, APE, ALAC et AAC dans `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack et DSD (`.dsf`/`.dff`). Les illustrations et documents (fiches CUE, journaux de rip, fichiers texte) dans le dossier sont reconnus et conservés avec la sortie.
 
-## Choisissez une source de métadonnées
+## Remplir le brouillon de métadonnées
 
-Chaque candidat propose trois sources de métadonnées équivalentes : **Recherche**, **Tags des fichiers** et **Manuel**. Ouvrir une source affiche uniquement la vue correspondante ; cela ne change pas la source utilisée lors de l'importation. Une source devient la base des métadonnées seulement lorsque vous choisissez explicitement un pressage précis, **Utiliser les tags des fichiers** ou **Entrer manuellement**.
+Chaque candidat possède une ébauche de métadonnées modifiable, qui peut être vide, remplie à partir d’une publication en ligne ou à partir des balises des fichiers. La saisie dans l’ébauche vide est une entrée directe, et non une source de métadonnées distincte.
 
-### Recherche
+L’ouverture de ** Rechercher en ligne…** ou ** Tags des fichiers…** remplace la carte du haut par le navigateur de cette source sans modifier le brouillon. Appliquerétant un résultat remplace le brouillon et retourne à la carte modifiable. Utilisez le menu de la carte pour trouver une autre version, appliquer des balises de fichier, ou effacer les métadonnées et revenir à un brouillon vide.
 
-La recherche est la seule source qui identifie une version. Il lit un ID de disque à partir d'un journal d'extraction ou d'une feuille CUE, reconnaît les codes-barres et le texte du catalogue, interroge MusicBrainz et Discogs et fait correspondre les résultats. L'identification automatique utilise ce même chemin de recherche. Il s'exécute uniquement lorsque **Identifier automatiquement les candidats à la recherche** est activé et que la surface par défaut est résolue en Recherche. Entrer Recherche et lancer une recherche peut l’exécuter explicitement quel que soit ce paramètre. Aucun de ces travaux ne s'exécute dans les balises de fichier ou dans le manuel.
+### Rechercher en ligne
+
+Rechercher en ligne est le seul chemin d'accès qui identifie une version.Il calcule un ID de disque à partir du journal d'extraction ou de la feuille CUE, reconnaît les codes-barres et le texte du catalogue, interroge MusicBrainz et Discogs, et fait correspondre les résultats.
+
+Le paramètre ** Source de métadonnées par défaut ** choisit ** Rechercher en ligne **, ** Tags des fichiers ** ou ** Aucune ** pour les candidats nouvellement découverts. Avec Rechercher en ligne sélectionné, ** Identifier automatiquement ** contrôle si l'extraction de preuves, OCR, les requêtes de fournisseurs et la correspondance démarrent automatiquement. Une commande explicite de recherche en ligne ou d'identification reste disponible lorsqu'elle est désactivée. Aucune de ce travail s'exécute pour Tags des fichiers ou Aucune.
 
 ### Tags des fichiers
 
-Tags des fichiers lit les balises audio intégrées et les métadonnées CUE uniquement lorsque vous l'ouvrez et demandez à bae de les lire. Examinez l'aperçu, puis sélectionnez **Utiliser les balises de fichier** pour stocker cet instantané exact en tant que graine. L'importation échoue avant l'écriture dans la bibliothèque si les fichiers audio candidats ou observés changent après l'aperçu.
+Tags des fichiers lit les balises audio intégrées et les métadonnées CUE lorsque la source est ouverte ou configurée par défaut.Regardez l’aperçu, puis sélectionnez ** Appliquer ** pour remplacer le brouillon par cet instantané exact. L’importation échoue avant d’écrire dans la bibliothèque si les fichiers audio candidats ou observés changent après l’aperçu.
 
-### Manuel
-
-Le manuel ne lit aucune balise, aucune preuve de dossier ou aucun fournisseur en ligne. Sélectionnez **Entrer manuellement** pour commencer avec une version modifiable vierge et la disposition physique de la piste du candidat.
-
-Dans les paramètres d'importation, **Ouvrir les candidats sans source dans** choisit la vue affichée en premier. **Dernière utilisation** correspond à la dernière source que vous avez ouverte explicitement. Ce paramètre choisit une vue, pas la source des métadonnées ; une action explicite dans la source confirme toujours ce que l'importation utilisera.
+La carte modifiable montre une puce Tags des fichiers silencieuse après que l'instantané ait été appliqué.Un brouillon rempli uniquement par saisie n'a pas de puce source.
 
 ## Confirmer et importer
 
 Le volet de confirmation montre tout ce que l’importation écrira :
 
-- **Pochette.** Choisie parmi les illustrations des bases de données, les images de votre dossier ou les illustrations intégrées dans les fichiers. Vous pouvez la modifier plus tard.
+- ** Couverture.** Choisie parmi les illustrations des bases de données, les images de votre dossier ou les illustrations intégrées dans les fichiers. Faites glisser une image de la galerie de candidats sur le carré de la couverture, ou modifiez-la ultérieurement.
 - **Métadonnées.** Album, artiste, année, label, numéro de catalogue, pays, code-barres et chaque piste : tout est modifiable ici avant l’enregistrement.
 - **Stockage.** Si un emplacement cloud est connecté, choisissez si bae doit gérer les fichiers dans votre cloud et s’il doit aussi garder une copie locale. Consultez [Stockage et hors ligne](/fr/guide/storage).
 

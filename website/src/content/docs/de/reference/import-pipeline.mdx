@@ -1,6 +1,6 @@
 ---
 title: Import-Pipeline
-description: Scannen, Metadaten-Seeds und der atomare Commit
+description: Scannen, Metadaten-Entwürfe und der Atomic Commit
 ---
 
 Der Import verwandelt einen Ordner mit Dateien in einen Katalogeintrag, ohne ein Byte der Dateien zu ändern. Diese Seite ist die Pipeline hinter dem im [Gebrauchsleitfaden](/de/guide/importing) beschriebenen Ablauf.
@@ -11,25 +11,23 @@ Der Import verwandelt einen Ordner mit Dateien in einen Katalogeintrag, ohne ein
 
 Ein CUE-Sheet verwandelt ein Audio-Image in eine Trackliste. Der Parser behandelt Pregaps und Postgaps, Performer und ISRCs pro Track sowie Ein-Datei-Images und CUE-Layouts mit einer Datei pro Track. Trackgrenzen werden von CUE-Frames (1/75 Sekunde) in exakte Samplepositionen umgerechnet, aus denen später die Byte- und Sample-Fenster werden, die die Wiedergabe nutzt.
 
-## Metadaten-Seeds
+## Metadaten-Entwürfe
 
-Jeder Kandidat verfügt über einen expliziten Metadaten-Seed: eine in **Nachschlagen** ausgewählte externe Version, einen gespeicherten **Datei-Tags**-Snapshot oder einen **manuellen** Eintrag. Durch das Wechseln von Oberflächen wird dieser Samen nicht neu geschrieben.
+Jeder Kandidat speichert einen editierbaren Metadaten-Entwurf und eine optionale Provenienz. Der Entwurf kann leer sein, direkt ausgefüllt, aus einer externen Freigabe ausgefüllt oder aus einem gespeicherten Datei-Tag-Snapshot ausgefüllt werden. Provenienz-Aufzeichnungen, wo der aktuelle Entwurf begann; spätere Bearbeitungen löschen ihn nicht. Direkte Eingabe und ein gelöschter Entwurf haben keine Provenienz.
 
-### Nachschlagen
+Der obere Metadaten-Slot zeigt entweder den Entwurf, den Online suchen-Browser oder den Datei-Tags-Browser an.Beim Öffnen oder Schließen eines Browsers wird der Entwurf nicht neu geschrieben.Beim Anwendenen einer Quelle werden der Entwurf, seine Herkunft und das ausgewählte Quelldeckblatt in einer Datenbanktransaktion ersetzt, wobei Dateirollen, CUE-Bindungen, Datenträgerzuordnungen und andere Zuordnungsentscheidungen beibehalten werden.
 
-Die Suche ist der einzige Pfad, der eine Disc-ID extrahiert, Barcodes und Katalogtext erkennt, Anbieter abfragt und Ergebnisse abgleicht. Der Hintergrund-Sweep führt diesen Pfad nur aus, wenn die automatische Suche aktiviert ist und die konfigurierte Standardeinstellung in „Suche“ aufgelöst wird. Eine explizite Suchaktion kann es unabhängig von dieser Einstellung ausführen. Durch das Öffnen von Datei-Tags oder manuell werden niemals die Extraktion, Anbieterabfragen oder der Abgleich gestartet.
+### Online suchen
 
-Eingebettete Audio-Tags sind keine Nachschlagen-Beweise: Sie beschreiben, was ein Tagger geglaubt hat, nicht, was der Druck war. Suchergebnisse tragen ihre Herkunft, sodass die Benutzeroberfläche erklären kann, warum jedes Ergebnis angeboten wird.
+Online suchen ist der einzige Pfad, der die Identifizierung ausführt. Er berechnet einen Disc-ID aus einem Rip-Protokoll oder einem CUE-Blatt, erkennt Barcodes und Katalogtext mit OCR, fragt MusicBrainz und Discogs ab und stimmt die Ergebnisse ab.
+
+Die Einstellung ** Standardquelle für Metadaten ** hat drei Werte. ** Keine ** erstellt einen leeren Entwurf und startet keine Metadatenarbeit. ** Datei-Tags ** liest und wendet den Tag-Snapshot an. ** Online suchen ** öffnet den Online-Workflow; wenn ** Automatisch erkennen ** aktiviert ist, werden auch die Beweisextraktion, Anbieterabfragen und das Abgleichsverfahren in die Warteschlange gesetzt. Explizite Online-Such- und Identifizierungsaktionen bleiben verfügbar, wenn die automatische Identifizierung deaktiviert ist.
 
 ### Datei-Tags
 
-Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten träge. In der Vorschau wird ein Schnappschuss gespeichert, der mit der Scan-Generierung des Kandidaten, der Dateibearbeitungsrevision und den beobachteten Audiodateien versehen ist. Wenn Sie **Datei-Tags verwenden** wählen, wird dieser Snapshot ausgewählt. Das Festschreiben verwendet denselben Snapshot und schlägt fehl, bevor die Bibliothek schreibt, wenn sich ihr Stempel oder ihre Beobachtungen geändert haben. Es liest nicht stillschweigend eine andere Antwort.
+Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten faul, es sei denn, es ist die konfigurierte Standardeinstellung für einen neu erkannten Kandidaten. Die Vorschau speichert einen Snapshot, der mit der Scangenerierung des Kandidaten, der Dateibearbeitungsrevision und den beobachteten Audiodateien versehen ist. Anwendenersetzt den Entwurf aus diesem exakten Snapshot. Der Import verwendet denselben Snapshot und schlägt fehl, bevor die Bibliothek schreibt, wenn sich der Stempel oder die Beobachtungen ändern; es wird keine andere Antwort gelesen.
 
-### Manuell
-
-Manuell führt keine Metadateneingabe oder -ausgabe durch. Wenn Sie **Manuell eingeben** wählen, wird eine leere bearbeitbare Version erstellt, während das gescannte physische Gleislayout beibehalten wird.
-
-Die Einstellung **Unseed-Kandidaten öffnen in** wählt die anfängliche Oberfläche für Kandidaten ohne Seed aus. Die festen Optionen sind „Suchen“, „Datei-Tags“ und „Manuell“. **Zuletzt verwendet** wird in den zuletzt vom Benutzer explizit ausgewählten Modus aufgelöst. Die Präsentation bleibt getrennt vom gespeicherten Saatgut.
+Bei der direkten Eingabe werden keine Metadaten-E/A durchgeführt. Die Freigabe- und Track-Felder des leeren Entwurfs können sofort bearbeitet werden, und der Entwurf kann importiert werden, sobald die erforderlichen Felder und Zuordnungen validiert sind.Die Kandidatenliste behandelt fehlende Provenienz nicht als Fehler oder Aufmerksamkeitsbedarf.
 
 ## Quellen
 

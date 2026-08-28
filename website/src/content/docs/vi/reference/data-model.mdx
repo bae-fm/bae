@@ -10,8 +10,8 @@ Catalog của bae là SQLite bình thường, được khai báo cho [coven](htt
 Trái tim đồng bộ của schema:
 
 - **`artists`**, **`albums`**, **`works`**: lớp nhóm. Một album gom các bản phát hành của nó và trỏ tới bản chính; works tạo đồ thị cha/con cho cấu trúc nhạc cổ điển.
-- **`releases`**: thực thể trung tâm, một hàng cho mỗi lần phát hành. Mang các sự kiện của lần phát hành (hãng đĩa, số catalog, mã vạch, quốc gia, định dạng, năm), nguồn siêu dữ liệu, hash nội dung của thư mục đã nhập và độ lớn âm thanh album đã đo.
-- **`release_identities`**: một bản phát hành *là gì*, theo từng nguồn. Không có hàng nghĩa là chưa biết; một hàng MusicBrainz hoặc Discogs có release ID nghĩa là chính xác; không có ID nghĩa là xấp xỉ. Một bản phát hành có thể giữ danh tính trong cả hai nguồn cùng lúc.
+- ** `releases` **: thực thể trung tâm, một hàng mỗi lần nhấn. Chuyển thực tế nhấn (nhãn, số danh mục, mã vạch, quốc gia, định dạng, năm), nguồn siêu dữ liệu tùy chọn, hàm băm nội dung của thư mục nhập, và âm lượng album đo. Không có nguồn có nghĩa là siêu dữ liệu đã được nhập trực tiếp; nguồn bên ngoài có tên chính xác của bản phát hành nguồn, trong khi Thẻ của tệp ghi lại nguồn ảnh chụp cục bộ.
+- ** `release_identities` **: danh tính chính xác bên ngoài cho một bản phát hành * là *. Không hàng có nghĩa là không có danh tính bên ngoài. Mỗi hàng có tên một bản phát hành và nhóm phát hành MusicBrainz hoặc Discogs, và một bản phát hành có thể có danh tính ở cả hai nguồn cùng một lúc. Điều này tách biệt với nguồn gốc: danh tính có thể thay đổi mà không yêu cầu rằng siêu dữ liệu có thể chỉnh sửa hiện tại đã được đặt lại từ nguồn đó.
 - **`tracks`** với **`track_artists`**, cộng **`release_artist_roles`** và **`track_artist_roles`**: danh sách track và ghi công, mỗi ghi công gắn với nguồn của nó.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: bản thu liên kết tới tác phẩm mà chúng trình diễn.
 - **`audio_formats`** và **`audio_format_segments`**: đặc tả phát lại. Theo từng track: codec, sample rate, độ sâu bit, kênh, độ lớn âm thanh và peak đã đo, và độ dài pregap. Segment ánh xạ một track lên các cửa sổ byte và sample có thứ tự của tệp nguồn, đây là cách track của bản rip CUE, gồm cả pregap, có thể trải qua các vùng của một tệp lớn, hoặc nhiều tệp.
@@ -25,7 +25,7 @@ Các bảng hoàn toàn cục bộ, không bao giờ khai báo cho coven:
 
 - **`playback_state`**: track hiện tại, vị trí, hàng đợi, âm lượng, phát ngẫu nhiên và lặp lại. Phát lại là sự kiện của thiết bị.
 - **`imports`**: theo dõi thao tác nhập.
-- **`release_metadata`**: JSON thô đã lưu trữ từ MusicBrainz và Discogs, giữ cho diễn giải lại sau này.
+- ** `source_release_payloads` **: lưu trữ JSON thô từ MusicBrainz và Discogs, khóa theo bản phát hành của nhà cung cấp thay vì bản phát hành cục bộ. Nó hỗ trợ khởi động lại chính xác và tái diễn giải mà không thay đổi biểu đồ danh mục đồng bộ.
 
 Mọi bảng đồng bộ mang cột `_updated_at` hybrid-logical-clock, thanh ghi mà merge theo từng trường của coven dùng để sắp thứ tự chỉnh sửa đồng thời; một test bảo đảm tập bảng đồng bộ và tập bảng mang đồng hồ là bằng nhau chính xác.
 

@@ -10,8 +10,8 @@ bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.b
 স্কিমার সিঙ্ক হওয়া কেন্দ্র:
 
 - **`artists`**, **`albums`**, **`works`**: গোষ্ঠী করার স্তর। একটি অ্যালবাম তার রিলিজগুলো এক করে এবং primary one-এ point করে; work ধ্রুপদী গঠনের জন্য parent/child graph তৈরি করে।
-- **`releases`**: কেন্দ্রের সত্তা, প্রতি pressing-এ এক সারি। Pressing-এর তথ্য (label, catalog number, barcode, country, format, year), মেটাডেটার উৎস, ইম্পোর্ট করা ফোল্ডারের content hash, এবং মাপা অ্যালবাম loudness বহন করে।
-- **`release_identities`**: উৎস অনুযায়ী রিলিজটি কী। সারি না থাকলে অজানা; release ID সহ MusicBrainz বা Discogs সারি মানে হুবহু; ID ছাড়া আনুমানিক। এক রিলিজ একই সঙ্গে দুই উৎসেই পরিচয় রাখতে পারে।
+- **`releases`**: কেন্দ্রীয় উপাদান, প্রতি চাপ দেওয়ার জন্য একটি সারি। চাপ দেওয়ার তথ্য (লেবেল, ক্যাটালগ নম্বর, বারকোড, দেশ, ফরম্যাট, বছর), বৈকল্পিক মেটাডাটা উৎস, আমদানিকৃত ফোল্ডারের বিষয়বস্তু হ্যাশ, এবং পরিমাপকৃত অ্যালবাম শব্দের পরিমাণ বহন করে। কোন উৎস না থাকার অর্থ মেটাডাটা সরাসরি প্রবেশ করা হয়েছে; বহিস্থিত উৎস নামের সঠিক উৎস প্রকাশ, যখন ফাইলের ট্যাগ একটি স্থানীয় স্ন্যাপশট উৎস রেকর্ড করে।
+- **`release_identities`**: একটি রিলিজ *হচ্ছে* এর সঠিক বহিরাগত পরিচয়। কোন সারির অর্থ কোন বহিরাগত পরিচয় নেই। প্রতিটি সারিতে MusicBrainz অথবা Discogs রিলিজ এবং রিলিজ গ্রুপের নাম থাকে, এবং একটি রিলিজ একই সাথে উভয় উৎস থেকে পরিচয় রাখতে পারে। এটি উৎস থেকে পৃথক: বর্তমান সম্পাদনযোগ্য মেটাডাটা সেই উৎস থেকে পুনরায় সেট করা হয়েছে বলে দাবি না করে পরিচয় পরিবর্তন করা যেতে পারে।
 - **`tracks`** সহ **`track_artists`**, plus **`release_artist_roles`** ও **`track_artist_roles`**: ট্র্যাক-তালিকা ও কৃতিত্ব, প্রতিটি কৃতিত্ব তার উৎসসহ tagged।
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recording যে work perform করে তার সঙ্গে linked।
 - **`audio_formats`** ও **`audio_format_segments`**: প্লেব্যাক-বিবরণ। প্রতি ট্র্যাক: codec, sample rate, bit depth, channel, measured loudness ও peak, এবং pregap length। Segment একটি ট্র্যাককে তার উৎস ফাইলের ordered byte ও sample window-তে map করে; এই কারণেই CUE rip-এর track, pregap সহ, এক বড় file বা একাধিক file-এর region জুড়ে থাকতে পারে।
@@ -25,7 +25,7 @@ bae-এর তালিকা সাধারণ SQLite, [coven](https://coven.b
 
 - **`playback_state`**: current track, position, queue, volume, shuffle ও repeat। Playback একটি device fact।
 - **`imports`**: ইম্পোর্টের কাজ tracking।
-- **`release_metadata`**: MusicBrainz ও Discogs থেকে archived raw JSON, ভবিষ্যৎ re-interpretation-এর জন্য রাখা।
+- **`source_release_payloads`**: MusicBrainz এবং Discogs থেকে আর্কাইভকৃত কাঁচা JSON, স্থানীয় মুক্তির পরিবর্তে প্রদানকারীর মুক্তি দ্বারা কী করা। এটি সুসংগত ক্যাটালগ গ্রাফ পরিবর্তন না করেই সঠিকভাবে পুনঃনির্ধারণ এবং পুনরায় ব্যাখ্যা সমর্থন করে।
 
 প্রতিটি সিঙ্ক হওয়া table `_updated_at` hybrid-logical-clock column বহন করে, যেটি coven-এর field-by-field merge concurrent edit order করতে ব্যবহার করে; একটি test নিশ্চিত করে synced set এবং clock-carrying set ঠিক এক।
 

@@ -1,6 +1,6 @@
 ---
 title: Proceso de importación
-description: Escaneo, semillas de metadatos y confirmación atómica
+description: Escaneo, borradores de metadatos y la confirmación atómica
 ---
 
 Importar convierte una carpeta de archivos en una entrada de catálogo sin modificar un byte de los archivos. Esta página es el conducto detrás del flujo descrito en la [guía de uso](/es/guide/importing).
@@ -11,25 +11,23 @@ Las carpetas vigiladas se observan mediante eventos del sistema de archivos de l
 
 Una hoja CUE convierte una imagen de audio en una lista de pistas. El parser maneja pregaps y postgaps, interpretes e ISRCs por pista, y tanto imágenes de archivo único como disposiciones CUE de un archivo por pista. Los límites de pista se convierten de frames CUE (1/75 de segundo) a posiciones exactas de muestra, que luego se convierten en las ventanas de bytes y muestras que usa la reproducción.
 
-## Semillas de metadatos
+## Borrador de metadatos
 
-Cada candidato tiene una semilla de metadatos explícita: una versión externa elegida en **Búsqueda**, una instantánea de **Etiquetas de archivo** almacenada o una entrada **Manual**. Cambiar de superficie no reescribe esa semilla.
+Cada candidato almacena un borrador de metadatos editable y una procedencia opcional. El borrador puede estar en blanco, rellenado directamente, rellenado desde una versión externa o rellenado desde una instantánea de etiqueta de archivo almacenada. La procedencia registra dónde comenzó el borrador actual; las ediciones posteriores no lo borran.
 
-### Búsqueda
+La ranura de metadatos superior muestra el borrador, el explorador Buscar en línea o el explorador Etiquetas de archivo. Al abrir o cerrar un explorador no se reescribe el borrador. Aplicaring un origen reemplaza el borrador, su procedencia y su cubierta de origen seleccionada en una transacción de base de datos mientras se conservan los roles de archivo, las vinculaciones CUE, las asignaciones de disco y otras decisiones de asignación.
 
-La búsqueda es la única ruta que extrae una ID de disco, reconoce códigos de barras y texto de catálogo, consulta proveedores y compara resultados. El barrido en segundo plano ejecuta esta ruta solo cuando la búsqueda automática está habilitada y el valor predeterminado configurado se resuelve en Búsqueda. Una acción de búsqueda explícita puede ejecutarlo independientemente de esa configuración. Al abrir Etiquetas de archivo o Manual nunca se inicia la extracción, las consultas al proveedor ni la coincidencia.
+### Buscar en línea
 
-Las etiquetas de audio incrustadas no son evidencia de búsqueda: describen lo que creía el etiquetador, no cuál es la presión. Los resultados de la búsqueda llevan su procedencia para que la interfaz pueda explicar por qué se ofrece cada resultado.
+Buscar en línea es la única ruta que ejecuta la identificación. Calcula un ID de disco a partir de un registro de extracción o una hoja CUE, reconoce códigos de barras y texto de catálogo con OCR, consulta MusicBrainz y Discogs y hace coincidir los resultados.
+
+El ajuste ** Fuente de metadatos predeterminada ** tiene tres valores. ** Ninguna ** crea un borrador en blanco y no inicia ningún trabajo de metadatos. ** Etiquetas de archivo ** lee y aplica la instantánea de la etiqueta. ** Buscar en línea ** abre el flujo de trabajo en línea; cuando ** Identificar automáticamente ** está habilitado, también pone en cola la extracción de pruebas, las consultas de proveedores y la coincidencia.
 
 ### Etiquetas de archivo
 
-Etiquetas de archivo lee perezosamente etiquetas de audio incrustadas y metadatos CUE. La vista previa almacena una instantánea estampada con la generación de escaneo del candidato, la revisión de edición de archivos y los archivos de audio observados. Al elegir **Usar etiquetas de archivo**, se selecciona esa instantánea. La confirmación consume la misma instantánea y falla antes de que la biblioteca escriba si su sello u observaciones cambiaron; no lee en silencio una respuesta diferente.
+Etiquetas de archivo lee las etiquetas de audio incrustadas y los metadatos CUE con pereza, a menos que sea el valor predeterminado configurado para un candidato recién descubierto. La vista previa almacena una instantánea con el sello de generación de escaneo del candidato, la revisión de edición de archivos y los archivos de audio observados. Aplicarreemplázala por el borrador de esa instantánea exacta. La importación consume la misma instantánea y falla antes de que la biblioteca escriba si su sello u observaciones cambian; no lee una respuesta diferente.
 
-### Manual
-
-Manual no realiza entrada ni salida de metadatos. Al elegir **Ingresar manualmente** se crea una versión editable en blanco y al mismo tiempo se conserva el diseño de la pista física escaneada.
-
-La configuración **Abrir candidatos no sembrados en** selecciona la superficie inicial para los candidatos sin semilla. Sus opciones fijas son Búsqueda, Etiquetas de archivo y Manual; **Último uso** se resuelve en el último modo elegido explícitamente por el usuario. La presentación permanece separada de la semilla almacenada.
+La entrada directa no realiza ninguna E/S de metadatos. Los campos de liberación y seguimiento del borrador en blanco se pueden editar inmediatamente y se pueden importar cuando se validan los campos y asignaciones requeridos.La lista de candidatos no trata la procedencia faltante como un error o una solicitud de atención.
 
 ## Fuentes
 

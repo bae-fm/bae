@@ -1,6 +1,6 @@
 ---
 title: Importpijplijn
-description: Scannen, metadata-seeds en de atomaire commit
+description: Scannen, metadata concepten en de atomic commit
 ---
 
 Importeren verandert een map met bestanden in een catalogusitem zonder een byte van de bestanden te wijzigen. Deze pagina is de pijplijn achter de stroom die wordt beschreven in de [gebruiksgids](/nl/guide/importing).
@@ -11,25 +11,23 @@ Bewaakte mappen worden gemonitord via de bestandssysteemevents van het platform,
 
 Een CUE-sheet maakt van een audio-image een tracklijst. De parser behandelt pregaps en postgaps, performers en ISRCs per track, en zowel images met een bestand als CUE-indelingen met een bestand per track. Trackgrenzen worden van CUE-frames (1/75e seconde) naar exacte sampleposities geconverteerd, die later de byte- en samplevensters worden die afspelen gebruikt.
 
-## Metadatazaden
+## Concepten van metagegevens
 
-Elke kandidaat heeft één expliciete metadata-seed: een externe release gekozen in **Opzoeken**, een opgeslagen momentopname van **Bestandstags** of **Handmatige** invoer. Het wisselen van oppervlak herschrijft dat zaad niet.
+Elke kandidaat slaat één bewerkbare metadata-concept en optionele herkomst op. Het concept kan leeg zijn, direct worden ingevuld, worden ingevuld vanuit een externe release of worden ingevuld vanuit een opgeslagen snapshot van een bestandstag. Herkomstrecords waar het huidige concept is begonnen; latere bewerkingen wissen het niet. Directe invoer en een gewist concept hebben geen herkomst.
 
-### Opzoeken
+Het bovenste metadataslot toont ofwel het concept, de Online zoeken-browser of de Bestandstags-browser.Het openen of sluiten van een browser herschrijft het concept niet.Toepassening een bron vervangt het concept, de herkomst en de geselecteerde broncover in één databasetransactie terwijl bestandsrollen, CUE-bindingen, schijftoewijzingen en andere mapping-beslissingen behouden blijven.
 
-Opzoeken is het enige pad dat een schijf-ID extraheert, streepjescodes en catalogustekst herkent, zoekopdrachten naar providers uitvoert en resultaten vergelijkt. De achtergrondcontrole voert dit pad alleen uit als automatisch opzoeken is ingeschakeld en de geconfigureerde standaard wordt omgezet in Zoeken. Een expliciete opzoekactie kan deze uitvoeren, ongeacht die instelling. Het openen van bestandstags of de handleiding start nooit het uitpakken, het opvragen van providers of het matchen.
+### Online zoeken
 
-Ingebedde audiotags zijn geen opzoekbewijs: ze beschrijven wat een tagger geloofde, niet wat de dringende reden is. Opzoekresultaten hebben hun herkomst, zodat de interface kan uitleggen waarom elk resultaat wordt aangeboden.
+Online zoeken is het enige pad dat identificatie uitvoert. Het berekent een Disc ID vanuit een rip log of CUE-blad, herkent barcodes en catalogustekst met OCR, vraagt MusicBrainz en Discogs op en vergelijkt de resultaten.
+
+De instelling ** Standaardbron voor metagegevens ** heeft drie waarden. ** Geen ** maakt een leeg concept en start geen metagegevenswerk. ** Bestandstags ** leest en past de tagmomentopname toe. ** Online zoeken ** opent de online workflow; wanneer ** Automatisch identificeren ** is ingeschakeld, worden ook bewijsextractie, providerquery's en matching in de wachtrij geplaatst. Expliciet online zoeken en acties voor identificeren blijven beschikbaar wanneer automatische identificatie is uitgeschakeld.
 
 ### Bestandstags
 
-Bestandstags lezen ingebedde audiotags en CUE-metagegevens pas op verzoek. Het voorbeeld bewaart een momentopname met de scangeneratie, de revisie van de bestandsbewerking en de waargenomen audiobestanden. **Bestandstags gebruiken** kiest die momentopname. Bevestigen gebruikt dezelfde momentopname en mislukt vóór de bibliotheek wordt geschreven als de markering of waarnemingen zijn gewijzigd; er wordt niet stilzwijgend een ander antwoord gelezen.
+Bestandstags leest ingesloten audiolabels en CUE-metagegevens lui, tenzij dit de standaardinstelling is voor een nieuw ontdekte kandidaat. De voorvertoning slaat een momentopname op met de scangeneratie van de kandidaat, de bestandsbewerkingsrevisie en de waargenomen audiobestanden. Toepassen vervangt het concept van die exacte momentopname. Importeren verbruikt dezelfde momentopname en mislukt voordat de bibliotheek schrijft als de stempel of waarnemingen zijn gewijzigd; het leest geen ander antwoord.
 
-### Handmatig
-
-Handmatig voert geen invoer of uitvoer van metagegevens uit. Als u **Handmatig invoeren** kiest, wordt een blanco, bewerkbare release aangemaakt, terwijl de gescande fysieke tracklay-out behouden blijft.
-
-Met de instelling **Open ongeplaatste kandidaten in** selecteert u het initiële oppervlak voor kandidaten zonder zaad. De vaste keuzes zijn Opzoeken, Bestandstags en Handmatig; **Laatst gebruikt** gaat over naar de laatste modus die expliciet door de gebruiker is gekozen. Presentatie blijft gescheiden van het opgeslagen zaad.
+Direct invoeren voert geen I/O van metagegevens uit. De vrijgave- en trackvelden van het lege concept kunnen onmiddellijk worden bewerkt en het wordt importeerbaar wanneer de vereiste velden en toewijzingen worden gevalideerd.De kandidaatlijst behandelt ontbrekende herkomst niet als een fout of een verzoek om aandacht.
 
 ## Bronnen
 

@@ -1,6 +1,6 @@
 ---
 title: Pipeline di importazione
-description: Scansione, seed di metadati e commit atomico
+description: Scansione, bozze di metadati e il commit atomico
 ---
 
 L'importazione trasforma una cartella di file in una voce di catalogo senza modificare un byte dei file. Questa pagina è la pipeline dietro il flusso descritto nella [guida all'uso](/it/guide/importing).
@@ -11,25 +11,23 @@ Le cartelle osservate sono monitorate dagli eventi del file system della piattaf
 
 Un foglio CUE trasforma un'immagine audio in una lista tracce. Il parser gestisce pregap e postgap, performer e ISRC per traccia, e sia immagini a file singolo sia layout CUE con un file per traccia. I confini delle tracce vengono convertiti da frame CUE (1/75 di secondo) a posizioni di campione esatte, che poi diventano le finestre di byte e campioni usate dalla riproduzione.
 
-## Semi di metadati
+## Bozze di metadati
 
-Ogni candidato ha un seed di metadati esplicito: una versione esterna scelta in **Ricerca**, uno snapshot archiviato di **Tag file** o una voce **Manuale**. Cambiare superficie non riscrive quel seme.
+Ogni candidato memorizza una bozza di metadati modificabile e una provenienza facoltativa. La bozza può essere vuota, compilata direttamente, compilata da un rilascio esterno o compilata da uno snapshot di tag di file memorizzato. La provenienza registra dove è iniziata la bozza corrente; le modifiche successive non la cancellano.
 
-### Ricerca
+Lo slot dei metadati superiore visualizza la bozza, il browser Trova online o il browser Tag dei file. L'apertura o la chiusura di un browser non riscrive la bozza. Applicaing una sorgente sostituisce la bozza, la sua provenienza e la sua copertina sorgente selezionata in una transazione di database, mantenendo i ruoli dei file, i collegamenti CUE, le assegnazioni del disco e altre decisioni di mappatura.
 
-La ricerca è l'unico percorso che estrae un ID disco, riconosce i codici a barre e il testo del catalogo, interroga i fornitori e abbina i risultati. La scansione in background esegue questo percorso solo quando la ricerca automatica è abilitata e l'impostazione predefinita configurata si risolve in Ricerca. Un'azione Ricerca esplicita può eseguirla indipendentemente da tale impostazione. L'apertura dei tag dei file o del manuale non avvia mai l'estrazione, le query del provider o la corrispondenza.
+### Trova online
 
-I tag audio incorporati non sono prove di ricerca: descrivono ciò in cui credeva un tagger, non ciò che è stato premuto. I risultati della ricerca riportano la loro provenienza in modo che l'interfaccia possa spiegare perché viene offerto ciascun risultato.
+Trova online è l'unico percorso che esegue l'identificazione. Calcola un Disc ID da un registro di rip o da un foglio CUE, riconosce i codici a barre e il testo del catalogo con OCR, esegue query su MusicBrainz e Discogs e fa corrispondere i risultati.
+
+L'impostazione ** Fonte metadati predefinita ** ha tre valori. ** Nessuna ** crea una bozza vuota e non avvia alcun lavoro sui metadati. ** Tag dei file ** legge e applica l'istantanea del tag. ** Trova online ** apre il flusso di lavoro online; quando ** Identifica automaticamente ** è abilitato, mette anche in coda l'estrazione delle prove, le query del provider e la corrispondenza.
 
 ### Tag dei file
 
-I tag dei file leggono pigramente i tag audio incorporati e i metadati CUE. L'anteprima memorizza un'istantanea contrassegnata con la generazione della scansione del candidato, la revisione della modifica del file e i file audio osservati. Scegliendo **Utilizza tag file** si seleziona l'istantanea. Il commit consuma la stessa istantanea e fallisce prima che la libreria scriva se il suo timbro o le sue osservazioni sono cambiati; non legge silenziosamente una risposta diversa.
+Tag dei file legge pigramente i tag audio incorporati e i metadati CUE a meno che non sia il valore predefinito configurato per un candidato appena scoperto. L'anteprima memorizza uno snapshot con la generazione della scansione del candidato, la revisione di modifica del file e i file audio osservati. Applica sostituisce la bozza dallo snapshot esatto. L'importazione consuma lo stesso snapshot e non riesce prima che la libreria scriva se il suo timbro o le osservazioni sono cambiati; non legge una risposta diversa.
 
-### Manuale
-
-Il manuale non esegue input o output di metadati. Scegliendo **Inserisci manualmente** si crea una versione modificabile vuota mantenendo il layout della traccia fisica scansionata.
-
-L'impostazione **Apri candidati senza seed in** seleziona la superficie iniziale per i candidati senza seed. Le sue scelte fisse sono Ricerca, Tag file e Manuale; **Ultimo utilizzo** si risolve nell'ultima modalità scelta esplicitamente dall'utente. La presentazione rimane separata dal seme immagazzinato.
+I campi di rilascio e traccia della bozza vuota sono modificabili immediatamente e diventano importabili quando i campi e le mappature richiesti vengono convalidati. L'elenco dei candidati non tratta la provenienza mancante come un errore o una richiesta di attenzione.
 
 ## Fonti
 

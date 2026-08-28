@@ -1,6 +1,6 @@
 ---
 title: Cjevovod uvoza
-description: Skeniranje, sjeme metapodataka i atomsko uvrštavanje
+description: Skeniranje, skice metapodataka i atomski commit
 ---
 
 Uvoz pretvara mapu datoteka u kataloški unos bez izmjene bajta datoteka. Ova stranica je cjevovod iza toka opisanog u [uputama za korištenje](/hr/guide/importing).
@@ -11,25 +11,23 @@ Nadzirane mape prate se događajima datotečnog sustava platforme, uz smirivanje
 
 CUE list pretvara jednu zvučnu sliku u popis pjesama. Parser obrađuje pregapove i postgapove, izvođače i ISRC-ove po pjesmi te i slike u jednoj datoteci i CUE rasporede s jednom datotekom po pjesmi. Granice pjesama pretvaraju se iz CUE okvira (1/75 sekunde) u točne položaje uzoraka, koji poslije postaju prozori bajtova i uzoraka koje reprodukcija koristi.
 
-## Seeds metapodataka
+## Nacrti metapodataka
 
-Svaki kandidat ima jedno eksplicitno sjeme metapodataka: vanjsko izdanje odabrano u **Traženju**, pohranjenu snimku **Oznaka datoteke** ili **Ručni** unos. Prebacivanje površina ne prepisuje to sjeme.
+Svaki kandidat pohranjuje jednu skicu metapodataka koja se može uređivati i neobvezno podrijetlo. Skica može biti prazna, izravno popunjena, popunjena iz vanjskog izdanja, ili popunjena iz spremljene snimke oznake datoteke. Porijeklo zapisa gdje je trenutna skica započela; kasnija uređivanja je ne brišu. Izravni unos i očišćena skica nemaju podrijetlo.
 
-### Pretraga
+Gornji utor za metapodatke prikazuje ili skicu, Pronađi na internetu preglednik, ili Oznake datoteka preglednik. Otvaranje ili zatvaranje preglednika ne prepisuje skicu. Primijeniing izvora zamjenjuje skicu, njezino podrijetlo i odabrani naslov izvora u jednoj transakciji baze podataka, zadržavajući uloge datoteka, CUE veze, dodjele diskova i druge odluke o mapiranju.
 
-Pretraživanje je jedini put koji izvlači ID diska, prepoznaje crtične kodove i kataloški tekst, postavlja upite pružateljima usluga i uspoređuje rezultate. Pozadinsko čišćenje pokreće ovaj put samo kada je omogućeno automatsko traženje i konfigurirana zadana postavka rješava na traženje. Eksplicitna radnja pretraživanja može ga pokrenuti bez obzira na tu postavku. Otvaranje oznaka datoteke ili priručnika nikada ne pokreće ekstrakciju, upite pružatelja ili podudaranje.
+### Pronađi na internetu
 
-Ugrađene audio oznake nisu dokaz pretraživanja: one opisuju u što je označivač vjerovao, a ne što je pritisak. Rezultati traženja nose svoje porijeklo tako da sučelje može objasniti zašto je svaki rezultat ponuđen.
+Pronađi na internetu je jedini put koji pokreće identifikaciju.Izračunava ID diska iz zapisnika kopiranja ili lista CUE, prepoznaje crtične kodove i tekst kataloga s OCR, upita MusicBrainz i Discogs i podudara rezultate.Ugrađene audio oznake nisu dokaz online identifikacije.
+
+** Zadani izvor metapodataka ** postavka ima tri vrijednosti. ** Nijedan ** stvara praznu skicu i ne započinje rad s metapodacima. ** Oznake datoteka ** čita i primjenjuje trenutnu snimku oznake. ** Pronađi na internetu ** otvara mrežni tijek rada; kada je ** Automatski prepoznaj ** omogućen, također stavlja u red ekstrakciju dokaza, upite davatelja usluga i podudaranje.
 
 ### Oznake datoteka
 
-Oznake datoteka lijeno čitaju ugrađene audio oznake i CUE metapodatke. Pregled pohranjuje snimku s žigom kandidatove generacije skeniranja, revizije uređivanja datoteke i promatranih audio datoteka. Odabirom **Koristi oznake datoteke** odabire se ta snimka. Potvrda koristi istu snimku i ne uspijeva prije nego što knjižnica zapiše ako se njezina oznaka ili opažanja promijene; ne čita tiho drugačiji odgovor.
+Oznake datoteka lijeno čita ugrađene audio oznake i CUE metapodatke, osim ako to nije konfigurirano kao zadano za novootkrivenog kandidata. Pregled pohranjuje snimku s pečatom s kandidatovom generacijom skeniranja, revizijom uređivanja datoteke i promatranim audio datotekama. Primijeni zamjenjuje skicu s te točne snimke. Uvoz koristi istu snimku i ne uspijeva prije zapisivanja biblioteke ako se njegov pečat ili promatranja promijene; ne čita drugačiji odgovor.
 
-### Ručno
-
-Ručno ne izvodi unos ili izlaz metapodataka. Odabirom **Unesi ručno** stvara se prazno izdanje koje se može uređivati ​​uz zadržavanje skeniranog fizičkog izgleda zapisa.
-
-Postavka **Otvori kandidate bez sjemena u** odabire početnu površinu za kandidate bez sjemena. Njegovi fiksni izbori su traženje, oznake datoteke i ručno; **Zadnje korišteno** rješava zadnji način koji je korisnik izričito odabrao. Prezentacija ostaje odvojena od pohranjenog sjemena.
+Polja za izdavanje i praćenje praznog nacrta mogu se odmah uređivati, a postaje moguće i uvoziti ih kada se provjere potrebna polja i mapiranja. Popis kandidata ne tretira nedostajuću provenienciju kao pogrešku ili zahtjev za pažnjom.
 
 ## Izvori
 

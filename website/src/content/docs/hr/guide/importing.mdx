@@ -22,29 +22,29 @@ Skeniranje prepoznaje izdanja u oblicima koje ripovi stvarno imaju:
 
 bae uvozi formate koje reproducira: FLAC, MP3, APE, ALAC i AAC u `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack i DSD (`.dsf`/`.dff`). Grafika i dokumenti (CUE listovi, zapisnici ripanja, tekstne datoteke) u mapi prepoznaju se i čuvaju s izdanjem.
 
-## Odaberite izvor metapodataka
+## Ispunite skicu metapodataka
 
-Svaki kandidat nudi tri ravnopravna izvora metapodataka: **Traženje**, **Oznake datoteke** i **Ručno**. Otvaranje izvora samo prikazuje pripadajući zaslon; ne mijenja izvor koji će se koristiti pri uvozu. Izvor postaje osnova metapodataka tek kada izričito odaberete određeno izdanje, **Koristi oznake datoteke** ili **Unesi ručno**.
+Svaki kandidat posjeduje jedan nacrt metapodataka koji se može uređivati, a koji može biti prazan, popunjen iz internetskog izdanja ili ispunjen iz oznaka datoteka. Upisivanje u prazan nacrt je izravni unos, a ne zasebni izvor metapodataka.
 
-### Pretraga
+Otvaranjem ** Pronađi na internetu…** ili ** Oznake datoteka…** zamjenjuje se gornja kartica s preglednikom tog izvora bez mijenjanja skice. Primijeniotvaranje rezultata zamjenjuje skicu i vraća se na karticu za uređivanje. Koristite izbornik kartice da biste pronašli drugo izdanje, primijenili oznake datoteka ili izbrisali metapodatke i vratili se na praznu skicu.
 
-Pretraživanje je jedini izvor koji identificira izdanje. Čita ID diska iz zapisa kopiranja ili CUE lista, prepoznaje bar kodove i kataloški tekst, postavlja upite MusicBrainzu i Discogsu i uspoređuje rezultate. Automatska identifikacija koristi isti put pretraživanja. Pokreće se samo kada je **Automatski identificiraj kandidate za traženje** omogućeno i zadana površina rješava na traženje. Ulaskom u Pretraga i pokretanjem pretraživanja možete ga eksplicitno pokrenuti bez obzira na tu postavku. Ništa od ovog posla ne radi u oznakama datoteka ili ručnom načinu.
+### Pronađi na internetu
+
+Pronađi na internetu je jedini put koji identificira izdanje.Izračunava ID diska iz dnevnika kopiranja ili lista CUE, prepoznaje crtične kodove i tekst kataloga, upita MusicBrainz i Discogs i podudara rezultate.
+
+Automatska identifikacija koristi isti put. Postavka ** Zadani izvor metapodataka ** odabire ** Pronađi na internetu **, ** Oznake datoteka ** ili ** Nijedan ** za novootkrivene kandidate. Uz odabranu opciju Pronađi na internetu, ** Automatski prepoznaj ** kontrolira hoće li ekstrakcija dokaza, OCR, upiti davatelja i podudaranje početi automatski. Izričita naredba za online pretraživanje ili identifikaciju ostaje dostupna kada je isključena. Nijedan ovog rada pokreće se za Oznake datoteka ili Nijedan.
 
 ### Oznake datoteka
 
-Oznake datoteke čitaju ugrađene audio oznake i CUE metapodatke samo kada je otvorite i tražite od bae da ih pročita. Pregledajte pregled, a zatim odaberite **Upotrijebi oznake datoteke** da biste pohranili točnu snimku kao početnu. Uvoz ne uspijeva prije pisanja u knjižnicu ako se kandidatske ili promatrane audio datoteke promijene nakon pregleda.
+Oznake datoteka čita ugrađene audio oznake i CUE metapodatke kada je izvor otvoren ili konfiguriran kao zadani.Pregledajte pretpregled, a zatim odaberite ** Primijeni ** da biste zamijenili nacrt s točnom snimkom.Uvoz ne uspijeva prije zapisivanja u biblioteku ako se kandidatske ili promatrane audio datoteke promijene nakon pretpregleda.
 
-### Ručno
-
-Ručno ne očitava oznake, dokaze mape ili mrežne pružatelje usluga. Odaberite **Unesi ručno** za početak s praznim izdanjem koje je moguće uređivati ​​i fizičkim izgledom staze kandidata.
-
-U postavkama uvoza **Otvori kandidate bez izvora u** određuje koji se zaslon prvi prikazuje. **Zadnje korišteno** znači zadnji izvor koji ste izričito otvorili. Ova postavka bira zaslon, a ne izvor metapodataka; tek izričita radnja u izvoru potvrđuje što će uvoz koristiti.
+Na kartici koja se može uređivati prikazan je tihi Oznake datoteka čip nakon što je ta snimka primijenjena, dok skica ispunjena samo tipkanjem nema izvorni čip.
 
 ## Potvrda i uvoz
 
 Okno potvrde prikazuje sve što će uvoz zapisati:
 
-- **Omot.** Odabran iz grafike baza podataka, slika u vašoj mapi ili grafike ugrađene u datoteke. Možete ga poslije promijeniti.
+- ** Naslovnica.** Odabire se iz grafike baze podataka, slika u mapi ili grafike ugrađene u datoteke.Povucite sliku iz galerije kandidata na kvadrat na naslovnici, ili je promijenite kasnije.
 - **Metapodaci.** Album, izvođač, godina, izdavač, kataloški broj, zemlja, barkod i svaka pjesma: sve se može urediti ovdje prije nego što se išta spremi.
 - **Pohrana.** Ako je povezano mjesto u oblaku, odaberite treba li bae upravljati datotekama u vašem oblaku i treba li zadržati i lokalnu kopiju. Pogledajte [Pohrana i izvanmrežno](/hr/guide/storage).
 

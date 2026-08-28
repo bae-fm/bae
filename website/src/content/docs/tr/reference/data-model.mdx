@@ -10,8 +10,8 @@ bae'in kataloğu sıradan SQLite'tır; [coven](https://coven.bae.fm)'e tablo tab
 Şemanın eşzamanlanan kalbi:
 
 - **`artists`**, **`albums`**, **`works`**: gruplama katmanı. Albüm sürümlerini toplar ve bir primary sürümü gösterir; works klasik yapı için parent/child grafiği oluşturur.
-- **`releases`**: merkez varlık, baskı başına bir satır. Baskı gerçeklerini (label, catalog number, barcode, country, format, year), üst veri kaynağını, içe aktarılan klasörün content hash'ini ve ölçülen albüm ses düzeyini taşır.
-- **`release_identities`**: bir sürümün kaynak başına *ne olduğu*. Satır yoksa bilinmeyen demektir; release ID içeren MusicBrainz veya Discogs satırı kesin, içermeyen yaklaşık demektir. Bir sürüm iki kaynakta aynı anda kimlik tutabilir.
+- **`releases`**: merkezi varlık, baskı başına bir satır. Baskı gerçeklerini (etiket, katalog numarası, çizgi kodu, ülke, biçim, yıl), seçenek meta veri kaynağı, ithal edilen dizin içeriğinin hash değeri ve ölçülmüş albüm ses seviyesini taşır. Kaynak yok demek meta verilerin doğrudan girildiği anlamına gelir; dış kaynak kesin kaynak çıkış adını verirken Dosya etiketleri yerel bir snapshot kaynağı kaydeder.
+- **`release_identities`**: bir sürümün *olduğu* için kesin dış kimlikler. Satır yoksa dış kimlik yok demektir. Her satır bir MusicBrainz veya Discogs sürüm ve sürüm grubunun adını verir, ve bir sürüm her iki kaynakta da aynı anda kimliklere sahip olabilir. Bu, kaynaktan ayrıdır: kimlik, mevcut düzenleyici meta verisinin o kaynaktan geri konulduğunu iddia etmeden değişebilir.
 - **`tracks`** ile **`track_artists`**, ayrıca **`release_artist_roles`** ve **`track_artist_roles`**: parça listeleri ve krediler; her kredi kaynağıyla etiketlenir.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: icra ettikleri eserlere bağlı kayıtlar.
 - **`audio_formats`** ve **`audio_format_segments`**: çalma özellikleri. Parça başına: codec, örnekleme hızı, bit derinliği, kanallar, ölçülen ses düzeyi ve tepe, pregap uzunlukları. Segmentler bir parçayı kaynak dosyalarının sıralı bayt ve örnek pencerelerine eşler; bu sayede bir CUE rip'inin parçası, pregap dahil, büyük bir dosyanın veya birkaç dosyanın bölgelerine yayılabilir.
@@ -25,7 +25,7 @@ Tamamen yerel tablolar, coven'e asla bildirilmez:
 
 - **`playback_state`**: geçerli parça, konum, kuyruk, ses seviyesi, shuffle ve repeat. Çalma bir aygıt gerçeğidir.
 - **`imports`**: içe aktarma işlemi takibi.
-- **`release_metadata`**: MusicBrainz ve Discogs'tan arşivlenmiş ham JSON; gelecekte yeniden yorumlama için tutulur.
+- **`source_release_payloads`**: arşivlenmiş ham JSON MusicBrainz ve Discogs'den, yerel bir yayınlama yerine sağlayıcı yayınlaması ile anahtarlanmış. Doğrudan yeniden başlatma ve yeniden yorumlamayı senkronize katalog grafiği değiştirmeden destekler.
 
 Her eşzamanlanan tablo bir `_updated_at` hybrid-logical-clock sütunu taşır; coven'in alan alan birleştirmesi eşzamanlı düzenlemeleri bu register ile sıralar. Bir test, eşzamanlanan küme ile saat taşıyan kümenin tam olarak eşit olduğunu denetler.
 

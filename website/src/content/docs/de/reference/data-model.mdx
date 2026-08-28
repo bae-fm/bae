@@ -10,8 +10,8 @@ Der Katalog von bae ist gewöhnliches SQLite, Tabelle für Tabelle bei [coven](h
 Das synchronisierte Herz des Schemas:
 
 - **`artists`**, **`albums`**, **`works`**: die Gruppierungsschicht. Ein Album sammelt seine Releases und zeigt auf ein primäres; Werke bilden einen Eltern-Kind-Graphen für klassische Struktur.
-- **`releases`**: die zentrale Entität, eine Zeile pro Pressung. Trägt die Pressungsdaten (Label, Katalognummer, Barcode, Land, Format, Jahr), die Metadatenquelle, einen Inhalts-Hash des importierten Ordners und gemessene Albumlautheit.
-- **`release_identities`**: was ein Release *ist*, pro Quelle. Keine Zeilen bedeutet unbekannt; eine MusicBrainz- oder Discogs-Zeile mit Release-ID bedeutet exakt; ohne eine, ungefähr. Ein Release kann Identitäten in beiden Quellen zugleich halten.
+- **`releases`**: die zentrale Einheit, eine Zeile pro Pressung, enthält die Pressungsdaten (Label, Katalognummer, Barcode, Land, Format, Jahr), optionale Metadaten-Herkunft, einen Inhalts-Hash des importierten Ordners und die gemessene Album-Lautstärke. Keine Herkunft bedeutet, dass die Metadaten direkt eingegeben wurden; externe Herkunft bezeichnet die exakte Quellen-Veröffentlichung, während Datei-Tags eine lokale Snapshot-Quelle aufzeichnet.
+- **`release_identities`**: Exakte externe Identitäten für das, was ein Release *ist*. Keine Zeilen bedeuten keine externe Identität. Jede Zeile nennt ein MusicBrainz- oder Discogs-Release und eine Release-Gruppe, und ein Release kann Identitäten in beiden Quellen gleichzeitig enthalten. Dies ist getrennt von der Provenienz: Die Identität kann sich ändern, ohne dass behauptet wird, dass die aktuellen editierbaren Metadaten von dieser Quelle zurückgesetzt wurden.
 - **`tracks`** mit **`track_artists`**, plus **`release_artist_roles`** und **`track_artist_roles`**: Tracklisten und Mitwirkende, jede Mitwirkung mit ihrer Quelle markiert.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: Aufnahmen, die mit den Werken verknüpft sind, die sie aufführen.
 - **`audio_formats`** und **`audio_format_segments`**: die Wiedergabespezifikationen. Pro Track: Codec, Abtastrate, Bittiefe, Kanäle, gemessene Lautheit und Spitze sowie Pregap-Längen. Segmente bilden einen Track auf geordnete Byte- und Sample-Fenster seiner Quelldateien ab; so kann der Track eines CUE-Rips, einschließlich Pregap, Bereiche einer großen Datei oder mehrerer Dateien überspannen.
@@ -25,7 +25,7 @@ Vollständig lokale Tabellen, nie bei coven deklariert:
 
 - **`playback_state`**: aktueller Track, Position, Warteschlange, Lautstärke, Mischen und Wiederholen. Wiedergabe ist eine Gerätetatsache.
 - **`imports`**: Nachverfolgung von Importvorgängen.
-- **`release_metadata`**: archiviertes rohes JSON aus MusicBrainz und Discogs, für spätere Neuinterpretation behalten.
+- **`source_release_payloads`**: Archiviertes Rohmaterial JSON aus MusicBrainz und Discogs, gekennzeichnet durch Provider-Release und nicht durch ein lokales Release, unterstützt exaktes Zurücksetzen und Neuinterpretation ohne Änderung des synchronisierten Kataloggraphen.
 
 Jede synchronisierte Tabelle trägt eine `_updated_at`-Hybrid-Logical-Clock-Spalte, das Register, nach dem covens Feld-für-Feld-Zusammenführung gleichzeitige Änderungen ordnet; ein Test erzwingt, dass die synchronisierte Menge und die Uhr tragende Menge exakt gleich sind.
 

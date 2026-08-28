@@ -1,6 +1,6 @@
 ---
 title: Pipeline de importação
-description: Varredura, sementes de metadados e commit atômico
+description: Digitalização, rascunhos de metadados e o commit atômico
 ---
 
 A importação transforma uma pasta de arquivos em uma entrada de catálogo sem modificar um byte dos arquivos. Esta página é o pipeline por trás do fluxo descrito no [guia de uso](/pt-br/guide/importing).
@@ -11,25 +11,23 @@ Pastas monitoradas são observadas pelos eventos de sistema de arquivos da plata
 
 Uma folha CUE transforma uma imagem de áudio em lista de faixas. O parser lida com pregaps e postgaps, intérpretes e ISRCs por faixa, e tanto imagens de arquivo único quanto layouts CUE de um arquivo por faixa. Limites de faixa convertem de quadros CUE (1/75 de segundo) para posições exatas de amostra, que depois viram as janelas de bytes e amostras usadas pela reprodução.
 
-## Sementes de metadados
+## Rascunhos de metadados
 
-Cada candidato tem uma semente de metadados explícita: uma versão externa escolhida em **Pesquisa**, um instantâneo de **Tags de arquivo** armazenado ou uma entrada **Manual**. Trocar superfícies não reescreve essa semente.
+Cada candidato armazena um rascunho de metadados editável e uma proveniência opcional. O rascunho pode estar em branco, preenchido diretamente, preenchido a partir de uma liberação externa ou preenchido a partir de um instantâneo de tag de arquivo armazenado. Registros de proveniência onde o rascunho atual começou; edições posteriores não o apagam.
 
-### Busca
+O slot de metadados superior exibe o rascunho, o navegador Buscar online ou o navegador Tags dos arquivos.Abrir ou fechar um navegador não reescreve o rascunho.Aplicaring uma fonte substitui o rascunho, sua proveniência e sua capa de fonte selecionada em uma transação de banco de dados, mantendo funções de arquivo, ligações CUE, atribuições de disco e outras decisões de mapeamento.
 
-Busca é o único caminho que extrai um ID de disco, reconhece códigos de barras e texto de catálogo, consulta provedores e compara resultados. A varredura em segundo plano executa esse caminho somente quando a Pesquisa automática está habilitada e o padrão configurado é resolvido para Pesquisa. Uma ação de pesquisa explícita pode ser executada independentemente dessa configuração. A abertura de tags de arquivo ou manual nunca inicia a extração, consultas de provedor ou correspondência.
+### Buscar online
 
-Tags de áudio incorporadas não são evidências de pesquisa: elas descrevem o que o etiquetador acredita, não o que é pressionado. Os resultados da pesquisa carregam sua origem para que a interface possa explicar por que cada resultado é oferecido.
+Buscar online é o único caminho que executa a identificação. Ele calcula um ID do disco a partir de um registro de extração ou de uma folha CUE, reconhece códigos de barras e texto de catálogo com OCR, consulta MusicBrainz e Discogs e faz a correspondência dos resultados.
+
+A configuração ** Fonte de metadados padrão ** tem três valores. ** Nenhuma ** cria um rascunho em branco e não inicia nenhum trabalho de metadados. ** Tags dos arquivos ** lê e aplica o instantâneo de tag. ** Buscar online ** abre o fluxo de trabalho on-line; quando ** Identificar automaticamente ** está habilitado, ele também coloca em fila a extração de evidências, consultas de provedor e correspondência.
 
 ### Tags dos arquivos
 
-Tags dos arquivos lê tags de áudio incorporadas e metadados CUE preguiçosamente. A visualização armazena um instantâneo carimbado com a geração de digitalização do candidato, revisão de edição de arquivo e arquivos de áudio observados. Escolher **Usar tags de arquivo** seleciona esse instantâneo. A confirmação consome o mesmo instantâneo e falha antes da gravação da biblioteca se seu carimbo ou observações forem alterados; ele não lê silenciosamente uma resposta diferente.
+Tags dos arquivos lê tags de áudio incorporadas e metadados CUE de forma preguiçosa, a menos que seja o padrão configurado para um candidato recém-descoberto. A visualização armazena um instantâneo com a geração de digitalização do candidato, revisão de edição de arquivo e arquivos de áudio observados. Aplicar substitui o rascunho desse instantâneo exato. A importação consome o mesmo instantâneo e falha antes que a biblioteca escreva se seu carimbo ou observações forem alterados; ela não lê uma resposta diferente.
 
-### Manual
-
-Manual não executa entrada ou saída de metadados. Escolher **Inserir manualmente** cria uma versão editável em branco, mantendo o layout da trilha física digitalizada.
-
-A configuração **Abrir candidatos sem seed em** seleciona a superfície inicial para candidatos sem seed. Suas opções fixas são Pesquisa, Tags de arquivo e Manual; **Último uso** resolve para o último modo escolhido explicitamente pelo usuário. A apresentação permanece separada da semente armazenada.
+A entrada direta não executa nenhuma E/S de metadados. Os campos de liberação e rastreamento do rascunho em branco são editáveis imediatamente, e ele se torna importável quando os campos e mapeamentos necessários são validados.A lista de candidatos não trata a proveniência ausente como um erro ou um pedido de atenção.
 
 ## Fontes
 

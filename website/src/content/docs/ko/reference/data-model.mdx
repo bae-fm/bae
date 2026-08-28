@@ -10,8 +10,8 @@ bae의 카탈로그는 일반 SQLite이며, [coven](https://coven.bae.fm)에 tab
 schema에서 동기화되는 중심부는 다음과 같습니다.
 
 - **`artists`**, **`albums`**, **`works`**: 묶음 계층입니다. 앨범은 릴리스를 모으고 primary 릴리스를 가리킵니다. 작품은 클래식 구조를 위한 부모/자식 그래프를 이룹니다.
-- **`releases`**: 중심 entity이며 프레싱 하나당 한 row입니다. 프레싱 사실(레이블, 카탈로그 번호, barcode, 국가, 형식, 연도), 메타데이터 소스, 가져온 폴더의 content hash, 측정한 앨범 loudness를 담습니다.
-- **`release_identities`**: 소스별로 릴리스가 *무엇인지*를 나타냅니다. row가 없으면 알 수 없음입니다. release ID가 있는 MusicBrainz 또는 Discogs row는 정확한 일치를 뜻하고, 없으면 근사입니다. 릴리스는 두 소스의 identity를 동시에 가질 수 있습니다.
+- **`releases`**: 중앙 엔티티, 프레싱당 한 행. 프레싱 사실(레이블, 카탈로그 번호, 바코드, 국가, 포맷, 연도), 옵션 메타데이터 출처, 가져온 폴더의 콘텐츠 해시, 앨범 음량 측정을 담고 있습니다. 출처가 없다면 메타데이터가 직접 입력되었음을 의미합니다. 외부 출처는 정확한 소스 릴리스 이름을 나타내며 파일 태그는 로컬 스냅샷 소스를 기록합니다.
+- **`release_identities`**: 릴리스의 정확한 외부 식별자. 행이 없으면 외부 식별자가 없음을 의미합니다. 각 행은 MusicBrainz 또는 Discogs 릴리스와 릴리스 그룹의 이름을 갖고 있으며, 릴리스는 두 소스에서 동시에 식별자를 보유할 수 있습니다. 이것은 출처와 분리되어 있습니다: 식별자는 현재 편집 가능한 메타데이터가 해당 소스에서 재설정되었다고 주장하지 않고도 변경될 수 있습니다.
 - **`tracks`**와 **`track_artists`**, 그리고 **`release_artist_roles`**와 **`track_artist_roles`**: 트랙 목록과 크레딧입니다. 각 크레딧에는 소스가 붙습니다.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: 녹음을 그들이 연주하는 작품에 연결합니다.
 - **`audio_formats`**와 **`audio_format_segments`**: 재생 spec입니다. 트랙별 codec, sample rate, bit depth, channels, 측정 loudness와 peak, pregap length가 있습니다. Segment는 트랙을 소스 파일의 정렬된 byte 및 sample window에 매핑합니다. 그래서 CUE 리핑의 트랙이 pregap을 포함해 하나의 큰 파일 여러 영역이나 여러 파일에 걸칠 수 있습니다.
@@ -25,7 +25,7 @@ schema에서 동기화되는 중심부는 다음과 같습니다.
 
 - **`playback_state`**: 현재 트랙, 위치, 대기열, 볼륨, 셔플과 반복입니다. 재생은 기기의 사실입니다.
 - **`imports`**: 가져오기 작업 추적입니다.
-- **`release_metadata`**: MusicBrainz와 Discogs에서 받은 raw JSON 보관본입니다. 나중에 다시 해석하기 위해 보관합니다.
+- **`source_release_payloads`**: MusicBrainz 및 Discogs에서 아카이브된 원시 JSON, 로컬 릴리스가 아닌 공급자 릴리스에 의해 키가 지정됩니다. 동기화된 카탈로그 그래프를 변경하지 않고 정확한 리셋 및 재해석을 지원합니다.
 
 모든 synced table은 `_updated_at` hybrid-logical-clock column을 가집니다. coven이 동시 편집을 필드별로 병합할 때 이 register로 순서를 정합니다. 테스트는 synced set과 clock-carrying set이 정확히 같은지 확인합니다.
 

@@ -22,29 +22,29 @@ Un análisis reconoce lanzamientos con las formas que toman las copias reales:
 
 bae importa los formatos que reproduce: FLAC, MP3, APE, ALAC y AAC en `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack y DSD (`.dsf`/`.dff`). Las imágenes y documentos (hojas CUE, registros de copia, archivos de texto) en la carpeta se reconocen y se conservan con el lanzamiento.
 
-## Elige una fuente de metadatos
+## Rellenar el borrador de metadatos
 
-Cada candidato ofrece tres fuentes de metadatos equivalentes: **Búsqueda**, **Etiquetas de archivo** y **Manual**. Abrir una fuente solo muestra su vista; no cambia la fuente que se usará al importar. La fuente se convierte en la base de los metadatos cuando eliges expresamente una edición concreta, **Usar etiquetas de archivo** o **Ingresar manualmente**.
+Cada candidato posee un borrador de metadatos editable, que puede empezar en blanco, ser rellenado desde una publicación en línea o ser rellenado desde las etiquetas de los archivos. Escribir en el borrador en blanco es una entrada directa, no una fuente de metadatos separada.
 
-### Búsqueda
+Al abrir ** Buscar en línea…** o ** Etiquetas de archivo…** se reemplaza la tarjeta superior con el navegador de esa fuente sin cambiar el borrador. Aplicarun resultado reemplaza el borrador y regresa a la tarjeta editable. Utilice el menú de la tarjeta para buscar otra versión, aplicar etiquetas de archivo o borrar los metadatos y volver a un borrador en blanco.
 
-La búsqueda es la única fuente que identifica una versión. Lee una ID de disco de un registro de extracción o de una hoja CUE, reconoce códigos de barras y texto de catálogo, consulta MusicBrainz y Discogs y compara los resultados. La identificación automática utiliza esta misma ruta de búsqueda. Se ejecuta solo cuando **Identificar candidatos de búsqueda automáticamente** está habilitado y la superficie predeterminada se resuelve en Búsqueda. Al ingresar a Búsqueda e iniciar una búsqueda, se puede ejecutar explícitamente independientemente de esa configuración. Nada de este trabajo se ejecuta en Etiquetas de archivo o Manual.
+### Buscar en línea
+
+Buscar en línea es la única ruta que identifica una versión, calcula un ID de disco desde el registro de copias o la hoja CUE, reconoce los códigos de barras y el texto del catálogo, consulta MusicBrainz y Discogs y hace coincidir los resultados.
+
+La identificación automática utiliza esta misma ruta. El ajuste ** Fuente de metadatos predeterminada ** elige ** Buscar en línea **, ** Etiquetas de archivo ** o ** Ninguna ** para candidatos recién descubiertos. Con Buscar en línea seleccionado, ** Identificar automáticamente ** controla si la extracción de evidencia, OCR, las consultas de proveedores y la coincidencia se inician automáticamente.
 
 ### Etiquetas de archivo
 
-Etiquetas de archivo lee etiquetas de audio incrustadas y metadatos CUE solo cuando lo abres y le pides a bae que los lea. Revise la vista previa y luego seleccione **Usar etiquetas de archivo** para almacenar esa instantánea exacta como semilla. La importación falla antes de escribir en la biblioteca si los archivos de audio candidatos o observados cambian después de la vista previa.
+Etiquetas de archivo lee las etiquetas de audio incrustadas y los metadatos CUE cuando el origen se abre o se configura como predeterminado. Revise la vista previa y, a continuación, seleccione ** Aplicar ** para reemplazar el borrador con esa instantánea exacta. La importación falla antes de escribir en la biblioteca si los archivos de audio candidatos u observados cambian después de la vista previa.
 
-### Manual
-
-El manual no lee etiquetas, evidencia de carpetas ni proveedores en línea. Seleccione **Ingresar manualmente** para comenzar con una versión editable en blanco y el diseño físico de la pista del candidato.
-
-En la configuración de importación, **Abrir candidatos sin fuente en** elige qué vista se muestra primero. **Último uso** representa la última fuente que abriste expresamente. Esta opción elige una vista, no la fuente de metadatos; una acción explícita dentro de la fuente sigue siendo necesaria para confirmar qué usará la importación.
+La tarjeta editable muestra un chip silencioso Etiquetas de archivo después de que se aplique la instantánea.Un borrador llenado solo por escritura no tiene chip fuente.
 
 ## Confirmar e importar
 
 El panel de confirmación muestra todo lo que escribirá la importación:
 
-- **Portada.** Elegida del arte de las bases de datos, de imágenes en tu carpeta o del arte incrustado en los archivos. Puedes cambiarla más tarde.
+- ** Cover.** Elige entre las ilustraciones de las bases de datos, imágenes de tu carpeta o ilustraciones incrustadas en los archivos.Arrastra una imagen de la galería de candidatos al cuadrado de la portada, o cámbiala más tarde.
 - **Metadatos.** Álbum, artista, año, sello, número de catálogo, país, código de barras y cada pista: todo editable aquí mismo antes de guardar nada.
 - **Almacenamiento.** Si hay un hogar en la nube conectado, elige si bae debe administrar los archivos en tu nube y si también debe conservar una copia local. Consulta [Almacenamiento y sin conexión](/es/guide/storage).
 

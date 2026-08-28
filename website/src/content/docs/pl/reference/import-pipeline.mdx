@@ -1,6 +1,6 @@
 ---
 title: Potok importu
-description: Skanowanie, zarodki metadanych i zatwierdzanie atomowe
+description: Skanowanie, szkice metadanych i zatwierdzenie atomowe
 ---
 
 Import zamienia folder plików we wpis w katalogu bez modyfikowania bajtu plików. Ta strona stanowi potok umożliwiający przepływ opisany w [przewodniku użytkowania](/pl/guide/importing).
@@ -11,25 +11,23 @@ Obserwowane foldery są monitorowane przez zdarzenia systemu plików platformy, 
 
 Arkusz CUE zamienia jeden obraz audio w listę utworów. Parser obsługuje pregapy i postgapy, wykonawców i ISRC per utwór oraz układy CUE z obrazem jednoplikowym i z jednym plikiem na utwór. Granice utworów są konwertowane z ramek CUE (1/75 sekundy) na dokładne pozycje próbek, które później stają się oknami bajtów i próbek używanymi przez odtwarzanie.
 
-## Nasiona metadanych
+## Szkice metadanych
 
-Każdy kandydat ma jedno wyraźne źródło metadanych: wersję zewnętrzną wybraną w **Wyszukiwaniu**, przechowywaną migawkę **Tagi pliku** lub wpis **Ręczny**. Zmiana powierzchni nie powoduje przepisania tego materiału siewnego.
+Każdy kandydat przechowuje jeden edytowalny szkic metadanych i opcjonalne pochodzenie. Szkic może być pusty, wypełniony bezpośrednio, wypełniony z zewnętrznego wydania lub wypełniony z przechowywanej migawki znacznika pliku. Rejestry pochodzenia, gdzie rozpoczął się bieżący szkic; późniejsze edycje nie usuwają go. Bezpośrednie wprowadzenie i wyczyszczony szkic nie mają pochodzenia.
 
-### Wyszukiwanie
+Górne gniazdo metadanych wyświetla albo wersję roboczą, przeglądarkę Znajdź online lub przeglądarkę Tagi plików.Otwarcie lub zamknięcie przeglądarki nie powoduje przepisania wersji roboczej. Zastosujing źródła zastępuje wersję roboczą, jej pochodzenie i wybraną okładkę źródła w jednej transakcji bazy danych przy zachowaniu ról plików, powiązań CUE, przydziałów dysków i innych decyzji dotyczących mapowania.
 
-Wyszukiwanie to jedyna ścieżka, która wyodrębnia identyfikator dysku, rozpoznaje kody kreskowe i tekst katalogu, wysyła zapytania do dostawców i dopasowuje wyniki. Przeszukiwanie w tle uruchamia tę ścieżkę tylko wtedy, gdy włączone jest automatyczne wyszukiwanie, a skonfigurowana wartość domyślna zostaje zmieniona na Wyszukaj. Jawna akcja wyszukiwania może ją uruchomić niezależnie od tego ustawienia. Otwieranie tagów plików lub ręcznego nigdy nie rozpoczyna wyodrębniania, zapytań dostawców ani dopasowywania.
+### Znajdź online
 
-Wbudowane znaczniki audio nie są dowodem wyszukiwania: opisują, w co wierzył tagujący, a nie to, co było naglące. Wyniki wyszukiwania mają swoje pochodzenie, dzięki czemu interfejs może wyjaśnić, dlaczego dany wynik jest oferowany.
+Znajdź online jest jedyną ścieżką, która uruchamia identyfikację. Oblicza DiscID z dziennika zgrywania lub arkusza CUE, rozpoznaje kody kreskowe i tekst katalogu za pomocą OCR, zapytania MusicBrainz i Discogs i dopasowuje wyniki.
+
+Ustawienie ** Domyślne źródło metadanych ** ma trzy wartości. ** Brak ** tworzy pustą wersję roboczą i nie rozpoczyna pracy z metadanymi. ** Tagi plików ** odczytuje i stosuje migawkę znacznika. ** Znajdź online ** otwiera przepływ pracy online; gdy ** Identyfikuj automatycznie ** jest włączony, ustawia również w kolejce ekstrakcję dowodów, zapytania dostawców i dopasowanie.
 
 ### Tagi plików
 
-Tagi plików leniwie odczytują osadzone znaczniki audio i metadane CUE. Podgląd przechowuje migawkę z opatrzoną datą wygenerowania skanu kandydata, wersją edycji pliku i zaobserwowanymi plikami audio. Wybranie opcji **Użyj znaczników plików** powoduje wybranie tej migawki. Zatwierdzenie zużywa tę samą migawkę i kończy się niepowodzeniem przed zapisem biblioteki, jeśli zmienił się jej znacznik lub obserwacje; nie czyta po cichu innej odpowiedzi.
+Tagi plików odczytuje osadzone znaczniki audio i metadane CUE leniwie, chyba że jest to skonfigurowane domyślnie dla nowo odkrytego kandydata. Podgląd przechowuje migawkę z pieczęcią generowania skanowania kandydata, wersji edycji pliku i obserwowanych plików audio. Zastosuj zastępuje wersję roboczą z tej dokładnej migawki. Import zużywa tę samą migawkę i kończy się niepowodzeniem, zanim biblioteka zapisuje, jeśli zmieni się jej pieczęć lub obserwacje; nie odczytuje innej odpowiedzi.
 
-### Ręcznie
-
-Ręczny nie wprowadza ani nie wyprowadza żadnych metadanych. Wybranie opcji **Wprowadź ręcznie** powoduje utworzenie pustej, edytowalnej wersji, przy jednoczesnym zachowaniu zeskanowanego układu ścieżki fizycznej.
-
-Ustawienie **Otwórz nierozstawionych kandydatów w** wybiera powierzchnię początkową dla kandydatów bez zarodków. Stałe opcje to: Wyszukiwanie, Tagi plików i Ręczne; **Ostatnio używane** oznacza ostatni tryb wyraźnie wybrany przez użytkownika. Prezentacja pozostaje oddzielona od przechowywanych nasion.
+Wprowadzanie bezpośrednie nie wykonuje żadnych operacji I/O metadanych. Pola wydania i śledzenia pustej wersji roboczej można edytować natychmiast, a wersja robocza staje się importowalna po zatwierdzeniu wymaganych pól i mapowania. Lista kandydatów nie traktuje brakujących źródeł jako błędu lub prośby o uwagę.
 
 ## Źródła
 

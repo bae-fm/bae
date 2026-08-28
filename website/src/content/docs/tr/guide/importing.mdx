@@ -22,29 +22,29 @@ Tarama, rip'lerin gerçekte aldığı biçimlerde sürümleri tanır:
 
 bae çaldığı biçimleri içe aktarır: FLAC, MP3, APE, `.m4a` içinde ALAC ve AAC, WAV, AIFF, Ogg Vorbis, Opus, WavPack ve DSD (`.dsf`/`.dff`). Klasördeki görseller ve belgeler (CUE sayfaları, rip günlükleri, metin dosyaları) tanınır ve sürümle birlikte tutulur.
 
-## Bir meta veri kaynağı seçin
+## Meta veri taslağını doldur
 
-Her aday üç eşdeğer meta veri kaynağı sunar: **Arama**, **Dosya Etiketleri** ve **Elle**. Bir kaynağı açmak yalnızca ilgili görünümü gösterir; içe aktarmada kullanılacak kaynağı değiştirmez. Kaynak ancak belirli bir sürümü, **Dosya Etiketlerini Kullan** seçeneğini veya **Elle Olarak Girin** seçeneğini açıkça seçtiğinizde adayın meta veri temeli olur.
+Her aday bir düzenlenebilir meta veri taslağına sahiptir. Boş olarak başlayabilir, çevrimiçi bir yayından doldurulabilir veya dosyaların etiketlerinden doldurulabilir. Boş taslağa yazmak ayrı bir meta veri kaynağı değil, doğrudan giriştir.
 
-### Arama
+** Çevrimiçi bul…** ya da ** Dosya etiketleri…**'ı açmak, üstteki kartı kaynağın tarayıcısıyla değiştirir ve taslağı değiştirmez. Uygula bir sonuç elde ederse, taslağı değiştirir ve düzenleyici kartına geri döner. Kartın menüsünü kullanarak başka bir yayını bul, dosya etiketlerini uygula veya meta verileri temizle ve boş bir taslağa geri dön. Meta verileri temizlemek, aday dosyaları ve parça düzenini korur.
 
-Arama, bir sürümü tanımlayan tek kaynaktır. Bir rip günlüğünden veya CUE sayfasından Disk Kimliğini okur, barkodları ve katalog metnini tanır, MusicBrainz ve Discogs'u sorgular ve sonuçları eşleştirir. Otomatik tanımlama aynı Arama yolunu kullanır. Yalnızca **Arama adaylarını otomatik olarak tanımla** etkinleştirildiğinde ve varsayılan görünüm Arama olduğunda çalışır. Aramayı açıp açıkça başlatmak bu ayardan bağımsız olarak çalışır. Bu işlemlerin hiçbiri Dosya Etiketleri veya Elle modunda çalışmaz.
+### Çevrimiçi bul
+
+Çevrimiçi bul bir yayını tanımlayan tek yoldur. Rip log'dan veya CUE sayfasından bir Disc ID hesaplar, barkodları ve katalog metnini tanır, MusicBrainz ve Discogs sorgular ve sonuçları eşleştirir.
+
+Otomatik tanımlama da aynı yolu kullanır. ** Varsayılan meta veri kaynağı ** ayarlaması yeni keşfedilen adaylar için ** Çevrimiçi bul **, ** Dosya etiketleri ** veya ** Yok ** seçer. Çevrimiçi bul seçildiğinde, ** Otomatik tanımla ** kanıt çıkarma, OCR, sağlayıcı sorguları ve eşleştirmenin otomatik olarak başlayıp başlamadığını kontrol eder. Kapatıldığında açık bir çevrimiçi arama veya tanımlama komutu kullanılabilir kalır. Bu çalışmanın Yok'i Dosya etiketleri veya Yok için çalışır.
 
 ### Dosya etiketleri
 
-Dosya Etiketleri, gömülü ses etiketlerini ve CUE meta verilerini yalnızca açtığınızda ve bae'den bunları okumasını istediğinizde okur. Önizlemeyi inceleyin ve ardından tam anlık görüntüyü çekirdek olarak depolamak için **Dosya Etiketlerini Kullan** seçeneğini seçin. Aday veya gözlemlenen ses dosyaları önizlemeden sonra değişirse kitaplığa yazılmadan önce içe aktarma başarısız olur.
+Dosya etiketleri kaynağı açtığınızda veya varsayılan olarak ayarladıktan sonra entegre ses etiketlerini ve CUE meta verisini okur. Önizlemeyi inceleyin, sonra taslağı tam olarak o fotoğrafla değiştirmek için ** Uygula ** seçin. Önizlemeden sonra aday veya gözlemlenen ses dosyaları değişirse, kütüphaneye yazmadan önce ithal etme başarısız olur.
 
-### Elle
-
-Elle modu hiçbir etiketi, klasör kanıtını veya çevrimiçi sağlayıcıyı okumaz. Boş ve düzenlenebilir bir sürüm ile adayın fiziksel parça düzeninden başlamak için **Elle Olarak Girin**'i seçin.
-
-İçe aktarma ayarlarındaki **Kaynağı olmayan adayları şurada aç** seçeneği, ilk gösterilecek görünümü belirler. **Son Kullanılan**, açıkça açtığınız son kaynağı ifade eder. Bu ayar meta veri kaynağını değil görünümü seçer; içe aktarmanın ne kullanacağını kaynak içindeki açık bir işlem doğrular.
+Düzenlenebilir kart, bu fotoğraf uygulandıktan sonra sessiz bir Dosya etiketleri çipi gösterir. Sadece yazmayla doldurulan bir taslakta kaynak çipi yoktur.
 
 ## Onaylama ve içe aktarma
 
 Onay bölmesi içe aktarmanın yazacağı her şeyi gösterir:
 
-- **Cover.** Veritabanlarındaki görsellerden, klasörünüzdeki görüntülerden veya dosyalara gömülü görselden seçilir. Sonra değiştirebilirsiniz.
+- ** Kapak.** Veritabanı resimlerinden, dizinizdeki resimlerden ya da dosyalarda yer alan resimlerden seçilir. Aday galeriden bir resmi kapak karesine çekin, ya da daha sonra değiştirin.
 - **Metadata.** Albüm, sanatçı, yıl, plak şirketi, katalog numarası, ülke, barcode ve her parça: herhangi bir şey kaydedilmeden önce burada düzenlenebilir.
 - **Storage.** Bulut evi bağlıysa bae'in dosyaları bulutunuzda yönetip yönetmeyeceğini ve ayrıca yerel bir kopya tutup tutmayacağını seçin. [Depolama ve çevrimdışı](/tr/guide/storage) bölümüne bakın.
 

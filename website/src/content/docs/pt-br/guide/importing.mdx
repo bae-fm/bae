@@ -22,29 +22,29 @@ Um escaneamento reconhece lançamentos nos formatos que rips realmente assumem:
 
 bae importa os formatos que reproduz: FLAC, MP3, APE, ALAC e AAC em `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack e DSD (`.dsf`/`.dff`). Arte e documentos (folhas CUE, logs de rip, arquivos de texto) na pasta são reconhecidos e mantidos com o lançamento.
 
-## Escolha uma fonte de metadados
+## Preencher o rascunho de metadados
 
-Cada candidato oferece três fontes de metadados iguais: **Pesquisa**, **Tags de arquivo** e **Manual**. Abrir uma fonte mostra apenas sua superfície; isso não altera a fonte que o candidato irá importar. Uma fonte se torna a semente de metadados do candidato somente quando você escolhe explicitamente uma prensagem, seleciona **Usar tags de arquivo** ou seleciona **Inserir manualmente**.
+Cada candidato possui um rascunho de metadados editável, que pode começar em branco, ser preenchido a partir de um lançamento online ou ser preenchido a partir das tags dos arquivos. Digitar no rascunho em branco é uma entrada direta, não uma fonte de metadados separada.
 
-### Busca
+Ao abrir ** Buscar online…** ou ** Tags dos arquivos…**, o cartão superior é substituído pelo navegador dessa fonte sem alterar o rascunho. Aplicaro resultado substitui o rascunho e retorna ao cartão editável. Use o menu do cartão para encontrar outro lançamento, aplicar tags de arquivo ou limpar os metadados e retornar a um rascunho em branco.
 
-Busca é a única fonte que identifica uma versão. Ele lê um ID de disco de um registro de extração ou folha CUE, reconhece códigos de barras e texto de catálogo, consulta MusicBrainz e Discogs e compara os resultados. A identificação automática usa esse mesmo caminho de pesquisa. Ele é executado somente quando **Identificar candidatos de pesquisa automaticamente** está habilitado e a superfície padrão resolve para Pesquisa. Entrar em Pesquisa e iniciar uma pesquisa pode executá-la explicitamente, independentemente dessa configuração. Nenhum deste trabalho é executado em tags de arquivo ou manual.
+### Buscar online
+
+Buscar online é o único caminho que identifica um lançamento.Ele calcula um ID do disco a partir do registro de cópias ou da folha CUE, reconhece códigos de barras e texto de catálogo, consulta MusicBrainz e Discogs e combina os resultados.
+
+A identificação automática usa esse mesmo caminho. A configuração ** Fonte de metadados padrão ** escolhe ** Buscar online **, ** Tags dos arquivos ** ou ** Nenhuma ** para candidatos recém-descobertos. Com Buscar online selecionado, ** Identificar automaticamente ** controla se a extração de evidência, OCR, consultas de provedor e correspondência começam automaticamente. Um comando de pesquisa ou identificação on-line explícito permanece disponível quando desativado. Nenhuma deste trabalho é executado para Tags dos arquivos ou Nenhuma.
 
 ### Tags dos arquivos
 
-Tags dos arquivos lê tags de áudio incorporadas e metadados CUE somente quando você o abre e pede para bae lê-los. Revise a visualização e selecione **Usar tags de arquivo** para armazenar esse instantâneo exato como a semente. A importação falhará antes de gravar na biblioteca se os arquivos de áudio candidatos ou observados mudarem após a visualização.
+O Tags dos arquivos lê as tags de áudio incorporadas e os metadados do CUE quando a fonte é aberta ou configurada como padrão.Revise a visualização e selecione ** Aplicar ** para substituir o rascunho pelo instantâneo exato. A importação falha antes de gravar na biblioteca se os arquivos de áudio candidatos ou observados forem alterados após a visualização.
 
-### Manual
-
-O manual não lê tags, evidências de pasta ou provedores on-line. Selecione **Inserir manualmente** para começar com uma versão editável em branco e o layout físico da pista do candidato.
-
-Nas configurações de importação, **Abrir candidatos não propagados em** escolhe qual superfície um candidato não propagado abre primeiro. **Último uso** resolve para a última fonte que você abriu explicitamente. Esta configuração escolhe uma superfície, não uma semente; a ação de origem explícita ainda confirma o que a importação usará.
+O cartão editável mostra um chip silencioso Tags dos arquivos depois que o snapshot é aplicado.Um rascunho preenchido apenas por digitação não tem chip de origem.
 
 ## Confirmar e importar
 
 O painel de confirmação mostra tudo que a importação vai escrever:
 
-- **Capa.** Escolhida da arte dos bancos de dados, das imagens na sua pasta ou da arte embutida nos arquivos. Você pode alterá-la depois.
+- ** Capa.** Escolha entre a arte dos bancos de dados, imagens em sua pasta ou arte incorporada nos arquivos.Arraste uma imagem da galeria de candidatos para o quadrado da capa, ou altere-a mais tarde.
 - **Metadados.** Álbum, artista, ano, selo, número de catálogo, país, código de barras e cada faixa: tudo editável aqui antes de qualquer coisa ser salva.
 - **Armazenamento.** Se um local na nuvem estiver conectado, escolha se bae deve gerenciar os arquivos na sua nuvem e se também deve manter uma cópia local. Veja [Armazenamento e offline](/pt-br/guide/storage).
 

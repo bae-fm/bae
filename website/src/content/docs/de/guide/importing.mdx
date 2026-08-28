@@ -22,29 +22,29 @@ Ein Scan erkennt Releases in den Formen, die Rips tatsächlich haben:
 
 bae importiert die Formate, die es abspielt: FLAC, MP3, APE, ALAC und AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack und DSD (`.dsf`/`.dff`). Artwork und Dokumente (CUE-Sheets, Rip-Logs, Textdateien) im Ordner werden erkannt und mit dem Release behalten.
 
-## Metadatenquelle auswählen
+## Füllen Sie den Metadaten-Entwurf aus
 
-Jeder Kandidat bietet drei gleichwertige Metadatenquellen: **Suche**, **Datei-Tags** und **Manuell**. Das Öffnen einer Quelle zeigt nur die zugehörige Ansicht; die beim Import verwendete Quelle ändert sich dadurch nicht. Eine Quelle wird erst dann zur Metadatengrundlage des Kandidaten, wenn du ausdrücklich eine bestimmte Ausgabe, **Datei-Tags verwenden** oder **Manuell eingeben** auswählst.
+Jeder Kandidat besitzt einen editierbaren Metadaten-Entwurf, der leer beginnen kann, aus einer Online-Veröffentlichung gefüllt werden kann oder aus den Tags der Dateien gefüllt werden kann. Die Eingabe in den leeren Entwurf ist eine direkte Eingabe, keine separate Metadatenquelle.
 
-### Nachschlagen
+Wenn Sie ** Online suchen…** oder ** Datei-Tags…** öffnen, wird die oberste Karte durch den Browser dieser Quelle ersetzt, ohne den Entwurf zu ändern. AnwendenWenn Sie ein Ergebnis erhalten, wird der Entwurf ersetzt und Sie kehren zur editierbaren Karte zurück. Verwenden Sie das Menü der Karte, um eine andere Veröffentlichung zu finden, Datei-Tags anzuwenden oder die Metadaten zu löschen und zu einem leeren Entwurf zurückzukehren.
 
-Die Suche ist die einzige Quelle, die eine Veröffentlichung identifiziert. Sie liest eine Disc-ID aus einem Rip-Log oder einem CUE-Blatt, erkennt Barcodes und Katalogtext, fragt MusicBrainz und Discogs ab und gleicht die Ergebnisse ab. Die automatische Identifizierung verwendet denselben Suchweg. Sie läuft nur, wenn **Suchkandidaten automatisch identifizieren** aktiviert ist und die Standardansicht auf Suche gesetzt ist. Wenn du die Suche öffnest und ausdrücklich startest, läuft sie unabhängig von dieser Einstellung. In Datei-Tags und Manuell findet keine dieser Arbeiten statt.
+### Online suchen
+
+Online suchen ist der einzige Pfad, der eine Veröffentlichung identifiziert.Er berechnet einen Disc-ID aus dem Rip-Log oder dem CUE-Blatt, erkennt Barcodes und Katalogtext, fragt MusicBrainz und Discogs ab und stimmt die Ergebnisse ab.
+
+Die automatische Identifizierung verwendet denselben Pfad. Die Einstellung ** Standardquelle für Metadaten ** wählt ** Online suchen **, ** Datei-Tags ** oder ** Keine ** für neu entdeckte Kandidaten. Wenn Online suchen ausgewählt ist, steuert ** Automatisch erkennen **, ob die Evidenzextraktion, OCR, Anbieterabfragen und das Abgleichen automatisch starten. Ein expliziter Online-Such- oder Identifizierungsbefehl bleibt verfügbar, wenn er deaktiviert ist. Keine dieser Arbeit wird für Datei-Tags oder Keine ausgeführt.
 
 ### Datei-Tags
 
-Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten nur, wenn du die Ansicht öffnest und bae zum Lesen aufforderst. Prüfe die Vorschau und wähle dann **Datei-Tags verwenden**, um genau diesen Datenstand als Grundlage zu speichern. Wenn sich der Kandidat oder eine beobachtete Audiodatei nach der Vorschau ändert, schlägt der Import fehl, bevor etwas in die Bibliothek geschrieben wird.
+Datei-Tags liest eingebettete Audio-Tags und CUE-Metadaten, wenn die Quelle geöffnet oder als Standard konfiguriert ist.Überprüfen Sie die Vorschau, und wählen Sie dann ** Anwenden **, um den Entwurf durch den exakten Schnappschuss zu ersetzen.Der Import schlägt fehl, bevor in die Bibliothek geschrieben wird, wenn sich die Kandidaten- oder beobachteten Audiodateien nach der Vorschau ändern.
 
-### Manuell
-
-Manuell liest keine Tags, Ordnerhinweise oder Online-Dienste. Wähle **Manuell eingeben**, um mit einer leeren, bearbeitbaren Veröffentlichung und dem physischen Track-Layout des Kandidaten zu beginnen.
-
-In den Importeinstellungen bestimmt **Kandidaten ohne Quelle öffnen in**, welche Ansicht zuerst erscheint. **Zuletzt verwendet** steht für die Quelle, die du zuletzt ausdrücklich geöffnet hast. Diese Einstellung wählt eine Ansicht, nicht die Metadatengrundlage; erst eine ausdrückliche Aktion in der Quelle bestätigt, was der Import verwendet.
+Die editierbare Karte zeigt einen leisen Datei-Tags-Chip, nachdem der Snapshot angewendet wurde, ein nur durch Tippen gefüllter Entwurf hat keinen Quellchip.
 
 ## Bestätigen und importieren
 
 Der Bestätigungsbereich zeigt alles, was der Import schreiben wird:
 
-- **Cover.** Aus dem Artwork der Datenbanken, Bildern in deinem Ordner oder in den Dateien eingebettetem Artwork gewählt. Du kannst es später ändern.
+- ** Cover.** Ausgewählt aus den Grafiken der Datenbanken, Bildern in Ihrem Ordner oder Grafiken, die in die Dateien eingebettet sind.Ziehen Sie ein Bild aus der Kandidatengalerie auf das Cover-Quadrat, oder ändern Sie es später.
 - **Metadaten.** Album, Künstler, Jahr, Label, Katalognummer, Land, Barcode und jeder Track: alles direkt hier bearbeitbar, bevor etwas gespeichert wird.
 - **Speicher.** Wenn ein Cloud-Zuhause verbunden ist, wähle, ob bae die Dateien in deiner Cloud verwalten soll und ob zusätzlich eine lokale Kopie behalten werden soll. Siehe [Speicher und offline](/de/guide/storage).
 

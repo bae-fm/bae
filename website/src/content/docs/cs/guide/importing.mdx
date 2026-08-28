@@ -22,29 +22,29 @@ Sken rozpoznává vydání ve tvarech, jaké ripy skutečně mívají:
 
 bae importuje formáty, které přehrává: FLAC, MP3, APE, ALAC a AAC v `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack a DSD (`.dsf`/`.dff`). Obrázky a dokumenty (CUE sheety, logy ripu, textové soubory) ve složce rozpozná a ponechá u vydání.
 
-## Vyberte zdroj metadat
+## Vyplnění konceptu metadat
 
-Každý kandidát nabízí tři rovnocenné zdroje metadat: **Vyhledání**, **Značky souborů** a **Ručně**. Otevření zdroje pouze zobrazí příslušnou obrazovku; zdroj, který kandidát použije při importu, se tím nezmění. Zdroj se stane základem metadat až tehdy, když výslovně zvolíte konkrétní vydání, **Použít značky souborů** nebo **Zadat ručně**.
+Každý kandidát vlastní jeden upravitelný koncept metadat, který může být vytvořen z prázdných dat, z online publikace nebo ze značek souborů. Zadání do prázdného konceptu je přímý vstup, nikoli samostatný zdroj metadat.
 
-### Vyhledání
+Otevřením ** Najít online…** nebo ** Značky souborů…** nahradíte horní kartu prohlížečem tohoto zdroje beze změny konceptu. Použítotevřením výsledku nahradíte koncept a vrátíte se na upravitelnou kartu. Pomocí nabídky karty můžete najít jinou verzi, použít značky souborů nebo vymazat metadata a vrátit se na prázdný koncept. Vymazání metadat zachová soubory kandidáta a uspořádání stopy.
 
-Vyhledávání je jediný zdroj, který identifikuje vydání. Čte ID disku z rip logu nebo listu CUE, rozpoznává čárové kódy a text katalogu, dotazuje se MusicBrainz a Discogs a porovnává výsledky. Automatická identifikace používá stejnou cestu. Spustí se jen tehdy, když je zapnuté **Automaticky identifikovat kandidáty ve Vyhledání** a výchozí režim se vyhodnotí jako Vyhledání. Výslovné otevření Vyhledání a spuštění hledání funguje bez ohledu na toto nastavení. Ve Značkách souborů ani v Ručním režimu se tato práce nespouští.
+### Najít online
+
+Najít online je jediná cesta, která identifikuje vydání, vypočítá ID disku z protokolu ripů nebo listu CUE, rozpozná čárové kódy a text katalogu, dotazuje se MusicBrainz a Discogs a porovnává výsledky.
+
+Automatická identifikace používá stejnou cestu. Nastavení ** Výchozí zdroj metadat ** vybere ** Najít online **, ** Značky souborů ** nebo ** Žádný ** pro nově objevené kandidáty. Pokud je vybráno Najít online, ** Automaticky identifikovat ** řídí, zda se automaticky spustí extrakce důkazů, OCR, dotazy poskytovatelů a porovnávání. Explicitní příkaz online vyhledávání nebo identifikace zůstává k dispozici, když je vypnutý. Žádný této práce běží pro Značky souborů nebo Žádný.
 
 ### Značky souborů
 
-Značky souborů čte vložené audio tagy a metadata CUE pouze tehdy, když je otevřete a požádáte bae, aby je přečetl. Prohlédněte si náhled a poté vyberte **Použít značky souborů** pro uložení přesného snímku jako výchozí. Import se nezdaří před zápisem do knihovny, pokud se kandidátské nebo pozorované zvukové soubory po náhledu změní.
+Značky souborů čte vložené značky zvuku a metadata CUE, když je zdroj otevřen nebo nakonfigurován jako výchozí.Zkontrolujte náhled a poté vyberte ** Použít **, abyste nahradili koncept přesným snímkem. Import se nezdaří před zápisem do knihovny, pokud se po náhledu změní kandidátské nebo pozorované zvukové soubory.
 
-### Ručně
-
-Manuál nečte žádné štítky, důkazy složek ani online poskytovatele. Vyberte **Zadat ručně** a začněte s prázdnou editovatelnou verzí a fyzickým rozložením stopy kandidáta.
-
-V nastavení importu určuje **Otevřít kandidáty bez zdroje v**, která obrazovka se zobrazí jako první. **Naposledy použité** znamená poslední zdroj, který jste výslovně otevřeli. Toto nastavení vybírá obrazovku, nikoli zdroj metadat; importovaný zdroj se potvrdí až výslovnou akcí v daném zdroji.
+Editovatelná karta zobrazuje tichý Značky souborů čip poté, co je snímek aplikován.Draft vyplněný pouze psaním nemá žádný zdrojový čip.
 
 ## Potvrzení a import
 
 Panel potvrzení ukáže všechno, co import zapíše:
 
-- **Obal.** Vybraný z obrázků v databázích, obrázků ve vaší složce nebo obrázků vložených v souborech. Později ho můžete změnit.
+- ** Obal.** Vybráno z grafiky databází, obrázků ve vaší složce nebo grafiky vložené do souborů.Přetáhněte obrázek z galerie kandidátů na čtverec obalu nebo jej později změňte.
 - **Metadata.** Album, interpret, rok, vydavatelství, katalogové číslo, země, čárový kód a každá stopa: vše je upravitelné přímo tady, než se cokoli uloží.
 - **Úložiště.** Pokud je připojený cloudový domov, zvolte, zda má bae spravovat soubory ve vašem cloudu a zda má také ponechat místní kopii. Viz [Úložiště a offline](/cs/guide/storage).
 

@@ -22,29 +22,29 @@ Una scansione riconosce le release nelle forme reali dei rip:
 
 bae importa i formati che riproduce: FLAC, MP3, APE, ALAC e AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack e DSD (`.dsf`/`.dff`). Grafica e documenti (fogli CUE, log di rip, file di testo) nella cartella vengono riconosciuti e conservati con la release.
 
-## Scegli una fonte di metadati
+## Compilare la bozza dei metadati
 
-Ogni candidato offre tre fonti di metadati equivalenti: **Ricerca**, **Tag file** e **Manuale**. Aprire una fonte mostra soltanto la relativa vista; non cambia la fonte usata durante l'importazione. La fonte diventa la base dei metadati soltanto quando si sceglie esplicitamente una determinata edizione, **Utilizza tag file** oppure **Inserisci manualmente**.
+Ogni candidato possiede una bozza di metadati modificabile, che può iniziare vuota, essere compilata da un rilascio online o essere compilata dai tag dei file. La digitazione nella bozza vuota è un'immissione diretta, non una sorgente di metadati separata.
 
-### Ricerca
+Aprire ** Trova online…** o ** Tag dei file…** sostituisce la scheda in alto con il browser di quella sorgente senza modificare la bozza. Applicaeseguendo un risultato si sostituisce la bozza e si ritorna alla scheda modificabile. Utilizzare il menu della scheda per trovare un'altra release, applicare tag ai file o cancellare i metadati e tornare a una bozza vuota.
 
-La ricerca è l'unica fonte che identifica una versione. Legge un ID disco da un registro rip o da un foglio CUE, riconosce i codici a barre e il testo del catalogo, interroga MusicBrainz e Discogs e abbina i risultati. L'identificazione automatica utilizza lo stesso percorso di ricerca. Viene eseguito solo quando **Identifica automaticamente i candidati alla ricerca** è abilitato e la superficie predefinita si risolve in Ricerca. Accedendo a Ricerca e avviando una ricerca è possibile eseguirla esplicitamente indipendentemente da tale impostazione. Niente di tutto questo lavoro viene eseguito nei Tag dei file o in Manuale.
+### Trova online
+
+Trova online è l'unico percorso che identifica un rilascio: calcola un Disc ID dal registro di rip o dal foglio CUE, riconosce i codici a barre e il testo del catalogo, interroga MusicBrainz e Discogs e fa corrispondere i risultati.
+
+L'identificazione automatica utilizza lo stesso percorso. L'impostazione ** Fonte metadati predefinita ** sceglie ** Trova online **, ** Tag dei file ** o ** Nessuna ** per i candidati appena scoperti. Con Trova online selezionato, ** Identifica automaticamente ** controlla se l'estrazione delle prove, OCR, le query del provider e la corrispondenza iniziano automaticamente. Un comando esplicito di ricerca online o identificazione rimane disponibile quando è disattivato. Nessuna di questo lavoro viene eseguito per Tag dei file o Nessuna.
 
 ### Tag dei file
 
-Tag dei file legge i tag audio incorporati e i metadati CUE solo quando lo apri e chiedi a bae di leggerli. Esamina l'anteprima, quindi seleziona **Utilizza tag file** per archiviare l'istantanea esatta come seme. L'importazione non riesce prima della scrittura nella libreria se i file audio candidati o osservati cambiano dopo l'anteprima.
+Tag dei file legge i tag audio incorporati e i metadati CUE quando l'origine è aperta o configurata come predefinita. Rivedere l'anteprima, quindi selezionare ** Applica ** per sostituire la bozza con l'istantanea esatta.L'importazione non riesce prima della scrittura nella libreria se i file audio candidati o osservati cambiano dopo l'anteprima.
 
-### Manuale
-
-Il manuale non legge tag, prove di cartelle o provider online. Seleziona **Inserisci manualmente** per iniziare con una versione modificabile vuota e il layout della pista fisica del candidato.
-
-Nelle impostazioni di importazione, **Apri i candidati senza fonte in** sceglie quale vista appare per prima. **Ultimo utilizzo** indica l'ultima fonte aperta esplicitamente. Questa impostazione sceglie una vista, non la fonte dei metadati; un'azione esplicita nella fonte conferma ciò che verrà usato dall'importazione.
+La scheda modificabile mostra un chip silenzioso Tag dei file dopo che l'istantanea è stata applicata.Una bozza riempita solo da digitazione non ha alcun chip sorgente.
 
 ## Confermare e importare
 
 Il pannello di conferma mostra tutto ciò che l'importazione scriverà:
 
-- **Copertina.** Scelta dalla grafica dei database, dalle immagini nella tua cartella o dalla grafica incorporata nei file. Puoi cambiarla più tardi.
+- ** Copertina.** Scelta tra le immagini del database, le immagini nella cartella o le immagini incorporate nei file.Trascina un'immagine dalla galleria dei candidati sul quadrato della copertina, o cambiala in un secondo momento.
 - **Metadati.** Album, artista, anno, etichetta, numero di catalogo, paese, codice a barre e ogni traccia: tutto modificabile qui prima che venga salvato qualcosa.
 - **Archiviazione.** Se è collegata una home cloud, scegli se bae deve gestire i file nel tuo cloud e se deve conservare anche una copia locale. Vedi [Archiviazione e offline](/it/guide/storage).
 

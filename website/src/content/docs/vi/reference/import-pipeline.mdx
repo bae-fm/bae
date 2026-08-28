@@ -1,6 +1,6 @@
 ---
 title: Pipeline nhập
-description: Quét, nguồn siêu dữ liệu và ghi nguyên tử
+description: Skanning, metadata drafts, and the atomic commit
 ---
 
 Nhập biến một thư mục tệp thành một mục trong danh mục mà không sửa một byte nào của tệp. Trang này mô tả quy trình phía sau luồng trong [hướng dẫn sử dụng](/vi/guide/importing).
@@ -11,25 +11,23 @@ Thư mục được theo dõi được giám sát bằng sự kiện hệ thốn
 
 Một CUE sheet biến một ảnh âm thanh thành danh sách track. Parser xử lý pregap và postgap, performer và ISRC theo từng track, cả ảnh một tệp và bố cục CUE một tệp mỗi track. Ranh giới track chuyển từ frame CUE (1/75 giây) sang vị trí sample chính xác, thứ sau đó trở thành các cửa sổ byte và sample mà phát lại dùng.
 
-## Nguồn siêu dữ liệu
+## Dự thảo siêu dữ liệu
 
-Mỗi ứng viên có một nguồn siêu dữ liệu được chọn rõ ràng: một bản phát hành bên ngoài được chọn trong **Tra cứu**, một bản chụp **Thẻ tệp** đã lưu, hoặc **Thủ công**. Chuyển giữa các chế độ hiển thị không ghi đè nguồn đã chọn.
+Mỗi ứng cử viên lưu một bản thảo siêu dữ liệu có thể chỉnh sửa và một nguồn tùy chọn. Bản thảo có thể trống, được nhập trực tiếp, được nhập từ một bản phát hành bên ngoài, hoặc được nhập từ một bức ảnh chụp của thẻ tập tin được lưu. Các ghi chép nguồn ghi nơi bản thảo hiện tại bắt đầu; các bản chỉnh sửa sau đó không xóa nó. Nhập trực tiếp và bản thảo đã xóa không có nguồn.
 
-### Tra cứu
+Hộp siêu dữ liệu trên cùng hiển thị hoặc bản thảo, trình duyệt Tìm trên mạng, hoặc trình duyệt Thẻ của tệp. Mở hoặc đóng trình duyệt không viết lại bản thảo. Áp dụng thay thế một nguồn thay thế bản thảo, nguồn gốc của nó, và trang bìa nguồn đã chọn trong một giao dịch cơ sở dữ liệu trong khi giữ vai trò tập tin, liên kết CUE, gán đĩa, và các quyết định vẽ khác.
 
-Tra cứu là đường duy nhất tính Disc ID, nhận dạng mã vạch và văn bản danh mục, truy vấn nhà cung cấp và đối chiếu kết quả. Quét nền chỉ chạy đường này khi tra cứu tự động được bật và chế độ mặc định được phân giải thành Tra cứu. Một thao tác Tra cứu rõ ràng vẫn có thể chạy nó bất kể cài đặt đó. Mở Thẻ tệp hoặc Thủ công không bao giờ bắt đầu trích xuất, truy vấn nhà cung cấp hay đối chiếu.
+### Tìm trên mạng
 
-Thẻ âm thanh nhúng không phải bằng chứng Tra cứu: chúng mô tả điều trình gắn thẻ tin, không phải lần ép đĩa thực tế. Kết quả Tra cứu giữ nguồn gốc để giao diện giải thích vì sao từng kết quả được đưa ra.
+Tìm trên mạng là con đường duy nhất chạy nhận dạng. Nó tính toán một Disc ID từ một bản ghi lấy hoặc trang CUE, nhận dạng mã vạch và văn bản danh mục với OCR, truy vấn MusicBrainz và Discogs, và tương ứng với kết quả. Thẻ âm thanh gắn không phải là bằng chứng nhận dạng trực tuyến.
+
+Thiết lập ** Nguồn siêu dữ liệu mặc định ** có ba giá trị. ** Không có ** tạo một bản thảo trống và không bắt đầu làm việc siêu dữ liệu. ** Thẻ của tệp ** đọc và áp dụng ảnh chụp thẻ. ** Tìm trên mạng ** mở luồng làm việc trực tuyến; khi ** Tự động nhận dạng ** được bật, nó cũng xếp vào hàng để trích xuất bằng chứng, truy vấn nhà cung cấp, và khớp. Hành động tìm kiếm và nhận dạng trực tuyến rõ ràng vẫn có sẵn khi nhận dạng tự động bị tắt.
 
 ### Thẻ của tệp
 
-Thẻ tệp chỉ đọc thẻ âm thanh nhúng và siêu dữ liệu CUE khi cần. Bản xem trước lưu một bản chụp gắn với thế hệ quét, phiên bản chỉnh sửa tệp và các tệp âm thanh đã quan sát của ứng viên. Chọn **Dùng Thẻ tệp** sẽ chọn bản chụp đó. Khi ghi, bae dùng chính bản chụp này và dừng trước khi ghi vào thư viện nếu dấu phiên bản hoặc các quan sát đã thay đổi; bae không âm thầm đọc một câu trả lời khác.
+Thẻ của tệp đọc các thẻ âm thanh và siêu dữ liệu CUE nhồi nhét lười biếng trừ khi nó là cấu hình mặc định cho một ứng cử viên mới phát hiện. Xem trước lưu một bức ảnh chụp được dán tem với việc tạo quét ứng cử viên, bản sửa đổi tập tin, và các tập tin âm thanh quan sát. Áp dụng thay thế nó bằng bản thảo từ chính xác bức ảnh chụp đó. Nhập khẩu tiêu thụ cùng một bức ảnh chụp và thất bại trước khi thư viện viết nếu tem hoặc quan sát của nó thay đổi; nó không đọc một câu trả lời khác.
 
-### Thủ công
-
-Thủ công không đọc hay ghi siêu dữ liệu từ nguồn nào. Chọn **Nhập thủ công** tạo một bản phát hành trống có thể chỉnh sửa nhưng vẫn giữ bố cục track vật lý đã quét.
-
-Cài đặt **Mở ứng viên chưa chọn nguồn trong** quyết định chế độ hiển thị ban đầu cho ứng viên chưa có nguồn. Các lựa chọn cố định là Tra cứu, Thẻ tệp và Thủ công; **Dùng gần nhất** được phân giải thành chế độ cuối cùng người dùng đã chọn rõ ràng. Chế độ hiển thị vẫn tách biệt với nguồn đã lưu.
+Đăng nhập trực tiếp không thực hiện I/ O siêu dữ liệu. Các trường phát hành và dấu vết của bản thảo trống có thể được chỉnh sửa ngay lập tức, và nó trở nên có thể nhập khi các trường cần thiết và bản đồ được xác nhận. Danh sách ứng cử viên không xử lý nguồn thiếu như một lỗi hoặc yêu cầu chú ý.
 
 ## Nguồn
 

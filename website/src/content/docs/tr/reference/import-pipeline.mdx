@@ -1,6 +1,6 @@
 ---
 title: İçe aktarma boru hattı
-description: Tarama, meta veri tohumları ve atomik taahhüt
+description: Tarama, meta veri taslakları ve atomik gönderme
 ---
 
 İçe aktarma, dosyaların bir baytını değiştirmeden bir dosya klasörünü katalog girişine dönüştürür. Bu sayfa, [kılavuzu kullanın](REHBERURL)'de açıklanan akışın ardındaki kanaldır.
@@ -11,25 +11,23 @@ description: Tarama, meta veri tohumları ve atomik taahhüt
 
 Bir CUE sayfası tek bir ses imajını parça listesine dönüştürür. Ayrıştırıcı pregap'leri ve postgap'leri, parça başına performers ve ISRC'leri, hem tek dosyalı imajları hem de parça başına tek dosya CUE yerleşimlerini işler. Parça sınırları CUE frame'lerinden (saniyenin 1/75'i) kesin örnek konumlarına dönüştürülür; bunlar daha sonra çalmanın kullandığı bayt ve örnek pencereleri olur.
 
-## Meta veri tohumları
+## Meta veri taslakları
 
-Her adayın açık bir meta veri kaynağı vardır: **Arama**'da seçilen harici bir sürüm, depolanan **Dosya Etiketleri** anlık görüntüsü veya **Elle** girişi. Yüzeyleri değiştirmek o tohumu yeniden yazmaz.
+Her aday bir düzenlenebilir meta veri taslağı ve seçenek kaynağı depolar. Taslak boş, doğrudan doldurulmuş, dış bir yayından doldurulmuş veya depolanan bir dosya-etiket snapshot'undan doldurulmuş olabilir. Kaynak kayıtları mevcut taslağın başladığı yerdedir; daha sonraki düzenlemeler onu silmez. Doğrudan giriş ve temizlenmiş bir taslak kaynağı yoktur.
 
-### Arama
+Üst meta veri slotu ya taslağı, Çevrimiçi bul tarayıcısını ya da Dosya etiketleri tarayıcısını gösterir. Bir tarayıcıyı açmak veya kapatmak taslağı yeniden yazmaz. Uygula bir kaynağı değiştirmek, dosya rollerini, CUE bağlantılarını, disk görevlendirmelerini ve diğer haritalama kararlarını korurken tek bir veritabanı işleminde taslağı, kaynakını ve seçilen kaynak kapağını değiştirir.
 
-Arama, Disk Kimliğini çıkaran, barkodları ve katalog metnini tanıyan, sağlayıcıları sorgulayan ve sonuçları eşleştiren tek yoldur. Arka plan taraması bu yolu yalnızca otomatik Arama etkinleştirildiğinde ve yapılandırılmış varsayılan Arama olarak çözümlendiğinde çalıştırılır. Açık bir Arama eylemi, bu ayardan bağımsız olarak onu çalıştırabilir. Dosya Etiketlerini veya Kılavuzu açmak hiçbir zaman ayıklamayı, sağlayıcı sorgularını veya eşleştirmeyi başlatmaz.
+### Çevrimiçi bul
 
-Gömülü ses etiketleri Arama kanıtı değildir: baskının ne olduğunu değil, etiketleyicinin neye inandığını tanımlarlar. Arama sonuçları kökenlerini taşır, böylece arayüz her sonucun neden sunulduğunu açıklayabilir.
+Çevrimiçi bul tanımlamayı yürüten tek yoldur. Bir kopyalama log'undan veya CUE sayfasından bir Disc ID hesaplar, OCR ile barkodları ve katalog metnini tanır, MusicBrainz ve Discogs sorgular ve sonuçları eşleştirir. Entegre ses etiketleri çevrimiçi tanımlama kanıtı değildir.
+
+** Varsayılan meta veri kaynağı ** ayarının üç değeri vardır. ** Yok ** boş bir taslak oluşturur ve meta veri çalışması başlatmaz. ** Dosya etiketleri ** etiket snapshot'unu okur ve uygular. ** Çevrimiçi bul ** çevrimiçi iş akışını açar; ** Otomatik tanımla ** etkinleştirildiğinde kanıt çıkarma, sağlayıcı sorguları ve eşleştirme kuyruklarını da oluşturur. Otomatik tanımlama kapatılınca açık çevrimiçi arama ve tanımlama eylemleri kullanılabilir kalır.
 
 ### Dosya etiketleri
 
-Dosya etiketleri, gömülü ses etiketlerini ve CUE meta verilerini yalnızca istendiğinde okur. Önizleme; tarama kuşağı, dosya düzenleme sürümü ve gözlemlenen ses dosyalarıyla ilişkili bir anlık görüntü saklar. **Dosya etiketlerini kullan** bu görüntüyü seçer. Onaylama aynı görüntüyü kullanır ve işareti ya da gözlemleri değişmişse kitaplığa yazmadan önce başarısız olur; farklı bir yanıt sessizce okunmaz.
+Dosya etiketleri yeni keşfedilen bir aday için varsayılan olarak ayarlanmış olmadıkça, entegre ses etiketlerini ve CUE meta verilerini tembelce okur. Önizleme, adayın tarama üretimi, dosya-düzenleme revizyonu ve gözlemlenen ses dosyalarıyla damgalanmış bir snapshot depolar. Uygula onu değiştirerek tam olarak o snapshot'tan taslağı değiştirir. İthalat aynı snapshot'u kullanır ve damgası veya gözlemleri değiştiğinde kütüphane yazmadan önce başarısız olur; farklı bir cevap okumaz.
 
-### Elle
-
-Elle, meta veri girişi veya çıkışı gerçekleştirmez. **Elle Olarak Girin**'in seçilmesi, taranan fiziksel parça düzenini korurken boş, düzenlenebilir bir yayın oluşturur.
-
-**Başlatılmamış adayları şurada aç** ayarı, çekirdeksiz adaylar için başlangıç ​​yüzeyini seçer. Sabit seçenekleri Arama, Dosya Etiketleri ve El Kitabıdır; **Son Kullanılan**, kullanıcı tarafından açıkça seçilen son moda çözümlenir. Sunum depolanan tohumdan ayrı kalır.
+Doğrudan giriş meta veri I/O yapmaz. Boş taslağın serbest bırakma ve izleme alanları derhal düzenlenebilir ve gerekli alanlar ve haritalar doğrulandıktan sonra ithal edilebilir olur. Aday listesi eksik kaynakları bir hata veya dikkat talebi olarak değerlendirmez.
 
 ## Kaynaklar
 

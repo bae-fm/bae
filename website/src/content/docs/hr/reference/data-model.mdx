@@ -10,8 +10,8 @@ Katalog bae običan je SQLite, prijavljen [coven](https://coven.bae.fm)-u tablic
 Sinkronizirano srce sheme:
 
 - **`artists`**, **`albums`**, **`works`**: sloj grupiranja. Album okuplja svoja izdanja i pokazuje na primarno; djela tvore roditelj/dijete graf za klasičnu strukturu.
-- **`releases`**: središnji entitet, jedan redak po tiskanom izdanju. Nosi činjenice o tisku (izdavač, kataloški broj, barkod, zemlja, format, godina), izvor metapodataka, hash sadržaja uvezene mape i izmjerenu glasnoću albuma.
-- **`release_identities`**: što izdanje *jest*, po izvoru. Bez redaka znači nepoznato; MusicBrainz ili Discogs redak s ID-jem izdanja znači točno; bez njega, približno. Izdanje može držati identitete u oba izvora odjednom.
+- **`releases`**: središnji entitet, jedan redak po tiskanju. Nosi činjenice o tiskanju (oznaka, broj kataloga, crtični kod, zemlja, format, godina), opcijski izvor metapodataka, hash sadržaja uvezene mape i izmjerenu glasnoću albuma. Bez podrijetla znači da su metapodaci uneseni izravno; vanjsko podrijetlo naziva točno izvorno izdanje, dok Oznake datoteka bilježi lokalni izvor snimke.
+- **`release_identities`**: točni vanjski identiteti za ono što izdanje *je*. Bez redaka znači da nema vanjskog identiteta. Svaki redak naziva izdanje MusicBrainz ili Discogs i grupu izdanja, a izdanje može sadržavati identitete u oba izvora odjednom. Ovo je odvojeno od podrijetla: identitet se može promijeniti bez tvrdnje da su trenutni metapodaci koji se mogu uređivati resetirani iz tog izvora.
 - **`tracks`** s **`track_artists`**, plus **`release_artist_roles`** i **`track_artist_roles`**: popisi pjesama i zasluge, svaka zasluga označena svojim izvorom.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: snimke povezane s djelima koja izvode.
 - **`audio_formats`** i **`audio_format_segments`**: specifikacije reprodukcije. Po pjesmi: kodek, frekvencija uzorkovanja, dubina bita, kanali, izmjerena glasnoća i vrh te duljine pregapova. Segmenti preslikavaju pjesmu na uređene prozore bajtova i uzoraka njezinih izvornih datoteka, što omogućuje da pjesma iz CUE ripa, uključujući pregap, obuhvati područja jedne velike datoteke ili više datoteka.
@@ -25,7 +25,7 @@ Potpuno lokalne tablice, nikad prijavljene covenu:
 
 - **`playback_state`**: trenutačna pjesma, položaj, red čekanja, glasnoća, nasumični redoslijed i ponavljanje. Reprodukcija je činjenica uređaja.
 - **`imports`**: praćenje operacije uvoza.
-- **`release_metadata`**: arhivirani sirovi JSON iz MusicBrainza i Discogsa, čuvan za buduće ponovno tumačenje.
+- **`source_release_payloads`**: arhivirani sirovi JSON iz MusicBrainz i Discogs, ključan prema izdavateljskom izdanju, a ne prema lokalnom izdanju.Podržava točno resetiranje i ponovnu interpretaciju bez mijenjanja sinkroniziranog grafikona kataloga.
 
 Svaka sinkronizirana tablica nosi `_updated_at` stupac hibridnog logičkog sata, registar prema kojem covenovo spajanje polje po polje redoslijedi istodobne izmjene; test provjerava da su sinkronizirani skup i skup koji nosi sat točno jednaki.
 

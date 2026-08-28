@@ -10,8 +10,8 @@ Katalog bae to zwykłe SQLite, deklarowane do [coven](https://coven.bae.fm) tabe
 Synchronizowane serce schematu:
 
 - **`artists`**, **`albums`**, **`works`**: warstwa grupowania. Album agreguje swoje wydania i wskazuje podstawowe; dzieła tworzą graf rodzic/dziecko dla struktury klasycznej.
-- **`releases`**: główna encja, jeden wiersz na tłoczenie. Niesie fakty o tłoczeniu (wytwórnia, numer katalogowy, kod kreskowy, kraj, format, rok), źródło metadanych, hash treści importowanego folderu i zmierzoną głośność albumu.
-- **`release_identities`**: czym wydanie *jest*, per źródło. Brak wierszy oznacza nieznane; wiersz MusicBrainz albo Discogs z identyfikatorem wydania oznacza dokładne; bez niego przybliżone. Wydanie może mieć tożsamości w obu źródłach naraz.
+- **`releases`**: jednostka centralna, jeden wiersz na każde naciśnięcie. Przenosi fakty naciskania (etykieta, numer katalogowy, kod kreskowy, kraj, format, rok), opcjonalne pochodzenie metadanych, hash zawartości importowanego folderu i zmierzoną głośność albumu. Brak pochodzenia oznacza, że metadane zostały wprowadzone bezpośrednio; pochodzenie zewnętrzne określa dokładne wydanie źródłowe, podczas gdy Tagi plików rejestruje lokalne źródło migawki.
+- **`release_identities`**: dokładne tożsamości zewnętrzne tego, czym wydanie *jest*. Brak wierszy oznacza brak tożsamości zewnętrznej. Każdy wiersz nazywa wydanie MusicBrainz lub Discogs i grupę wydań, a wydanie może zawierać tożsamości w obu źródłach jednocześnie. Jest to odrębne od pochodzenia: tożsamość może się zmienić bez twierdzenia, że bieżące edytowalne metadane zostały zresetowane z tego źródła.
 - **`tracks`** z **`track_artists`**, plus **`release_artist_roles`** i **`track_artist_roles`**: listy utworów i przypisania, każde przypisanie oznaczone źródłem.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: nagrania połączone z dziełami, które wykonują.
 - **`audio_formats`** i **`audio_format_segments`**: specyfikacje odtwarzania. Per utwór: kodek, częstotliwość próbkowania, głębia bitowa, kanały, zmierzona głośność i szczyt oraz długości pregapów. Segmenty mapują utwór na uporządkowane okna bajtów i próbek jego plików źródłowych; tak utwór z ripu CUE, włącznie z pregapem, może obejmować regiony jednego dużego pliku albo kilku plików.
@@ -25,7 +25,7 @@ Tabele w pełni lokalne, nigdy niedeklarowane do coven:
 
 - **`playback_state`**: bieżący utwór, pozycja, kolejka, głośność, losowanie i powtarzanie. Odtwarzanie jest faktem urządzenia.
 - **`imports`**: śledzenie operacji importu.
-- **`release_metadata`**: zarchiwizowany surowy JSON z MusicBrainz i Discogs, zachowany do przyszłej ponownej interpretacji.
+- **`source_release_payloads`**: zarchiwizowane surowe JSON z MusicBrainz i Discogs, kluczowane przez wydanie dostawcy, a nie przez wydanie lokalne.Obsługuje dokładne resetowanie i ponowną interpretację bez zmiany zsynchronizowanego wykresu katalogu.
 
 Każda synchronizowana tabela niesie kolumnę `_updated_at` z hybrydowym zegarem logicznym, rejestr, według którego coven porządkuje równoległe edycje pole po polu; test wymusza, że zestaw synchronizowany i zestaw niosący zegar są dokładnie równe.
 

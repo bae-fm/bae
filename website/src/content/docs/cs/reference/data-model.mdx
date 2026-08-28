@@ -10,8 +10,8 @@ Katalog bae je běžné SQLite, deklarované pro [coven](https://coven.bae.fm) t
 Synchronizované jádro schématu:
 
 - **`artists`**, **`albums`**, **`works`**: seskupovací vrstva. Album sdružuje svá vydání a ukazuje na primární; díla tvoří graf rodič/potomek pro klasickou strukturu.
-- **`releases`**: centrální entita, jeden řádek na lisování. Nese údaje o lisování (vydavatelství, katalogové číslo, čárový kód, země, formát, rok), zdroj metadat, hash obsahu importované složky a změřenou hlasitost alba.
-- **`release_identities`**: co vydání *je*, podle zdroje. Žádné řádky znamenají neznámé; řádek MusicBrainz nebo Discogs s ID vydání znamená přesné; bez něj přibližné. Vydání může držet identity v obou zdrojích najednou.
+- **`releases`**: centrální entita, jeden řádek pro každé lisování. Nese informace o lisování (název, katalogové číslo, čárový kód, země, formát, rok), volitelná metadata o původu, hash obsahu importované složky a naměřenou hlasitost alba. Žádná provenience znamená, že metadata byla zadána přímo; externí provenience jmenuje přesné vydání zdroje, zatímco Značky souborů zaznamenává místní zdroj snapshotu.
+- **`release_identities`**: přesná externí identita toho, čím vydání *je*. Žádné řádky znamenají žádnou externí identitu. Každý řádek pojmenovává vydání a skupinu vydání MusicBrainz nebo Discogs a vydání může obsahovat identity v obou zdrojích současně. Toto je odděleno od provenience: identita se může změnit bez tvrzení, že aktuální editovatelná metadata byla z tohoto zdroje resetována.
 - **`tracks`** s **`track_artists`**, plus **`release_artist_roles`** a **`track_artist_roles`**: seznamy stop a kredity, každý kredit označený svým zdrojem.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: nahrávky propojené s díly, která provádějí.
 - **`audio_formats`** a **`audio_format_segments`**: specifikace přehrávání. Pro každou stopu: kodek, vzorkovací frekvence, bitová hloubka, kanály, změřená hlasitost a špička a délky pregapů. Segmenty mapují stopu na seřazená okna bajtů a vzorků jejích zdrojových souborů; tak může stopa z CUE ripu včetně pregapu pokrývat oblasti jednoho velkého souboru nebo několika souborů.
@@ -25,7 +25,7 @@ Plně místní tabulky, nikdy nedeklarované pro coven:
 
 - **`playback_state`**: aktuální stopa, pozice, fronta, hlasitost, náhodné pořadí a opakování. Přehrávání je fakt zařízení.
 - **`imports`**: sledování importních operací.
-- **`release_metadata`**: archivovaný surový JSON z MusicBrainz a Discogs, uchovaný pro budoucí znovuvyložení.
+- **`source_release_payloads`**: archivované surové JSON z MusicBrainz a Discogs, klíčované podle vydání poskytovatele spíše než podle místního vydání.Podporuje přesné resetování a reinterpretaci bez změny synchronizovaného grafu katalogu.
 
 Každá synchronizovaná tabulka nese sloupec `_updated_at` s hybridními logickými hodinami, registr, podle kterého coven řadí souběžné úpravy po polích; test vynucuje, že synchronizovaná množina a množina nesoucí hodiny jsou přesně stejné.
 

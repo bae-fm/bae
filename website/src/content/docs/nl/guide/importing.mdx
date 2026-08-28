@@ -22,29 +22,29 @@ Een scan herkent releases in de vormen die rips echt hebben:
 
 bae importeert de formaten die het afspeelt: FLAC, MP3, APE, ALAC en AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack en DSD (`.dsf`/`.dff`). Artwork en documenten (CUE-sheets, riplogs, tekstbestanden) in de map worden herkend en bij de release bewaard.
 
-## Kies een metadatabron
+## Vul het concept van de metagegevens in
 
-Elke kandidaat biedt drie gelijke metadatabronnen: **Opzoeken**, **Bestandstags** en **Handmatig**. Als je een bron opent, zie je alleen de oppervlakte ervan; het verandert niets aan de bron die de kandidaat zal importeren. Een bron wordt alleen het metadatazaad van de kandidaat als u expliciet een persing kiest, **Bestandstags gebruiken** selecteert of **Handmatig invoeren** selecteert.
+Elke kandidaat heeft één bewerkbare metadata-concept, dat leeg kan beginnen, kan worden ingevuld vanuit een online release of kan worden ingevuld vanuit de tags van de bestanden. Het typen in het lege concept is een directe invoer, geen aparte metadatabron.
 
-### Opzoeken
+Als u ** Online zoeken…** of ** Bestandstags…** opent, wordt de bovenste kaart vervangen door de browser van die bron zonder de conceptversie te wijzigen. Toepasseneen resultaat opent, wordt de conceptversie vervangen en keert u terug naar de bewerkbare kaart. Gebruik het menu van de kaart om een andere release te zoeken, bestandstags toe te passen of de metagegevens te wissen en terug te keren naar een lege conceptversie.
 
-Opzoeken is de enige bron die een release identificeert. Het leest een schijf-ID uit een riplog of CUE-blad, herkent streepjescodes en catalogustekst, vraagt ​​MusicBrainz en Discogs op en vergelijkt de resultaten. Automatische identificatie gebruikt hetzelfde opzoekpad. Het wordt alleen uitgevoerd als **Opzoekkandidaten automatisch identificeren** is ingeschakeld en het standaardoppervlak wordt omgezet in Opzoeken. Door Opzoeken in te voeren en een zoekopdracht te starten, kan deze expliciet worden uitgevoerd, ongeacht die instelling. Niets van dit werk wordt uitgevoerd in Bestandstags of Handmatig.
+### Online zoeken
+
+Online zoeken is het enige pad dat een release identificeert.Het berekent een Disc ID van het rip log of CUE blad, herkent barcodes en catalogus tekst, zoekt MusicBrainz en Discogs, en vergelijkt de resultaten.
+
+Automatische identificatie gebruikt hetzelfde pad. De instelling ** Standaardbron voor metagegevens ** kiest ** Online zoeken **, ** Bestandstags ** of ** Geen ** voor nieuw ontdekte kandidaten. Als Online zoeken is geselecteerd, bepaalt ** Automatisch identificeren ** of bewijsextractie, OCR, providerquery's en matching automatisch starten. Een expliciet online zoek- of identificeercommando blijft beschikbaar wanneer het is uitgeschakeld. Geen van dit werk wordt uitgevoerd voor Bestandstags of Geen.
 
 ### Bestandstags
 
-Bestandstags lezen ingebedde audiotags en CUE-metagegevens alleen wanneer u deze opent en bae vraagt deze te lezen. Bekijk het voorbeeld en selecteer vervolgens **Bestandstags gebruiken** om de exacte momentopname als kiem op te slaan. Het importeren mislukt voordat er naar de bibliotheek wordt geschreven als de kandidaat of de waargenomen audiobestanden na de preview veranderen.
+Bestandstags leest ingesloten audiolabels en CUE-metagegevens wanneer de bron wordt geopend of als standaard wordt geconfigureerd.Bekijk de voorvertoning en selecteer vervolgens ** Toepassen ** om het concept te vervangen door die exacte momentopname.Importeren mislukt voordat u naar de bibliotheek schrijft als de kandidaat- of waargenomen audiobestanden na de voorvertoning worden gewijzigd.
 
-### Handmatig
-
-Handleiding leest geen tags, mapbewijs of online providers. Selecteer **Handmatig invoeren** om te beginnen met een lege, bewerkbare release en de fysieke tracklay-out van de kandidaat.
-
-In Importinstellingen kiest **Open niet-geplaatste kandidaten in** welk oppervlak een niet-geplaatste kandidaat het eerst opent. **Laatst gebruikt** wordt omgezet naar de laatste bron die u expliciet hebt geopend. Deze instelling kiest een oppervlak, geen zaadje; de expliciete bronactie bevestigt nog steeds wat de import zal gebruiken.
+De bewerkbare kaart toont een stille Bestandstags chip nadat die snapshot is toegepast, een draft die alleen door te typen is ingevuld heeft geen bronchip.
 
 ## Bevestigen en importeren
 
 Het bevestigingspaneel toont alles wat de import zal schrijven:
 
-- **Hoes.** Gekozen uit de art van de databases, afbeeldingen in je map, of art ingesloten in de bestanden. Je kunt hem later wijzigen.
+- ** Omslag.** Gekozen uit de afbeeldingen in de databases, afbeeldingen in uw map of afbeeldingen die zijn ingesloten in de bestanden.Sleep een afbeelding uit de galerij met kandidaten naar het omslagvak, of wijzig deze later.
 - **Metadata.** Album, artiest, jaar, label, catalogusnummer, land, barcode, en elke track: allemaal hier bewerkbaar voordat iets wordt opgeslagen.
 - **Opslag.** Als een cloud-home is gekoppeld, kies je of bae de bestanden in je cloud moet beheren, en of ook een lokale kopie moet worden bewaard. Zie [Opslag en offline](/nl/guide/storage).
 

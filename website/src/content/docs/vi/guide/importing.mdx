@@ -22,29 +22,29 @@ Một lượt quét nhận ra bản phát hành theo các hình dạng mà bản
 
 bae nhập các định dạng nó phát: FLAC, MP3, APE, ALAC và AAC trong `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack và DSD (`.dsf`/`.dff`). Artwork và tài liệu (CUE sheet, log rip, tệp văn bản) trong thư mục được nhận ra và giữ cùng bản phát hành.
 
-## Chọn nguồn siêu dữ liệu
+## Điền siêu dữ liệu
 
-Mỗi ứng viên đều cung cấp ba nguồn siêu dữ liệu như nhau: **Tra cứu**, **Thẻ tệp** và **Thủ công**. Mở ra một nguồn chỉ lộ ra bề ngoài của nó; nó không thay đổi nguồn mà ứng viên sẽ nhập. Nguồn chỉ trở thành hạt giống siêu dữ liệu của ứng viên khi bạn chọn cách nhấn một cách rõ ràng, chọn **Sử dụng thẻ tệp** hoặc chọn **Nhập thủ công**.
+Mỗi ứng cử viên sở hữu một bản thảo siêu dữ liệu có thể chỉnh sửa. Nó có thể bắt đầu trống, được điền từ một bản phát hành trực tuyến, hoặc được điền từ các thẻ của tập tin. Viết vào bản thảo trống là nhập trực tiếp, không phải là một nguồn siêu dữ liệu riêng biệt.
 
-### Tra cứu
+Mở ** Tìm trên mạng…** hoặc ** Thẻ của tệp…** sẽ thay thế thẻ trên cùng bằng trình duyệt của nguồn mà không thay đổi bản thảo. Áp dụng sẽ thay thế bản thảo và quay trở lại thẻ có thể chỉnh sửa. Dùng thực đơn thẻ để tìm một bản phát hành khác, áp dụng thẻ tập tin, hoặc xóa siêu dữ liệu và quay trở lại bản thảo trống. Xoá siêu dữ liệu sẽ giữ các tập tin ứng cử viên và bố cục bài hát.
 
-Tra cứu là nguồn duy nhất xác định một bản phát hành. Nó đọc ID đĩa từ nhật ký trích xuất hoặc trang CUE, nhận dạng mã vạch và văn bản danh mục, truy vấn MusicBrainz và Discogs, đồng thời khớp kết quả. Nhận dạng tự động sử dụng cùng đường dẫn Tra cứu này. Nó chỉ chạy khi **Xác định các ứng viên Tra cứu tự động** được bật và bề mặt mặc định chuyển thành Tra cứu. Việc nhập Tra cứu và bắt đầu tìm kiếm có thể chạy nó một cách rõ ràng bất kể cài đặt đó. Không có tác phẩm nào trong số này chạy trong Thẻ tệp hoặc Thủ công.
+### Tìm trên mạng
+
+Tìm trên mạng là con đường duy nhất xác định một bản phát hành. Nó tính toán một Disc ID từ bản ghi rip hoặc trang CUE, nhận dạng mã vạch và văn bản danh mục, truy vấn MusicBrainz và Discogs, và kết hợp kết quả.
+
+Tự động nhận dạng cũng sử dụng cùng một đường dẫn này. Thiết lập ** Nguồn siêu dữ liệu mặc định ** chọn ** Tìm trên mạng **, ** Thẻ của tệp **, hoặc ** Không có ** cho các ứng cử viên mới phát hiện. Với Tìm trên mạng đã chọn, ** Tự động nhận dạng ** điều khiển việc lấy ra bằng chứng, OCR, truy vấn nhà cung cấp, và khởi chạy tương ứng tự động. Một lệnh tìm kiếm trực tuyến hay nhận dạng rõ ràng vẫn có sẵn khi tắt. Không có của công việc này chạy cho Thẻ của tệp hoặc Không có.
 
 ### Thẻ của tệp
 
-Thẻ tệp chỉ đọc thẻ âm thanh được nhúng và siêu dữ liệu CUE khi bạn mở nó và yêu cầu bae đọc chúng. Xem lại bản xem trước, sau đó chọn **Sử dụng thẻ tệp** để lưu trữ ảnh chụp nhanh chính xác đó làm hạt giống. Quá trình nhập không thành công trước khi ghi vào thư viện nếu tệp âm thanh dự kiến ​​hoặc được quan sát thay đổi sau khi xem trước.
+Thẻ của tệp đọc thẻ âm thanh gắn vào và siêu dữ liệu CUE khi nguồn được mở hoặc cấu hình như mặc định. Xem thử xem trước, sau đó chọn ** Áp dụng ** để thay thế bản thảo với chính xác bức ảnh chụp đó. Nhập nhập thất bại trước khi ghi vào thư viện nếu các tập tin âm thanh ứng cử hoặc quan sát thay đổi sau khi xem trước.
 
-### Thủ công
-
-Thủ công không đọc thẻ, bằng chứng trong thư mục hay nhà cung cấp trực tuyến. Chọn **Nhập thủ công** để bắt đầu với một bản phát hành trống có thể chỉnh sửa và bố cục track vật lý của ứng viên.
-
-Trong cài đặt Nhập, **Mở các ứng cử viên chưa được xếp hạt giống trong** chọn bề mặt nào mà một ứng cử viên chưa được xếp hạt giống sẽ mở trước. **Được sử dụng lần cuối** giải quyết nguồn cuối cùng mà bạn đã mở một cách rõ ràng. Cài đặt này chọn bề mặt chứ không phải hạt giống; hành động nguồn rõ ràng vẫn xác nhận nội dung nhập sẽ sử dụng.
+Thẻ có thể chỉnh sửa hiển thị một con chíp Thẻ của tệp im lặng sau khi áp dụng bức ảnh chụp. Một bản thảo chỉ được điền bằng cách gõ không có con chíp nguồn.
 
 ## Xác nhận và nhập
 
 Khung xác nhận hiển thị mọi thứ lượt nhập sẽ ghi:
 
-- **Bìa.** Chọn từ artwork của cơ sở dữ liệu, ảnh trong thư mục của bạn, hoặc art nhúng trong tệp. Bạn có thể đổi nó sau.
+- ** Mặt bìa. ** Được chọn từ hình ảnh của cơ sở dữ liệu, hình ảnh trong thư mục của bạn, hoặc hình ảnh được nhúng trong các tập tin. Kéo một hình ảnh từ phòng tranh ứng cử lên mặt bìa hình vuông, hoặc thay đổi nó sau này.
 - **Siêu dữ liệu.** Album, nghệ sĩ, năm, hãng đĩa, số catalog, quốc gia, mã vạch và mọi track: tất cả đều sửa được ngay tại đây trước khi bất cứ thứ gì được lưu.
 - **Lưu trữ.** Nếu đã kết nối nhà trên đám mây, chọn liệu bae có quản lý tệp trong đám mây của bạn hay không, và có giữ thêm một bản cục bộ hay không. Xem [Lưu trữ và ngoại tuyến](/vi/guide/storage).
 

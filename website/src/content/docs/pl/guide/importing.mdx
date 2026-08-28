@@ -22,29 +22,29 @@ Skan rozpoznaje wydania w kształtach, jakie ripy rzeczywiście przyjmują:
 
 bae importuje formaty, które odtwarza: FLAC, MP3, APE, ALAC i AAC w `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack oraz DSD (`.dsf`/`.dff`). Grafiki i dokumenty (arkusze CUE, logi ripu, pliki tekstowe) w folderze są rozpoznawane i trzymane z wydaniem.
 
-## Wybierz źródło metadanych
+## Wypełnij szkic metadanych
 
-Każdy kandydat oferuje trzy równe źródła metadanych: **Wyszukiwanie**, **Tagi plików** i **Instrukcja**. Otwarcie źródła ukazuje jedynie jego powierzchnię; nie zmienia to źródła, które kandydat zaimportuje. Źródło staje się zalążkiem metadanych kandydata tylko wtedy, gdy wyraźnie wybierzesz naciśnięcie, wybierzesz **Użyj znaczników pliku** lub wybierz **Wprowadź ręcznie**.
+Każdy kandydat posiada jeden edytowalny szkic metadanych, który może być pusty, wypełniony z publikacji online lub z tagów plików. Wpisywanie do pustego szkicu jest bezpośrednim wpisem, a nie oddzielnym źródłem metadanych.
 
-### Wyszukiwanie
+Otwieranie ** Znajdź online…** lub ** Tagi plików…** zamienia górną kartę na przeglądarkę tego źródła bez zmiany szkicu. Zastosuji wynik zastępuje szkic i powraca do edytowanej karty. Użyj menu karty, aby znaleźć inną wersję, zastosować tagi plików lub wyczyścić metadane i powrócić do pustego szkicu. Wyczyszczenie metadanych zachowuje pliki kandydata i układ ścieżki.
 
-Wyszukiwanie jest jedynym źródłem identyfikującym wersję. Odczytuje identyfikator płyty z dziennika zgrania lub arkusza CUE, rozpoznaje kody kreskowe i tekst katalogu, wysyła zapytania do MusicBrainz i Discogs i dopasowuje wyniki. Automatyczna identyfikacja korzysta z tej samej ścieżki wyszukiwania. Działa tylko wtedy, gdy włączona jest opcja **Automatycznie identyfikuj kandydatów do wyszukiwania**, a domyślna powierzchnia zmienia się na opcję Wyszukaj. Wpisanie opcji Wyszukaj i rozpoczęcie wyszukiwania może spowodować jego jawne uruchomienie niezależnie od tego ustawienia. Żadna z tych prac nie działa w tagach plików ani w trybie ręcznym.
+### Znajdź online
+
+Znajdź online jest jedyną ścieżką, która identyfikuje wydanie. Oblicza DiscID z dziennika rip lub arkusza CUE, rozpoznaje kody kreskowe i tekst katalogu, zapytania MusicBrainz i Discogs i dopasowuje wyniki.
+
+Automatyczna identyfikacja używa tej samej ścieżki. Ustawienie ** Domyślne źródło metadanych ** wybiera ** Znajdź online **, ** Tagi plików ** lub ** Brak ** dla nowo odkrytych kandydatów. Przy wybranym Znajdź online ** Identyfikuj automatycznie ** kontroluje, czy wyodrębnianie dowodów, OCR, zapytania dostawców i dopasowywanie rozpoczyna się automatycznie. Polecenie wyszukiwania lub identyfikacji online pozostaje dostępne, gdy jest wyłączone. Brak tej pracy jest uruchamiane dla Tagi plików lub Brak.
 
 ### Tagi plików
 
-Tagi plików odczytują osadzone znaczniki audio i metadane CUE tylko wtedy, gdy je otworzysz i poprosisz o ich przeczytanie. Przejrzyj podgląd, a następnie wybierz opcję **Użyj znaczników plików**, aby zapisać dokładnie tę migawkę jako materiał źródłowy. Import nie powiedzie się przed zapisaniem do biblioteki, jeśli potencjalne lub zaobserwowane pliki audio ulegną zmianie po podglądzie.
+Tagi plików odczytuje osadzone znaczniki audio i metadane CUE, gdy źródło jest otwarte lub skonfigurowane jako domyślne. Przejrzyj podgląd, a następnie wybierz ** Zastosuj **, aby zastąpić wersję roboczą dokładną migawką. Importowanie nie powiedzie się przed zapisaniem do biblioteki, jeśli kandydujące lub obserwowane pliki audio zmienią się po podglądzie.
 
-### Ręcznie
-
-Instrukcja nie odczytuje żadnych tagów, dowodów w folderach ani dostawców online. Wybierz opcję **Wprowadź ręcznie**, aby rozpocząć od pustej, edytowalnej wersji i fizycznego układu ścieżki kandydata.
-
-W ustawieniach importu opcja **Otwórz nieobsadzonych kandydatów w** wybiera powierzchnię, którą niewykorzystany kandydat otworzy jako pierwszy. **Ostatnio używane** odnosi się do ostatniego jawnie otwartego źródła. To ustawienie wybiera powierzchnię, a nie ziarno; jawna akcja źródłowa nadal potwierdza, czego użyje import.
+Edytowalna karta pokazuje cichy układ Tagi plików po zastosowaniu migawki. Szkic wypełniony tylko przez wpisanie nie ma układu źródłowego. Tagi plików
 
 ## Potwierdzenie i import
 
 Panel potwierdzenia pokazuje wszystko, co import zapisze:
 
-- **Okładka.** Wybrana z grafik baz danych, obrazów w Twoim folderze albo grafiki osadzonej w plikach. Możesz ją później zmienić.
+- ** Okładka.** Wybrana z grafiki baz danych, obrazów w folderze lub grafiki osadzonej w plikach. Przeciągnij obraz z galerii kandydatów na kwadrat okładki lub zmień go później.
 - **Metadane.** Album, wykonawca, rok, wytwórnia, numer katalogowy, kraj, kod kreskowy i każdy utwór: wszystko edytowalne tutaj, zanim cokolwiek zostanie zapisane.
 - **Przechowywanie.** Jeśli podłączono dom w chmurze, wybierz, czy bae ma zarządzać plikami w Twojej chmurze i czy zachować też lokalną kopię. Zobacz [Przechowywanie i offline](/pl/guide/storage).
 

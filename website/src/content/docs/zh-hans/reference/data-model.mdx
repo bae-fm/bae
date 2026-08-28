@@ -10,8 +10,8 @@ bae 的目录是普通 SQLite，逐表声明给 [coven](https://coven.bae.fm)：
 schema 的同步核心：
 
 - **`artists`**、**`albums`**、**`works`**：分组层。专辑聚合自己的发行，并指向一个 primary；works 为古典结构形成父/子图。
-- **`releases`**：中心实体，每次压制一行。携带压制事实（厂牌、目录号、条码、国家或地区、格式、年份）、元数据来源、导入文件夹的 content hash，以及测量得出的专辑响度。
-- **`release_identities`**：一个发行按来源看*是什么*。没有行意味着未知；带 release ID 的 MusicBrainz 或 Discogs 行意味着精确；没有 release ID 则为近似。一个发行可以同时持有两个来源的 identities。
+- ** `releases` * : 中央实体,每次打印一行,包含打印事实(标签、目录编号、条形码、国家、格式、年份 ) 、 可选元数据来源、导入文件夹的内容哈希值和测量的专辑音量。 没有来源意味着元数据是直接输入的;外部来源指定了准确的源发行日期,而文件标签记录了本地快照来源。
+- ** `release_identities` * : 发布版本 * 的确切外部标识。 没有行意味着没有外部标识。 每行都命名一个 MusicBrainz 或 Discogs 发布版本和发布组,一个发布版本可以同时在两个来源中拥有标识。 这是与来源分开的:标识可以改变,而不声称当前可编辑的元数据是从该来源重置的。
 - **`tracks`** 与 **`track_artists`**，以及 **`release_artist_roles`** 和 **`track_artist_roles`**：曲目列表和署名，每个署名都标记来源。
 - **`track_works`**、**`work_parts`**、**`work_artists`**：录音链接到它们演奏的作品。
 - **`audio_formats`** 和 **`audio_format_segments`**：播放规格。按曲目记录 codec、采样率、位深、声道、测量响度和峰值，以及 pregap 长度。segments 把曲目映射到其来源文件的有序字节窗口和采样窗口，这就是 CUE 抓轨中的曲目（包括 pregap）可以跨越一个大文件或多个文件区域的方式。
@@ -25,7 +25,7 @@ schema 的同步核心：
 
 - **`playback_state`**：当前曲目、位置、队列、音量、随机和重复。播放是设备事实。
 - **`imports`**：导入操作跟踪。
-- **`release_metadata`**：从 MusicBrainz 和 Discogs 归档的原始 JSON，用于以后重新解释。
+- ** `source_release_payloads` ** : 从MusicBrainz和Discogs存档的原始JSON, 按提供商发布而不是本地发布键入,支持在不更改同步目录图形的情况下进行精确重置和重新解释。
 
 每个同步表都带 `_updated_at` hybrid-logical-clock 列，这是 coven 的逐字段合并用来排序并发编辑的 register；测试会保证同步表集合与带 clock 的表集合完全相等。
 

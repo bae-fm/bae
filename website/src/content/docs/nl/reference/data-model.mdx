@@ -10,8 +10,8 @@ De catalogus van bae is gewone SQLite, tabel voor tabel gedeclareerd aan [coven]
 Het gesynchroniseerde hart van het schema:
 
 - **`artists`**, **`albums`**, **`works`**: de groepeerlaag. Een album verzamelt zijn releases en wijst naar een primaire; werken vormen een ouder/kind-graaf voor klassieke structuur.
-- **`releases`**: de centrale entiteit, een rij per persing. Draagt de persingsfeiten (label, catalogusnummer, barcode, land, formaat, jaar), de metadatabron, een contenthash van de geimporteerde map, en gemeten albumloudness.
-- **`release_identities`**: wat een release *is*, per bron. Geen rijen betekent onbekend; een MusicBrainz- of Discogs-rij met een release-ID betekent exact; zonder een release-ID, bij benadering. Een release kan identiteiten in beide bronnen tegelijk hebben.
+- **`releases`**: de centrale entiteit, één rij per persing, bevat de persingsgegevens (label, catalogusnummer, barcode, land, formaat, jaar), optionele herkomst van de metagegevens, een hash van de inhoud van de geïmporteerde map en de gemeten albumluidheid. Geen herkomst betekent dat de metagegevens rechtstreeks zijn ingevoerd; externe herkomst geeft de exacte bronrelease aan, terwijl Bestandstags een lokale snapshotbron registreert.
+- **`release_identities`**: exacte externe identiteiten voor wat een release *is*. Geen rijen betekenen geen externe identiteit. Elke rij noemt een MusicBrainz of Discogs release en release groep, en een release kan identiteiten in beide bronnen tegelijkertijd bevatten. Dit is gescheiden van herkomst: identiteit kan veranderen zonder te beweren dat de huidige bewerkbare metadata van die bron is gereset.
 - **`tracks`** met **`track_artists`**, plus **`release_artist_roles`** en **`track_artist_roles`**: tracklijsten en credits, elke credit met zijn bron getagd.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: opnamen gekoppeld aan de werken die ze uitvoeren.
 - **`audio_formats`** en **`audio_format_segments`**: de afspeelspecificaties. Per track: codec, sample rate, bitdiepte, kanalen, gemeten loudness en peak, en pregaplengtes. Segmenten mappen een track op geordende byte- en samplevensters van zijn bronbestanden, waarmee een track uit een CUE-rip, inclusief pregap, regio's van een groot bestand of meerdere bestanden kan overspannen.
@@ -25,7 +25,7 @@ Volledig lokale tabellen, nooit aan coven gedeclareerd:
 
 - **`playback_state`**: huidige track, positie, wachtrij, volume, shuffle en repeat. Afspelen is een apparaatfeit.
 - **`imports`**: tracking van importbewerkingen.
-- **`release_metadata`**: gearchiveerde ruwe JSON van MusicBrainz en Discogs, bewaard voor latere herinterpretatie.
+- **`source_release_payloads`**: gearchiveerde onbewerkte JSON van MusicBrainz en Discogs, gecodeerd door providerrelease in plaats van door een lokale release.Het ondersteunt exacte reset en herinterpretatie zonder de gesynchroniseerde catalogusgrafiek te wijzigen.
 
 Elke gesynchroniseerde tabel draagt een `_updated_at` hybrid-logical-clock-kolom, het register waarmee coven gelijktijdige bewerkingen veld voor veld ordent; een test dwingt af dat de gesynchroniseerde set en de klokdragende set exact gelijk zijn.
 
