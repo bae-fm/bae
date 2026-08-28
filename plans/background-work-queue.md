@@ -234,9 +234,9 @@ Completed in `ffffafa81`.
 - Add view tests for the identity indicator and same-name choices on both
   desktop platforms.
 
-## Active and ordered queue
-
 ### Import metadata-source documentation
+
+Completed in `d367990e3`.
 
 - Replace the obsolete “unknown release” and automatic tag-fallback flow in the
   importing guide and import-pipeline reference.
@@ -248,3 +248,7 @@ Completed in `ffffafa81`.
 - Document the default metadata mode and Last Used setting.
 - Update every localized copy with a real translation and run the website and
   localization documentation checks.
+
+## Active and ordered queue
+
+No queued work.
