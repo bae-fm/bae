@@ -147,7 +147,7 @@ private struct ImportOperations: Sendable {
                 )
             },
             identifyForExplicitLookup: {
-                handle.autoIdentifyFolder(candidateKey: $0)
+                handle.identifyFolderForLookup(candidateKey: $0)
             },
             autoIdentifyRelease: {
                 handle.autoIdentifyRelease(candidateKey: $0, releaseId: $1)

@@ -4,7 +4,7 @@
 //! The sweep owns no pipeline of its own. It walks the candidates the scan
 //! already found, drives each through the existing extraction → identify pair
 //! at [`CallPriority::Background`], and writes the terminal verdict to
-//! `import_candidate_state`. What it adds over the per-selection path is
+//! `import_candidate_state`. What it adds over the explicit Lookup path is
 //! scheduling: which candidates still need answering, how many at once, and the
 //! one settle step that buys a single match's documents — the tracklist that
 //! decides Ready, and everything opening the candidate would otherwise re-fetch.
@@ -15,8 +15,9 @@
 //! Opening a view triggers nothing.
 //!
 //! **It is the one writer of `import_candidate_state`'s verdict**, including
-//! for runs it did not start: [`QueueSweepHandle::record_selection`] hangs a
-//! recorder off a candidate a person opened, so their answer persists too.
+//! for runs it did not start: [`QueueSweepHandle::record_explicit_lookup`]
+//! hangs a recorder off a candidate after a person enters Lookup, so their
+//! answer persists too.
 //! Everything that decides what to store lives here rather than being spread
 //! across the two producers. The row's other half — the user's sheet bindings —
 //! is written by the import handle, and writing it *clears* the verdict, which
@@ -238,7 +239,7 @@ struct InFlight {
     signals: Option<crate::signals::Signals>,
 }
 
-struct SelectionInFlight {
+struct ExplicitLookupInFlight {
     candidate: FolderCandidate,
     signals: Option<crate::signals::Signals>,
 }

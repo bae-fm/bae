@@ -826,8 +826,8 @@ internal static partial class NativeBae
     internal static (string? Text, string? Error) ReadTextFile(string path) =>
         CaptureBridgeValue(() => BaeBridgeMethods.ReadTextFile(path));
 
-    internal static void AutoIdentifyFolder(AppHandle handle, string candidateKey) =>
-        handle.AutoIdentifyFolder(candidateKey);
+    internal static void IdentifyFolderForLookup(AppHandle handle, string candidateKey) =>
+        handle.IdentifyFolderForLookup(candidateKey);
 
     internal static void AutoIdentifyRelease(AppHandle handle, string candidateKey, string releaseId) =>
         handle.AutoIdentifyRelease(candidateKey, releaseId);

@@ -327,7 +327,7 @@ public sealed class ImportSectionViewTests
                 resumed?.Add(key);
                 return Task.FromResult((true, (string?)null));
             },
-            AutoIdentifyFolder = _ => Task.FromResult(true),
+            IdentifyFolderForLookup = _ => Task.FromResult(true),
         };
         var playback = new PlaybackService
         {

@@ -23,7 +23,7 @@ private final class ImportSelectionHandle: AppHandle, @unchecked Sendable {
         return ImportSelectionSubscription()
     }
 
-    override func autoIdentifyFolder(candidateKey: String) {
+    override func identifyFolderForLookup(candidateKey: String) {
         identifyCalls.append(candidateKey)
     }
 

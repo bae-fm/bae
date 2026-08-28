@@ -142,14 +142,15 @@ impl AppHandle {
         self.services.extraction_register_analyzer(adapter);
     }
 
-    /// Start identifying a folder candidate. Identify subscribes first, then
-    /// extraction streams the candidate's `Signals` (disc ID, barcodes,
-    /// classified text) that identify looks up and the UI surfaces. Events
-    /// flow through the unified import event channel → bus → reducer → store,
-    /// and the verdict this reaches is persisted like the background sweep's —
-    /// core decides all of that, so this stays one call.
-    pub fn auto_identify_folder(&self, candidate_key: String) {
-        self.services.identify_folder_candidate(candidate_key);
+    /// Start Lookup for a folder candidate after the person explicitly enters
+    /// that metadata mode. Identify subscribes first, then extraction streams
+    /// the candidate's `Signals` (disc ID, barcodes, classified text) that
+    /// identify looks up and the UI surfaces. Events flow through the unified
+    /// import event channel → bus → reducer → store, and the verdict this
+    /// reaches is persisted like the background sweep's — core decides all of
+    /// that, so this stays one call.
+    pub fn identify_folder_for_lookup(&self, candidate_key: String) {
+        self.services.identify_folder_for_lookup(candidate_key);
     }
 
     /// Start re-identifying an existing library release. Extraction resolves
@@ -169,7 +170,7 @@ impl AppHandle {
 
     /// Stop a candidate's identify pipeline: cancels the identify driver and
     /// the in-flight signal extraction (artwork OCR) for `candidate_key`. The
-    /// inverse of `auto_identify_folder` / `auto_identify_release`; a no-op for
+    /// inverse of `identify_folder_for_lookup` / `auto_identify_release`; a no-op for
     /// a key with nothing running. Called when the UI tears the candidate down
     /// (the re-identify sheet closing).
     pub fn cancel_auto_identify(&self, candidate_key: String) {

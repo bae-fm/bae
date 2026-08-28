@@ -53,15 +53,15 @@ impl AppServices {
         self.inner.import.subscribe_events()
     }
 
-    /// Identify a folder candidate for a person who is looking at it: the run
-    /// goes out at `Interactive`, and its verdict is persisted like the sweep's
-    /// own.
+    /// Identify a folder candidate after the person explicitly enters Lookup:
+    /// the run goes out at `Interactive`, and its verdict is persisted like
+    /// the sweep's own.
     ///
     /// Re-identifying a library release is deliberately *not* routed through
     /// here: it has no candidate folder, so there is nothing to key a stored
     /// verdict by.
-    pub fn identify_folder_candidate(&self, candidate_key: String) {
-        self.inner.sweep.identify_for_selection(candidate_key);
+    pub fn identify_folder_for_lookup(&self, candidate_key: String) {
+        self.inner.sweep.identify_for_explicit_lookup(candidate_key);
     }
 
     /// Re-run a candidate's identification from the toolbar. Dispatches on
@@ -74,7 +74,7 @@ impl AppServices {
         if self.inner.identify.is_running(&candidate_key) {
             self.inner.identify.rerun(&candidate_key);
         } else {
-            self.inner.sweep.rerun_for_selection(candidate_key);
+            self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
         }
     }
 

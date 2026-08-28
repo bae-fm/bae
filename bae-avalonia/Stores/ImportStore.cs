@@ -830,7 +830,7 @@ internal sealed class ImportStore : IDisposable
     // shared with the configured background sweep, but this call is owned by
     // the person's Lookup action.
     public System.Threading.Tasks.Task<bool> StartInteractiveLookup(string candidateKey) =>
-        _import.AutoIdentifyFolder(candidateKey);
+        _import.IdentifyFolderForLookup(candidateKey);
 
     // Scan candidates, watched folders, and selection are per-library in-memory
     // state; clear them on teardown so the next library doesn't inherit the

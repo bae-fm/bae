@@ -499,19 +499,18 @@ impl Fixture {
         .expect("the completed scan surfaces every fixture candidate");
     }
 
-    /// What `ImportView.selectCandidate` does, through the one entry point core
-    /// exposes for it.
-    fn select(&self, dir: &Path) {
+    /// Enter Lookup for `dir` through the one explicit entry point core exposes.
+    fn start_explicit_lookup(&self, dir: &Path) {
         self.sweep
-            .identify_for_selection(dir.to_string_lossy().into_owned());
+            .identify_for_explicit_lookup(dir.to_string_lossy().into_owned());
     }
 
     /// Open `dir` and wait until identify has registered the driver for it.
     /// Registration happens on a spawned task, so a caller that needs the run
     /// to exist before it acts waits for it rather than guessing a delay.
-    async fn select_and_await_run(&self, dir: &Path) {
+    async fn start_explicit_lookup_and_await_run(&self, dir: &Path) {
         let key = dir.to_string_lossy().into_owned();
-        self.select(dir);
+        self.start_explicit_lookup(dir);
         tokio::time::timeout(Duration::from_secs(10), async {
             while !self.identify.is_running(&key) {
                 tokio::time::sleep(Duration::from_millis(10)).await;

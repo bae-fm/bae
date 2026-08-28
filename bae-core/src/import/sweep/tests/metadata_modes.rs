@@ -177,7 +177,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
         .set_automatic_import_metadata_lookup(false)
         .unwrap();
 
-    fixture.select(&dir);
+    fixture.start_explicit_lookup(&dir);
 
     tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
         .await

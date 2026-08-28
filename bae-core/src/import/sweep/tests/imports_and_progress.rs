@@ -437,7 +437,8 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
 }
 
 /// The case the ownership guard exists for, end to end: the sweep fails a
-/// candidate, the user then opens it, and the next pass must not take it back.
+/// candidate, the user then enters Lookup, and the next pass must not take it
+/// back.
 ///
 /// `identify.start` supersedes, so taking it would cancel their Interactive run
 /// and restart it in the background. This only holds because the sweep gives up
@@ -445,8 +446,8 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
 /// would claim this one forever.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_candidate_the_sweep_failed_then_the_user_opened_is_left_alone() {
-    let fixture = Fixture::new("failed-then-opened").await;
+async fn a_candidate_the_sweep_failed_then_the_user_looked_up_is_left_alone() {
+    let fixture = Fixture::new("failed-then-looked-up").await;
     fixture.extraction.register_analyzer(Arc::new(SlowAnalyzer {
         delay: Duration::from_millis(2_000),
     }));
@@ -466,8 +467,8 @@ async fn a_candidate_the_sweep_failed_then_the_user_opened_is_left_alone() {
         "the first pass learned nothing"
     );
 
-    // The user opens it.
-    fixture.select_and_await_run(&dir).await;
+    // The user enters Lookup.
+    fixture.start_explicit_lookup_and_await_run(&dir).await;
     assert!(fixture.identify.is_running(&key), "their run is in flight");
 
     let lookups_before = fixture.provider.count_containing("/discid/");
@@ -488,12 +489,12 @@ async fn a_candidate_the_sweep_failed_then_the_user_opened_is_left_alone() {
     );
 }
 
-/// The guard the priority exists for. A candidate someone has open is left
-/// alone — `identify.start` supersedes, so taking it would cancel their
+/// The guard the priority exists for. A candidate someone is looking up is
+/// left alone — `identify.start` supersedes, so taking it would cancel their
 /// Interactive run and restart it in the background.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn the_sweep_leaves_a_candidate_the_user_has_open_alone() {
+async fn the_sweep_leaves_a_candidate_the_user_is_looking_up_alone() {
     let fixture = Fixture::new("user-owns-it").await;
     // A slow OCR pass keeps the user's run in flight across the sweep.
     fixture.extraction.register_analyzer(Arc::new(SlowAnalyzer {
@@ -502,8 +503,8 @@ async fn the_sweep_leaves_a_candidate_the_user_has_open_alone() {
     let dir = fixture.barcode_candidate("Opened");
     fixture.scan(1).await;
 
-    // Identify registers the user's driver before the sweep plans.
-    fixture.select_and_await_run(&dir).await;
+    // Explicit Lookup registers the user's driver before the sweep plans.
+    fixture.start_explicit_lookup_and_await_run(&dir).await;
     assert!(
         fixture.identify.is_running(&dir.to_string_lossy()),
         "the user's run is in flight"

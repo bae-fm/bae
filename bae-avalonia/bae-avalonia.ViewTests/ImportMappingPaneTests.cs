@@ -269,7 +269,7 @@ public sealed class ImportMappingPaneTests
                 onEditField?.Invoke(key, field, value);
                 return Task.FromResult((true, (string?)null));
             },
-            AutoIdentifyFolder = key =>
+            IdentifyFolderForLookup = key =>
             {
                 identified?.Add(key);
                 return Task.FromResult(true);

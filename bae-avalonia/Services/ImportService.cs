@@ -104,9 +104,10 @@ internal sealed class ImportService
     public Func<string, string, BridgeFileRoleChoice, Task<(bool Current, string? Error)>> SetFileRole { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SetFileRole not wired");
 
-    /// <summary>Kick off auto-identification for an as-yet unidentified candidate.</summary>
-    public Func<string, Task<bool>> AutoIdentifyFolder { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: AutoIdentifyFolder not wired");
+    /// <summary>Identify an idle candidate after the person enters Lookup.</summary>
+    public Func<string, Task<bool>> IdentifyFolderForLookup { get; init; }
+        = _ => throw new InvalidOperationException(
+            "ImportService stub: IdentifyFolderForLookup not wired");
 
     /// <summary>Re-dispatch a candidate's lookups, keeping the user's signal
     /// exclusions.</summary>
@@ -230,8 +231,9 @@ internal sealed class ImportService
             session.RunForCurrentHandle(handle => NativeBae.SetSheetDisc(handle, candidateKey, sheetFileId, disc)),
         SetFileRole = (candidateKey, fileId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.SetFileRole(handle, candidateKey, fileId, choice)),
-        AutoIdentifyFolder = candidateKey =>
-            session.RunForCurrentHandle(handle => NativeBae.AutoIdentifyFolder(handle, candidateKey)),
+        IdentifyFolderForLookup = candidateKey =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.IdentifyFolderForLookup(handle, candidateKey)),
         RerunIdentifyForCandidate = candidateKey =>
             session.RunForCurrentHandle(handle => NativeBae.RerunIdentifyForCandidate(handle, candidateKey)),
         ToggleSignalForCandidate = (candidateKey, kind, value) =>

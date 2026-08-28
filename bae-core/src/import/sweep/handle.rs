@@ -39,9 +39,9 @@ impl QueueSweepHandle {
         }
     }
 
-    /// Identify a candidate explicitly selected by a person, regardless of the
-    /// automatic-lookup setting.
-    pub fn identify_for_selection(&self, candidate_key: String) {
+    /// Identify a candidate after a person explicitly enters Lookup,
+    /// regardless of the automatic-lookup setting.
+    pub fn identify_for_explicit_lookup(&self, candidate_key: String) {
         if self.token.is_cancelled() {
             return;
         }
@@ -51,42 +51,41 @@ impl QueueSweepHandle {
                 let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
                 else {
                     warn!(
-                        "cannot identify selection {candidate_key}: \
+                        "cannot start Lookup for {candidate_key}: \
                          it is not a folder candidate"
                     );
                     return;
                 };
                 if !has_stored_verdict(&this.context, &candidate_key).await {
-                    this.start_selection_run(candidate_key, candidate);
+                    this.start_explicit_lookup_run(candidate_key, candidate);
                 }
             },
             &self.runtime_handle,
         );
     }
 
-    /// Re-run an explicitly selected candidate without consulting its stored
-    /// verdict.
-    pub fn rerun_for_selection(&self, candidate_key: String) {
+    /// Re-run an explicit Lookup without consulting its stored verdict.
+    pub fn rerun_for_explicit_lookup(&self, candidate_key: String) {
         let this = self.clone();
         self.tasks.spawn_on(
             async move {
                 let Some(candidate) = actionable_candidate(&this.context, &candidate_key).await
                 else {
                     warn!(
-                        "cannot re-run selection {candidate_key}: \
+                        "cannot re-run Lookup for {candidate_key}: \
                          it is not a folder candidate"
                     );
                     return;
                 };
-                this.start_selection_run(candidate_key, candidate);
+                this.start_explicit_lookup_run(candidate_key, candidate);
             },
             &self.runtime_handle,
         );
     }
 
-    fn start_selection_run(&self, candidate_key: String, candidate: FolderCandidate) {
+    fn start_explicit_lookup_run(&self, candidate_key: String, candidate: FolderCandidate) {
         let run = self.context.identify.new_run();
-        self.record_selection(run, candidate_key.clone());
+        self.record_explicit_lookup(run, candidate_key.clone());
         self.context
             .identify
             .start(run, candidate_key.clone(), CallPriority::Interactive);
@@ -100,9 +99,9 @@ impl QueueSweepHandle {
         );
     }
 
-    /// Persist the verdict of an explicitly selected candidate after its lead
-    /// documents have been stored.
-    pub fn record_selection(&self, run: IdentifyRunId, candidate_key: String) {
+    /// Persist the verdict of an explicit Lookup after its lead documents have
+    /// been stored.
+    pub fn record_explicit_lookup(&self, run: IdentifyRunId, candidate_key: String) {
         let context = self.context.clone();
         let token = self.token.child_token();
         if self.token.is_cancelled() {
@@ -110,7 +109,7 @@ impl QueueSweepHandle {
         }
         self.tasks.spawn_on(
             async move {
-                record_selection_verdict(&context, run, candidate_key, &token).await;
+                record_explicit_lookup_verdict(&context, run, candidate_key, &token).await;
             },
             &self.runtime_handle,
         );

@@ -534,12 +534,12 @@ async fn a_settled_verdict_never_stores_without_its_documents() {
     );
 }
 
-/// Opening a candidate settles it too. A person's own run answers the candidate
-/// for good, and "answered" means the next launch opens it with no network —
-/// so the same step runs here, before the verdict is written.
+/// Explicit Lookup settles a candidate too. A person's own run answers the
+/// candidate for good, and "answered" means the next launch opens it with no
+/// network — so the same step runs here, before the verdict is written.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
+async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
     let fixture = Fixture::new("interactive-settles").await;
     fixture
         .extraction
@@ -560,11 +560,11 @@ async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
     );
     fixture.scan(1).await;
 
-    // Exactly what `selectCandidate` does.
-    fixture.select(&dir);
+    // Exactly what the explicit Lookup action does.
+    fixture.start_explicit_lookup(&dir);
     let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
         .await
-        .expect("the selection recorder stores the verdict");
+        .expect("the explicit Lookup recorder stores the verdict");
 
     let verdict = identify_result(&row).verdict.clone();
     let TerminalVerdict::Found { matches, .. } = &verdict else {
@@ -585,11 +585,11 @@ async fn opening_a_candidate_settles_its_lead_before_storing_the_verdict() {
     );
 
     // A later sweep pass finds nothing left to buy.
-    let after_selection = fixture.provider.requests().len();
+    let after_lookup = fixture.provider.requests().len();
     fixture.sweep_once().await;
     assert_eq!(
         fixture.provider.requests().len(),
-        after_selection,
+        after_lookup,
         "a settled row is finished: {:?}",
         fixture.provider.requests()
     );
@@ -815,7 +815,7 @@ async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
         release_json("mb-unskip-running", "rg-unskip-running", &[probed, 0]),
     );
     fixture.scan(2).await;
-    fixture.select(&stored);
+    fixture.start_explicit_lookup(&stored);
     fixture.await_row(&stored).await;
     fixture
         .import

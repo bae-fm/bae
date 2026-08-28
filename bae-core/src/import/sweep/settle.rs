@@ -210,7 +210,7 @@ pub(super) async fn has_stored_verdict(context: &SweepContext, candidate_key: &s
 /// own view, not a durable fact about the folder, and persisting it would leave
 /// the next launch showing a queue narrowed by exclusions nobody remembers
 /// making.
-pub(super) async fn record_selection_verdict(
+pub(super) async fn record_explicit_lookup_verdict(
     context: &SweepContext,
     run: IdentifyRunId,
     candidate_key: String,
@@ -224,7 +224,7 @@ pub(super) async fn record_selection_verdict(
         // re-identified. It has no content hash to key a row by.
         return;
     };
-    let mut entry = SelectionInFlight {
+    let mut entry = ExplicitLookupInFlight {
         candidate,
         signals: None,
     };
@@ -301,7 +301,7 @@ pub(super) async fn record_selection_verdict(
             Ok(_) => {}
             Err(broadcast::error::RecvError::Lagged(n)) => {
                 warn!(
-                    "sweep: selection recorder for {candidate_key} lagged by {n} events; writing no verdict"
+                    "sweep: explicit Lookup recorder for {candidate_key} lagged by {n} events; writing no verdict"
                 );
                 return;
             }

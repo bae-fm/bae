@@ -131,7 +131,7 @@ fn row_with_verdict(
     }
 }
 
-// ── 10. Selection resumes a stored verdict ──────────────────────────────────
+// ── 10. Lookup reuses a stored verdict ──────────────────────────────────────
 
 /// A several-match verdict, as identification stores one: the pressing is the
 /// open question, so no match carries a settled tracklist.
@@ -209,12 +209,11 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     );
 }
 
-/// Selecting an answered candidate starts nothing: no run, no lookup, no
-/// event. Its stored verdict is what the selection's own query serves as
-/// its identify state, so there is nothing left for a click to do.
+/// Entering Lookup for an answered candidate starts nothing: no run, no
+/// request, no event. Its stored verdict already supplies its identify state.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn selecting_an_answered_candidate_starts_nothing() {
+async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
     let fixture = Fixture::new("resume-answered").await;
     let dir = fixture.disc_id_candidate("Album");
     fixture.scan(1).await;
@@ -240,9 +239,9 @@ async fn selecting_an_answered_candidate_starts_nothing() {
     assert!(wrote, "the seeded verdict lands");
     let mut events = fixture.import.subscribe_events();
 
-    fixture.select(&dir);
+    fixture.start_explicit_lookup(&dir);
 
-    // The selection's verdict check is a detached task; a run it wrongly
+    // The Lookup verdict check is a detached task; a run it wrongly
     // started would broadcast `IdentifyStateChanged` within this window.
     let started = tokio::time::timeout(Duration::from_secs(2), async {
         loop {
@@ -256,11 +255,11 @@ async fn selecting_an_answered_candidate_starts_nothing() {
     .await;
     assert!(
         started.is_err(),
-        "selecting an answered candidate started a run"
+        "explicit Lookup for an answered candidate started a run"
     );
     assert!(
         fixture.provider.requests().is_empty(),
-        "selecting an answered candidate reached the wire: {:?}",
+        "explicit Lookup for an answered candidate reached the wire: {:?}",
         fixture.provider.requests()
     );
 }
@@ -402,7 +401,7 @@ async fn a_rerun_with_no_driver_runs_identification_again() {
 
     fixture
         .sweep
-        .rerun_for_selection(dir.to_string_lossy().into_owned());
+        .rerun_for_explicit_lookup(dir.to_string_lossy().into_owned());
 
     wait_for_request(&fixture.provider, "/discid/", 1).await;
 }
@@ -731,8 +730,8 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
 }
 
 /// Once a run's verdict lands in its row, the recorded runtime state clears:
-/// the row owns the answer, and the selection's own query serves it from
-/// there. Nothing in memory is left to shadow a row that later changes.
+/// the row owns the answer, and Lookup serves it from there. Nothing in memory
+/// is left to shadow a row that later changes.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
