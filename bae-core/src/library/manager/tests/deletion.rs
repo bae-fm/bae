@@ -121,6 +121,66 @@ async fn test_delete_release_with_single_release_deletes_album() {
         .unwrap();
     assert!(releases.is_empty());
 }
+
+#[tokio::test]
+async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    let artist = manager
+        .database
+        .find_artist_by_id(&album.artist_id)
+        .await
+        .unwrap()
+        .expect("the fixture artist exists");
+    let candidate_hash = "candidate-using-library-artist";
+    manager
+        .database
+        .save_import_candidate_failure(candidate_hash, "/music/candidate", 0, "not imported")
+        .await
+        .unwrap();
+    manager
+        .database
+        .replace_import_candidate_album_artists(
+            candidate_hash,
+            &[crate::import::ArtistAssignment::existing(artist.clone().into())],
+        )
+        .await
+        .unwrap();
+    manager
+        .database
+        .save_import_candidate_track_edit(
+            candidate_hash,
+            &crate::import::CandidateTrackEdit::edited(crate::import::RawTrackEdit {
+                id: "candidate-track".to_string(),
+                title: "Track Title".to_string(),
+                artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
+                    crate::import::ArtistAssignment::existing(artist.into()),
+                ]),
+                side: 1,
+                track_number: Some(1),
+                file: None,
+            }),
+        )
+        .await
+        .unwrap();
+
+    manager
+        .database
+        .fail_import_and_delete_release(&release.id)
+        .await
+        .unwrap();
+
+    assert!(manager
+        .database
+        .find_artist_by_id(&album.artist_id)
+        .await
+        .unwrap()
+        .is_some());
+}
 #[tokio::test]
 async fn test_delete_release_with_multiple_releases_preserves_album() {
     let (manager, _temp_dir) = setup_test_manager().await;

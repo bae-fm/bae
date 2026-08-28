@@ -6,7 +6,8 @@ use crate::import::probe::{ProbedDurations, ProbedUnit};
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit,
-    CoverSelection, NewArtistSeed, RawTrackEdit, TrackArtistAssignments, TrackEditState,
+    CoverSelection, ExistingArtist, NewArtistSeed, RawTrackEdit, TrackArtistAssignments,
+    TrackEditState,
 };
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
@@ -81,6 +82,17 @@ fn new_artist(name: &str) -> ArtistAssignment {
             musicbrainz_artist_id: None,
             discogs_artist_id: None,
         },
+    }
+}
+
+fn existing_artist() -> DbArtist {
+    DbArtist {
+        id: bae_test_support::test_uuid("library-artist"),
+        name: "Library Artist".to_string(),
+        sort_name: Some("Artist, Library".to_string()),
+        discogs_artist_id: Some("discogs-library".to_string()),
+        musicbrainz_artist_id: Some("mb-library".to_string()),
+        created_at: fixed_identified_at(),
     }
 }
 
@@ -473,15 +485,17 @@ async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
 }
 
 #[tokio::test]
-async fn artist_assignments_round_trip_without_name_inference() {
+async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
+    let existing = existing_artist();
+    db.insert_artist(&existing).await.unwrap();
     db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
         .await
         .unwrap();
 
     let assignments = vec![
-        ArtistAssignment::existing("library-artist"),
+        ArtistAssignment::existing(existing.into()),
         ArtistAssignment::New {
             seed: NewArtistSeed {
                 name: "New Artist".to_string(),
@@ -515,6 +529,33 @@ async fn artist_assignments_round_trip_without_name_inference() {
             .unwrap()
             .track_edits,
         vec![explicit_empty]
+    );
+}
+
+#[tokio::test]
+async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
+    let (db, _tmp) = empty_db().await;
+    let hash = pane_candidate().content_hash();
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
+        .await
+        .unwrap();
+
+    let error = db
+        .replace_import_candidate_album_artists(
+            &hash,
+            &[ArtistAssignment::existing(ExistingArtist {
+                artist_id: bae_test_support::test_uuid("missing-artist"),
+                name: "Missing Artist".to_string(),
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: None,
+            })],
+        )
+        .await
+        .expect_err("a missing referenced artist cannot be stored");
+    assert!(
+        error.to_string().contains("FOREIGN KEY constraint failed"),
+        "the database rejects the broken reference: {error}"
     );
 }
 

@@ -146,8 +146,57 @@ pub struct BridgeTrackUserEdit {
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeArtistAssignment {
-    Existing { artist_id: String },
+    Existing { artist: BridgeExistingArtist },
     New { seed: BridgeNewArtistSeed },
+}
+
+/// One selected artist already in the library. The assignment carries the
+/// fields the editor renders; candidate storage keeps only `artist_id` and
+/// resolves these fields again when it is read.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeExistingArtist {
+    pub artist_id: String,
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+}
+
+impl BridgeExistingArtist {
+    pub(crate) fn from_core(artist: bae_core::import::ExistingArtist) -> Self {
+        let bae_core::import::ExistingArtist {
+            artist_id,
+            name,
+            sort_name,
+            musicbrainz_artist_id,
+            discogs_artist_id,
+        } = artist;
+        Self {
+            artist_id,
+            name,
+            sort_name,
+            musicbrainz_artist_id,
+            discogs_artist_id,
+        }
+    }
+
+    #[cfg(feature = "desktop")]
+    pub(crate) fn into_core(self) -> bae_core::import::ExistingArtist {
+        let Self {
+            artist_id,
+            name,
+            sort_name,
+            musicbrainz_artist_id,
+            discogs_artist_id,
+        } = self;
+        bae_core::import::ExistingArtist {
+            artist_id,
+            name,
+            sort_name,
+            musicbrainz_artist_id,
+            discogs_artist_id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]

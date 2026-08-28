@@ -116,6 +116,17 @@ mod triage_tests {
 mod conversion_roundtrip {
     use super::*;
 
+    #[cfg(feature = "desktop")]
+    fn existing_artist() -> bae_core::import::ExistingArtist {
+        bae_core::import::ExistingArtist {
+            artist_id: "artist-1".to_string(),
+            name: "Existing Artist".to_string(),
+            sort_name: Some("Artist, Existing".to_string()),
+            musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
+            discogs_artist_id: Some("discogs-1".to_string()),
+        }
+    }
+
     #[test]
     fn cloud_setup_failure_reason_crosses_the_bridge_unchanged() {
         use bae_core::ui::UiErrorCategory;
@@ -202,12 +213,15 @@ mod conversion_roundtrip {
         };
 
         let bridge = BridgeArtistSearchResult::from_core(core);
-        assert_eq!(bridge.artist_id, "artist-1");
-        assert_eq!(bridge.name, "Artist Name");
-        assert_eq!(bridge.sort_name.as_deref(), Some("Name, Artist"));
-        assert_eq!(bridge.discogs_artist_id.as_deref(), Some("discogs-1"));
+        assert_eq!(bridge.artist.artist_id, "artist-1");
+        assert_eq!(bridge.artist.name, "Artist Name");
+        assert_eq!(bridge.artist.sort_name.as_deref(), Some("Name, Artist"));
         assert_eq!(
-            bridge.musicbrainz_artist_id.as_deref(),
+            bridge.artist.discogs_artist_id.as_deref(),
+            Some("discogs-1")
+        );
+        assert_eq!(
+            bridge.artist.musicbrainz_artist_id.as_deref(),
             Some("musicbrainz-1")
         );
         assert_eq!(
@@ -246,7 +260,7 @@ mod conversion_roundtrip {
         let core = bae_core::import::ReleaseUserEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
-                bae_core::import::ArtistAssignment::new("Artist Name"),
+                bae_core::import::ArtistAssignment::existing(existing_artist()),
                 bae_core::import::ArtistAssignment::new("Artist Beta"),
             ],
             pressing: bae_core::import::PressingEdit {

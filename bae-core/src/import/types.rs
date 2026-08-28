@@ -267,8 +267,32 @@ impl ReleaseReseed {
 /// an external credit to an existing library artist by an exact ID match.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ArtistAssignment {
-    Existing { artist_id: String },
+    Existing { artist: ExistingArtist },
     New { seed: NewArtistSeed },
+}
+
+/// One artist already in the library, with the fields an editor needs to show
+/// and distinguish the selection. Candidate storage persists only `artist_id`;
+/// loading the candidate resolves the rest from the canonical artist row.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExistingArtist {
+    pub artist_id: String,
+    pub name: String,
+    pub sort_name: Option<String>,
+    pub musicbrainz_artist_id: Option<String>,
+    pub discogs_artist_id: Option<String>,
+}
+
+impl From<crate::db::DbArtist> for ExistingArtist {
+    fn from(artist: crate::db::DbArtist) -> Self {
+        Self {
+            artist_id: artist.id,
+            name: artist.name,
+            sort_name: artist.sort_name,
+            musicbrainz_artist_id: artist.musicbrainz_artist_id,
+            discogs_artist_id: artist.discogs_artist_id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -541,17 +565,13 @@ impl ArtistAssignment {
         }
     }
 
-    pub fn existing(artist_id: impl Into<String>) -> Self {
-        Self::Existing {
-            artist_id: artist_id.into(),
-        }
+    pub fn existing(artist: ExistingArtist) -> Self {
+        Self::Existing { artist }
     }
 
     fn normalized(self) -> Self {
         match self {
-            Self::Existing { artist_id } => Self::Existing {
-                artist_id: artist_id.trim().to_string(),
-            },
+            Self::Existing { artist } => Self::Existing { artist },
             Self::New { seed } => Self::New {
                 seed: NewArtistSeed {
                     name: seed.name.trim().to_string(),
@@ -569,7 +589,9 @@ impl ArtistAssignment {
 
     fn is_blank_new_artist(&self) -> bool {
         match self {
-            Self::Existing { artist_id } => artist_id.trim().is_empty(),
+            Self::Existing { artist } => {
+                artist.artist_id.trim().is_empty() || artist.name.trim().is_empty()
+            }
             Self::New { seed } => seed.name.trim().is_empty(),
         }
     }

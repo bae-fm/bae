@@ -12,7 +12,7 @@ struct ReleaseFieldWriter {
     let setAlbumArtists: ([BridgeArtistAssignment]) -> Void
 
     init(
-        _ setField: @escaping (BridgeCandidateEditField, String) -> Void,
+        setField: @escaping (BridgeCandidateEditField, String) -> Void,
         setAlbumArtists: @escaping ([BridgeArtistAssignment]) -> Void = { _ in }
     ) {
         self.setField = setField
@@ -22,7 +22,7 @@ struct ReleaseFieldWriter {
     /// Write into a form held in memory.
     static func binding(_ form: Binding<BridgeRawReleaseEdit>) -> Self {
         Self(
-            { field, value in
+            setField: { field, value in
                 switch field {
                 case .albumTitle: form.wrappedValue.albumTitle = value
                 case .year: form.wrappedValue.pressing.year = value
@@ -34,8 +34,8 @@ struct ReleaseFieldWriter {
                 case .barcode: form.wrappedValue.pressing.barcode = value
                 }
             },
-            setAlbumArtists: {
-                form.wrappedValue.albumArtistAssignments = $0
+            setAlbumArtists: { assignments in
+                form.wrappedValue.albumArtistAssignments = assignments
             }
         )
     }
@@ -87,32 +87,42 @@ struct ReleaseFieldsForm: View {
     }
 
     private var albumGroup: some View {
-        groupCard(
-            title: String(localized: "Album"),
-            rows: [
-                row(
-                    .albumTitle,
-                    label: String(localized: "Title"),
-                    placeholder: String(localized: "Album title"),
-                    text: values.albumTitle,
-                    width: .long,
-                ),
-                FieldRow(
-                    label: String(localized: "Artist"),
-                    hint: String(localized: "comma-separated"),
-                    placeholder: String(localized: "Album artist"),
-                    text: values.albumArtistAssignments.editorText,
-                    onCommit: {
-                        writer.setAlbumArtists(
-                            values.albumArtistAssignments.replacingEditorText(
-                                $0
-                            )
-                        )
-                    },
-                    width: .long
-                ),
-            ],
-        )
+        VStack(alignment: .leading, spacing: 8) {
+            FormSectionHeader(title: String(localized: "Album"))
+            VStack(spacing: 0) {
+                fieldRow(
+                    row(
+                        .albumTitle,
+                        label: String(localized: "Title"),
+                        placeholder: String(localized: "Album title"),
+                        text: values.albumTitle,
+                        width: .long,
+                    )
+                )
+                Rectangle()
+                    .fill(.white.opacity(0.07))
+                    .frame(height: 1)
+                albumArtistsRow
+            }
+            .formGroupCard()
+        }
+    }
+
+    private var albumArtistsRow: some View {
+        HStack(spacing: 16) {
+            Text("Artist")
+                .font(.system(size: 13))
+                .frame(width: 150, alignment: .leading)
+            ArtistAssignmentsField(
+                assignments: values.albumArtistAssignments,
+                placeholder: String(localized: "Album artist"),
+                onChange: writer.setAlbumArtists,
+            )
+            .frame(maxWidth: FieldWidth.long.maxWidth)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
     }
 
     private var pressingGroup: some View {
@@ -214,6 +224,190 @@ struct ReleaseFieldsForm: View {
     }
 }
 
+extension BridgeArtistAssignment {
+    var displayName: String {
+        switch self {
+        case .existing(let artist): artist.name
+        case .new(let seed): seed.name
+        }
+    }
+}
+
+/// Ordered artist choices shared by the library editor and import mapping.
+/// Existing artists are selected from the library; typed names remain explicit
+/// new-artist seeds. The compact field opens a popover so track-row dimensions
+/// never change while searching.
+struct ArtistAssignmentsField: View {
+    let assignments: [BridgeArtistAssignment]
+    let placeholder: String
+    var inheritsAlbumArtists = false
+    var onUseAlbumArtists: (() -> Void)?
+    let onChange: ([BridgeArtistAssignment]) -> Void
+
+    @Environment(Library.self)
+    private var library
+    @State
+    private var isPresented = false
+    @State
+    private var query = ""
+    @State
+    private var results: [BridgeArtistSearchResult] = []
+    @State
+    private var isSearching = false
+    @State
+    private var errorMessage: String?
+
+    var body: some View {
+        Button {
+            isPresented = true
+        } label: {
+            HStack(spacing: 6) {
+                Text(displayText)
+                    .foregroundStyle(hasExplicitArtists ? .primary : .tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+            editor
+                .frame(width: 320)
+                .padding(12)
+        }
+    }
+
+    private var hasExplicitArtists: Bool {
+        !assignments.isEmpty && !inheritsAlbumArtists
+    }
+
+    private var displayText: String {
+        if inheritsAlbumArtists {
+            return String(localized: "Album artist")
+        }
+        let names = assignments.map(\.displayName)
+        return names.isEmpty
+            ? placeholder : ListFormatter.localizedString(byJoining: names)
+    }
+
+    private var editor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let onUseAlbumArtists {
+                Button("Album artist", action: onUseAlbumArtists)
+                    .buttonStyle(.link)
+            }
+            ForEach(Array(assignments.enumerated()), id: \.offset) {
+                index,
+                assignment in
+                HStack(spacing: 8) {
+                    Text(assignment.displayName)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Button {
+                        var next = assignments
+                        next.remove(at: index)
+                        onChange(next)
+                    } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(Text("Remove"))
+                }
+            }
+            HStack(spacing: 8) {
+                TextField("Search", text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit(addTypedArtist)
+                Button("Add", action: addTypedArtist)
+                    .disabled(trimmedQuery.isEmpty)
+            }
+            if isSearching {
+                ProgressView()
+                    .controlSize(.small)
+            }
+            if let errorMessage {
+                Text(errorMessage)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            ForEach(results, id: \.artist.artistId) { result in
+                Button {
+                    onChange(assignments + [.existing(artist: result.artist)])
+                    query = ""
+                } label: {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(result.artist.name)
+                        Text(verbatim: artistDetail(result.artist))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .task(id: query) {
+            await search()
+        }
+    }
+
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func addTypedArtist() {
+        guard !trimmedQuery.isEmpty else { return }
+        onChange(
+            assignments + [
+                .new(
+                    seed: BridgeNewArtistSeed(
+                        name: query,
+                        sortName: nil,
+                        musicbrainzArtistId: nil,
+                        discogsArtistId: nil
+                    )
+                )
+            ]
+        )
+        query = ""
+    }
+
+    @MainActor
+    private func search() async {
+        errorMessage = nil
+        guard !trimmedQuery.isEmpty else {
+            results = []
+            isSearching = false
+            return
+        }
+        do {
+            try await Task.sleep(for: .milliseconds(200))
+            isSearching = true
+            results = try await library.searchArtists(query)
+            isSearching = false
+        }
+        catch is CancellationError {
+            isSearching = false
+        }
+        catch {
+            isSearching = false
+            results = []
+            errorMessage = error.displayLine
+        }
+    }
+
+    private func artistDetail(_ artist: BridgeExistingArtist) -> String {
+        artist.sortName
+            ?? artist.musicbrainzArtistId
+            ?? artist.discogsArtistId
+            ?? artist.artistId
+    }
+}
+
 #if DEBUG
     #Preview("Release fields") {
         @Previewable
@@ -226,5 +420,6 @@ struct ReleaseFieldsForm: View {
         .frame(width: 640, height: 520)
         .background(Theme.background)
         .preferredColorScheme(.dark)
+        .environment(Library.stub())
     }
 #endif

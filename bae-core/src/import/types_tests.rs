@@ -21,6 +21,16 @@ mod metadata_seed_tests {
 mod edit_shaping_tests {
     use super::*;
 
+    fn existing_artist() -> ExistingArtist {
+        ExistingArtist {
+            artist_id: "artist-1".to_string(),
+            name: "Existing Artist".to_string(),
+            sort_name: Some("Artist, Existing".to_string()),
+            musicbrainz_artist_id: Some("mb-existing".to_string()),
+            discogs_artist_id: None,
+        }
+    }
+
     /// A raw form that shapes cleanly: one album artist, a track with its
     /// own artists, all pressing fields filled. The individual tests mutate
     /// one aspect to exercise a single rule.
@@ -172,7 +182,7 @@ mod edit_shaping_tests {
         let original = ReleaseUserEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![
-                ArtistAssignment::existing("artist-1"),
+                ArtistAssignment::existing(existing_artist()),
                 ArtistAssignment::new("Artist Two"),
             ],
             pressing: PressingEdit {

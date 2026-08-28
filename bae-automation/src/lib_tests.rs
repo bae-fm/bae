@@ -138,6 +138,40 @@ mod release_metadata_update_input {
         );
     }
 
+    #[test]
+    fn an_existing_artist_keeps_its_library_identity() {
+        let artist = AutomationExistingArtist {
+            artist_id: "00000000-0000-0000-0000-000000000001".to_string(),
+            name: "Artist Alpha".to_string(),
+            sort_name: Some("Alpha, Artist".to_string()),
+            musicbrainz_artist_id: Some("musicbrainz-artist".to_string()),
+            discogs_artist_id: Some("discogs-artist".to_string()),
+        };
+        let mut edit = edit("Album Alpha", &[]);
+        edit.album_artist_assignments = vec![AutomationArtistAssignment::Existing {
+            artist: artist.clone(),
+        }];
+
+        let round_trip = automation_release_user_edit(release_user_edit(edit));
+        let AutomationArtistAssignment::Existing {
+            artist: round_trip_artist,
+        } = &round_trip.album_artist_assignments[0]
+        else {
+            panic!("the existing artist remains an existing artist");
+        };
+        assert_eq!(round_trip_artist.artist_id, artist.artist_id);
+        assert_eq!(round_trip_artist.name, artist.name);
+        assert_eq!(round_trip_artist.sort_name, artist.sort_name);
+        assert_eq!(
+            round_trip_artist.musicbrainz_artist_id,
+            artist.musicbrainz_artist_id
+        );
+        assert_eq!(
+            round_trip_artist.discogs_artist_id,
+            artist.discogs_artist_id
+        );
+    }
+
     /// A refused edit reaches the client as `validation` — input it can fix —
     /// not as an opaque `import` failure.
     #[test]

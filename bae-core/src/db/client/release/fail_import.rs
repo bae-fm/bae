@@ -27,8 +27,9 @@ pub(super) struct FailImportDeletion {
 /// `release_id` deletes and which host-provided image blobs it orphans. Mirrors
 /// the delete's reachability: a work orphans when this release held its only
 /// tracks; an artist orphans when every album, link, or role that names it lies
-/// inside the deleted subtree — this release, its album if the album holds no
-/// other release, and the orphaned works.
+/// inside the deleted subtree and no import candidate selects it — this
+/// release, its album if the album holds no other release, and the orphaned
+/// works.
 pub(super) fn plan_fail_import_deletion<Q: QueryOne + QueryRows>(
     sql: &Q,
     release_id: &str,
@@ -158,6 +159,10 @@ pub(super) fn plan_fail_import_deletion<Q: QueryOne + QueryRows>(
              OR EXISTS(SELECT 1 FROM release_artist_roles WHERE artist_id = ?1 AND release_id != ?4)
              OR EXISTS(SELECT 1 FROM track_artist_roles WHERE artist_id = ?1
                         AND track_id NOT IN (SELECT id FROM tracks WHERE release_id = ?4))
+             OR EXISTS(SELECT 1 FROM import_candidate_album_artist_assignment
+                        WHERE assignment_kind = 'existing' AND artist_id = ?1)
+             OR EXISTS(SELECT 1 FROM import_candidate_track_artist_assignment
+                        WHERE assignment_kind = 'existing' AND artist_id = ?1)
          )"
     );
 

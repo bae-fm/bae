@@ -390,8 +390,16 @@ fn automation_artist_assignment(
     assignment: bae_core::import::ArtistAssignment,
 ) -> AutomationArtistAssignment {
     match assignment {
-        bae_core::import::ArtistAssignment::Existing { artist_id } => {
-            AutomationArtistAssignment::Existing { artist_id }
+        bae_core::import::ArtistAssignment::Existing { artist } => {
+            AutomationArtistAssignment::Existing {
+                artist: AutomationExistingArtist {
+                    artist_id: artist.artist_id,
+                    name: artist.name,
+                    sort_name: artist.sort_name,
+                    musicbrainz_artist_id: artist.musicbrainz_artist_id,
+                    discogs_artist_id: artist.discogs_artist_id,
+                },
+            }
         }
         bae_core::import::ArtistAssignment::New { seed } => AutomationArtistAssignment::New {
             seed: AutomationNewArtistSeed {
@@ -406,8 +414,16 @@ fn automation_artist_assignment(
 
 fn artist_assignment(assignment: AutomationArtistAssignment) -> bae_core::import::ArtistAssignment {
     match assignment {
-        AutomationArtistAssignment::Existing { artist_id } => {
-            bae_core::import::ArtistAssignment::Existing { artist_id }
+        AutomationArtistAssignment::Existing { artist } => {
+            bae_core::import::ArtistAssignment::Existing {
+                artist: bae_core::import::ExistingArtist {
+                    artist_id: artist.artist_id,
+                    name: artist.name,
+                    sort_name: artist.sort_name,
+                    musicbrainz_artist_id: artist.musicbrainz_artist_id,
+                    discogs_artist_id: artist.discogs_artist_id,
+                },
+            }
         }
         AutomationArtistAssignment::New { seed } => bae_core::import::ArtistAssignment::New {
             seed: bae_core::import::NewArtistSeed {

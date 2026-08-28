@@ -802,7 +802,8 @@ fn materialize_artist_assignment(
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<String, crate::import::ImportError> {
     match assignment {
-        crate::import::ArtistAssignment::Existing { artist_id } => {
+        crate::import::ArtistAssignment::Existing { artist } => {
+            let artist_id = &artist.artist_id;
             let artist = existing_artists.get(artist_id).cloned().ok_or_else(|| {
                 crate::import::ImportError::Internal {
                     detail: format!("selected artist {artist_id} no longer exists"),
@@ -845,7 +846,7 @@ async fn load_existing_artist_assignments(
     for artist_id in album
         .chain(tracks)
         .filter_map(|assignment| match assignment {
-            crate::import::ArtistAssignment::Existing { artist_id } => Some(artist_id),
+            crate::import::ArtistAssignment::Existing { artist } => Some(&artist.artist_id),
             crate::import::ArtistAssignment::New { .. } => None,
         })
     {

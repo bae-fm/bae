@@ -361,7 +361,7 @@ impl LibraryManager {
             .await?
             .into_iter()
             .map(|artist| crate::import::ArtistAssignment::Existing {
-                artist_id: artist.id,
+                artist: artist.into(),
             })
             .collect();
 
@@ -376,7 +376,7 @@ impl LibraryManager {
                 .await?
                 .into_iter()
                 .map(|artist| crate::import::ArtistAssignment::Existing {
-                    artist_id: artist.id,
+                    artist: artist.into(),
                 })
                 .collect();
             tracks.push(crate::import::TrackUserEdit {

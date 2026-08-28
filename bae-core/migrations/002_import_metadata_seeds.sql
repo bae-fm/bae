@@ -239,6 +239,7 @@ CREATE TABLE import_candidate_album_artist_assignment (
     discogs_artist_id     TEXT,
     PRIMARY KEY (content_hash, position),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
     CHECK (
         (assignment_kind = 'existing' AND artist_id IS NOT NULL AND name IS NULL
             AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)
@@ -299,6 +300,7 @@ CREATE TABLE import_candidate_track_artist_assignment (
     PRIMARY KEY (content_hash, track_id, position),
     FOREIGN KEY (content_hash, track_id)
         REFERENCES import_candidate_track_edit (content_hash, track_id) ON DELETE CASCADE,
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON DELETE RESTRICT,
     CHECK (
         (assignment_kind = 'existing' AND artist_id IS NOT NULL AND name IS NULL
             AND sort_name IS NULL AND musicbrainz_artist_id IS NULL AND discogs_artist_id IS NULL)

@@ -84,7 +84,7 @@ extension ImportView {
     private func editActions(for candidate: Candidate) -> ReleaseFieldWriter {
         let key = candidate.key
         return ReleaseFieldWriter(
-            { field, value in
+            setField: { field, value in
                 saveCandidateEdit {
                     try await importer.setCandidateEditField(key, field, value)
                 }

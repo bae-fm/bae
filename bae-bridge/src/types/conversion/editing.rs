@@ -4,9 +4,9 @@ use super::super::*;
 impl BridgeArtistAssignment {
     pub(super) fn from_core(assignment: bae_core::import::ArtistAssignment) -> Self {
         match assignment {
-            bae_core::import::ArtistAssignment::Existing { artist_id } => {
-                Self::Existing { artist_id }
-            }
+            bae_core::import::ArtistAssignment::Existing { artist } => Self::Existing {
+                artist: BridgeExistingArtist::from_core(artist),
+            },
             bae_core::import::ArtistAssignment::New { seed } => Self::New {
                 seed: BridgeNewArtistSeed {
                     name: seed.name,
@@ -20,9 +20,9 @@ impl BridgeArtistAssignment {
 
     pub(crate) fn into_core(self) -> bae_core::import::ArtistAssignment {
         match self {
-            Self::Existing { artist_id } => {
-                bae_core::import::ArtistAssignment::Existing { artist_id }
-            }
+            Self::Existing { artist } => bae_core::import::ArtistAssignment::Existing {
+                artist: artist.into_core(),
+            },
             Self::New { seed } => bae_core::import::ArtistAssignment::New {
                 seed: bae_core::import::NewArtistSeed {
                     name: seed.name,

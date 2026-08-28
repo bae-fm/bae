@@ -140,6 +140,8 @@ public final class Library: Sendable, Observable {
     private let subscribeLibrarySearch:
         @Sendable (_ query: String, _ callback: LibrarySearchCallback)
             -> any LiveSubscriptionProtocol
+    public let searchArtists:
+        @Sendable (_ query: String) async throws -> [BridgeArtistSearchResult]
     private let subscribeStorageProjection:
         @Sendable (
             _ sort: BridgeStorageSort, _ filter: BridgeStorageFilter,
@@ -211,6 +213,9 @@ public final class Library: Sendable, Observable {
             -> any LiveSubscriptionProtocol = { _, _ in
                 fatalError("Library search subscription is not installed")
             },
+        searchArtists:
+            @escaping @Sendable (String) async throws
+            -> [BridgeArtistSearchResult] = { _ in [] },
         subscribeStorageProjection:
             @escaping @Sendable (
                 BridgeStorageSort, BridgeStorageFilter, UInt64, UInt64,
@@ -242,6 +247,7 @@ public final class Library: Sendable, Observable {
         self.subscribeArtistPage = subscribeArtistPage
         self.subscribeArtistDetail = subscribeArtistDetail
         self.subscribeLibrarySearch = subscribeLibrarySearch
+        self.searchArtists = searchArtists
         self.subscribeStorageProjection = subscribeStorageProjection
         self.subscribeReleaseDetail = subscribeReleaseDetail
         self.resolveToTrackIds = resolveToTrackIds
@@ -372,6 +378,9 @@ public final class Library: Sendable, Observable {
                 subscribeLibrarySearch: {
                     handle.subscribeLibrarySearch(query: $0, callback: $1)
                 },
+                searchArtists: {
+                    try await handle.searchArtists(query: $0)
+                },
                 subscribeStorageProjection: {
                     handle.subscribeStorageProjection(
                         sort: $0,
@@ -438,6 +447,9 @@ public final class Library: Sendable, Observable {
                 },
                 subscribeLibrarySearch: {
                     handle.subscribeLibrarySearch(query: $0, callback: $1)
+                },
+                searchArtists: {
+                    try await handle.searchArtists(query: $0)
                 },
                 subscribeReleaseDetail: {
                     handle.subscribeReleaseDetail(releaseId: $0, callback: $1)

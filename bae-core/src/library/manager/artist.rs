@@ -260,13 +260,19 @@ impl LibraryManager {
         };
         for assignment in assignments {
             match assignment {
-                crate::import::ArtistAssignment::Existing { artist_id } => {
-                    if self.database.find_artist_by_id(artist_id).await?.is_none() {
+                crate::import::ArtistAssignment::Existing { artist } => {
+                    if self
+                        .database
+                        .find_artist_by_id(&artist.artist_id)
+                        .await?
+                        .is_none()
+                    {
                         return Err(LibraryError::Import(format!(
-                            "artist '{artist_id}' no longer exists"
+                            "artist '{}' no longer exists",
+                            artist.artist_id
                         )));
                     }
-                    resolved.ids.push(artist_id.clone());
+                    resolved.ids.push(artist.artist_id.clone());
                 }
                 crate::import::ArtistAssignment::New { seed } => {
                     let artist = DbArtist {

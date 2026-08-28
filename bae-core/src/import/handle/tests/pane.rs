@@ -391,7 +391,7 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
         .await
         .unwrap();
     let assignments = vec![
-        crate::import::ArtistAssignment::existing(&existing.id),
+        crate::import::ArtistAssignment::existing(existing.clone().into()),
         crate::import::ArtistAssignment::new("New Artist"),
     ];
 

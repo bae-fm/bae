@@ -11,8 +11,8 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit,
-    CoverSelection, ImportFailure, NewArtistSeed, RawTrackEdit, TrackArtistAssignments,
-    TrackEditState,
+    CoverSelection, ExistingArtist, ImportFailure, NewArtistSeed, RawTrackEdit,
+    TrackArtistAssignments, TrackEditState,
 };
 
 const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
@@ -419,9 +419,9 @@ struct AssignmentColumns<'a> {
 
 fn assignment_columns(assignment: &ArtistAssignment) -> AssignmentColumns<'_> {
     match assignment {
-        ArtistAssignment::Existing { artist_id } => AssignmentColumns {
+        ArtistAssignment::Existing { artist } => AssignmentColumns {
             kind: "existing",
-            artist_id: Some(artist_id),
+            artist_id: Some(&artist.artist_id),
             name: None,
             sort_name: None,
             musicbrainz_id: None,
@@ -448,9 +448,17 @@ fn assignment_from_columns(
 ) -> Result<ArtistAssignment, DbError> {
     match kind.as_str() {
         "existing" => Ok(ArtistAssignment::Existing {
-            artist_id: artist_id.ok_or_else(|| {
-                DbError::Message("an existing artist assignment names no artist".into())
-            })?,
+            artist: ExistingArtist {
+                artist_id: artist_id.ok_or_else(|| {
+                    DbError::Message("an existing artist assignment names no artist".into())
+                })?,
+                name: name.ok_or_else(|| {
+                    DbError::Message("an existing artist assignment names a missing artist".into())
+                })?,
+                sort_name,
+                musicbrainz_artist_id,
+                discogs_artist_id,
+            },
         }),
         "new" => Ok(ArtistAssignment::New {
             seed: NewArtistSeed {
@@ -525,10 +533,20 @@ fn load_album_artist_assignments_on(
     only: Option<&str>,
 ) -> Result<HashMap<String, Vec<ArtistAssignment>>, DbError> {
     let rows = sql.query(
-        "SELECT content_hash, assignment_kind, artist_id, name, sort_name, \
-                musicbrainz_artist_id, discogs_artist_id \
-         FROM import_candidate_album_artist_assignment \
-         WHERE :only IS NULL OR content_hash = :only ORDER BY content_hash, position",
+        "SELECT assignment.content_hash, assignment.assignment_kind, assignment.artist_id, \
+                CASE assignment.assignment_kind WHEN 'existing' THEN existing.name \
+                    WHEN 'new' THEN assignment.name END, \
+                CASE assignment.assignment_kind WHEN 'existing' THEN existing.sort_name \
+                    WHEN 'new' THEN assignment.sort_name END, \
+                CASE assignment.assignment_kind WHEN 'existing' \
+                    THEN existing.musicbrainz_artist_id \
+                    WHEN 'new' THEN assignment.musicbrainz_artist_id END, \
+                CASE assignment.assignment_kind WHEN 'existing' THEN existing.discogs_artist_id \
+                    WHEN 'new' THEN assignment.discogs_artist_id END \
+         FROM import_candidate_album_artist_assignment assignment \
+         LEFT JOIN artists existing ON existing.id = assignment.artist_id \
+         WHERE :only IS NULL OR assignment.content_hash = :only \
+         ORDER BY assignment.content_hash, assignment.position",
         named_params! { ":only": only },
         |row| {
             Ok((
@@ -563,10 +581,21 @@ fn load_track_artist_assignments_on(
     only: Option<&str>,
 ) -> Result<HashMap<(String, String), Vec<ArtistAssignment>>, DbError> {
     let rows = sql.query(
-        "SELECT content_hash, track_id, assignment_kind, artist_id, name, sort_name, \
-                musicbrainz_artist_id, discogs_artist_id \
-         FROM import_candidate_track_artist_assignment \
-         WHERE :only IS NULL OR content_hash = :only ORDER BY content_hash, track_id, position",
+        "SELECT assignment.content_hash, assignment.track_id, assignment.assignment_kind, \
+                assignment.artist_id, \
+                CASE assignment.assignment_kind WHEN 'existing' THEN existing.name \
+                    WHEN 'new' THEN assignment.name END, \
+                CASE assignment.assignment_kind WHEN 'existing' THEN existing.sort_name \
+                    WHEN 'new' THEN assignment.sort_name END, \
+                CASE assignment.assignment_kind WHEN 'existing' \
+                    THEN existing.musicbrainz_artist_id \
+                    WHEN 'new' THEN assignment.musicbrainz_artist_id END, \
+                CASE assignment.assignment_kind WHEN 'existing' THEN existing.discogs_artist_id \
+                    WHEN 'new' THEN assignment.discogs_artist_id END \
+         FROM import_candidate_track_artist_assignment assignment \
+         LEFT JOIN artists existing ON existing.id = assignment.artist_id \
+         WHERE :only IS NULL OR assignment.content_hash = :only \
+         ORDER BY assignment.content_hash, assignment.track_id, assignment.position",
         named_params! { ":only": only },
         |row| {
             Ok((

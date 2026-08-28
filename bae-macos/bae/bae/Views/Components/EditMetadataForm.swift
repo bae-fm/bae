@@ -15,8 +15,8 @@ import SwiftUI
 ///
 /// Layout: the release fields are label-left / value-right rows inside grouped
 /// inset cards; tracks are one table with a single header row and compact
-/// editable cells, so the per-track labels and the "blank = album artist" hint
-/// appear once instead of repeating down every row. The view does not scroll —
+/// editable cells, so inherited and explicit track artists use the same rows.
+/// The view does not scroll —
 /// the surrounding surface owns scrolling.
 struct EditMetadataForm: View {
     @Binding
@@ -75,13 +75,8 @@ extension EditMetadataForm {
                 .frame(width: trackOrdinalWidth)
             FormEyebrow(text: Text("Title"))
                 .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: 4) {
-                FormEyebrow(text: Text("Artist"))
-                Text("· blank = album artist")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.quaternary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            FormEyebrow(text: Text("Artist"))
+                .frame(maxWidth: .infinity, alignment: .leading)
             FormEyebrow(text: Text("Disc"))
                 .frame(width: trackNumberWidth)
             FormEyebrow(text: Text("Track"))
@@ -114,19 +109,8 @@ extension EditMetadataForm {
                 boxed: false,
             )
             .frame(maxWidth: .infinity)
-            MetadataField(
-                placeholder: trackArtistPlaceholder,
-                text: Binding(
-                    get: { track.wrappedValue.artistAssignments.editorText },
-                    set: {
-                        track.wrappedValue.artistAssignments =
-                            track.wrappedValue.artistAssignments
-                            .replacingEditorText($0)
-                    }
-                ),
-                boxed: false,
-            )
-            .frame(maxWidth: .infinity)
+            trackArtistsField(track.artistAssignments)
+                .frame(maxWidth: .infinity)
             TrackSideCell(value: track.side)
                 .frame(width: trackNumberWidth)
             TrackNumberCell(value: track.trackNumber)
@@ -148,11 +132,30 @@ extension EditMetadataForm {
         }
     }
 
-    /// Empty track-artist fields inherit the album artist; surfacing it as
-    /// the placeholder shows what a blank row will resolve to.
-    private var trackArtistPlaceholder: String {
-        let text = form.albumArtistAssignments.editorText
-        return text.isEmpty ? String(localized: "Artist") : text
+    private func trackArtistsField(
+        _ assignments: Binding<BridgeTrackArtistAssignments>
+    ) -> some View {
+        let current: [BridgeArtistAssignment]
+        let inheritsAlbumArtists: Bool
+        switch assignments.wrappedValue {
+        case .albumArtists:
+            current = []
+            inheritsAlbumArtists = true
+        case .explicit(let explicit):
+            current = explicit
+            inheritsAlbumArtists = false
+        }
+        return ArtistAssignmentsField(
+            assignments: current,
+            placeholder: String(localized: "Artist"),
+            inheritsAlbumArtists: inheritsAlbumArtists,
+            onUseAlbumArtists: {
+                assignments.wrappedValue = .albumArtists
+            },
+            onChange: {
+                assignments.wrappedValue = .explicit(assignments: $0)
+            },
+        )
     }
 
     private var trackOrdinalWidth: CGFloat { 34 }
@@ -171,5 +174,6 @@ extension EditMetadataForm {
         .frame(width: 640, height: 720)
         .background(Theme.background)
         .preferredColorScheme(.dark)
+        .environment(Library.stub())
     }
 #endif

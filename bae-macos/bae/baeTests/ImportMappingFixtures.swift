@@ -285,6 +285,9 @@ enum MappingFixtures {
 
 extension MappingFixtures {
 
+}
+
+extension MappingFixtures {
     // MARK: - The album fields alongside the table
 
     static let albumSeed = BridgeReleaseUserEdit(
@@ -314,6 +317,17 @@ extension MappingFixtures {
         ),
         tracks: []
     )
+
+    static func newArtist(_ name: String) -> BridgeArtistAssignment {
+        .new(
+            seed: BridgeNewArtistSeed(
+                name: name,
+                sortName: nil,
+                musicbrainzArtistId: nil,
+                discogsArtistId: nil
+            )
+        )
+    }
 
     /// The release the fixture folder is picked as, as its documents describe
     /// it.

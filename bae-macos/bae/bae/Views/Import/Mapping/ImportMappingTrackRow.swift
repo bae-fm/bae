@@ -113,15 +113,17 @@ struct ImportMappingTrackRow: View {
     @ViewBuilder
     private var artistCell: some View {
         if let track {
-            CommittedTextField(
+            ArtistAssignmentsField(
+                assignments: explicitArtists(track.artistAssignments),
                 placeholder: coreString("ui.import.mapping.column.artist"),
-                value: track.artistAssignments.editorText,
-                boxed: false,
-                onCommit: { value in
-                    var edited = track
-                    edited.artistAssignments = track.artistAssignments
-                        .replacingEditorText(value)
-                    actions.editTrack(edited)
+                inheritsAlbumArtists: inheritsAlbumArtists(
+                    track.artistAssignments
+                ),
+                onUseAlbumArtists: {
+                    commitArtists(track, .albumArtists)
+                },
+                onChange: {
+                    commitArtists(track, .explicit(assignments: $0))
                 },
             )
             .frame(width: columns.artist)
@@ -214,5 +216,30 @@ struct ImportMappingTrackRow: View {
         var edited = track
         edited[keyPath: path] = value
         actions.editTrack(edited)
+    }
+
+    private func commitArtists(
+        _ track: BridgeRawTrackEdit,
+        _ assignments: BridgeTrackArtistAssignments
+    ) {
+        var edited = track
+        edited.artistAssignments = assignments
+        actions.editTrack(edited)
+    }
+
+    private func explicitArtists(
+        _ assignments: BridgeTrackArtistAssignments
+    ) -> [BridgeArtistAssignment] {
+        switch assignments {
+        case .albumArtists: []
+        case .explicit(let artists): artists
+        }
+    }
+
+    private func inheritsAlbumArtists(
+        _ assignments: BridgeTrackArtistAssignments
+    ) -> Bool {
+        if case .albumArtists = assignments { return true }
+        return false
     }
 }

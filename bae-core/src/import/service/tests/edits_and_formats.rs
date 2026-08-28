@@ -314,7 +314,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: album.title.clone(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::existing(
-            &seed_artist.id,
+            seed_artist.clone().into(),
         )],
         pressing: crate::import::PressingEdit {
             year: Some(1995),
@@ -325,7 +325,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
             side: tracks[0].side,
             track_number: tracks[0].track_number,
             artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                crate::import::ArtistAssignment::existing(&seed_artist.id),
+                crate::import::ArtistAssignment::existing(seed_artist.clone().into()),
             ]),
             file: None,
         }],
