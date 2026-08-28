@@ -2,6 +2,19 @@ import BaeKit
 import SwiftUI
 
 extension AppDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        guard runtime.startsApplicationServices else { return }
+        guard let application = notification.object as? NSApplication else {
+            preconditionFailure(
+                "The launch notification did not contain NSApplication"
+            )
+        }
+        precondition(
+            application.setActivationPolicy(.regular),
+            "The application could not adopt the regular activation policy"
+        )
+    }
+
     func applicationDidFinishLaunching(_: Notification) {
         guard runtime.startsApplicationServices else { return }
         var keyringReady = true
