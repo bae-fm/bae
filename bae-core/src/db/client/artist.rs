@@ -44,15 +44,6 @@ impl Database {
         .await
     }
 
-    /// Case-insensitive; first match wins.
-    pub async fn get_artist_by_name(&self, name: &str) -> Result<Option<DbArtist>, DbError> {
-        self.get_artist_by_sql(
-            "SELECT * FROM artists WHERE name = ? COLLATE NOCASE LIMIT 1",
-            name.to_string(),
-        )
-        .await
-    }
-
     /// Fill in an existing artist's NULL external IDs and sort_name via COALESCE.
     /// Never overwrites a value that is already set.
     pub async fn update_artist_external_ids(
