@@ -184,12 +184,12 @@ fn map_file_tag_facts_to_db(
     ))
 }
 
-/// An [`ArtistRef`] for a file-tag ARTIST/PERFORMER value: the name doubles as
-/// its own sort name, and the file tags carry no source artist ids.
+/// An [`ArtistRef`] for a file-tag ARTIST/PERFORMER value. The source provides
+/// only a display name here, so the sort name and source artist ids stay absent.
 fn file_tag_artist_ref(name: &str) -> ArtistRef {
     ArtistRef {
         name: name.to_string(),
-        sort_name: Some(name.to_string()),
+        sort_name: None,
         musicbrainz_artist_id: None,
         discogs_artist_id: None,
     }
