@@ -237,6 +237,7 @@ struct ImportReleaseHeader: View {
         .padding(24)
         .frame(width: 900, height: 360)
         .importPreviewEnvironment()
+        .environment(Library.stub())
         .candidateReaderPreviewEnvironment()
     }
 
