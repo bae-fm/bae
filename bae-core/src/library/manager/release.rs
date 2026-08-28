@@ -72,7 +72,7 @@ impl LibraryManager {
     ///    row is reachable from a later Discogs-rooted import of the same master.
     ///
     /// Empty `identities` skips both lookups — File Tags and Manual imports always
-    /// gets a fresh album.
+    /// get a fresh album.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn find_existing_album_for_import(
         &self,
