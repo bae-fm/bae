@@ -286,6 +286,10 @@ internal sealed partial class ImportMappingPane : UserControl
         {
             return;
         }
+        if (mode is not BridgeImportMetadataMode.Lookup)
+        {
+            _searchOpen = false;
+        }
         _import.PresentMetadataMode(key, mode);
         var (current, error) = _app.Settings.SetLastImportMetadataMode(mode);
         if (current && error is not null)

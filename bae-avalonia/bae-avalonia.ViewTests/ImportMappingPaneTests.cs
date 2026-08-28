@@ -93,6 +93,26 @@ public sealed class ImportMappingPaneTests
     }
 
     [AvaloniaFact]
+    public void LeavingLookupClosesItsSearchEditor()
+    {
+        var (pane, _) = Show(Detail(metadataSeed: null));
+
+        Click(pane, Loc.Core("ui.import.header.find_release"));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("import.row.search_manually")));
+
+        Click(pane, Loc.Core("ui.import.metadata.file_tags"));
+
+        Assert.DoesNotContain(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("import.row.search_manually")));
+        Assert.DoesNotContain(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("action.search")));
+    }
+
+    [AvaloniaFact]
     public void ManualMetadataIsNotLabeledAsFileTags()
     {
         var (pane, _) = Show(Detail(new BridgeMetadataSeed.Manual()));
