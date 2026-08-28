@@ -30,7 +30,8 @@ struct ImportMappingTracksLayoutTests {
                 actions: actions(recording: recorder)
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .frame(width: tableWidth, height: size.height, alignment: .leading),
+            .frame(width: tableWidth, height: size.height, alignment: .leading)
+            .environment(Library.stub()),
             size: size
         )
         host.layoutSubtreeIfNeeded()
@@ -114,7 +115,8 @@ struct ImportMappingTracksLayoutTests {
                 actions: actions(recording: recorder)
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .frame(width: tableWidth, height: size.height, alignment: .leading),
+            .frame(width: tableWidth, height: size.height, alignment: .leading)
+            .environment(Library.stub()),
             size: size
         )
         host.layoutSubtreeIfNeeded()
@@ -268,7 +270,8 @@ extension ImportMappingTracksLayoutTests {
                 actions: actions(recording: recorder)
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
-            .frame(width: tableWidth, height: size.height, alignment: .leading),
+            .frame(width: tableWidth, height: size.height, alignment: .leading)
+            .environment(Library.stub()),
             size: size
         )
         host.layoutSubtreeIfNeeded()

@@ -391,13 +391,6 @@ struct Candidate: Equatable, Identifiable {
         return (source: source, releaseId: releaseId)
     }
 
-    /// Whether anything is settled for this folder — a release picked, its
-    /// file tags selected, or manual metadata chosen. The commit bar and
-    /// metadata card render on it.
-    var hasSelectedMetadataSeed: Bool {
-        metadataSeed != nil
-    }
-
     /// Whether the metadata surface being shown is the stored verdict. Opening
     /// the other side is navigation, so it does not make that side settled.
     var presentedMetadataModeHasSelectedSeed: Bool {

@@ -238,7 +238,12 @@ extension ImportMetadataModeTests {
             key: MappingFixtures.candidateKey,
             services: services
         )
-        await waitUntil { recorder.selectedSeeds == [.fileTags] }
+        await waitUntil {
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .metadataSeedSession?
+                .commandSucceeded == true
+        }
+        #expect(recorder.selectedSeeds == [.fileTags])
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .seedInFlight == .fileTags

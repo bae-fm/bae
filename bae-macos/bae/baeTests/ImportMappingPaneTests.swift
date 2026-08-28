@@ -426,7 +426,7 @@ extension ImportMappingPaneTests {
         #expect(candidate.error != nil)
         #expect(candidate.seedInFlight == nil)
         #expect(candidate.detail == before)
-        #expect(candidate.hasSelectedMetadataSeed)
+        #expect(candidate.metadataSeed == MappingFixtures.seed)
     }
 
     // 4c. Typing in a release field writes that one field, once, as the field
