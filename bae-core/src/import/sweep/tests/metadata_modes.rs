@@ -217,6 +217,42 @@ async fn disabling_automatic_lookup_cancels_running_background_identification() 
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
+async fn disabling_automatic_lookup_preserves_a_settled_result() {
+    let fixture = Fixture::new("disable-preserves-settled").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-settled", "rg-settled", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-settled?",
+        200,
+        release_json("mb-settled", "rg-settled", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+    fixture.sweep_once().await;
+    let before = fixture
+        .stored_for(&dir)
+        .await
+        .expect("identification stores its settled result");
+
+    fixture
+        .manager
+        .set_automatic_import_metadata_lookup(false)
+        .unwrap();
+    fixture.sweep_once().await;
+
+    let after = fixture
+        .stored_for(&dir)
+        .await
+        .expect("disabling background work retains settled identification");
+    assert_eq!(after, before);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
 async fn changing_the_default_away_from_lookup_cancels_background_identification() {
     let fixture = Fixture::new("change-default-cancels-background").await;
     let dir = fixture.disc_id_candidate("Candidate");

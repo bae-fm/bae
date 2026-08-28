@@ -124,6 +124,7 @@ async fn shut_down(handle: ImportServiceHandle) {
 
 struct CountingFileTagReader {
     reads: std::sync::atomic::AtomicUsize,
+    fail_on_read: Option<usize>,
     first_read: Option<(
         std::sync::mpsc::SyncSender<()>,
         std::sync::Arc<std::sync::Barrier>,
@@ -134,6 +135,15 @@ impl CountingFileTagReader {
     fn immediate() -> Self {
         Self {
             reads: std::sync::atomic::AtomicUsize::new(0),
+            fail_on_read: None,
+            first_read: None,
+        }
+    }
+
+    fn failing(fail_on_read: usize) -> Self {
+        Self {
+            reads: std::sync::atomic::AtomicUsize::new(0),
+            fail_on_read: Some(fail_on_read),
             first_read: None,
         }
     }
@@ -144,6 +154,7 @@ impl CountingFileTagReader {
     ) -> Self {
         Self {
             reads: std::sync::atomic::AtomicUsize::new(0),
+            fail_on_read: None,
             first_read: Some((entered, resume)),
         }
     }
@@ -167,6 +178,11 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
                 resume.wait();
             }
         }
+        if self.fail_on_read == Some(index) {
+            return Err(crate::import::ImportError::FileTags {
+                detail: format!("fixture tag read {index} failed"),
+            });
+        }
         Ok(crate::import::file_tag_snapshot::FileTagRead {
             content_type: Some(crate::util::content_type::ContentType::Flac),
             title: Some(format!("Track Title {}", index + 1)),
@@ -179,6 +195,36 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             embedded_cover: None,
         })
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn one_unreadable_file_stores_no_partial_tag_snapshot() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let reader = std::sync::Arc::new(CountingFileTagReader::failing(1));
+
+    let error = handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .expect_err("the second unreadable audio file rejects the complete reading");
+    let stored = handle
+        .library_manager
+        .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, &key)
+        .await
+        .unwrap()
+        .expect("the candidate remains stored");
+    shut_down(handle).await;
+
+    assert!(error.to_string().contains("fixture tag read 1 failed"));
+    assert_eq!(reader.read_count(), 2);
+    assert!(
+        stored.snapshot.is_none(),
+        "facts from the first file cannot land without the complete reading"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]

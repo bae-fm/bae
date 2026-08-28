@@ -29,6 +29,29 @@ async fn test_same_mb_id_reuses_existing() {
 }
 
 #[tokio::test]
+async fn conflicting_exact_source_ids_fail_instead_of_choosing_an_artist() {
+    let (manager, _tmp) = setup_test_manager().await;
+    let discogs_artist = make_artist("Artist One", Some("d123"), None);
+    let musicbrainz_artist = make_artist("Artist Two", None, Some("mb-abc"));
+    manager.insert_artist(&discogs_artist).await.unwrap();
+    manager.insert_artist(&musicbrainz_artist).await.unwrap();
+
+    let incoming = make_artist("Artist Three", Some("d123"), Some("mb-abc"));
+    let error = manager
+        .find_or_create_artists(std::slice::from_ref(&incoming))
+        .await
+        .expect_err("source IDs belonging to different artists must fail");
+
+    assert!(
+        error
+            .to_string()
+            .contains("source IDs belonging to different library artists"),
+        "the conflict names the violated identity invariant: {error}",
+    );
+    assert!(manager.get_artist_by_id(&incoming.id).await.unwrap().is_none());
+}
+
+#[tokio::test]
 async fn test_same_name_without_ids_creates_a_distinct_artist() {
     let (manager, _tmp) = setup_test_manager().await;
     let existing = make_artist("Artist One", None, None);

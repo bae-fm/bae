@@ -155,27 +155,32 @@ mod conversion_roundtrip {
             Config, DefaultImportMetadataMode as DefaultMode, ImportMetadataMode as Mode,
         };
 
-        for (default_mode, last_mode, expected) in [
-            (DefaultMode::Lookup, Mode::Manual, Mode::Lookup),
-            (DefaultMode::FileTags, Mode::Lookup, Mode::FileTags),
-            (DefaultMode::Manual, Mode::Lookup, Mode::Manual),
-            (DefaultMode::LastUsed, Mode::Lookup, Mode::Lookup),
-            (DefaultMode::LastUsed, Mode::FileTags, Mode::FileTags),
-            (DefaultMode::LastUsed, Mode::Manual, Mode::Manual),
-        ] {
-            let mut config = Config::with_defaults(
-                "library".to_string(),
-                "device".to_string(),
-                std::path::PathBuf::from("/library"),
-                "Library".to_string(),
-            );
-            config.default_import_metadata_mode = default_mode;
-            config.last_import_metadata_mode = last_mode;
+        for automatic_lookup in [false, true] {
+            for (default_mode, last_mode, expected) in [
+                (DefaultMode::Lookup, Mode::Manual, Mode::Lookup),
+                (DefaultMode::FileTags, Mode::Lookup, Mode::FileTags),
+                (DefaultMode::Manual, Mode::Lookup, Mode::Manual),
+                (DefaultMode::LastUsed, Mode::Lookup, Mode::Lookup),
+                (DefaultMode::LastUsed, Mode::FileTags, Mode::FileTags),
+                (DefaultMode::LastUsed, Mode::Manual, Mode::Manual),
+            ] {
+                let mut config = Config::with_defaults(
+                    "library".to_string(),
+                    "device".to_string(),
+                    std::path::PathBuf::from("/library"),
+                    "Library".to_string(),
+                );
+                config.automatic_import_metadata_lookup = automatic_lookup;
+                config.default_import_metadata_mode = default_mode;
+                config.last_import_metadata_mode = last_mode;
 
-            assert_eq!(
-                BridgeConfig::from_core(&config).resolved_import_metadata_mode,
-                BridgeImportMetadataMode::from_core(expected),
-            );
+                let bridge = BridgeConfig::from_core(&config);
+                assert_eq!(bridge.automatic_import_metadata_lookup, automatic_lookup);
+                assert_eq!(
+                    bridge.resolved_import_metadata_mode,
+                    BridgeImportMetadataMode::from_core(expected),
+                );
+            }
         }
     }
 
