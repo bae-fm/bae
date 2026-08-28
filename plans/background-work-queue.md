@@ -222,9 +222,9 @@ Completed in `372b5db4b`.
 - Carry the decision from core through the bridge; platform views do not infer
   it from source fields.
 
-## Active and ordered queue
-
 ### Artist assignment identity presentation
+
+Completed in `ffffafa81`.
 
 - Mark artist assignments that refer to an existing library artist on macOS
   and Avalonia.
@@ -233,3 +233,18 @@ Completed in `372b5db4b`.
   same-name library search results.
 - Add view tests for the identity indicator and same-name choices on both
   desktop platforms.
+
+## Active and ordered queue
+
+### Import metadata-source documentation
+
+- Replace the obsolete “unknown release” and automatic tag-fallback flow in the
+  importing guide and import-pipeline reference.
+- Explain Lookup, File Tags, and Manual as equal metadata seeds with explicit
+  affirmative actions.
+- State that DiscID, barcode OCR, catalog extraction, provider queries, and
+  matching run only in Lookup, subject to the automatic-lookup setting or an
+  explicit Lookup action.
+- Document the default metadata mode and Last Used setting.
+- Update every localized copy with a real translation and run the website and
+  localization documentation checks.
