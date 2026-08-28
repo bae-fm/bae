@@ -313,6 +313,83 @@ async fn changed_file_observations_replace_the_complete_tag_snapshot() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn changed_candidate_stamps_replace_the_complete_tag_snapshot() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+    handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .unwrap();
+
+    let root = candidate.watched_folder_path.clone();
+    let generation = manager.begin_folder_scan(&root).await.unwrap();
+    manager
+        .save_folder_scan_item(
+            &root,
+            generation,
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
+        )
+        .await
+        .unwrap();
+    manager
+        .finish_folder_scan(&root, generation, None)
+        .await
+        .unwrap();
+
+    let after_generation = handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .unwrap()
+        .1;
+    assert_eq!(reader.read_count(), 4);
+    assert_eq!(
+        after_generation
+            .files
+            .iter()
+            .map(|fact| fact.title.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("Track Title 3"), Some("Track Title 4")]
+    );
+    shut_down(handle).await;
+
+    let (manager, tmp) = setup_test_manager().await;
+    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let reader = std::sync::Arc::new(CountingFileTagReader::immediate());
+    handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .unwrap();
+
+    handle
+        .set_file_role(
+            key.clone(),
+            "02 Track.flac".to_string(),
+            crate::import::folder_scanner::FileRoleChoice::NotATrack,
+        )
+        .await
+        .unwrap();
+
+    let after_file_edit = handle
+        .file_tag_snapshot_with_reader(&key, reader.clone())
+        .await
+        .unwrap()
+        .1;
+    assert_eq!(reader.read_count(), 3);
+    assert_eq!(after_file_edit.files.len(), 1);
+    assert_eq!(after_file_edit.files[0].title.as_deref(), Some("Track Title 3"));
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     let root = tmp.path().join("watched").to_string_lossy().into_owned();
