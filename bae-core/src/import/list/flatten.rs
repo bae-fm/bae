@@ -306,7 +306,7 @@ fn place_row(
         candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
             .map_err(|error| LibraryError::Internal(error.to_string()))?,
     ));
-    let metadata_seed = state.and_then(|state| state.pick.clone());
+    let metadata_seed = state.and_then(|state| state.metadata_seed.clone());
     let placement = place(
         skipped,
         imported.is_some(),

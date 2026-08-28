@@ -98,7 +98,7 @@ fn lead(release_id: &str) -> LeadMatch {
 }
 
 /// A stored verdict that classifies Ready: one match, counts and lengths
-/// agreeing, and identification's own pick of that match.
+/// agreeing, and identification's seed for that match.
 fn ready_state(release_id: &str) -> CandidateStateListRow {
     CandidateStateListRow {
         edit_revision: 0,
@@ -109,7 +109,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
             lead: Some(lead(release_id)),
         }),
         probed_total_duration_ms: 2_400_000,
-        pick: Some(MetadataSeed::ExternalRelease {
+        metadata_seed: Some(MetadataSeed::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: release_id.to_string(),
         }),
@@ -127,7 +127,7 @@ fn several_matches_state() -> CandidateStateListRow {
             lead: Some(lead("mb-1")),
         }),
         probed_total_duration_ms: 2_400_000,
-        pick: None,
+        metadata_seed: None,
     }
 }
 
@@ -142,12 +142,12 @@ fn not_found_state() -> CandidateStateListRow {
             lead: None,
         }),
         probed_total_duration_ms: 2_400_000,
-        pick: None,
+        metadata_seed: None,
     }
 }
 
-/// The pick a user makes on a release row.
-fn release_pick(release_id: &str) -> MetadataSeed {
+/// The external release seed chosen from a release row.
+fn external_release_seed(release_id: &str) -> MetadataSeed {
     MetadataSeed::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),

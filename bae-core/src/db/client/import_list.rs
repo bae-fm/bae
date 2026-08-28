@@ -62,7 +62,7 @@ pub struct CandidateStateListRow {
     /// `None` when the identify columns are clear.
     pub verdict: Option<VerdictSummary>,
     pub probed_total_duration_ms: u64,
-    pub pick: Option<MetadataSeed>,
+    pub metadata_seed: Option<MetadataSeed>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -366,7 +366,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             ))
         },
     )? {
-        let (content_hash, edit_revision, verdict_kind, track_count, probed, pick) = row;
+        let (content_hash, edit_revision, verdict_kind, track_count, probed, metadata_seed) = row;
         let verdict = verdict_kind
             .map(|kind| -> Result<VerdictSummary, DbError> {
                 Ok(VerdictSummary {
@@ -393,7 +393,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                     .map(|probed| to_u64(probed, "a candidate's probed total"))
                     .transpose()?
                     .unwrap_or_default(),
-                pick: pick?,
+                metadata_seed: metadata_seed?,
             },
         );
     }

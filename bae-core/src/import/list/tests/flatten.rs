@@ -754,19 +754,19 @@ fn the_summary_carries_the_watched_folders_and_their_scan_statuses() {
     assert_eq!(flat.summary.folder_scan_statuses.len(), 1);
 }
 
-// ── A pick is the answer ────────────────────────────────────────────
+// ── A metadata seed is the answer ───────────────────────────────────
 
-/// Whatever question the verdict was going to put, a stored pick has answered
+/// Whatever question the verdict was going to put, a stored seed has answered
 /// it: the row is Ready and takes a bulk-import checkbox, rather than keeping
 /// the question's tag forever after it was answered.
 #[test]
-fn a_pick_answers_whatever_the_verdict_asked() {
+fn a_metadata_seed_answers_whatever_the_verdict_asked() {
     let cases = [
         ("several pressings matched", several_matches_state()),
         ("nothing matched anywhere", not_found_state()),
     ];
     for (name, mut state) in cases {
-        // Without a pick the row states the question.
+        // Without a seed the row states the question.
         let mut rows = queue();
         rows.candidates = vec![candidate("Release")];
         rows.states
@@ -779,8 +779,8 @@ fn a_pick_answers_whatever_the_verdict_asked() {
             "{name}: unanswered, the row asks"
         );
 
-        // The user picks a release; the row is Ready.
-        state.pick = Some(release_pick("mb-picked"));
+        // The user chooses an external release seed; the row is Ready.
+        state.metadata_seed = Some(external_release_seed("mb-picked"));
         let mut rows = queue();
         rows.candidates = vec![candidate("Release")];
         rows.states.insert("hash-Release".to_string(), state);
@@ -803,13 +803,13 @@ fn a_pick_answers_whatever_the_verdict_asked() {
 /// Reading the folder as its own tags is an answer too — there is no release
 /// to name, and nothing left to ask.
 #[test]
-fn an_unknown_pick_answers_the_row() {
+fn a_file_tags_seed_answers_the_row() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
-            pick: Some(MetadataSeed::FileTags),
+            metadata_seed: Some(MetadataSeed::FileTags),
             ..several_matches_state()
         },
     );
@@ -820,11 +820,11 @@ fn an_unknown_pick_answers_the_row() {
     assert_eq!(row.metadata_seed, Some(MetadataSeed::FileTags));
 }
 
-/// A pick belongs to the file shape it was made against. Editing the folder
-/// moves the candidate past that shape, so the pick is not its answer any more
+/// A seed belongs to the file shape it was chosen against. Editing the folder
+/// moves the candidate past that shape, so the seed is not its answer any more
 /// and the row goes back to waiting on identification.
 #[test]
-fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
+fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
     let mut rows = queue();
     rows.candidates = vec![ScanCandidateListRow {
         file_edit_revision: 2,
@@ -833,7 +833,7 @@ fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
-            pick: Some(release_pick("mb-picked")),
+            metadata_seed: Some(external_release_seed("mb-picked")),
             ..several_matches_state()
         },
     );
@@ -850,19 +850,19 @@ fn a_pick_at_a_stale_edit_revision_does_not_answer_the_row() {
     assert_eq!(row.metadata_seed, None);
 }
 
-/// A pick does not outrank the three facts above it: a skipped candidate stays
+/// A seed does not outrank the three facts above it: a skipped candidate stays
 /// skipped, an imported one stays done, and a running import keeps the row.
 #[test]
-fn a_pick_does_not_outrank_skipped_done_or_importing() {
-    let picked = CandidateStateListRow {
-        pick: Some(release_pick("mb-picked")),
+fn a_seed_does_not_outrank_skipped_done_or_importing() {
+    let seeded = CandidateStateListRow {
+        metadata_seed: Some(external_release_seed("mb-picked")),
         ..several_matches_state()
     };
 
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), picked.clone());
+        .insert("hash-Release".to_string(), seeded.clone());
     rows.skipped
         .insert((rows.watched_folders[0].path.clone(), "Release".to_string()));
     assert_eq!(
@@ -873,7 +873,7 @@ fn a_pick_does_not_outrank_skipped_done_or_importing() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     rows.states
-        .insert("hash-Release".to_string(), picked.clone());
+        .insert("hash-Release".to_string(), seeded.clone());
     rows.imported.insert(
         "hash-Release".to_string(),
         ImportedRelease {
@@ -888,7 +888,7 @@ fn a_pick_does_not_outrank_skipped_done_or_importing() {
 
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
-    rows.states.insert("hash-Release".to_string(), picked);
+    rows.states.insert("hash-Release".to_string(), seeded);
     let running = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
