@@ -20,7 +20,7 @@ async fn archived_for(
 }
 
 #[tokio::test]
-async fn re_identify_to_unknown_clears_identities_and_moves_album() {
+async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
     use lofty::config::WriteOptions;
     use lofty::prelude::*;
     use lofty::tag::{Tag, TagType};
@@ -444,7 +444,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
 }
 
 #[tokio::test]
-async fn re_identify_to_unknown_reseeds_rows_from_file_tags() {
+async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     // A release carrying MusicBrainz-shaped rows, with local audio
     // files whose embedded tags say something different. Re-identifying
     // as File Tags must reseed the album/track rows from those tags — not

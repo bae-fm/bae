@@ -60,7 +60,7 @@ fn discogs_identity(group: &str, release: &str) -> crate::import::ReleaseIdentit
 }
 
 #[tokio::test]
-async fn set_identity_to_unknown_moves_release_to_fresh_album() {
+async fn set_identity_to_file_tags_moves_release_to_fresh_album() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
     let album = create_test_album();
