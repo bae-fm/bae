@@ -102,6 +102,7 @@ pub fn place(
         CandidateAnswer::Classified(QueueClassification::NeedsYou(needs_you)) => {
             NeedsYouReason::Disagreement(needs_you.clone())
         }
+        CandidateAnswer::NeedsMetadata => NeedsYouReason::NeedsMetadata,
         CandidateAnswer::Unanswered(phase) => NeedsYouReason::StillIdentifying { phase: *phase },
     };
     TriagePlacement::NeedsYou {

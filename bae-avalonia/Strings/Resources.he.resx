@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>הכמות או האורכים אינם תואמים</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>כבר בספרייה</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>אין התאמה</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>נדרשים נתוני מטא</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>עדיין בזיהוי</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>מזהה</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>מעבר למועמד שעדיין בזיהוי</value></data>

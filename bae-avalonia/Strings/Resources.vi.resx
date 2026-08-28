@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Số lượng hoặc thời lượng không khớp</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Đã có trong thư viện</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Không khớp</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Cần siêu dữ liệu</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Vẫn đang nhận dạng</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Đang nhận dạng</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Đến ứng viên vẫn đang được nhận dạng</value></data>

@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>ಸಂಖ್ಯೆ ಅಥವಾ ಅವಧಿ ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ಈಗಾಗಲೇ ಗ್ರಂಥಾಲಯದಲ್ಲಿ</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆ ಸಿಕ್ಕಿಲ್ಲ</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಅಗತ್ಯವಿದೆ</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿರುವ ಅಭ್ಯರ್ಥಿಗೆ ಹೋಗಿ</value></data>

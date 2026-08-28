@@ -248,6 +248,7 @@ pub enum BridgeNeedsYouGroup {
     CountsOrLengthsDisagree,
     AlreadyInLibrary,
     NoMatch,
+    NeedsMetadata,
     StillIdentifying,
 }
 
@@ -256,6 +257,9 @@ pub enum BridgeNeedsYouReason {
     Disagreement {
         disagreement: BridgeNeedsYou,
     },
+    /// No metadata source has been selected and no automatic identification
+    /// is scheduled.
+    NeedsMetadata,
     /// No verdict yet — the row is dimmed and leaves this group on its own.
     /// `phase` says which of three unlike states it is in, so the row can say
     /// so rather than showing all three identically.
@@ -339,6 +343,7 @@ pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
         BridgeNeedsYouGroup::CountsOrLengthsDisagree,
         BridgeNeedsYouGroup::AlreadyInLibrary,
         BridgeNeedsYouGroup::NoMatch,
+        BridgeNeedsYouGroup::NeedsMetadata,
         BridgeNeedsYouGroup::StillIdentifying,
     ]
 }

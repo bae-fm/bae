@@ -1,14 +1,14 @@
 //! The list's live query, with what this process holds and no table does
 //! folded into its request.
 //!
-//! Three such facts. Two of them place a row: whether an import has claimed
-//! the candidate, and how far identification has got for one with no stored
-//! verdict, both from
-//! [`CandidateRuntime`](crate::import::CandidateRuntime). The third orders one:
-//! where an imported release's cloud upload stands, from the outbox. The
-//! subscription owns both merges — it keeps the current request, applies each
-//! change that moves a row, and hands the query a new request. The bridge and
-//! the UIs never see any of it.
+//! Four such facts. Three place a row: whether an import has claimed the
+//! candidate, how far identification has got for one with no stored verdict,
+//! both from [`CandidateRuntime`](crate::import::CandidateRuntime), and whether
+//! the current configuration schedules automatic identification. The fourth
+//! orders one: where an imported release's cloud upload stands, from the
+//! outbox. The subscription owns the merges — it keeps the current request,
+//! applies each change that moves a row, and hands the query a new request. The
+//! bridge and the UIs never see any of it.
 
 use super::{
     ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListView, UploadStanding,
@@ -93,6 +93,7 @@ impl ImportListSubscription {
         changes: broadcast::Receiver<CandidateRuntimeChange>,
         reread: impl Fn() -> HashMap<String, CandidateRuntimeSnapshot> + Send + 'static,
         outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
+        config: watch::Receiver<crate::config::Config>,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
         let requests = Arc::new(Requests {
@@ -106,6 +107,9 @@ impl ImportListSubscription {
                 .abort_handle(),
             runtime_handle
                 .spawn(merge_outbox(requests.clone(), outbox))
+                .abort_handle(),
+            runtime_handle
+                .spawn(merge_config(requests.clone(), config))
                 .abort_handle(),
         ];
         Self {
@@ -188,6 +192,37 @@ impl ImportListSubscription {
 impl Drop for ImportListSubscription {
     fn drop(&mut self) {
         self.stop();
+    }
+}
+
+/// Keep the list's unseeded state aligned with the current identification
+/// policy. A mode or automatic-lookup change reprojects existing candidates;
+/// adding another folder is not required to make the setting take effect.
+async fn merge_config(requests: Arc<Requests>, mut config: watch::Receiver<crate::config::Config>) {
+    loop {
+        let changed = tokio::select! {
+            () = requests.cancellation.cancelled() => return,
+            changed = config.changed() => changed,
+        };
+        if changed.is_err() {
+            return;
+        }
+        let next = config
+            .borrow_and_update()
+            .automatic_import_identification_enabled();
+        let moved = requests
+            .current
+            .lock()
+            .expect("import list request mutex poisoned")
+            .automatic_identification_enabled
+            != next;
+        if moved
+            && requests
+                .update(|request| request.automatic_identification_enabled = next)
+                .is_err()
+        {
+            return;
+        }
     }
 }
 

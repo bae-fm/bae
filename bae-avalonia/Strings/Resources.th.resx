@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>จำนวนหรือความยาวไม่ตรงกัน</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>อยู่ในคลังแล้ว</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>ไม่มีรายการตรงกัน</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>ต้องการข้อมูลกำกับ</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ยังระบุอยู่</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>กำลังระบุ</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ไปยังรายการที่ยังระบุอยู่</value></data>

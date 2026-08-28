@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>সংখ্যা বা দৈর্ঘ্যে অমিল</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>আগে থেকেই লাইব্রেরিতে</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>কোনো মিল পাওয়া যায়নি</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>মেটাডেটা প্রয়োজন</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>এখনও শনাক্ত করা হচ্ছে</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>এখনও শনাক্ত হচ্ছে এমন প্রার্থীতে যান</value></data>

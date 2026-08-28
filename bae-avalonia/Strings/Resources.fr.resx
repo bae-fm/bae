@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Nombre ou durées divergents</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Déjà dans la bibliothèque</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Sans correspondance</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Métadonnées requises</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Identification en cours</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identification</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Aller à un candidat encore en cours d’identification</value></data>

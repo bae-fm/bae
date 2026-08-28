@@ -586,7 +586,7 @@ impl Fixture {
             .await
             .unwrap()
             .map(|projection| {
-                projection.resolve(&crate::import::triage::TriageRuntimeFacts::default())
+                projection.resolve(&crate::import::triage::TriageRuntimeFacts::default(), true)
             })
     }
 

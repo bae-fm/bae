@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>اختلاف الأعداد أو المدد</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>موجود بالفعل في المكتبة</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>لا يوجد تطابق</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>بيانات وصفية مطلوبة</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>لا يزال قيد التحديد</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>جارٍ التحديد</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>الانتقال إلى مرشَّح ما زال قيد التعرّف</value></data>

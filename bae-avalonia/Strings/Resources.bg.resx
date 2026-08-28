@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Броят или дължините се разминават</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Вече в библиотеката</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Няма съвпадение</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Нужни са метаданни</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Все още се идентифицира</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Идентифициране</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Към кандидат, който още се разпознава</value></data>

@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>సంఖ్య లేదా నిడివి సరిపోలడం లేదు</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ఇప్పటికే లైబ్రరీలో</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>సరిపోలిక దొరకలేదు</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>మెటాడేటా అవసరం</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ఇంకా గుర్తిస్తోంది</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>గుర్తిస్తోంది</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ఇంకా గుర్తించబడుతున్న అభ్యర్థికి వెళ్లండి</value></data>

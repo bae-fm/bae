@@ -302,6 +302,7 @@ impl crate::types::BridgeNeedsYouGroup {
             G::CountsOrLengthsDisagree => Self::CountsOrLengthsDisagree,
             G::AlreadyInLibrary => Self::AlreadyInLibrary,
             G::NoMatch => Self::NoMatch,
+            G::NeedsMetadata => Self::NeedsMetadata,
             G::StillIdentifying => Self::StillIdentifying,
         }
     }
@@ -315,6 +316,7 @@ impl crate::types::BridgeNeedsYouReason {
             R::Disagreement(needs_you) => Self::Disagreement {
                 disagreement: crate::types::BridgeNeedsYou::from_core(needs_you),
             },
+            R::NeedsMetadata => Self::NeedsMetadata,
             R::StillIdentifying { phase } => Self::StillIdentifying {
                 phase: crate::types::BridgeIdentifyPhase::from_core(phase),
             },

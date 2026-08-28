@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>곡 수 또는 길이 불일치</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>라이브러리에 이미 있음</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>일치 항목 없음</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>메타데이터 필요</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>아직 식별 중</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>식별 중</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>아직 식별 중인 항목으로 이동</value></data>

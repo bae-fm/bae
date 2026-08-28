@@ -130,9 +130,13 @@ impl AppServices {
     ) -> ImportListSubscription {
         let (initial_runtime, changes) = self.subscribe_candidate_runtime();
         let outbox = self.subscribe_outbox_values();
+        let config = self.subscribe_config_changes();
         let request = ImportListRequest {
             view,
             windows: crate::library::LibraryPageWindows::new(),
+            automatic_identification_enabled: config
+                .borrow()
+                .automatic_import_identification_enabled(),
             runtime_facts: crate::import::list::facts_of(&initial_runtime),
             upload_standing: upload_standing_of(&outbox),
         };
@@ -144,6 +148,7 @@ impl AppServices {
             changes,
             move || import.candidate_runtimes(),
             outbox,
+            config,
             runtime_handle,
         )
     }
@@ -159,6 +164,9 @@ impl AppServices {
             .load_import_list(ImportListRequest {
                 view,
                 windows,
+                automatic_identification_enabled: self
+                    .get_config()
+                    .automatic_import_identification_enabled(),
                 runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
                 upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
             })
@@ -179,6 +187,9 @@ impl AppServices {
                 ImportListRequest {
                     view,
                     windows: crate::library::LibraryPageWindows::new(),
+                    automatic_identification_enabled: self
+                        .get_config()
+                        .automatic_import_identification_enabled(),
                     runtime_facts: crate::import::list::facts_of(&self.candidate_runtimes()),
                     upload_standing: upload_standing_of(&self.subscribe_outbox_values()),
                 },
@@ -197,12 +208,14 @@ impl AppServices {
             .as_ref()
             .map(TriageRuntimeFacts::of)
             .unwrap_or_default();
+        let automatic_identification_enabled =
+            self.get_config().automatic_import_identification_enabled();
         Ok(self
             .inner
             .manager
             .load_import_candidate(key)
             .await?
-            .map(|projection| projection.resolve(&facts)))
+            .map(|projection| projection.resolve(&facts, automatic_identification_enabled)))
     }
 
     /// One candidate as the pane reads it, and every later read of it. `None`
@@ -216,21 +229,25 @@ impl AppServices {
     > {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         let (initial_runtime, mut changes) = self.subscribe_candidate_runtime();
+        let mut config = self.subscribe_config_changes();
         let mut query = self.inner.manager.subscribe_import_candidate(&key);
         let import = self.inner.import.clone();
         runtime_handle.spawn(async move {
             let initial = initial_runtime.get(&key);
             let mut facts = initial.map(TriageRuntimeFacts::of).unwrap_or_default();
+            let mut automatic_identification_enabled =
+                config.borrow().automatic_import_identification_enabled();
             let mut projection: Option<ImportCandidateDetailProjection> = None;
             // The units this pane has already asked to be measured. The query
             // cannot open a file, so a projection that shows unmeasured rows
             // asks once and redraws when the write lands.
             let mut probing: Vec<crate::import::AudioFile> = Vec::new();
             let deliver = |projection: &Option<ImportCandidateDetailProjection>,
-                           facts: &TriageRuntimeFacts| {
+                           facts: &TriageRuntimeFacts,
+                           automatic_identification_enabled: bool| {
                 projection
                     .clone()
-                    .map(|projection| projection.resolve(facts))
+                    .map(|projection| projection.resolve(facts, automatic_identification_enabled))
             };
             loop {
                 tokio::select! {
@@ -256,7 +273,14 @@ impl AppServices {
                                     }
                                 });
                             }
-                            if tx.send(Ok(deliver(&projection, &facts))).is_err() {
+                            if tx
+                                .send(Ok(deliver(
+                                    &projection,
+                                    &facts,
+                                    automatic_identification_enabled,
+                                )))
+                                .is_err()
+                            {
                                 return;
                             }
                         }
@@ -308,7 +332,36 @@ impl AppServices {
                         }
                         facts = next_facts;
                         if projection.is_some()
-                            && tx.send(Ok(deliver(&projection, &facts))).is_err()
+                            && tx
+                                .send(Ok(deliver(
+                                    &projection,
+                                    &facts,
+                                    automatic_identification_enabled,
+                                )))
+                                .is_err()
+                        {
+                            return;
+                        }
+                    },
+                    changed = config.changed() => {
+                        if changed.is_err() {
+                            return;
+                        }
+                        let next = config
+                            .borrow_and_update()
+                            .automatic_import_identification_enabled();
+                        if next == automatic_identification_enabled {
+                            continue;
+                        }
+                        automatic_identification_enabled = next;
+                        if projection.is_some()
+                            && tx
+                                .send(Ok(deliver(
+                                    &projection,
+                                    &facts,
+                                    automatic_identification_enabled,
+                                )))
+                                .is_err()
                         {
                             return;
                         }

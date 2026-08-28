@@ -123,20 +123,38 @@ impl UploadStanding {
 
 /// Everything the list query is a function of.
 ///
-/// `runtime_facts` and `upload_standing` are filled in by
+/// `automatic_identification_enabled`, `runtime_facts`, and `upload_standing`
+/// are filled in by
 /// [`ImportListSubscription`], never by a caller: a claimed import and a
 /// running identification move a row between tabs, an outstanding upload moves
-/// a Done row within its tab, and none of the three is in a table this query
-/// reads.
-#[derive(Debug, Clone, PartialEq, Default)]
+/// a Done row within its tab, and the identification policy determines whether
+/// an unseeded row is scheduled or needs metadata. None is in a table this
+/// query reads.
+#[derive(Debug, Clone, PartialEq)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     pub windows: LibraryPageWindows,
+    /// Whether an unseeded candidate is scheduled for automatic
+    /// identification. When false, the row needs a metadata seed from the
+    /// person rather than waiting for background work.
+    pub automatic_identification_enabled: bool,
     /// Only the keys whose facts differ from the default, so an idle queue
     /// makes an empty map.
     pub runtime_facts: BTreeMap<String, TriageRuntimeFacts>,
     /// Only the releases the cloud outbox still holds work for, by release id.
     pub upload_standing: BTreeMap<String, UploadStanding>,
+}
+
+impl Default for ImportListRequest {
+    fn default() -> Self {
+        Self {
+            view: ImportListView::default(),
+            windows: LibraryPageWindows::default(),
+            automatic_identification_enabled: true,
+            runtime_facts: BTreeMap::default(),
+            upload_standing: BTreeMap::default(),
+        }
+    }
 }
 
 /// One item in the list, at one offset.
@@ -327,7 +345,11 @@ pub struct ImportCandidateDetailProjection {
 
 impl ImportCandidateDetailProjection {
     /// The pane's value, with this key's runtime applied.
-    pub fn resolve(self, facts: &TriageRuntimeFacts) -> ImportCandidateDetail {
+    pub fn resolve(
+        self,
+        facts: &TriageRuntimeFacts,
+        automatic_identification_enabled: bool,
+    ) -> ImportCandidateDetail {
         let Self {
             candidate,
             actionable,
@@ -359,7 +381,8 @@ impl ImportCandidateDetailProjection {
         );
         let known = match answer.filter(|_| actionable) {
             Some(classification) => CandidateAnswer::Classified(classification),
-            None => CandidateAnswer::Unanswered(facts.phase),
+            None if automatic_identification_enabled => CandidateAnswer::Unanswered(facts.phase),
+            None => CandidateAnswer::NeedsMetadata,
         };
         let placement = place(
             skipped,

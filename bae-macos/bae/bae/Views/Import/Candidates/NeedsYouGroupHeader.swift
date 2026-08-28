@@ -33,6 +33,7 @@ struct NeedsYouGroupHeader: View {
         case .countsOrLengthsDisagree: "Counts or Lengths Disagree"
         case .alreadyInLibrary: "Already in Library"
         case .noMatch: "No Match"
+        case .needsMetadata: "Needs metadata"
         case .stillIdentifying: "Still Identifying"
         }
     }
@@ -47,6 +48,7 @@ struct NeedsYouGroupHeader: View {
             NeedsYouGroupHeader(group: .countsOrLengthsDisagree, count: 10)
             NeedsYouGroupHeader(group: .alreadyInLibrary, count: 15)
             NeedsYouGroupHeader(group: .noMatch, count: 48)
+            NeedsYouGroupHeader(group: .needsMetadata, count: 12)
             NeedsYouGroupHeader(group: .stillIdentifying, count: 18)
         }
         .padding()

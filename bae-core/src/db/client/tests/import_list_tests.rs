@@ -150,6 +150,7 @@ async fn request(tab: TriageTab) -> ImportListRequest {
             limit: 50,
         })
         .collect(),
+        automatic_identification_enabled: true,
         runtime_facts: Default::default(),
         upload_standing: Default::default(),
     }

@@ -303,6 +303,8 @@ internal sealed partial class ImportSectionView
     private string? RowSubLine(BridgeTriageRow row) => row.Placement switch
     {
         BridgeTriagePlacement.Skipped => MetadataLine(row),
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.NeedsMetadata } =>
+            Loc.Chrome("import.needs_you.needs_metadata"),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
             BridgeDisplay.LocalizedLine(phase.Phase),
         BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
@@ -461,6 +463,8 @@ internal sealed partial class ImportSectionView
     {
         switch (reason)
         {
+            case BridgeNeedsYouReason.NeedsMetadata:
+                return new Panel();
             case BridgeNeedsYouReason.StillIdentifying stillIdentifying:
                 // A run in flight spins; one waiting its turn, or one that
                 // settled without an answer worth keeping, shows the clock —

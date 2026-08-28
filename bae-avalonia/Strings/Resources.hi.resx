@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>संख्या या अवधि मेल नहीं खाती</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>पहले से लाइब्रेरी में</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>कोई मिलान नहीं मिला</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>मेटाडेटा चाहिए</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>अब भी पहचान हो रही है</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>पहचान हो रही है</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>अभी पहचाने जा रहे उम्मीदवार पर जाएँ</value></data>

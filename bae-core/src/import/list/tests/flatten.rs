@@ -589,6 +589,30 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
 }
 
 #[test]
+fn an_unseeded_candidate_is_ready_for_metadata() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+
+    let flat = flatten(
+        &rows,
+        &ImportListRequest {
+            view: view(TriageTab::Pending),
+            automatic_identification_enabled: false,
+            ..ImportListRequest::default()
+        },
+    )
+    .expect("the queue flattens");
+
+    assert_eq!(
+        row_for(&flat, "Release").placement,
+        TriagePlacement::NeedsYou {
+            group: crate::import::NeedsYouGroup::NeedsMetadata,
+            reason: crate::import::NeedsYouReason::NeedsMetadata,
+        }
+    );
+}
+
+#[test]
 fn the_first_unidentified_row_has_its_position_in_the_current_view() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release 1"), candidate("Release 2")];

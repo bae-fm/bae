@@ -91,22 +91,27 @@ pub enum NeedsYouGroup {
     AlreadyInLibrary,
     /// Nothing matched, or there was nothing to look up.
     NoMatch,
+    /// No metadata source has been selected and no automatic identification
+    /// is scheduled.
+    NeedsMetadata,
     /// No verdict yet.
     StillIdentifying,
 }
 
 impl NeedsYouGroup {
-    pub const IN_ORDER: [Self; 5] = [
+    pub const IN_ORDER: [Self; 6] = [
         Self::PickAPressing,
         Self::CountsOrLengthsDisagree,
         Self::AlreadyInLibrary,
         Self::NoMatch,
+        Self::NeedsMetadata,
         Self::StillIdentifying,
     ];
 
     /// The group a reason batches under. The one place the collapse happens.
     pub fn of(reason: &NeedsYouReason) -> Self {
         let needs_you = match reason {
+            NeedsYouReason::NeedsMetadata => return Self::NeedsMetadata,
             NeedsYouReason::StillIdentifying { .. } => return Self::StillIdentifying,
             NeedsYouReason::Disagreement(needs_you) => needs_you,
         };
@@ -130,6 +135,10 @@ impl NeedsYouGroup {
 pub enum NeedsYouReason {
     /// The stored verdict classified to this.
     Disagreement(NeedsYou),
+    /// No metadata source has been selected and no automatic identification
+    /// is scheduled. Selecting the candidate opens the configured metadata
+    /// surface.
+    NeedsMetadata,
     /// No stored verdict yet. Work in progress, not a decision anyone is being
     /// asked for — and `phase` says *which* kind of work in progress, because
     /// three unlike states share this group.
@@ -186,6 +195,7 @@ impl IdentifyPhase {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CandidateAnswer {
     Classified(QueueClassification),
+    NeedsMetadata,
     Unanswered(IdentifyPhase),
 }
 

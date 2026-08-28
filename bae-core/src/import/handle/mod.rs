@@ -424,11 +424,15 @@ impl ImportServiceHandle {
             .as_ref()
             .map(crate::import::triage::TriageRuntimeFacts::of)
             .unwrap_or_default();
+        let automatic_identification_enabled = self
+            .library_manager
+            .get_config()
+            .automatic_import_identification_enabled();
         Ok(self
             .library_manager
             .load_import_candidate(key)
             .await?
-            .map(|projection| projection.resolve(&facts)))
+            .map(|projection| projection.resolve(&facts, automatic_identification_enabled)))
     }
 
     /// The first import list `accept` admits, waiting through the query's
@@ -448,6 +452,10 @@ impl ImportServiceHandle {
                 limit: u64::MAX,
             })
             .collect(),
+            automatic_identification_enabled: self
+                .library_manager
+                .get_config()
+                .automatic_import_identification_enabled(),
             runtime_facts: crate::import::list::facts_of(&initial_runtime),
             upload_standing: Default::default(),
         };
@@ -459,6 +467,7 @@ impl ImportServiceHandle {
             changes,
             move || runtime.all(),
             self.library_manager.subscribe_outbox_values(),
+            self.library_manager.subscribe_config_changes(),
             &self.runtime_handle,
         );
         loop {

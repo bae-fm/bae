@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Počty nebo délky se neshodují</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Už v knihovně</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Bez shody</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Vyžaduje metadata</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Stále se identifikuje</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifikace</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Přejít na kandidáta, který se stále identifikuje</value></data>

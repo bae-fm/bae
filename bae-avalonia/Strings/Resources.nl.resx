@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Aantallen of lengtes komen niet overeen</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Al in de bibliotheek</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Geen match gevonden</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Metadata nodig</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Nog aan het identificeren</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificeren</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Ga naar een kandidaat die nog wordt geïdentificeerd</value></data>

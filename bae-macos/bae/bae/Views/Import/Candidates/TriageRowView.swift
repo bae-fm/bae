@@ -236,6 +236,8 @@ extension TriageRowView {
             return nil
         case .needsYou(let group, let reason):
             switch reason {
+            case .needsMetadata:
+                return String(localized: "Needs metadata")
             case .stillIdentifying(let phase):
                 return phase.localizedText
             case .disagreement(let needsYou):
@@ -290,6 +292,8 @@ extension TriageRowView {
         reason: BridgeNeedsYouReason
     ) -> some View {
         switch reason {
+        case .needsMetadata:
+            EmptyView()
         case .stillIdentifying(let phase):
             if phase == .running {
                 ProgressView().controlSize(.small)
@@ -306,6 +310,8 @@ extension TriageRowView {
             case .countsOrLengthsDisagree:
                 trailingIcon("questionmark.circle", tint: .orange)
             case .noMatch:
+                EmptyView()
+            case .needsMetadata:
                 EmptyView()
             case .stillIdentifying:
                 EmptyView()

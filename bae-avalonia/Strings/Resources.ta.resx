@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>எண்ணிக்கை அல்லது நீளம் ஒத்துப்போகவில்லை</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ஏற்கனவே நூலகத்தில்</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>பொருத்தம் கிடைக்கவில்லை</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>மெட்டாடேட்டா தேவை</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படும் வேட்பாளருக்குச் செல்</value></data>

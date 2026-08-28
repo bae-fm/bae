@@ -371,6 +371,7 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Sayılar veya Süreler Uyuşmuyor</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Kitaplıkta Zaten Var</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Eşleşme Yok</value></data>
+  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Meta veri gerekli</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Hâlâ Tanımlanıyor</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Tanımlanıyor</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Hâlâ tanımlanan bir adaya git</value></data>
