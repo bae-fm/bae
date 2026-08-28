@@ -1,7 +1,7 @@
 use super::super::*;
 use super::*;
-use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease, ReleaseMetadataSource};
-use crate::import::{MetadataSource, ReleaseIdentity};
+use crate::db::{DbAlbum, DbAlbumArtist, DbArtist, DbRelease};
+use crate::import::{MetadataProvenance, MetadataSource, ReleaseIdentity};
 use chrono::Utc;
 use coven::SystemClock;
 use std::sync::Arc;
@@ -106,8 +106,10 @@ async fn identity_rows_take_their_ids_from_the_injected_provider() {
     db.set_identity_atomic(
         &release.id,
         &[identity(MetadataSource::MusicBrainz, "mb-release-1")],
-        ReleaseMetadataSource::MusicBrainz,
-        Some("mb-release-1"),
+        Some(MetadataProvenance::ExternalRelease {
+            source: MetadataSource::MusicBrainz,
+            release_id: "mb-release-1".to_string(),
+        }),
         &album.id,
         &target.id,
         Some(&target),

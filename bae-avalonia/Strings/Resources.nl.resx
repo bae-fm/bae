@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Aantallen of lengtes komen niet overeen</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Al in de bibliotheek</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Geen match gevonden</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Metadata nodig</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Nog aan het identificeren</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificeren</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Ga naar een kandidaat die nog wordt geïdentificeerd</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Nieuw</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Voeg toe</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Verwijderen</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Kandidaten zonder gekozen bron openen in</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Laatst gebruikt</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup-kandidaten automatisch identificeren</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Automatische identificatie leest hoestekst, barcodes en de Disc ID alleen wanneer een kandidaat Opzoeken gebruikt. Bestandstags en Handmatig voeren dit nooit uit.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albumtitel</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Toepassen</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Metagegevens wissen</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Metagegevens wissen?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Andere uitgave zoeken…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Online zoeken</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Online zoeken…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Probeer de kandidaat opnieuw te lezen.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Automatisch identificeren</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Automatisch identificeren</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Leest automatisch hoestekst, barcodes en nummers van schijven en zoekt een overeenkomst wanneer Online zoeken wordt geopend.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Standaardbron voor metagegevens</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Online zoeken</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Geen</value></data>
 </root>

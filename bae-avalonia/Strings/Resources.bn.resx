@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>সংখ্যা বা দৈর্ঘ্যে অমিল</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>আগে থেকেই লাইব্রেরিতে</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>কোনো মিল পাওয়া যায়নি</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>মেটাডেটা প্রয়োজন</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>এখনও শনাক্ত করা হচ্ছে</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>এখনও শনাক্ত হচ্ছে এমন প্রার্থীতে যান</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>নতুন</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>যোগ করুন</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>সরান</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>উৎস নির্বাচন না করা প্রার্থীগুলি এখানে খুলুন</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>সর্বশেষ ব্যবহৃত</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>লুকআপ প্রার্থীদের স্বয়ংক্রিয়ভাবে শনাক্ত করুন</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>কোনো প্রার্থী লুকআপ ব্যবহার করলেই শুধু স্বয়ংক্রিয় শনাক্তকরণ প্রচ্ছদের লেখা, বারকোড ও ডিস্ক আইডি পড়ে। ফাইলের ট্যাগ এবং ম্যানুয়াল কখনো এটি চালায় না।</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>অ্যালবামের শিরোনাম</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>প্রয়োগ করুন</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>মেটাডেটা মুছুন</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>প্রার্থীর ফাইল ও ম্যাপিং পছন্দ অপরিবর্তিত থাকবে।</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>মেটাডেটা মুছবেন?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>অন্য রিলিজ খুঁজুন…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>অনলাইনে খুঁজুন</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>অনলাইনে খুঁজুন…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>প্রার্থীটি আবার পড়ার চেষ্টা করুন।</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>স্বয়ংক্রিয়ভাবে শনাক্ত করুন</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>স্বয়ংক্রিয়ভাবে শনাক্ত করুন</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>অনলাইনে খুঁজুন খোলা হলে স্বয়ংক্রিয়ভাবে প্রচ্ছদের লেখা, বারকোড ও ডিস্ক আইডি পড়ে এবং মিল খোঁজে।</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>ডিফল্ট মেটাডেটা উৎস</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>অনলাইনে খুঁজুন</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>কোনোটিই নয়</value></data>
 </root>

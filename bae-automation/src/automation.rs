@@ -199,18 +199,21 @@ impl Automation {
         Ok(automation_search_results(results))
     }
 
-    /// Select the source from which a candidate's release metadata is seeded.
-    pub async fn select_candidate_metadata_seed(
+    /// Replace a candidate's metadata from one source and record its provenance.
+    pub async fn select_candidate_metadata_provenance(
         &self,
         candidate_key: String,
-        seed: AutomationMetadataSeed,
+        provenance: AutomationMetadataProvenance,
     ) -> Result<EmptyResponse, AutomationError> {
         // Resolve the candidate first, and hand core the key the snapshot
         // resolved rather than the caller's string, so a typo is refused here
         // rather than stored.
         let candidate = self.get_candidate(candidate_key).await?;
         self.services
-            .import_select_candidate_metadata_seed(candidate.key().to_string(), metadata_seed(seed))
+            .import_select_candidate_metadata_provenance(
+                candidate.key().to_string(),
+                metadata_provenance(provenance),
+            )
             .await?;
         Ok(EmptyResponse {})
     }
@@ -466,11 +469,14 @@ impl Automation {
                 let query: AutomationSearchQuery = from_value(args)?;
                 to_value(self.search_imports(query).await?)
             }
-            AutomationTool::ImportCandidateMetadataSeedSelect => {
-                let input: CandidateMetadataSeedInput = from_value(args)?;
+            AutomationTool::ImportCandidateMetadataProvenanceSelect => {
+                let input: CandidateMetadataProvenanceInput = from_value(args)?;
                 to_value(
-                    self.select_candidate_metadata_seed(input.candidate_key, input.seed)
-                        .await?,
+                    self.select_candidate_metadata_provenance(
+                        input.candidate_key,
+                        input.provenance,
+                    )
+                    .await?,
                 )
             }
             AutomationTool::ImportCandidateEditFieldSet => {

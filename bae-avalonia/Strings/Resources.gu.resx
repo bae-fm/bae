@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>સંખ્યા કે લંબાઈ મેળ ખાતી નથી</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>પહેલેથી લાઇબ્રેરીમાં</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>કોઈ મેળ મળ્યો નથી</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>મેટાડેટા જરૂરી</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>હજી ઓળખાઈ રહ્યું છે</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ઓળખાઈ રહ્યું છે</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>હજુ ઓળખાઈ રહેલા ઉમેદવાર પર જાઓ</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>નવું</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>ઉમેરો</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>દૂર કરો</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>સ્રોત ન પસંદ કરેલા ઉમેદવારોને આમાં ખોલો</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>છેલ્લે વપરાયેલ</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>લુકઅપ ઉમેદવારોને આપમેળે ઓળખો</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>સ્વચાલિત ઓળખ કવરનું લખાણ, બારકોડ અને ડિસ્ક ID માત્ર ત્યારે વાંચે છે જ્યારે ઉમેદવાર લુકઅપ વાપરે. ફાઇલ ટૅગ અને મેન્યુઅલ તેને ક્યારેય ચલાવતા નથી.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>આલ્બમ શીર્ષક</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>લાગુ કરો</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>મેટાડેટા સાફ કરો</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>ઉમેદવારની ફાઇલો અને મેપિંગ પસંદગીઓ બદલાશે નહીં.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>મેટાડેટા સાફ કરવો?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>બીજી રિલીઝ શોધો…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ઓનલાઇન શોધો</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ઓનલાઇન શોધો…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>ઉમેદવારને ફરી વાંચવાનો પ્રયાસ કરો.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>આપમેળે ઓળખો</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>આપમેળે ઓળખો</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ઓનલાઇન શોધ ખૂલે ત્યારે કવરનું લખાણ, બારકોડ અને ડિસ્ક ID આપમેળે વાંચે છે અને મેળ શોધે છે.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>ડિફૉલ્ટ મેટાડેટા સ્રોત</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ઓનલાઇન શોધો</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>કોઈ નહીં</value></data>
 </root>

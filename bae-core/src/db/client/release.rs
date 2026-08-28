@@ -104,8 +104,8 @@ impl Database {
     ///
     /// Deliberately untouched: `source_release_payloads` (the archived provider
     /// document is what the source said, independent of a user edit) and
-    /// `release_identities` / `metadata_source` / `metadata_source_release_id`
-    /// (identity is orthogonal to metadata).
+    /// `release_identities` and metadata provenance (identity is orthogonal to
+    /// editable metadata).
     #[allow(clippy::too_many_arguments)]
     pub async fn update_release_metadata_user_edit(
         &self,

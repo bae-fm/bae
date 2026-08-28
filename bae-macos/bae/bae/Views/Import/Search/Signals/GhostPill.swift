@@ -3,8 +3,28 @@ import SwiftUI
 /// A transparent ghost pill button — the toolbar's escape actions.
 struct GhostPill: View {
     let icon: String?
-    let label: LocalizedStringKey
+    let label: Text
     let action: () -> Void
+
+    init(
+        icon: String?,
+        label: LocalizedStringKey,
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        self.label = Text(label)
+        self.action = action
+    }
+
+    init(
+        icon: String?,
+        verbatimLabel: String,
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        label = Text(verbatim: verbatimLabel)
+        self.action = action
+    }
 
     @State
     private var hovering = false
@@ -16,7 +36,7 @@ struct GhostPill: View {
                     Image(systemName: icon)
                         .font(.system(size: 11))
                 }
-                Text(label)
+                label
                     .font(.system(size: 12.5, weight: .medium))
             }
             .padding(.horizontal, 12)

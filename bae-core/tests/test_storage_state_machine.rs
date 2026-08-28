@@ -23,8 +23,8 @@ use bae_test_support as support;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{
-    Database, DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource, SortDirection,
-    StorageFilter, StorageSortCriterion, StorageSortField,
+    Database, DbAlbum, DbFile, DbRelease, Pressing, SortDirection, StorageFilter,
+    StorageSortCriterion, StorageSortField,
 };
 use bae_core::library::{AppServices, CancellationToken, LibraryManager, StorageProjectionValue};
 use bae_core::sync::CloudCipher;
@@ -147,8 +147,7 @@ async fn create_local_release(
         release_name: None,
         pressing: Pressing::blank(),
         disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
         remote: false,
         source_folder_name: None,
         content_hash: None,

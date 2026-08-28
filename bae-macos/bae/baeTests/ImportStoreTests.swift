@@ -128,7 +128,10 @@ private func readyRow(
         ),
         selectable: true,
         importStatus: nil,
-        metadataSeed: nil
+        metadataProvenance: .externalRelease(
+            source: .musicBrainz,
+            releaseId: "rel-\(key)"
+        )
     )
 }
 
@@ -152,7 +155,7 @@ private func needsYouRow(
         matched: nil,
         selectable: false,
         importStatus: nil,
-        metadataSeed: nil
+        metadataProvenance: nil
     )
 }
 
@@ -170,7 +173,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
-        metadataSeed: nil
+        metadataProvenance: nil
     )
 }
 
@@ -188,7 +191,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         matched: nil,
         selectable: false,
         importStatus: nil,
-        metadataSeed: nil
+        metadataProvenance: nil
     )
 }
 
@@ -215,7 +218,11 @@ private func detail(
         release: release,
         pickedLibraryStatus: nil,
         fileEvidence: [],
-        edit: nil,
+        metadataDraft: MappingFixtures.albumEdit,
+        metadataDraftIsBlank: false,
+        metadataProvenance: MappingFixtures.provenance,
+        metadataRevision: 1,
+        initialMetadataSource: .none,
         mapping: BridgeMappingTable(
             images: [],
             rows: [],
@@ -264,14 +271,15 @@ struct ImportStoreCandidateDetailTests {
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
         existing.error = "the last command failed"
-        let pendingPick = BridgeMetadataSeed.externalRelease(
+        let pendingPick = BridgeMetadataProvenance.externalRelease(
             source: .musicBrainz,
             releaseId: "rel-1"
         )
-        existing.metadataSeedSession = CandidateMetadataSeedSession(
-            seed: pendingPick
-        )
-        existing.presentedMetadataMode = .fileTags
+        existing.metadataApplicationSession =
+            CandidateMetadataApplicationSession(
+                provenance: pendingPick
+            )
+        existing.metadataPresentation = .fileTags
         existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
         existing.search.searchAlbum = "typed album"
         store.selectedCandidates["/w1/a"] = existing
@@ -292,8 +300,8 @@ struct ImportStoreCandidateDetailTests {
         // folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
         #expect(merged.error == "the last command failed")
-        #expect(merged.seedInFlight == pendingPick)
-        #expect(merged.presentedMetadataMode == .fileTags)
+        #expect(merged.provenanceInFlight == pendingPick)
+        #expect(merged.metadataPresentation == .fileTags)
         #expect(merged.fileTagsPreview.edit == MappingFixtures.albumSeed)
         #expect(merged.search.searchAlbum == "typed album")
         // Scan fields come from the incoming read.

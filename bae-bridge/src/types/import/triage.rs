@@ -211,6 +211,7 @@ pub enum BridgeTriageTab {
 /// it.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
+    Pending,
     Ready,
     NeedsYou {
         /// The header this row stacks under.
@@ -248,7 +249,6 @@ pub enum BridgeNeedsYouGroup {
     CountsOrLengthsDisagree,
     AlreadyInLibrary,
     NoMatch,
-    NeedsMetadata,
     StillIdentifying,
 }
 
@@ -257,9 +257,6 @@ pub enum BridgeNeedsYouReason {
     Disagreement {
         disagreement: BridgeNeedsYou,
     },
-    /// No metadata source has been selected and no automatic identification
-    /// is scheduled.
-    NeedsMetadata,
     /// No verdict yet — the row is dimmed and leaves this group on its own.
     /// `phase` says which of three unlike states it is in, so the row can say
     /// so rather than showing all three identically.
@@ -343,7 +340,6 @@ pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
         BridgeNeedsYouGroup::CountsOrLengthsDisagree,
         BridgeNeedsYouGroup::AlreadyInLibrary,
         BridgeNeedsYouGroup::NoMatch,
-        BridgeNeedsYouGroup::NeedsMetadata,
         BridgeNeedsYouGroup::StillIdentifying,
     ]
 }
@@ -352,7 +348,8 @@ pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
 #[uniffi::export]
 pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
     match placement {
-        BridgeTriagePlacement::Ready
+        BridgeTriagePlacement::Pending
+        | BridgeTriagePlacement::Ready
         | BridgeTriagePlacement::NeedsYou { .. }
         | BridgeTriagePlacement::Importing
         | BridgeTriagePlacement::Failed => BridgeTriageTab::Pending,
@@ -411,42 +408,39 @@ pub struct BridgeMatchedRelease {
 }
 
 /// The metadata source selected for a candidate. Mirror of
-/// `bae_core::import::MetadataSeed`.
+/// `bae_core::import::MetadataProvenance`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeMetadataSeed {
+pub enum BridgeMetadataProvenance {
     ExternalRelease {
         source: BridgeMetadataSource,
         release_id: String,
     },
     FileTags,
-    Manual,
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeMetadataSeed {
-    pub(crate) fn from_core(pick: bae_core::import::MetadataSeed) -> Self {
+impl BridgeMetadataProvenance {
+    pub(crate) fn from_core(pick: bae_core::import::MetadataProvenance) -> Self {
         match pick {
-            bae_core::import::MetadataSeed::ExternalRelease { source, release_id } => {
+            bae_core::import::MetadataProvenance::ExternalRelease { source, release_id } => {
                 Self::ExternalRelease {
                     source: BridgeMetadataSource::from_core(source),
                     release_id,
                 }
             }
-            bae_core::import::MetadataSeed::FileTags => Self::FileTags,
-            bae_core::import::MetadataSeed::Manual => Self::Manual,
+            bae_core::import::MetadataProvenance::FileTags => Self::FileTags,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::import::MetadataSeed {
+    pub(crate) fn into_core(self) -> bae_core::import::MetadataProvenance {
         match self {
             Self::ExternalRelease { source, release_id } => {
-                bae_core::import::MetadataSeed::ExternalRelease {
+                bae_core::import::MetadataProvenance::ExternalRelease {
                     source: source.into_core(),
                     release_id,
                 }
             }
-            Self::FileTags => bae_core::import::MetadataSeed::FileTags,
-            Self::Manual => bae_core::import::MetadataSeed::Manual,
+            Self::FileTags => bae_core::import::MetadataProvenance::FileTags,
         }
     }
 }
@@ -474,8 +468,8 @@ pub struct BridgeTriageRow {
     /// says *that* an import is running; how far along rides on the
     /// candidate's runtime.
     pub import_status: Option<BridgeTriageImportStatus>,
-    /// The metadata seed already decided for this candidate.
-    pub metadata_seed: Option<BridgeMetadataSeed>,
+    /// The metadata provenance already recorded for this candidate.
+    pub metadata_provenance: Option<BridgeMetadataProvenance>,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

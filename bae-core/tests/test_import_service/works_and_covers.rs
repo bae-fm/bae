@@ -137,7 +137,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         &prior_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::ExternalRelease {
+        MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: prior_mb,
         },
@@ -193,10 +193,10 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: remote_mb,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -288,7 +288,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &first_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::ExternalRelease {
+        MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: first_mb,
         },
@@ -314,7 +314,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         &second_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::ExternalRelease {
+        MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: second_mb,
         },
@@ -389,10 +389,10 @@ async fn import_with_cover_art() {
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -444,10 +444,10 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             selected_cover: Some(CoverSelection::Local(cover_path)),
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -510,10 +510,10 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             selected_cover: Some(CoverSelection::Local("scans/back.jpg".to_string())),
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -569,4 +569,4 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     );
 }
 
-// ── metadata seed + user edit at commit ────────────────────────────────────
+// ── metadata draft + user edit at commit ───────────────────────────────────

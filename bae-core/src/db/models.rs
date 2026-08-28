@@ -12,7 +12,7 @@
 //! is what the bridge and event payloads carry. (`crate::queue::QueueItem` is
 //! built directly by `db::get_queue_items` — it has no raw counterpart here.)
 
-use crate::import::MetadataSource;
+use crate::import::{MetadataProvenance, MetadataSource};
 use crate::util::content_type::ContentType;
 use chrono::{DateTime, Utc};
 
@@ -286,13 +286,9 @@ pub struct DbRelease {
     /// what editorial says, so it stays independent of the identified MB/Discogs
     /// row. A signal at re-identify time, and shown for confidence.
     pub disc_id: Option<String>,
-    /// Where the metadata was seeded from. Distinct from identity:
-    /// `metadata_source` answers "what should reset replay?", while
-    /// the `release_identities` rows answer "which release(s) is this?".
-    pub metadata_source: ReleaseMetadataSource,
-    /// Specific MB/Discogs release ID used to seed metadata. NULL when
-    /// `metadata_source = FileTags`.
-    pub metadata_source_release_id: Option<String>,
+    /// Where the current metadata began. `None` means direct entry; identity
+    /// remains separate in `release_identities`.
+    pub metadata_provenance: Option<MetadataProvenance>,
     /// Shared, synced fact (the coven gate column): is this release's audio in
     /// the cloud home (remote) or local to one device (local). A local release's
     /// in-place files are registered with coven as the user's own external
@@ -361,44 +357,6 @@ pub enum LoadedPlaybackState {
     Absent,
     Corrupt,
     Present(DbPlaybackState),
-}
-
-/// Where `releases.metadata_source` came from.
-///
-/// Mirrors the `metadata_source` text column. Distinct from
-/// `crate::import::MetadataSource` because that one only spans the two
-/// editorial sources — this one also covers file-tag and manual imports.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ReleaseMetadataSource {
-    MusicBrainz,
-    Discogs,
-    FileTags,
-    Manual,
-}
-
-impl ReleaseMetadataSource {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::MusicBrainz => "musicbrainz",
-            Self::Discogs => "discogs",
-            Self::FileTags => "file_tags",
-            Self::Manual => "manual",
-        }
-    }
-}
-
-impl std::str::FromStr for ReleaseMetadataSource {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "musicbrainz" => Ok(Self::MusicBrainz),
-            "discogs" => Ok(Self::Discogs),
-            "file_tags" => Ok(Self::FileTags),
-            "manual" => Ok(Self::Manual),
-            other => Err(format!("unknown release metadata source: {other}")),
-        }
-    }
 }
 
 /// A single track on a specific release, not on the logical album — track
@@ -755,8 +713,7 @@ impl DbRelease {
             release_name: None,
             pressing: Pressing::blank(),
             disc_id: None,
-            metadata_source: ReleaseMetadataSource::FileTags,
-            metadata_source_release_id: None,
+            metadata_provenance: None,
             remote: false,
             source_folder_name: None,
             content_hash: None,

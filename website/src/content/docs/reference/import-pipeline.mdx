@@ -1,6 +1,6 @@
 ---
 title: Import pipeline
-description: Scanning, metadata seeds, and the atomic commit
+description: Scanning, metadata drafts, and the atomic commit
 ---
 
 Import turns a folder of files into a release-accurate catalog entry without modifying a byte of the files. This page is the pipeline behind the flow described in the [use guide](/guide/importing).
@@ -11,13 +11,15 @@ Watched folders are monitored by the platform's file-system events, debounced, a
 
 A CUE sheet turns one audio image into a track list. The parser handles pregaps and postgaps, per-track performers and ISRCs, and both single-file images and one-file-per-track CUE layouts. Track boundaries convert from CUE frames (1/75th of a second) to exact sample positions, which later become the byte and sample windows playback uses.
 
-## Metadata seeds
+## Metadata drafts
 
-Each candidate has one explicit metadata seed: an external release chosen in **Lookup**, a stored **File Tags** snapshot, or **Manual** entry. Switching surfaces does not rewrite that seed.
+Each candidate stores one editable metadata draft and optional provenance. The draft may be blank, populated directly, populated from an external release, or populated from a stored file-tag snapshot. Provenance records where the current draft began; later edits do not erase it. Direct entry and a cleared draft have no provenance.
 
-### Lookup
+The top metadata slot displays either the draft, the Find online browser, or the File tags browser. Opening or closing a browser does not rewrite the draft. Applying a source replaces the draft, its provenance, and its selected source cover in one database transaction while retaining the candidate's file roles, CUE bindings, disc assignments, and other mapping decisions.
 
-Lookup is the only path that runs identification. It reads three kinds of evidence out of the folder in one pass:
+### Find online
+
+Find online is the only path that runs identification. It reads three kinds of evidence out of the folder in one pass:
 
 - a **disc ID**, the MusicBrainz fingerprint of a CD's exact track layout, computed from a rip log or from the CUE sheet;
 - **barcodes**, decoded from artwork scans by the platform's vision framework and read from CUE catalog fields;
@@ -27,17 +29,13 @@ Embedded audio tags are deliberately not Lookup evidence: they describe what a t
 
 Disc ID and barcode are looked up concurrently, the disc ID against MusicBrainz, the barcode against MusicBrainz and Discogs at once, and the results are triangulated: results that agree on a release group converge, catalog-number matches narrow the pressing list, and disagreement between signals surfaces as an explicit conflict for the user rather than a silent best guess. Every result carries its provenance (found by disc ID, by barcode, catalog match) so the UI can say why a row is being offered.
 
-The background sweep runs this path only when automatic Lookup is enabled and the configured default resolves to Lookup. An explicit Lookup action can run it regardless of that setting. Opening File Tags or Manual never starts extraction, provider queries, or matching.
+The **Default metadata source** setting has three values. **None** creates a blank draft and starts no metadata work. **File tags** reads and applies the tag snapshot. **Find online** opens the online workflow; when **Identify automatically** is enabled it also queues evidence extraction, provider queries, and matching. An explicit Find online action opens the same browser for any candidate, and an explicit identify command can run the pipeline when automatic identification is off.
 
 ### File Tags
 
-File Tags reads embedded audio tags and CUE metadata lazily. The preview stores a snapshot stamped with the candidate's scan generation, file-edit revision, and observed audio files. Choosing **Use File Tags** selects that snapshot. Commit consumes the same snapshot and fails before library writes if its stamp or observations changed; it does not silently read a different answer.
+File tags reads embedded audio tags and CUE metadata lazily unless it is the configured default for a newly discovered candidate. The preview stores a snapshot stamped with the candidate's scan generation, file-edit revision, and observed audio files. Applying it replaces the draft from that exact snapshot. Commit consumes the same snapshot and fails before library writes if its stamp or observations changed; it does not read a different answer.
 
-### Manual
-
-Manual performs no metadata I/O. Choosing **Enter Manually** creates a blank editable release while retaining the scanned physical track layout.
-
-The **Open unseeded candidates in** setting selects the initial surface for candidates without a seed. Its fixed choices are Lookup, File Tags, and Manual; **Last Used** resolves to the last mode explicitly chosen by the user. Presentation remains separate from the stored seed.
+Direct entry performs no metadata I/O. The blank draft's release and track fields are editable immediately, and it becomes importable when the required fields and mappings validate. The candidate list does not treat missing provenance as an error or a request for attention.
 
 ## Sources
 

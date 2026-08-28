@@ -1,6 +1,50 @@
 use super::*;
 
 impl ImportService {
+    async fn apply_initial_file_tags(
+        candidate: &crate::import::folder_scanner::FolderCandidate,
+        generation: u64,
+        library_manager: &LibraryManager,
+        clock: &coven::ClockRef,
+        ids: &coven::IdRef,
+    ) -> Result<u64, crate::import::ImportError> {
+        let candidate = candidate.clone();
+        let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
+        let file_edit_revision = candidate.file_edit_revision;
+        let snapshot = tokio::task::spawn_blocking(move || {
+            crate::import::file_tag_snapshot::extract_file_tag_snapshot(
+                &audio_files,
+                generation,
+                file_edit_revision,
+                &crate::import::file_tag_snapshot::LoftyFileTagReader,
+            )
+        })
+        .await
+        .map_err(|error| crate::import::ImportError::Internal {
+            detail: format!("file-tag discovery task failed: {error}"),
+        })??;
+        let pane = crate::import::pane::file_tags_pane(
+            &candidate.files,
+            &snapshot,
+            Some(&candidate.name),
+            &crate::import::probe::ProbedDurations::default(),
+            &crate::import::CandidateEditOverlay::default(),
+            &[],
+            clock.as_ref(),
+            ids.as_ref(),
+        )?;
+        let draft = crate::import::pane::candidate_draft_from_source(pane);
+        Ok(library_manager
+            .replace_candidate_file_tags_metadata(
+                &candidate.watched_folder_path,
+                &candidate.path.to_string_lossy(),
+                &candidate.files.content_hash(),
+                &snapshot,
+                &draft,
+            )
+            .await?)
+    }
+
     /// Mark `root`'s scan generation failed and say so. The stored status is
     /// what the import list's live query reads for the folder's mark; the
     /// event is the moment it happened, which the desktops raise as an alert.
@@ -56,6 +100,8 @@ impl ImportService {
         generation: u64,
         item: &ScanItem,
         library_manager: &LibraryManager,
+        clock: &coven::ClockRef,
+        ids: &coven::IdRef,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
     ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
         let commit = folder_state_commit.clone().lock_owned().await;
@@ -71,7 +117,31 @@ impl ImportService {
         let superseded = library_manager
             .save_folder_scan_item(&root.to_string_lossy(), generation, &item)
             .await?;
-        Ok(superseded.map(|write| PersistedScanItem {
+        let Some(write) = superseded else {
+            return Ok(None);
+        };
+        if write.changed() {
+            if let ScanItem::Valid(candidate) = &item {
+                let starts_from_file_tags = library_manager
+                    .load_import_candidate(&candidate.path.to_string_lossy())
+                    .await?
+                    .is_some_and(|detail| {
+                        detail.initial_metadata_source
+                            == crate::config::DefaultImportMetadataSource::FileTags
+                    });
+                if starts_from_file_tags {
+                    Self::apply_initial_file_tags(
+                        candidate,
+                        generation,
+                        library_manager,
+                        clock,
+                        ids,
+                    )
+                    .await?;
+                }
+            }
+        }
+        Ok(Some(PersistedScanItem {
             commit,
             item,
             write,
@@ -120,6 +190,8 @@ impl ImportService {
         root: &Path,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
+        clock: &coven::ClockRef,
+        ids: &coven::IdRef,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
         folder_watcher: &Arc<FolderWatcher>,
@@ -148,6 +220,8 @@ impl ImportService {
             generation,
             event_tx,
             library_manager,
+            clock,
+            ids,
             folder_registry,
             folder_state_commit,
             folder_watcher,
@@ -225,6 +299,8 @@ impl ImportService {
         generation: u64,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
+        clock: &coven::ClockRef,
+        ids: &coven::IdRef,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
         folder_watcher: &Arc<FolderWatcher>,
@@ -346,6 +422,8 @@ impl ImportService {
                         generation,
                         &persisted_item,
                         library_manager,
+                        clock,
+                        ids,
                         folder_state_commit,
                     )
                     .await?
@@ -411,6 +489,8 @@ impl ImportService {
                         generation,
                         &persisted_item,
                         library_manager,
+                        clock,
+                        ids,
                         folder_state_commit,
                     )
                     .await?

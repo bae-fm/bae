@@ -52,25 +52,13 @@ extension ImportView {
                 confirmImport: { commitConfirmedImport(candidate: candidate) },
                 viewInLibrary: { uiStore.navigateToAlbum($0) },
             ),
-            onPresentMetadataMode: {
-                presentMetadataMode($0, for: candidate)
+            onPresentMetadata: {
+                presentMetadata($0, for: candidate)
             },
-            onFindRelease: { presentSearch(for: candidate) },
             onReadFileTags: {
                 ImportMappingFlow.loadFileTagsPreview(
                     key: candidate.key,
                     services: mappingServices
-                )
-            },
-            onPickRelease: { result in
-                ImportSearchFlow.selectMetadataSeed(
-                    importer: importer,
-                    importStore: importStore,
-                    key: candidate.key,
-                    seed: .externalRelease(
-                        source: result.source,
-                        releaseId: result.releaseId
-                    )
                 )
             },
             onUseFileTags: {
@@ -79,13 +67,16 @@ extension ImportView {
                     services: mappingServices
                 )
             },
-            onEnterManually: {
-                ImportMappingFlow.enterManually(
+            onClearMetadata: {
+                ImportMappingFlow.clearMetadata(
                     key: candidate.key,
                     services: mappingServices
                 )
             },
             onEditCover: { presentCoverPicker(for: candidate) },
+            onSelectCover: { selection in
+                selectCover(selection, for: candidate)
+            },
             onNavigateToPlacement: { key in
                 listSlot.requestCandidateReveal(key)
             },
@@ -151,18 +142,6 @@ extension ImportView {
         candidate.files.files.map(\.file.name).joined(separator: "\u{0}")
     }
 
-    /// Open the release editor: the search pane, reached the way an editor is
-    /// reached.
-    func presentSearch(for candidate: Candidate) {
-        let presentation = ModalPresentation()
-        uiStore.presentModal(presentation: presentation) {
-            ImportSearchSheet(
-                candidateKey: candidate.key,
-                presentation: presentation
-            )
-        }
-    }
-
     private func presentCoverPicker(for candidate: Candidate) {
         let key = candidate.key
         uiStore.presentModal {
@@ -171,30 +150,40 @@ extension ImportView {
                 localArtwork: candidate.files.images,
                 selectedCover: candidate.cover,
                 onSelect: { selection in
-                    Task { @MainActor in
-                        do {
-                            try await importer.setCandidateCover(
-                                key,
-                                selection.selection
-                            )
-                        }
-                        catch is CancellationError {}
-                        catch {
-                            if let line = error.displayLine {
-                                uiStore.showError(
-                                    String(
-                                        localized:
-                                            "Couldn't change the cover: \(line)"
-                                    )
-                                )
-                            }
-                        }
-                    }
+                    selectCover(selection.selection, forKey: key)
                     uiStore.dismissModal()
                 },
                 onDone: { uiStore.dismissModal() },
             )
             .frame(width: 600, height: 500)
+        }
+    }
+
+    private func selectCover(
+        _ selection: BridgeCoverSelection,
+        for candidate: Candidate
+    ) {
+        selectCover(selection, forKey: candidate.key)
+    }
+
+    private func selectCover(
+        _ selection: BridgeCoverSelection,
+        forKey key: String
+    ) {
+        Task { @MainActor in
+            do {
+                try await importer.setCandidateCover(key, selection)
+            }
+            catch is CancellationError {}
+            catch {
+                if let line = error.displayLine {
+                    uiStore.showError(
+                        String(
+                            localized: "Couldn't change the cover: \(line)"
+                        )
+                    )
+                }
+            }
         }
     }
 }

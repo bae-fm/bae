@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Numero o durate discordanti</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Già in libreria</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Senza corrispondenza</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Metadati necessari</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Ancora in identificazione</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificazione</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Vai a un candidato ancora in identificazione</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Nuovo</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Aggiungi</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Rimuovi</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Apri i candidati senza fonte selezionata in</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Ultimo utilizzo</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Identifica automaticamente i candidati di ricerca</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>L’identificazione automatica legge il testo della copertina, i codici a barre e gli ID disco solo quando un candidato usa Ricerca. Tag dei file e Manuale non la eseguono mai.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Titolo dell’album</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Applica</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Cancella metadati</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>I file del candidato e le scelte di associazione rimarranno invariati.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Cancellare i metadati?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Trova un’altra edizione…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Trova online</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Trova online…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Prova a leggere di nuovo il candidato.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Identifica automaticamente</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Identifica automaticamente</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Legge automaticamente il testo della copertina, i codici a barre e gli ID disco e cerca una corrispondenza ogni volta che si apre Trova online.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Fonte metadati predefinita</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Trova online</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Nessuna</value></data>
 </root>

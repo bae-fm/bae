@@ -23,9 +23,9 @@
 //! is written by the import handle, and writing it *clears* the verdict, which
 //! is what brings a re-bound candidate back to this sweep.
 //!
-//! **A candidate whose content hash already holds a metadata seed or a finished
-//! verdict is skipped.** Manual and File Tags are complete source choices, not
-//! inputs to Lookup. A stored identify verdict is settled because the settle
+//! **A candidate whose content hash already holds applied metadata provenance or a
+//! finished verdict is skipped.** A source-less draft and File Tags are complete metadata
+//! choices, not inputs to Lookup. A stored identify verdict is settled because the settle
 //! step and the verdict are written together.
 //!
 //! **Nothing durable is written for work that did not complete.** A transport
@@ -188,7 +188,7 @@ pub fn start(
                         ScanEvent::FolderCandidate { .. }
                         | ScanEvent::Finished
                         | ScanEvent::CandidateBindingChanged { .. }
-                        | ScanEvent::CandidateMetadataSeeded { .. }
+                        | ScanEvent::CandidateMetadataChanged { .. }
                         | ScanEvent::CandidateSkipChanged { .. },
                     ))) => {
                         run_pass(
@@ -270,9 +270,9 @@ impl IdentifyJob {
 /// What a pass has to do, decided against the stored rows before any of it
 /// starts.
 struct Plan {
-    /// Candidates with neither a metadata seed nor a usable stored verdict.
+    /// Candidates with neither applied metadata provenance nor a usable stored verdict.
     identify: VecDeque<IdentifyJob>,
-    /// How many of `total` already hold a seed or verdict.
+    /// How many of `total` already hold provenance or a verdict.
     identified: u32,
     total: u32,
 }
@@ -529,10 +529,10 @@ async fn run_pass_once(
                         });
                     }
                 }
-                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataSeeded { .. }))) => {
+                Some(Ok(ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { .. }))) => {
                     // A chosen source owns this candidate now. Cancel every
                     // background run from this pass and plan again from the
-                    // committed seeds so no in-flight duplicate can continue
+                    // committed provenance so no in-flight duplicate can continue
                     // OCR or provider lookup for the same content hash.
                     context.release_all();
                     finishing.shutdown().await;

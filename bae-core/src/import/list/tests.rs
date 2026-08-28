@@ -15,6 +15,7 @@ use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentifyPhase, TriageImportStatus, TriagePlacement};
 
 mod flatten;
+mod flatten_groups;
 mod subscription;
 mod window;
 
@@ -109,10 +110,11 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
             lead: Some(lead(release_id)),
         }),
         probed_total_duration_ms: 2_400_000,
-        metadata_seed: Some(MetadataSeed::ExternalRelease {
+        metadata_provenance: Some(MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: release_id.to_string(),
         }),
+        metadata_draft_valid: true,
     }
 }
 
@@ -127,7 +129,8 @@ fn several_matches_state() -> CandidateStateListRow {
             lead: Some(lead("mb-1")),
         }),
         probed_total_duration_ms: 2_400_000,
-        metadata_seed: None,
+        metadata_provenance: None,
+        metadata_draft_valid: false,
     }
 }
 
@@ -142,13 +145,14 @@ fn not_found_state() -> CandidateStateListRow {
             lead: None,
         }),
         probed_total_duration_ms: 2_400_000,
-        metadata_seed: None,
+        metadata_provenance: None,
+        metadata_draft_valid: false,
     }
 }
 
 /// The external release seed chosen from a release row.
-fn external_release_seed(release_id: &str) -> MetadataSeed {
-    MetadataSeed::ExternalRelease {
+fn external_release_seed(release_id: &str) -> MetadataProvenance {
+    MetadataProvenance::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
     }

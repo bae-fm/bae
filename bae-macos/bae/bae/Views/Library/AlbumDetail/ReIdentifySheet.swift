@@ -195,7 +195,7 @@ struct ReIdentifySheet: View {
     // MARK: - Selection footer
 
     /// Footer shown once a pressing is picked: the commit that stores it as
-    /// the release's selected external-release metadata seed.
+    /// the release's selected external metadata provenance.
     private func selectionFooter(
         for result: BridgeMetadataResult
     ) -> some View {

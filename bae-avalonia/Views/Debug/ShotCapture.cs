@@ -317,20 +317,20 @@ internal static class ShotCapture
             Margin = new Thickness(18),
         };
         AddMetadataSource(
-            grid, 0, 0, BridgeImportMetadataMode.Lookup);
+            grid, 0, 0, draftIsBlank: true, edit: PreviewBlankMetadata());
         AddMetadataSource(
-            grid, 1, 0, BridgeImportMetadataMode.FileTags);
+            grid, 1, 0, edit: PreviewRawMetadata());
         AddMetadataSource(
-            grid, 2, 0, BridgeImportMetadataMode.FileTags,
+            grid, 2, 0, edit: PreviewRawMetadata(), provenanceLabel: "MusicBrainz");
+        AddMetadataSource(
+            grid, 0, 1, edit: PreviewRawMetadata(),
+            provenanceLabel: Loc.Core("ui.import.metadata.file_tags"));
+        AddMetadataSource(
+            grid, 1, 1, presentation: ImportMetadataPresentation.FindOnline,
+            lookupOptions: new TextBlock { Text = "Search form and results" });
+        AddMetadataSource(
+            grid, 2, 1, presentation: ImportMetadataPresentation.FileTags,
             fileTagsPreview: PreviewMetadata());
-        AddMetadataSource(
-            grid, 0, 1, BridgeImportMetadataMode.FileTags,
-            selectedEdit: PreviewRawMetadata());
-        AddMetadataSource(
-            grid, 1, 1, BridgeImportMetadataMode.Manual);
-        AddMetadataSource(
-            grid, 2, 1, BridgeImportMetadataMode.Manual,
-            selectedEdit: PreviewRawMetadata());
         return new ScrollViewer { Content = grid };
     }
 
@@ -338,38 +338,39 @@ internal static class ShotCapture
         Grid grid,
         int column,
         int row,
-        BridgeImportMetadataMode mode,
-        BridgeRawReleaseEdit? selectedEdit = null,
-        BridgeReleaseUserEdit? fileTagsPreview = null)
+        ImportMetadataPresentation presentation = ImportMetadataPresentation.Draft,
+        bool draftIsBlank = false,
+        BridgeRawReleaseEdit? edit = null,
+        string? provenanceLabel = null,
+        BridgeReleaseUserEdit? fileTagsPreview = null,
+        Control? lookupOptions = null)
     {
         var section = new ImportMetadataSourceSection
         {
-            Mode = mode,
-            HasSelectedSeed = selectedEdit is not null,
-            Title = selectedEdit?.AlbumTitle
-                ?? (mode == BridgeImportMetadataMode.Manual
-                    ? Loc.Core("ui.import.slots.untitled")
-                    : "Album Title"),
-            Edit = selectedEdit,
-            MetaLine = mode == BridgeImportMetadataMode.Manual
-                ? Loc.Core("ui.import.metadata.manual")
-                : Loc.Core("ui.import.metadata.from_file_tags"),
-            PickedSource = null,
+            Presentation = presentation,
+            DraftIsBlank = draftIsBlank,
+            Title = edit?.AlbumTitle is { Length: > 0 } albumTitle
+                ? albumTitle
+                : Loc.Chrome("import.metadata.album_title_placeholder"),
+            Edit = edit,
+            MetaLine = "CD · 1996",
+            ProvenanceLabel = provenanceLabel,
+            ProvenanceUri = null,
             IsReading = false,
             FileTagsPreview = fileTagsPreview,
             FileTagsMetaLine = Loc.Core("ui.import.metadata.from_file_tags"),
             FileTagsError = null,
-            LookupOptions = null,
+            LookupOptions = lookupOptions,
             LoadCover = null,
             HasCoverOptions = false,
             CommitRow = null,
             Library = PreviewArtistLibrary(),
-            OnPresentMode = _ => { },
-            OnFindRelease = () => { },
+            OnPresent = _ => { },
             OnReadFileTags = () => { },
             OnUseFileTags = () => { },
-            OnEnterManually = () => { },
+            OnClearMetadata = () => { },
             OnEditCover = () => { },
+            OnSelectCover = _ => { },
             OnEditField = (_, _) => { },
             OnEditArtists = _ => { },
         }.Build();
@@ -409,6 +410,18 @@ internal static class ShotCapture
             "CAT-1",
             "UK",
             "0123456789012"),
+        Array.Empty<BridgeRawTrackEdit>());
+
+    private static BridgeRawReleaseEdit PreviewBlankMetadata() => new(
+        string.Empty,
+        Array.Empty<BridgeArtistAssignment>(),
+        new BridgeRawPressingEdit(
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty),
         Array.Empty<BridgeRawTrackEdit>());
 
     private static BridgeArtistAssignment[] PreviewArtists() =>

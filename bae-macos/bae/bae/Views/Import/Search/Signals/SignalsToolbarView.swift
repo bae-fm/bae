@@ -5,9 +5,10 @@ import SwiftUI
 /// ID, the barcode, and the catalog, side by side. A badge shows its value,
 /// spins while its lookup runs, shows a result count when settled, and takes
 /// itself in or out of the run on click — the catalog by picking one of the
-/// numbers extracted from the candidate. The header carries the `Auto` action
+/// numbers extracted from the candidate. The header carries the automatic
+/// identification action
 /// (or an `Identifying…` spinner) and the `Search manually` /
-/// `Skip identifying` escapes.
+/// File Tags escape.
 ///
 /// Core pre-shapes the whole badge list (`BridgeSignalsToolbar`); this view iterates
 /// and renders — no domain logic here.
@@ -16,12 +17,12 @@ struct SignalsToolbarView: View {
     let onToggle: (BridgeSignalToggle) -> Void
     let onRerun: () -> Void
     let onSearchManually: () -> Void
-    /// `nil` suppresses the "Skip identifying" pill — a CD carries no local
+    /// `nil` suppresses the File Tags pill — a CD carries no local
     /// data to seed a File Tags import until it's ripped.
     let onUseFileTags: (() -> Void)?
 
     /// The pipeline is still identifying while any badge is looking up. Drives
-    /// the header spinner vs. the `Auto` link.
+    /// the header spinner vs. the retry action.
     private var isIdentifying: Bool {
         toolbar.signals.contains { $0.state == .lookingUp }
     }
@@ -64,7 +65,7 @@ struct SignalsToolbarView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 11))
-                        Text("Auto")
+                        Text("Identify automatically")
                     }
                 }
                 .buttonStyle(.link)
@@ -82,7 +83,8 @@ struct SignalsToolbarView: View {
                 if let onUseFileTags {
                     GhostPill(
                         icon: nil,
-                        label: "Skip identifying",
+                        verbatimLabel:
+                            coreString("ui.import.metadata.file_tags") + "…",
                         action: onUseFileTags
                     )
                 }

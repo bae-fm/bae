@@ -153,7 +153,7 @@ internal sealed class ReleaseActionDialogs
             var searchButton = new Button { Content = Loc.Chrome("action.search") };
 
             // The pressing the user picked, pending the confirm that commits
-            // it as the release's selected external-release metadata seed.
+            // it as the release's selected external metadata provenance.
             var pickedIndex = -1;
 
             var candidates = new List<ReleaseCandidateChoice>();

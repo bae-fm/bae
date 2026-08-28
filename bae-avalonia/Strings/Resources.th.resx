@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>จำนวนหรือความยาวไม่ตรงกัน</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>อยู่ในคลังแล้ว</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>ไม่มีรายการตรงกัน</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>ต้องการข้อมูลกำกับ</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ยังระบุอยู่</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>กำลังระบุ</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ไปยังรายการที่ยังระบุอยู่</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>ใหม่</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>เพิ่ม</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>ลบ</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>เปิดรายการที่ยังไม่ได้เลือกแหล่งข้อมูลใน</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>ใช้ล่าสุด</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>ระบุรายการที่ใช้การค้นหาโดยอัตโนมัติ</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>การระบุอัตโนมัติจะอ่านข้อความบนปก บาร์โค้ด และ ID แผ่นดิสก์เฉพาะเมื่อรายการใช้การค้นหาเท่านั้น แท็กของไฟล์และการป้อนด้วยตนเองจะไม่เรียกใช้การระบุอัตโนมัติ</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>ชื่ออัลบั้ม</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>นำไปใช้</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>ล้างข้อมูลเมตา</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>ไฟล์ของรายการและตัวเลือกการจับคู่จะยังคงเดิม</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>ล้างข้อมูลเมตาหรือไม่</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>ค้นหารุ่นอื่น…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ค้นหาออนไลน์</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ค้นหาออนไลน์…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>ลองอ่านรายการอีกครั้ง</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>ระบุโดยอัตโนมัติ</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>ระบุโดยอัตโนมัติ</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>อ่านข้อความบนปก บาร์โค้ด และ ID แผ่นดิสก์โดยอัตโนมัติ แล้วค้นหารายการที่ตรงกันทุกครั้งที่เปิดค้นหาออนไลน์</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>แหล่งข้อมูลเมตาเริ่มต้น</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ค้นหาออนไลน์</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>ไม่มี</value></data>
 </root>

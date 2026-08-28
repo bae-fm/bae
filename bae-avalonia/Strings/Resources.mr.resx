@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>संख्या किंवा कालावधी जुळत नाही</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>आधीच लायब्ररीमध्ये</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>जुळणी सापडली नाही</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>मेटाडेटा आवश्यक</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>अजून ओळखत आहे</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ओळखत आहे</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>अजून ओळखल्या जाणाऱ्या उमेदवाराकडे जा</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>नवीन</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>जोडा</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>काढा</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>स्रोत न निवडलेले उमेदवार यामध्ये उघडा</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>शेवटचे वापरलेले</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>लुकअप उमेदवार आपोआप ओळखा</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>उमेदवार लुकअप वापरत असतानाच स्वयंचलित ओळख कव्हरवरील मजकूर, बारकोड आणि डिस्क आयडी वाचते. फाइल टॅग आणि मॅन्युअल ती कधीही चालवत नाहीत.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>अल्बमचे शीर्षक</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>लागू करा</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>मेटाडेटा साफ करा</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>उमेदवाराच्या फाइल्स आणि मॅपिंग निवडी बदलणार नाहीत.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>मेटाडेटा साफ करायचा?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>दुसरे प्रकाशन शोधा…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ऑनलाइन शोधा</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ऑनलाइन शोधा…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>उमेदवार पुन्हा वाचून पाहा.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>आपोआप ओळखा</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>आपोआप ओळखा</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ऑनलाइन शोध उघडल्यावर मुखपृष्ठावरील मजकूर, बारकोड आणि डिस्क ID आपोआप वाचतो आणि जुळणारा निकाल शोधतो.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>डीफॉल्ट मेटाडेटा स्रोत</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन शोधा</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>काहीही नाही</value></data>
 </root>

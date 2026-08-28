@@ -12,7 +12,7 @@
 mod window;
 
 use super::identity::check_releases_in_library_on;
-use super::import_state::metadata_seed_of;
+use super::import_state::metadata_provenance_of;
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_registry::WatchedFolder;
@@ -24,7 +24,7 @@ use crate::import::list::{
 };
 use crate::import::search::SourceTracks;
 use crate::import::{
-    FolderScanStatus, ImportedRelease, MetadataSeed, MetadataSource, WatchedFolderScanStatus,
+    FolderScanStatus, ImportedRelease, MetadataProvenance, MetadataSource, WatchedFolderScanStatus,
 };
 use folder_scans::columns::{invalid_reason_of, to_u32, to_u64, unreadable};
 use std::str::FromStr;
@@ -62,7 +62,8 @@ pub struct CandidateStateListRow {
     /// `None` when the identify columns are clear.
     pub verdict: Option<VerdictSummary>,
     pub probed_total_duration_ms: u64,
-    pub metadata_seed: Option<MetadataSeed>,
+    pub metadata_provenance: Option<MetadataProvenance>,
+    pub metadata_draft_valid: bool,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -328,6 +329,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
 }
 
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
+    let drafts = super::import_state::load_drafts_on(sql, None)?;
     let mut match_counts: HashMap<String, u32> = HashMap::new();
     for (content_hash, count) in sql.query(
         "SELECT content_hash, COUNT(*) FROM import_candidate_match \
@@ -352,7 +354,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     let mut states = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, edit_revision, verdict_kind, verdict_track_count, \
-                probed_total_duration_ms, seed_kind, seed_source, seed_release_id \
+                probed_total_duration_ms, provenance_kind, provenance_source, provenance_release_id \
          FROM import_candidate_state",
         [],
         |row| {
@@ -362,11 +364,11 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
                 row.get::<_, Option<i64>>(4)?,
-                metadata_seed_of(row.get(5)?, row.get(6)?, row.get(7)?),
+                metadata_provenance_of(row.get(5)?, row.get(6)?, row.get(7)?),
             ))
         },
     )? {
-        let (content_hash, edit_revision, verdict_kind, track_count, probed, metadata_seed) = row;
+        let (content_hash, edit_revision, verdict_kind, track_count, probed, metadata_provenance) = row;
         let verdict = verdict_kind
             .map(|kind| -> Result<VerdictSummary, DbError> {
                 Ok(VerdictSummary {
@@ -384,6 +386,9 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 })
             })
             .transpose()?;
+        let metadata_draft_valid = drafts
+            .get(&content_hash)
+            .is_some_and(|draft| draft.clone().shape().is_ok());
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -393,7 +398,8 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                     .map(|probed| to_u64(probed, "a candidate's probed total"))
                     .transpose()?
                     .unwrap_or_default(),
-                metadata_seed: metadata_seed?,
+                metadata_provenance: metadata_provenance?,
+                metadata_draft_valid,
             },
         );
     }
@@ -511,11 +517,8 @@ impl Database {
         key: &str,
     ) -> coven::LiveQuery<Option<ImportCandidateDetailProjection>> {
         let key = key.to_string();
-        let clock = self.inner.clock.clone();
-        let ids = self.inner.ids.clone();
         self.inner.handle.subscribe(move |sql| {
-            window::load_candidate_detail_on(&sql, &key, clock.as_ref(), ids.as_ref())
-                .map_err(CovenError::from)
+            window::load_candidate_detail_on(&sql, &key).map_err(CovenError::from)
         })
     }
 
@@ -538,18 +541,23 @@ impl Database {
         key: &str,
     ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
         let key = key.to_string();
-        let clock = self.inner.clock.clone();
-        let ids = self.inner.ids.clone();
-        self.read(move |sql| {
-            window::load_candidate_detail_on(&sql, &key, clock.as_ref(), ids.as_ref())
-        })
-        .await
+        self.read(move |sql| window::load_candidate_detail_on(&sql, &key))
+            .await
     }
 }
 
 fn load_sweepable_candidates_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<crate::import::FolderCandidate>, DbError> {
+    let online_candidates: HashSet<(String, String)> = sql
+        .query(
+            "SELECT watched_folder_path, path FROM scan_candidate \
+             WHERE kind = 'valid' AND initial_metadata_source = 'find_online'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?
+        .into_iter()
+        .collect();
     let skipped: HashSet<(String, String)> = sql
         .query(
             "SELECT watched_folder_path, relative_candidate_path FROM skipped_import_candidates",
@@ -577,6 +585,11 @@ fn load_sweepable_candidates_on(
             let ScanItem::Valid(candidate) = stored.item else {
                 continue;
             };
+            let candidate_key = candidate.path.to_string_lossy().into_owned();
+            if !online_candidates.contains(&(candidate.watched_folder_path.clone(), candidate_key))
+            {
+                continue;
+            }
             let relative = crate::import::folder_registry::candidate_relative_path(
                 &candidate.watched_folder_path,
                 &candidate.path,

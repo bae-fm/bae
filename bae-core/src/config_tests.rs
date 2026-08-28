@@ -117,25 +117,19 @@ fn import_metadata_settings_default_to_automatic_lookup() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
-    assert!(config.automatic_import_metadata_lookup);
+    assert!(config.automatic_import_identification);
     assert_eq!(
-        config.default_import_metadata_mode,
-        DefaultImportMetadataMode::Lookup
-    );
-    assert_eq!(config.last_import_metadata_mode, ImportMetadataMode::Lookup);
-    assert_eq!(
-        config.resolved_unseeded_import_metadata_mode(),
-        ImportMetadataMode::Lookup
+        config.default_import_metadata_source,
+        DefaultImportMetadataSource::FindOnline
     );
 }
 
 #[test]
-fn last_used_import_metadata_mode_roundtrips_and_resolves() {
+fn import_metadata_source_and_automatic_policy_roundtrip_independently() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.automatic_import_metadata_lookup = false;
-    config.default_import_metadata_mode = DefaultImportMetadataMode::LastUsed;
-    config.last_import_metadata_mode = ImportMetadataMode::Manual;
+    config.automatic_import_identification = false;
+    config.default_import_metadata_source = DefaultImportMetadataSource::None;
     config.save_to_config_yaml().unwrap();
 
     let yaml: ConfigYaml =
@@ -143,49 +137,24 @@ fn last_used_import_metadata_mode_roundtrips_and_resolves() {
             .unwrap();
     let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
 
-    assert!(!loaded.automatic_import_metadata_lookup);
+    assert!(!loaded.automatic_import_identification);
     assert_eq!(
-        loaded.default_import_metadata_mode,
-        DefaultImportMetadataMode::LastUsed
-    );
-    assert_eq!(loaded.last_import_metadata_mode, ImportMetadataMode::Manual);
-    assert_eq!(
-        loaded.resolved_unseeded_import_metadata_mode(),
-        ImportMetadataMode::Manual
+        loaded.default_import_metadata_source,
+        DefaultImportMetadataSource::None
     );
 }
 
 #[test]
-fn every_import_metadata_default_resolves_to_a_concrete_mode() {
+fn automatic_identification_is_independent_of_the_discovery_default() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-
-    for (default_mode, expected) in [
-        (
-            DefaultImportMetadataMode::Lookup,
-            ImportMetadataMode::Lookup,
-        ),
-        (
-            DefaultImportMetadataMode::FileTags,
-            ImportMetadataMode::FileTags,
-        ),
-        (
-            DefaultImportMetadataMode::Manual,
-            ImportMetadataMode::Manual,
-        ),
+    for source in [
+        DefaultImportMetadataSource::FindOnline,
+        DefaultImportMetadataSource::FileTags,
+        DefaultImportMetadataSource::None,
     ] {
-        config.default_import_metadata_mode = default_mode;
-        assert_eq!(config.resolved_unseeded_import_metadata_mode(), expected);
-    }
-
-    config.default_import_metadata_mode = DefaultImportMetadataMode::LastUsed;
-    for remembered in [
-        ImportMetadataMode::Lookup,
-        ImportMetadataMode::FileTags,
-        ImportMetadataMode::Manual,
-    ] {
-        config.last_import_metadata_mode = remembered;
-        assert_eq!(config.resolved_unseeded_import_metadata_mode(), remembered);
+        config.default_import_metadata_source = source;
+        assert!(config.automatic_import_identification_enabled());
     }
 }
 
@@ -309,9 +278,9 @@ fn config_yaml_requires_every_bae_field() {
         "show_remaining_time",
         "library_full_width",
         "verify_decode_on_import",
-        "automatic_import_metadata_lookup",
-        "default_import_metadata_mode",
-        "last_import_metadata_mode",
+        "automatic_import_identification",
+        "default_import_metadata_source",
+        "default_import_metadata_source",
         "cast_enabled",
     ] {
         assert!(

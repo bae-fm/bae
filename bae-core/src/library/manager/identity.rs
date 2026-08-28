@@ -3,7 +3,7 @@
 use super::*;
 
 impl LibraryManager {
-    /// All external `release_identities` rows. Empty for File Tags and Manual.
+    /// All external `release_identities` rows. Empty for File Tags and direct entry.
     pub async fn get_release_identities(
         &self,
         release_id: &str,
@@ -25,14 +25,13 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Replace a release's identity rows and metadata seed in one shot,
+    /// Replace a release's identity rows and metadata provenance in one shot,
     /// moving the release between albums when the new identity doesn't fit its
     /// current one.
     ///
     /// `new_identities` is empty (File Tags), or carries the already-cross-linked
-    /// `(source, source_group_id, source_release_id)` rows. `metadata_seed` sets
-    /// the `metadata_source` / `metadata_source_release_id` columns a later
-    /// re-projection reads to replay the seed. Nothing about the archived
+    /// `(source, source_group_id, source_release_id)` rows. `metadata_provenance`
+    /// is what a later re-projection reads to replay the seed. Nothing about the archived
     /// provider documents changes: they are keyed by the source release, so
     /// re-pointing at another one already reads other rows, and the rows this
     /// release used may be another candidate's.
@@ -56,7 +55,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_identities: Vec<crate::import::ReleaseIdentity>,
-        metadata_seed: crate::import::MetadataSeed,
+        metadata_provenance: crate::import::MetadataProvenance,
     ) -> Result<(), LibraryError> {
         let current_album_id = self
             .database
@@ -68,9 +67,6 @@ impl LibraryManager {
             .resolve_identity_target_album(release_id, &current_album_id, &new_identities)
             .await?;
 
-        let (new_metadata_source, new_metadata_source_release_id) =
-            metadata_seed_to_columns(metadata_seed);
-
         // The atomic call does all source-album bookkeeping inside its transaction
         // (empty-check, primary_release_id repair, album_artists copy) — those
         // decisions live there so a separate read and write can't race.
@@ -78,8 +74,7 @@ impl LibraryManager {
             .set_identity_atomic(
                 release_id,
                 &new_identities,
-                new_metadata_source,
-                new_metadata_source_release_id.as_deref(),
+                Some(metadata_provenance),
                 &current_album_id,
                 &target.album_id,
                 target.new_album.as_ref(),
@@ -217,25 +212,4 @@ fn identities_fit_album(
         }
     }
     true
-}
-
-/// Project a `MetadataSeed` onto the two `releases` columns it sets:
-/// `metadata_source`, always present, and `metadata_source_release_id`, NULL when
-/// the source is `file_tags`.
-fn metadata_seed_to_columns(
-    seed: crate::import::MetadataSeed,
-) -> (crate::db::ReleaseMetadataSource, Option<String>) {
-    use crate::db::ReleaseMetadataSource;
-    use crate::import::{MetadataSeed, MetadataSource};
-    match seed {
-        MetadataSeed::ExternalRelease { source, release_id } => {
-            let column_source = match source {
-                MetadataSource::MusicBrainz => ReleaseMetadataSource::MusicBrainz,
-                MetadataSource::Discogs => ReleaseMetadataSource::Discogs,
-            };
-            (column_source, Some(release_id))
-        }
-        MetadataSeed::FileTags => (ReleaseMetadataSource::FileTags, None),
-        MetadataSeed::Manual => (ReleaseMetadataSource::Manual, None),
-    }
 }

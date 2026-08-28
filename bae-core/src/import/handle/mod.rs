@@ -198,10 +198,9 @@ pub enum ScanEvent {
     CandidateVerdictStored {
         candidate_key: String,
     },
-    /// The user chose an identity for the candidate — a pressing, or its own
-    /// tags — and the choice was persisted. The triage projection re-reads so
-    /// the row carries it.
-    CandidateMetadataSeeded {
+    /// The candidate's editable metadata draft or its provenance changed. The
+    /// triage projection re-reads so the row carries the persisted state.
+    CandidateMetadataChanged {
         candidate_key: String,
     },
     FolderScanStatusChanged {
@@ -616,6 +615,14 @@ impl ImportServiceHandle {
         let Some(candidate) = self.stored_actionable_candidate(key).await? else {
             return Ok(None);
         };
+        let initial_source = self
+            .library_manager
+            .load_import_candidate(key)
+            .await?
+            .map(|projection| projection.initial_metadata_source);
+        if initial_source != Some(crate::config::DefaultImportMetadataSource::FindOnline) {
+            return Ok(None);
+        }
         let skipped = self
             .folder_registry
             .lock()

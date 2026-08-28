@@ -1,5 +1,5 @@
 #![cfg(feature = "test-utils")]
-use bae_core::db::{Database, DbAlbum, DbRelease, DbTrack, Pressing, ReleaseMetadataSource};
+use bae_core::db::{Database, DbAlbum, DbRelease, DbTrack, Pressing};
 use bae_core::library::LibraryManager;
 use bae_test_support as support;
 use chrono::Utc;
@@ -70,8 +70,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
         remote: true,
         source_folder_name: None,
         content_hash: None,

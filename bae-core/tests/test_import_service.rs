@@ -9,8 +9,8 @@ use bae_test_support as support;
 use bae_core::db::{Database, LibraryImageType};
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
 use bae_core::import::{
-    ArtistAssignment, CoverSelection, ImportCommand, MetadataSeed, MetadataSource, PressingEdit,
-    ReleaseUserEdit, ScanEvent, StorageMode, TrackArtistAssignments, TrackUserEdit,
+    ArtistAssignment, CoverSelection, ImportCommand, MetadataProvenance, MetadataSource,
+    PressingEdit, ReleaseUserEdit, ScanEvent, StorageMode, TrackArtistAssignments, TrackUserEdit,
 };
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
@@ -113,7 +113,7 @@ async fn import_folder(
     album_dir: &Path,
     selected_cover: Option<CoverSelection>,
     storage_mode: StorageMode,
-    metadata_seed: MetadataSeed,
+    metadata_provenance: MetadataProvenance,
 ) -> Result<(String, String), String> {
     let import_id = f.ids.new_id();
     f.handle
@@ -125,7 +125,7 @@ async fn import_folder(
             selected_cover,
             storage_mode,
             pin: false,
-            metadata_seed,
+            metadata_provenance: Some(metadata_provenance),
             user_edit: None,
         })
         .await

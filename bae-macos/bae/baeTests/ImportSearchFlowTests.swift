@@ -6,8 +6,8 @@ import Testing
 @testable import bae
 
 @MainActor
-@Suite("ImportSearchFlow metadata seed selection")
-struct ImportSearchFlowMetadataSeedTests {
+@Suite("ImportSearchFlow metadata application")
+struct ImportSearchFlowMetadataApplicationTests {
     @Test("command return keeps the sheet open until detail delivery")
     func commandReturnWaitsForDetailDelivery() async throws {
         let store = unsettledStore()
@@ -15,8 +15,11 @@ struct ImportSearchFlowMetadataSeedTests {
         let presentation = presentModal(in: uiStore)
         let recorder = PickRecorder()
         let importer = Importer(
-            selectCandidateMetadataSeed: { _, seed in
-                await recorder.record(seed)
+            applyCandidateExternalMetadata: { _, source, releaseId in
+                await recorder.record(
+                    .externalRelease(source: source, releaseId: releaseId)
+                )
+                return 1
             }
         )
 
@@ -29,11 +32,11 @@ struct ImportSearchFlowMetadataSeedTests {
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataSeedSession?
-                .commandSucceeded == true
+                .metadataApplicationSession?
+                .commandRevision == 1
         }
 
-        #expect(recorder.seeds == [MappingFixtures.seed])
+        #expect(recorder.provenances == [MappingFixtures.provenance])
         #expect(uiStore.modalPresentation === presentation)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
@@ -47,7 +50,7 @@ struct ImportSearchFlowMetadataSeedTests {
         )
         #expect(delivered.error == nil)
         #expect(delivered.pickedRelease?.releaseId == MappingFixtures.releaseId)
-        #expect(delivered.seedInFlight == nil)
+        #expect(delivered.provenanceInFlight == nil)
         #expect(uiStore.modalBuilder == nil)
     }
 
@@ -59,9 +62,12 @@ struct ImportSearchFlowMetadataSeedTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            selectCandidateMetadataSeed: { _, seed in
-                await recorder.record(seed)
+            applyCandidateExternalMetadata: { _, source, releaseId in
+                await recorder.record(
+                    .externalRelease(source: source, releaseId: releaseId)
+                )
                 for await _ in gate { break }
+                return 1
             }
         )
 
@@ -72,21 +78,23 @@ struct ImportSearchFlowMetadataSeedTests {
             key: MappingFixtures.candidateKey,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
-        await waitUntil { recorder.seeds == [MappingFixtures.seed] }
+        await waitUntil {
+            recorder.provenances == [MappingFixtures.provenance]
+        }
 
         deliverPickedDetail(to: store)
 
         #expect(uiStore.modalPresentation === presentation)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .seedInFlight == MappingFixtures.seed
+                .provenanceInFlight == MappingFixtures.provenance
         )
 
         releaseGate.finish()
         await waitUntil { uiStore.modalBuilder == nil }
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .seedInFlight == nil
+                .provenanceInFlight == nil
         )
     }
 
@@ -95,7 +103,9 @@ struct ImportSearchFlowMetadataSeedTests {
         let store = unsettledStore()
         let uiStore = UiStore()
         let presentation = presentModal(in: uiStore)
-        let importer = Importer()
+        let importer = Importer(
+            applyCandidateExternalMetadata: { _, _, _ in 1 }
+        )
 
         ImportSearchFlow.chooseReleaseFromSearchSheet(
             result(),
@@ -106,15 +116,15 @@ struct ImportSearchFlowMetadataSeedTests {
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataSeedSession?
-                .commandSucceeded == true
+                .metadataApplicationSession?
+                .commandRevision == 1
         }
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.fileTagsTable,
-                metadataSeed: .externalRelease(
+                metadataProvenance: .externalRelease(
                     source: MappingFixtures.source,
                     releaseId: "rel-other"
                 )
@@ -124,10 +134,41 @@ struct ImportSearchFlowMetadataSeedTests {
         #expect(uiStore.modalPresentation === presentation)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .seedInFlight == MappingFixtures.seed
+                .provenanceInFlight == MappingFixtures.provenance
         )
 
         deliverPickedDetail(to: store)
+        #expect(uiStore.modalBuilder == nil)
+    }
+
+    @Test(
+        "an older revision from the same release cannot confirm reapplication"
+    )
+    func olderSameReleaseRevisionCannotConfirm() async throws {
+        let store = unsettledStore()
+        let uiStore = UiStore()
+        let presentation = presentModal(in: uiStore)
+        let importer = Importer(
+            applyCandidateExternalMetadata: { _, _, _ in 2 }
+        )
+
+        ImportSearchFlow.chooseReleaseFromSearchSheet(
+            result(),
+            importer: importer,
+            importStore: store,
+            key: MappingFixtures.candidateKey,
+            onConfirmed: { uiStore.dismissModal(presentation) }
+        )
+        await waitUntil {
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .metadataApplicationSession?
+                .commandRevision == 2
+        }
+
+        deliverPickedDetail(to: store, revision: 1)
+        #expect(uiStore.modalPresentation === presentation)
+
+        deliverPickedDetail(to: store, revision: 2)
         #expect(uiStore.modalBuilder == nil)
     }
 
@@ -137,7 +178,7 @@ struct ImportSearchFlowMetadataSeedTests {
         let uiStore = UiStore()
         let presentation = presentModal(in: uiStore)
         let importer = Importer(
-            selectCandidateMetadataSeed: { _, _ in
+            applyCandidateExternalMetadata: { _, _, _ in
                 throw StubError.notImplemented
             }
         )
@@ -157,7 +198,7 @@ struct ImportSearchFlowMetadataSeedTests {
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
         #expect(after.error != nil)
-        #expect(after.seedInFlight == nil)
+        #expect(after.provenanceInFlight == nil)
         #expect(after.pickedRelease == nil)
         #expect(uiStore.modalPresentation === presentation)
     }
@@ -167,7 +208,9 @@ struct ImportSearchFlowMetadataSeedTests {
         let store = unsettledStore()
         let uiStore = UiStore()
         let searchPresentation = presentModal(in: uiStore)
-        let importer = Importer()
+        let importer = Importer(
+            applyCandidateExternalMetadata: { _, _, _ in 1 }
+        )
 
         ImportSearchFlow.chooseReleaseFromSearchSheet(
             result(),
@@ -180,8 +223,8 @@ struct ImportSearchFlowMetadataSeedTests {
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataSeedSession?
-                .commandSucceeded == true
+                .metadataApplicationSession?
+                .commandRevision == 1
         }
         uiStore.dismissModal(searchPresentation)
         let newerPresentation = presentModal(in: uiStore)
@@ -196,7 +239,11 @@ struct ImportSearchFlowMetadataSeedTests {
         let store = ImportStore()
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
-            detail: MappingFixtures.detail(mapping: nil, metadataSeed: nil)
+            detail: MappingFixtures.detail(
+                mapping: nil,
+                edit: MappingFixtures.blankEdit,
+                metadataProvenance: nil
+            )
         )
         return store
     }
@@ -219,10 +266,16 @@ struct ImportSearchFlowMetadataSeedTests {
         return presentation
     }
 
-    private func deliverPickedDetail(to store: ImportStore) {
+    private func deliverPickedDetail(
+        to store: ImportStore,
+        revision: UInt64 = 1
+    ) {
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
-            detail: MappingFixtures.detail(mapping: nil)
+            detail: MappingFixtures.detail(
+                mapping: nil,
+                metadataRevision: revision
+            )
         )
     }
 
@@ -236,10 +289,10 @@ struct ImportSearchFlowMetadataSeedTests {
 
 @MainActor
 private final class PickRecorder {
-    var seeds: [BridgeMetadataSeed] = []
+    var provenances: [BridgeMetadataProvenance] = []
 
-    func record(_ seed: BridgeMetadataSeed) {
-        seeds.append(seed)
+    func record(_ provenance: BridgeMetadataProvenance) {
+        provenances.append(provenance)
     }
 }
 

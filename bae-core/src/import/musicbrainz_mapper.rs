@@ -13,7 +13,7 @@ use super::assemble::{
     TrackIr, TrackNumber, WorkEvent, WorkGraphRef, WorkNode,
 };
 use super::ParsedAlbum;
-use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
+use crate::db::{is_various_artists, Pressing};
 use crate::import::types::ReleaseIdentity;
 use crate::import::{ImportError, MetadataSource};
 use crate::musicbrainz::{
@@ -484,8 +484,10 @@ pub fn map_mb_response_to_db(
         album_year,
         is_compilation,
         pressing,
-        metadata_source: ReleaseMetadataSource::MusicBrainz,
-        metadata_source_release_id: Some(response.id.clone()),
+        metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+            source: MetadataSource::MusicBrainz,
+            release_id: response.id.clone(),
+        }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles: Vec::new(),
         tracks,

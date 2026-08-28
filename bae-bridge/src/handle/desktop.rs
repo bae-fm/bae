@@ -142,8 +142,8 @@ impl AppHandle {
         self.services.extraction_register_analyzer(adapter);
     }
 
-    /// Start Lookup for a folder candidate after the person explicitly enters
-    /// that metadata mode. Identify subscribes first, then extraction streams
+    /// Start identification after the person explicitly opens Find online.
+    /// Identify subscribes first, then extraction streams
     /// the candidate's `Signals` (disc ID, barcodes, classified text) that
     /// identify looks up and the UI surfaces. Events flow through the unified
     /// import event channel → bus → reducer → store, and the verdict this
@@ -200,21 +200,34 @@ impl AppHandle {
         self.services.rerun_identify(candidate_key);
     }
 
-    /// Choose the metadata seed this candidate will commit. An external
-    /// release's documents land before the seed does, so the candidate's next
-    /// value draws whole;
-    /// nothing comes back, because that value is what the pane renders.
+    /// Replace candidate metadata from a source. An external release's
+    /// documents land before provenance does, so the next value draws whole.
     /// Identification writes the same record itself when a verdict settles on
     /// exactly one match; this is the path for the choices only a person can
     /// make.
-    pub async fn select_candidate_metadata_seed(
+    pub async fn select_candidate_metadata_provenance(
         self: std::sync::Arc<Self>,
         candidate_key: String,
-        seed: crate::types::BridgeMetadataSeed,
-    ) -> Result<(), BridgeError> {
+        provenance: crate::types::BridgeMetadataProvenance,
+    ) -> Result<u64, BridgeError> {
         self.run_exported(move |this| async move {
             this.services
-                .import_select_candidate_metadata_seed(candidate_key, seed.into_core())
+                .import_select_candidate_metadata_provenance(candidate_key, provenance.into_core())
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
+    /// Clear the candidate's draft metadata and source without changing any
+    /// physical file or track decisions.
+    pub async fn clear_candidate_metadata(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+    ) -> Result<u64, BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_clear_candidate_metadata(candidate_key)
                 .await
                 .map_err(BridgeError::import)
         })
@@ -222,7 +235,7 @@ impl AppHandle {
     }
 
     /// Re-identify commit. Translates the user's `ReleaseReseed` into a fully
-    /// cross-linked identity vec plus the new metadata seed, then writes via
+    /// cross-linked identity vec plus the new metadata provenance, then writes via
     /// `set_identity` — the outcome is indistinguishable from re-importing the
     /// release with the same choice.
     ///
@@ -520,7 +533,7 @@ impl AppHandle {
     }
 
     /// Commit a candidate. Nothing about the release rides in: the metadata
-    /// seed, the metadata typed over it, the corrected rows and the chosen cover
+    /// source provenance, the metadata typed over it, the corrected rows and the chosen cover
     /// are all stored under the candidate, so the commit consumes the very
     /// values the pane drew.
     pub async fn start_import(
@@ -646,7 +659,7 @@ impl AppHandle {
 
     /// Apply a user-supplied metadata edit (from the edit-metadata sheet) to a
     /// release. Writes the user's edited values directly without touching
-    /// identity, `metadata_source`, or cached source payloads.
+    /// identity, metadata provenance, or cached source payloads.
     pub async fn update_release_metadata_user_edit(
         self: std::sync::Arc<Self>,
         release_id: String,
@@ -680,12 +693,11 @@ impl AppHandle {
         .await
     }
 
-    /// Re-project a release's metadata from its `metadata_source` /
-    /// `metadata_source_release_id` pointer. Returns the projected
-    /// `ReleaseUserEdit` without writing — the editor populates its
+    /// Re-project a release's metadata from its stored provenance. Returns the
+    /// projected `ReleaseUserEdit` without writing — the editor populates its
     /// form with the result; the user re-edits or saves via
-    /// `update_release_metadata_user_edit`. Identity rows and the
-    /// metadata-source columns are not touched.
+    /// `update_release_metadata_user_edit`. Identity and provenance are not
+    /// touched.
     pub async fn reset_metadata_to_source(
         self: std::sync::Arc<Self>,
         release_id: String,

@@ -5,7 +5,8 @@
 //! release into an `AlbumID3` and a track into a `Child`, resolving the audio
 //! format, artists, and backing file each `Child` requires.
 
-use bae_core::db::{DbFile, DbRelease, DbTrack, LibraryImageType, ReleaseMetadataSource};
+use bae_core::db::{DbFile, DbRelease, DbTrack, LibraryImageType};
+use bae_core::import::{MetadataProvenance, MetadataSource};
 use bae_core::library::{AppServices, LibraryError};
 
 use crate::error::SubError;
@@ -20,11 +21,14 @@ pub(crate) fn lib_err(error: LibraryError) -> SubError {
 /// The release's MusicBrainz id, when its metadata was seeded from MusicBrainz.
 /// Used as the `musicBrainzId` of both the album (a release MBID) and its songs.
 fn release_mb_id(release: &DbRelease) -> Option<String> {
-    match release.metadata_source {
-        ReleaseMetadataSource::MusicBrainz => release.metadata_source_release_id.clone(),
-        ReleaseMetadataSource::Discogs
-        | ReleaseMetadataSource::FileTags
-        | ReleaseMetadataSource::Manual => None,
+    match &release.metadata_provenance {
+        Some(MetadataProvenance::ExternalRelease {
+            source: MetadataSource::MusicBrainz,
+            release_id,
+        }) => Some(release_id.clone()),
+        Some(MetadataProvenance::ExternalRelease { .. })
+        | Some(MetadataProvenance::FileTags)
+        | None => None,
     }
 }
 

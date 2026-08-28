@@ -128,57 +128,40 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn import_metadata_modes_cross_the_bridge_unchanged() {
+    fn import_metadata_sources_cross_the_bridge_unchanged() {
         for core in [
-            bae_core::config::ImportMetadataMode::Lookup,
-            bae_core::config::ImportMetadataMode::FileTags,
-            bae_core::config::ImportMetadataMode::Manual,
+            bae_core::config::DefaultImportMetadataSource::FindOnline,
+            bae_core::config::DefaultImportMetadataSource::FileTags,
+            bae_core::config::DefaultImportMetadataSource::None,
         ] {
-            let bridge = BridgeImportMetadataMode::from_core(core);
-            assert_eq!(bridge.into_core(), core);
-        }
-
-        for core in [
-            bae_core::config::DefaultImportMetadataMode::Lookup,
-            bae_core::config::DefaultImportMetadataMode::FileTags,
-            bae_core::config::DefaultImportMetadataMode::Manual,
-            bae_core::config::DefaultImportMetadataMode::LastUsed,
-        ] {
-            let bridge = BridgeDefaultImportMetadataMode::from_core(core);
+            let bridge = BridgeDefaultImportMetadataSource::from_core(core);
             assert_eq!(bridge.into_core(), core);
         }
     }
 
     #[test]
-    fn config_exposes_cores_resolved_import_metadata_mode() {
-        use bae_core::config::{
-            Config, DefaultImportMetadataMode as DefaultMode, ImportMetadataMode as Mode,
-        };
+    fn config_exposes_independent_default_source_and_automatic_policy() {
+        use bae_core::config::{Config, DefaultImportMetadataSource as Source};
 
-        for automatic_lookup in [false, true] {
-            for (default_mode, last_mode, expected) in [
-                (DefaultMode::Lookup, Mode::Manual, Mode::Lookup),
-                (DefaultMode::FileTags, Mode::Lookup, Mode::FileTags),
-                (DefaultMode::Manual, Mode::Lookup, Mode::Manual),
-                (DefaultMode::LastUsed, Mode::Lookup, Mode::Lookup),
-                (DefaultMode::LastUsed, Mode::FileTags, Mode::FileTags),
-                (DefaultMode::LastUsed, Mode::Manual, Mode::Manual),
-            ] {
+        for automatic_identification in [false, true] {
+            for source in [Source::FindOnline, Source::FileTags, Source::None] {
                 let mut config = Config::with_defaults(
                     "library".to_string(),
                     "device".to_string(),
                     std::path::PathBuf::from("/library"),
                     "Library".to_string(),
                 );
-                config.automatic_import_metadata_lookup = automatic_lookup;
-                config.default_import_metadata_mode = default_mode;
-                config.last_import_metadata_mode = last_mode;
+                config.automatic_import_identification = automatic_identification;
+                config.default_import_metadata_source = source;
 
                 let bridge = BridgeConfig::from_core(&config);
-                assert_eq!(bridge.automatic_import_metadata_lookup, automatic_lookup);
                 assert_eq!(
-                    bridge.resolved_import_metadata_mode,
-                    BridgeImportMetadataMode::from_core(expected),
+                    bridge.automatic_import_identification,
+                    automatic_identification
+                );
+                assert_eq!(
+                    bridge.default_import_metadata_source,
+                    BridgeDefaultImportMetadataSource::from_core(source),
                 );
             }
         }

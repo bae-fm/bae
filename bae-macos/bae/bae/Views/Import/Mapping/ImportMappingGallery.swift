@@ -68,6 +68,7 @@ struct ImportMappingGallery: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .draggable(image.fileId)
         .help(ImportEvidence.hoverText(found))
     }
 }

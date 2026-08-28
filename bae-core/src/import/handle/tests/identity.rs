@@ -253,8 +253,7 @@ fn make_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         disc_id: None,
-        metadata_source: crate::db::ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
         remote: true,
         source_folder_name: None,
         content_hash: None,
@@ -407,7 +406,7 @@ async fn test_no_match_returns_none() {
         .unwrap();
     assert_eq!(result, None);
 
-    // Empty identity vec (File Tags or Manual) → skip lookup.
+    // Empty identity vec (File Tags or direct entry) → skip lookup.
     let result_unknown = manager.find_existing_album_for_import(&[]).await.unwrap();
     assert_eq!(result_unknown, None);
 }

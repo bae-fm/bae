@@ -321,10 +321,9 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.release.pressing.year, Some(1999));
     assert_eq!(parsed.release.pressing.format.as_deref(), Some("FLAC"));
     assert_eq!(
-        parsed.release.metadata_source,
-        ReleaseMetadataSource::FileTags
+        parsed.release.metadata_provenance,
+        Some(crate::import::MetadataProvenance::FileTags)
     );
-    assert!(parsed.release.metadata_source_release_id.is_none());
 
     assert_eq!(parsed.tracks.len(), 2);
     assert_eq!(parsed.tracks[0].title, "Track One");

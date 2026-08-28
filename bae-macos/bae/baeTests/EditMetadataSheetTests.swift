@@ -7,8 +7,8 @@ import Testing
 @Suite("Edit metadata sheet")
 struct EditMetadataSheetTests {
     @MainActor
-    @Test("Manual metadata omits Reset to Source")
-    func manualMetadataOmitsReset() {
+    @Test("Direct-entry metadata omits Reset to Source")
+    func directEntryMetadataOmitsReset() {
         #expect(!sheet(canResetToSource: false).resetButtonIsVisible)
     }
 
@@ -21,7 +21,7 @@ struct EditMetadataSheetTests {
     @MainActor
     private func sheet(canResetToSource: Bool) -> EditMetadataSheet {
         let seed = BridgeReleaseEditSeed(
-            edit: PreviewData.editMetadataSeed(trackCount: 2),
+            edit: PreviewData.editMetadataDraft(trackCount: 2),
             canResetToSource: canResetToSource
         )
         return EditMetadataSheet(

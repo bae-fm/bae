@@ -24,7 +24,7 @@ use super::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriagePlacement,
     TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
-use super::types::{AudioFile, MetadataSeed, RawReleaseEdit};
+use super::types::{AudioFile, MetadataProvenance, RawReleaseEdit};
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};
@@ -128,15 +128,15 @@ impl UploadStanding {
 /// [`ImportListSubscription`], never by a caller: a claimed import and a
 /// running identification move a row between tabs, an outstanding upload moves
 /// a Done row within its tab, and the identification policy determines whether
-/// an unseeded row is scheduled or needs metadata. None is in a table this
-/// query reads.
+/// an unseeded row is scheduled or stays idle. None is in a table this query
+/// reads.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportListRequest {
     pub view: ImportListView,
     pub windows: LibraryPageWindows,
     /// Whether an unseeded candidate is scheduled for automatic
-    /// identification. When false, the row needs a metadata seed from the
-    /// person rather than waiting for background work.
+    /// identification. When false, the row stays idle until the person chooses
+    /// a metadata source or enters a draft directly.
     pub automatic_identification_enabled: bool,
     /// Only the keys whose facts differ from the default, so an idle queue
     /// makes an empty map.
@@ -241,7 +241,6 @@ pub struct ImportListWindow {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReadyRowRef {
     pub candidate_key: String,
-    pub metadata_seed: MetadataSeed,
     pub cover_thumbnail_url: Option<String>,
 }
 
@@ -315,7 +314,10 @@ pub struct ImportCandidateDetailProjection {
     /// The identity the row leads with: the pick's archived documents where
     /// there is a pick, the verdict's lead otherwise.
     pub matched: Option<MatchedRelease>,
-    pub metadata_seed: Option<MetadataSeed>,
+    pub metadata_provenance: Option<MetadataProvenance>,
+    pub metadata_revision: u64,
+    /// Source policy captured when this candidate was first discovered.
+    pub initial_metadata_source: crate::config::DefaultImportMetadataSource,
     /// The library release this candidate's bytes were imported as.
     pub imported_release: Option<ImportedRelease>,
     /// The picked release as its archived documents describe it. `None` with
@@ -323,9 +325,8 @@ pub struct ImportCandidateDetailProjection {
     pub release: Option<ImportSearchReleaseDetail>,
     /// Whether the picked release is already in the library.
     pub picked_library_status: Option<LibraryStatus>,
-    /// The metadata form: the pick's seed with the stored per-field overlay
-    /// applied. `None` with no pick — there is nothing to edit yet.
-    pub edit: Option<RawReleaseEdit>,
+    /// The candidate's one editable metadata draft.
+    pub metadata_draft: RawReleaseEdit,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
@@ -358,11 +359,13 @@ impl ImportCandidateDetailProjection {
             resumed_identify_state,
             answer,
             matched,
-            metadata_seed,
+            metadata_provenance,
+            metadata_revision,
+            initial_metadata_source,
             imported_release,
             release,
             picked_library_status,
-            edit,
+            metadata_draft,
             mapping,
             unprobed,
             cover,
@@ -382,13 +385,15 @@ impl ImportCandidateDetailProjection {
         let known = match answer.filter(|_| actionable) {
             Some(classification) => CandidateAnswer::Classified(classification),
             None if automatic_identification_enabled => CandidateAnswer::Unanswered(facts.phase),
-            None => CandidateAnswer::NeedsMetadata,
+            None => CandidateAnswer::Idle,
         };
+        let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
         let placement = place(
             skipped,
             is_added,
             import_status.as_ref(),
-            metadata_seed.as_ref().filter(|_| actionable),
+            metadata_provenance.as_ref().filter(|_| actionable),
+            metadata_draft_valid,
             &known,
         );
         let row = TriageRow {
@@ -404,8 +409,9 @@ impl ImportCandidateDetailProjection {
             matched: matched.filter(|_| actionable),
             placement,
             import_status,
-            metadata_seed: metadata_seed.filter(|_| actionable),
+            metadata_provenance: metadata_provenance.clone().filter(|_| actionable),
         };
+        let metadata_draft_is_blank = metadata_draft.is_blank();
         ImportCandidateDetail {
             candidate,
             actionable,
@@ -416,7 +422,11 @@ impl ImportCandidateDetailProjection {
             release,
             picked_library_status,
             file_evidence,
-            edit,
+            metadata_draft,
+            metadata_draft_is_blank,
+            metadata_provenance,
+            metadata_revision,
+            initial_metadata_source,
             mapping,
             unprobed,
             cover,
@@ -442,7 +452,12 @@ pub struct ImportCandidateDetail {
     /// Extracted identifying signals pinned to their source files. Independent
     /// of the selected pressing; result support lives in result provenance.
     pub file_evidence: Vec<FileEvidence>,
-    pub edit: Option<RawReleaseEdit>,
+    pub metadata_draft: RawReleaseEdit,
+    pub metadata_draft_is_blank: bool,
+    pub metadata_provenance: Option<MetadataProvenance>,
+    /// Revision of the exact metadata draft and selected cover in this value.
+    pub metadata_revision: u64,
+    pub initial_metadata_source: crate::config::DefaultImportMetadataSource,
     pub mapping: MappingTable,
     pub unprobed: Vec<AudioFile>,
     pub cover: Option<CoverChoice>,

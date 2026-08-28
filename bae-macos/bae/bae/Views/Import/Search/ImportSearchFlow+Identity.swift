@@ -4,43 +4,53 @@ import os.log
 private let logger = Logger.bae("ImportSearchFlow")
 
 extension ImportSearchFlow {
-    // MARK: - Selecting the metadata seed
+    // MARK: - Applying metadata
 
-    /// Select one candidate metadata source. Core stores the seed and the
-    /// per-candidate read delivers its projected form and mapping. This holds
-    /// only the command session and a failure line for the banner.
+    /// Apply one metadata source. The source browser remains visible until the
+    /// command and the exact authoritative detail have both arrived.
     @MainActor
-    static func selectMetadataSeed(
+    static func applyMetadata(
         importer: Importer,
         importStore: ImportStore,
         key: String,
-        seed: BridgeMetadataSeed,
-        onConfirmed: (@Sendable () -> Void)? = nil
+        provenance: BridgeMetadataProvenance,
+        onConfirmed: (() -> Void)? = nil
     ) {
         guard
-            let session = importStore.beginMetadataSeedSelection(
+            let session = importStore.beginMetadataApplication(
                 key: key,
-                seed: seed,
+                provenance: provenance,
                 onConfirmed: onConfirmed
             )
         else {
-            logger.debug("Metadata seed ignored for missing key: \(key)")
+            logger.debug("Metadata application ignored for missing key: \(key)")
             return
         }
 
         let task = Task { @MainActor [weak session] in
             do {
-                try await importer.selectCandidateMetadataSeed(key, seed)
+                let revision =
+                    switch provenance {
+                    case .externalRelease(let source, let releaseId):
+                        try await importer.applyCandidateExternalMetadata(
+                            key,
+                            source: source,
+                            releaseId: releaseId
+                        )
+                    case .fileTags:
+                        try await importer.applyCandidateFileTags(key)
+                    }
                 guard let session else { return }
-                importStore.metadataSeedSelectionCommandSucceeded(
+                importStore.metadataApplicationCommandSucceeded(
                     key: key,
-                    session: session
+                    session: session,
+                    revision: revision
                 )
             }
             catch is CancellationError {
-                logger.debug("Metadata seed cancelled for key: \(key)")
+                logger.debug("Metadata application cancelled for key: \(key)")
                 guard let session else { return }
-                importStore.metadataSeedSelectionFailed(
+                importStore.metadataApplicationFailed(
                     key: key,
                     session: session,
                     error: nil
@@ -48,32 +58,34 @@ extension ImportSearchFlow {
             }
             catch {
                 logger.error(
-                    "Metadata seed failed: \(error.localizedDescription)"
+                    "Metadata application failed: \(error.localizedDescription)"
                 )
                 guard let session else { return }
-                let line = error.displayLine.map {
-                    switch seed {
-                    case .externalRelease:
-                        String(
-                            localized:
-                                "Failed to load release details: \($0)"
-                        )
-                    case .fileTags:
-                        String(localized: "Couldn't read file tags: \($0)")
-                    case .manual:
-                        String(
-                            localized: "Couldn't save that change: \($0)"
-                        )
-                    }
-                }
-                importStore.metadataSeedSelectionFailed(
+                importStore.metadataApplicationFailed(
                     key: key,
                     session: session,
-                    error: line
+                    error: metadataApplicationError(
+                        error,
+                        provenance: provenance
+                    )
                 )
             }
         }
         session.install(task)
+    }
+
+    private static func metadataApplicationError(
+        _ error: Error,
+        provenance: BridgeMetadataProvenance
+    ) -> String? {
+        error.displayLine.map {
+            switch provenance {
+            case .externalRelease:
+                String(localized: "Failed to load release details: \($0)")
+            case .fileTags:
+                String(localized: "Couldn't read file tags: \($0)")
+            }
+        }
     }
 
     /// Pick one search-sheet pressing and dismiss only after its command and
@@ -84,13 +96,13 @@ extension ImportSearchFlow {
         importer: Importer,
         importStore: ImportStore,
         key: String,
-        onConfirmed: @escaping @Sendable () -> Void
+        onConfirmed: @escaping () -> Void
     ) {
-        selectMetadataSeed(
+        applyMetadata(
             importer: importer,
             importStore: importStore,
             key: key,
-            seed: .externalRelease(
+            provenance: .externalRelease(
                 source: result.source,
                 releaseId: result.releaseId
             ),

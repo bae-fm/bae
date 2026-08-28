@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>曲目数或时长不一致</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>已在库中</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>未找到匹配</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>需要元数据</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>仍在识别</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>识别中</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>跳转到仍在识别的候选项</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>新建</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>添加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>在以下模式中打开未选择来源的候选项</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>上次使用</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>自动识别“查找”候选项</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>自动识别仅在候选项使用“查找”时读取封面文字、条码和光盘 ID。“文件标签”和“手动”从不运行自动识别。</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>专辑标题</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>应用</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>清除元数据</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>候选项的文件和映射选择将保持不变。</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>清除元数据？</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>查找其他发行版…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>在线查找</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在线查找…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>请尝试重新读取候选项。</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>自动识别</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>自动识别</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>每次打开“在线查找”时，自动读取封面文字、条码和光盘 ID 并搜索匹配项。</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>默认元数据来源</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>在线查找</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>无</value></data>
 </root>

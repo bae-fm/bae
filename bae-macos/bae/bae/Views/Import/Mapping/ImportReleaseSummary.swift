@@ -6,29 +6,29 @@ import SwiftUI
 /// pressing facts joined for the current locale.
 struct ImportReleaseSummary {
     let title: String
+    let titleIsPlaceholder: Bool
     let artist: String?
     let factsLine: String
-    let source: BridgeMetadataSource?
+    let provenance: BridgeMetadataProvenance?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
-        guard let seed = candidate.metadataSeed else {
-            preconditionFailure(
-                "an editable candidate must have a metadata seed"
-            )
-        }
-        title = Self.title(
-            values.albumTitle,
-            seed: seed,
-            candidateName: candidate.displayName
-        )
+        let provenance = candidate.metadataProvenance
+        titleIsPlaceholder = values.albumTitle.isEmpty
+        title =
+            if values.albumTitle.isEmpty {
+                "Album title"
+            }
+            else {
+                values.albumTitle
+            }
         let artistNames = values.albumArtistAssignments.map(\.displayName)
         artist =
             artistNames.isEmpty
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         let count = candidate.mapping.willWriteCount
         let trackText = String(localized: "\(count) tracks")
-        switch seed {
-        case .externalRelease(let source, _):
+        switch provenance {
+        case .externalRelease:
             factsLine = Self.factsLine([
                 values.pressing.format,
                 values.pressing.year,
@@ -36,24 +36,21 @@ struct ImportReleaseSummary {
                 values.pressing.catalogNumber,
                 trackText,
             ])
-            self.source = source
         case .fileTags:
             factsLine = Self.factsLine([
                 coreString("ui.import.metadata.from_file_tags"), trackText,
             ])
-            source = nil
-        case .manual:
-            factsLine = Self.factsLine([
-                coreString("ui.import.metadata.manual"), trackText,
-            ])
-            source = nil
+        case nil:
+            factsLine = trackText
         }
+        self.provenance = provenance
     }
 
     init(candidate: Candidate, fileTags values: BridgeReleaseUserEdit) {
         title =
             values.albumTitle.isEmpty
             ? candidate.displayName : values.albumTitle
+        titleIsPlaceholder = false
         let artistNames = values.albumArtistAssignments.map(\.displayName)
         artist =
             artistNames.isEmpty
@@ -62,31 +59,13 @@ struct ImportReleaseSummary {
             coreString("ui.import.metadata.from_file_tags"),
             String(localized: "\(values.tracks.count) tracks"),
         ])
-        source = nil
-    }
-
-    static let manual = ImportReleaseSummary(
-        title: coreString("ui.import.slots.untitled"),
-        artist: nil,
-        factsLine: coreString("ui.import.metadata.manual"),
-        source: nil
-    )
-
-    private init(
-        title: String,
-        artist: String?,
-        factsLine: String,
-        source: BridgeMetadataSource?
-    ) {
-        self.title = title
-        self.artist = artist
-        self.factsLine = factsLine
-        self.source = source
+        provenance = .fileTags
     }
 
     init?(row: BridgeTriageRow) {
         guard let matched = row.matched else { return nil }
         title = matched.title
+        titleIsPlaceholder = false
         artist = matched.artist
         if let pressing = matched.pressing {
             let trackText = pressing.trackCount.map {
@@ -103,7 +82,7 @@ struct ImportReleaseSummary {
         else {
             factsLine = ""
         }
-        source = nil
+        provenance = nil
     }
 
     private static func factsLine(_ facts: [String?]) -> String {
@@ -111,17 +90,6 @@ struct ImportReleaseSummary {
             .joined(separator: " \u{00b7} ")
     }
 
-    private static func title(
-        _ title: String,
-        seed: BridgeMetadataSeed,
-        candidateName: String
-    ) -> String {
-        guard title.isEmpty else { return title }
-        return switch seed {
-        case .manual: coreString("ui.import.slots.untitled")
-        case .externalRelease, .fileTags: candidateName
-        }
-    }
 }
 
 /// One rendering of an import release summary, scaled for its two homes.
@@ -138,6 +106,9 @@ struct ImportReleaseSummaryView: View {
         VStack(alignment: .leading, spacing: style.stackSpacing) {
             Text(summary.title)
                 .font(style.titleFont)
+                .foregroundStyle(
+                    summary.titleIsPlaceholder ? .secondary : .primary
+                )
                 .lineLimit(1)
                 .truncationMode(style.titleTruncation)
             if let artist = summary.artist {
@@ -152,8 +123,8 @@ struct ImportReleaseSummaryView: View {
                     .font(.system(size: 11.5))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
-                if let source = summary.source {
-                    sourceChip(source)
+                if let provenance = summary.provenance {
+                    sourceChip(provenance)
                 }
             }
             .padding(.top, style.factsTopPadding)
@@ -161,14 +132,53 @@ struct ImportReleaseSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func sourceChip(_ source: BridgeMetadataSource) -> some View {
-        Text(verbatim: bridgeMetadataSourceName(source: source))
+    private func sourceChip(
+        _ provenance: BridgeMetadataProvenance
+    ) -> some View {
+        Group {
+            if let url = provenance.externalReleaseURL {
+                Link(destination: url) {
+                    chipLabel(provenance.label)
+                }
+                .buttonStyle(.plain)
+            }
+            else {
+                chipLabel(provenance.label)
+            }
+        }
+    }
+
+    private func chipLabel(_ label: String) -> some View {
+        Text(verbatim: label)
             .font(.system(size: 10.5, weight: .medium))
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(Color.secondary.opacity(0.15), in: Capsule())
             .foregroundStyle(.secondary)
             .lineLimit(1)
+    }
+}
+
+extension BridgeMetadataProvenance {
+    fileprivate var label: String {
+        switch self {
+        case .externalRelease(let source, _):
+            bridgeMetadataSourceName(source: source)
+        case .fileTags:
+            coreString("ui.import.metadata.file_tags")
+        }
+    }
+
+    fileprivate var externalReleaseURL: URL? {
+        guard case .externalRelease(let source, let releaseId) = self else {
+            return nil
+        }
+        let root =
+            switch source {
+            case .musicBrainz: URL(string: "https://musicbrainz.org/release")
+            case .discogs: URL(string: "https://www.discogs.com/release")
+            }
+        return root?.appending(path: releaseId)
     }
 }
 

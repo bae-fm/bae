@@ -174,16 +174,15 @@ pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     }
 }
 
-pub(super) fn metadata_seed(seed: AutomationMetadataSeed) -> MetadataSeed {
-    match seed {
-        AutomationMetadataSeed::ExternalRelease { source, release_id } => {
-            MetadataSeed::ExternalRelease {
+pub(super) fn metadata_provenance(provenance: AutomationMetadataProvenance) -> MetadataProvenance {
+    match provenance {
+        AutomationMetadataProvenance::ExternalRelease { source, release_id } => {
+            MetadataProvenance::ExternalRelease {
                 source: source.into(),
                 release_id,
             }
         }
-        AutomationMetadataSeed::FileTags => MetadataSeed::FileTags,
-        AutomationMetadataSeed::Manual => MetadataSeed::Manual,
+        AutomationMetadataProvenance::FileTags => MetadataProvenance::FileTags,
     }
 }
 

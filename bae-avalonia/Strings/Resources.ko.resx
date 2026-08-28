@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>곡 수 또는 길이 불일치</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>라이브러리에 이미 있음</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>일치 항목 없음</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>메타데이터 필요</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>아직 식별 중</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>식별 중</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>아직 식별 중인 항목으로 이동</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>신규</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>추가</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>제거</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>소스를 선택하지 않은 후보를 다음에서 열기</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>마지막 사용</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>조회 후보 자동 식별</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>자동 식별은 후보가 조회를 사용할 때만 커버 텍스트, 바코드 및 디스크 ID를 읽습니다. 파일 태그와 수동에서는 실행되지 않습니다.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>앨범 제목</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>적용</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>메타데이터 지우기</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>후보 파일과 매핑 선택은 변경되지 않습니다.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>메타데이터를 지울까요?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>다른 릴리스 찾기…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>온라인에서 찾기</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>온라인에서 찾기…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>후보를 다시 읽어 보세요.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>자동으로 식별</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>자동으로 식별</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>온라인에서 찾기를 열 때마다 커버 글자, 바코드 및 디스크 ID를 자동으로 읽고 일치 항목을 검색합니다.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>기본 메타데이터 소스</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>온라인에서 찾기</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>없음</value></data>
 </root>

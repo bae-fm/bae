@@ -5,7 +5,7 @@ import SwiftUI
 
 /// Session state for the import flow. Mixed-writer: core drives the list, the
 /// per-candidate reads and preview state through value subscriptions, while
-/// views drive user-set fields (mode, selectedCover) via
+/// views drive user-set fields (presentation, selected cover) via
 /// `mutateCandidate(forKey:_:)`. The single-writer rule applies per field, not
 /// per store.
 ///
@@ -173,25 +173,23 @@ class ImportStore {
     /// work the session has done on it.
     func applyCandidateDetail(
         key: String,
-        detail: BridgeImportCandidateDetail,
-        unseededMetadataMode: BridgeImportMetadataMode
+        detail: BridgeImportCandidateDetail
     ) {
-        var incoming = Candidate(
-            detail: detail,
-            unseededMetadataMode: unseededMetadataMode
-        )
+        var incoming = Candidate(detail: detail)
         if let existing = selectedCandidates[key] {
             incoming = incoming.withSessionState(from: existing)
         }
-        let deliveredSession = incoming.metadataSeedSession.flatMap {
-            session -> CandidateMetadataSeedSession? in
-            guard detail.row.metadataSeed == session.seed else { return nil }
-            session.recordDetailDelivery()
+        let deliveredSession = incoming.metadataApplicationSession.flatMap {
+            session -> CandidateMetadataApplicationSession? in
+            guard detail.metadataProvenance == session.provenance else {
+                return nil
+            }
+            session.recordDetailDelivery(revision: detail.metadataRevision)
             return session
         }
         selectedCandidates[key] = incoming
         if let deliveredSession {
-            finishMetadataSeedSelectionIfConfirmed(
+            finishMetadataApplicationIfConfirmed(
                 key: key,
                 session: deliveredSession
             )
@@ -201,65 +199,70 @@ class ImportStore {
     /// Start one metadata-seed session before its bridge command is dispatched,
     /// so an immediate candidate-detail delivery cannot outrun registration.
     /// Replacing a session drops its task owner and cancels the older command.
-    func beginMetadataSeedSelection(
+    func beginMetadataApplication(
         key: String,
-        seed: BridgeMetadataSeed,
-        onConfirmed: (@Sendable () -> Void)? = nil
-    ) -> CandidateMetadataSeedSession? {
+        provenance: BridgeMetadataProvenance,
+        onConfirmed: (() -> Void)? = nil
+    ) -> CandidateMetadataApplicationSession? {
         guard candidate(forKey: key) != nil else { return nil }
-        let session = CandidateMetadataSeedSession(
-            seed: seed,
+        let session = CandidateMetadataApplicationSession(
+            provenance: provenance,
             onConfirmed: onConfirmed
         )
         mutateCandidate(forKey: key) { candidate in
             candidate.error = nil
-            candidate.metadataSeedSession = session
+            candidate.metadataApplicationSession = session
         }
         return session
     }
 
     /// Record that the bridge command returned successfully. The choice stays
     /// pending until its exact candidate detail has also landed.
-    func metadataSeedSelectionCommandSucceeded(
+    func metadataApplicationCommandSucceeded(
         key: String,
-        session: CandidateMetadataSeedSession
+        session: CandidateMetadataApplicationSession,
+        revision: UInt64
     ) {
-        guard candidate(forKey: key)?.metadataSeedSession === session else {
+        guard candidate(forKey: key)?.metadataApplicationSession === session
+        else {
             return
         }
-        session.recordCommandSuccess()
-        finishMetadataSeedSelectionIfConfirmed(key: key, session: session)
+        session.recordCommandSuccess(revision: revision)
+        finishMetadataApplicationIfConfirmed(key: key, session: session)
     }
 
     /// End only the session that raised this failure. A replacement choice may
     /// already own the candidate by the time an older command returns.
-    func metadataSeedSelectionFailed(
+    func metadataApplicationFailed(
         key: String,
-        session: CandidateMetadataSeedSession,
+        session: CandidateMetadataApplicationSession,
         error: String?
     ) {
-        guard candidate(forKey: key)?.metadataSeedSession === session else {
+        guard candidate(forKey: key)?.metadataApplicationSession === session
+        else {
             return
         }
         mutateCandidate(forKey: key) { candidate in
             if let error {
                 candidate.error = error
             }
-            candidate.metadataSeedSession = nil
+            candidate.metadataApplicationSession = nil
         }
     }
 
-    private func finishMetadataSeedSelectionIfConfirmed(
+    private func finishMetadataApplicationIfConfirmed(
         key: String,
-        session: CandidateMetadataSeedSession
+        session: CandidateMetadataApplicationSession
     ) {
         guard session.isConfirmed,
-            candidate(forKey: key)?.metadataSeedSession === session
+            candidate(forKey: key)?.metadataApplicationSession === session
         else { return }
         let confirmation = session.takeConfirmation()
         mutateCandidate(forKey: key) { candidate in
-            guard candidate.metadataSeedSession === session else { return }
-            candidate.metadataSeedSession = nil
+            guard candidate.metadataApplicationSession === session else {
+                return
+            }
+            candidate.metadataApplicationSession = nil
         }
         confirmation?()
     }
@@ -268,7 +271,7 @@ class ImportStore {
 extension ImportStore {
     func beginFileTagsPreview(key: String) -> CandidateFileTagsPreviewSession? {
         guard let candidate = candidate(forKey: key),
-            candidate.metadataSeed != .fileTags
+            candidate.metadataProvenance != .fileTags
         else { return nil }
         switch candidate.fileTagsPreview {
         case .loading, .loaded:
@@ -349,12 +352,12 @@ extension ImportStore {
         }
     }
 
-    func presentMetadataMode(
-        _ mode: BridgeImportMetadataMode,
+    func presentMetadata(
+        _ presentation: CandidateMetadataPresentation,
         forKey key: String
     ) {
         mutateCandidate(forKey: key) {
-            $0.presentedMetadataMode = mode
+            $0.metadataPresentation = presentation
         }
     }
 

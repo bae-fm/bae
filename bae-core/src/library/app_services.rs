@@ -695,9 +695,8 @@ impl AppServices {
     delegate_sync!(manager, set_max_concurrent_downloads => set_max_concurrent_downloads(n: u32) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_show_remaining_time => set_show_remaining_time(enabled: bool) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_library_full_width => set_library_full_width(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_automatic_import_metadata_lookup => set_automatic_import_metadata_lookup(enabled: bool) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_default_import_metadata_mode => set_default_import_metadata_mode(mode: crate::config::DefaultImportMetadataMode) -> Result<(), crate::config::ConfigError>);
-    delegate_sync!(manager, set_last_import_metadata_mode => set_last_import_metadata_mode(mode: crate::config::ImportMetadataMode) -> Result<(), crate::config::ConfigError>);
+    delegate_sync!(manager, set_automatic_import_identification => set_automatic_import_identification(enabled: bool) -> Result<(), crate::config::ConfigError>);
+    delegate_sync!(manager, set_default_import_metadata_source => set_default_import_metadata_source(source: crate::config::DefaultImportMetadataSource) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_save_presets => set_save_presets(presets: Vec<crate::config::SavePreset>) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_default_track_save_preset => set_default_track_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);
     delegate_sync!(manager, set_default_release_save_preset => set_default_release_save_preset(preset_id: String) -> Result<(), crate::config::ConfigError>);

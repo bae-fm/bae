@@ -52,10 +52,10 @@ pub(crate) fn automation_candidate_from_folder(
             .cloned()
             .map(automation_file_evidence)
             .collect(),
-        edit: folder
-            .edit
-            .as_ref()
-            .map(|edit| automation_release_user_edit(shaped_edit(edit, &folder.mapping))),
+        edit: Some(automation_release_user_edit(shaped_edit(
+            &folder.metadata_draft,
+            &folder.mapping,
+        ))),
         failure: folder
             .failure
             .as_ref()

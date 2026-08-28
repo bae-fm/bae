@@ -166,7 +166,7 @@ extension EditMetadataForm {
     #Preview("Edit Metadata Form") {
         @Previewable
         @State
-        var form = PreviewData.editMetadataSeed(trackCount: 13)
+        var form = PreviewData.editMetadataDraft(trackCount: 13)
         ScrollView {
             EditMetadataForm(form: $form)
                 .padding(20)

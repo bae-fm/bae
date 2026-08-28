@@ -1,15 +1,33 @@
 //! Reading `import_candidate_state` back: the identify columns with their
-//! match rows, the metadata seed, and the per-file decisions.
+//! match rows, the metadata draft and provenance, and the per-file decisions.
 
 use super::duration_rows::load_durations_on;
 use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{read_match_row, unreadable, verdict_of, MatchLists};
 use super::*;
-use crate::import::{MetadataSeed, MetadataSource};
+use crate::import::{MetadataProvenance, MetadataSource};
 use std::str::FromStr;
 
-/// The metadata seed as its three columns. Only an external release carries a
+/// Who decided a candidate's stored metadata provenance. Identification's
+/// choice goes with its verdict; an explicitly applied source outlives every
+/// verdict, so the row records which one it holds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum MetadataProvenanceAuthor {
+    User,
+    Identification,
+}
+
+impl MetadataProvenanceAuthor {
+    pub(super) fn as_str(self) -> &'static str {
+        match self {
+            Self::User => "user",
+            Self::Identification => "identification",
+        }
+    }
+}
+
+/// The metadata provenance as its three columns. Only an external release carries a
 /// source and release id.
 pub(super) struct SeedColumns<'a> {
     pub(super) kind: &'static str,
@@ -17,19 +35,14 @@ pub(super) struct SeedColumns<'a> {
     pub(super) release_id: Option<&'a str>,
 }
 
-pub(super) fn seed_columns(seed: &MetadataSeed) -> SeedColumns<'_> {
+pub(super) fn seed_columns(seed: &MetadataProvenance) -> SeedColumns<'_> {
     match seed {
-        MetadataSeed::FileTags => SeedColumns {
+        MetadataProvenance::FileTags => SeedColumns {
             kind: "file_tags",
             source: None,
             release_id: None,
         },
-        MetadataSeed::Manual => SeedColumns {
-            kind: "manual",
-            source: None,
-            release_id: None,
-        },
-        MetadataSeed::ExternalRelease { source, release_id } => SeedColumns {
+        MetadataProvenance::ExternalRelease { source, release_id } => SeedColumns {
             kind: "external_release",
             source: Some(source.as_str()),
             release_id: Some(release_id.as_str()),
@@ -37,28 +50,29 @@ pub(super) fn seed_columns(seed: &MetadataSeed) -> SeedColumns<'_> {
     }
 }
 
-pub(crate) fn metadata_seed_of(
+pub(crate) fn metadata_provenance_of(
     kind: Option<String>,
     source: Option<String>,
     release_id: Option<String>,
-) -> Result<Option<MetadataSeed>, DbError> {
+) -> Result<Option<MetadataProvenance>, DbError> {
     let Some(kind) = kind else {
         return Ok(None);
     };
     match kind.as_str() {
-        "file_tags" => Ok(Some(MetadataSeed::FileTags)),
-        "manual" => Ok(Some(MetadataSeed::Manual)),
+        "file_tags" => Ok(Some(MetadataProvenance::FileTags)),
         "external_release" => {
             let missing = |what: &str| {
-                DbError::Message(format!("a stored external metadata seed names no {what}"))
+                DbError::Message(format!(
+                    "stored external metadata provenance names no {what}"
+                ))
             };
-            Ok(Some(MetadataSeed::ExternalRelease {
+            Ok(Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
                     .map_err(DbError::Message)?,
                 release_id: release_id.ok_or_else(|| missing("release"))?,
             }))
         }
-        other => Err(unreadable("seed_kind", other)),
+        other => Err(unreadable("provenance_kind", other)),
     }
 }
 
@@ -70,7 +84,7 @@ struct StateRow {
     verdict_matched_barcode: Option<String>,
     probed_total_duration_ms: Option<i64>,
     identified_at: Option<DateTime<Utc>>,
-    metadata_seed: Option<MetadataSeed>,
+    metadata_provenance: Option<MetadataProvenance>,
     edit_revision: i64,
 }
 
@@ -86,18 +100,18 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         identified_at: identified_at
             .map(|_| rfc3339_column(row, "identified_at"))
             .transpose()?,
-        metadata_seed: metadata_seed_of(
-            row.get("seed_kind")?,
-            row.get("seed_source")?,
-            row.get("seed_release_id")?,
+        metadata_provenance: metadata_provenance_of(
+            row.get("provenance_kind")?,
+            row.get("provenance_source")?,
+            row.get("provenance_release_id")?,
         )?,
         edit_revision: row.get("edit_revision")?,
     })
 }
 
 const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_track_count, \
-     verdict_matched_barcode, probed_total_duration_ms, identified_at, seed_kind, seed_source, \
-     seed_release_id, edit_revision";
+     verdict_matched_barcode, probed_total_duration_ms, identified_at, provenance_kind, \
+     provenance_source, provenance_release_id, edit_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
@@ -182,7 +196,7 @@ pub(crate) fn load_states_on(
                 folder_path: state.folder_path,
                 identify,
                 file_edits,
-                metadata_seed: state.metadata_seed,
+                metadata_provenance: state.metadata_provenance,
             },
         );
     }

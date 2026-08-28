@@ -63,7 +63,6 @@ pub struct BridgeImportListWindow {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReadyRowRef {
     pub candidate_key: String,
-    pub metadata_seed: BridgeMetadataSeed,
     pub cover_thumbnail_url: Option<String>,
 }
 
@@ -139,9 +138,16 @@ pub struct BridgeImportCandidateDetail {
     /// of the selected pressing; support for a search result is carried by its
     /// result provenance instead.
     pub file_evidence: Vec<BridgeFileEvidence>,
-    /// The metadata form, seeded from the pick with the stored edits applied.
-    /// `None` with no pick.
-    pub edit: Option<BridgeRawReleaseEdit>,
+    /// The candidate's one editable metadata draft.
+    pub metadata_draft: BridgeRawReleaseEdit,
+    /// Whether the draft contains no authored or sourced metadata.
+    pub metadata_draft_is_blank: bool,
+    /// Where the current draft began, absent for direct entry and after clear.
+    pub metadata_provenance: Option<BridgeMetadataProvenance>,
+    /// Revision of the exact metadata draft and selected cover in this value.
+    pub metadata_revision: u64,
+    /// Source policy captured when this candidate was first discovered.
+    pub initial_metadata_source: BridgeDefaultImportMetadataSource,
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: BridgeMappingTable,

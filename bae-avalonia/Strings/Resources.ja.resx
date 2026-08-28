@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>曲数または長さの不一致</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ライブラリに既存</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>候補なし</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>メタデータが必要</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>まだ識別中</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>識別中</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>まだ識別中の候補へ移動</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>新規</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>追加</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>削除</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>ソース未選択の候補を次で開く</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>前回使用</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>検索候補を自動識別</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>自動識別でカバーの文字、バーコード、ディスクIDを読み取るのは、候補が「検索」を使用している場合のみです。「ファイルのタグ」と「手動」では実行されません。</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>アルバムタイトル</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>適用</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>メタデータを消去</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>候補のファイルとマッピングの選択は変更されません。</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>メタデータを消去しますか？</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>別のリリースを検索…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>オンラインで検索…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>候補をもう一度読み込んでください。</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>自動で識別</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>自動で識別</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>「オンラインで検索」を開くたびに、カバーの文字、バーコード、ディスクIDを自動で読み取り、一致するリリースを検索します。</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>デフォルトのメタデータソース</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>なし</value></data>
 </root>

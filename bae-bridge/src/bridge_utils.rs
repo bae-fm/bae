@@ -1,46 +1,25 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeConfig, BridgeDefaultImportMetadataMode, BridgeDiscogsTokenStatus,
-    BridgeImportMetadataMode, BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec,
-    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSubsonicConfig,
-    BridgeSyncConfig, BridgeSyncProvider,
+    BridgeConfig, BridgeDefaultImportMetadataSource, BridgeDiscogsTokenStatus, BridgeMcpConfig,
+    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement,
+    BridgeSavePreset, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
 };
 
-impl BridgeImportMetadataMode {
-    pub(crate) fn from_core(mode: bae_core::config::ImportMetadataMode) -> Self {
-        match mode {
-            bae_core::config::ImportMetadataMode::Lookup => Self::Lookup,
-            bae_core::config::ImportMetadataMode::FileTags => Self::FileTags,
-            bae_core::config::ImportMetadataMode::Manual => Self::Manual,
+impl BridgeDefaultImportMetadataSource {
+    pub(crate) fn from_core(source: bae_core::config::DefaultImportMetadataSource) -> Self {
+        match source {
+            bae_core::config::DefaultImportMetadataSource::FindOnline => Self::FindOnline,
+            bae_core::config::DefaultImportMetadataSource::FileTags => Self::FileTags,
+            bae_core::config::DefaultImportMetadataSource::None => Self::None,
         }
     }
 
-    pub(crate) fn into_core(self) -> bae_core::config::ImportMetadataMode {
+    pub(crate) fn into_core(self) -> bae_core::config::DefaultImportMetadataSource {
         match self {
-            Self::Lookup => bae_core::config::ImportMetadataMode::Lookup,
-            Self::FileTags => bae_core::config::ImportMetadataMode::FileTags,
-            Self::Manual => bae_core::config::ImportMetadataMode::Manual,
-        }
-    }
-}
-
-impl BridgeDefaultImportMetadataMode {
-    pub(crate) fn from_core(mode: bae_core::config::DefaultImportMetadataMode) -> Self {
-        match mode {
-            bae_core::config::DefaultImportMetadataMode::Lookup => Self::Lookup,
-            bae_core::config::DefaultImportMetadataMode::FileTags => Self::FileTags,
-            bae_core::config::DefaultImportMetadataMode::Manual => Self::Manual,
-            bae_core::config::DefaultImportMetadataMode::LastUsed => Self::LastUsed,
-        }
-    }
-
-    pub(crate) fn into_core(self) -> bae_core::config::DefaultImportMetadataMode {
-        match self {
-            Self::Lookup => bae_core::config::DefaultImportMetadataMode::Lookup,
-            Self::FileTags => bae_core::config::DefaultImportMetadataMode::FileTags,
-            Self::Manual => bae_core::config::DefaultImportMetadataMode::Manual,
-            Self::LastUsed => bae_core::config::DefaultImportMetadataMode::LastUsed,
+            Self::FindOnline => bae_core::config::DefaultImportMetadataSource::FindOnline,
+            Self::FileTags => bae_core::config::DefaultImportMetadataSource::FileTags,
+            Self::None => bae_core::config::DefaultImportMetadataSource::None,
         }
     }
 }
@@ -264,7 +243,6 @@ impl BridgeConfig {
     pub(crate) fn from_core(config: &bae_core::config::Config) -> Self {
         let discogs_status = config.discogs_token_status();
         let cloud_account_display = config.cloud_account_display();
-        let resolved_import_metadata_mode = config.resolved_unseeded_import_metadata_mode();
         let bae_core::config::Config {
             inner,
             // Read via the derived `discogs_token_status()` above.
@@ -277,9 +255,8 @@ impl BridgeConfig {
             pause_between_sides,
             max_concurrent_uploads,
             max_concurrent_downloads,
-            automatic_import_metadata_lookup,
-            default_import_metadata_mode,
-            last_import_metadata_mode,
+            automatic_import_identification,
+            default_import_metadata_source,
             show_remaining_time,
             library_full_width,
             // Import-time decode verification; not surfaced on the config screen.
@@ -305,15 +282,9 @@ impl BridgeConfig {
             pause_between_sides: *pause_between_sides,
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
-            automatic_import_metadata_lookup: *automatic_import_metadata_lookup,
-            default_import_metadata_mode: BridgeDefaultImportMetadataMode::from_core(
-                *default_import_metadata_mode,
-            ),
-            last_import_metadata_mode: BridgeImportMetadataMode::from_core(
-                *last_import_metadata_mode,
-            ),
-            resolved_import_metadata_mode: BridgeImportMetadataMode::from_core(
-                resolved_import_metadata_mode,
+            automatic_import_identification: *automatic_import_identification,
+            default_import_metadata_source: BridgeDefaultImportMetadataSource::from_core(
+                *default_import_metadata_source,
             ),
             show_remaining_time: *show_remaining_time,
             library_full_width: *library_full_width,

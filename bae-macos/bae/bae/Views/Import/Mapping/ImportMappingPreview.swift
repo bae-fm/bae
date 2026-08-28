@@ -30,7 +30,9 @@
             previewingPath: String? = nil,
             runtime: BridgeCandidateRuntimeSnapshot? = nil
         ) -> some View {
-            ImportMappingPane(
+            let store = ImportStore()
+            store.selectedCandidates[candidate.key] = candidate
+            return ImportMappingPane(
                 candidate: candidate,
                 runtime: runtime,
                 bindingOptions: PreviewData.sheetBindingOptions,
@@ -46,15 +48,16 @@
                     confirmImport: {},
                     viewInLibrary: { _ in },
                 ),
-                onPresentMetadataMode: { _ in },
-                onFindRelease: {},
+                onPresentMetadata: { _ in },
                 onReadFileTags: {},
-                onPickRelease: { _ in },
                 onUseFileTags: {},
-                onEnterManually: {},
+                onClearMetadata: {},
                 onEditCover: {},
+                onSelectCover: { _ in },
                 onNavigateToPlacement: { _ in },
             )
+            .environment(store)
+            .environment(PreviewData.importTabImporter())
         }
     }
 
@@ -157,7 +160,7 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — Manual, not selected") {
+    #Preview("Mapping pane — blank draft") {
         @Previewable
         @State
         var storageCloud = true
@@ -165,7 +168,7 @@
         @State
         var storagePinned = true
         ImportMappingPreview.make(
-            candidate: PreviewData.manualMappingCandidate,
+            candidate: PreviewData.blankDraftMappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )
@@ -173,7 +176,7 @@
         .importPreviewEnvironment()
     }
 
-    #Preview("Mapping pane — Manual selected") {
+    #Preview("Mapping pane — direct entry") {
         @Previewable
         @State
         var storageCloud = true
@@ -181,7 +184,7 @@
         @State
         var storagePinned = true
         ImportMappingPreview.make(
-            candidate: PreviewData.selectedManualMappingCandidate,
+            candidate: PreviewData.directEntryMappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned
         )

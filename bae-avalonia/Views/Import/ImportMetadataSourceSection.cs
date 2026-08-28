@@ -1,6 +1,7 @@
 ﻿using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -8,16 +9,17 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-/// <summary>The metadata surface being inspected and the explicit action that
-/// selects it for import.</summary>
+/// <summary>The editable draft or one temporary source browser occupying the
+/// metadata slot.</summary>
 internal sealed class ImportMetadataSourceSection
 {
-    internal required BridgeImportMetadataMode Mode { get; init; }
-    internal required bool HasSelectedSeed { get; init; }
+    internal required ImportMetadataPresentation Presentation { get; init; }
+    internal required bool DraftIsBlank { get; init; }
     internal required string Title { get; init; }
     internal required BridgeRawReleaseEdit? Edit { get; init; }
     internal required string MetaLine { get; init; }
-    internal required BridgeMetadataSource? PickedSource { get; init; }
+    internal required string? ProvenanceLabel { get; init; }
+    internal required Uri? ProvenanceUri { get; init; }
     internal required bool IsReading { get; init; }
     internal required BridgeReleaseUserEdit? FileTagsPreview { get; init; }
     internal required string FileTagsMetaLine { get; init; }
@@ -27,101 +29,120 @@ internal sealed class ImportMetadataSourceSection
     internal required bool HasCoverOptions { get; init; }
     internal required Control? CommitRow { get; init; }
     internal required LibraryService Library { get; init; }
-    internal required Action<BridgeImportMetadataMode> OnPresentMode { get; init; }
-    internal required Action OnFindRelease { get; init; }
+    internal required Action<ImportMetadataPresentation> OnPresent { get; init; }
     internal required Action OnReadFileTags { get; init; }
     internal required Action OnUseFileTags { get; init; }
-    internal required Action OnEnterManually { get; init; }
+    internal required Action OnClearMetadata { get; init; }
     internal required Action OnEditCover { get; init; }
+    internal required Action<BridgeCoverSelection> OnSelectCover { get; init; }
     internal required Action<BridgeCandidateEditField, string> OnEditField { get; init; }
     internal required Action<IReadOnlyList<BridgeArtistAssignment>> OnEditArtists { get; init; }
 
     internal Control Build()
     {
-        var column = new StackPanel { Spacing = 10 };
-        column.Children.Add(ModePicker());
-        column.Children.Add(ModeContent());
-        return column;
-    }
-
-    private Control ModePicker()
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        row.Children.Add(Segment(
-            Loc.Core("ui.import.metadata.lookup"),
-            BridgeImportMetadataMode.Lookup));
-        row.Children.Add(Segment(
-            Loc.Core("ui.import.metadata.file_tags"),
-            BridgeImportMetadataMode.FileTags));
-        row.Children.Add(Segment(
-            Loc.Core("ui.import.metadata.manual"),
-            BridgeImportMetadataMode.Manual));
-        return row;
-    }
-
-    private Control Segment(string label, BridgeImportMetadataMode mode)
-    {
-        var button = ImportPaneUi.RowButton(label);
-        button.IsEnabled = !IsReading;
-        if (Mode == mode)
+        return Presentation switch
         {
-            button[!Button.BackgroundProperty] =
-                new DynamicResourceExtension("BaeSelectionTintBrush");
-            button[!Button.ForegroundProperty] =
-                new DynamicResourceExtension("BaeTextPrimaryBrush");
-        }
-        button.Click += (_, _) => OnPresentMode(mode);
-        return button;
+            ImportMetadataPresentation.Draft => DraftContent(),
+            ImportMetadataPresentation.FindOnline => FindOnlineContent(),
+            ImportMetadataPresentation.FileTags => FileTagsContent(),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(Presentation), Presentation, "Unknown metadata presentation"),
+        };
     }
 
-    private Control ModeContent() => Mode switch
+    private Control FindOnlineContent()
     {
-        BridgeImportMetadataMode.Lookup => LookupContent(),
-        BridgeImportMetadataMode.FileTags => FileTagsContent(),
-        BridgeImportMetadataMode.Manual => ManualContent(),
-        _ => throw new ArgumentOutOfRangeException(nameof(Mode), Mode, "Unknown metadata mode"),
-    };
-
-    private Control LookupContent()
-    {
-        if (HasSelectedSeed)
-        {
-            return SelectedCard(
-                Loc.Core("ui.import.header.change_release"),
-                OnFindRelease);
-        }
         var column = new StackPanel { Spacing = 8 };
+        column.Children.Add(BrowserHeader(Loc.Chrome("import.metadata.find_online")));
         if (LookupOptions is not null)
         {
             column.Children.Add(LookupOptions);
         }
-        column.Children.Add(ActionButton(
-            Loc.Core("ui.import.header.find_release"),
-            OnFindRelease));
         return column;
+    }
+
+    private Control DraftContent()
+    {
+        if (Edit is null)
+        {
+            return new Spinner { Width = 16, Height = 16 };
+        }
+        return Card(
+            Title,
+            ArtistAssignmentDisplay.Join(Edit.AlbumArtistAssignments),
+            MetaLine,
+            Edit,
+            ProvenanceLabel,
+            DraftActions(),
+            includeSelectedValues: true,
+            showFieldsDirectly: DraftIsBlank);
+    }
+
+    private Control DraftActions()
+    {
+        if (DraftIsBlank)
+        {
+            var actions = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+            };
+            actions.Children.Add(ActionButton(
+                Loc.Chrome("import.metadata.find_online_ellipsis"),
+                () => OnPresent(ImportMetadataPresentation.FindOnline)));
+            actions.Children.Add(ActionButton(
+                Loc.Core("ui.import.metadata.file_tags") + "…",
+                () => OnPresent(ImportMetadataPresentation.FileTags)));
+            return actions;
+        }
+
+        var menu = ImportPaneUi.RowButton("⋯");
+        var flyout = new MenuFlyout();
+        flyout.Items.Add(MenuItem(
+            Loc.Chrome("import.metadata.find_another_release"),
+            () => OnPresent(ImportMetadataPresentation.FindOnline)));
+        flyout.Items.Add(MenuItem(
+            Loc.Chrome("import.metadata.use_file_tags") + "…",
+            () => OnPresent(ImportMetadataPresentation.FileTags)));
+        flyout.Items.Add(new Separator());
+        flyout.Items.Add(MenuItem(
+            Loc.Chrome("import.metadata.clear"),
+            OnClearMetadata));
+        menu.Flyout = flyout;
+        return menu;
     }
 
     private Control FileTagsContent()
     {
-        if (HasSelectedSeed)
-        {
-            return SelectedCard(null, null);
-        }
+        var column = new StackPanel { Spacing = 8 };
+        column.Children.Add(BrowserHeader(Loc.Core("ui.import.metadata.file_tags")));
         if (FileTagsPreview is { } preview)
         {
-            return Card(
+            column.Children.Add(Card(
                 preview.AlbumTitle,
                 ArtistAssignmentDisplay.Join(preview.AlbumArtistAssignments),
                 FileTagsMetaLine,
                 edit: null,
-                source: null,
-                actionLabel: Loc.Chrome("import.metadata.use_file_tags"),
-                onAction: OnUseFileTags,
-                includeSelectedValues: false);
+                provenanceLabel: null,
+                actionControl: ActionButton(
+                    Loc.Chrome("import.metadata.apply"),
+                    OnUseFileTags),
+                includeSelectedValues: false,
+                showFieldsDirectly: false));
+            return column;
         }
-        var column = new StackPanel { Spacing = 6 };
+        if (IsReading)
+        {
+            column.Children.Add(new Spinner
+            {
+                Width = 16,
+                Height = 16,
+                HorizontalAlignment = HorizontalAlignment.Center,
+            });
+            return column;
+        }
         column.Children.Add(ActionButton(
-            Loc.Core("ui.import.metadata.file_tags"),
+            Loc.Chrome("import.metadata.try_again"),
             OnReadFileTags));
         if (FileTagsError is { Length: > 0 } error)
         {
@@ -133,35 +154,26 @@ internal sealed class ImportMetadataSourceSection
         return column;
     }
 
-    private Control ManualContent()
+    private Control BrowserHeader(string title)
     {
-        if (HasSelectedSeed)
+        var row = new StackPanel
         {
-            return SelectedCard(null, null);
-        }
-        return Card(
-            Loc.Core("ui.import.slots.untitled"),
-            string.Empty,
-            Loc.Core("ui.import.metadata.manual"),
-            edit: null,
-            source: null,
-            actionLabel: Loc.Chrome("import.metadata.enter_manually"),
-            onAction: OnEnterManually,
-            includeSelectedValues: false);
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+        };
+        row.Children.Add(ActionButton(
+            Loc.Chrome("action.back"),
+            () => OnPresent(ImportMetadataPresentation.Draft)));
+        row.Children.Add(ImportPaneUi.Cell(title));
+        return row;
     }
 
-    private Control SelectedCard(string? actionLabel, Action? onAction) =>
-        Card(
-            Title,
-            Edit is null
-                ? string.Empty
-                : ArtistAssignmentDisplay.Join(Edit.AlbumArtistAssignments),
-            MetaLine,
-            Edit,
-            PickedSource,
-            actionLabel,
-            onAction,
-            includeSelectedValues: true);
+    private static MenuItem MenuItem(string label, Action action)
+    {
+        var item = new MenuItem { Header = label };
+        item.Click += (_, _) => action();
+        return item;
+    }
 
     private Button ActionButton(string label, Action action)
     {
@@ -176,10 +188,10 @@ internal sealed class ImportMetadataSourceSection
         string artistText,
         string metaLine,
         BridgeRawReleaseEdit? edit,
-        BridgeMetadataSource? source,
-        string? actionLabel,
-        Action? onAction,
-        bool includeSelectedValues)
+        string? provenanceLabel,
+        Control? actionControl,
+        bool includeSelectedValues,
+        bool showFieldsDirectly)
     {
         var grid = new Grid
         {
@@ -208,32 +220,38 @@ internal sealed class ImportMetadataSourceSection
         }
         var facts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         facts.Children.Add(ImportPaneUi.Cell(metaLine, secondary: true));
-        if (source is { } pickedSource)
+        if (provenanceLabel is { Length: > 0 } label)
         {
-            facts.Children.Add(SourceChip(pickedSource));
+            facts.Children.Add(SourceChip(label, ProvenanceUri));
         }
         summary.Children.Add(facts);
         Grid.SetColumn(summary, 1);
         grid.Children.Add(summary);
 
-        if (actionLabel is not null && onAction is not null)
+        if (actionControl is not null)
         {
-            var action = ActionButton(actionLabel, onAction);
-            action.VerticalAlignment = VerticalAlignment.Top;
-            Grid.SetColumn(action, 2);
-            grid.Children.Add(action);
+            actionControl.VerticalAlignment = VerticalAlignment.Top;
+            Grid.SetColumn(actionControl, 2);
+            grid.Children.Add(actionControl);
         }
 
         var body = new StackPanel { Spacing = 12, Children = { grid } };
         if (edit is not null)
         {
-            body.Children.Add(new Expander
+            if (showFieldsDirectly)
             {
-                Header = Loc.Chrome("import.pane.details"),
-                FontSize = 12,
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Content = ReleaseFields(edit),
-            });
+                body.Children.Add(ReleaseFields(edit));
+            }
+            else
+            {
+                body.Children.Add(new Expander
+                {
+                    Header = Loc.Chrome("import.pane.details"),
+                    FontSize = 12,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                    Content = ReleaseFields(edit),
+                });
+            }
         }
         if (includeSelectedValues && CommitRow is not null)
         {
@@ -274,6 +292,10 @@ internal sealed class ImportMetadataSourceSection
             Child = image,
             VerticalAlignment = VerticalAlignment.Top,
         };
+        if (includeSelectedValues)
+        {
+            EnableCoverDrop(tile);
+        }
         tile[!Border.BackgroundProperty] =
             new DynamicResourceExtension("BaeElevatedBrush");
         if (!includeSelectedValues || !HasCoverOptions)
@@ -295,11 +317,40 @@ internal sealed class ImportMetadataSourceSection
         return button;
     }
 
-    private static Control SourceChip(BridgeMetadataSource source)
+    private void EnableCoverDrop(Border tile)
+    {
+        DragDrop.SetAllowDrop(tile, true);
+        tile.AddHandler(DragDrop.DragOverEvent, (_, e) =>
+        {
+            if (e.DataTransfer.Contains(ImportMappingGallery.CoverDragFormat))
+            {
+                e.DragEffects = DragDropEffects.Copy;
+                e.Handled = true;
+                tile.BorderThickness = new Thickness(3);
+                tile[!Border.BorderBrushProperty] =
+                    new DynamicResourceExtension("BaeAccentBrush");
+            }
+        });
+        tile.AddHandler(DragDrop.DragLeaveEvent, (_, _) =>
+            tile.BorderThickness = new Thickness(0));
+        tile.AddHandler(DragDrop.DropEvent, (_, e) =>
+        {
+            tile.BorderThickness = new Thickness(0);
+            if (e.DataTransfer.TryGetValue(ImportMappingGallery.CoverDragFormat)
+                is not string fileId)
+            {
+                return;
+            }
+            e.Handled = true;
+            OnSelectCover(new BridgeCoverSelection.ReleaseImage(fileId));
+        });
+    }
+
+    private static Control SourceChip(string label, Uri? uri)
     {
         var text = new TextBlock
         {
-            Text = BaeBridgeMethods.BridgeMetadataSourceName(source),
+            Text = label,
             FontSize = 10.5,
             FontWeight = FontWeight.Medium,
             VerticalAlignment = VerticalAlignment.Center,
@@ -315,7 +366,43 @@ internal sealed class ImportMetadataSourceSection
         };
         chip[!Border.BackgroundProperty] =
             new DynamicResourceExtension("BaeElevatedBrush");
-        return chip;
+        if (uri is null)
+        {
+            return chip;
+        }
+        var button = new Button
+        {
+            Content = chip,
+            Padding = new Thickness(0),
+            BorderThickness = new Thickness(0),
+            Background = Brushes.Transparent,
+            Cursor = new Avalonia.Input.Cursor(
+                Avalonia.Input.StandardCursorType.Hand),
+        };
+        button.Click += async (_, _) =>
+        {
+            var launcher = TopLevel.GetTopLevel(button)?.Launcher;
+            if (launcher is null)
+            {
+                BaeDiagnostics.Logger.Warning(
+                    $"Open metadata source failed: no launcher for {uri.Host}");
+                return;
+            }
+            try
+            {
+                if (!await launcher.LaunchUriAsync(uri))
+                {
+                    BaeDiagnostics.Logger.Warning(
+                        $"Open metadata source failed: launcher rejected {uri.Host}");
+                }
+            }
+            catch (Exception exception)
+            {
+                BaeDiagnostics.Logger.Warning(
+                    $"Open metadata source failed: {exception.Message}");
+            }
+        };
+        return button;
     }
 
     private Control ReleaseFields(BridgeRawReleaseEdit edit)

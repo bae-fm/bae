@@ -178,9 +178,15 @@ impl LibraryManager {
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
+        let initial_metadata_source = self.config_handle.config().default_import_metadata_source;
         Ok(self
             .database
-            .save_folder_scan_item(watched_folder_path, generation, item)
+            .save_folder_scan_item_with_initial_source(
+                watched_folder_path,
+                generation,
+                item,
+                initial_metadata_source,
+            )
             .await?)
     }
 
@@ -396,15 +402,37 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_candidate_metadata_seed(
+    pub async fn replace_candidate_metadata(
         &self,
         content_hash: &str,
         folder_path: &str,
-        pick: &crate::import::MetadataSeed,
-    ) -> Result<(), LibraryError> {
+        draft: &crate::import::RawReleaseEdit,
+        provenance: Option<&crate::import::MetadataProvenance>,
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
-            .save_candidate_metadata_seed(content_hash, folder_path, pick)
+            .replace_candidate_metadata(content_hash, folder_path, draft, provenance)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn replace_candidate_file_tags_metadata(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+        draft: &crate::import::RawReleaseEdit,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .replace_candidate_file_tags_metadata(
+                watched_folder_path,
+                candidate_path,
+                content_hash,
+                snapshot,
+                draft,
+            )
             .await?)
     }
 
@@ -465,7 +493,7 @@ impl LibraryManager {
         &self,
         content_hash: &str,
         cover: &crate::import::CoverSelection,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
             .save_import_candidate_cover(content_hash, cover)
@@ -478,7 +506,7 @@ impl LibraryManager {
         content_hash: &str,
         field: crate::import::CandidateEditField,
         value: &str,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
             .save_import_candidate_edit_field(content_hash, field, value)
@@ -490,7 +518,7 @@ impl LibraryManager {
         &self,
         content_hash: &str,
         assignments: &[crate::import::ArtistAssignment],
-    ) -> Result<(), LibraryError> {
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
             .replace_import_candidate_album_artists(content_hash, assignments)
@@ -502,7 +530,7 @@ impl LibraryManager {
         &self,
         content_hash: &str,
         edit: &crate::import::CandidateTrackEdit,
-    ) -> Result<(), LibraryError> {
+    ) -> Result<u64, LibraryError> {
         Ok(self
             .database
             .save_import_candidate_track_edit(content_hash, edit)

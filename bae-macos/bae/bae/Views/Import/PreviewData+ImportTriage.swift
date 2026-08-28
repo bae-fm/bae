@@ -45,7 +45,7 @@
             matched: BridgeMatchedRelease?,
             selectable: Bool,
             importStatus: BridgeTriageImportStatus? = nil,
-            metadataSeed: BridgeMetadataSeed? = nil
+            metadataProvenance: BridgeMetadataProvenance? = nil
         ) -> BridgeTriageRow {
             BridgeTriageRow(
                 candidateKey: candidate.key,
@@ -60,7 +60,7 @@
                 matched: matched,
                 selectable: selectable,
                 importStatus: importStatus,
-                metadataSeed: metadataSeed
+                metadataProvenance: metadataProvenance
             )
         }
 
@@ -183,7 +183,7 @@
                 skipped: false,
                 isAdded: false
             ),
-            metadataSeed: .externalRelease(
+            metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -217,7 +217,7 @@
                 trackCount: releaseDetailBridge.trackCount
             ),
             selectable: true,
-            metadataSeed: .externalRelease(
+            metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             )
@@ -403,7 +403,7 @@
                     trackCount: releaseDetailBridge.trackCount
                 ),
                 selectable: true,
-                metadataSeed: .externalRelease(
+                metadataProvenance: .externalRelease(
                     source: releaseDetailBridge.source,
                     releaseId: releaseDetailBridge.releaseId
                 )

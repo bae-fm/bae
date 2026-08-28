@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Broj ili trajanja se ne slažu</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Već u fonoteci</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Bez podudaranja</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Potrebni su metapodaci</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Još se identificira</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifikacija</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Idi na kandidata koji se još prepoznaje</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Novi</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Dodaj</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Ukloni</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Otvori kandidate bez odabranog izvora u</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Zadnje korišteno</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Automatski prepoznaj kandidate pretraživanja</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Automatsko prepoznavanje čita tekst omota, crtične kodove i ID-ove diskova samo dok kandidat koristi Pretraživanje. Oznake datoteka i Ručno nikad ga ne pokreću.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Naziv albuma</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Primijeni</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Izbriši metapodatke</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Izbrisati metapodatke?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Pronađi drugo izdanje…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Pronađi na internetu</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Pronađi na internetu…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Pokušajte ponovno pročitati kandidata.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Automatski prepoznaj</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Automatski prepoznaj</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Automatski čita tekst omota, crtične kodove i ID-ove diskova te traži podudaranje svaki put kada se otvori Pronađi na internetu.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Zadani izvor metapodataka</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Pronađi na internetu</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Nijedan</value></data>
 </root>

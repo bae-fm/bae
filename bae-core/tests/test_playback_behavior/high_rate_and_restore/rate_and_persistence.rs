@@ -92,10 +92,10 @@ impl HighSampleRateTestFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                metadata_seed: MetadataSeed::ExternalRelease {
+                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
-                },
+                }),
                 user_edit: None,
             })
             .await
@@ -504,10 +504,10 @@ async fn test_restore_emits_seeked_at_saved_position() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -599,10 +599,10 @@ async fn test_play_persists_then_stop_clears_playback_state() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await

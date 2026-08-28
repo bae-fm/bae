@@ -5,9 +5,9 @@
 use crate::import::probe::{ProbedDurations, ProbedUnit};
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit,
-    CoverSelection, ExistingArtist, NewArtistSeed, RawTrackEdit, TrackArtistAssignments,
-    TrackEditState,
+    ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
+    ExistingArtist, NewArtistSeed, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    TrackArtistAssignments,
 };
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
@@ -57,7 +57,7 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
         verdict: sample_verdict(),
         signals,
         expected_edit_revision: 0,
-        metadata_seed: None,
+        metadata_provenance: None,
     })
     .await
     .unwrap()
@@ -93,6 +93,50 @@ fn existing_artist() -> DbArtist {
         discogs_artist_id: Some("discogs-library".to_string()),
         musicbrainz_artist_id: Some("mb-library".to_string()),
         created_at: fixed_identified_at(),
+    }
+}
+
+async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, String) {
+    let root = host_root("/music");
+    let item = scanned_candidate(&root, "Album");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
+        unreachable!("the fixture creates a valid candidate")
+    };
+    let files = candidate.files.clone();
+    let hash = files.content_hash();
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &item)
+    .await
+    .unwrap()
+    .expect("the current scan accepts the candidate");
+    (files, hash)
+}
+
+fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
+    RawReleaseEdit {
+        album_title: title.to_string(),
+        album_artist_assignments: if artist.is_empty() {
+            Vec::new()
+        } else {
+            vec![new_artist(artist)]
+        },
+        pressing: RawPressingEdit {
+            year: String::new(),
+            format: String::new(),
+            label: String::new(),
+            catalog_number: String::new(),
+            country: String::new(),
+            barcode: String::new(),
+        },
+        tracks: vec![RawTrackEdit {
+            id: "candidate-track-0".to_string(),
+            title: "Track title".to_string(),
+            artist_assignments: TrackArtistAssignments::AlbumArtists,
+            side: 1,
+            track_number: Some(1),
+            file: None,
+        }],
     }
 }
 
@@ -152,7 +196,7 @@ async fn measured_durations_round_trip_with_the_verdict() {
 #[tokio::test]
 async fn a_file_with_no_length_makes_the_total_unknown() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
+    let (_, hash) = stored_pane_candidate(&db).await;
     let durations = ProbedDurations::new(vec![
         file_unit("01 Track.flac", Some(180_000)),
         file_unit("CDImage.flac", None),
@@ -311,7 +355,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 verdict: sample_verdict(),
                 signals: scanning,
                 expected_edit_revision: 0,
-                metadata_seed: None,
+                metadata_provenance: None,
             })
             .await
             .expect_err("a scanning signal is not storable");
@@ -329,13 +373,12 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
     }
 }
 
-/// A failed import is recorded even for a candidate nothing has identified or
-/// picked — an import driven straight from a command still failed on those
-/// bytes. Queueing the next attempt clears it.
+/// A failed import is recorded on the candidate draft that was created during
+/// discovery. Queueing the next attempt clears it.
 #[tokio::test]
-async fn a_failure_creates_its_own_row_and_is_replaced_then_cleared() {
+async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
+    let (_, hash) = stored_pane_candidate(&db).await;
 
     db.save_import_candidate_failure(&hash, "/music/Album", 0, "the folder vanished")
         .await
@@ -349,13 +392,12 @@ async fn a_failure_creates_its_own_row_and_is_replaced_then_cleared() {
         .expect("the failure is stored");
     assert_eq!(failure.error, "the folder vanished");
     assert_eq!(failure.failed_at, fixed_identified_at());
-    assert!(
-        db.load_import_candidate_state(&hash)
-            .await
-            .unwrap()
-            .is_some(),
-        "the write created the row everything else hangs off"
-    );
+    assert!(db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .metadata_draft
+        .is_blank());
 
     db.save_import_candidate_failure(&hash, "/music/Album", 0, "the disc would not read")
         .await
@@ -391,10 +433,7 @@ async fn a_cover_choice_round_trips_in_both_shapes() {
         ),
     ] {
         let (db, _tmp) = empty_db().await;
-        let hash = pane_candidate().content_hash();
-        db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
-            .await
-            .unwrap();
+        let (_, hash) = stored_pane_candidate(&db).await;
 
         db.save_import_candidate_cover(&hash, &cover).await.unwrap();
 
@@ -430,13 +469,13 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
     }
 }
 
-/// The overlay is per field: writing two leaves the other six untouched, and
-/// applying it replaces exactly those two.
+/// Field writes update the one complete draft and leave its other values intact.
 #[tokio::test]
-async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
+async fn draft_field_writes_change_only_the_named_fields() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let seed = metadata_draft("Seeded Title", "Artist Name");
+    db.replace_candidate_metadata(&hash, "/music/Album", &seed, Some(&release_pick("rel-1")))
         .await
         .unwrap();
 
@@ -447,52 +486,23 @@ async fn the_edit_overlay_holds_only_the_fields_that_were_typed() {
         .await
         .unwrap();
 
-    let overlay = db.load_import_candidate_pane_rows(&hash).await.unwrap().edit;
-    assert_eq!(
-        overlay,
-        CandidateEditOverlay {
-            album_title: Some("Album Title".to_string()),
-            year: Some("1991".to_string()),
-            ..Default::default()
-        }
-    );
-
-    let seed = crate::import::RawReleaseEdit {
-        album_title: "Seeded Title".to_string(),
-        album_artist_assignments: vec![new_artist("Artist Name")],
-        pressing: crate::import::RawPressingEdit {
-            year: "1990".to_string(),
-            format: "CD".to_string(),
-            label: "Label Name".to_string(),
-            catalog_number: "CAT-1".to_string(),
-            country: "XE".to_string(),
-            barcode: "0123456789012".to_string(),
-        },
-        tracks: Vec::new(),
-    };
-    let applied = overlay.apply(seed.clone());
-    assert_eq!(applied.album_title, "Album Title");
-    assert_eq!(applied.pressing.year, "1991");
-    assert_eq!(
-        applied.album_artist_assignments,
-        seed.album_artist_assignments
-    );
-    assert_eq!(applied.pressing.format, seed.pressing.format);
-    assert_eq!(applied.pressing.label, seed.pressing.label);
-    assert_eq!(applied.pressing.catalog_number, seed.pressing.catalog_number);
-    assert_eq!(applied.pressing.country, seed.pressing.country);
-    assert_eq!(applied.pressing.barcode, seed.pressing.barcode);
+    let stored = db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .metadata_draft;
+    assert_eq!(stored.album_title, "Album Title");
+    assert_eq!(stored.pressing.year, "1991");
+    assert_eq!(stored.album_artist_assignments, seed.album_artist_assignments);
+    assert_eq!(stored.tracks, seed.tracks);
 }
 
 #[tokio::test]
 async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
+    let (_, hash) = stored_pane_candidate(&db).await;
     let existing = existing_artist();
     db.insert_artist(&existing).await.unwrap();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
-        .await
-        .unwrap();
 
     let assignments = vec![
         ArtistAssignment::existing(existing.into()),
@@ -510,10 +520,10 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
         .unwrap();
 
     let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(stored.edit.album_artist_assignments, Some(assignments));
+    assert_eq!(stored.metadata_draft.album_artist_assignments, assignments);
 
     let explicit_empty = CandidateTrackEdit::edited(RawTrackEdit {
-        id: "import-track-empty".to_string(),
+        id: "candidate-track-0".to_string(),
         title: "Track Title".to_string(),
         artist_assignments: TrackArtistAssignments::Explicit(Vec::new()),
         side: 1,
@@ -527,18 +537,17 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
-            .track_edits,
-        vec![explicit_empty]
+            .metadata_draft
+            .tracks[0]
+            .artist_assignments,
+        TrackArtistAssignments::Explicit(Vec::new())
     );
 }
 
 #[tokio::test]
 async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
-        .await
-        .unwrap();
+    let (_, hash) = stored_pane_candidate(&db).await;
 
     let error = db
         .replace_import_candidate_album_artists(
@@ -559,49 +568,38 @@ async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
     );
 }
 
-/// A row edit is stored whole, in each of the three shapes its audio can
-/// take, and a dropped row keeps nothing else.
+/// A track metadata edit and its physical mapping are stored through their
+/// independent tables and rejoin in the candidate pane.
 #[tokio::test]
-async fn a_track_row_round_trips_in_every_shape() {
+async fn a_track_row_round_trips_metadata_and_mapping() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
+    let (_, hash) = stored_pane_candidate(&db).await;
+    db.replace_candidate_metadata(
+        &hash,
+        "/music/Album",
+        &metadata_draft("Album", "Artist"),
+        Some(&release_pick("rel-1")),
+    )
         .await
         .unwrap();
-
-    let edits = vec![
-        edited_row(
-            "import-track-0",
-            "Track Title",
-            Some(AudioFile::Standalone {
-                file_id: "01 Track.flac".to_string(),
-            }),
-        ),
-        edited_row(
-            "import-track-1",
-            "Second Track Title",
-            Some(AudioFile::SheetSlice {
-                file_id: "CDImage.flac".to_string(),
-                sheet_id: "CDImage.cue".to_string(),
-                index: 4,
-            }),
-        ),
-        edited_row("import-track-2", "Third Track Title", None),
-        CandidateTrackEdit::dropped("import-track-3"),
-    ];
-    for edit in &edits {
-        db.save_import_candidate_track_edit(&hash, edit)
-            .await
-            .unwrap();
-    }
+    let edit = edited_row(
+        "candidate-track-0",
+        "Edited title",
+        Some(AudioFile::SheetSlice {
+            file_id: "CDImage.flac".to_string(),
+            sheet_id: "CDImage.cue".to_string(),
+            index: 4,
+        }),
+    );
+    db.save_import_candidate_track_edit(&hash, &edit).await.unwrap();
 
     let stored = db
         .load_import_candidate_pane_rows(&hash)
         .await
-        .unwrap()
-        .track_edits;
-    assert_eq!(stored, edits);
-    assert!(matches!(stored[3].state, TrackEditState::Dropped));
+        .unwrap();
+    assert_eq!(stored.metadata_draft.tracks[0].title, "Edited title");
+    assert_eq!(stored.track_mappings.len(), 1);
+    assert_eq!(stored.track_mappings[0].file, edit.file().cloned());
 }
 
 /// A file decision reshapes the folder, so the slice measurements, the
@@ -611,15 +609,19 @@ async fn a_track_row_round_trips_in_every_shape() {
 #[tokio::test]
 async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let (db, _tmp) = empty_db().await;
-    let candidate = pane_candidate();
-    let hash = candidate.content_hash();
+    let (files, hash) = stored_pane_candidate(&db).await;
     let durations = ProbedDurations::new(vec![
         file_unit("01 Track.flac", Some(180_000)),
         file_unit("CDImage.flac", Some(600_000)),
         slice_unit(0, Some(200_000)),
     ]);
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
+    db.replace_candidate_metadata(
+        &hash,
+        "/music/Album",
+        &metadata_draft("Album", "Artist"),
+        Some(&release_pick("rel-1")),
+    )
         .await
         .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
@@ -628,16 +630,23 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
         .await
         .unwrap();
-    db.save_import_candidate_track_edit(&hash, &edited_row("import-track-0", "Track Title", None))
+    db.save_import_candidate_track_edit(&hash, &edited_row("candidate-track-0", "Track Title", None))
         .await
         .unwrap();
-
     let mut edits = CandidateFileEdits::default();
     edits.file_roles.set(
         "CDImage.flac".to_string(),
         FileRoleChoice::NotATrack,
     );
-    db.save_import_candidate_file_edits(&hash, "/music/Album", 0, &edits, &[])
+    let mut settled = files;
+    settled.apply_candidate_file_edits(&edits).unwrap();
+    db.save_import_candidate_file_edits(
+        &hash,
+        "/music/Album",
+        0,
+        &edits,
+        &[("/music/Album".to_string(), settled)],
+    )
         .await
         .unwrap();
 
@@ -653,8 +662,8 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     assert!(state.signals.is_none(), "the disc ID is recomputed");
 
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert!(pane.track_edits.is_empty(), "the table's rows are a new set");
-    assert_eq!(pane.edit.year, Some("1991".to_string()), "the pick survives");
+    assert!(pane.track_mappings.is_empty(), "the table's physical rows are a new set");
+    assert_eq!(pane.metadata_draft.pressing.year, "1991", "the draft survives");
     assert_eq!(
         pane.cover,
         Some(CoverSelection::Local("cover.jpg".to_string())),
@@ -662,64 +671,140 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     );
 }
 
-/// Picking a different release takes the metadata typed over the old one, the
-/// rows addressed by its track identities, and remote art belonging to it. A
-/// cover chosen from the candidate's own files remains valid. Re-picking the
-/// same release keeps every choice.
+/// Applying or clearing metadata replaces the whole draft and removes artist
+/// assignments owned by the prior source, while every physical decision stays.
 #[tokio::test]
-async fn picking_a_different_release_clears_only_what_belonged_to_the_old_one() {
+async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
+    let (files, hash) = stored_pane_candidate(&db).await;
+    let old_draft = metadata_draft("Old album", "Replacement Artist");
+    db.replace_candidate_metadata(
+        &hash,
+        "/music/Album",
+        &old_draft,
+        Some(&release_pick("rel-1")),
+    )
         .await
         .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
+    let mut file_edits = CandidateFileEdits::default();
+    file_edits.file_roles.set(
+        "CDImage.flac".to_string(),
+        FileRoleChoice::NotATrack,
+    );
+    let mut settled = files;
+    settled.apply_candidate_file_edits(&file_edits).unwrap();
+    db.save_import_candidate_file_edits(
+        &hash,
+        "/music/Album",
+        0,
+        &file_edits,
+        &[("/music/Album".to_string(), settled)],
+    )
         .await
         .unwrap();
     db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
         .await
         .unwrap();
-    db.save_import_candidate_track_edit(&hash, &edited_row("import-track-0", "Track Title", None))
-        .await
-        .unwrap();
-
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
-        .await
-        .unwrap();
-    let kept = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(kept.edit.year, Some("1991".to_string()));
-    assert!(kept.cover.is_some());
-    assert_eq!(kept.track_edits.len(), 1);
-
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-2"))
-        .await
-        .unwrap();
-    let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(cleared.edit, CandidateEditOverlay::default());
-    assert_eq!(
-        cleared.cover,
-        Some(CoverSelection::Local("cover.jpg".to_string()))
+    let mapping = edited_row(
+        "candidate-track-0",
+        "Track Title",
+        Some(AudioFile::Standalone {
+            file_id: "01 Track.flac".to_string(),
+        }),
     );
-    assert!(cleared.track_edits.is_empty());
+    db.save_import_candidate_track_edit(&hash, &mapping)
+        .await
+        .unwrap();
+
+    let new_draft = metadata_draft("New album", "New Artist");
+    let applied_revision = db.replace_candidate_metadata(
+        &hash,
+        "/music/Album",
+        &new_draft,
+        Some(&release_pick("rel-2")),
+    )
+        .await
+        .unwrap();
+    let applied = db.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert_eq!(applied.metadata_draft, new_draft);
+    assert_eq!(applied.track_mappings[0].file, mapping.file().cloned());
+    assert_eq!(applied_revision, 4);
+    assert_eq!(applied.cover, None, "applying a source clears a local cover");
+    assert_eq!(
+        db.load_import_candidate_state(&hash)
+            .await
+            .unwrap()
+            .unwrap()
+            .file_edits
+            .file_roles,
+        file_edits.file_roles
+    );
 
     db.save_import_candidate_cover(
         &hash,
         &CoverSelection::Remote(
-            "https://example.invalid/front".to_string(),
+            "https://example.invalid/cover".to_string(),
             MetadataSource::MusicBrainz,
         ),
     )
     .await
     .unwrap();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-3"))
+    let blank = crate::import::pane::blank_candidate_draft(&pane_candidate());
+    let cleared_revision = db.replace_candidate_metadata(&hash, "/music/Album", &blank, None)
         .await
         .unwrap();
+    let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
+    assert!(cleared.metadata_draft.is_blank());
+    assert_eq!(cleared.track_mappings[0].file, mapping.file().cloned());
+    assert_eq!(cleared_revision, 6);
+    assert_eq!(cleared.cover, None, "clearing removes a remote cover");
+}
+
+#[tokio::test]
+async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+
     assert_eq!(
-        db.load_import_candidate_pane_rows(&hash)
+        db.replace_candidate_metadata(
+            &hash,
+            "/music/Album",
+            &metadata_draft("Album", "Artist"),
+            Some(&release_pick("rel-1")),
+        )
+        .await
+        .unwrap(),
+        1
+    );
+    assert_eq!(
+        db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
             .await
-            .unwrap()
-            .cover,
-        None
+            .unwrap(),
+        2
+    );
+    assert_eq!(
+        db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+            .await
+            .unwrap(),
+        3
+    );
+    assert_eq!(
+        db.replace_import_candidate_album_artists(
+            &hash,
+            &[new_artist("Different Artist")],
+        )
+        .await
+        .unwrap(),
+        4
+    );
+    assert_eq!(
+        db.save_import_candidate_track_edit(
+            &hash,
+            &edited_row("candidate-track-0", "Changed title", None),
+        )
+        .await
+        .unwrap(),
+        5
     );
 }
 
@@ -728,8 +813,13 @@ async fn picking_a_different_release_clears_only_what_belonged_to_the_old_one() 
 #[tokio::test]
 async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
     let (db, _tmp) = empty_db().await;
-    let hash = pane_candidate().content_hash();
-    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-chosen"))
+    let (_, hash) = stored_pane_candidate(&db).await;
+    db.replace_candidate_metadata(
+        &hash,
+        "/music/Album",
+        &metadata_draft("Album", "Artist"),
+        Some(&release_pick("rel-chosen")),
+    )
         .await
         .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
@@ -743,20 +833,21 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             verdict: sample_verdict(),
             signals: signals_with(ProbedDurations::default()),
             expected_edit_revision: 0,
-            metadata_seed: Some(release_pick("rel-1")),
+            metadata_provenance: Some(release_pick("rel-1")),
         })
         .await
         .unwrap()
     );
 
     let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
-    assert_eq!(state.metadata_seed, Some(release_pick("rel-chosen")));
+    assert_eq!(state.metadata_provenance, Some(release_pick("rel-chosen")));
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
-            .edit
+            .metadata_draft
+            .pressing
             .year,
-        Some("1991".to_string())
+        "1991"
     );
 }

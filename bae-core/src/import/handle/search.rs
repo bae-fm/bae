@@ -207,20 +207,20 @@ impl ImportServiceHandle {
         Ok(covers)
     }
 
-    /// The documents behind an external-release seed, and where they come from.
+    /// The documents behind external-release provenance, and where they come from.
     ///
-    /// A seed matching the candidate's settled lead **reads** them: identification
+    /// Provenance matching the candidate's settled lead **reads** them: identification
     /// stored them before it stored the verdict that named this release, so they
     /// are there, and a miss is a broken invariant rather than a cold cache.
     /// Re-fetching on a miss would serve the pane and hide the break, so it
     /// fails instead.
     ///
-    /// Every other external-release seed — another pressing in a list, a manual
+    /// Every other external release — another pressing in a list, an explicit
     /// search result, a release being re-identified — is one identification
     /// never fetched. It goes through [`crate::import::service::prepare_release`],
     /// which reads whatever is archived and pays for the rest, so opening it a
     /// second time is local too.
-    pub(super) async fn payloads_for_seed(
+    pub(super) async fn payloads_for_provenance(
         &self,
         candidate_key: &str,
         release: &crate::import::MetadataRef,
@@ -282,37 +282,38 @@ impl ImportServiceHandle {
             && only.source_tracks.is_some())
     }
 
-    /// Choose the metadata seed this candidate will commit: an external release,
-    /// the folder's file tags, or manual entry.
+    /// Replace this candidate's metadata from an external release or its file
+    /// tags.
     ///
-    /// **The documents land before the seed does.** A stored external seed is the
+    /// **The documents land before provenance does.** Stored external provenance is the
     /// promise that opening that candidate needs no network, so the fetch goes
     /// first and a failure stores nothing: the pane keeps whatever it had and
-    /// says the seed failed. Identification writes the same record itself when
+    /// says the source failed. Identification writes the same record itself when
     /// a verdict settles on exactly one match; this is the path for the
     /// choices only a person can make.
     ///
     /// Nothing comes back. The per-candidate query sees the write and
     /// redraws the pane from it, which is the same thing a relaunch does.
-    pub async fn select_candidate_metadata_seed(
+    pub async fn select_candidate_metadata_provenance(
         &self,
         candidate_key: String,
-        seed: crate::import::MetadataSeed,
-    ) -> Result<(), crate::import::ImportError> {
-        if let crate::import::MetadataSeed::ExternalRelease {
+        provenance: crate::import::MetadataProvenance,
+    ) -> Result<u64, crate::import::ImportError> {
+        if let crate::import::MetadataProvenance::ExternalRelease {
             source, release_id, ..
-        } = &seed
+        } = &provenance
         {
-            self.payloads_for_seed(
+            self.payloads_for_provenance(
                 &candidate_key,
                 &crate::import::MetadataRef::new(release_id.clone(), *source),
             )
             .await?;
         }
-        self.set_candidate_metadata_seed(candidate_key.clone(), seed)
+        let revision = self
+            .set_candidate_metadata_provenance(candidate_key.clone(), provenance)
             .await?;
-        self.announce_metadata_seed(candidate_key);
-        Ok(())
+        self.announce_metadata_provenance(candidate_key);
+        Ok(revision)
     }
 
     /// The stored verdict describing `candidate_key`'s current file shape —

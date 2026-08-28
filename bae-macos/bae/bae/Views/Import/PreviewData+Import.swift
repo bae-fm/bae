@@ -240,7 +240,7 @@
                 matched: nil,
                 selectable: true,
                 importStatus: nil,
-                metadataSeed: nil
+                metadataProvenance: nil
             )
         }
 

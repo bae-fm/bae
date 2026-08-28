@@ -398,10 +398,10 @@ impl CueFlacTestFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                metadata_seed: MetadataSeed::ExternalRelease {
+                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
-                },
+                }),
                 user_edit: None,
             })
             .await

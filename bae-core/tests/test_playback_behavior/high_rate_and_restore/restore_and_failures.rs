@@ -38,10 +38,10 @@ async fn restore_test_library() -> RestoreTestLibrary {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -114,10 +114,10 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -398,10 +398,10 @@ impl CloudOnlyPlaybackFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Remote,
                 pin: false,
-                metadata_seed: MetadataSeed::ExternalRelease {
+                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
-                },
+                }),
                 user_edit: None,
             })
             .await

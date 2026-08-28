@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>ಸಂಖ್ಯೆ ಅಥವಾ ಅವಧಿ ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ಈಗಾಗಲೇ ಗ್ರಂಥಾಲಯದಲ್ಲಿ</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆ ಸಿಕ್ಕಿಲ್ಲ</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ಅಗತ್ಯವಿದೆ</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿರುವ ಅಭ್ಯರ್ಥಿಗೆ ಹೋಗಿ</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>ಹೊಸದು</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>ಸೇರಿಸಿ</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>ತೆಗೆದುಹಾಕಿ</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>ಮೂಲ ಆಯ್ಕೆ ಮಾಡದ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಇಲ್ಲಿ ತೆರೆಯಿರಿ</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>ಕೊನೆಯದಾಗಿ ಬಳಸಿದ್ದು</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>ಲುಕ್‌ಅಪ್ ಅಭ್ಯರ್ಥಿಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯು ಲುಕ್‌ಅಪ್ ಬಳಸುವಾಗ ಮಾತ್ರ ಸ್ವಯಂಚಾಲಿತ ಗುರುತಿಸುವಿಕೆಯು ಕವರ್ ಪಠ್ಯ, ಬಾರ್‌ಕೋಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್ ID ಗಳನ್ನು ಓದುತ್ತದೆ. ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳು ಮತ್ತು ಹಸ್ತಚಾಲಿತವು ಇದನ್ನು ಎಂದಿಗೂ ಚಲಾಯಿಸುವುದಿಲ್ಲ.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>ಆಲ್ಬಮ್ ಶೀರ್ಷಿಕೆ</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>ಅನ್ವಯಿಸಿ</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ತೆರವುಗೊಳಿಸಿ</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯ ಫೈಲ್‌ಗಳು ಮತ್ತು ಮ್ಯಾಪಿಂಗ್ ಆಯ್ಕೆಗಳು ಬದಲಾಗುವುದಿಲ್ಲ.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ತೆರವುಗೊಳಿಸುವುದೇ?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>ಮತ್ತೊಂದು ಬಿಡುಗಡೆಯನ್ನು ಹುಡುಕಿ…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯನ್ನು ಮತ್ತೆ ಓದಲು ಪ್ರಯತ್ನಿಸಿ.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ತೆರೆದಾಗ ಕವರ್ ಪಠ್ಯ, ಬಾರ್‌ಕೋಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್ IDಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಓದಿ ಹೊಂದಾಣಿಕೆಯನ್ನು ಹುಡುಕುತ್ತದೆ.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>ಡೀಫಾಲ್ಟ್ ಮೆಟಾಡೇಟಾ ಮೂಲ</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>ಯಾವುದೂ ಇಲ್ಲ</value></data>
 </root>

@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>సంఖ్య లేదా నిడివి సరిపోలడం లేదు</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ఇప్పటికే లైబ్రరీలో</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>సరిపోలిక దొరకలేదు</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>మెటాడేటా అవసరం</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ఇంకా గుర్తిస్తోంది</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>గుర్తిస్తోంది</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ఇంకా గుర్తించబడుతున్న అభ్యర్థికి వెళ్లండి</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>కొత్తది</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>జోడించు</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>తీసివేయి</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>మూలం ఎంచుకోని అభ్యర్థులను ఇందులో తెరవండి</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>చివరిగా ఉపయోగించినది</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup అభ్యర్థులను ఆటోమేటిక్‌గా గుర్తించు</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>అభ్యర్థి Lookup ఉపయోగిస్తున్నప్పుడు మాత్రమే ఆటోమేటిక్ గుర్తింపు కవర్ టెక్స్ట్, బార్‌కోడ్‌లు మరియు డిస్క్ IDలను చదువుతుంది. ఫైల్ ట్యాగ్‌లు మరియు మాన్యువల్ దీన్ని ఎప్పుడూ అమలు చేయవు.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>ఆల్బమ్ శీర్షిక</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>వర్తింపజేయి</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>మెటాడేటాను తొలగించు</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>అభ్యర్థి ఫైళ్లు మరియు మ్యాపింగ్ ఎంపికలు మారవు.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>మెటాడేటాను తొలగించాలా?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>మరొక విడుదలను కనుగొను…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>అభ్యర్థిని మళ్లీ చదవడానికి ప్రయత్నించండి.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>ఆటోమేటిక్‌గా గుర్తించు</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>ఆటోమేటిక్‌గా గుర్తించు</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను తెరిచినప్పుడల్లా కవర్ టెక్స్ట్, బార్‌కోడ్‌లు మరియు డిస్క్ IDలను ఆటోమేటిక్‌గా చదివి సరిపోలిక కోసం వెతుకుతుంది.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>డిఫాల్ట్ మెటాడేటా మూలం</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>ఏదీ లేదు</value></data>
 </root>

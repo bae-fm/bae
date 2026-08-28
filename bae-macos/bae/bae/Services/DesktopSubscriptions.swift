@@ -74,19 +74,16 @@ final class ImportSelectionObservations {
     private let appHandle: AppHandle
     private let importStore: ImportStore
     private let uiStore: UiStore
-    private let configStore: ConfigStore
     private var observations: [String: Observation] = [:]
 
     init(
         appHandle: AppHandle,
         importStore: ImportStore,
-        uiStore: UiStore,
-        configStore: ConfigStore
+        uiStore: UiStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
         self.uiStore = uiStore
-        self.configStore = configStore
     }
 
     func selectionChanged(_ keys: Set<String>) {
@@ -130,12 +127,7 @@ final class ImportSelectionObservations {
             uiStore.removeFolderCandidateSelection([key])
             return
         }
-        importStore.applyCandidateDetail(
-            key: key,
-            detail: detail,
-            unseededMetadataMode: configStore.config
-                .resolvedImportMetadataMode
-        )
+        importStore.applyCandidateDetail(key: key, detail: detail)
     }
 
     deinit {
@@ -161,8 +153,7 @@ final class DesktopSubscriptions {
         appHandle: AppHandle,
         importStore: ImportStore,
         outputStore: OutputStore,
-        uiStore: UiStore,
-        configStore: ConfigStore
+        uiStore: UiStore
     ) {
         self.appHandle = appHandle
         self.importStore = importStore
@@ -171,8 +162,7 @@ final class DesktopSubscriptions {
         selection = ImportSelectionObservations(
             appHandle: appHandle,
             importStore: importStore,
-            uiStore: uiStore,
-            configStore: configStore
+            uiStore: uiStore
         )
         // A watched folder that could not be read. Wired before anything can
         // deliver a summary, and fed from the list's live query rather than a

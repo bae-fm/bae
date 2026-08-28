@@ -11,7 +11,7 @@
 
 pub(super) mod columns;
 mod read;
-mod write;
+pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;
 use super::query::{QueryOne, QueryRows};
@@ -21,8 +21,7 @@ use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use std::path::{Path, PathBuf};
 
 pub(super) use read::{
-    load_candidate_file_tag_snapshot, load_candidate_items, load_item_by_key,
-    load_resolved_boundaries, stored_entries,
+    load_candidate_items, load_item_by_key, load_resolved_boundaries, stored_entries,
 };
 pub(super) use write::{delete_entry, insert_candidate_files, StoredEntry};
 
@@ -239,11 +238,12 @@ impl Database {
     /// when `generation` is no longer the root's: the generation check and all
     /// changes share one transaction, so a cancelled scan cannot write over
     /// its successor.
-    pub async fn save_folder_scan_item(
+    pub async fn save_folder_scan_item_with_initial_source(
         &self,
         watched_folder_path: &str,
         generation: u64,
         item: &ScanItem,
+        initial_metadata_source: crate::config::DefaultImportMetadataSource,
     ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
@@ -290,6 +290,19 @@ impl Database {
                 write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
                 return Ok(Some(ScanItemWrite::Unchanged));
             }
+            let stored_initial_metadata_source: Option<String> = sql
+                .query_row(
+                    "SELECT initial_metadata_source FROM scan_candidate \
+                     WHERE watched_folder_path = ? AND path = ?",
+                    params![watched_folder_path, entry_key],
+                    |row| row.get(0),
+                )
+                .optional()?
+                .flatten();
+            let initial_metadata_source = stored_initial_metadata_source
+                .map(|value| value.parse().map_err(DbError::Message))
+                .transpose()?
+                .unwrap_or(initial_metadata_source);
             let stored = stored_entries(sql, &watched_folder_path)?;
             let keys: Vec<StoredEntryKey> = stored
                 .iter()
@@ -316,11 +329,33 @@ impl Database {
                     delete_entry(sql, &watched_folder_path, entry)?;
                 }
             }
-            write::insert_item(sql, &watched_folder_path, generation, &item)?;
+            write::insert_item(
+                sql,
+                &watched_folder_path,
+                generation,
+                &item,
+                initial_metadata_source,
+            )?;
             Ok(Some(ScanItemWrite::Stored {
                 superseded_keys: removed_keys,
             }))
         })
+        .await
+    }
+
+    #[cfg(test)]
+    pub async fn save_folder_scan_item(
+        &self,
+        watched_folder_path: &str,
+        generation: u64,
+        item: &ScanItem,
+    ) -> Result<Option<ScanItemWrite>, DbError> {
+        self.save_folder_scan_item_with_initial_source(
+            watched_folder_path,
+            generation,
+            item,
+            crate::config::DefaultImportMetadataSource::FindOnline,
+        )
         .await
     }
 

@@ -27,7 +27,7 @@
 #![cfg(feature = "test-utils")]
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{ImportCommand, MetadataSeed, MetadataSource, StorageMode};
+use bae_core::import::{ImportCommand, MetadataProvenance, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{PlaybackProgress, PlaybackState};
 use bae_test_support as support;
@@ -389,10 +389,10 @@ impl PlaybackTestFixture {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                metadata_seed: MetadataSeed::ExternalRelease {
+                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                     release_id: release_id_key,
-                },
+                }),
                 user_edit: None,
             })
             .await

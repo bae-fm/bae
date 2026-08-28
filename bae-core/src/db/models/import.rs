@@ -52,7 +52,7 @@ pub struct NewImportCandidateVerdict {
     /// Either way it replaces whatever identification concluded last time: the
     /// pick belongs to the verdict that made it. A pick a person made outranks
     /// both and is left alone.
-    pub metadata_seed: Option<crate::import::MetadataSeed>,
+    pub metadata_provenance: Option<crate::import::MetadataProvenance>,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
@@ -90,7 +90,7 @@ pub struct DbImportCandidateState {
     /// decided. A person's choice survives file decisions and later verdicts
     /// alike — it names a release, not a shape; one identification concluded
     /// lives exactly as long as the verdict that concluded it.
-    pub metadata_seed: Option<crate::import::MetadataSeed>,
+    pub metadata_provenance: Option<crate::import::MetadataProvenance>,
 }
 
 /// Everything a person settled about one candidate through its pane, keyed by
@@ -100,15 +100,15 @@ pub struct DbImportCandidateState {
 /// cover and the mapping table from them at once. Kept off
 /// [`DbImportCandidateState`] because that one is read for the whole queue and
 /// none of these are.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DbCandidatePaneRows {
     /// The cover the user chose. `None` leaves the picked release's default
     /// cover standing.
     pub cover: Option<crate::import::CoverSelection>,
-    /// The album-level fields the user typed over the release's own.
-    pub edit: crate::import::CandidateEditOverlay,
-    /// The mapping-table rows the user changed or dropped.
-    pub track_edits: Vec<crate::import::CandidateTrackEdit>,
+    /// The candidate's one stored editable metadata draft.
+    pub metadata_draft: crate::import::RawReleaseEdit,
+    /// Physical track decisions, independent of metadata replacement.
+    pub(crate) track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
     /// The last import of this candidate that failed.
     pub failure: Option<crate::import::ImportFailure>,
 }

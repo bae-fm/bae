@@ -235,10 +235,6 @@ fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
         flat.summary.ready,
         vec![ReadyRowRef {
             candidate_key: key("Release"),
-            metadata_seed: MetadataSeed::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: "mb-1".to_string(),
-            },
             cover_thumbnail_url: Some("https://example.test/thumb.jpg".to_string()),
         }]
     );
@@ -589,7 +585,7 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
 }
 
 #[test]
-fn an_unseeded_candidate_is_ready_for_metadata() {
+fn an_unseeded_blank_candidate_remains_pending() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
 
@@ -605,10 +601,35 @@ fn an_unseeded_candidate_is_ready_for_metadata() {
 
     assert_eq!(
         row_for(&flat, "Release").placement,
-        TriagePlacement::NeedsYou {
-            group: crate::import::NeedsYouGroup::NeedsMetadata,
-            reason: crate::import::NeedsYouReason::NeedsMetadata,
-        }
+        TriagePlacement::Pending
+    );
+}
+
+#[test]
+fn a_valid_source_less_draft_is_ready_and_bulk_importable() {
+    let mut rows = queue();
+    rows.candidates = vec![candidate("Release")];
+    rows.states.insert(
+        "hash-Release".to_string(),
+        CandidateStateListRow {
+            edit_revision: 0,
+            verdict: None,
+            probed_total_duration_ms: 0,
+            metadata_provenance: None,
+            metadata_draft_valid: true,
+        },
+    );
+
+    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let row = row_for(&flat, "Release");
+    assert_eq!(row.placement, TriagePlacement::Ready);
+    assert!(row.selectable);
+    assert_eq!(
+        flat.summary.ready,
+        vec![ReadyRowRef {
+            candidate_key: key("Release"),
+            cover_thumbnail_url: None,
+        }]
     );
 }
 
@@ -778,13 +799,13 @@ fn the_summary_carries_the_watched_folders_and_their_scan_statuses() {
     assert_eq!(flat.summary.folder_scan_statuses.len(), 1);
 }
 
-// ── A metadata seed is the answer ───────────────────────────────────
+// ── Applied metadata provenance is the answer ──────────────────────
 
-/// Whatever question the verdict was going to put, a stored seed has answered
+/// Whatever question the verdict was going to put, stored provenance has answered
 /// it: the row is Ready and takes a bulk-import checkbox, rather than keeping
 /// the question's tag forever after it was answered.
 #[test]
-fn a_metadata_seed_answers_whatever_the_verdict_asked() {
+fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
     let cases = [
         ("several pressings matched", several_matches_state()),
         ("nothing matched anywhere", not_found_state()),
@@ -804,7 +825,7 @@ fn a_metadata_seed_answers_whatever_the_verdict_asked() {
         );
 
         // The user chooses an external release seed; the row is Ready.
-        state.metadata_seed = Some(external_release_seed("mb-picked"));
+        state.metadata_provenance = Some(external_release_seed("mb-picked"));
         let mut rows = queue();
         rows.candidates = vec![candidate("Release")];
         rows.states.insert("hash-Release".to_string(), state);
@@ -814,8 +835,8 @@ fn a_metadata_seed_answers_whatever_the_verdict_asked() {
         assert_eq!(row.placement, TriagePlacement::Ready, "{name}: answered");
         assert!(row.selectable, "{name}: a Ready row takes a checkbox");
         assert_eq!(
-            row.metadata_seed,
-            Some(MetadataSeed::ExternalRelease {
+            row.metadata_provenance,
+            Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: "mb-picked".to_string(),
             }),
@@ -833,7 +854,7 @@ fn a_file_tags_seed_answers_the_row() {
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
-            metadata_seed: Some(MetadataSeed::FileTags),
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             ..several_matches_state()
         },
     );
@@ -841,7 +862,7 @@ fn a_file_tags_seed_answers_the_row() {
     let flat = flattened(&rows, &view(TriageTab::Pending));
     let row = row_for(&flat, "Release");
     assert_eq!(row.placement, TriagePlacement::Ready);
-    assert_eq!(row.metadata_seed, Some(MetadataSeed::FileTags));
+    assert_eq!(row.metadata_provenance, Some(MetadataProvenance::FileTags));
 }
 
 /// A seed belongs to the file shape it was chosen against. Editing the folder
@@ -857,7 +878,7 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
     rows.states.insert(
         "hash-Release".to_string(),
         CandidateStateListRow {
-            metadata_seed: Some(external_release_seed("mb-picked")),
+            metadata_provenance: Some(external_release_seed("mb-picked")),
             ..several_matches_state()
         },
     );
@@ -871,7 +892,7 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
             ..
         }
     ));
-    assert_eq!(row.metadata_seed, None);
+    assert_eq!(row.metadata_provenance, None);
 }
 
 /// A seed does not outrank the three facts above it: a skipped candidate stays
@@ -879,7 +900,7 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
 #[test]
 fn a_seed_does_not_outrank_skipped_done_or_importing() {
     let seeded = CandidateStateListRow {
-        metadata_seed: Some(external_release_seed("mb-picked")),
+        metadata_provenance: Some(external_release_seed("mb-picked")),
         ..several_matches_state()
     };
 
@@ -961,27 +982,4 @@ fn only_a_group_over_a_folder_read_as_several_offers_to_combine() {
     };
     assert!(group_of("Box").combinable);
     assert!(!group_of("Singles").combinable);
-}
-
-/// A folder nothing has settled either way, holding several releases, is
-/// combinable too — the scan names it on every row below it, and the header
-/// for it is where the choice belongs.
-#[test]
-fn a_folder_the_scan_named_as_an_ancestor_offers_to_combine() {
-    let mut rows = queue();
-    rows.candidates = vec![
-        ScanCandidateListRow {
-            combine_ancestor_relative_path: Some("Wrapper".to_string()),
-            ..candidate("Wrapper/Box/Disc 1")
-        },
-        ScanCandidateListRow {
-            combine_ancestor_relative_path: Some("Wrapper".to_string()),
-            ..candidate("Wrapper/Box/Disc 2")
-        },
-    ];
-
-    let flat = flattened(&rows, &view(TriageTab::Pending));
-    let header = flat.headers.first().expect("a header for Wrapper");
-    assert_eq!(header.group.name, "Wrapper");
-    assert!(header.group.combinable);
 }

@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>El número o la duración no coinciden</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Ya en la biblioteca</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Sin coincidencia</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Necesita metadatos</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Aún identificando</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificando</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Ir a un candidato aún en identificación</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Nuevo</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Añadir</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Eliminar</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Abrir candidatos sin fuente seleccionada en</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Último usado</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Identificar automáticamente los candidatos de búsqueda</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>La identificación automática lee el texto de la portada, los códigos de barras y los ID de disco solo cuando un candidato usa Búsqueda. Etiquetas de archivo y Manual nunca la ejecutan.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Título del álbum</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Borrar metadatos</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Los archivos del candidato y las opciones de asignación no cambiarán.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>¿Borrar los metadatos?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Buscar otra edición…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Buscar en línea</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Buscar en línea…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Intenta leer el candidato de nuevo.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Identificar automáticamente</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Identificar automáticamente</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Lee automáticamente el texto de la portada, los códigos de barras y los ID de disco, y busca una coincidencia cada vez que se abre Buscar en línea.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Fuente de metadatos predeterminada</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Buscar en línea</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Ninguna</value></data>
 </root>

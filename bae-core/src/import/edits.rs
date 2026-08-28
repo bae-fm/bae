@@ -101,6 +101,32 @@ pub enum TrackEditState {
     Edited(RawTrackEdit),
 }
 
+/// A track row's physical decision, stored independently from its editable
+/// metadata so replacing or clearing metadata cannot delete the pairing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CandidateTrackMappingEdit {
+    pub track_id: String,
+    pub dropped: bool,
+    pub file: Option<AudioFile>,
+}
+
+impl CandidateTrackMappingEdit {
+    pub(crate) fn from_track_edit(edit: &CandidateTrackEdit) -> Self {
+        match &edit.state {
+            TrackEditState::Dropped => Self {
+                track_id: edit.track_id.clone(),
+                dropped: true,
+                file: None,
+            },
+            TrackEditState::Edited(track) => Self {
+                track_id: edit.track_id.clone(),
+                dropped: false,
+                file: track.file.clone(),
+            },
+        }
+    }
+}
+
 impl CandidateTrackEdit {
     pub fn dropped(track_id: impl Into<String>) -> Self {
         Self {
@@ -142,5 +168,35 @@ pub fn apply_track_edits(table: MappingTable, edits: &[CandidateTrackEdit]) -> M
     edits.iter().fold(table, |table, edit| match &edit.state {
         TrackEditState::Dropped => mapping_without_track(table, &edit.track_id),
         TrackEditState::Edited(track) => mapping_with_track(table, track.clone()),
+    })
+}
+
+pub(crate) fn apply_track_mapping_edits(
+    table: MappingTable,
+    edits: &[CandidateTrackMappingEdit],
+) -> MappingTable {
+    edits.iter().fold(table, |table, edit| {
+        if edit.dropped {
+            return mapping_without_track(table, &edit.track_id);
+        }
+        let track = table
+            .rows
+            .iter()
+            .flat_map(|row| row.units())
+            .find_map(|unit| match &unit.becomes {
+                crate::import::mapping::MappingBecomes::Track { track, .. }
+                    if track.id == edit.track_id =>
+                {
+                    Some(track.clone())
+                }
+                _ => None,
+            });
+        match track {
+            Some(mut track) => {
+                track.file.clone_from(&edit.file);
+                mapping_with_track(table, track)
+            }
+            None => table,
+        }
     })
 }

@@ -15,7 +15,7 @@ namespace Bae.Desktop.ViewTests;
 public sealed class SettingsImportTests
 {
     [AvaloniaFact]
-    public void ImportSettingsExposeEveryUnseededModeAndAutomaticLookup()
+    public void ImportSettingsExposeEveryDefaultSourceAndAutomaticIdentification()
     {
         var app = AppService.Stubbed(
             new SessionStore(Dispatcher.UIThread),
@@ -37,19 +37,20 @@ public sealed class SettingsImportTests
         Assert.Equal(
             new[]
             {
-                BridgeDefaultImportMetadataMode.Lookup,
-                BridgeDefaultImportMetadataMode.FileTags,
-                BridgeDefaultImportMetadataMode.Manual,
-                BridgeDefaultImportMetadataMode.LastUsed,
+                BridgeDefaultImportMetadataSource.FindOnline,
+                BridgeDefaultImportMetadataSource.FileTags,
+                BridgeDefaultImportMetadataSource.None,
             },
             picker.Items
                 .OfType<ComboBoxItem>()
-                .Select(item => Assert.IsType<BridgeDefaultImportMetadataMode>(item.Tag)));
+                .Select(item => Assert.IsType<BridgeDefaultImportMetadataSource>(item.Tag)));
         Assert.Contains(
             content.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == Loc.Chrome("settings.import.open_unseeded"));
+            text => text.Text == Loc.Chrome("settings.import.default_source"));
         Assert.Contains(
             content.GetLogicalDescendants().OfType<CheckBox>(),
-            box => Equals(box.Content, Loc.Chrome("settings.import.automatic_lookup")));
+            box => Equals(
+                box.Content,
+                Loc.Chrome("settings.import.automatic_identification")));
     }
 }

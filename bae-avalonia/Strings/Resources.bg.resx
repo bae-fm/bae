@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Броят или дължините се разминават</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Вече в библиотеката</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Няма съвпадение</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Нужни са метаданни</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Все още се идентифицира</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Идентифициране</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Към кандидат, който още се разпознава</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Ново</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Добавяне</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Премахване</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Отваряне на кандидатите без избран източник в</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Последно използвано</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Автоматично идентифициране на кандидатите за търсене</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Автоматичното идентифициране чете текста на обложката, баркодовете и идентификаторите на дискове само когато кандидатът използва „Търсене“. „Етикети на файловете“ и „Ръчно“ никога не го стартират.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Заглавие на албума</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Прилагане</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Изчистване на метаданните</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Файловете на кандидата и изборите за съпоставяне ще останат непроменени.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Изчистване на метаданните?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Търсене на друго издание…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Търсене онлайн</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Търсене онлайн…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Опитайте да прочетете кандидата отново.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Автоматично разпознаване</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Автоматично разпознаване</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Автоматично прочита текста на обложката, баркодовете и идентификаторите на дискове и търси съвпадение при всяко отваряне на „Търсене онлайн“.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Източник на метаданни по подразбиране</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Търсене онлайн</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Няма</value></data>
 </root>

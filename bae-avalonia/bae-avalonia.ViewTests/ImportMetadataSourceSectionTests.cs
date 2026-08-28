@@ -15,90 +15,58 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ImportMetadataSourceSectionTests
 {
     [AvaloniaFact]
-    public void PickerPresentsEveryModeWithoutSelectingMetadata()
+    public void BlankDraftOffersBothPrefillSourcesAndEditableFields()
     {
-        var presented = new List<BridgeImportMetadataMode>();
-        var section = Build(onPresentMode: presented.Add);
+        var presentations = new List<ImportMetadataPresentation>();
+        var section = Build(
+            draftIsBlank: true,
+            onPresent: presentations.Add);
 
-        foreach (var button in Buttons(section).Take(3))
-        {
-            button.RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
-        }
+        Click(section, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(section, Loc.Core("ui.import.metadata.file_tags") + "…");
 
         Assert.Equal(
             new[]
             {
-                BridgeImportMetadataMode.Lookup,
-                BridgeImportMetadataMode.FileTags,
-                BridgeImportMetadataMode.Manual,
+                ImportMetadataPresentation.FindOnline,
+                ImportMetadataPresentation.FileTags,
             },
-            presented);
-    }
-
-    [AvaloniaFact]
-    public void FileTagsRequiresAnExplicitReadAndUse()
-    {
-        var reads = 0;
-        var uses = 0;
-        var presented = 0;
-        var beforeRead = Build(
-            mode: BridgeImportMetadataMode.FileTags,
-            onPresentMode: _ => presented++,
-            onReadFileTags: () => reads++);
-
-        FindContentButton(beforeRead, Loc.Core("ui.import.metadata.file_tags"))
-            .RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
-
-        var loaded = Build(
-            mode: BridgeImportMetadataMode.FileTags,
-            fileTagsPreview: FileTagsEdit(),
-            onUseFileTags: () => uses++);
-        FindContentButton(loaded, Loc.Chrome("import.metadata.use_file_tags"))
-            .RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
-
-        Assert.Equal(1, reads);
-        Assert.Equal(1, uses);
-        Assert.Equal(0, presented);
-    }
-
-    [AvaloniaFact]
-    public void ManualRequiresAnExplicitSelectionAndDoesNotOfferLookup()
-    {
-        var entered = 0;
-        var section = Build(
-            mode: BridgeImportMetadataMode.Manual,
-            onEnterManually: () => entered++);
-
-        FindContentButton(section, Loc.Chrome("import.metadata.enter_manually"))
-            .RaiseEvent(new RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
-
-        Assert.Equal(1, entered);
-        Assert.DoesNotContain(
-            Buttons(section),
-            button => Equals(button.Content, Loc.Core("ui.import.header.find_release")));
-    }
-
-    [AvaloniaFact]
-    public void UnselectedManualCardDoesNotUseTheFolderNameAsAlbumMetadata()
-    {
-        var section = Build(mode: BridgeImportMetadataMode.Manual);
-
+            presentations);
         Assert.Contains(
-            section.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.FontSize == 16
-                && text.Text == Loc.Core("ui.import.slots.untitled"));
-        Assert.DoesNotContain(
-            section.GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.FontSize == 16 && text.Text == "Album Title");
+            section.GetLogicalDescendants().OfType<TextBox>(),
+            field => field.Text == "Album Title");
     }
 
     [AvaloniaFact]
-    public void SelectedMetadataFieldsWriteTheirTypedValues()
+    public void FileTagsPreviewAppliesTheDisplayedSource()
+    {
+        var applications = 0;
+        var section = Build(
+            presentation: ImportMetadataPresentation.FileTags,
+            fileTagsPreview: FileTagsEdit(),
+            onUseFileTags: () => applications++);
+
+        Click(section, Loc.Chrome("import.metadata.apply"));
+
+        Assert.Equal(1, applications);
+        Assert.Contains("Album Title", Texts(section));
+    }
+
+    [AvaloniaFact]
+    public void FileTagsReadShowsProgress()
+    {
+        var section = Build(
+            presentation: ImportMetadataPresentation.FileTags,
+            isReading: true);
+
+        Assert.Single(section.GetLogicalDescendants().OfType<Spinner>());
+    }
+
+    [AvaloniaFact]
+    public void DraftFieldsWriteTheirTypedValues()
     {
         var written = new List<(BridgeCandidateEditField Field, string Value)>();
         var section = Build(
-            hasSelectedSeed: true,
-            edit: Edit(),
             onEditField: (field, value) => written.Add((field, value)));
 
         var year = section.GetLogicalDescendants().OfType<TextBox>()
@@ -132,47 +100,48 @@ public sealed class ImportMetadataSourceSectionTests
         Array.Empty<BridgeTrackUserEdit>());
 
     private static Control Build(
-        BridgeImportMetadataMode mode = BridgeImportMetadataMode.Lookup,
-        bool hasSelectedSeed = false,
-        BridgeRawReleaseEdit? edit = null,
+        ImportMetadataPresentation presentation = ImportMetadataPresentation.Draft,
+        bool draftIsBlank = false,
+        bool isReading = false,
         BridgeReleaseUserEdit? fileTagsPreview = null,
-        Action<BridgeImportMetadataMode>? onPresentMode = null,
-        Action? onReadFileTags = null,
+        Action<ImportMetadataPresentation>? onPresent = null,
         Action? onUseFileTags = null,
-        Action? onEnterManually = null,
         Action<BridgeCandidateEditField, string>? onEditField = null) =>
         new ImportMetadataSourceSection
         {
-            Mode = mode,
-            HasSelectedSeed = hasSelectedSeed,
+            Presentation = presentation,
+            DraftIsBlank = draftIsBlank,
             Title = "Album Title",
-            Edit = edit,
+            Edit = Edit(),
             MetaLine = "CD · 1996",
-            PickedSource = null,
-            IsReading = false,
+            ProvenanceLabel = null,
+            ProvenanceUri = null,
+            IsReading = isReading,
             FileTagsPreview = fileTagsPreview,
             FileTagsMetaLine = "CD · 1996",
             FileTagsError = null,
-            LookupOptions = null,
+            LookupOptions = new TextBlock { Text = "Search form" },
             LoadCover = null,
             HasCoverOptions = false,
             CommitRow = null,
             Library = new LibraryService(),
-            OnPresentMode = onPresentMode ?? (_ => { }),
-            OnFindRelease = () => { },
-            OnReadFileTags = onReadFileTags ?? (() => { }),
+            OnPresent = onPresent ?? (_ => { }),
+            OnReadFileTags = () => { },
             OnUseFileTags = onUseFileTags ?? (() => { }),
-            OnEnterManually = onEnterManually ?? (() => { }),
+            OnClearMetadata = () => { },
             OnEditCover = () => { },
+            OnSelectCover = _ => { },
             OnEditField = onEditField ?? ((_, _) => { }),
             OnEditArtists = _ => { },
         }.Build();
 
-    private static Button FindContentButton(Control section, string label) =>
+    private static void Click(Control section, string label) =>
         Assert.Single(
-            Buttons(section).Skip(3),
-            button => Equals(button.Content, label));
+            section.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, label))
+        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private static IReadOnlyList<Button> Buttons(Control section) =>
-        section.GetLogicalDescendants().OfType<Button>().ToList();
+    private static IReadOnlyList<string> Texts(Control section) =>
+        section.GetLogicalDescendants().OfType<TextBlock>()
+            .Select(text => text.Text ?? string.Empty).ToList();
 }

@@ -230,14 +230,14 @@ extension TriageRowView {
     /// still-identifying phase, or an import failure.
     private var statusLine: String? {
         switch row.placement {
+        case .pending:
+            return nil
         case .ready:
             return nil
         case .skipped:
             return nil
         case .needsYou(let group, let reason):
             switch reason {
-            case .needsMetadata:
-                return String(localized: "Needs metadata")
             case .stillIdentifying(let phase):
                 return phase.localizedText
             case .disagreement(let needsYou):
@@ -273,6 +273,8 @@ extension TriageRowView {
     @ViewBuilder
     private var trailing: some View {
         switch row.placement {
+        case .pending:
+            EmptyView()
         case .ready:
             chip(String(localized: "Ready"), tint: .green)
         case .needsYou(let group, let reason):
@@ -292,8 +294,6 @@ extension TriageRowView {
         reason: BridgeNeedsYouReason
     ) -> some View {
         switch reason {
-        case .needsMetadata:
-            EmptyView()
         case .stillIdentifying(let phase):
             if phase == .running {
                 ProgressView().controlSize(.small)
@@ -310,8 +310,6 @@ extension TriageRowView {
             case .countsOrLengthsDisagree:
                 trailingIcon("questionmark.circle", tint: .orange)
             case .noMatch:
-                EmptyView()
-            case .needsMetadata:
                 EmptyView()
             case .stillIdentifying:
                 EmptyView()

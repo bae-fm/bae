@@ -760,19 +760,18 @@ pub struct CandidateSkipSetInput {
 /// The metadata source a candidate will be committed from.
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationMetadataSeed {
+pub enum AutomationMetadataProvenance {
     ExternalRelease {
         source: AutomationMetadataSource,
         release_id: String,
     },
     FileTags,
-    Manual,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-pub struct CandidateMetadataSeedInput {
+pub struct CandidateMetadataProvenanceInput {
     pub candidate_key: String,
-    pub seed: AutomationMetadataSeed,
+    pub provenance: AutomationMetadataProvenance,
 }
 
 /// One album-level field of a candidate's metadata form. `year` is text

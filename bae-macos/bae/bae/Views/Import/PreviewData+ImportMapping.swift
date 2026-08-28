@@ -122,7 +122,7 @@
         )
 
         static let moreTracksEditValues: BridgeRawReleaseEdit = {
-            var edit = editMetadataSeed(trackCount: 10)
+            var edit = editMetadataDraft(trackCount: 10)
             edit.tracks = edit.tracks.enumerated()
                 .map { index, track in
                     var track = track
@@ -212,7 +212,7 @@
             reconciliation: .moreTracks(files: 1, tracks: 10)
         )
 
-        /// The same folder before a metadata seed is selected: what each file
+        /// The same folder while its metadata draft is blank: what each file
         /// is, with what its audio becomes left open.
         static let awaitingPickTable = BridgeMappingTable(
             images: mappingImages,
@@ -366,9 +366,10 @@
         @MainActor
         static func paneCandidate(
             folder: BridgeFolderCandidate,
-            metadataSeed: BridgeMetadataSeed? = nil,
+            metadataProvenance: BridgeMetadataProvenance? = nil,
+            initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
             release: BridgeReleaseDetail? = nil,
-            edit: BridgeRawReleaseEdit? = nil,
+            edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
             cover: BridgeCoverChoice? = nil,
             failure: BridgeImportFailure? = nil,
@@ -387,29 +388,28 @@
                         resolvedBoundaries: [],
                         combineAncestorKey: nil,
                         actionable: true,
-                        placement: metadataSeed == nil
-                            ? .needsYou(
-                                group: .noMatch,
-                                reason: .disagreement(disagreement: .noMatch)
-                            )
-                            : .ready,
+                        placement: metadataProvenance == nil
+                            && edit.albumTitle.isEmpty ? .pending : .ready,
                         skipAction: .skip,
                         matched: nil,
-                        selectable: metadataSeed != nil,
+                        selectable: !edit.albumTitle.isEmpty,
                         importStatus: nil,
-                        metadataSeed: metadataSeed
+                        metadataProvenance: metadataProvenance
                     ),
                     release: release,
                     pickedLibraryStatus: nil,
                     fileEvidence: [],
-                    edit: edit,
+                    metadataDraft: edit,
+                    metadataDraftIsBlank: edit.albumTitle.isEmpty,
+                    metadataProvenance: metadataProvenance,
+                    metadataRevision: 1,
+                    initialMetadataSource: initialMetadataSource,
                     mapping: mapping,
                     unprobed: unprobed,
                     cover: cover,
                     signals: nil,
                     failure: failure
-                ),
-                unseededMetadataMode: .lookup
+                )
             )
         }
 
@@ -422,7 +422,7 @@
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            metadataSeed: .externalRelease(
+            metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -441,7 +441,7 @@
                 name: "Album Title One",
                 files: bridgeCandidateFiles
             ),
-            mapping: awaitingPickTable,
+            mapping: blankDraftMappingTable,
         )
 
         /// The same unresolved folder immediately after File Tags is opened,
@@ -449,16 +449,16 @@
         @MainActor
         static let unreadFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.presentedMetadataMode = .fileTags
+            candidate.metadataPresentation = .fileTags
             return candidate
         }()
 
         /// The same unresolved folder after its tags have been read, before
-        /// they are selected as its metadata seed.
+        /// they are applied to its metadata draft.
         @MainActor
         static let unidentifiedFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.presentedMetadataMode = .fileTags
+            candidate.metadataPresentation = .fileTags
             candidate.fileTagsPreview = .loaded(releaseSeedBridge)
             return candidate
         }()
@@ -466,7 +466,7 @@
         @MainActor
         static let loadingFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.presentedMetadataMode = .fileTags
+            candidate.metadataPresentation = .fileTags
             candidate.fileTagsPreview = .loading(
                 CandidateFileTagsPreviewSession()
             )
@@ -474,17 +474,24 @@
         }()
 
         @MainActor
-        static let manualMappingCandidate: Candidate = {
-            var candidate = unidentifiedMappingCandidate
-            candidate.presentedMetadataMode = .manual
-            return candidate
-        }()
+        static let blankDraftMappingCandidate = unidentifiedMappingCandidate
+
+        @MainActor
+        static let directEntryMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            ),
+            edit: confirmEditValues,
+            mapping: mappingTable
+        )
 
         /// The same unresolved folder with identification settled on several
         /// pressings — the metadata section offers them inline.
         @MainActor
         static let severalMatchesMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
+            candidate.metadataPresentation = .findOnline
             candidate.resumedIdentifyState = .found(
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
@@ -502,7 +509,7 @@
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            metadataSeed: .externalRelease(
+            metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -525,7 +532,7 @@
                 skipped: false,
                 isAdded: false
             ),
-            metadataSeed: .externalRelease(
+            metadataProvenance: .externalRelease(
                 source: moreTracksReleaseDetail.source,
                 releaseId: moreTracksReleaseDetail.releaseId
             ),
@@ -545,7 +552,7 @@
                 name: "Album Title One",
                 files: bridgeCandidateFiles
             ),
-            metadataSeed: .externalRelease(
+            metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId
             ),
@@ -563,14 +570,14 @@
                 name: "Album Title One",
                 files: candidateFilesTracks
             ),
-            metadataSeed: .fileTags,
+            metadataProvenance: .fileTags,
             edit: confirmEditValues,
             mapping: fileTagsMappingTable,
         )
 
-        /// Manual starts with blank editable metadata while retaining the
+        /// Direct entry starts with blank editable metadata while retaining the
         /// candidate's physical audio-to-track mapping.
-        private static let manualEditValues = BridgeRawReleaseEdit(
+        private static let blankDraftValues = BridgeRawReleaseEdit(
             albumTitle: "",
             albumArtistAssignments: [],
             pressing: BridgeRawPressingEdit(
@@ -584,7 +591,7 @@
             tracks: (1...9)
                 .map { index in
                     BridgeRawTrackEdit(
-                        id: "manual-track-\(index - 1)",
+                        id: "draft-track-\(index - 1)",
                         title: "",
                         artistAssignments: .albumArtists,
                         side: 1,
@@ -594,9 +601,9 @@
                 }
         )
 
-        private static let manualMappingTable = BridgeMappingTable(
+        private static let blankDraftMappingTable = BridgeMappingTable(
             images: mappingImages,
-            rows: manualEditValues.tracks.enumerated()
+            rows: blankDraftValues.tracks.enumerated()
                 .map { index, track in
                     BridgeMappingRow.unit(
                         unit: BridgeMappingUnit(
@@ -612,15 +619,5 @@
             reconciliation: nil
         )
 
-        @MainActor
-        static let selectedManualMappingCandidate: Candidate = paneCandidate(
-            folder: mappingFolder(
-                name: "Album Title One",
-                files: candidateFilesTracks
-            ),
-            metadataSeed: .manual,
-            edit: manualEditValues,
-            mapping: manualMappingTable,
-        )
     }
 #endif

@@ -1,19 +1,19 @@
 use super::*;
 
 #[cfg(test)]
-mod metadata_seed_tests {
+mod metadata_provenance_tests {
     use super::*;
 
     #[test]
-    fn a_metadata_seed_round_trips_without_an_identity_proxy() {
-        let seed = MetadataSeed::ExternalRelease {
+    fn a_metadata_provenance_round_trips_without_an_identity_proxy() {
+        let provenance = MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "release-a".to_string(),
         };
-        let stored = serde_json::to_string(&seed).expect("a metadata seed encodes");
-        let read_back: MetadataSeed =
-            serde_json::from_str(&stored).expect("a stored metadata seed decodes");
-        assert_eq!(read_back, seed);
+        let stored = serde_json::to_string(&provenance).expect("metadata provenance encodes");
+        let read_back: MetadataProvenance =
+            serde_json::from_str(&stored).expect("stored metadata provenance decodes");
+        assert_eq!(read_back, provenance);
     }
 }
 

@@ -57,10 +57,10 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key.clone(),
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -76,10 +76,13 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
     assert_eq!(release.pressing.catalog_number.as_deref(), Some("CAT-001"));
     assert_eq!(release.pressing.country.as_deref(), Some("US"));
 
-    // metadata_source columns point at the picked release.
+    // Provenance points at the picked release.
     assert_eq!(
-        release.metadata_source_release_id.as_deref(),
-        Some(release_id_key.as_str())
+        release.metadata_provenance,
+        Some(MetadataProvenance::ExternalRelease {
+            source: MetadataSource::Discogs,
+            release_id: release_id_key.clone(),
+        })
     );
 
     let identities = f.db.get_release_identities(&release.id).await.unwrap();
@@ -135,10 +138,10 @@ async fn a_user_edit_overlays_the_picked_release() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key.clone(),
-            },
+            }),
             user_edit: Some(edit),
         })
         .await
@@ -314,10 +317,10 @@ async fn cross_source_writes_both_release_ids() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
-            },
+            }),
             user_edit: None,
         })
         .await

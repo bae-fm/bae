@@ -2,7 +2,7 @@ import BaeKit
 import Foundation
 
 /// What committing a candidate needs from the caller: where its files should
-/// live. Everything about the release — the metadata seed, the edited fields,
+/// live. Everything about the release — the draft, provenance, edited fields,
 /// the corrected rows, the cover — is stored under the candidate, so the
 /// commit reads the very values the pane drew.
 struct ImportCommitRequest: Sendable {
@@ -47,8 +47,10 @@ private struct ImportOperations: Sendable {
         @Sendable (String, String) async throws -> [BridgeSheetBindingOption]
     let setSheetBinding:
         @Sendable (String, String, String?) async throws -> Void
-    let selectCandidateMetadataSeed:
-        @Sendable (String, BridgeMetadataSeed) async throws -> Void
+    let applyCandidateExternalMetadata:
+        @Sendable (String, BridgeMetadataSource, String) async throws -> UInt64
+    let applyCandidateFileTags: @Sendable (String) async throws -> UInt64
+    let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let previewFileTags:
         @Sendable (String) async throws -> BridgeReleaseUserEdit
     let setSheetDisc:
@@ -82,11 +84,9 @@ private struct ImportOperations: Sendable {
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
-    let setAutomaticMetadataLookup: @MainActor @Sendable (Bool) throws -> Void
-    let setDefaultMetadataMode:
-        @MainActor @Sendable (BridgeDefaultImportMetadataMode) throws -> Void
-    let setLastMetadataMode:
-        @MainActor @Sendable (BridgeImportMetadataMode) throws -> Void
+    let setAutomaticIdentification: @MainActor @Sendable (Bool) throws -> Void
+    let setDefaultMetadataSource:
+        @MainActor @Sendable (BridgeDefaultImportMetadataSource) throws -> Void
 
     // Flat forwarding from AppHandleProtocol into immutable operation values.
     // swiftlint:disable:next function_body_length
@@ -123,11 +123,20 @@ private struct ImportOperations: Sendable {
                     audioFileId: $2
                 )
             },
-            selectCandidateMetadataSeed: {
-                try await handle.selectCandidateMetadataSeed(
+            applyCandidateExternalMetadata: {
+                try await handle.selectCandidateMetadataProvenance(
                     candidateKey: $0,
-                    seed: $1
+                    provenance: .externalRelease(source: $1, releaseId: $2)
                 )
+            },
+            applyCandidateFileTags: {
+                try await handle.selectCandidateMetadataProvenance(
+                    candidateKey: $0,
+                    provenance: .fileTags
+                )
+            },
+            clearCandidateMetadata: {
+                try await handle.clearCandidateMetadata(candidateKey: $0)
             },
             previewFileTags: {
                 try await handle.previewFileTagsForFolder(candidateKey: $0)
@@ -214,14 +223,11 @@ private struct ImportOperations: Sendable {
                     pin: request.pin
                 )
             },
-            setAutomaticMetadataLookup: {
-                try handle.setAutomaticImportMetadataLookup(enabled: $0)
+            setAutomaticIdentification: {
+                try handle.setAutomaticImportIdentification(enabled: $0)
             },
-            setDefaultMetadataMode: {
-                try handle.setDefaultImportMetadataMode(mode: $0)
-            },
-            setLastMetadataMode: {
-                try handle.setLastImportMetadataMode(mode: $0)
+            setDefaultMetadataSource: {
+                try handle.setDefaultImportMetadataSource(source: $0)
             }
         )
     }
@@ -255,9 +261,19 @@ final class Importer: Sendable, Observable {
         setSheetBinding:
             @escaping @Sendable (String, String, String?) async throws -> Void =
             { _, _, _ in },
-        selectCandidateMetadataSeed:
-            @escaping @Sendable (String, BridgeMetadataSeed) async throws
-            -> Void = { _, _ in },
+        applyCandidateExternalMetadata:
+            @escaping @Sendable (String, BridgeMetadataSource, String)
+            async throws -> UInt64 = { _, _, _ in
+                throw StubError.notImplemented
+            },
+        applyCandidateFileTags:
+            @escaping @Sendable (String) async throws -> UInt64 = { _ in
+                throw StubError.notImplemented
+            },
+        clearCandidateMetadata:
+            @escaping @Sendable (String) async throws -> UInt64 = { _ in
+                throw StubError.notImplemented
+            },
         previewFileTags:
             @escaping @Sendable (String) async throws -> BridgeReleaseUserEdit =
             { _ in throw StubError.notImplemented },
@@ -321,17 +337,14 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
             },
-        setAutomaticMetadataLookup:
+        setAutomaticIdentification:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
-        setDefaultMetadataMode:
-            @escaping @MainActor @Sendable (BridgeDefaultImportMetadataMode)
+        setDefaultMetadataSource:
+            @escaping @MainActor @Sendable (
+                BridgeDefaultImportMetadataSource
+            )
             throws -> Void =
-            { _ in },
-        setLastMetadataMode:
-            @escaping @MainActor @Sendable (BridgeImportMetadataMode) throws ->
-            Void = {
-                _ in
-            }
+            { _ in }
     ) {
         operations = ImportOperations(
             addWatchedFolder: addWatchedFolder,
@@ -341,7 +354,9 @@ final class Importer: Sendable, Observable {
             setCandidateSkipped: setCandidateSkipped,
             sheetBindingOptions: sheetBindingOptions,
             setSheetBinding: setSheetBinding,
-            selectCandidateMetadataSeed: selectCandidateMetadataSeed,
+            applyCandidateExternalMetadata: applyCandidateExternalMetadata,
+            applyCandidateFileTags: applyCandidateFileTags,
+            clearCandidateMetadata: clearCandidateMetadata,
             previewFileTags: previewFileTags,
             setSheetDisc: setSheetDisc,
             setFileRole: setFileRole,
@@ -360,9 +375,8 @@ final class Importer: Sendable, Observable {
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
             startImport: startImport,
-            setAutomaticMetadataLookup: setAutomaticMetadataLookup,
-            setDefaultMetadataMode: setDefaultMetadataMode,
-            setLastMetadataMode: setLastMetadataMode
+            setAutomaticIdentification: setAutomaticIdentification,
+            setDefaultMetadataSource: setDefaultMetadataSource
         )
     }
 
@@ -413,13 +427,24 @@ extension Importer {
         )
     }
 
-    /// Choose the metadata seed this candidate commits. The per-candidate read
-    /// delivers the selected pane after core stores the choice.
-    func selectCandidateMetadataSeed(
+    func applyCandidateExternalMetadata(
         _ candidateKey: String,
-        _ seed: BridgeMetadataSeed
-    ) async throws {
-        try await operations.selectCandidateMetadataSeed(candidateKey, seed)
+        source: BridgeMetadataSource,
+        releaseId: String
+    ) async throws -> UInt64 {
+        try await operations.applyCandidateExternalMetadata(
+            candidateKey,
+            source,
+            releaseId
+        )
+    }
+
+    func applyCandidateFileTags(_ candidateKey: String) async throws -> UInt64 {
+        try await operations.applyCandidateFileTags(candidateKey)
+    }
+
+    func clearCandidateMetadata(_ candidateKey: String) async throws -> UInt64 {
+        try await operations.clearCandidateMetadata(candidateKey)
     }
 
     /// Read the candidate's file-tag snapshot without choosing it as the seed.
@@ -536,19 +561,15 @@ extension Importer {
     }
 
     @MainActor
-    func setAutomaticMetadataLookup(_ enabled: Bool) throws {
-        try operations.setAutomaticMetadataLookup(enabled)
+    func setAutomaticIdentification(_ enabled: Bool) throws {
+        try operations.setAutomaticIdentification(enabled)
     }
 
     @MainActor
-    func setDefaultMetadataMode(_ mode: BridgeDefaultImportMetadataMode) throws
-    {
-        try operations.setDefaultMetadataMode(mode)
-    }
-
-    @MainActor
-    func setLastMetadataMode(_ mode: BridgeImportMetadataMode) throws {
-        try operations.setLastMetadataMode(mode)
+    func setDefaultMetadataSource(
+        _ source: BridgeDefaultImportMetadataSource
+    ) throws {
+        try operations.setDefaultMetadataSource(source)
     }
 
     convenience init(handle: any AppHandleProtocol) {

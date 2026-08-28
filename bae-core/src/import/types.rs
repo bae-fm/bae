@@ -2,7 +2,7 @@
 //!
 //! Every import follows the same flow, whether the tracks are individual files
 //! or one container plus a CUE sheet, and whether the metadata came from
-//! MusicBrainz, Discogs, or the files' own tags:
+//! MusicBrainz, Discogs, the files' own tags, or direct entry:
 //!
 //! 1. **Preparation** ([`PrepareStep`]) — resolve the release's metadata, walk
 //!    the folder, and map each logical track onto the audio file holding its
@@ -192,18 +192,26 @@ pub struct MetadataRef {
     pub source: MetadataSource,
 }
 
-/// The metadata source chosen for an import candidate. Persisted in
-/// `import_candidate_state` so the editor and import worker consume the same
-/// source after a restart.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+/// Where the current candidate metadata draft began. Direct entry and a
+/// cleared draft carry no provenance.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MetadataSeed {
+pub enum MetadataProvenance {
     ExternalRelease {
         source: MetadataSource,
         release_id: String,
     },
     FileTags,
-    Manual,
+}
+
+/// One candidate's editable metadata, independent of the source that last
+/// populated it. The selected cover belongs to the draft; candidate files and
+/// mapping decisions do not.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CandidateMetadataDraft {
+    pub edit: RawReleaseEdit,
+    pub provenance: Option<MetadataProvenance>,
+    pub cover: Option<CoverSelection>,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -236,10 +244,10 @@ pub struct ReleaseIdentity {
 /// - **ExternalRelease** — "this IS my pressing." The identity row carries
 ///   `source_release_id = release_ref.id`, and pressing-level metadata (year,
 ///   format, label, catalog number, country) seeds from the picked release,
-///   as does `metadata_source_release_id` on the release row.
-/// - **FileTags** — no claim. Zero `release_identities` rows, `metadata_source`
-///   is `'file_tags'`, `metadata_source_release_id` is NULL, and the release
-///   always gets a fresh album. Metadata seeds from embedded file tags.
+///   and the release records that exact external provenance.
+/// - **FileTags** — no identity claim. Zero `release_identities` rows, File
+///   Tags provenance, and a fresh album. Metadata seeds from embedded file
+///   tags.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReleaseReseed {
@@ -249,13 +257,13 @@ pub enum ReleaseReseed {
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl ReleaseReseed {
-    pub fn metadata_seed(&self) -> MetadataSeed {
+    pub fn metadata_provenance(&self) -> MetadataProvenance {
         match self {
-            Self::ExternalRelease { release_ref } => MetadataSeed::ExternalRelease {
+            Self::ExternalRelease { release_ref } => MetadataProvenance::ExternalRelease {
                 source: release_ref.source,
                 release_id: release_ref.id.clone(),
             },
-            Self::FileTags => MetadataSeed::FileTags,
+            Self::FileTags => MetadataProvenance::FileTags,
         }
     }
 }
@@ -314,8 +322,8 @@ pub enum TrackArtistAssignments {
 /// whether the person selected a library artist or entered a new one; commit
 /// never guesses that relationship from a name.
 ///
-/// Identity is out of scope: `release_identities`, `metadata_source`, and
-/// `metadata_source_release_id` are untouched. So are the archived provider
+/// Identity and provenance are out of scope: `release_identities` and the
+/// release's metadata provenance are untouched. So are the archived provider
 /// documents, so a later re-projection can still re-seed from what the source
 /// said.
 ///
@@ -338,7 +346,8 @@ pub struct ReleaseUserEdit {
 
 /// Per-pressing fields a release carries. Grouped because they share one
 /// identity-claim rule: either all six come from a picked release, or the user
-/// starts with all six blank and fills in what they know (File Tags or Manual).
+/// starts with all six blank and fills in what they know (File Tags or direct
+/// entry).
 /// A per-field `None` means "not known yet" within whichever case the editor
 /// is in; the whole-block "no pressing claim" is [`PressingEdit::blank()`], so
 /// no caller has to spell out six `None`s.
@@ -354,7 +363,7 @@ pub struct PressingEdit {
 
 impl PressingEdit {
     /// All fields `None`. Pre-fill for editors where the user hasn't
-    /// claimed a specific pressing yet (File Tags and Manual imports).
+    /// claimed a specific pressing yet (File Tags and direct-entry imports).
     pub fn blank() -> Self {
         Self {
             year: None,
@@ -435,9 +444,32 @@ pub struct RawReleaseEdit {
     pub tracks: Vec<RawTrackEdit>,
 }
 
+impl RawReleaseEdit {
+    /// Whether the editable metadata contains no authored or sourced values.
+    /// Physical side/track positions are excluded: they describe candidate
+    /// slots, not release metadata.
+    pub fn is_blank(&self) -> bool {
+        self.album_title.trim().is_empty()
+            && self.album_artist_assignments.is_empty()
+            && self.pressing.year.trim().is_empty()
+            && self.pressing.format.trim().is_empty()
+            && self.pressing.label.trim().is_empty()
+            && self.pressing.catalog_number.trim().is_empty()
+            && self.pressing.country.trim().is_empty()
+            && self.pressing.barcode.trim().is_empty()
+            && self.tracks.iter().all(|track| {
+                track.title.trim().is_empty()
+                    && matches!(
+                        track.artist_assignments,
+                        TrackArtistAssignments::AlbumArtists
+                    )
+            })
+    }
+}
+
 /// The current raw edit form for a library release, together with whether its
-/// stored metadata source can be projected again. Manual releases have no
-/// source payload to project; File Tags and external releases do.
+/// stored metadata provenance can be projected again. Source-less releases
+/// have no source payload to project; File Tags and external releases do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
@@ -554,7 +586,7 @@ impl ReleaseUserEdit {
                     }),
             )
         {
-            if assignment.is_blank_new_artist() {
+            if assignment.is_blank() {
                 return Err(EditValidationError::EmptyArtistName);
             }
         }
@@ -596,7 +628,7 @@ impl ArtistAssignment {
         }
     }
 
-    fn is_blank_new_artist(&self) -> bool {
+    pub(crate) fn is_blank(&self) -> bool {
         match self {
             Self::Existing { artist } => {
                 artist.artist_id.trim().is_empty() || artist.name.trim().is_empty()
@@ -882,13 +914,13 @@ pub struct CueAnalyzedAudioFile {
 /// Import command sent to the service worker.
 ///
 /// Carries only identifiers, never payloads. For
-/// `MetadataSeed::ExternalRelease`, the worker calls `prepare_release` at
+/// `MetadataProvenance::ExternalRelease`, the worker calls `prepare_release` at
 /// commit time, reading
 /// through the session-wide MB/Discogs LRU caches — normally a hit, since the
 /// UI's prefetch warmed them; a miss costs one round-trip. Cover bytes come
 /// through the same caching in the remote-image cache. File Tags consumes the
-/// candidate's stored tag snapshot. Manual derives blank metadata over the
-/// candidate's physical track slots.
+/// candidate's stored tag snapshot. A command with no provenance uses its
+/// draft over the candidate's physical track slots.
 ///
 /// `user_edit` is an optional overlay from the confirmation-page editor; when
 /// present its fields override the seeded metadata after the choice
@@ -907,7 +939,7 @@ pub struct ImportCommand {
     /// cache. Ignored for `Local`. Never persisted — it rides the upload
     /// as the retain-pinned intent.
     pub pin: bool,
-    pub metadata_seed: MetadataSeed,
+    pub metadata_provenance: Option<MetadataProvenance>,
     pub user_edit: Option<ReleaseUserEdit>,
 }
 

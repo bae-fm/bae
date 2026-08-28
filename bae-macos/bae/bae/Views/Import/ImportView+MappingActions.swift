@@ -9,6 +9,8 @@ extension ImportView {
     var mappingServices: ImportMappingServices {
         ImportMappingServices(
             importer: importer,
+            automaticIdentification: configStore.config
+                .automaticImportIdentification,
             importStore: importStore,
             previewAudio: previewAudio,
             openDocument: { name, path in openDocument(name: name, at: path) },
@@ -26,13 +28,13 @@ extension ImportView {
         )
     }
 
-    /// Switch which metadata source the pane presents without choosing it.
-    func presentMetadataMode(
-        _ mode: BridgeImportMetadataMode,
+    /// Put the draft or one source browser in the metadata slot.
+    func presentMetadata(
+        _ presentation: CandidateMetadataPresentation,
         for candidate: Candidate
     ) {
-        ImportMappingFlow.presentMetadataMode(
-            mode,
+        ImportMappingFlow.presentMetadata(
+            presentation,
             for: candidate,
             services: mappingServices
         )

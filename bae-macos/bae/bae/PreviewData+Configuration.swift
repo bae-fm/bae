@@ -37,10 +37,8 @@
                         pauseBetweenSides: false,
                         maxConcurrentUploads: 3,
                         maxConcurrentDownloads: 3,
-                        automaticImportMetadataLookup: true,
-                        defaultImportMetadataMode: .lookup,
-                        lastImportMetadataMode: .lookup,
-                        resolvedImportMetadataMode: .lookup,
+                        automaticImportIdentification: true,
+                        defaultImportMetadataSource: .findOnline,
                         showRemainingTime: false,
                         libraryFullWidth: libraryFullWidth,
                         savePresets: savePresets,
@@ -66,7 +64,7 @@
         /// the album + pressing fields plus `trackCount` tracks. Blank track artists
         /// (the default) exercise the "track artist falls back to album artist"
         /// placeholder path the form renders — both previews wrap that form.
-        static func editMetadataSeed(
+        static func editMetadataDraft(
             trackCount: Int,
             blankTrackArtists: Bool = true
         ) -> BridgeRawReleaseEdit {

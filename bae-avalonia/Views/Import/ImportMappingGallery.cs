@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -17,6 +18,9 @@ namespace Bae.Desktop;
 internal sealed class ImportMappingGallery
 {
     internal const double TileSize = 96;
+    internal static readonly DataFormat<string> CoverDragFormat =
+        DataFormat.CreateStringApplicationFormat(
+            "application/x-bae-import-cover-file-id");
 
     private readonly IReadOnlyList<BridgeMappingImage> _images;
     private readonly IReadOnlyList<BridgeFileEvidence> _evidence;
@@ -106,7 +110,42 @@ internal sealed class ImportMappingGallery
         }
         var path = image.LocalPath;
         tile.Click += (_, _) => _openImages(_images, path);
+        EnableCoverDrag(tile, image.FileId);
         _loadImage(thumbnail, path);
         return tile;
+    }
+
+    private static void EnableCoverDrag(Control tile, string fileId)
+    {
+        Point? pressAt = null;
+        var dragging = false;
+        tile.PointerPressed += (_, e) =>
+        {
+            if (e.GetCurrentPoint(tile).Properties.IsLeftButtonPressed)
+            {
+                pressAt = e.GetPosition(tile);
+                dragging = false;
+            }
+        };
+        tile.PointerMoved += async (_, e) =>
+        {
+            if (pressAt is not { } start
+                || dragging
+                || !e.GetCurrentPoint(tile).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+            var now = e.GetPosition(tile);
+            if (Math.Abs(now.X - start.X) < 6
+                && Math.Abs(now.Y - start.Y) < 6)
+            {
+                return;
+            }
+            dragging = true;
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(CoverDragFormat, fileId));
+            await DragDrop.DoDragDropAsync(e, data, DragDropEffects.Copy);
+        };
+        tile.PointerReleased += (_, _) => pressAt = null;
     }
 }

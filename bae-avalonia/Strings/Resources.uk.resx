@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Кількість або тривалість не збігаються</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Уже в бібліотеці</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Немає збігу</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Потрібні метадані</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Ще ідентифікується</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Ідентифікація</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Перейти до кандидата, що ще ідентифікується</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Новий</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Додати</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Видалити</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Відкривати кандидати без вибраного джерела у</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Востаннє використане</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Автоматично визначати кандидатів пошуку</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Автоматичне визначення читає текст обкладинки, штрихкоди й ідентифікатори дисків, лише коли кандидат використовує «Пошук». «Теги файлів» і «Вручну» ніколи його не запускають.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Назва альбому</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Застосувати</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Очистити метадані</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Файли кандидата й вибрані зіставлення залишаться без змін.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Очистити метадані?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Знайти інше видання…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Знайти онлайн…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Спробуйте прочитати кандидата ще раз.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Визначати автоматично</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Визначати автоматично</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Автоматично читає текст обкладинки, штрихкоди й ідентифікатори дисків та шукає збіг щоразу, коли відкривається «Знайти онлайн».</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Типове джерело метаданих</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Немає</value></data>
 </root>

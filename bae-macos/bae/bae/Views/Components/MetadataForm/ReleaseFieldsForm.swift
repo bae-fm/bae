@@ -448,7 +448,7 @@ struct ArtistAssignmentsField: View {
     #Preview("Release fields") {
         @Previewable
         @State
-        var form = PreviewData.editMetadataSeed(trackCount: 3)
+        var form = PreviewData.editMetadataDraft(trackCount: 3)
         ScrollView {
             ReleaseFieldsForm(form: $form)
                 .padding(20)

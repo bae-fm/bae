@@ -12,7 +12,7 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
     fixture.scan(1).await;
     fixture
         .manager
-        .set_automatic_import_metadata_lookup(false)
+        .set_automatic_import_identification(false)
         .unwrap();
 
     fixture.sweep_once().await;
@@ -22,38 +22,20 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
         fixture.provider.requests().is_empty(),
         "no provider request may run"
     );
-    assert!(fixture.stored_for(&dir).await.is_none());
+    assert!(fixture.identified_for(&dir).await.is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn every_non_lookup_default_runs_none_of_the_identification_pipeline() {
-    use crate::config::{DefaultImportMetadataMode, ImportMetadataMode};
+async fn captured_non_online_sources_run_none_of_the_identification_pipeline() {
+    use crate::config::DefaultImportMetadataSource;
 
     let cases = [
-        (
-            "file-tags-default",
-            DefaultImportMetadataMode::FileTags,
-            ImportMetadataMode::Lookup,
-        ),
-        (
-            "manual-default",
-            DefaultImportMetadataMode::Manual,
-            ImportMetadataMode::Lookup,
-        ),
-        (
-            "last-file-tags",
-            DefaultImportMetadataMode::LastUsed,
-            ImportMetadataMode::FileTags,
-        ),
-        (
-            "last-manual",
-            DefaultImportMetadataMode::LastUsed,
-            ImportMetadataMode::Manual,
-        ),
+        ("file-tags-default", DefaultImportMetadataSource::FileTags),
+        ("none-default", DefaultImportMetadataSource::None),
     ];
 
-    for (name, default_mode, last_mode) in cases {
+    for (name, default_mode) in cases {
         let fixture = Fixture::new(name).await;
         let calls = Arc::new(AtomicUsize::new(0));
         fixture
@@ -62,15 +44,11 @@ async fn every_non_lookup_default_runs_none_of_the_identification_pipeline() {
                 calls: Arc::clone(&calls),
             }));
         let dir = fixture.barcode_candidate("Candidate");
+        fixture
+            .manager
+            .set_default_import_metadata_source(default_mode)
+            .unwrap();
         fixture.scan(1).await;
-        fixture
-            .manager
-            .set_last_import_metadata_mode(last_mode)
-            .unwrap();
-        fixture
-            .manager
-            .set_default_import_metadata_mode(default_mode)
-            .unwrap();
 
         fixture.sweep_once().await;
 
@@ -80,8 +58,8 @@ async fn every_non_lookup_default_runs_none_of_the_identification_pipeline() {
             "provider request ran for {name}"
         );
         assert!(
-            fixture.stored_for(&dir).await.is_none(),
-            "identification state was stored for {name}"
+            fixture.identified_for(&dir).await.is_none(),
+            "identification produced an answer for {name}"
         );
     }
 }
@@ -99,11 +77,10 @@ async fn a_seeded_candidate_runs_none_of_the_automatic_identification_pipeline()
     let dir = fixture.barcode_candidate("Candidate");
     fixture.scan(1).await;
     fixture
-        .manager
-        .save_candidate_metadata_seed(
-            &fixture.content_hash(&dir),
-            &dir.to_string_lossy(),
-            &crate::import::MetadataSeed::FileTags,
+        .import
+        .select_candidate_metadata_provenance(
+            dir.to_string_lossy().into_owned(),
+            crate::import::MetadataProvenance::FileTags,
         )
         .await
         .unwrap();
@@ -116,13 +93,13 @@ async fn a_seeded_candidate_runs_none_of_the_automatic_identification_pipeline()
         "no provider request may run"
     );
     let stored = fixture.stored_for(&dir).await.expect("the seed remains stored");
-    assert_eq!(stored.metadata_seed, Some(crate::import::MetadataSeed::FileTags));
+    assert_eq!(stored.metadata_provenance, Some(crate::import::MetadataProvenance::FileTags));
     assert!(stored.identify.is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn choosing_a_metadata_seed_cancels_background_identification() {
+async fn choosing_a_metadata_provenance_cancels_background_identification() {
     let fixture = Fixture::new("seed-cancels-background").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let key = dir.to_string_lossy().into_owned();
@@ -137,7 +114,7 @@ async fn choosing_a_metadata_seed_cancels_background_identification() {
 
     fixture
         .import
-        .select_candidate_metadata_seed(key.clone(), crate::import::MetadataSeed::FileTags)
+        .select_candidate_metadata_provenance(key.clone(), crate::import::MetadataProvenance::FileTags)
         .await
         .unwrap();
     let stopped = tokio::time::timeout(Duration::from_secs(2), &mut pass)
@@ -151,7 +128,7 @@ async fn choosing_a_metadata_seed_cancels_background_identification() {
     assert!(stopped, "the seed must stop the background pass");
     assert!(!fixture.identify.is_running(&key));
     let stored = fixture.stored_for(&dir).await.expect("the seed remains stored");
-    assert_eq!(stored.metadata_seed, Some(crate::import::MetadataSeed::FileTags));
+    assert_eq!(stored.metadata_provenance, Some(crate::import::MetadataProvenance::FileTags));
     assert!(stored.identify.is_none());
 }
 
@@ -174,12 +151,12 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
     fixture.scan(1).await;
     fixture
         .manager
-        .set_automatic_import_metadata_lookup(false)
+        .set_automatic_import_identification(false)
         .unwrap();
 
     fixture.start_explicit_lookup(&dir);
 
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
+    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
         .await
         .expect("interactive lookup stores its verdict");
     assert!(fixture.provider.count_containing("/discid/") > 0);
@@ -202,7 +179,7 @@ async fn disabling_automatic_lookup_cancels_running_background_identification() 
 
     fixture
         .manager
-        .set_automatic_import_metadata_lookup(false)
+        .set_automatic_import_identification(false)
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
@@ -212,7 +189,7 @@ async fn disabling_automatic_lookup_cancels_running_background_identification() 
 
     assert!(!fixture.identify.is_running(&key));
     assert!(fixture.context.ours.lock().unwrap().is_empty());
-    assert!(fixture.stored_for(&dir).await.is_none());
+    assert!(fixture.identified_for(&dir).await.is_none());
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -240,7 +217,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
 
     fixture
         .manager
-        .set_automatic_import_metadata_lookup(false)
+        .set_automatic_import_identification(false)
         .unwrap();
     fixture.sweep_once().await;
 
@@ -253,8 +230,8 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn changing_the_default_away_from_lookup_cancels_background_identification() {
-    let fixture = Fixture::new("change-default-cancels-background").await;
+async fn changing_the_default_does_not_change_an_existing_candidates_captured_source() {
+    let fixture = Fixture::new("change-default-keeps-background").await;
     let dir = fixture.disc_id_candidate("Candidate");
     let key = dir.to_string_lossy().into_owned();
     fixture.provider.route("/discid/", 200, "{}");
@@ -268,17 +245,17 @@ async fn changing_the_default_away_from_lookup_cancels_background_identification
 
     fixture
         .manager
-        .set_default_import_metadata_mode(crate::config::DefaultImportMetadataMode::Manual)
-        .unwrap();
-    tokio::time::timeout(Duration::from_secs(10), pass)
-        .await
-        .expect("changing the default stops the pass")
+        .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::FileTags)
         .unwrap();
     fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(10), pass)
+        .await
+        .expect("the existing Find Online candidate completes")
+        .unwrap();
 
     assert!(!fixture.identify.is_running(&key));
     assert!(fixture.context.ours.lock().unwrap().is_empty());
-    assert!(fixture.stored_for(&dir).await.is_none());
+    assert!(fixture.identified_for(&dir).await.is_some());
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -287,7 +264,7 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     let fixture = Fixture::new("enable-schedules-unresolved").await;
     fixture
         .manager
-        .set_automatic_import_metadata_lookup(false)
+        .set_automatic_import_identification(false)
         .unwrap();
     let sweep = start(
         fixture.import.clone(),
@@ -312,10 +289,10 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
 
     fixture
         .manager
-        .set_automatic_import_metadata_lookup(true)
+        .set_automatic_import_identification(true)
         .unwrap();
 
-    tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
+    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
         .await
         .expect("enabling automatic Lookup stores a verdict");
     assert!(fixture.provider.count_containing("/discid/") > 0);

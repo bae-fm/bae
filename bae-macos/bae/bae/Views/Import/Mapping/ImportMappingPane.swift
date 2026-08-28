@@ -31,15 +31,12 @@ struct ImportMappingPane: View {
     var storagePinned: Bool
     let mappingActions: ImportMappingActions
     let commitActions: ImportCommitActions
-    let onPresentMetadataMode: (BridgeImportMetadataMode) -> Void
-    let onFindRelease: () -> Void
+    let onPresentMetadata: (CandidateMetadataPresentation) -> Void
     let onReadFileTags: () -> Void
-    /// Pick one of identification's matched pressings from the inline options
-    /// — the same pick a search-sheet row click runs.
-    let onPickRelease: (BridgeMetadataResult) -> Void
     let onUseFileTags: () -> Void
-    let onEnterManually: () -> Void
+    let onClearMetadata: () -> Void
     let onEditCover: () -> Void
+    let onSelectCover: (BridgeCoverSelection) -> Void
     let onNavigateToPlacement: (String) -> Void
 
     /// The folder's mapping, as core reads it back for this candidate.
@@ -92,12 +89,9 @@ struct ImportMappingPane: View {
         }
     }
 
-    /// The card's commit row — present exactly when there is something to
-    /// commit, which is the precondition the commit itself reads: a failed
-    /// re-pick leaves the table and the album fields in place but nothing
-    /// settled to commit them under.
+    /// The card's commit row, absent while the draft is entirely blank.
     private var commitControls: ImportCommitControls? {
-        guard candidate.presentedMetadataModeHasSelectedSeed else {
+        guard candidate.detail != nil, !candidate.metadataDraftIsBlank else {
             return nil
         }
         return ImportCommitControls(
@@ -112,50 +106,23 @@ struct ImportMappingPane: View {
 
     private var metadataSourceSection: some View {
         ImportMetadataSourceSection(
-            mode: candidate.presentedMetadataMode,
-            releaseSummary: candidate.presentedMetadataModeHasSelectedSeed
-                ? candidate.edit.map {
-                    ImportReleaseSummary(candidate: candidate, editValues: $0)
-                } : nil,
+            candidate: candidate,
+            runtime: runtime,
             fileTagsPreviewSummary: candidate.fileTagsPreview.edit.map {
                 ImportReleaseSummary(candidate: candidate, fileTags: $0)
             },
-            isReading: candidate.seedInFlight != nil
+            isReading: candidate.provenanceInFlight != nil
                 || candidate.fileTagsPreview.isLoading,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
-            editValues: candidate.edit,
             editActions: editActions,
-            matchOptions: matchOptions,
-            hasSelectedSeed: candidate.presentedMetadataModeHasSelectedSeed,
             commit: commitControls,
-            onPresentMode: onPresentMetadataMode,
-            onFindRelease: onFindRelease,
+            onPresent: onPresentMetadata,
             onReadFileTags: onReadFileTags,
             onUseFileTags: onUseFileTags,
-            onEnterManually: onEnterManually,
+            onClearMetadata: onClearMetadata,
             onEditCover: onEditCover,
-        )
-    }
-
-    /// Identification's matches, offered inline while Lookup has no selected
-    /// release. They stay up through the release read — the clicked row carries
-    /// the spinner — and hand over to the release card after its detail lands.
-    private var matchOptions: ImportMatchOptions? {
-        guard candidate.presentedMetadataMode == .lookup,
-            !candidate.presentedMetadataModeHasSelectedSeed,
-            case .found(let groups, let libraryStatuses, _, let provenance) =
-                identifyState
-        else {
-            return nil
-        }
-        return ImportMatchOptions(
-            groups: groups,
-            libraryStatuses: libraryStatuses,
-            provenance: provenance,
-            isImporting: ImportSearchFlow.isImporting(candidate),
-            loadingReleaseId: candidate.loadingReleaseId,
-            onSelect: onPickRelease,
+            onSelectCover: onSelectCover,
         )
     }
 

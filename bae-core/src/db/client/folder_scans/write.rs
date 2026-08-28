@@ -152,14 +152,25 @@ pub(super) fn insert_item(
     watched_folder_path: &str,
     generation: i64,
     item: &ScanItem,
+    initial_metadata_source: crate::config::DefaultImportMetadataSource,
 ) -> Result<(), DbError> {
     match item {
-        ScanItem::Discovered(candidate) => {
-            insert_candidate(sql, watched_folder_path, generation, "tentative", candidate)
-        }
-        ScanItem::Valid(candidate) => {
-            insert_candidate(sql, watched_folder_path, generation, "valid", candidate)
-        }
+        ScanItem::Discovered(candidate) => insert_candidate(
+            sql,
+            watched_folder_path,
+            generation,
+            "tentative",
+            candidate,
+            initial_metadata_source,
+        ),
+        ScanItem::Valid(candidate) => insert_candidate(
+            sql,
+            watched_folder_path,
+            generation,
+            "valid",
+            candidate,
+            initial_metadata_source,
+        ),
         ScanItem::Invalid(candidate) => {
             insert_invalid(sql, watched_folder_path, generation, candidate)
         }
@@ -175,14 +186,15 @@ fn insert_candidate(
     generation: i64,
     kind: &str,
     candidate: &FolderCandidate,
+    initial_metadata_source: crate::config::DefaultImportMetadataSource,
 ) -> Result<(), DbError> {
     let path = candidate.path.to_string_lossy().into_owned();
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, format_label, \
+              scope, content_hash, file_edit_revision, format_label, initial_metadata_source, \
               combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
         params![
             watched_folder_path,
             path,
@@ -198,12 +210,34 @@ fn insert_candidate(
                 "a candidate's file edit revision"
             )?,
             candidate.files.format_label,
+            initial_metadata_source.as_str(),
             candidate
                 .combine_ancestor_key
                 .as_ref()
                 .map(|key| key.relative_folder_path.as_str()),
         ],
     )?;
+    let content_hash = candidate.files.content_hash();
+    sql.execute(
+        "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, ?) \
+         ON CONFLICT (content_hash) DO UPDATE SET folder_path = excluded.folder_path",
+        params![content_hash, candidate.display_path],
+    )?;
+    let has_draft = sql
+        .query_row(
+            "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",
+            [&content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some();
+    if !has_draft {
+        super::super::import_state::insert_draft(
+            sql,
+            &content_hash,
+            &crate::import::pane::blank_candidate_draft(&candidate.files),
+        )?;
+    }
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
     insert_resolved_boundaries(
         sql,
@@ -224,9 +258,9 @@ fn insert_invalid(
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, format_label, \
+              scope, content_hash, file_edit_revision, format_label, initial_metadata_source, \
               combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)",
+         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, NULL, NULL, ?, ?)",
         params![
             watched_folder_path,
             path,

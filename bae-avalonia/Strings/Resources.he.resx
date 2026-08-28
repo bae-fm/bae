@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>הכמות או האורכים אינם תואמים</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>כבר בספרייה</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>אין התאמה</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>נדרשים נתוני מטא</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>עדיין בזיהוי</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>מזהה</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>מעבר למועמד שעדיין בזיהוי</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>חדש</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>הוסף</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>הסר</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>פתיחת מועמדים ללא מקור שנבחר ב־</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>בשימוש לאחרונה</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>זיהוי אוטומטי של מועמדי חיפוש</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>זיהוי אוטומטי קורא טקסט מהעטיפה, ברקודים ומזהי דיסק רק כשמועמד משתמש בחיפוש. תגיות הקבצים וידני לעולם אינם מפעילים אותו.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>שם האלבום</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>החלה</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>ניקוי המטא־נתונים</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>לנקות את המטא־נתונים?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>חיפוש מהדורה אחרת…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>חיפוש באינטרנט…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>נסו לקרוא שוב את המועמד.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>קורא אוטומטית את הטקסט מהעטיפה, הברקודים ומזהי הדיסק ומחפש התאמה בכל פתיחה של חיפוש באינטרנט.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>מקור מטא־נתונים כברירת מחדל</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>ללא</value></data>
 </root>

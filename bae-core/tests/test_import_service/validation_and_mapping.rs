@@ -75,7 +75,7 @@ async fn import_truncated_album(verify: bool) -> Result<(String, String), String
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -208,7 +208,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     )
     .await;
 
-    let choice = MetadataSeed::ExternalRelease {
+    let choice = MetadataProvenance::ExternalRelease {
         source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
     };
@@ -216,9 +216,9 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     // The confirmation pane's form, unedited: what the commit reads back off
     // the pick when the user touches nothing.
     f.handle
-        .select_candidate_metadata_seed(
+        .select_candidate_metadata_provenance(
             candidate_key.clone(),
-            bae_core::import::MetadataSeed::ExternalRelease {
+            bae_core::import::MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
             },
@@ -243,7 +243,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: choice,
+            metadata_provenance: Some(choice),
             user_edit: Some(user_edit),
         })
         .await
@@ -350,9 +350,9 @@ async fn pick_release_for_folder(
     .await;
 
     f.handle
-        .select_candidate_metadata_seed(
+        .select_candidate_metadata_provenance(
             candidate_key.clone(),
-            bae_core::import::MetadataSeed::ExternalRelease {
+            bae_core::import::MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.to_string(),
             },
@@ -372,7 +372,7 @@ async fn pick_release_for_folder(
 /// the pane's form holds, the tracks from the table's own rows in the order
 /// core lays them out, bindings and all.
 fn edit_from_pane(pane: &bae_core::import::ImportCandidateDetail) -> ReleaseUserEdit {
-    let mut raw = pane.edit.clone().expect("a pick draws the metadata form");
+    let mut raw = pane.metadata_draft.clone();
     raw.tracks = bae_core::import::mapping_tracks(&pane.mapping);
     raw.shape()
         .expect("the table's rows shape into a savable edit")
@@ -441,10 +441,10 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id,
-            },
+            }),
             user_edit: Some(edit_from_pane(&pane)),
         })
         .await
@@ -503,10 +503,10 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id,
-            },
+            }),
             user_edit: Some(edit_from_pane(&pane)),
         })
         .await
@@ -559,10 +559,10 @@ async fn a_corrected_pairing_survives_the_commit() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id,
-            },
+            }),
             user_edit: Some(edit),
         })
         .await
@@ -653,7 +653,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::ExternalRelease {
+        MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: release_id_key,
         },
@@ -702,7 +702,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::ExternalRelease {
+        MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: release_id_key,
         },

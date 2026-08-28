@@ -1,6 +1,5 @@
 use super::*;
 use crate::discogs::DiscogsClient;
-use crate::import::payloads::ReleasePayloads;
 use crate::util::rate_limiter::CallPriority;
 
 #[derive(PartialEq, Eq)]
@@ -178,7 +177,7 @@ impl ImportServiceHandle {
 
     /// Build an import command from what the candidate stores and enqueue it.
     ///
-    /// Nothing about the release rides in: the metadata seed, the metadata the
+    /// Nothing about the release rides in: the metadata draft, the metadata the
     /// user typed, the rows they corrected and the cover they chose are all
     /// rows under this candidate's content hash, so the commit reads the very
     /// values the pane drew. The caller says only where the files should live.
@@ -208,19 +207,19 @@ impl ImportServiceHandle {
             .load_import_candidate_state(&content_hash)
             .await?
             .filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-        let Some(metadata_seed) = state.as_ref().and_then(|state| state.metadata_seed.clone())
-        else {
-            return Err(crate::import::ImportError::Internal {
-                detail: format!("no metadata seed is selected for {candidate_key}"),
-            });
-        };
+        let metadata_provenance = state
+            .as_ref()
+            .and_then(|state| state.metadata_provenance.clone());
         let durations = state.map(|state| state.durations).unwrap_or_default();
         let rows = self
             .library_manager
             .load_import_candidate_pane_rows(&content_hash)
             .await?;
 
-        let file_tag_snapshot = if matches!(metadata_seed, crate::import::MetadataSeed::FileTags) {
+        let file_tag_snapshot = if matches!(
+            metadata_provenance,
+            Some(crate::import::MetadataProvenance::FileTags)
+        ) {
             let Some(stored) = self
                 .library_manager
                 .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
@@ -290,59 +289,30 @@ impl ImportServiceHandle {
             None
         };
 
-        let seed_for_pane = metadata_seed.clone();
+        let seed_for_pane = metadata_provenance.clone();
         let files = candidate.files.clone();
-        let folder_name = candidate.name.clone();
-        let clock = self.clock.clone();
-        let ids = self.ids.clone();
-        enum PaneSeed {
-            ExternalRelease(ReleasePayloads),
-            FileTags(crate::import::file_tag_snapshot::FileTagSnapshot),
-            Manual,
-        }
-        let pane_seed = match &seed_for_pane {
-            crate::import::MetadataSeed::ExternalRelease {
+        let release = match &seed_for_pane {
+            Some(crate::import::MetadataProvenance::ExternalRelease {
                 source, release_id, ..
-            } => PaneSeed::ExternalRelease(
-                self.payloads_for_seed(
+            }) => Some(
+                self.payloads_for_provenance(
                     candidate_key,
                     &crate::import::MetadataRef::new(release_id.clone(), *source),
                 )
-                .await?,
+                .await?
+                .detail()?,
             ),
-            crate::import::MetadataSeed::FileTags => PaneSeed::FileTags(
-                file_tag_snapshot
-                    .clone()
-                    .expect("File Tags always creates its snapshot before projection"),
-            ),
-            crate::import::MetadataSeed::Manual => PaneSeed::Manual,
+            Some(crate::import::MetadataProvenance::FileTags) | None => None,
         };
-        let pane = tokio::task::spawn_blocking(move || match pane_seed {
-            PaneSeed::ExternalRelease(payloads) => crate::import::pane::release_pane(
-                &payloads,
+        let pane = tokio::task::spawn_blocking(move || {
+            Ok::<_, crate::import::ImportError>(crate::import::pane::draft_pane(
+                release,
                 &files,
                 &durations,
-                &rows.edit,
-                &rows.track_edits,
-                clock.as_ref(),
-                ids.as_ref(),
-            ),
-            PaneSeed::FileTags(snapshot) => crate::import::pane::file_tags_pane(
-                &files,
-                &snapshot,
-                Some(&folder_name),
-                &durations,
-                &rows.edit,
-                &rows.track_edits,
-                clock.as_ref(),
-                ids.as_ref(),
-            ),
-            PaneSeed::Manual => Ok(crate::import::pane::manual_pane(
-                &files,
-                &durations,
-                &rows.edit,
-                &rows.track_edits,
-            )),
+                rows.metadata_draft,
+                &rows.track_mappings,
+                seed_for_pane.as_ref(),
+            ))
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {
@@ -378,7 +348,7 @@ impl ImportServiceHandle {
             selected_cover,
             storage_mode,
             pin,
-            metadata_seed,
+            metadata_provenance,
             user_edit: Some(user_edit),
         };
 
@@ -468,8 +438,10 @@ impl ImportServiceHandle {
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )?;
         let content_hash = categorized.content_hash();
-        let expectation = if matches!(command.metadata_seed, crate::import::MetadataSeed::FileTags)
-        {
+        let expectation = if matches!(
+            command.metadata_provenance,
+            Some(crate::import::MetadataProvenance::FileTags)
+        ) {
             let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
             let snapshot = tokio::task::spawn_blocking(move || {
                 crate::import::file_tag_snapshot::extract_file_tag_snapshot(

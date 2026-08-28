@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>எண்ணிக்கை அல்லது நீளம் ஒத்துப்போகவில்லை</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ஏற்கனவே நூலகத்தில்</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>பொருத்தம் கிடைக்கவில்லை</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>மெட்டாடேட்டா தேவை</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படும் வேட்பாளருக்குச் செல்</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>புதியது</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>சேர்</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>நீக்கு</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>மூலம் தேர்ந்தெடுக்கப்படாதவற்றை இதில் திறக்கவும்</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>கடைசியாக பயன்படுத்தியது</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>தேடல் தேர்வுகளைத் தானாக அடையாளம் காண்</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>ஒரு தேர்வு தேடலைப் பயன்படுத்தும்போது மட்டுமே தானியங்கு அடையாளம் அட்டை உரை, பட்டைக்குறியீடுகள் மற்றும் வட்டு ID-களைப் படிக்கும். கோப்புக் குறிச்சொற்களும் கைமுறையும் அதை ஒருபோதும் இயக்காது.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>ஆல்பம் தலைப்பு</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>பயன்படுத்து</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>மெட்டாடேட்டாவை அழி</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>தேர்வின் கோப்புகளும் மேப்பிங் விருப்பங்களும் மாறாமல் இருக்கும்.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>மெட்டாடேட்டாவை அழிக்கவா?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>வேறொரு வெளியீட்டைத் தேடு…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>இணையத்தில் தேடு</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>இணையத்தில் தேடு…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>தேர்வை மீண்டும் படிக்க முயலவும்.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>தானாக அடையாளம் காண்</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>தானாக அடையாளம் காண்</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>இணையத்தில் தேடு திறக்கும்போதெல்லாம் அட்டை உரை, பட்டைக்குறியீடுகள் மற்றும் வட்டு IDகளைத் தானாகப் படித்து பொருத்தத்தைத் தேடும்.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>இயல்புநிலை மெட்டாடேட்டா மூலம்</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>இணையத்தில் தேடு</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>எதுவுமில்லை</value></data>
 </root>

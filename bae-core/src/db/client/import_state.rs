@@ -10,36 +10,17 @@ mod verdict_rows;
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use duration_rows::{delete_durations, delete_slice_durations, insert_durations};
 use edit_rows::{delete_file_edits, insert_file_edits};
-pub(super) use pane_rows::load_pane_rows_on;
-pub(super) use rows::{load_states_on, metadata_seed_of};
+pub(super) use pane_rows::{insert_draft, load_drafts_on, load_pane_rows_on};
+pub(super) use rows::{load_states_on, metadata_provenance_of};
 use signal_rows::{delete_signals, insert_signals};
 
-use rows::{load_candidate_file_edits_on, seed_columns};
-use verdict_rows::{delete_matches, insert_matches, verdict_columns};
-
-/// Who decided a candidate's stored metadata seed. The two outlive different
-/// things — identification's goes with the verdict that concluded it, a
-/// person's outlives every verdict — so the row records which it holds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum MetadataSeedAuthor {
-    User,
-    Identification,
-}
-
-impl MetadataSeedAuthor {
-    /// The stored `metadata_seed_author` value.
-    pub(crate) fn as_str(self) -> &'static str {
-        match self {
-            Self::User => "user",
-            Self::Identification => "identification",
-        }
-    }
-}
 use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
+use rows::{load_candidate_file_edits_on, seed_columns, MetadataProvenanceAuthor};
 use std::collections::HashSet;
+use verdict_rows::{delete_matches, insert_matches, verdict_columns};
 
 /// The next scan generation. One upsert rather than a read of a seeded row
 /// and a write back: the counter's row is created by the first allocation,
@@ -469,12 +450,12 @@ impl Database {
         };
         self.call(move |sql| {
             let columns = verdict_columns(&verdict.verdict);
-            let pick = verdict.metadata_seed.as_ref().map(seed_columns);
+            let pick = verdict.metadata_provenance.as_ref().map(seed_columns);
             // A verdict never replaces a person's pick, so only an
             // identification pick can be superseded here — and only then does
             // the metadata typed over the release it named go with it.
             let superseded = stored_pick(sql, &verdict.content_hash)?
-                .filter(|stored| stored.author == MetadataSeedAuthor::Identification);
+                .filter(|stored| stored.author == MetadataProvenanceAuthor::Identification);
             // A pick identification made belongs to the verdict that made it,
             // so this write replaces it — with the new verdict's own
             // conclusion, or with nothing when it concluded none. A pick a
@@ -487,15 +468,15 @@ impl Database {
                          verdict_kind = :kind, verdict_track_count = :track_count, \
                          verdict_matched_barcode = :matched_barcode, \
                          probed_total_duration_ms = :probed, identified_at = :now, \
-                         seed_kind = CASE WHEN metadata_seed_author = 'user' \
-                             THEN seed_kind ELSE :seed_kind END, \
-                         seed_source = CASE WHEN metadata_seed_author = 'user' \
-                             THEN seed_source ELSE :seed_source END, \
-                         seed_release_id = CASE WHEN metadata_seed_author = 'user' \
-                             THEN seed_release_id ELSE :seed_release_id END, \
-                         metadata_seed_author = CASE \
-                             WHEN metadata_seed_author = 'user' THEN 'user' \
-                             WHEN :seed_kind IS NULL THEN NULL \
+                         provenance_kind = CASE WHEN provenance_author = 'user' \
+                             THEN provenance_kind ELSE :provenance_kind END, \
+                         provenance_source = CASE WHEN provenance_author = 'user' \
+                             THEN provenance_source ELSE :provenance_source END, \
+                         provenance_release_id = CASE WHEN provenance_author = 'user' \
+                             THEN provenance_release_id ELSE :provenance_release_id END, \
+                         provenance_author = CASE \
+                             WHEN provenance_author = 'user' THEN 'user' \
+                             WHEN :provenance_kind IS NULL THEN NULL \
                              ELSE 'identification' END \
                      WHERE content_hash = :content_hash AND edit_revision = :expected",
                     named_params! {
@@ -505,9 +486,9 @@ impl Database {
                         ":matched_barcode": columns.matched_barcode,
                         ":probed": probed,
                         ":now": now,
-                        ":seed_kind": pick.as_ref().map(|pick| pick.kind),
-                        ":seed_source": pick.as_ref().and_then(|pick| pick.source),
-                        ":seed_release_id": pick.as_ref().and_then(|pick| pick.release_id),
+                        ":provenance_kind": pick.as_ref().map(|pick| pick.kind),
+                        ":provenance_source": pick.as_ref().and_then(|pick| pick.source),
+                        ":provenance_release_id": pick.as_ref().and_then(|pick| pick.release_id),
                         ":content_hash": verdict.content_hash,
                         ":expected": expected,
                     },
@@ -517,7 +498,7 @@ impl Database {
                     "INSERT INTO import_candidate_state \
                          (content_hash, folder_path, verdict_kind, verdict_track_count, \
                           verdict_matched_barcode, probed_total_duration_ms, identified_at, \
-                          seed_kind, seed_source, seed_release_id, metadata_seed_author, \
+                          provenance_kind, provenance_source, provenance_release_id, provenance_author, \
                           edit_revision) \
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                     params![
@@ -532,7 +513,7 @@ impl Database {
                         pick.as_ref().and_then(|pick| pick.source),
                         pick.as_ref().and_then(|pick| pick.release_id),
                         pick.as_ref()
-                            .map(|_| MetadataSeedAuthor::Identification.as_str()),
+                            .map(|_| MetadataProvenanceAuthor::Identification.as_str()),
                     ],
                 )? == 1
             };
@@ -542,7 +523,7 @@ impl Database {
                 delete_matches(sql, &verdict.content_hash)?;
                 insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
                 if let Some(superseded) = superseded {
-                    if superseded.identity != pick_identity(verdict.metadata_seed.as_ref()) {
+                    if superseded.identity != pick_identity(verdict.metadata_provenance.as_ref()) {
                         clear_pick_dependent_rows(sql, &verdict.content_hash)?;
                     }
                 }
@@ -636,14 +617,14 @@ impl Database {
                          verdict_kind = NULL, verdict_track_count = NULL, \
                          verdict_matched_barcode = NULL, \
                          probed_total_duration_ms = NULL, identified_at = NULL, \
-                         seed_kind = CASE WHEN metadata_seed_author = 'user' \
-                             THEN seed_kind ELSE NULL END, \
-                         seed_source = CASE WHEN metadata_seed_author = 'user' \
-                             THEN seed_source ELSE NULL END, \
-                         seed_release_id = CASE WHEN metadata_seed_author = 'user' \
-                             THEN seed_release_id ELSE NULL END, \
-                         metadata_seed_author = CASE \
-                             WHEN metadata_seed_author = 'user' THEN 'user' \
+                         provenance_kind = CASE WHEN provenance_author = 'user' \
+                             THEN provenance_kind ELSE NULL END, \
+                         provenance_source = CASE WHEN provenance_author = 'user' \
+                             THEN provenance_source ELSE NULL END, \
+                         provenance_release_id = CASE WHEN provenance_author = 'user' \
+                             THEN provenance_release_id ELSE NULL END, \
+                         provenance_author = CASE \
+                             WHEN provenance_author = 'user' THEN 'user' \
                              ELSE NULL END, \
                          edit_revision = ? \
                      WHERE content_hash = ? AND edit_revision = ?",
@@ -676,7 +657,7 @@ impl Database {
             // them by identities that no longer mean the same thing.
             delete_slice_durations(sql, &content_hash)?;
             delete_signals(sql, &content_hash)?;
-            pane_rows::delete_track_edits(sql, &content_hash)?;
+            pane_rows::delete_track_mappings(sql, &content_hash)?;
             delete_file_edits(sql, &content_hash)?;
             insert_file_edits(sql, &content_hash, &edits)?;
             let updated_candidates = settle_scanned_candidates(
@@ -708,59 +689,109 @@ impl Database {
         ))
     }
 
-    /// Record the identity the user chose for one candidate, keyed by
-    /// `content_hash` — the pressing they picked, or the decision to read the
-    /// folder's own tags. An upsert that leaves the row's other halves alone:
-    /// a choice can precede identification (a manual pick on a folder nothing
-    /// matched) and must not erase a verdict or a file decision.
-    ///
-    /// It is recorded as the person's, which is what keeps a later run's
-    /// verdict from revising it.
-    pub async fn save_candidate_metadata_seed(
+    /// Replace the candidate's editable metadata and its provenance as one
+    /// transaction. File decisions and physical track mappings live in other
+    /// tables and are deliberately untouched.
+    pub async fn replace_candidate_metadata(
         &self,
         content_hash: &str,
         folder_path: &str,
-        pick: &crate::import::MetadataSeed,
-    ) -> Result<(), DbError> {
+        draft: &crate::import::RawReleaseEdit,
+        provenance: Option<&crate::import::MetadataProvenance>,
+    ) -> Result<u64, DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
-        let pick = pick.clone();
+        let draft = draft.clone();
+        let provenance = provenance.cloned();
         self.call(move |sql| {
-            let columns = seed_columns(&pick);
-            // An edit to release A's year is not an edit to release B's, and
-            // the table's row identities mean different tracks under a
-            // different release. Re-picking the same release keeps them.
-            let replaced = stored_pick(sql, &content_hash)?
-                .is_some_and(|stored| stored.identity != pick_identity(Some(&pick)));
-            let changed = sql.execute(
-                "INSERT INTO import_candidate_state \
-                     (content_hash, folder_path, seed_kind, seed_source, seed_release_id, \
-                      metadata_seed_author) \
-                 VALUES (?, ?, ?, ?, ?, ?) \
-                 ON CONFLICT (content_hash) DO UPDATE SET \
-                     folder_path = excluded.folder_path, \
-                     seed_kind = excluded.seed_kind, \
-                     seed_source = excluded.seed_source, \
-                     seed_release_id = excluded.seed_release_id, \
-                     metadata_seed_author = excluded.metadata_seed_author",
-                params![
-                    content_hash,
-                    folder_path,
-                    columns.kind,
-                    columns.source,
-                    columns.release_id,
-                    MetadataSeedAuthor::User.as_str()
-                ],
-            )?;
-            if changed != 1 {
+            let columns = provenance.as_ref().map(seed_columns);
+            let revision = sql
+                .query_row(
+                    "UPDATE import_candidate_state SET folder_path = ?, \
+                     provenance_kind = ?, provenance_source = ?, provenance_release_id = ?, \
+                     provenance_author = ?, metadata_revision = metadata_revision + 1 \
+                 WHERE content_hash = ? RETURNING metadata_revision",
+                    params![
+                        folder_path,
+                        columns.as_ref().map(|columns| columns.kind),
+                        columns.as_ref().and_then(|columns| columns.source),
+                        columns.as_ref().and_then(|columns| columns.release_id),
+                        provenance
+                            .as_ref()
+                            .map(|_| MetadataProvenanceAuthor::User.as_str()),
+                        content_hash,
+                    ],
+                    |row| row.get::<_, i64>(0),
+                )
+                .optional()?
+                .ok_or_else(|| {
+                    DbError::Message("metadata replacement has no candidate state row".to_string())
+                })?;
+            pane_rows::replace_draft(sql, &content_hash, &draft)?;
+            pane_rows::delete_cover(sql, &content_hash)?;
+            u64::try_from(revision).map_err(|_| {
+                DbError::Message("candidate metadata revision is negative".to_string())
+            })
+        })
+        .await
+    }
+
+    /// Store the exact File Tags reading and replace the candidate metadata it
+    /// projects in one transaction. The scan stamp is checked inside that
+    /// transaction, so no draft can be committed from facts about an older
+    /// candidate shape.
+    pub(crate) async fn replace_candidate_file_tags_metadata(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
+        draft: &crate::import::RawReleaseEdit,
+    ) -> Result<u64, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let candidate_path = candidate_path.to_string();
+        let content_hash = content_hash.to_string();
+        let snapshot = snapshot.clone();
+        let draft = draft.clone();
+        self.call(move |sql| {
+            let current: Option<(String, i64, i64)> = sql
+                .query_row(
+                    "SELECT content_hash, generation, file_edit_revision \
+                     FROM scan_candidate WHERE watched_folder_path = ? AND path = ? \
+                       AND kind = 'valid'",
+                    params![watched_folder_path, candidate_path],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .optional()?;
+            let expected_generation = i64::try_from(snapshot.scan_generation)
+                .map_err(|_| DbError::Message("file-tag generation exceeds SQLite range".into()))?;
+            let expected_revision = i64::try_from(snapshot.file_edit_revision).map_err(|_| {
+                DbError::Message("file-tag edit revision exceeds SQLite range".into())
+            })?;
+            if current != Some((content_hash.clone(), expected_generation, expected_revision)) {
                 return Err(DbError::Message(format!(
-                    "metadata seed write changed {changed} rows; expected exactly one"
+                    "candidate {candidate_path} changed while its file tags were being read"
                 )));
             }
-            if replaced {
-                clear_pick_dependent_rows(sql, &content_hash)?;
-            }
-            Ok(())
+            super::folder_scans::write::replace_candidate_file_tag_snapshot(
+                sql,
+                &watched_folder_path,
+                &candidate_path,
+                &snapshot,
+            )?;
+            let revision = sql.query_row(
+                "UPDATE import_candidate_state SET folder_path = ?, \
+                     provenance_kind = 'file_tags', provenance_source = NULL, \
+                     provenance_release_id = NULL, provenance_author = 'user', \
+                     metadata_revision = metadata_revision + 1 \
+                 WHERE content_hash = ? RETURNING metadata_revision",
+                params![candidate_path, content_hash],
+                |row| row.get::<_, i64>(0),
+            )?;
+            pane_rows::replace_draft(sql, &content_hash, &draft)?;
+            pane_rows::delete_cover(sql, &content_hash)?;
+            u64::try_from(revision)
+                .map_err(|_| DbError::Message("candidate metadata revision is negative".into()))
         })
         .await
     }
@@ -787,8 +818,7 @@ impl Database {
     pub async fn load_import_candidate_states(
         &self,
     ) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-        self.read(move |sql| load_import_candidate_states_on(&sql))
-            .await
+        self.read(move |sql| load_states_on(&sql, None)).await
     }
 
     pub async fn load_import_candidate_state(
@@ -808,11 +838,11 @@ type PickIdentity = (String, Option<String>, Option<String>);
 
 /// The pick a candidate row holds, with who made it.
 struct StoredPick {
-    author: MetadataSeedAuthor,
+    author: MetadataProvenanceAuthor,
     identity: Option<PickIdentity>,
 }
 
-fn pick_identity(pick: Option<&crate::import::MetadataSeed>) -> Option<PickIdentity> {
+fn pick_identity(pick: Option<&crate::import::MetadataProvenance>) -> Option<PickIdentity> {
     pick.map(|pick| {
         let columns = seed_columns(pick);
         (
@@ -835,7 +865,7 @@ fn stored_pick(
     }
     let row = sql
         .query_row(
-            "SELECT seed_kind, seed_source, seed_release_id, metadata_seed_author \
+            "SELECT provenance_kind, provenance_source, provenance_release_id, provenance_author \
              FROM import_candidate_state WHERE content_hash = ?",
             [content_hash],
             |row| {
@@ -858,11 +888,11 @@ fn stored_pick(
         return Ok(None);
     };
     let author = match author.as_str() {
-        "user" => MetadataSeedAuthor::User,
-        "identification" => MetadataSeedAuthor::Identification,
+        "user" => MetadataProvenanceAuthor::User,
+        "identification" => MetadataProvenanceAuthor::Identification,
         other => {
             return Err(DbError::Message(format!(
-                "import candidate column metadata_seed_author holds {other:?}"
+                "import candidate column provenance_author holds {other:?}"
             )))
         }
     };
@@ -872,13 +902,11 @@ fn stored_pick(
     }))
 }
 
-/// What belongs to a pick and not to the folder: the metadata typed over the
-/// picked release, the row edits addressed by its track identities, and remote
-/// art offered by that release. A local cover remains valid across seeds.
+/// A selected cover belongs to the metadata draft it accompanied. Metadata
+/// replacement clears that selection while leaving candidate image files and
+/// every physical mapping untouched.
 fn clear_pick_dependent_rows(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
-    pane_rows::delete_edit(sql, content_hash)?;
-    pane_rows::delete_track_edits(sql, content_hash)?;
-    pane_rows::delete_remote_cover(sql, content_hash)?;
+    pane_rows::delete_cover(sql, content_hash)?;
     Ok(())
 }
 
@@ -956,10 +984,4 @@ fn settle_scanned_candidates(
         )));
     }
     Ok(updated_candidates)
-}
-
-pub(super) fn load_import_candidate_states_on(
-    sql: &SqlReadContext<'_>,
-) -> Result<HashMap<String, DbImportCandidateState>, DbError> {
-    load_states_on(sql, None)
 }

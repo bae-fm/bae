@@ -87,10 +87,10 @@ async fn build_remote_multi_window_template(
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await

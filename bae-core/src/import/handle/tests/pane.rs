@@ -88,15 +88,7 @@ async fn picked_candidate(
 /// edit form and the mapping table.
 async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
     let (manager, tmp) = setup_test_manager().await;
-    let (candidate, key, hash) = picked_candidate(&manager, &tmp).await;
-    manager
-        .save_candidate_metadata_seed(
-            &hash,
-            &candidate.path.to_string_lossy(),
-            &crate::import::MetadataSeed::FileTags,
-        )
-        .await
-        .unwrap();
+    let (_candidate, key, hash) = picked_candidate(&manager, &tmp).await;
     let handle = manager
         .start_import_service(tokio::runtime::Handle::current())
         .await
@@ -105,6 +97,15 @@ async fn pane_fixture() -> (ImportServiceHandle, TempDir, String, String) {
         .preview_file_tags_for_folder(key.clone())
         .await
         .unwrap();
+    let revision = handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileTags,
+        )
+        .await
+        .unwrap();
+    assert_eq!(revision, 1);
+    assert_eq!(pane(&handle, &key).await.metadata_revision, revision);
     (handle, tmp, key, hash)
 }
 
@@ -577,8 +578,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
     let seeded = pane(&handle, &key).await;
     let seeded_artists = seeded
-        .edit
-        .expect("a pick draws the form")
+        .metadata_draft
         .album_artist_assignments;
 
     handle
@@ -590,7 +590,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .await
         .unwrap();
 
-    let edited = pane(&handle, &key).await.edit.unwrap();
+    let edited = pane(&handle, &key).await.metadata_draft;
     assert_eq!(edited.album_title, "Typed Title");
     assert_eq!(
         edited.album_artist_assignments, seeded_artists,
@@ -606,26 +606,25 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .await
         .unwrap();
 
-    assert_eq!(pane(&handle, &key).await.edit.unwrap().album_title, "");
+    assert_eq!(pane(&handle, &key).await.metadata_draft.album_title, "");
     let stored = handle
         .library_manager
         .load_import_candidate_pane_rows(&hash)
         .await
         .unwrap();
     assert_eq!(
-        stored.edit.album_title,
-        Some(String::new()),
+        stored.metadata_draft.album_title,
+        String::new(),
         "a cleared field is a value the person set, not an absent edit"
     );
 
     shut_down(handle).await;
 }
 
-/// The tables the pane writes hang off the candidate's state row, and a pick
-/// is what writes that row. An edit typed before anything is picked is refused
-/// rather than stored where nothing would read it.
+/// A source-less candidate owns a draft immediately, so direct entry needs no
+/// source selection before it can persist edits.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_edit_with_nothing_picked_is_refused() {
+async fn an_edit_with_no_metadata_source_updates_the_draft() {
     let (manager, tmp) = setup_test_manager().await;
     let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
     let handle = manager
@@ -633,14 +632,11 @@ async fn an_edit_with_nothing_picked_is_refused() {
         .await
         .unwrap();
 
-    let error = handle
+    handle
         .set_candidate_edit_field(&key, crate::import::CandidateEditField::Year, "1991".into())
         .await
-        .expect_err("no pick, no row to hang the edit off");
-    assert!(
-        error.to_string().contains("no candidate state row"),
-        "the refusal names what is missing: {error}"
-    );
+        .unwrap();
+    assert_eq!(pane(&handle, &key).await.metadata_draft.pressing.year, "1991");
 
     shut_down(handle).await;
 }
@@ -667,8 +663,7 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     assert_eq!(
         pane(&handle, &key)
             .await
-            .edit
-            .expect("a metadata seed draws the form")
+            .metadata_draft
             .album_artist_assignments,
         assignments
     );

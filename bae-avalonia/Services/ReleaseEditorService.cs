@@ -30,7 +30,7 @@ internal sealed class ReleaseEditorService
     public Func<string, BridgeCoverSelection, Task<(bool Current, string? Error)>> ChangeCover { get; init; }
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: ChangeCover not wired");
 
-    /// <summary>The editable metadata seed for a release — album/pressing fields and
+    /// <summary>The editable metadata for a release — album/pressing fields and
     /// the per-track table — the edit form populates from.</summary>
     public Func<string, Task<(bool Current, (BridgeReleaseEditSeed? Seed, string? Error) Result)>> ReleaseEditSeed { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: ReleaseEditSeed not wired");

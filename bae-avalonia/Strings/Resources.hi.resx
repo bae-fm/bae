@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>संख्या या अवधि मेल नहीं खाती</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>पहले से लाइब्रेरी में</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>कोई मिलान नहीं मिला</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>मेटाडेटा चाहिए</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>अब भी पहचान हो रही है</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>पहचान हो रही है</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>अभी पहचाने जा रहे उम्मीदवार पर जाएँ</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>नया</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>जोड़ें</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>हटाएं</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>बिना चुने स्रोत वाले उम्मीदवारों को इसमें खोलें</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>पिछली बार इस्तेमाल किया गया</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>लुकअप उम्मीदवारों की अपने आप पहचान करें</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>अपने आप पहचान कवर का टेक्स्ट, बारकोड और डिस्क आईडी केवल तब पढ़ती है जब कोई उम्मीदवार लुकअप इस्तेमाल करता है। फ़ाइल टैग और मैन्युअल इसे कभी नहीं चलाते।</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>एल्बम शीर्षक</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>लागू करें</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>मेटाडेटा साफ़ करें</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>उम्मीदवार की फ़ाइलें और मैपिंग विकल्प अपरिवर्तित रहेंगे।</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>मेटाडेटा साफ़ करें?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>कोई दूसरी रिलीज़ खोजें…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ऑनलाइन खोजें…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>उम्मीदवार को फिर से पढ़ने की कोशिश करें।</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>अपने आप पहचानें</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>अपने आप पहचानें</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ऑनलाइन खोज खुलने पर कवर का टेक्स्ट, बारकोड और डिस्क आईडी अपने आप पढ़ता है और मिलान खोजता है।</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>डिफ़ॉल्ट मेटाडेटा स्रोत</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>कोई नहीं</value></data>
 </root>

@@ -11,7 +11,7 @@ pub enum AutomationTool {
     ImportCandidateGet,
     ImportCandidateSkipSet,
     ImportSearch,
-    ImportCandidateMetadataSeedSelect,
+    ImportCandidateMetadataProvenanceSelect,
     ImportCandidateEditFieldSet,
     ImportCandidateCoverSet,
     ImportFileTagsPreview,
@@ -83,10 +83,10 @@ impl AutomationTool {
             input: AutomationToolInput::SearchQuery,
         },
         AutomationToolDescriptor {
-            tool: AutomationTool::ImportCandidateMetadataSeedSelect,
-            name: "import_candidate_metadata_seed_select",
+            tool: AutomationTool::ImportCandidateMetadataProvenanceSelect,
+            name: "import_candidate_metadata_provenance_select",
             description: "Select external release, file tags, or manual entry as a candidate's metadata source",
-            input: AutomationToolInput::CandidateMetadataSeed,
+            input: AutomationToolInput::CandidateMetadataProvenance,
         },
         AutomationToolDescriptor {
             tool: AutomationTool::ImportCandidateEditFieldSet,
@@ -213,7 +213,7 @@ enum AutomationToolInput {
     CandidateKey,
     CandidateSkipSet,
     SearchQuery,
-    CandidateMetadataSeed,
+    CandidateMetadataProvenance,
     CandidateEditField,
     CandidateCover,
     Folder,
@@ -235,7 +235,9 @@ impl AutomationToolInput {
             Self::CandidateKey => schema_object::<CandidateKeyInput>(),
             Self::CandidateSkipSet => schema_object::<CandidateSkipSetInput>(),
             Self::SearchQuery => schema_object::<AutomationSearchQuery>(),
-            Self::CandidateMetadataSeed => schema_object::<CandidateMetadataSeedInput>(),
+            Self::CandidateMetadataProvenance => {
+                schema_object::<CandidateMetadataProvenanceInput>()
+            }
             Self::CandidateEditField => schema_object::<CandidateEditFieldInput>(),
             Self::CandidateCover => schema_object::<CandidateCoverInput>(),
             Self::Folder => schema_object::<FolderInput>(),

@@ -47,7 +47,7 @@ mod loudness;
 // Projects the folder's audio units against a picked tracklist — the desktop
 // import pane's one structure, and desktop-only like the slots it reads.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) mod manual_mapper;
+pub(crate) mod direct_entry_mapper;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod mapping;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -112,7 +112,7 @@ pub struct ParsedAlbum {
     pub release_artist_roles: Vec<DbReleaseArtistRole>,
     pub track_artist_roles: Vec<DbTrackArtistRole>,
     /// One element per source the parser resolved for this release.
-    /// Empty for File Tags and Manual imports, which claim no external identity.
+    /// Empty for File Tags and direct-entry imports, which claim no external identity.
     pub identities: Vec<crate::import::types::ReleaseIdentity>,
 }
 
@@ -125,6 +125,8 @@ pub use candidates::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use edits::CandidateTrackMappingEdit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use edits::{
     apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
@@ -176,12 +178,12 @@ pub use triage::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::ImportCommand;
 pub use types::{
-    ArtistAssignment, AudioFile, EditValidationError, ExistingArtist, MetadataSource,
-    NewArtistSeed, PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit, ReleaseEditSeed,
-    ReleaseIdentity, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
+    ArtistAssignment, AudioFile, EditValidationError, ExistingArtist, MetadataProvenance,
+    MetadataSource, NewArtistSeed, PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    ReleaseEditSeed, ReleaseIdentity, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::{
-    CoverSelection, ImportPhase, ImportProgress, ImportStep, MetadataRef, MetadataSeed,
+    CandidateMetadataDraft, CoverSelection, ImportPhase, ImportProgress, ImportStep, MetadataRef,
     PayloadSource, PrepareStep, ReleaseReseed, SourcePayload, StorageMode, TrackFile,
 };

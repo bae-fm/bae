@@ -125,7 +125,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             matched: nil,
             selectable: false,
             importStatus: nil,
-            metadataSeed: nil
+            metadataProvenance: nil
         ),
         isGroupMember: false
     )

@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>تعداد یا دورانیہ مطابقت نہیں رکھتے</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>پہلے ہی لائبریری میں</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>کوئی میل نہیں ملا</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>میٹا ڈیٹا درکار ہے</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ابھی بھی شناخت ہو رہی ہے</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>شناخت ہو رہی ہے</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ابھی شناخت ہونے والے امیدوار پر جائیں</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>نیا</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>شامل کریں</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>ہٹائیں</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>بغیر منتخب ماخذ والے امیدواروں کو اس میں کھولیں</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>آخری بار استعمال شدہ</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>تلاش کے امیدواروں کی خودکار شناخت کریں</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>خودکار شناخت سرورق کا متن، بارکوڈز اور ڈسک آئی ڈیز صرف اس وقت پڑھتی ہے جب کوئی امیدوار تلاش استعمال کرے۔ فائل ٹیگز اور دستی اسے کبھی نہیں چلاتے۔</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>البم کا عنوان</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>لاگو کریں</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>میٹا ڈیٹا صاف کریں</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>امیدوار کی فائلیں اور میپنگ کے انتخاب تبدیل نہیں ہوں گے۔</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>میٹا ڈیٹا صاف کریں؟</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>کوئی دوسری ریلیز تلاش کریں…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>آن لائن تلاش کریں</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>آن لائن تلاش کریں…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>امیدوار کو دوبارہ پڑھنے کی کوشش کریں۔</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>خودکار طور پر شناخت کریں</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>خودکار طور پر شناخت کریں</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>آن لائن تلاش کھلنے پر سرورق کا متن، بارکوڈز اور ڈسک آئی ڈیز خودکار طور پر پڑھتا اور مماثلت تلاش کرتا ہے۔</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>ڈیفالٹ میٹا ڈیٹا ماخذ</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>آن لائن تلاش کریں</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>کوئی نہیں</value></data>
 </root>

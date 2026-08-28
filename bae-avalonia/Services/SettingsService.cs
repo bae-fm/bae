@@ -25,31 +25,24 @@ internal sealed class SettingsService
     public Func<(bool Current, BridgeConfig Config)> GetConfig { get; init; }
         = () => throw new InvalidOperationException("SettingsService stub: GetConfig not wired");
 
-    public Func<bool, (bool Current, string? Error)> SetAutomaticImportMetadataLookup { get; init; }
+    public Func<bool, (bool Current, string? Error)> SetAutomaticImportIdentification { get; init; }
         = _ => throw new InvalidOperationException(
-            "SettingsService stub: SetAutomaticImportMetadataLookup not wired");
+            "SettingsService stub: SetAutomaticImportIdentification not wired");
 
-    public Func<BridgeDefaultImportMetadataMode, (bool Current, string? Error)> SetDefaultImportMetadataMode { get; init; }
+    public Func<BridgeDefaultImportMetadataSource, (bool Current, string? Error)> SetDefaultImportMetadataSource { get; init; }
         = _ => throw new InvalidOperationException(
-            "SettingsService stub: SetDefaultImportMetadataMode not wired");
-
-    public Func<BridgeImportMetadataMode, (bool Current, string? Error)> SetLastImportMetadataMode { get; init; }
-        = _ => throw new InvalidOperationException(
-            "SettingsService stub: SetLastImportMetadataMode not wired");
+            "SettingsService stub: SetDefaultImportMetadataSource not wired");
 
     /// <summary>Wire the read through the open session's current handle.</summary>
     public static SettingsService FromSession(SessionStore session) => new()
     {
         GetSettings = () => session.WithCurrentHandle(NativeBae.GetSettings),
         GetConfig = () => session.WithCurrentHandle(NativeBae.GetConfig),
-        SetAutomaticImportMetadataLookup = enabled =>
+        SetAutomaticImportIdentification = enabled =>
             session.WithCurrentHandle(handle =>
-                NativeBae.SetAutomaticImportMetadataLookup(handle, enabled)),
-        SetDefaultImportMetadataMode = mode =>
+                NativeBae.SetAutomaticImportIdentification(handle, enabled)),
+        SetDefaultImportMetadataSource = source =>
             session.WithCurrentHandle(handle =>
-                NativeBae.SetDefaultImportMetadataMode(handle, mode)),
-        SetLastImportMetadataMode = mode =>
-            session.WithCurrentHandle(handle =>
-                NativeBae.SetLastImportMetadataMode(handle, mode)),
+                NativeBae.SetDefaultImportMetadataSource(handle, source)),
     };
 }

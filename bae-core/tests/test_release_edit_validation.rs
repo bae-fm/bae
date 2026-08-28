@@ -8,9 +8,7 @@
 //! `LibraryManager::apply_release_metadata_user_edit`. These tests drive that
 //! write path the way those surfaces do, with no editor in front of it.
 
-use bae_core::db::{
-    Database, DbAlbum, DbArtist, DbRelease, DbTrack, Pressing, ReleaseMetadataSource,
-};
+use bae_core::db::{Database, DbAlbum, DbArtist, DbRelease, DbTrack, Pressing};
 use bae_core::import::{
     ArtistAssignment, PressingEdit, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
 };
@@ -71,8 +69,7 @@ async fn seed(db: &Database) -> (String, String) {
         release_name: None,
         pressing: Pressing::blank(),
         disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
         remote: true,
         source_folder_name: None,
         content_hash: None,

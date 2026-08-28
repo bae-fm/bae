@@ -48,23 +48,30 @@ final class ReleaseLibraryStatusObservation: Equatable, @unchecked Sendable {
     }
 }
 
-/// One candidate metadata-source choice from its click until both the bridge
-/// command and authoritative candidate-detail delivery have confirmed it.
-final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
-    let seed: BridgeMetadataSeed
+enum CandidateMetadataPresentation: Equatable {
+    case draft
+    case findOnline
+    case fileTags
+}
 
-    private(set) var commandSucceeded = false
-    private(set) var detailDelivered: Bool
+/// One metadata application from its click until both the bridge command and
+/// authoritative candidate-detail delivery have confirmed it.
+final class CandidateMetadataApplicationSession: Equatable,
+    @unchecked Sendable
+{
+    let provenance: BridgeMetadataProvenance
+
+    private(set) var commandRevision: UInt64?
+    private(set) var deliveredRevision: UInt64?
     private var task: Task<Void, Never>?
-    private var onConfirmed: (@Sendable () -> Void)?
+    private var onConfirmed: (() -> Void)?
 
     init(
-        seed: BridgeMetadataSeed,
-        onConfirmed: (@Sendable () -> Void)? = nil
+        provenance: BridgeMetadataProvenance,
+        onConfirmed: (() -> Void)? = nil
     ) {
-        self.seed = seed
+        self.provenance = provenance
         self.onConfirmed = onConfirmed
-        detailDelivered = false
     }
 
     func install(_ task: Task<Void, Never>) {
@@ -72,19 +79,19 @@ final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
         self.task = task
     }
 
-    func recordCommandSuccess() {
-        commandSucceeded = true
+    func recordCommandSuccess(revision: UInt64) {
+        commandRevision = revision
     }
 
-    func recordDetailDelivery() {
-        detailDelivered = true
+    func recordDetailDelivery(revision: UInt64) {
+        deliveredRevision = revision
     }
 
     var isConfirmed: Bool {
-        commandSucceeded && detailDelivered
+        commandRevision != nil && commandRevision == deliveredRevision
     }
 
-    func takeConfirmation() -> (@Sendable () -> Void)? {
+    func takeConfirmation() -> (() -> Void)? {
         precondition(isConfirmed)
         defer { onConfirmed = nil }
         return onConfirmed
@@ -95,8 +102,8 @@ final class CandidateMetadataSeedSession: Equatable, @unchecked Sendable {
     }
 
     static func == (
-        lhs: CandidateMetadataSeedSession,
-        rhs: CandidateMetadataSeedSession
+        lhs: CandidateMetadataApplicationSession,
+        rhs: CandidateMetadataApplicationSession
     ) -> Bool {
         lhs === rhs
     }
@@ -213,7 +220,7 @@ struct Candidate: Equatable, Identifiable {
     /// candidate-runtime signal rather than from here.
     var resumedIdentifyState: IdentifyState = .idle
     /// Everything the pane draws, as core reads it back for this key: the
-    /// selected metadata seed, its form, the mapping table, the cover, the
+    /// metadata draft and provenance, mapping table, cover, and the
     /// last failed import. `nil` until the per-candidate
     /// read has answered, and for a re-identify session, which has no folder.
     ///
@@ -235,21 +242,22 @@ struct Candidate: Equatable, Identifiable {
     /// The metadata source currently being selected. A release row uses its
     /// release ID for selection feedback while the pane keeps showing stored
     /// data.
-    var metadataSeedSession: CandidateMetadataSeedSession?
-    /// Which metadata source the mapping pane is showing. This is session
-    /// navigation, separate from the stored seed: Lookup can be open while
-    /// the stored verdict still says to use the folder's file tags.
-    var presentedMetadataMode: BridgeImportMetadataMode = .lookup
+    var metadataApplicationSession: CandidateMetadataApplicationSession?
+    /// The draft or temporary source browser occupying the metadata slot.
+    /// Browsing never replaces the stored draft; applying a result does.
+    var metadataPresentation: CandidateMetadataPresentation = .draft
     /// The lazy File Tags read for this candidate. It is session state rather
     /// than candidate detail: reading tags does not choose that seed.
     var fileTagsPreview: CandidateFileTagsPreviewState = .unloaded
 
-    var seedInFlight: BridgeMetadataSeed? {
-        metadataSeedSession?.seed
+    var provenanceInFlight: BridgeMetadataProvenance? {
+        metadataApplicationSession?.provenance
     }
 
     var loadingReleaseId: String? {
-        guard case .externalRelease(_, let releaseId) = seedInFlight else {
+        guard
+            case .externalRelease(_, let releaseId) = provenanceInFlight
+        else {
             return nil
         }
         return releaseId
@@ -278,8 +286,7 @@ struct Candidate: Equatable, Identifiable {
     /// One read of a selected candidate: the folder, its resumed identify
     /// state, and the row the sidebar places it as.
     init(
-        detail: BridgeImportCandidateDetail,
-        unseededMetadataMode: BridgeImportMetadataMode
+        detail: BridgeImportCandidateDetail
     ) {
         self.init(bridge: detail.candidate)
         resumedIdentifyState = IdentifyState(
@@ -287,7 +294,7 @@ struct Candidate: Equatable, Identifiable {
         )
         row = detail.row
         self.detail = detail
-        presentedMetadataMode = selectedMetadataMode ?? unseededMetadataMode
+        metadataPresentation = Self.initialPresentation(for: detail)
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,
@@ -297,8 +304,8 @@ struct Candidate: Equatable, Identifiable {
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
         copy.error = existing.error
-        copy.metadataSeedSession = existing.metadataSeedSession
-        copy.presentedMetadataMode = existing.presentedMetadataMode
+        copy.metadataApplicationSession = existing.metadataApplicationSession
+        copy.metadataPresentation = existing.metadataPresentation
         copy.fileTagsPreview =
             files == existing.files ? existing.fileTagsPreview : .unloaded
         copy.search = existing.search
@@ -307,7 +314,7 @@ struct Candidate: Equatable, Identifiable {
     }
 
     /// Construct a re-identify candidate. The release already lives in the
-    /// library, so this carries only the session's own work — the pick, the
+    /// library, so this carries only the session's own work — the result, the
     /// search state. Its run's identify state comes from the candidate-runtime
     /// signal under the same key, which is how the existing `ImportSearchPane`
     /// UI renders unchanged.
@@ -339,9 +346,9 @@ struct Candidate: Equatable, Identifiable {
         detail?.fileEvidence ?? []
     }
 
-    /// The selected metadata source's values with stored edits applied.
+    /// The candidate's editable metadata draft.
     var edit: BridgeRawReleaseEdit? {
-        detail?.edit
+        detail?.metadataDraft
     }
 
     /// Every source unit the folder offers with the track committing makes of
@@ -363,38 +370,47 @@ struct Candidate: Equatable, Identifiable {
         detail?.failure
     }
 
-    /// Whether the picked release is already in the library.
+    /// Whether the applied external release is already in the library.
     var pickedLibraryStatus: BridgeLibraryStatus? {
         detail?.pickedLibraryStatus
     }
 
-    /// The seed this candidate will commit, where one has been chosen.
-    var metadataSeed: BridgeMetadataSeed? {
-        detail?.row.metadataSeed
+    /// Where the current draft was populated from. Directly entered and
+    /// cleared drafts have no provenance.
+    var metadataProvenance: BridgeMetadataProvenance? {
+        detail?.metadataProvenance
     }
 
-    /// The presentation mode corresponding to the chosen seed.
-    var selectedMetadataMode: BridgeImportMetadataMode? {
-        switch metadataSeed {
-        case .externalRelease: .lookup
-        case .fileTags: .fileTags
-        case .manual: .manual
-        case nil: nil
+    var metadataDraftIsBlank: Bool {
+        detail?.metadataDraftIsBlank ?? true
+    }
+
+    var localCoverSelections: [String: BridgeCoverSelection] {
+        files.images.reduce(into: [:]) { selections, image in
+            if let choice = image.coverChoice {
+                selections[image.file.name] = choice.selection
+            }
         }
     }
 
-    /// The release this candidate is picked as, where it names one.
+    /// The external release the draft came from, where it names one.
     var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
         guard
-            case .externalRelease(let source, let releaseId) = metadataSeed
+            case .externalRelease(let source, let releaseId) =
+                metadataProvenance
         else { return nil }
         return (source: source, releaseId: releaseId)
     }
 
-    /// Whether the metadata surface being shown is the stored verdict. Opening
-    /// the other side is navigation, so it does not make that side settled.
-    var presentedMetadataModeHasSelectedSeed: Bool {
-        selectedMetadataMode == presentedMetadataMode
+    private static func initialPresentation(
+        for detail: BridgeImportCandidateDetail
+    ) -> CandidateMetadataPresentation {
+        guard detail.metadataProvenance == nil else { return .draft }
+        return switch detail.initialMetadataSource {
+        case .findOnline: .findOnline
+        case .fileTags: .fileTags
+        case .none: .draft
+        }
     }
 
     /// The signals identification settled on for this candidate's files, as

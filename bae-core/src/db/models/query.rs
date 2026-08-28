@@ -230,7 +230,7 @@ pub struct DbReleaseDetail {
     /// depth, channels. The file-backed windows live in `audio_segments`.
     pub audio_formats: Vec<DbAudioFormat>,
     pub audio_segments: Vec<DbAudioSegment>,
-    /// All external identity rows for this release. Empty for File Tags and Manual.
+    /// All external identity rows for this release. Empty for File Tags and direct entry.
     pub identities: Vec<crate::import::ReleaseIdentity>,
 }
 

@@ -7,14 +7,13 @@ import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeDefaultImportMetadataMode
+import uniffi.bae_bridge.BridgeDefaultImportMetadataSource
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeGalleryItem
-import uniffi.bae_bridge.BridgeImportMetadataMode
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxPauseState
@@ -263,10 +262,8 @@ object BridgeFixtures {
             pauseBetweenSides = false,
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
-            automaticImportMetadataLookup = true,
-            defaultImportMetadataMode = BridgeDefaultImportMetadataMode.LOOKUP,
-            lastImportMetadataMode = BridgeImportMetadataMode.LOOKUP,
-            resolvedImportMetadataMode = BridgeImportMetadataMode.LOOKUP,
+            automaticImportIdentification = true,
+            defaultImportMetadataSource = BridgeDefaultImportMetadataSource.FIND_ONLINE,
             showRemainingTime = false,
             libraryFullWidth = false,
             savePresets =

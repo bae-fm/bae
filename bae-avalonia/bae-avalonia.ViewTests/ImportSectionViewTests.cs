@@ -68,24 +68,19 @@ public sealed class ImportSectionViewTests
         Assert.Null(SelectedKey(view));
     }
 
-    // Activating a Ready row opens the pane on the release the row settled on,
-    // with no trip through the search editor and nothing asked of core: the
-    // pick and everything it produced are already stored.
+    // Activating a Ready row opens the pane on the release the row settled on.
     [AvaloniaFact]
     public void ActivatingAReadyRowOpensOnItsSettledMatch()
     {
-        var asked = new List<string>();
         var placement = new BridgeTriagePlacement.Ready();
         var view = BuildView(
             MatchedItems(placement, BridgeTriageSkipAction.Skip),
             MatchedSummary(placement, BridgeTriageTab.Pending),
-            BridgeTriageTab.Pending,
-            asked);
+            BridgeTriageTab.Pending);
 
         RaiseTap(CandidateRow(view));
 
         Assert.Equal(CandidateKey, SelectedKey(view));
-        Assert.Empty(asked);
     }
 
     // A failed attempt is Pending work, and the row says what went wrong. It
@@ -113,39 +108,33 @@ public sealed class ImportSectionViewTests
         Assert.Empty(row.GetLogicalDescendants().OfType<Button>());
     }
 
-    // A Done row holds a match as well, and re-showing an imported folder must
-    // not decide anything about it again.
+    // A Done row remains available to inspect after its import completes.
     [AvaloniaFact]
-    public void ActivatingADoneRowDecidesNothing()
+    public void ActivatingADoneRowOpensItsCandidate()
     {
-        var asked = new List<string>();
         var placement = new BridgeTriagePlacement.Done();
         var view = BuildView(
             MatchedItems(placement, null),
             MatchedSummary(placement, BridgeTriageTab.Done),
-            BridgeTriageTab.Done,
-            asked);
+            BridgeTriageTab.Done);
 
         RaiseTap(CandidateRow(view));
 
-        Assert.Empty(asked);
+        Assert.Equal(CandidateKey, SelectedKey(view));
     }
 
-    // Identify can settle while the folder is already under the pane. The row
-    // arrives as a queue read, not as a click, and the pane redraws from it
-    // without deciding anything on the user's behalf.
+    // Identify can settle while the folder is already under the pane. The pane
+    // keeps the same candidate selected as the row redraws.
     [AvaloniaFact]
-    public void AVerdictSettlingUnderTheOpenPaneDecidesNothing()
+    public void AVerdictSettlingUnderTheOpenPaneKeepsItsSelection()
     {
-        var asked = new List<string>();
         var identifying = new BridgeTriagePlacement.NeedsYou(
             BridgeNeedsYouGroup.StillIdentifying,
             new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running));
         var (view, app) = BuildSection(
             MatchedItems(identifying, BridgeTriageSkipAction.Skip),
             MatchedSummary(identifying, BridgeTriageTab.Pending),
-            BridgeTriageTab.Pending,
-            asked);
+            BridgeTriageTab.Pending);
         RaiseTap(CandidateRow(view));
 
         var ready = new BridgeTriagePlacement.Ready();
@@ -155,7 +144,6 @@ public sealed class ImportSectionViewTests
             BridgeTriageTab.Pending);
 
         Assert.Equal(CandidateKey, SelectedKey(view));
-        Assert.Empty(asked);
     }
 
     // A folder group renders as a header row with its rows as siblings, so
@@ -295,15 +283,13 @@ public sealed class ImportSectionViewTests
     private static ImportSectionView BuildView(
         IReadOnlyList<BridgeImportListItem> items,
         BridgeImportQueueSummary summary,
-        BridgeTriageTab activeTab = BridgeTriageTab.Pending,
-        List<string>? resumed = null) =>
-        BuildSection(items, summary, activeTab, resumed).View;
+        BridgeTriageTab activeTab = BridgeTriageTab.Pending) =>
+        BuildSection(items, summary, activeTab).View;
 
     private static (ImportSectionView View, AppService App) BuildSection(
         IReadOnlyList<BridgeImportListItem> items,
         BridgeImportQueueSummary summary,
-        BridgeTriageTab activeTab = BridgeTriageTab.Pending,
-        List<string>? resumed = null)
+        BridgeTriageTab activeTab = BridgeTriageTab.Pending)
     {
         // Everything below constructs controls, which is only legal on the
         // headless session's dispatcher thread — [AvaloniaFact] is what puts a
@@ -319,14 +305,6 @@ public sealed class ImportSectionViewTests
             // The pane's candidate is seeded below; its own query stays open
             // and silent, so the seeded value is what the pane reads.
             SubscribeImportCandidate = (_, _, _) => new TestSubscription(),
-            // Nothing about selecting a row decides an identity: what a pick
-            // produced is already stored. A test that sees a call here has
-            // found the pane deciding on the user's behalf.
-            SelectCandidateMetadataSeed = (key, _) =>
-            {
-                resumed?.Add(key);
-                return Task.FromResult((true, (string?)null));
-            },
             IdentifyFolderForLookup = _ => Task.FromResult(true),
         };
         var playback = new PlaybackService
@@ -407,10 +385,10 @@ public sealed class ImportSectionViewTests
                         BridgeMatchedSignal.DiscId)),
                 Selectable: placement is BridgeTriagePlacement.Ready,
                 ImportStatus: importStatus,
-                MetadataSeed: placement
+                MetadataProvenance: placement
                     is BridgeTriagePlacement.Ready
                         or BridgeTriagePlacement.Done
-                    ? new BridgeMetadataSeed.ExternalRelease(
+                    ? new BridgeMetadataProvenance.ExternalRelease(
                         BridgeMetadataSource.MusicBrainz,
                         "rel-matched")
                     : null),
@@ -432,9 +410,6 @@ public sealed class ImportSectionViewTests
             {
                 new BridgeReadyRowRef(
                     CandidateKey,
-                    new BridgeMetadataSeed.ExternalRelease(
-                        BridgeMetadataSource.MusicBrainz,
-                        "rel-matched"),
                     null),
             }
             : Array.Empty<BridgeReadyRowRef>(),

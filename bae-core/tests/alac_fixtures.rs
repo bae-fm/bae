@@ -17,7 +17,7 @@ use bae_core::import::folder_scanner::{
     collect_release_candidate_files_with_scope, scan_for_candidates_with_callback, ScanItem,
     StoredCandidateEdits,
 };
-use bae_core::import::{ImportCommand, MetadataSeed, MetadataSource, StorageMode};
+use bae_core::import::{ImportCommand, MetadataProvenance, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
 use coven::StoreDir;
@@ -112,10 +112,10 @@ async fn import_single_m4a_fixture(
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -349,10 +349,10 @@ async fn import_cue_alac_pair() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await

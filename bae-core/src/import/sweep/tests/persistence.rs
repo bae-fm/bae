@@ -35,7 +35,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
             verdict: TerminalVerdict::NotFoundAnywhere,
             signals: settled_signals(Default::default()),
             expected_edit_revision: 0,
-            metadata_seed: None,
+            metadata_provenance: None,
         })
         .await
         .unwrap();
@@ -127,7 +127,7 @@ fn row_with_verdict(
         durations: Default::default(),
         signals: None,
         file_edits: Default::default(),
-        metadata_seed: None,
+        metadata_provenance: None,
     }
 }
 
@@ -185,7 +185,7 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
         expected_edit_revision: 0,
-        metadata_seed: None,
+        metadata_provenance: None,
     };
 
     assert!(
@@ -231,7 +231,7 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
                 expected_edit_revision: 0,
-                metadata_seed: None,
+                metadata_provenance: None,
             },
         )
         .await
@@ -543,11 +543,11 @@ async fn a_pick_reads_back_as_the_same_answer() {
     // The row carries the same decision for the sidebar's resume trigger.
     let picked = queue_row(&fixture, &key)
         .await
-        .metadata_seed
+        .metadata_provenance
         .expect("the row carries the decision");
     assert_eq!(
         picked,
-        crate::import::MetadataSeed::ExternalRelease {
+        crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-answer-1".to_string(),
         }
@@ -557,13 +557,13 @@ async fn a_pick_reads_back_as_the_same_answer() {
     // folder's own files instead of a release.
     fixture
         .import
-        .select_candidate_metadata_seed(key.clone(), crate::import::MetadataSeed::FileTags)
+        .select_candidate_metadata_provenance(key.clone(), crate::import::MetadataProvenance::FileTags)
         .await
         .expect("deciding File Tags succeeds");
     let resumed = fixture.pane(&dir).await.expect("the candidate reads back");
     assert!(resumed.release.is_none(), "File Tags names no external release");
     assert!(
-        resumed.edit.is_some(),
+        !resumed.metadata_draft.is_blank(),
         "and still draws a form, seeded from the folder's own tags"
     );
     assert_eq!(
@@ -625,9 +625,9 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         let key = key.clone();
         tokio::spawn(async move {
             import
-                .select_candidate_metadata_seed(
+                .select_candidate_metadata_provenance(
                     key,
-                    crate::import::MetadataSeed::ExternalRelease {
+                    crate::import::MetadataProvenance::ExternalRelease {
                         source: crate::import::MetadataSource::MusicBrainz,
                         release_id: "mb-picked-1".to_string(),
                     },
@@ -639,7 +639,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
         let event = events.recv().await.expect("the pick raises an event");
         if matches!(
             &event,
-            crate::import::ImportEvent::Scan(super::super::handle::ScanEvent::CandidateMetadataSeeded {
+            crate::import::ImportEvent::Scan(super::super::handle::ScanEvent::CandidateMetadataChanged {
                 candidate_key,
             }) if *candidate_key == key
         ) {
@@ -702,13 +702,13 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         .store_settled_verdict(&dir, "mb-answer-1", "rg-answer-1", probed)
         .await;
 
-    let pick = crate::import::MetadataSeed::ExternalRelease {
+    let pick = crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-answer-1".to_string(),
     };
     fixture
         .import
-        .select_candidate_metadata_seed(key.clone(), pick.clone())
+        .select_candidate_metadata_provenance(key.clone(), pick.clone())
         .await
         .expect("picking the release succeeds");
 
@@ -724,9 +724,9 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
         }]
     );
 
-    // The row carries the metadata seed the pane and bulk import both consume.
+    // The row carries the draft and provenance the pane and bulk import consume.
     let row = queue_row(&fixture, &key).await;
-    assert_eq!(row.metadata_seed, Some(pick));
+    assert_eq!(row.metadata_provenance, Some(pick));
 }
 
 /// Once a run's verdict lands in its row, the recorded runtime state clears:
@@ -754,7 +754,7 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
     fixture.sweep_once().await;
 
     assert!(
-        fixture.stored_for(&dir).await.is_some(),
+        fixture.identified_for(&dir).await.is_some(),
         "the candidate really was identified"
     );
     // The write's event reaches the recorder through the bus; poll for it.
@@ -885,5 +885,5 @@ async fn a_verdict_with_no_signals_writes_nothing() {
     .await;
 
     assert!(!wrote);
-    assert!(fixture.stored_for(&dir).await.is_none());
+    assert!(fixture.identified_for(&dir).await.is_none());
 }

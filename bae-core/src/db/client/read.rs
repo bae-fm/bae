@@ -322,9 +322,26 @@ pub(super) fn row_to_joined_track(row: &Row) -> coven::rusqlite::Result<DbTrack>
 
 pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
     let metadata_source: String = row.get("metadata_source")?;
-    let metadata_source = metadata_source
-        .parse::<ReleaseMetadataSource>()
-        .map_err(|e| column_conversion_error(row, "metadata_source", format!("releases.{e}")))?;
+    let metadata_source_release_id: Option<String> = row.get("metadata_source_release_id")?;
+    let metadata_provenance = match (metadata_source.as_str(), metadata_source_release_id) {
+        ("none", None) => None,
+        ("file_tags", None) => Some(crate::import::MetadataProvenance::FileTags),
+        (source, Some(release_id)) => {
+            let source = source.parse::<MetadataSource>().map_err(|e| {
+                column_conversion_error(row, "metadata_source", format!("releases.{e}"))
+            })?;
+            Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id })
+        }
+        (source, release_id) => {
+            return Err(column_conversion_error(
+                row,
+                "metadata_source",
+                format!(
+                    "invalid releases metadata provenance columns: source={source:?}, release_id={release_id:?}"
+                ),
+            ));
+        }
+    };
     Ok(DbRelease {
         id: row.get("id")?,
         album_id: row.get("album_id")?,
@@ -338,8 +355,7 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             barcode: row.get("barcode")?,
         },
         disc_id: row.get("disc_id")?,
-        metadata_source,
-        metadata_source_release_id: row.get("metadata_source_release_id")?,
+        metadata_provenance,
         remote: row.get("remote")?,
         source_folder_name: row.get("source_folder_name")?,
         content_hash: row.get("content_hash")?,

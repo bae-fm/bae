@@ -16,41 +16,17 @@ struct ImportCommitControls {
     let actions: ImportCommitActions
 }
 
-enum ImportReleaseHeaderAction: Equatable {
-    case changeRelease
-    case useFileTags
-    case enterManually
-
-    var title: String {
-        switch self {
-        case .changeRelease:
-            coreString("ui.import.header.change_release")
-        case .useFileTags:
-            coreString("ui.import.metadata.file_tags")
-        case .enterManually:
-            coreString("ui.import.metadata.manual")
-        }
-    }
-
-    var isProminent: Bool {
-        switch self {
-        case .useFileTags, .enterManually: true
-        case .changeRelease: false
-        }
-    }
+struct ImportReleaseSourceActions {
+    let findOnline: () -> Void
+    let useFileTags: () -> Void
+    let clearMetadata: () -> Void
 }
 
-/// The metadata-source section's card: the cover, what the release is, and the
-/// commit itself.
-///
-/// Search is this card's editor rather than a pane mounted beside it — the
-/// change control opens it, and picking a release fills the mapping table's
-/// BECOMES column in place. Before anything is picked the same control reads
-/// "Find this release" while Lookup is presented. File Tags omits that editor
-/// action entirely.
+/// The editable metadata draft card: cover, release fields, source provenance,
+/// replacement actions, and commit controls.
 struct ImportReleaseHeader: View {
     let releaseSummary: ImportReleaseSummary
-    let action: ImportReleaseHeaderAction?
+    let draftIsBlank: Bool
     /// Whether a read is in flight — the change control says so and stays put
     /// rather than the card being replaced by a placeholder.
     let isReading: Bool
@@ -64,11 +40,12 @@ struct ImportReleaseHeader: View {
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
     /// The commit row at the card's foot. `nil` while there is nothing to
-    /// commit — a failed re-pick leaves the fields in place but nothing
-    /// settled to commit them under.
+    /// commit.
     let commit: ImportCommitControls?
+    let sourceActions: ImportReleaseSourceActions
+    let localCoverSelections: [String: BridgeCoverSelection]
     let onEditCover: () -> Void
-    let onAction: () -> Void
+    let onSelectCover: (BridgeCoverSelection) -> Void
 
     /// The cover the card leads with. Big enough to read the artwork as
     /// artwork — at a thumbnail's size it was an icon beside the title, and
@@ -79,6 +56,10 @@ struct ImportReleaseHeader: View {
     private var configStore
     @State
     private var detailsExpanded = false
+    @State
+    private var confirmsClear = false
+    @State
+    private var coverDropTargeted = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -90,7 +71,10 @@ struct ImportReleaseHeader: View {
                 )
                 actionControl
             }
-            if let editValues {
+            if let editValues, draftIsBlank {
+                ReleaseFieldsForm(values: editValues, writer: editActions)
+            }
+            else if let editValues {
                 details(editValues)
             }
             if let commit {
@@ -99,6 +83,20 @@ struct ImportReleaseHeader: View {
         }
         .padding(14)
         .formGroupCard()
+        .confirmationDialog(
+            "Clear metadata?",
+            isPresented: $confirmsClear,
+            titleVisibility: .visible
+        ) {
+            Button("Clear metadata", role: .destructive) {
+                sourceActions.clearMetadata()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "The candidate files and mapping choices will remain unchanged."
+            )
+        }
     }
 
     private func details(
@@ -175,28 +173,52 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// The card's editor, opened. Prominent while nothing is picked — it is the
-    /// one thing left to do — and quiet once a release is in. While a read is
-    /// in flight it goes quiet with a spinner beside it: the pane keeps showing
-    /// what it already has.
+    /// A blank draft exposes its two prefill sources. A populated draft keeps
+    /// replacement and clear actions in one overflow menu.
     private var actionControl: some View {
         HStack(spacing: 8) {
             ProgressView()
                 .controlSize(.small)
                 .opacity(isReading ? 1 : 0)
-            if let action {
-                if action.isProminent {
-                    Button(action.title) {
-                        onAction()
-                    }
-                    .buttonStyle(.borderedProminent)
+            if draftIsBlank {
+                Button("Find online…") {
+                    sourceActions.findOnline()
                 }
-                else {
-                    Button(action.title) {
-                        onAction()
-                    }
-                    .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
+                Button {
+                    sourceActions.useFileTags()
+                } label: {
+                    Text(
+                        verbatim: coreString("ui.import.metadata.file_tags")
+                            + "…"
+                    )
                 }
+                .buttonStyle(.bordered)
+            }
+            else {
+                Menu {
+                    Button("Find another release…") {
+                        sourceActions.findOnline()
+                    }
+                    Button {
+                        sourceActions.useFileTags()
+                    } label: {
+                        Text(
+                            verbatim: coreString("ui.import.metadata.file_tags")
+                                + "…"
+                        )
+                    }
+                    Divider()
+                    Button("Clear metadata", role: .destructive) {
+                        confirmsClear = true
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
             }
         }
         .disabled(isReading)
@@ -229,6 +251,22 @@ struct ImportReleaseHeader: View {
                 onEditCover()
             }
         }
+        .overlay {
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(
+                    Color.accentColor,
+                    lineWidth: coverDropTargeted ? 3 : 0
+                )
+        }
+        .dropDestination(for: String.self) { fileIds, _ in
+            guard let fileId = fileIds.first,
+                let selection = localCoverSelections[fileId]
+            else { return false }
+            onSelectCover(selection)
+            return true
+        } isTargeted: {
+            coverDropTargeted = $0
+        }
     }
 }
 
@@ -240,15 +278,21 @@ struct ImportReleaseHeader: View {
                 candidate: PreviewData.mappingCandidate,
                 editValues: PreviewData.confirmEditValues
             ),
-            action: .changeRelease,
+            draftIsBlank: false,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: true,
             editValues: PreviewData.confirmEditValues,
             editActions: ReleaseFieldWriter { _, _ in },
             commit: nil,
+            sourceActions: ImportReleaseSourceActions(
+                findOnline: {},
+                useFileTags: {},
+                clearMetadata: {}
+            ),
+            localCoverSelections: [:],
             onEditCover: {},
-            onAction: {},
+            onSelectCover: { _ in },
         )
         .padding(24)
         .frame(width: 900, height: 360)

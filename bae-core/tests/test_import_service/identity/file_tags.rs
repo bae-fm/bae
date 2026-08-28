@@ -12,8 +12,7 @@ fn file_tag_artist_assignment(name: &str) -> ArtistAssignment {
 }
 
 /// File Tags commit reads embedded tags, writes zero `release_identities`
-/// rows, sets `metadata_source = file_tags`, leaves
-/// `metadata_source_release_id = NULL`, and seeds the album / tracks
+/// rows, stores File Tags provenance, and seeds the album / tracks
 /// from what's on disk. No external source consulted.
 #[tokio::test]
 async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
@@ -51,7 +50,7 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -62,13 +61,8 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(
-        release.metadata_source,
-        bae_core::db::ReleaseMetadataSource::FileTags,
-    );
-    assert!(
-        release.metadata_source_release_id.is_none(),
-        "File Tags imports must leave metadata_source_release_id NULL, got {:?}",
-        release.metadata_source_release_id,
+        release.metadata_provenance,
+        Some(MetadataProvenance::FileTags),
     );
     assert_eq!(release.pressing.year, Some(2003));
     assert_eq!(release.pressing.format.as_deref(), Some("FLAC"));
@@ -153,7 +147,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -241,7 +235,7 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -310,7 +304,7 @@ async fn file_tags_import_folder_image_wins_over_embedded_cover() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -357,10 +351,10 @@ async fn file_tags_import_always_creates_a_fresh_album() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await
@@ -394,7 +388,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -461,7 +455,7 @@ async fn file_tags_import_with_user_edit_overlay() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: Some(edit),
         })
         .await
@@ -478,10 +472,9 @@ async fn file_tags_import_with_user_edit_overlay() {
     assert_eq!(release.pressing.country.as_deref(), Some("JP"));
     assert_eq!(release.pressing.barcode.as_deref(), Some("4943674000000"));
     assert_eq!(
-        release.metadata_source,
-        bae_core::db::ReleaseMetadataSource::FileTags,
+        release.metadata_provenance,
+        Some(MetadataProvenance::FileTags),
     );
-    assert!(release.metadata_source_release_id.is_none());
 
     let identities = f.db.get_release_identities(&release_id).await.unwrap();
     assert!(
@@ -523,7 +516,7 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -539,8 +532,8 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
     );
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(
-        release.metadata_source,
-        bae_core::db::ReleaseMetadataSource::FileTags,
+        release.metadata_provenance,
+        Some(MetadataProvenance::FileTags),
     );
     let tracks = f.db.get_tracks_for_release(&release_id).await.unwrap();
     assert_eq!(tracks.len(), 2, "both untagged files import as tracks");

@@ -16,8 +16,8 @@ use support::tracing_init;
 
 use bae_core::album_detail::ReleaseStorageState;
 use bae_core::db::{
-    DbAlbum, DbFile, DbRelease, Pressing, ReleaseMetadataSource, SortDirection, StorageFilter,
-    StorageSortCriterion, StorageSortField,
+    DbAlbum, DbFile, DbRelease, Pressing, SortDirection, StorageFilter, StorageSortCriterion,
+    StorageSortField,
 };
 use bae_core::library::{AppServices, CancellationToken, LibraryManager, StorageProjectionValue};
 use bae_core::storage::transfer::{read_release_file_bytes, TransferProgress, TransferService};
@@ -111,8 +111,7 @@ async fn create_local_release(
         release_name: None,
         pressing: Pressing::blank(),
         disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(bae_core::import::MetadataProvenance::FileTags),
         remote: false,
         source_folder_name: None,
         content_hash: None,

@@ -10,8 +10,8 @@ bae's catalog is ordinary SQLite, declared to [coven](https://coven.bae.fm) tabl
 The synced heart of the schema:
 
 - **`artists`**, **`albums`**, **`works`**: the grouping layer. An album aggregates its releases and points at a primary one; works form a parent/child graph for classical structure.
-- **`releases`**: the central entity, one row per pressing. Carries the pressing facts (label, catalog number, barcode, country, format, year), the metadata source, a content hash of the imported folder, and measured album loudness.
-- **`release_identities`**: what a release *is*, per source. No rows means unknown; a MusicBrainz or Discogs row with a release ID means exact; without one, approximate. A release can hold identities in both sources at once.
+- **`releases`**: the central entity, one row per pressing. Carries the pressing facts (label, catalog number, barcode, country, format, year), optional metadata provenance, a content hash of the imported folder, and measured album loudness. No provenance means the metadata was entered directly; external provenance names the exact source release, while File tags records a local snapshot source.
+- **`release_identities`**: exact external identities for what a release *is*. No rows means no external identity. Each row names a MusicBrainz or Discogs release and release group, and a release can hold identities in both sources at once. This is separate from provenance: identity can change without claiming that the current editable metadata was reset from that source.
 - **`tracks`** with **`track_artists`**, plus **`release_artist_roles`** and **`track_artist_roles`**: track lists and credits, each credit tagged with its source.
 - **`track_works`**, **`work_parts`**, **`work_artists`**: recordings linked to the works they perform.
 - **`audio_formats`** and **`audio_format_segments`**: the playback specs. Per track: codec, sample rate, bit depth, channels, measured loudness and peak, and pregap lengths. Segments map a track onto ordered byte and sample windows of its source files, which is how a CUE rip's track, pregap included, can span regions of one big file, or several files.
@@ -25,7 +25,7 @@ Fully local tables, never declared to coven:
 
 - **`playback_state`**: current track, position, queue, volume, shuffle and repeat. Playback is a device fact.
 - **`imports`**: import operation tracking.
-- **`release_metadata`**: archived raw JSON from MusicBrainz and Discogs, kept for future re-interpretation.
+- **`source_release_payloads`**: archived raw JSON from MusicBrainz and Discogs, keyed by provider release rather than by a local release. It supports exact reset and re-interpretation without changing the synced catalog graph.
 
 Every synced table carries an `_updated_at` hybrid-logical-clock column, the register coven's field-by-field merge orders concurrent edits by; a test enforces that the synced set and the clock-carrying set are exactly equal.
 

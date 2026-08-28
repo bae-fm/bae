@@ -302,19 +302,20 @@ fn place_row(
     let known = match answer {
         Some(classification) => CandidateAnswer::Classified(classification),
         None if automatic_identification_enabled => CandidateAnswer::Unanswered(facts.phase),
-        None => CandidateAnswer::NeedsMetadata,
+        None => CandidateAnswer::Idle,
     };
     let skipped = rows.skipped.contains(&(
         row.watched_folder_path.clone(),
         candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
             .map_err(|error| LibraryError::Internal(error.to_string()))?,
     ));
-    let metadata_seed = state.and_then(|state| state.metadata_seed.clone());
+    let metadata_provenance = state.and_then(|state| state.metadata_provenance.clone());
     let placement = place(
         skipped,
         imported.is_some(),
         import_status.as_ref(),
-        metadata_seed.as_ref(),
+        metadata_provenance.as_ref(),
+        state.is_some_and(|state| state.metadata_draft_valid),
         &known,
     );
     Ok(TriageRow {
@@ -337,7 +338,7 @@ fn place_row(
         matched: verdict.and_then(MatchedRelease::of_summary),
         placement,
         import_status,
-        metadata_seed,
+        metadata_provenance,
     })
 }
 
@@ -491,16 +492,13 @@ fn summarise(
             });
         }
         if entry.matches_filter && row.selectable {
-            if let Some(metadata_seed) = row.metadata_seed.clone() {
-                ready.push(ReadyRowRef {
-                    candidate_key: row.candidate_key.clone(),
-                    metadata_seed,
-                    cover_thumbnail_url: row
-                        .matched
-                        .as_ref()
-                        .and_then(|matched| matched.cover_thumbnail_url.clone()),
-                });
-            }
+            ready.push(ReadyRowRef {
+                candidate_key: row.candidate_key.clone(),
+                cover_thumbnail_url: row
+                    .matched
+                    .as_ref()
+                    .and_then(|matched| matched.cover_thumbnail_url.clone()),
+            });
         }
     }
     ImportQueueSummary {

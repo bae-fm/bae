@@ -62,9 +62,8 @@ public sealed class ImportCandidate
     internal IReadOnlyList<BridgeFileEvidence> FileEvidence =>
         Detail?.FileEvidence ?? System.Array.Empty<BridgeFileEvidence>();
 
-    /// <summary>The metadata form: the pick's own values with whatever has been
-    /// typed over them. Null while nothing is picked.</summary>
-    internal BridgeRawReleaseEdit? Edit => Detail?.Edit;
+    /// <summary>The candidate's one editable metadata draft.</summary>
+    internal BridgeRawReleaseEdit? Edit => Detail?.MetadataDraft;
 
     /// <summary>Every source unit the folder offers with the track committing
     /// makes of it. An empty table until the first read answers.</summary>
@@ -77,31 +76,19 @@ public sealed class ImportCandidate
     /// <summary>The last import of this candidate that failed.</summary>
     internal BridgeImportFailure? Failure => Detail?.Failure;
 
-    /// <summary>The metadata seed this candidate will commit, where one has
-    /// been selected.</summary>
-    internal BridgeMetadataSeed? MetadataSeed => Detail?.Row.MetadataSeed;
+    /// <summary>Where the current draft began. Direct entry has none.</summary>
+    internal BridgeMetadataProvenance? MetadataProvenance =>
+        Detail?.MetadataProvenance;
 
-    /// <summary>The release this candidate is selected as, where the seed names
+    /// <summary>The release this candidate is selected as, where provenance names
     /// one.</summary>
-    internal BridgeMetadataSeed.ExternalRelease? PickedRelease =>
-        MetadataSeed as BridgeMetadataSeed.ExternalRelease;
+    internal BridgeMetadataProvenance.ExternalRelease? PickedRelease =>
+        MetadataProvenance as BridgeMetadataProvenance.ExternalRelease;
 
-    /// <summary>The presentation mode corresponding to the stored seed.</summary>
-    internal BridgeImportMetadataMode? SelectedMetadataMode =>
-        MetadataMode(MetadataSeed);
-
-    /// <summary>Which metadata surface this candidate's pane is showing. This
-    /// is session navigation, separate from the stored seed.</summary>
-    internal BridgeImportMetadataMode PresentedMetadataMode { get; private set; } =
-        BridgeImportMetadataMode.Lookup;
-
-    /// <summary>Whether the presented surface is the source selected for
-    /// import.</summary>
-    internal bool PresentedMetadataModeHasSelectedSeed =>
-        SelectedMetadataMode == PresentedMetadataMode;
-
-    /// <summary>Whether any metadata seed has been selected.</summary>
-    internal bool HasSelectedMetadataSeed => MetadataSeed is not null;
+    /// <summary>The draft or temporary source browser occupying the metadata
+    /// slot. Browsing never replaces the stored draft.</summary>
+    internal ImportMetadataPresentation MetadataPresentation { get; private set; } =
+        ImportMetadataPresentation.Draft;
 
     /// <summary>The state of this candidate's lazy File Tags preview.</summary>
     internal ImportFileTagsPreviewStatus FileTagsPreviewStatus { get; private set; } =
@@ -111,35 +98,32 @@ public sealed class ImportCandidate
     internal string? FileTagsPreviewError { get; private set; }
     private object? _fileTagsPreviewSession;
 
-    internal void ResolvePresentedMetadataMode(BridgeImportMetadataMode unseededMode) =>
-        PresentedMetadataMode = ResolvePresentedMetadataMode(
-            MetadataSeed,
-            unseededMode);
+    internal void ResolveInitialMetadataPresentation() =>
+        MetadataPresentation = MetadataProvenance is not null
+            ? ImportMetadataPresentation.Draft
+            : Detail?.InitialMetadataSource switch
+            {
+                BridgeDefaultImportMetadataSource.FindOnline =>
+                    ImportMetadataPresentation.FindOnline,
+                BridgeDefaultImportMetadataSource.FileTags =>
+                    ImportMetadataPresentation.FileTags,
+                BridgeDefaultImportMetadataSource.None =>
+                    ImportMetadataPresentation.Draft,
+                null => ImportMetadataPresentation.Draft,
+                _ => throw new System.ArgumentOutOfRangeException(
+                    nameof(Detail.InitialMetadataSource),
+                    Detail.InitialMetadataSource,
+                    "Unknown default metadata source"),
+            };
 
-    internal static BridgeImportMetadataMode ResolvePresentedMetadataMode(
-        BridgeMetadataSeed? seed,
-        BridgeImportMetadataMode unseededMode) =>
-        MetadataMode(seed) ?? unseededMode;
-
-    private static BridgeImportMetadataMode? MetadataMode(
-        BridgeMetadataSeed? seed) => seed switch
-        {
-            BridgeMetadataSeed.ExternalRelease => BridgeImportMetadataMode.Lookup,
-            BridgeMetadataSeed.FileTags => BridgeImportMetadataMode.FileTags,
-            BridgeMetadataSeed.Manual => BridgeImportMetadataMode.Manual,
-            null => null,
-            _ => throw new System.ArgumentOutOfRangeException(
-                nameof(seed), seed, "Unknown metadata seed"),
-        };
-
-    internal void PresentMetadataMode(BridgeImportMetadataMode mode) =>
-        PresentedMetadataMode = mode;
+    internal void PresentMetadata(ImportMetadataPresentation presentation) =>
+        MetadataPresentation = presentation;
 
     /// <summary>Carry navigation and the lazy preview over a fresh live detail
     /// for this same candidate. A changed file set invalidates the preview.</summary>
     internal void PreserveSessionState(ImportCandidate existing)
     {
-        PresentedMetadataMode = existing.PresentedMetadataMode;
+        MetadataPresentation = existing.MetadataPresentation;
         if (!SameFiles(existing.Files, Files))
         {
             return;
@@ -152,7 +136,9 @@ public sealed class ImportCandidate
 
     internal object? BeginFileTagsPreview()
     {
-        if (FileTagsPreviewStatus == ImportFileTagsPreviewStatus.Loading)
+        if (MetadataProvenance is BridgeMetadataProvenance.FileTags
+            || FileTagsPreviewStatus is ImportFileTagsPreviewStatus.Loading
+                or ImportFileTagsPreviewStatus.Loaded)
         {
             return null;
         }
@@ -232,6 +218,13 @@ public sealed class ImportCandidate
         var line = string.Join("  ·  ", parts);
         return string.IsNullOrEmpty(Status) ? line : $"{line}  —  {Status}";
     }
+}
+
+internal enum ImportMetadataPresentation
+{
+    Draft,
+    FindOnline,
+    FileTags,
 }
 
 internal enum ImportFileTagsPreviewStatus

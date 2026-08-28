@@ -77,28 +77,20 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
-    pub fn set_automatic_import_metadata_lookup(
+    pub fn set_automatic_import_identification(
         &self,
         enabled: bool,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|config| config.automatic_import_metadata_lookup = enabled)
+            .update(|config| config.automatic_import_identification = enabled)
     }
 
-    pub fn set_default_import_metadata_mode(
+    pub fn set_default_import_metadata_source(
         &self,
-        mode: crate::config::DefaultImportMetadataMode,
+        source: crate::config::DefaultImportMetadataSource,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|config| config.default_import_metadata_mode = mode)
-    }
-
-    pub fn set_last_import_metadata_mode(
-        &self,
-        mode: crate::config::ImportMetadataMode,
-    ) -> Result<(), crate::config::ConfigError> {
-        self.config_handle
-            .update(|config| config.last_import_metadata_mode = mode)
+            .update(|config| config.default_import_metadata_source = source)
     }
 
     /// Whether casting to a network receiver is available. Turning it off is

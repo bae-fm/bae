@@ -16,6 +16,8 @@ pub enum TriageTab {
 /// See `many-fields-none-together-means-a-missing-type`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TriagePlacement {
+    /// Pending without a question or an automatic action in flight.
+    Pending,
     /// Exactly one match, not in the library, counts and lengths agree — safe
     /// to import unattended.
     Ready,
@@ -49,9 +51,11 @@ pub enum TriagePlacement {
 impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
-            Self::Ready | Self::NeedsYou { .. } | Self::Importing | Self::Failed => {
-                TriageTab::Pending
-            }
+            Self::Pending
+            | Self::Ready
+            | Self::NeedsYou { .. }
+            | Self::Importing
+            | Self::Failed => TriageTab::Pending,
             Self::Done => TriageTab::Done,
             Self::Skipped => TriageTab::Skipped,
         }
@@ -61,7 +65,7 @@ impl TriagePlacement {
     /// where skipping it means anything: the attempt is what decides it now.
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
-            Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
+            Self::Pending | Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
             Self::Skipped => Some(TriageSkipAction::Unskip),
             Self::Importing | Self::Failed | Self::Done => None,
         }
@@ -91,27 +95,22 @@ pub enum NeedsYouGroup {
     AlreadyInLibrary,
     /// Nothing matched, or there was nothing to look up.
     NoMatch,
-    /// No metadata source has been selected and no automatic identification
-    /// is scheduled.
-    NeedsMetadata,
     /// No verdict yet.
     StillIdentifying,
 }
 
 impl NeedsYouGroup {
-    pub const IN_ORDER: [Self; 6] = [
+    pub const IN_ORDER: [Self; 5] = [
         Self::PickAPressing,
         Self::CountsOrLengthsDisagree,
         Self::AlreadyInLibrary,
         Self::NoMatch,
-        Self::NeedsMetadata,
         Self::StillIdentifying,
     ];
 
     /// The group a reason batches under. The one place the collapse happens.
     pub fn of(reason: &NeedsYouReason) -> Self {
         let needs_you = match reason {
-            NeedsYouReason::NeedsMetadata => return Self::NeedsMetadata,
             NeedsYouReason::StillIdentifying { .. } => return Self::StillIdentifying,
             NeedsYouReason::Disagreement(needs_you) => needs_you,
         };
@@ -135,10 +134,6 @@ impl NeedsYouGroup {
 pub enum NeedsYouReason {
     /// The stored verdict classified to this.
     Disagreement(NeedsYou),
-    /// No metadata source has been selected and no automatic identification
-    /// is scheduled. Selecting the candidate opens the configured metadata
-    /// surface.
-    NeedsMetadata,
     /// No stored verdict yet. Work in progress, not a decision anyone is being
     /// asked for — and `phase` says *which* kind of work in progress, because
     /// three unlike states share this group.
@@ -195,7 +190,7 @@ impl IdentifyPhase {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CandidateAnswer {
     Classified(QueueClassification),
-    NeedsMetadata,
+    Idle,
     Unanswered(IdentifyPhase),
 }
 
@@ -386,9 +381,9 @@ pub struct TriageRow {
     /// says *that* an import is running; how far along it is is the
     /// candidate's runtime, which ticks far more often than rows re-project.
     pub import_status: Option<TriageImportStatus>,
-    /// The metadata seed already chosen for this candidate. `None` while no
+    /// The metadata provenance already applied to this candidate. `None` while no
     /// source has been selected.
-    pub metadata_seed: Option<crate::import::MetadataSeed>,
+    pub metadata_provenance: Option<crate::import::MetadataProvenance>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

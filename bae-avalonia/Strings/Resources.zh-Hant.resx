@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>曲目數或長度不一致</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>已在資料庫中</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>找不到符合項目</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>需要中繼資料</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>仍在識別</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>識別中</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>跳至仍在辨識的候選項</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>新增</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>加入</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>移除</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>在以下模式中開啟未選擇來源的候選項</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>上次使用</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>自動識別「查詢」候選項</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>自動識別僅在候選項使用「查詢」時讀取封面文字、條碼和光碟 ID。「檔案標籤」和「手動」從不執行自動識別。</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>專輯標題</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>套用</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>清除中繼資料</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>候選項目的檔案和對應選擇將維持不變。</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>清除中繼資料？</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>尋找其他發行版本…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>在線上尋找</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在線上尋找…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>請嘗試重新讀取候選項目。</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>自動識別</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>自動識別</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>每次開啟「在線上尋找」時，自動讀取封面文字、條碼和光碟 ID 並搜尋相符項目。</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>預設中繼資料來源</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>在線上尋找</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>無</value></data>
 </root>

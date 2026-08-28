@@ -34,8 +34,7 @@ struct ImportSearchPane: View {
     /// The state the import projection delivers is re-derived from what is
     /// left checked.
     let onToggleSignal: (BridgeSignalToggle) -> Void
-    /// Run the signal lookups again — the toolbar's `Auto` action, and what
-    /// `Auto` in the manual header row does on the way back.
+    /// Run signal extraction and lookup again from either online-search view.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (BridgeMetadataResult) -> Void
@@ -197,7 +196,7 @@ struct ImportSearchPane: View {
     // MARK: - Manual
 
     /// The way back. `Signals` returns to what identification already found;
-    /// `Auto` returns and looks the signals up again.
+    /// Identify automatically reruns extraction and lookup.
     private var manualHeader: some View {
         HStack(spacing: 10) {
             Button {
@@ -211,7 +210,10 @@ struct ImportSearchPane: View {
                 mode = .signals
                 onRerun()
             } label: {
-                Label("Auto", systemImage: "arrow.clockwise")
+                Label(
+                    "Identify automatically",
+                    systemImage: "arrow.clockwise"
+                )
             }
             .buttonStyle(.link)
         }

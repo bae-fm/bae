@@ -179,7 +179,7 @@ impl Database {
     }
 
     /// Replace `release_identities` rows for `release_id`, update the
-    /// release's `metadata_source` / `metadata_source_release_id`, and
+    /// release's metadata provenance columns, and
     /// move the release between albums when the target differs from the
     /// source.
     ///
@@ -208,7 +208,7 @@ impl Database {
     /// metadata.
     ///
     /// Nothing is done to the archived provider documents: they are keyed by
-    /// the *source* release, so re-pointing `metadata_source_release_id` at a
+    /// the *source* release, so re-pointing the provenance at a
     /// different one already reads a different row. There is no stale payload
     /// to wipe, and the rows this release used may be another candidate's.
     ///
@@ -217,16 +217,13 @@ impl Database {
         &self,
         release_id: &str,
         new_identities: &[crate::import::ReleaseIdentity],
-        new_metadata_source: crate::db::ReleaseMetadataSource,
-        new_metadata_source_release_id: Option<&str>,
+        new_metadata_provenance: Option<crate::import::MetadataProvenance>,
         current_album_id: &str,
         target_album_id: &str,
         new_album: Option<&DbAlbum>,
     ) -> Result<(), DbError> {
         let release_id = release_id.to_string();
         let new_identities = new_identities.to_vec();
-        let new_metadata_source = new_metadata_source.as_str().to_string();
-        let new_metadata_source_release_id = new_metadata_source_release_id.map(str::to_string);
         let current_album_id = current_album_id.to_string();
         let target_album_id = target_album_id.to_string();
         let new_album = new_album.cloned();
@@ -280,7 +277,9 @@ impl Database {
                 insert_release_identity_row(tx, &release_id, identity, ids.new_id(), &reg, &now)?;
             }
 
-            // 3. Update release: album, metadata source.
+            // 3. Update release: album and metadata provenance.
+            let (new_metadata_source, new_metadata_source_release_id) =
+                metadata_provenance_columns(new_metadata_provenance.as_ref());
             tx.execute(
                 r#"
                     UPDATE releases SET

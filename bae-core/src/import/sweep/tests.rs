@@ -12,7 +12,9 @@
 
 use super::*;
 use crate::config::{Config, ConfigHandle};
-use crate::db::{Database, DbImportCandidateState, NewImportCandidateVerdict};
+use crate::db::{
+    Database, DbCandidateIdentifyResult, DbImportCandidateState, NewImportCandidateVerdict,
+};
 use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::library::LibraryManager;
@@ -520,12 +522,14 @@ impl Fixture {
         .expect("identify registers the driver for the opened candidate");
     }
 
-    /// Wait for a row to exist for `dir`, polling because the writer is a
-    /// detached task rather than something the caller awaits.
-    async fn await_row(&self, dir: &Path) -> DbImportCandidateState {
+    /// Wait for identification to write an answer for `dir`, polling because
+    /// the writer is a detached task rather than something the caller awaits.
+    async fn await_identified_row(&self, dir: &Path) -> DbImportCandidateState {
         loop {
             if let Some(row) = self.stored_for(dir).await {
-                return row;
+                if row.identify.is_some() {
+                    return row;
+                }
             }
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
@@ -577,6 +581,10 @@ impl Fixture {
     async fn stored_for(&self, dir: &Path) -> Option<DbImportCandidateState> {
         let hash = self.content_hash(dir);
         self.stored().await.remove(&hash)
+    }
+
+    async fn identified_for(&self, dir: &Path) -> Option<DbCandidateIdentifyResult> {
+        self.stored_for(dir).await.and_then(|row| row.identify)
     }
 
     /// One candidate's pane as it reads back from the tables.
@@ -669,7 +677,7 @@ impl Fixture {
                         ))
                     },
                     expected_edit_revision: 0,
-                    metadata_seed: Some(crate::import::MetadataSeed::ExternalRelease {
+                    metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
                         source: crate::import::MetadataSource::MusicBrainz,
                         release_id: release_id.to_string(),
                     }),

@@ -168,11 +168,11 @@ extension ImportSearchFlow {
         input: SearchPaneInput
     ) -> (BridgeMetadataResult) -> Void {
         { result in
-            selectMetadataSeed(
+            applyMetadata(
                 importer: services.importer,
                 importStore: services.importStore,
                 key: input.key,
-                seed: .externalRelease(
+                provenance: .externalRelease(
                     source: result.source,
                     releaseId: result.releaseId
                 )

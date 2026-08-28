@@ -7,10 +7,10 @@ use bae_test_support as support;
 
 use bae_core::db::{
     Database, DbAlbum, DbArtist, DbFile, DbRelease, DbSourceReleasePayload, DbTrack, Pressing,
-    ReleaseMetadataSource,
 };
 use bae_core::import::{
-    ArtistAssignment, MetadataSource, NewArtistSeed, PayloadSource, ReleaseIdentity,
+    ArtistAssignment, MetadataProvenance, MetadataSource, NewArtistSeed, PayloadSource,
+    ReleaseIdentity,
 };
 use bae_core::library::LibraryManager;
 use bae_core::util::content_type::ContentType;
@@ -82,9 +82,8 @@ fn make_album(artist_id: &str, title: &str) -> DbAlbum {
     }
 }
 
-/// Release that doesn't claim an identity yet — caller wires
-/// `metadata_source` / `metadata_source_release_id` and inserts identity rows
-/// to set up the scenario under test.
+/// Release that doesn't claim an identity or provenance yet — caller wires the
+/// scenario under test.
 fn make_release(album_id: &str) -> DbRelease {
     DbRelease {
         id: Uuid::new_v4().to_string(),
@@ -92,8 +91,7 @@ fn make_release(album_id: &str) -> DbRelease {
         release_name: None,
         pressing: Pressing::blank(),
         disc_id: None,
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: None,
         remote: true,
         source_folder_name: None,
         content_hash: None,
@@ -117,29 +115,64 @@ fn make_track(release_id: &str, n: i32, title: &str) -> DbTrack {
 }
 
 #[tokio::test]
-async fn edit_seed_exposes_reset_eligibility_from_the_metadata_source() {
+async fn edit_seed_exposes_reset_eligibility_from_provenance() {
     let (lm, db, _tmp) = setup().await;
     let artist = make_artist("Artist Name");
     db.insert_artist(&artist).await.unwrap();
 
-    for (index, (source, expected)) in [
-        (ReleaseMetadataSource::MusicBrainz, true),
-        (ReleaseMetadataSource::Discogs, true),
-        (ReleaseMetadataSource::FileTags, true),
-        (ReleaseMetadataSource::Manual, false),
+    for (index, (provenance, expected)) in [
+        (
+            Some(MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-release".to_string(),
+            }),
+            true,
+        ),
+        (
+            Some(MetadataProvenance::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: "discogs-release".to_string(),
+            }),
+            true,
+        ),
+        (Some(MetadataProvenance::FileTags), true),
+        (None, false),
     ]
     .into_iter()
     .enumerate()
     {
         let album = make_album(&artist.id, &format!("Album {index}"));
         let mut release = make_release(&album.id);
-        release.metadata_source = source;
+        release.metadata_provenance = provenance.clone();
         db.insert_album(&album).await.unwrap();
         db.insert_release(&release).await.unwrap();
 
         let seed = lm.release_edit_seed(&release.id).await.unwrap();
-        assert_eq!(seed.can_reset_to_source, expected, "source {source:?}");
+        assert_eq!(
+            seed.can_reset_to_source, expected,
+            "provenance {provenance:?}"
+        );
     }
+}
+
+#[tokio::test]
+async fn resetting_a_source_less_release_reports_that_it_has_no_provenance() {
+    let (lm, db, _tmp) = setup().await;
+    let artist = make_artist("Artist Name");
+    let album = make_album(&artist.id, "Album Title");
+    let release = make_release(&album.id);
+    db.insert_artist(&artist).await.unwrap();
+    db.insert_album(&album).await.unwrap();
+    db.insert_release(&release).await.unwrap();
+
+    let error = lm
+        .reset_metadata_to_source(&release.id)
+        .await
+        .expect_err("source-less metadata cannot be reset to a source");
+    assert!(
+        error.to_string().contains("has no metadata provenance"),
+        "unexpected error: {error}"
+    );
 }
 
 // ── MusicBrainz ─────────────────────────────────────────────────────────
@@ -219,8 +252,10 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
     let artist = make_artist("Original Artist");
     let album = make_album(&artist.id, "Original Album");
     let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::MusicBrainz;
-    release.metadata_source_release_id = Some("mb-release-1".to_string());
+    release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
+        source: MetadataSource::MusicBrainz,
+        release_id: "mb-release-1".to_string(),
+    });
     let t1 = make_track(&release.id, 1, "Original Track 1");
     let t2 = make_track(&release.id, 2, "Original Track 2");
 
@@ -279,7 +314,7 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
     assert_eq!(edit.tracks[0].title, "Cached Track 1");
     assert_eq!(edit.tracks[1].title, "Cached Track 2");
 
-    // Reset is read-only: identity rows and metadata-source columns
+    // Reset is read-only: identity rows and metadata provenance
     // stay exactly as they were.
     let identities = db.get_release_identities(&release.id).await.unwrap();
     assert_eq!(identities.len(), 1);
@@ -287,12 +322,11 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
     assert_eq!(identities[0].source_release_id, "mb-release-1");
     let saved_release = db.find_release_by_id(&release.id).await.unwrap().unwrap();
     assert_eq!(
-        saved_release.metadata_source,
-        ReleaseMetadataSource::MusicBrainz
-    );
-    assert_eq!(
-        saved_release.metadata_source_release_id.as_deref(),
-        Some("mb-release-1")
+        saved_release.metadata_provenance,
+        Some(MetadataProvenance::ExternalRelease {
+            source: MetadataSource::MusicBrainz,
+            release_id: "mb-release-1".to_string(),
+        })
     );
     // And it doesn't touch the persisted album / release / tracks either —
     // the projected values are returned to the caller, who decides whether
@@ -355,8 +389,10 @@ async fn reset_discogs_returns_full_pressing_data_from_cache() {
     let artist = make_artist("Original Artist");
     let album = make_album(&artist.id, "Original Album");
     let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::Discogs;
-    release.metadata_source_release_id = Some("12345".to_string());
+    release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
+        source: MetadataSource::Discogs,
+        release_id: "12345".to_string(),
+    });
     let t1 = make_track(&release.id, 1, "Original Track");
 
     db.insert_artist(&artist).await.unwrap();
@@ -460,8 +496,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     let artist = make_artist("Original Artist");
     let album = make_album(&artist.id, "Original Album");
     let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::FileTags;
-    release.metadata_source_release_id = None;
+    release.metadata_provenance = Some(MetadataProvenance::FileTags);
     release.remote = false;
     let t1 = make_track(&release.id, 1, "Original Track 1");
     let t2 = make_track(&release.id, 2, "Original Track 2");
@@ -514,12 +549,14 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
     assert_eq!(edit.tracks[0].title, "Tag Track 1");
     assert_eq!(edit.tracks[1].title, "Tag Track 2");
 
-    // Identity remained empty (Unknown), `metadata_source` stayed FileTags.
+    // Identity remained empty and provenance stayed File Tags.
     let identities = db.get_release_identities(&release.id).await.unwrap();
     assert!(identities.is_empty());
     let saved = db.find_release_by_id(&release.id).await.unwrap().unwrap();
-    assert_eq!(saved.metadata_source, ReleaseMetadataSource::FileTags);
-    assert!(saved.metadata_source_release_id.is_none());
+    assert_eq!(
+        saved.metadata_provenance,
+        Some(MetadataProvenance::FileTags)
+    );
 }
 
 #[tokio::test]
@@ -529,8 +566,10 @@ async fn reset_mb_missing_archived_payload_errors() {
     let artist = make_artist("Artist");
     let album = make_album(&artist.id, "Album");
     let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::MusicBrainz;
-    release.metadata_source_release_id = Some("mb-release-missing".to_string());
+    release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
+        source: MetadataSource::MusicBrainz,
+        release_id: "mb-release-missing".to_string(),
+    });
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();
@@ -551,7 +590,7 @@ async fn reset_mb_missing_archived_payload_errors() {
     );
 }
 
-/// `set_identity` can redirect `metadata_source_release_id` to a different
+/// `set_identity` can redirect provenance to a different
 /// pressing without fetching it. The documents are keyed by the source
 /// release, so the previous pressing's cannot be read in the new one's place:
 /// reset finds nothing under the new pointer and says so, rather than
@@ -563,9 +602,11 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     let artist = make_artist("Artist");
     let album = make_album(&artist.id, "Album");
     let mut release = make_release(&album.id);
-    release.metadata_source = ReleaseMetadataSource::MusicBrainz;
-    // Pointer says we want pressing Y…
-    release.metadata_source_release_id = Some("mb-release-Y".to_string());
+    // Provenance says we want pressing Y…
+    release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
+        source: MetadataSource::MusicBrainz,
+        release_id: "mb-release-Y".to_string(),
+    });
 
     db.insert_artist(&artist).await.unwrap();
     db.insert_album(&album).await.unwrap();

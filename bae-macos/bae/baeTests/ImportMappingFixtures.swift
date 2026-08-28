@@ -14,7 +14,7 @@ enum MappingFixtures {
     static let candidateKey = "/Music/Downloads/Walkthrough"
     static let releaseId = "rel-walkthrough"
     static let source: BridgeMetadataSource = .musicBrainz
-    static let seed: BridgeMetadataSeed = .externalRelease(
+    static let provenance: BridgeMetadataProvenance = .externalRelease(
         source: source,
         releaseId: releaseId
     )
@@ -314,6 +314,20 @@ extension MappingFixtures {
         tracks: []
     )
 
+    static let blankEdit = BridgeRawReleaseEdit(
+        albumTitle: "",
+        albumArtistAssignments: [],
+        pressing: BridgeRawPressingEdit(
+            year: "",
+            format: "",
+            label: "",
+            catalogNumber: "",
+            country: "",
+            barcode: ""
+        ),
+        tracks: []
+    )
+
     /// The release the fixture folder is picked as, as its documents describe
     /// it.
     static let releaseDetail = BridgeReleaseDetail(
@@ -356,8 +370,10 @@ extension MappingFixtures {
     @MainActor
     static func detail(
         mapping: BridgeMappingTable?,
-        edit: BridgeRawReleaseEdit? = albumEdit,
-        metadataSeed: BridgeMetadataSeed? = seed,
+        edit: BridgeRawReleaseEdit = albumEdit,
+        metadataProvenance: BridgeMetadataProvenance? = provenance,
+        metadataRevision: UInt64 = 1,
+        initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
         failure: BridgeImportFailure? = nil,
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough"
@@ -383,22 +399,27 @@ extension MappingFixtures {
                 resolvedBoundaries: [],
                 combineAncestorKey: nil,
                 actionable: true,
-                placement: .ready,
+                placement: metadataProvenance == nil && edit.albumTitle.isEmpty
+                    ? .pending : .ready,
                 skipAction: .skip,
                 matched: nil,
-                selectable: true,
+                selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
-                metadataSeed: metadataSeed
+                metadataProvenance: metadataProvenance
             ),
             release: {
-                if case .externalRelease = metadataSeed {
+                if case .externalRelease = metadataProvenance {
                     return releaseDetail
                 }
                 return nil
             }(),
             pickedLibraryStatus: nil,
             fileEvidence: [],
-            edit: metadataSeed == nil ? nil : edit,
+            metadataDraft: edit,
+            metadataDraftIsBlank: edit.albumTitle.isEmpty,
+            metadataProvenance: metadataProvenance,
+            metadataRevision: metadataRevision,
+            initialMetadataSource: initialMetadataSource,
             mapping: mapping
                 ?? BridgeMappingTable(
                     images: [],
@@ -417,12 +438,19 @@ extension MappingFixtures {
     @MainActor
     static func store(
         mapping: BridgeMappingTable?,
-        metadataSeed: BridgeMetadataSeed? = seed
+        metadataProvenance: BridgeMetadataProvenance? = provenance,
+        edit: BridgeRawReleaseEdit = albumEdit,
+        initialMetadataSource: BridgeDefaultImportMetadataSource = .none
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
             key: candidateKey,
-            detail: detail(mapping: mapping, metadataSeed: metadataSeed)
+            detail: detail(
+                mapping: mapping,
+                edit: edit,
+                metadataProvenance: metadataProvenance,
+                initialMetadataSource: initialMetadataSource
+            )
         )
         return store
     }
@@ -445,21 +473,5 @@ extension MappingFixtures {
         edit.tracks = bridgeMappingTracks(table: candidate.mapping)
         if case .valid = shapeReleaseEdit(raw: edit) { return true }
         return false
-    }
-}
-
-extension ImportStore {
-    /// Existing tests that do not exercise metadata-source defaults install
-    /// their fixture under the canonical Lookup default explicitly.
-    @MainActor
-    func applyCandidateDetail(
-        key: String,
-        detail: BridgeImportCandidateDetail
-    ) {
-        applyCandidateDetail(
-            key: key,
-            detail: detail,
-            unseededMetadataMode: .lookup
-        )
     }
 }

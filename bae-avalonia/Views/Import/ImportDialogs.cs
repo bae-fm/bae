@@ -85,6 +85,27 @@ internal sealed class ImportDialogs
             return new ScrollViewer { Content = column, MaxHeight = 560 };
         });
 
+    /// <summary>Confirm replacing the candidate's metadata draft with its
+    /// blank shape. Files and mapping decisions are unaffected.</summary>
+    internal Task ConfirmClearMetadata(Func<Task> clear) => _host.Show(close =>
+    {
+        var column = DialogUi.Column();
+        column.Children.Add(DialogUi.Title(Loc.Chrome("import.metadata.clear_title")));
+        column.Children.Add(DialogUi.Body(Loc.Chrome("import.metadata.clear_body")));
+
+        var cancel = new Button { Content = Loc.Chrome("action.cancel") };
+        cancel.Click += (_, _) => close();
+        var confirm = DialogUi.Primary(Loc.Chrome("import.metadata.clear"));
+        confirm.Click += async (_, _) =>
+        {
+            confirm.IsEnabled = false;
+            await clear();
+            close();
+        };
+        column.Children.Add(DialogUi.Actions(cancel, confirm));
+        return column;
+    });
+
     private StackPanel BuildCoverPicker(
         List<BridgeRemoteCover> remoteCovers, List<LocalArtwork> localArtwork, Action<PickedCover> onPick)
     {

@@ -14,7 +14,7 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ReleaseActionDialogsTests
 {
     [AvaloniaFact]
-    public async Task ManualMetadataOmitsResetToSource()
+    public async Task MetadataWithoutAppliedSourceOmitsResetToSource()
     {
         var buttons = await Buttons(canResetToSource: false);
 

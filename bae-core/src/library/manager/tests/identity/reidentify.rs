@@ -50,8 +50,10 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
 
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.metadata_source = crate::db::ReleaseMetadataSource::MusicBrainz;
-    release.metadata_source_release_id = Some("mb-rel-1".to_string());
+    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
+        source: crate::import::MetadataSource::MusicBrainz,
+        release_id: "mb-rel-1".to_string(),
+    });
     release.remote = false;
 
     manager.database.insert_album(&album).await.unwrap();
@@ -117,7 +119,7 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
         .unwrap();
     assert_ne!(new_album_id, album.id);
 
-    // Identity rows are cleared and the metadata seed becomes File Tags.
+    // Identity rows are cleared and the metadata provenance becomes File Tags.
     let identities = manager
         .database
         .get_release_identities(&release.id)
@@ -131,10 +133,9 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
         .unwrap()
         .unwrap();
     assert_eq!(
-        updated.metadata_source,
-        crate::db::ReleaseMetadataSource::FileTags
+        updated.metadata_provenance,
+        Some(crate::import::MetadataProvenance::FileTags)
     );
-    assert_eq!(updated.metadata_source_release_id, None);
     // The archived document describes `mb-rel-1`, not this release, and is
     // shared with every candidate that matched it. Dropping the pointer is what
     // stops it being read here; nothing deletes it.
@@ -238,8 +239,10 @@ async fn re_identify_release_exact_archives_the_picked_release() {
 
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.metadata_source = crate::db::ReleaseMetadataSource::MusicBrainz;
-    release.metadata_source_release_id = Some("mb-rel-old".to_string());
+    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
+        source: crate::import::MetadataSource::MusicBrainz,
+        release_id: "mb-rel-old".to_string(),
+    });
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -296,12 +299,11 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         .unwrap()
         .unwrap();
     assert_eq!(
-        updated.metadata_source,
-        crate::db::ReleaseMetadataSource::MusicBrainz
-    );
-    assert_eq!(
-        updated.metadata_source_release_id.as_deref(),
-        Some(new_release_id)
+        updated.metadata_provenance,
+        Some(crate::import::MetadataProvenance::ExternalRelease {
+            source: crate::import::MetadataSource::MusicBrainz,
+            release_id: new_release_id.to_string(),
+        })
     );
 
     // The picked release's documents are archived under its own key, which is
@@ -401,8 +403,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
 
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
-    release.metadata_source = crate::db::ReleaseMetadataSource::FileTags;
-    release.metadata_source_release_id = None;
+    release.metadata_provenance = Some(crate::import::MetadataProvenance::FileTags);
 
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
@@ -484,8 +485,10 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     let album = create_test_album();
     let mut release = create_test_release(&album.id);
     // MusicBrainz-shaped pointer; the rows below carry MB metadata.
-    release.metadata_source = crate::db::ReleaseMetadataSource::MusicBrainz;
-    release.metadata_source_release_id = Some("mb-rel-1".to_string());
+    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
+        source: crate::import::MetadataSource::MusicBrainz,
+        release_id: "mb-rel-1".to_string(),
+    });
     release.remote = false;
 
     manager.database.insert_album(&album).await.unwrap();
@@ -549,8 +552,8 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
         .unwrap()
         .unwrap();
     assert_eq!(
-        updated.metadata_source,
-        crate::db::ReleaseMetadataSource::FileTags
+        updated.metadata_provenance,
+        Some(crate::import::MetadataProvenance::FileTags)
     );
 
     // Album + track rows now reflect the embedded tags, not the MB seed.

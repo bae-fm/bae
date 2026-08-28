@@ -23,8 +23,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
             barcode: None,
         },
         disc_id: None,
-        metadata_source: crate::db::ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
         remote: true,
         source_folder_name: None,
         content_hash: None,
@@ -32,6 +31,64 @@ fn create_test_release(album_id: &str) -> DbRelease {
         album_peak_linear: None,
         created_at: Utc::now(),
     }
+}
+
+async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
+    let root = "/music";
+    let path = "/music/candidate";
+    let files = crate::import::folder_scanner::CategorizedFiles {
+        files: vec![crate::import::folder_scanner::CandidateFile {
+            proposed_audio: true,
+            file: crate::import::folder_scanner::ScannedFile::new(
+                std::path::PathBuf::from("/music/candidate/01.flac"),
+                "01.flac".to_string(),
+                1_000,
+            ),
+            role: crate::import::folder_scanner::FileRole::Audio,
+        }],
+        format_label: "FLAC".to_string(),
+    };
+    let content_hash = files.content_hash();
+    let candidate = crate::import::folder_scanner::FolderCandidate {
+        path: std::path::PathBuf::from(path),
+        file_root: std::path::PathBuf::from(path),
+        name: "Candidate".to_string(),
+        files,
+        watched_folder_path: root.to_string(),
+        scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+        file_edit_revision: 0,
+        display_path: "Candidate".to_string(),
+        resolved_boundaries: Vec::new(),
+        combine_ancestor_key: None,
+    };
+    manager
+        .database
+        .add_watched_import_folder(root)
+        .await
+        .unwrap();
+    let generation = manager.database.begin_folder_scan(root).await.unwrap();
+    manager
+        .database
+        .save_folder_scan_item(
+            root,
+            generation,
+            &crate::import::folder_scanner::ScanItem::Valid(candidate),
+        )
+        .await
+        .unwrap()
+        .expect("the active scan stores the candidate draft");
+    let track_id = manager
+        .database
+        .load_import_candidate_pane_rows(&content_hash)
+        .await
+        .unwrap()
+        .metadata_draft
+        .tracks
+        .into_iter()
+        .next()
+        .expect("the audio file creates one draft track")
+        .id;
+    (content_hash, track_id)
 }
 
 #[tokio::test]
@@ -136,16 +193,16 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         .await
         .unwrap()
         .expect("the fixture artist exists");
-    let candidate_hash = "candidate-using-library-artist";
+    let (candidate_hash, candidate_track_id) = create_candidate_draft(&manager).await;
     manager
         .database
-        .save_import_candidate_failure(candidate_hash, "/music/candidate", 0, "not imported")
+        .save_import_candidate_failure(&candidate_hash, "/music/candidate", 0, "not imported")
         .await
         .unwrap();
     manager
         .database
         .replace_import_candidate_album_artists(
-            candidate_hash,
+            &candidate_hash,
             &[crate::import::ArtistAssignment::existing(artist.clone().into())],
         )
         .await
@@ -153,9 +210,9 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
     manager
         .database
         .save_import_candidate_track_edit(
-            candidate_hash,
+            &candidate_hash,
             &crate::import::CandidateTrackEdit::edited(crate::import::RawTrackEdit {
-                id: "candidate-track".to_string(),
+                id: candidate_track_id,
                 title: "Track Title".to_string(),
                 artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
                     crate::import::ArtistAssignment::existing(artist.into()),

@@ -13,17 +13,16 @@ impl ImportService {
     /// Reconcile the prepared release against existing library state, record the
     /// import, and remap parsed artist IDs to their real DB IDs. Pure DB work and
     /// string remapping — no network. The caller has already run the mapper its
-    /// metadata seed calls for, so the input is a mapped `ParsedAlbum` plus its
-    /// raw external metadata pairs (empty for File Tags and Manual).
+    /// selected metadata provenance calls for, so the input is a mapped `ParsedAlbum` plus its
+    /// raw external metadata pairs (empty for File Tags and direct entry).
     ///
     /// The mapper's output carries the identity rows as they stand: a
     /// **External Release** keeps the selected pressing's `source_release_id`,
-    /// and **File Tags and Manual** arrive with an empty identity vec, so the
+    /// and **File Tags and direct entry** arrive with an empty identity vec, so the
     /// album lookup is skipped and the release lands on a fresh album.
     ///
-    /// For an external release, `metadata_source` and
-    /// `metadata_source_release_id` point at the selected release. File Tags and
-    /// Manual arrive with those columns already set by their mappers.
+    /// The mapped release also carries the matching external, File Tags, or
+    /// absent metadata provenance.
     ///
     /// The confirmation-page `user_edit` overlay applies last, so the user's
     /// edits win over every seeded value.

@@ -3,7 +3,7 @@ use super::assemble::{
     TrackIr, TrackNumber,
 };
 use super::ParsedAlbum;
-use crate::db::{is_various_artists, Pressing, ReleaseMetadataSource};
+use crate::db::{is_various_artists, Pressing};
 use crate::discogs::{DiscogsArtist, DiscogsRelease, DiscogsRoleArtist};
 use crate::import::types::ReleaseIdentity;
 use crate::import::{ImportError, MetadataSource};
@@ -192,8 +192,10 @@ pub fn map_discogs_to_db(
         album_year,
         is_compilation,
         pressing,
-        metadata_source: ReleaseMetadataSource::Discogs,
-        metadata_source_release_id: Some(release.id.clone()),
+        metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+            source: MetadataSource::Discogs,
+            release_id: release.id.clone(),
+        }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles,
         tracks,

@@ -15,9 +15,8 @@
 use crate::db::{
     DbAlbum, DbAlbumArtist, DbArtist, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
     DbTrackArtistRole, DbTrackWork, DbWork, DbWorkArtist, DbWorkPart, Pressing,
-    ReleaseMetadataSource,
 };
-use crate::import::types::{MetadataSource, ReleaseIdentity};
+use crate::import::types::{MetadataProvenance, MetadataSource, ReleaseIdentity};
 use crate::import::{ParsedAlbum, ParsedWorkGraph};
 use chrono::{DateTime, Utc};
 use coven::{Clock, IdProvider};
@@ -143,8 +142,7 @@ pub(crate) struct ReleaseIr {
     pub album_year: Option<i32>,
     pub is_compilation: bool,
     pub pressing: Pressing,
-    pub metadata_source: ReleaseMetadataSource,
-    pub metadata_source_release_id: Option<String>,
+    pub metadata_provenance: Option<MetadataProvenance>,
     pub album_artist_scope: AlbumArtistScope,
     pub release_roles: Vec<ReleaseRole>,
     pub tracks: Vec<TrackIr>,
@@ -197,13 +195,13 @@ fn push_artist(
 ///     id;
 ///   - else ref has a discogs id → an existing artist with the same discogs id;
 ///   - else (no source ids) → a case-insensitive name match. For
-///     `ReleaseMetadataSource::MusicBrainz` the match is restricted to existing
+///     MusicBrainz provenance the match is restricted to existing
 ///     artists that also lack a musicbrainz id (an id-less credit never merges
 ///     into an id-bearing artist); Discogs / FileTags match any artist by name.
 fn find_or_push_artist(
     artists: &mut Vec<DbArtist>,
     artist_ref: &ArtistRef,
-    source: ReleaseMetadataSource,
+    source: Option<MetadataSource>,
     ids: &dyn IdProvider,
     now: DateTime<Utc>,
 ) -> String {
@@ -217,12 +215,10 @@ fn find_or_push_artist(
             match source {
                 // An id-less MusicBrainz credit only merges into an artist that
                 // also lacks a musicbrainz id.
-                ReleaseMetadataSource::MusicBrainz => {
+                Some(MetadataSource::MusicBrainz) => {
                     name_matches && artist.musicbrainz_artist_id.is_none()
                 }
-                ReleaseMetadataSource::Discogs
-                | ReleaseMetadataSource::FileTags
-                | ReleaseMetadataSource::Manual => name_matches,
+                Some(MetadataSource::Discogs) | None => name_matches,
             }
         }
     });
@@ -338,7 +334,7 @@ fn push_work_graph(
                 let artist_id = find_or_push_artist(
                     pools.artists,
                     artist_ref,
-                    ReleaseMetadataSource::MusicBrainz,
+                    Some(MetadataSource::MusicBrainz),
                     ids,
                     now,
                 );
@@ -420,6 +416,10 @@ pub(crate) fn assemble_parsed_album(
     ids: &dyn IdProvider,
 ) -> ParsedAlbum {
     let now = clock.now();
+    let artist_source = match &ir.metadata_provenance {
+        Some(MetadataProvenance::ExternalRelease { source, .. }) => Some(*source),
+        Some(MetadataProvenance::FileTags) | None => None,
+    };
 
     // Release-level artists: primary then additional, minted in order, no dedup.
     let mut artists: Vec<DbArtist> = Vec::new();
@@ -445,8 +445,7 @@ pub(crate) fn assemble_parsed_album(
         release_name: None,
         pressing: ir.pressing,
         disc_id: None,
-        metadata_source: ir.metadata_source,
-        metadata_source_release_id: ir.metadata_source_release_id,
+        metadata_provenance: ir.metadata_provenance,
         // Imports land local; the upload observer flips `remote` true once the
         // release's audio is durably in the cloud.
         remote: false,
@@ -461,8 +460,7 @@ pub(crate) fn assemble_parsed_album(
 
     let mut release_artist_roles: Vec<DbReleaseArtistRole> = Vec::new();
     for role in &ir.release_roles {
-        let artist_id =
-            find_or_push_artist(&mut artists, &role.artist, ir.metadata_source, ids, now);
+        let artist_id = find_or_push_artist(&mut artists, &role.artist, artist_source, ids, now);
         release_artist_roles.push(DbReleaseArtistRole::new(
             &release.id,
             &artist_id,
@@ -512,7 +510,7 @@ pub(crate) fn assemble_parsed_album(
             match event {
                 TrackEvent::Credit { position, artist } => {
                     let artist_id =
-                        find_or_push_artist(&mut artists, artist, ir.metadata_source, ids, now);
+                        find_or_push_artist(&mut artists, artist, artist_source, ids, now);
                     track_artists.push(DbTrackArtist::new(
                         &db_track.id,
                         &artist_id,
@@ -528,7 +526,7 @@ pub(crate) fn assemble_parsed_album(
                     source_credit,
                 } => {
                     let artist_id =
-                        find_or_push_artist(&mut artists, artist, ir.metadata_source, ids, now);
+                        find_or_push_artist(&mut artists, artist, artist_source, ids, now);
                     track_artist_roles.push(DbTrackArtistRole::new(
                         &db_track.id,
                         &artist_id,

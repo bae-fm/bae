@@ -24,7 +24,9 @@ private final class Recorder {
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
     var droppedTracks: [(key: String, trackId: String)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
-    var seeds: [BridgeMetadataSeed] = []
+    var externalMetadata: [(source: BridgeMetadataSource, releaseId: String)] =
+        []
+    var fileTagsApplications = 0
     var played: [String] = []
     var stops = 0
     /// What the pick call throws, when the test is about a pick that fails.
@@ -39,10 +41,21 @@ private final class Recorder {
                     )
                 }
             },
-            selectCandidateMetadataSeed: { [self] _, seed in
+            applyCandidateExternalMetadata: {
+                [self] _, source, releaseId in
                 try await MainActor.run {
-                    seeds.append(seed)
+                    externalMetadata.append(
+                        (source: source, releaseId: releaseId)
+                    )
                     if let pickFailure { throw pickFailure }
+                    return 1
+                }
+            },
+            applyCandidateFileTags: { [self] _ in
+                try await MainActor.run {
+                    fileTagsApplications += 1
+                    if let pickFailure { throw pickFailure }
+                    return 1
                 }
             },
             setSheetDisc: { [self] _, sheetFileId, disc in
@@ -89,6 +102,7 @@ private final class Recorder {
     func services(_ store: ImportStore) -> ImportMappingServices {
         ImportMappingServices(
             importer: importer,
+            automaticIdentification: true,
             importStore: store,
             previewAudio: previewAudio,
             openDocument: { _, _ in },
@@ -162,7 +176,8 @@ struct ImportMappingPaneTests {
     func unseededCandidateKeepsMappingVisible() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable,
-            metadataSeed: nil
+            metadataProvenance: nil,
+            edit: MappingFixtures.blankEdit
         )
         let candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
@@ -442,11 +457,11 @@ extension ImportMappingPaneTests {
         let recorder = Recorder()
         recorder.pickFailure = StubError.notImplemented
 
-        ImportSearchFlow.selectMetadataSeed(
+        ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            seed: .externalRelease(
+            provenance: .externalRelease(
                 source: MappingFixtures.source,
                 releaseId: "another-pressing"
             )
@@ -457,9 +472,9 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.error != nil)
-        #expect(candidate.seedInFlight == nil)
+        #expect(candidate.provenanceInFlight == nil)
         #expect(candidate.detail == before)
-        #expect(candidate.metadataSeed == MappingFixtures.seed)
+        #expect(candidate.metadataProvenance == MappingFixtures.provenance)
     }
 
     // 4c. Typing in a release field writes that one field, once, as the field
@@ -593,48 +608,51 @@ extension ImportMappingPaneTests {
         #expect(mapping.willWriteCount == 1)
     }
 
-    // 8. Explicit source affirmations are the writes core stores. Navigation
-    //    among source modes is covered separately.
+    // 8. Applying each source writes that source. Browsing either source does
+    //    not replace the draft and is covered separately.
     @MainActor
-    @Test("selecting File Tags and Lookup releases writes both seeds")
-    func selectingMetadataSourcesWritesBothSeeds() async throws {
+    @Test("applying File Tags and an online release writes both sources")
+    func applyingMetadataSourcesWritesBothSources() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
         let recorder = Recorder()
 
-        ImportSearchFlow.selectMetadataSeed(
+        ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            seed: .fileTags
+            provenance: .fileTags
         )
         try await Task.sleep(for: .milliseconds(50))
-        #expect(recorder.seeds == [.fileTags])
+        #expect(recorder.fileTagsApplications == 1)
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.fileTagsTable,
-                metadataSeed: .fileTags
+                metadataProvenance: .fileTags
             )
         )
         var candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.metadataSeed == .fileTags)
+        #expect(candidate.metadataProvenance == .fileTags)
         #expect(candidate.mapping.rows.count == 2)
         #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)
 
-        ImportSearchFlow.selectMetadataSeed(
+        ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
             key: MappingFixtures.candidateKey,
-            seed: MappingFixtures.seed
+            provenance: MappingFixtures.provenance
         )
         try await Task.sleep(for: .milliseconds(50))
-        #expect(recorder.seeds == [.fileTags, MappingFixtures.seed])
+        #expect(
+            recorder.externalMetadata.map(\.releaseId)
+                == [MappingFixtures.releaseId]
+        )
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
@@ -645,7 +663,7 @@ extension ImportMappingPaneTests {
         candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.metadataSeed == MappingFixtures.seed)
+        #expect(candidate.metadataProvenance == MappingFixtures.provenance)
         #expect(candidate.mapping.rows.count == 13)
         #expect(candidate.mapping.willWriteCount == 13)
         #expect(

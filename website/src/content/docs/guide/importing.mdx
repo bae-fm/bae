@@ -22,13 +22,15 @@ A scan recognizes releases in the shapes rips actually take:
 
 bae imports the formats it plays: FLAC, MP3, APE, ALAC and AAC in `.m4a`, WAV, AIFF, Ogg Vorbis, Opus, WavPack, and DSD (`.dsf`/`.dff`). Artwork and documents (CUE sheets, rip logs, text files) in the folder are recognized and kept with the release.
 
-## Choose a metadata source
+## Fill the metadata draft
 
-Every candidate offers three equal metadata sources: **Lookup**, **File Tags**, and **Manual**. Opening a source only shows its surface; it does not change the source the candidate will import. A source becomes the candidate's metadata seed only when you explicitly choose a pressing, select **Use File Tags**, or select **Enter Manually**.
+Every candidate owns one editable metadata draft. It can begin blank, be filled from an online release, or be filled from the files' tags. Typing into the blank draft is direct entry, not a separate metadata source.
 
-### Lookup
+Opening **Find online…** or **File tags…** replaces the top card with that source's browser without changing the draft. Applying a result replaces the draft and returns to the editable card. Use the card's menu to find another release, apply file tags, or clear the metadata and return to a blank draft. Clearing metadata keeps the candidate's files and track layout.
 
-Lookup is the only source that identifies a release. It reads evidence from the folder and looks each piece up:
+### Find online
+
+Find online identifies a release. It reads evidence from the folder and looks each piece up:
 
 - **Disc ID.** A fingerprint of the CD's exact track layout, computed from the rip log or the CUE sheet. When it matches, it identifies the precise CD edition.
 - **Barcode.** Read off cover scans in the folder using text recognition, or from the CUE sheet.
@@ -42,23 +44,21 @@ Three outcomes:
 - **Conflict.** Two signals point at different releases, say the disc ID and the barcode disagree. bae shows both sides and you choose which to trust, or ignore a signal.
 - **Nothing found.** Search by hand: artist and album, catalog number, or barcode, against either database. Text recognized from the artwork is offered as autocomplete.
 
-Automatic identification uses this same Lookup path. It runs only when **Identify Lookup candidates automatically** is enabled and the default surface resolves to Lookup. Entering Lookup and starting a search can run it explicitly regardless of that setting. Disc ID extraction, barcode and catalog-text recognition, provider queries, and result matching never run in File Tags or Manual.
+The source browser shows the search form, identification progress, signals, and results together. Selecting a result keeps that row open with progress while bae fetches the full release, then applies it to the draft. The resulting card shows a MusicBrainz or Discogs source chip. You can reopen **Find online…** from the card menu and search again.
+
+Automatic identification uses this same path. The **Default metadata source** setting chooses what happens when a new candidate is discovered: **Find online**, **File tags**, or **None**. With Find online selected, **Identify automatically** controls whether evidence extraction, OCR, provider queries, and matching start automatically. When it is off, the online browser still provides search and an explicit identify command. None of that work runs for File tags or None.
 
 ### File Tags
 
-File Tags reads embedded audio tags and CUE metadata only when you open it and ask bae to read them. Review the preview, then select **Use File Tags** to store that exact snapshot as the seed. Import fails before writing to the library if the candidate or observed audio files change after the preview.
+File tags reads embedded audio tags and CUE metadata when the source is opened or configured as the default. Review the preview, then select **Apply** to replace the draft with that exact snapshot. Import fails before writing to the library if the candidate or observed audio files change after the preview.
 
-### Manual
-
-Manual reads no tags, folder evidence, or online providers. Select **Enter Manually** to start with a blank editable release and the candidate's physical track layout.
-
-In Import settings, **Open unseeded candidates in** chooses which surface an unseeded candidate opens first. **Last Used** resolves to the last source you explicitly opened. This setting chooses a surface, not a seed; the explicit source action still confirms what the import will use.
+The editable card shows a quiet File tags chip after that snapshot is applied. A draft filled only by typing has no source chip.
 
 ## Confirm and import
 
 The confirmation pane shows everything the import will write:
 
-- **Cover.** Chosen from the databases' art, images in your folder, or art embedded in the files. You can change it later.
+- **Cover.** Chosen from the databases' art, images in your folder, or art embedded in the files. Drag an image from the candidate gallery onto the cover square, or change it later.
 - **Metadata.** Album, artist, year, label, catalog number, country, barcode, and every track: all editable right here before anything is saved.
 - **Storage.** If a cloud home is connected, choose whether bae should manage the files in your cloud, and whether to also keep a local copy. See [Storage and offline](/guide/storage).
 

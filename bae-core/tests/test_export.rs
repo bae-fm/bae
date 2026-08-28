@@ -11,7 +11,7 @@ use bae_core::config::{
     SaveBitDepth, SaveCodec, SaveFilenameToken, SavePregapPlacement, SavePreset,
 };
 use bae_core::db::Database;
-use bae_core::import::{ImportCommand, MetadataSeed, StorageMode};
+use bae_core::import::{ImportCommand, MetadataProvenance, StorageMode};
 use bae_core::library::{LibraryManager, OutputKind};
 use coven::EncryptionService;
 use coven::InMemoryCloudHome;
@@ -118,7 +118,7 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await
@@ -148,7 +148,7 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await

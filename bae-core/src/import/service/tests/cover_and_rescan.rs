@@ -217,7 +217,7 @@ async fn selected_local_cover_path_must_match_discovered_file() {
             Some(CoverSelection::Local("cover.bmp".to_string())),
             StorageMode::Local,
             false,
-            crate::import::MetadataSeed::Manual,
+            None,
             None,
         )
         .await;
@@ -264,7 +264,7 @@ async fn failed_import_before_finalize_leaves_only_import_audit_row() {
                 )),
                 storage_mode: StorageMode::Local,
                 pin: false,
-                metadata_seed: crate::import::MetadataSeed::Manual,
+                metadata_provenance: None,
                 user_edit: None,
             },
             expectation,
@@ -352,6 +352,8 @@ async fn rescan_seeded_root(
         root,
         &event_tx,
         &service.library_manager,
+        &service.clock,
+        &service.ids,
         &folder_registry,
         &Arc::new(tokio::sync::Mutex::new(())),
         &folder_watcher,
@@ -542,6 +544,8 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
             &root,
             &event_tx,
             &service.library_manager,
+            &service.clock,
+            &service.ids,
             &folder_registry,
             &commit,
             &folder_watcher,
@@ -561,6 +565,79 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
     pass().await;
 
     assert_eq!(announced_candidates(&mut events), vec!["Artist - Two"]);
+}
+
+#[tokio::test]
+async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_announcement() {
+    let (service, tmp) = setup_import_service().await;
+    service
+        .library_manager
+        .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::FileTags)
+        .unwrap();
+    let root = tmp.path().join("watched");
+    let album = root.join("Candidate");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("01.flac"), flac()).unwrap();
+    let root_text = root.to_string_lossy().into_owned();
+    service
+        .library_manager
+        .add_watched_import_folder(&root_text)
+        .await
+        .unwrap();
+    let folder_registry = Arc::new(Mutex::new(
+        crate::import::folder_registry::ImportFolderRegistry::default(),
+    ));
+    folder_registry.lock().unwrap().apply_added(root_text.clone());
+    let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
+    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
+
+    ImportService::rescan_and_reconcile(
+        &root,
+        &event_tx,
+        &service.library_manager,
+        &service.clock,
+        &service.ids,
+        &folder_registry,
+        &Arc::new(tokio::sync::Mutex::new(())),
+        &Arc::new(super::FolderWatcher::new(fs_tx)),
+        &crate::import::folder_scanner::ScanCancellation::new(),
+    )
+    .await
+    .expect("the File Tags candidate is read and stored");
+
+    let key = album.to_string_lossy().into_owned();
+    let detail = service
+        .library_manager
+        .load_import_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the candidate is stored");
+    assert_eq!(
+        detail.metadata_provenance,
+        Some(crate::import::MetadataProvenance::FileTags)
+    );
+    assert!(!detail.metadata_draft.is_blank());
+    assert_eq!(detail.metadata_revision, 1);
+    let snapshot = service
+        .library_manager
+        .load_candidate_file_tag_snapshot(&root_text, &key)
+        .await
+        .unwrap()
+        .expect("the candidate has a snapshot")
+        .snapshot
+        .expect("the File Tags snapshot is stored");
+    assert_eq!(snapshot.file_edit_revision, 0);
+
+    while let Ok(event) = events.try_recv() {
+        if let crate::import::handle::ImportEvent::Scan(
+            crate::import::ScanEvent::FolderCandidate { candidate, .. },
+        ) = event
+        {
+            assert_eq!(candidate.path, album);
+            return;
+        }
+    }
+    panic!("the applied candidate was not announced");
 }
 
 /// A completed pass records every directory it read and when it was last
@@ -597,6 +674,8 @@ async fn a_pass_records_the_directories_it_read() {
         &root,
         &event_tx,
         &service.library_manager,
+        &service.clock,
+        &service.ids,
         &folder_registry,
         &Arc::new(tokio::sync::Mutex::new(())),
         &folder_watcher,

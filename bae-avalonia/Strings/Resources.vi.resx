@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Số lượng hoặc thời lượng không khớp</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Đã có trong thư viện</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Không khớp</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Cần siêu dữ liệu</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Vẫn đang nhận dạng</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Đang nhận dạng</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Đến ứng viên vẫn đang được nhận dạng</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Mới</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Thêm</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Xóa</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Mở các mục chưa chọn nguồn trong</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Dùng gần đây nhất</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Tự động nhận dạng các mục dùng Tra cứu</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Tính năng nhận dạng tự động chỉ đọc chữ trên bìa, mã vạch và ID đĩa khi một mục dùng Tra cứu. Thẻ của tệp và Thủ công không bao giờ chạy tính năng này.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Tên album</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Áp dụng</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Xóa siêu dữ liệu</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Các tệp và lựa chọn ánh xạ của mục sẽ không thay đổi.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Xóa siêu dữ liệu?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Tìm bản phát hành khác…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Tìm trên mạng</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Tìm trên mạng…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Hãy thử đọc lại mục này.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Tự động nhận dạng</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Tự động nhận dạng</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Tự động đọc chữ trên bìa, mã vạch và ID đĩa rồi tìm kết quả khớp mỗi khi mở Tìm trên mạng.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Nguồn siêu dữ liệu mặc định</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Tìm trên mạng</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Không có</value></data>
 </root>

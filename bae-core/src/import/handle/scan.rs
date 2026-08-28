@@ -203,46 +203,108 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Record the metadata seed the user chose for a candidate — an external
-    /// release, the folder's file tags, or manual entry — keyed by the
-    /// folder's current content hash, so selection reopens the pane answered
-    /// after a restart. Only explicit choices land here: a Ready row's
-    /// automatic external-release seed is derived from its stored verdict and
-    /// re-derives on every open, so it never writes one.
-    pub(crate) async fn set_candidate_metadata_seed(
+    /// Replace the candidate draft with metadata from an explicitly chosen
+    /// source. The projection completes before the database transaction, which
+    /// replaces the draft and provenance together while leaving all physical
+    /// file and track decisions untouched.
+    pub(crate) async fn set_candidate_metadata_provenance(
         &self,
         candidate_key: String,
-        seed: crate::import::MetadataSeed,
-    ) -> Result<(), crate::import::ImportError> {
-        let content_hash = match &seed {
-            crate::import::MetadataSeed::FileTags => self
-                .file_tag_snapshot(&candidate_key)
-                .await?
-                .0
-                .files
-                .content_hash(),
-            crate::import::MetadataSeed::ExternalRelease { .. }
-            | crate::import::MetadataSeed::Manual => {
-                let Some((files, _)) = self.actionable_candidate_files(&candidate_key).await?
-                else {
-                    return Err(crate::import::ImportError::Internal {
-                        detail: format!("{candidate_key} is not an actionable folder candidate"),
-                    });
-                };
-                files.content_hash()
+        provenance: crate::import::MetadataProvenance,
+    ) -> Result<u64, crate::import::ImportError> {
+        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.get_candidate(&candidate_key).await?
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        let content_hash = candidate.files.content_hash();
+        let durations = self
+            .library_manager
+            .load_import_candidate_state(&content_hash)
+            .await?
+            .map(|state| state.durations)
+            .unwrap_or_default();
+        let pane = match &provenance {
+            crate::import::MetadataProvenance::FileTags => {
+                let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
+                let pane = crate::import::pane::file_tags_pane(
+                    &snapshot_candidate.files,
+                    &snapshot,
+                    Some(&snapshot_candidate.name),
+                    &durations,
+                    &crate::import::CandidateEditOverlay::default(),
+                    &[],
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                )?;
+                let draft = crate::import::pane::candidate_draft_from_source(pane);
+                return Ok(self
+                    .library_manager
+                    .replace_candidate_file_tags_metadata(
+                        &snapshot_candidate.watched_folder_path,
+                        &candidate_key,
+                        &snapshot_candidate.files.content_hash(),
+                        &snapshot,
+                        &draft,
+                    )
+                    .await?);
+            }
+            crate::import::MetadataProvenance::ExternalRelease { source, release_id } => {
+                let payloads = self
+                    .payloads_for_provenance(
+                        &candidate_key,
+                        &crate::import::MetadataRef::new(release_id.clone(), *source),
+                    )
+                    .await?;
+                crate::import::pane::release_pane(
+                    &payloads,
+                    &candidate.files,
+                    &durations,
+                    &crate::import::CandidateEditOverlay::default(),
+                    &[],
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                )?
             }
         };
-        self.library_manager
-            .save_candidate_metadata_seed(&content_hash, &candidate_key, &seed)
-            .await?;
-        Ok(())
+        let draft = crate::import::pane::candidate_draft_from_source(pane);
+        Ok(self
+            .library_manager
+            .replace_candidate_metadata(&content_hash, &candidate_key, &draft, Some(&provenance))
+            .await?)
     }
 
-    /// Tell the surfaces a candidate's metadata seed is decided.
-    pub(crate) fn announce_metadata_seed(&self, candidate_key: String) {
+    /// Clear source metadata while retaining the candidate's physical layout
+    /// and every explicit mapping decision.
+    pub(crate) async fn clear_candidate_metadata(
+        &self,
+        candidate_key: String,
+    ) -> Result<u64, crate::import::ImportError> {
+        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.get_candidate(&candidate_key).await?
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable folder candidate"),
+            });
+        };
+        Ok(self
+            .library_manager
+            .replace_candidate_metadata(
+                &candidate.files.content_hash(),
+                &candidate_key,
+                &crate::import::pane::blank_candidate_draft(&candidate.files),
+                None,
+            )
+            .await?)
+    }
+
+    /// Tell the surfaces a candidate's metadata provenance changed.
+    pub(crate) fn announce_metadata_provenance(&self, candidate_key: String) {
         send_event(
             &self.event_tx,
-            ImportEvent::Scan(ScanEvent::CandidateMetadataSeeded { candidate_key }),
+            ImportEvent::Scan(ScanEvent::CandidateMetadataChanged { candidate_key }),
         );
     }
 

@@ -4,8 +4,8 @@
 //! One table serves both halves of a release's life. Identification writes its
 //! rows before it stores the verdict that names the release, so a candidate the
 //! user opens replays what identification fetched with no network; the release
-//! that candidate becomes reads the same rows back through its
-//! `metadata_source` / `metadata_source_release_id` pointer.
+//! that candidate becomes reads the same rows back through its external
+//! metadata provenance.
 
 use super::query::QueryOne;
 use super::*;

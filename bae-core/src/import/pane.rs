@@ -29,6 +29,29 @@ pub const FILE_TAG_TRACK_ID_PREFIX: &str = "file-tag-track";
 /// The row identity the mapping table's tracks carry for manual entry.
 pub const MANUAL_TRACK_ID_PREFIX: &str = "manual-track";
 
+/// Stable identities for the one candidate draft, independent of whichever
+/// source last populated it.
+pub const CANDIDATE_TRACK_ID_PREFIX: &str = "candidate-track";
+
+/// The source-less editable draft created with a discovered candidate.
+/// Candidate files determine only how many physical slots exist; their names
+/// and tags do not become metadata until a source is explicitly applied.
+pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> RawReleaseEdit {
+    let mut draft = RawReleaseEdit::from_user_edit(
+        ReleaseUserEdit {
+            album_title: String::new(),
+            album_artist_assignments: Vec::new(),
+            pressing: crate::import::PressingEdit::blank(),
+            tracks: crate::import::track_slots::direct_entry_track_rows(files),
+        },
+        CANDIDATE_TRACK_ID_PREFIX,
+    );
+    for track in &mut draft.tracks {
+        track.file = None;
+    }
+    draft
+}
+
 /// What a pick produces for the pane: the release as its documents describe
 /// it, the edit form seeded from it with the stored overlay applied, and the
 /// mapping table with the stored row edits applied.
@@ -37,6 +60,68 @@ pub struct PanePick {
     pub release: Option<ImportSearchReleaseDetail>,
     pub edit: RawReleaseEdit,
     pub mapping: MappingTable,
+}
+
+/// Normalize a source projection into the one candidate draft. Physical file
+/// bindings remain in the mapping table and are stored independently.
+pub(crate) fn candidate_draft_from_source(pane: PanePick) -> RawReleaseEdit {
+    let mut draft = pane.edit;
+    draft
+        .album_artist_assignments
+        .retain(|assignment| !assignment.is_blank());
+    draft.tracks = crate::import::mapping_tracks(&pane.mapping);
+    for (position, track) in draft.tracks.iter_mut().enumerate() {
+        track.id = format!("{CANDIDATE_TRACK_ID_PREFIX}-{position}");
+        track.file = None;
+    }
+    draft
+}
+
+/// Project the stored draft onto the candidate's physical units. Metadata is
+/// already authoritative; provenance supplies only the exact external release
+/// card and whether source/file durations are independent evidence.
+pub(crate) fn draft_pane(
+    release: Option<ImportSearchReleaseDetail>,
+    files: &CategorizedFiles,
+    durations: &ProbedDurations,
+    draft: RawReleaseEdit,
+    mapping_edits: &[crate::import::edits::CandidateTrackMappingEdit],
+    provenance: Option<&crate::import::MetadataProvenance>,
+) -> PanePick {
+    let source_tracks: Vec<SourceTrack> = draft
+        .tracks
+        .iter()
+        .map(|track| SourceTrack {
+            edit: crate::import::TrackUserEdit {
+                title: track.title.clone(),
+                artist_assignments: track.artist_assignments.clone(),
+                side: track.side,
+                track_number: track.track_number,
+                file: None,
+            },
+            position: track.track_number.map(|number| number.to_string()),
+            duration_ms: None,
+        })
+        .collect();
+    let source = match provenance {
+        Some(crate::import::MetadataProvenance::ExternalRelease { .. }) => {
+            TracklistSource::ExternalRelease
+        }
+        Some(crate::import::MetadataProvenance::FileTags) | None => TracklistSource::CandidateFiles,
+    };
+    let table = table_for(
+        files,
+        durations,
+        &source_tracks,
+        CANDIDATE_TRACK_ID_PREFIX,
+        source,
+        &[],
+    );
+    PanePick {
+        release,
+        edit: draft,
+        mapping: crate::import::edits::apply_track_mapping_edits(table, mapping_edits),
+    }
 }
 
 /// The pane for a release pick, from the documents already archived for it.
@@ -127,7 +212,7 @@ pub fn manual_pane(
     overlay: &CandidateEditOverlay,
     track_edits: &[CandidateTrackEdit],
 ) -> PanePick {
-    let tracks = crate::import::track_slots::manual_track_rows(files);
+    let tracks = crate::import::track_slots::direct_entry_track_rows(files);
     let source_tracks: Vec<SourceTrack> = tracks
         .iter()
         .map(|edit| SourceTrack {

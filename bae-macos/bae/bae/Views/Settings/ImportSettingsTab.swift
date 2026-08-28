@@ -20,26 +20,25 @@ struct ImportSettingsTab: View {
         Form {
             Section {
                 Picker(
-                    "Open unseeded candidates in",
-                    selection: defaultMetadataMode
+                    "Default metadata source",
+                    selection: defaultMetadataSource
                 ) {
-                    Text(coreString("ui.import.metadata.lookup"))
-                        .tag(BridgeDefaultImportMetadataMode.lookup)
+                    Text("Find online")
+                        .tag(BridgeDefaultImportMetadataSource.findOnline)
                     Text(coreString("ui.import.metadata.file_tags"))
-                        .tag(BridgeDefaultImportMetadataMode.fileTags)
-                    Text("Manual").tag(BridgeDefaultImportMetadataMode.manual)
-                    Text("Last used")
-                        .tag(BridgeDefaultImportMetadataMode.lastUsed)
+                        .tag(BridgeDefaultImportMetadataSource.fileTags)
+                    Text("None")
+                        .tag(BridgeDefaultImportMetadataSource.none)
                 }
                 Toggle(
-                    "Identify Lookup candidates automatically",
-                    isOn: automaticMetadataLookup
+                    "Identify automatically",
+                    isOn: automaticIdentification
                 )
             } header: {
                 Text("Metadata")
             } footer: {
                 Text(
-                    "Automatic identification reads cover text, barcodes, and disc IDs only while a candidate uses Lookup. File tags and Manual never run it."
+                    "Automatically reads cover text, barcodes, and disc IDs and searches for a match whenever Find online opens."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -71,12 +70,12 @@ struct ImportSettingsTab: View {
         .formStyle(.grouped)
     }
 
-    private var automaticMetadataLookup: Binding<Bool> {
+    private var automaticIdentification: Binding<Bool> {
         Binding(
-            get: { configStore.config.automaticImportMetadataLookup },
+            get: { configStore.config.automaticImportIdentification },
             set: { enabled in
                 do {
-                    try importer.setAutomaticMetadataLookup(enabled)
+                    try importer.setAutomaticIdentification(enabled)
                 }
                 catch {
                     uiStore.showError(error)
@@ -85,12 +84,14 @@ struct ImportSettingsTab: View {
         )
     }
 
-    private var defaultMetadataMode: Binding<BridgeDefaultImportMetadataMode> {
+    private var defaultMetadataSource:
+        Binding<BridgeDefaultImportMetadataSource>
+    {
         Binding(
-            get: { configStore.config.defaultImportMetadataMode },
-            set: { mode in
+            get: { configStore.config.defaultImportMetadataSource },
+            set: { source in
                 do {
-                    try importer.setDefaultMetadataMode(mode)
+                    try importer.setDefaultMetadataSource(source)
                 }
                 catch {
                     uiStore.showError(error)

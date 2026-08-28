@@ -6,8 +6,7 @@
 //! confirmation page lets the user correct anything the tags got wrong.
 //!
 //! `ParsedAlbum::identities` is always empty because file tags make no external
-//! identity claim. `metadata_source` lands as `FileTags` and
-//! `metadata_source_release_id` stays NULL on the release row. Lookup signals
+//! identity claim. The release provenance is `FileTags`. Lookup signals
 //! such as OCR, DiscID, and barcode are not part of this path.
 //!
 //! Format comes from the probed codec, year from any tag carrying a date. Both
@@ -22,7 +21,7 @@ use super::file_tag_snapshot::{
 };
 use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
-use crate::db::{Pressing, ReleaseMetadataSource};
+use crate::db::Pressing;
 use crate::import::folder_scanner::{CategorizedFiles, ScannedFile};
 use crate::import::ImportError;
 #[cfg(test)]
@@ -210,7 +209,7 @@ fn file_tag_credit_events(artist: Option<&str>) -> Vec<TrackEvent> {
 }
 
 /// The [`ReleaseIr`] shared by the file-tag and CUE-sheet seeders. `identities`
-/// is always empty (File Tags makes no external identity claim); `metadata_source` is
+/// is always empty (File Tags makes no external identity claim); provenance is
 /// `FileTags`; `album_artist_scope` is `FullPool` so a divergent per-track
 /// artist also becomes an album artist.
 fn file_tag_release_ir(
@@ -234,8 +233,7 @@ fn file_tag_release_ir(
             country: None,
             barcode: None,
         },
-        metadata_source: ReleaseMetadataSource::FileTags,
-        metadata_source_release_id: None,
+        metadata_provenance: Some(crate::import::MetadataProvenance::FileTags),
         album_artist_scope: AlbumArtistScope::FullPool,
         release_roles: Vec::new(),
         tracks,

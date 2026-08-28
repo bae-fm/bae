@@ -510,6 +510,8 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         root,
         service.event_tx.clone(),
         service.library_manager.clone(),
+        service.clock.clone(),
+        service.ids.clone(),
         registry,
         Arc::new(tokio::sync::Mutex::new(())),
         watcher,
@@ -659,4 +661,3 @@ async fn cancelling_a_panicked_folder_walk_surfaces_the_join_failure() {
     assert!(cancellation.is_cancelled());
     assert!(error.to_string().contains("folder scan task failed"));
 }
-

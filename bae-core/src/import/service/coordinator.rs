@@ -29,12 +29,16 @@ impl ImportService {
         fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
+        clock: coven::ClockRef,
+        ids: coven::IdRef,
         folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         folder_watcher: Arc<FolderWatcher>,
     ) -> std::thread::JoinHandle<()> {
         let scan_event_tx = event_tx.clone();
         let scan_library_manager = library_manager.clone();
+        let scan_clock = clock.clone();
+        let scan_ids = ids.clone();
         let scan_folder_registry = folder_registry.clone();
         let scan_folder_state_commit = folder_state_commit.clone();
         let scan_folder_watcher = folder_watcher.clone();
@@ -48,6 +52,8 @@ impl ImportService {
                 path,
                 scan_event_tx.clone(),
                 scan_library_manager.clone(),
+                scan_clock.clone(),
+                scan_ids.clone(),
                 scan_folder_registry.clone(),
                 scan_folder_state_commit.clone(),
                 scan_folder_watcher.clone(),

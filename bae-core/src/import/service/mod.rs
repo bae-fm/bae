@@ -58,7 +58,7 @@ struct PreparedMetadata {
     artists: Vec<crate::db::DbArtist>,
     artist_external_id_updates: Vec<(String, crate::db::DbArtist)>,
     artist_images: Vec<(crate::db::DbLibraryImage, Vec<u8>)>,
-    /// Per-source external identity rows. Empty for File Tags and Manual.
+    /// Per-source external identity rows. Empty for File Tags and direct entry.
     /// Commit writes one `release_identities` row per element.
     identities: Vec<crate::import::types::ReleaseIdentity>,
     album_title: String,
@@ -418,6 +418,8 @@ fn spawn_root_scan(
     path: PathBuf,
     event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
     library_manager: LibraryManager,
+    clock: coven::ClockRef,
+    ids: coven::IdRef,
     folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     folder_watcher: Arc<FolderWatcher>,
@@ -436,6 +438,8 @@ fn spawn_root_scan(
                 &path,
                 &event_tx,
                 &library_manager,
+                &clock,
+                &ids,
                 &folder_registry,
                 &folder_state_commit,
                 &folder_watcher,

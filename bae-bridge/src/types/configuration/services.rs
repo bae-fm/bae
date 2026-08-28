@@ -13,14 +13,9 @@ pub struct BridgeConfig {
     pub max_concurrent_downloads: u32,
     /// Whether unseeded Lookup candidates run signal extraction and provider
     /// matching without an explicit user action.
-    pub automatic_import_metadata_lookup: bool,
-    /// Which metadata surface opens for an unseeded import candidate.
-    pub default_import_metadata_mode: BridgeDefaultImportMetadataMode,
-    /// The last metadata surface the user explicitly selected.
-    pub last_import_metadata_mode: BridgeImportMetadataMode,
-    /// The metadata surface core resolves for a newly selected candidate with
-    /// no stored seed, after applying the fixed or Last Used default.
-    pub resolved_import_metadata_mode: BridgeImportMetadataMode,
+    pub automatic_import_identification: bool,
+    /// Which source is applied when an import candidate is first discovered.
+    pub default_import_metadata_source: BridgeDefaultImportMetadataSource,
     /// Whether the seek bar's leading label counts down the time remaining
     /// instead of showing the time elapsed. A synced preference, not a
     /// per-device one — the seek bar reads it and never stores a copy.
@@ -57,18 +52,10 @@ pub struct BridgeConfig {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeImportMetadataMode {
-    Lookup,
+pub enum BridgeDefaultImportMetadataSource {
+    FindOnline,
     FileTags,
-    Manual,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeDefaultImportMetadataMode {
-    Lookup,
-    FileTags,
-    Manual,
-    LastUsed,
+    None,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

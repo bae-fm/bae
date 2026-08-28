@@ -3,6 +3,8 @@
 //! at open; the applied version becomes the wire `schema_version`.
 
 const IMPORT_METADATA_SEEDS_SQL: &str = include_str!("../migrations/002_import_metadata_seeds.sql");
+const METADATA_DRAFTS_AND_PROVENANCE_SQL: &str =
+    include_str!("../migrations/003_metadata_drafts_and_provenance.sql");
 const VERSION_ONE_FILE_TAG_TRACK_PREFIX: &str = "unknown-track-";
 const FILE_TAG_TRACK_PREFIX: &str = "file-tag-track-";
 
@@ -18,6 +20,11 @@ pub fn all() -> Vec<coven::Migration> {
     vec![
         coven::Migration::sql(1, "initial", include_str!("../migrations/001_initial.sql")),
         coven::Migration::run(2, "import_metadata_seeds", migrate_import_metadata_seeds),
+        coven::Migration::sql(
+            3,
+            "metadata_drafts_and_provenance",
+            METADATA_DRAFTS_AND_PROVENANCE_SQL,
+        ),
     ]
 }
 
@@ -204,6 +211,12 @@ mod tests {
         )]
     }
 
+    fn version_two() -> Vec<coven::Migration> {
+        let mut migrations = all();
+        migrations.truncate(2);
+        migrations
+    }
+
     #[tokio::test]
     #[serial]
     async fn migration_two_preserves_candidate_graph_and_normalizes_artist_edits() {
@@ -280,7 +293,8 @@ mod tests {
             .expect("seed version-one candidate graph");
         drop(handle);
 
-        let handle = open(store_dir, "migration-preserves", all()).expect("migrate to version two");
+        let handle =
+            open(store_dir, "migration-preserves", version_two()).expect("migrate to version two");
         handle
             .read(|sql| {
                 let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -401,7 +415,8 @@ mod tests {
             .expect("seed version-one File Tags edit");
         drop(handle);
 
-        let handle = open(store_dir, "migration-track-ids", all()).expect("migrate File Tags edit");
+        let handle =
+            open(store_dir, "migration-track-ids", version_two()).expect("migrate File Tags edit");
         handle
             .read(|sql| {
                 let track_id: String = sql.query_row(
@@ -447,7 +462,7 @@ mod tests {
             .expect("seed invalid version-one edit");
         drop(handle);
 
-        let error = match open(store_dir.clone(), "migration-rollback", all()) {
+        let error = match open(store_dir.clone(), "migration-rollback", version_two()) {
             Ok(_) => panic!("empty artist override must reject migration"),
             Err(error) => error,
         };
@@ -471,5 +486,101 @@ mod tests {
             .expect("collect columns");
         assert!(columns.iter().any(|column| column == "pick_kind"));
         assert!(!columns.iter().any(|column| column == "seed_kind"));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn migration_three_preserves_library_and_watched_folder_intent() {
+        let temp = tempfile::tempdir().expect("temp store");
+        let store_dir = StoreDir::new_ephemeral(temp.path());
+        let handle =
+            open(store_dir.clone(), "migration-drafts", version_two()).expect("open version two");
+        handle
+            .write(|sql| {
+                sql.execute_batch(
+                    "INSERT INTO artists (id, name, _updated_at, created_at)
+                         VALUES ('11111111-1111-4111-8111-111111111111', 'Artist Name', '2026-01-02T03:04:05Z',
+                                 '2026-01-02T03:04:05Z');
+                     INSERT INTO albums (
+                         id, title, artist_id, is_compilation, _updated_at, created_at
+                     ) VALUES (
+                         '22222222-2222-4222-8222-222222222222', 'Album Title',
+                         '11111111-1111-4111-8111-111111111111', 0,
+                         '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z'
+                     );
+                     INSERT INTO releases (
+                         id, album_id, metadata_source, remote, _updated_at, created_at
+                     ) VALUES (
+                         '33333333-3333-4333-8333-333333333333',
+                         '22222222-2222-4222-8222-222222222222', 'file_tags', 1,
+                         '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z'
+                     );
+                     INSERT INTO tracks (
+                         id, release_id, title, side, _updated_at, created_at
+                     ) VALUES (
+                         '44444444-4444-4444-8444-444444444444',
+                         '33333333-3333-4333-8333-333333333333', 'Track Title', 1,
+                         '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z'
+                     );
+                     INSERT INTO watched_import_folders (path, position)
+                         VALUES ('/music', 0);
+                     INSERT INTO folder_release_decisions (
+                         watched_folder_path, relative_folder_path, decision, author
+                     ) VALUES (
+                         '/music', 'collection', 'keep_as_separate_releases', 'user'
+                     );
+                     INSERT INTO folder_scan_roots (
+                         watched_folder_path, generation, status
+                     ) VALUES ('/music', 1, 'complete');
+                     INSERT INTO import_candidate_state (content_hash, folder_path)
+                         VALUES ('candidate-hash', '/music/collection/release');",
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("seed version-two state");
+        drop(handle);
+
+        let handle = open(store_dir, "migration-drafts", all()).expect("migrate to version three");
+        handle
+            .read(|sql| {
+                let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+                assert_eq!(version, 3);
+                for (table, expected) in [
+                    ("artists", 1),
+                    ("albums", 1),
+                    ("releases", 1),
+                    ("tracks", 1),
+                    ("watched_import_folders", 1),
+                    ("folder_release_decisions", 1),
+                    ("folder_scan_roots", 0),
+                    ("import_candidate_state", 0),
+                ] {
+                    let count: i64 =
+                        sql.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                            row.get(0)
+                        })?;
+                    assert_eq!(count, expected, "{table} row count");
+                }
+                Ok(())
+            })
+            .await
+            .expect("read migrated state");
+        handle
+            .write(|sql| {
+                sql.execute(
+                    "INSERT INTO releases (
+                         id, album_id, metadata_source, remote, _updated_at, created_at
+                     ) VALUES (
+                         '55555555-5555-4555-8555-555555555555',
+                         '22222222-2222-4222-8222-222222222222', 'none', 1,
+                         '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z'
+                     )",
+                    [],
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("insert source-less release");
     }
 }

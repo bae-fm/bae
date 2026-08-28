@@ -129,6 +129,8 @@ pub(super) fn insert_release_row(
         )
         .map_err(|e| DbError::Message(e.to_string()))?;
     }
+    let (metadata_source, metadata_source_release_id) =
+        metadata_provenance_columns(release.metadata_provenance.as_ref());
     conn.execute(
         r#"
         INSERT INTO releases (
@@ -147,8 +149,8 @@ pub(super) fn insert_release_row(
             release.release_name,
             release.pressing.year,
             release.disc_id,
-            release.metadata_source.as_str(),
-            release.metadata_source_release_id,
+            metadata_source,
+            metadata_source_release_id,
             release.pressing.format,
             release.pressing.label,
             release.pressing.catalog_number,
@@ -165,6 +167,18 @@ pub(super) fn insert_release_row(
     )
     .map(|_| ())
     .map_err(DbError::from)
+}
+
+pub(super) fn metadata_provenance_columns(
+    provenance: Option<&crate::import::MetadataProvenance>,
+) -> (&str, Option<&str>) {
+    match provenance {
+        Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) => {
+            (source.as_str(), Some(release_id.as_str()))
+        }
+        Some(crate::import::MetadataProvenance::FileTags) => ("file_tags", None),
+        None => ("none", None),
+    }
 }
 
 pub(super) fn insert_track_row(

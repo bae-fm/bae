@@ -12,27 +12,26 @@ internal sealed partial class SettingsWindow
     {
         content.Children.Add(SectionLabel(Loc.Core("ui.import.metadata.title")));
 
-        var mode = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
-        AddMode(mode, Loc.Core("ui.import.metadata.lookup"), BridgeDefaultImportMetadataMode.Lookup);
-        AddMode(mode, Loc.Core("ui.import.metadata.file_tags"), BridgeDefaultImportMetadataMode.FileTags);
-        AddMode(mode, Loc.Core("ui.import.metadata.manual"), BridgeDefaultImportMetadataMode.Manual);
-        AddMode(mode, Loc.Chrome("settings.import.last_used"), BridgeDefaultImportMetadataMode.LastUsed);
-        mode.SelectionChanged += (_, _) =>
+        var source = new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch };
+        AddSource(source, Loc.Chrome("settings.import.find_online"), BridgeDefaultImportMetadataSource.FindOnline);
+        AddSource(source, Loc.Core("ui.import.metadata.file_tags"), BridgeDefaultImportMetadataSource.FileTags);
+        AddSource(source, Loc.Chrome("settings.import.none"), BridgeDefaultImportMetadataSource.None);
+        source.SelectionChanged += (_, _) =>
         {
-            if (_refreshingSettings || mode.SelectedItem is not ComboBoxItem { Tag: BridgeDefaultImportMetadataMode selected })
+            if (_refreshingSettings || source.SelectedItem is not ComboBoxItem { Tag: BridgeDefaultImportMetadataSource selected })
             {
                 return;
             }
             WriteSetting(
-                () => _app.Settings.SetDefaultImportMetadataMode(selected),
+                () => _app.Settings.SetDefaultImportMetadataSource(selected),
                 () => RenderCurrent(renderers));
         };
-        content.Children.Add(SecondaryLabel(Loc.Chrome("settings.import.open_unseeded")));
-        content.Children.Add(mode);
+        content.Children.Add(SecondaryLabel(Loc.Chrome("settings.import.default_source")));
+        content.Children.Add(source);
 
         var automatic = new CheckBox
         {
-            Content = Loc.Chrome("settings.import.automatic_lookup"),
+            Content = Loc.Chrome("settings.import.automatic_identification"),
         };
         automatic.IsCheckedChanged += (_, _) =>
         {
@@ -41,43 +40,43 @@ internal sealed partial class SettingsWindow
                 return;
             }
             WriteSetting(
-                () => _app.Settings.SetAutomaticImportMetadataLookup(
+                () => _app.Settings.SetAutomaticImportIdentification(
                     automatic.IsChecked == true),
                 () => RenderCurrent(renderers));
         };
         content.Children.Add(automatic);
         content.Children.Add(SecondaryLabel(
-            Loc.Chrome("settings.import.automatic_lookup_help")));
+            Loc.Chrome("settings.import.automatic_identification_help")));
 
         renderers.Add(fresh =>
         {
             _refreshingSettings = true;
-            SelectMode(mode, fresh.DefaultImportMetadataMode);
-            automatic.IsChecked = fresh.AutomaticImportMetadataLookup;
+            SelectSource(source, fresh.DefaultImportMetadataSource);
+            automatic.IsChecked = fresh.AutomaticImportIdentification;
             _refreshingSettings = false;
         });
     }
 
-    private static void AddMode(
+    private static void AddSource(
         ComboBox picker,
         string label,
-        BridgeDefaultImportMetadataMode mode) =>
-        picker.Items.Add(new ComboBoxItem { Content = label, Tag = mode });
+        BridgeDefaultImportMetadataSource source) =>
+        picker.Items.Add(new ComboBoxItem { Content = label, Tag = source });
 
-    private static void SelectMode(
+    private static void SelectSource(
         ComboBox picker,
-        BridgeDefaultImportMetadataMode selected)
+        BridgeDefaultImportMetadataSource selected)
     {
         foreach (var item in picker.Items)
         {
-            if (item is ComboBoxItem { Tag: BridgeDefaultImportMetadataMode mode }
-                && mode == selected)
+            if (item is ComboBoxItem { Tag: BridgeDefaultImportMetadataSource source }
+                && source == selected)
             {
                 picker.SelectedItem = item;
                 return;
             }
         }
-        throw new InvalidOperationException($"Unknown import metadata mode: {selected}");
+        throw new InvalidOperationException($"Unknown import metadata source: {selected}");
     }
 
     private void WriteSetting(

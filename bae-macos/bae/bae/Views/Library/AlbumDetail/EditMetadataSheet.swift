@@ -203,12 +203,12 @@ struct EditMetadataSheet: View {
     #Preview("Edit Metadata") {
         EditMetadataSheet(
             seed: BridgeReleaseEditSeed(
-                edit: PreviewData.editMetadataSeed(trackCount: 2),
+                edit: PreviewData.editMetadataDraft(trackCount: 2),
                 canResetToSource: true
             ),
             onSave: { _ in },
             onReset: {
-                PreviewData.editMetadataSeed(trackCount: 2)
+                PreviewData.editMetadataDraft(trackCount: 2)
             },
             onCancel: {},
         )

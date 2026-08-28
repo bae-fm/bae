@@ -4,6 +4,7 @@ import Foundation
 /// The services the mapping pane's actions drive.
 struct ImportMappingServices {
     let importer: Importer
+    let automaticIdentification: Bool
     /// Where a failed command's line lands, on the candidate whose pane ran
     /// it. Nothing about the table is held here — every edit is a row core
     /// stores, and the per-candidate read redraws from it.
@@ -25,27 +26,23 @@ struct ImportMappingServices {
 /// leaves behind, what naming a row changes, what assigning a cue to a disc
 /// re-reads — is exercised without a view hierarchy.
 enum ImportMappingFlow {
-    /// Present one metadata source without choosing it. Opening File Tags
-    /// starts its lazy preview read; only that surface's affirmative action
-    /// stores the seed.
+    /// Put the draft or one temporary source browser in the metadata slot.
     @MainActor
-    static func presentMetadataMode(
-        _ mode: BridgeImportMetadataMode,
+    static func presentMetadata(
+        _ presentation: CandidateMetadataPresentation,
         for candidate: Candidate,
         services: ImportMappingServices
     ) {
-        services.importStore.presentMetadataMode(mode, forKey: candidate.key)
-        do {
-            try services.importer.setLastMetadataMode(mode)
-        }
-        catch {
-            if let line = error.displayLine {
-                services.onError(line)
-            }
-        }
+        services.importStore.presentMetadata(
+            presentation,
+            forKey: candidate.key
+        )
 
-        switch mode {
-        case .lookup:
+        switch presentation {
+        case .draft:
+            break
+        case .findOnline:
+            guard services.automaticIdentification else { return }
             guard
                 case .idle = shownIdentifyState(
                     resumed: candidate.resumedIdentifyState,
@@ -55,8 +52,6 @@ enum ImportMappingFlow {
             services.importer.identifyForExplicitLookup(candidate.key)
         case .fileTags:
             loadFileTagsPreview(key: candidate.key, services: services)
-        case .manual:
-            break
         }
     }
 
@@ -109,25 +104,35 @@ enum ImportMappingFlow {
             services.importStore.candidate(forKey: key)?
                 .fileTagsPreview.edit != nil
         else { return }
-        ImportSearchFlow.selectMetadataSeed(
+        ImportSearchFlow.applyMetadata(
             importer: services.importer,
             importStore: services.importStore,
             key: key,
-            seed: .fileTags
+            provenance: .fileTags,
+            onConfirmed: {
+                services.importStore.presentMetadata(.draft, forKey: key)
+            }
         )
     }
 
     @MainActor
-    static func enterManually(
+    static func clearMetadata(
         key: String,
         services: ImportMappingServices
     ) {
-        ImportSearchFlow.selectMetadataSeed(
-            importer: services.importer,
-            importStore: services.importStore,
-            key: key,
-            seed: .manual
-        )
+        Task { @MainActor in
+            do {
+                _ = try await services.importer.clearCandidateMetadata(key)
+            }
+            catch is CancellationError {}
+            catch {
+                if let line = error.displayLine {
+                    services.onError(
+                        String(localized: "Couldn't save that change: \(line)")
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -244,9 +249,8 @@ extension ImportMappingFlow {
         }
     }
 
-    /// Put a file in a role, or put it back. Core persists it and drops the
-    /// candidate's stored metadata seed; a file that has changed jobs is a
-    /// different set of rows, and the per-candidate read draws them.
+    /// Put a file in a role, or put it back. Core persists the physical mapping
+    /// decision and the per-candidate read redraws the affected rows.
     @MainActor
     static func setRole(
         key: String,
@@ -262,8 +266,7 @@ extension ImportMappingFlow {
         )
     }
 
-    /// Name the audio `sheetFileId` describes, or clear it with `nil`. Core
-    /// persists the decision and drops the candidate's stored metadata seed.
+    /// Name the audio `sheetFileId` describes, or clear it with `nil`.
     ///
     /// A binding changes what the folder's audio *is*: one container becomes a
     /// dozen entries. The rows the person was editing are a different set

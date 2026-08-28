@@ -52,8 +52,9 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
     ));
 }
 
-/// An import started mid-pass takes its candidate away from the sweep: no
-/// verdict is stored for it, and it stops counting towards the queue's total.
+/// An import started mid-pass takes its candidate away from the sweep: its
+/// draft gains no identification result, and it stops counting towards the
+/// queue's total.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress() {
@@ -91,8 +92,13 @@ async fn an_import_start_mid_pass_removes_the_candidate_from_work_and_progress()
         .expect("pass finishes after import ownership changes")
         .unwrap();
 
-    assert!(!fixture.stored().await.contains_key(&importing_hash));
-    assert!(fixture.stored_for(&remaining).await.is_some());
+    let importing_state = fixture
+        .stored()
+        .await
+        .remove(&importing_hash)
+        .expect("the discovered draft remains available to the import");
+    assert!(importing_state.identify.is_none());
+    assert!(fixture.identified_for(&remaining).await.is_some());
     let progress: Vec<_> = drain_events(&mut events)
         .into_iter()
         .filter_map(|event| match event {
@@ -224,10 +230,14 @@ async fn an_import_started_while_a_verdict_is_in_flight_stores_nothing() {
         .expect("pass finishes after the import claims the candidate")
         .unwrap();
 
+    let state = fixture
+        .stored()
+        .await
+        .remove(&hash)
+        .expect("the discovered draft remains available to the import");
     assert!(
-        !fixture.stored().await.contains_key(&hash),
-        "the verdict was already bought and paid for, and is still not stored: {:?}",
-        fixture.stored().await.keys().collect::<Vec<_>>()
+        state.identify.is_none(),
+        "the in-flight verdict does not replace the importing candidate's draft"
     );
 }
 
@@ -330,8 +340,8 @@ async fn identified_progress_is_emitted_after_the_verdict_is_committed() {
             }
         ) {
             assert!(
-                fixture.stored_for(&dir).await.is_some(),
-                "the DB row must be readable before progress exposes the verdict"
+                fixture.identified_for(&dir).await.is_some(),
+                "the identification result must be readable before progress exposes it"
             );
             break;
         }
@@ -385,8 +395,13 @@ async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
         .expect("the pass must finish rather than wait on a candidate that is gone")
         .unwrap();
 
+    let state = fixture
+        .stored()
+        .await
+        .remove(&hash)
+        .expect("the discovered draft remains keyed by the candidate's content");
     assert!(
-        !fixture.stored().await.contains_key(&hash),
+        state.identify.is_none(),
         "a candidate that vanished mid-identification learned nothing"
     );
     // And the sweep is still alive to the queue: a later pass runs.
@@ -423,7 +438,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     fixture.sweep_once().await;
 
     assert!(
-        fixture.stored_for(&dir).await.is_some(),
+        fixture.identified_for(&dir).await.is_some(),
         "the candidate really was identified"
     );
     assert!(
@@ -463,7 +478,7 @@ async fn a_candidate_the_sweep_failed_then_the_user_looked_up_is_left_alone() {
 
     fixture.sweep_once().await;
     assert!(
-        fixture.stored_for(&dir).await.is_none(),
+        fixture.identified_for(&dir).await.is_none(),
         "the first pass learned nothing"
     );
 
@@ -565,8 +580,8 @@ async fn a_cancelled_candidate_writes_no_row() {
         .unwrap();
 
     assert!(
-        fixture.stored_for(&dir).await.is_none(),
-        "a cancelled candidate writes no row: {:?}",
+        fixture.identified_for(&dir).await.is_none(),
+        "a cancelled candidate writes no identification result: {:?}",
         fixture.stored().await.keys().collect::<Vec<_>>()
     );
 
@@ -596,5 +611,13 @@ async fn a_cancelled_candidate_writes_no_row() {
         .await,
         "the write is gated on the token, not only the lookup before it"
     );
-    assert!(fixture.stored().await.is_empty());
+    let stored = fixture.stored().await;
+    assert!(
+        stored.values().all(|row| row.identify.is_none()),
+        "cancellation preserves the discovered draft without writing an identification result"
+    );
+    assert!(
+        !stored.contains_key("hash-x"),
+        "the already-cancelled write creates no candidate state"
+    );
 }

@@ -94,7 +94,7 @@ pub(super) fn usable_stored_answer<'a>(
     stored
         .get(&candidate.files.content_hash())
         .filter(|row| row.file_edits.revision == candidate.file_edit_revision)
-        .filter(|row| row.metadata_seed.is_some() || row.identify.is_some())
+        .filter(|row| row.metadata_provenance.is_some() || row.identify.is_some())
 }
 
 pub(super) async fn usable_current_candidate(
@@ -124,7 +124,7 @@ pub(super) async fn current_stored_answer(
     if row.file_edits.revision != candidate.file_edit_revision {
         return Ok(false);
     }
-    Ok(row.metadata_seed.is_some() || row.identify.is_some())
+    Ok(row.metadata_provenance.is_some() || row.identify.is_some())
 }
 
 /// Split the queue against what is already stored.
@@ -149,7 +149,7 @@ pub(super) fn plan(
     }
     for job in grouped {
         let candidate = job.representative();
-        // Only a candidate with neither a chosen metadata seed nor an identify
+        // Only a candidate with neither applied metadata provenance nor an identify
         // result belongs to automatic Lookup.
         if usable_stored_answer(stored, candidate).is_none() {
             identify.push_back(job);

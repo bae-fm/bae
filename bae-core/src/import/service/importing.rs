@@ -34,6 +34,8 @@ impl ImportService {
             fs_rx,
             event_tx.clone(),
             library_manager_for_handle.clone(),
+            clock.clone(),
+            ids.clone(),
             folder_registry.clone(),
             folder_state_commit.clone(),
             folder_watcher.clone(),
@@ -99,7 +101,7 @@ impl ImportService {
                 command.selected_cover,
                 command.storage_mode,
                 command.pin,
-                command.metadata_seed,
+                command.metadata_provenance,
                 command.user_edit,
             )
             .await;
@@ -148,7 +150,7 @@ impl ImportService {
         selected_cover: Option<CoverSelection>,
         storage_mode: StorageMode,
         pin: bool,
-        metadata_seed: crate::import::MetadataSeed,
+        metadata_provenance: Option<crate::import::MetadataProvenance>,
         user_edit: Option<crate::import::ReleaseUserEdit>,
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
@@ -202,9 +204,9 @@ impl ImportService {
             });
         }
 
-        let file_tag_snapshot = match (&metadata_seed, &expectation) {
+        let file_tag_snapshot = match (&metadata_provenance, &expectation) {
             (
-                crate::import::MetadataSeed::FileTags,
+                Some(crate::import::MetadataProvenance::FileTags),
                 ImportExpectation::FileTags { snapshot, .. },
             ) => {
                 let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
@@ -229,7 +231,10 @@ impl ImportService {
                 }
                 Some(snapshot)
             }
-            (crate::import::MetadataSeed::FileTags, ImportExpectation::Candidate { .. }) => {
+            (
+                Some(crate::import::MetadataProvenance::FileTags),
+                ImportExpectation::Candidate { .. },
+            ) => {
                 return Err(crate::import::ImportError::Internal {
                     detail: format!("{candidate_key}'s File Tags import has no metadata snapshot"),
                 });
@@ -268,8 +273,8 @@ impl ImportService {
             },
         );
 
-        let (parsed, release_cover) = match &metadata_seed {
-            crate::import::MetadataSeed::ExternalRelease { source, release_id } => {
+        let (parsed, release_cover) = match &metadata_provenance {
+            Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) => {
                 // The documents are archived by `prepare_release`, keyed by the
                 // picked source release — so nothing about this release's rows
                 // needs to carry them, and the pointer written below is what
@@ -281,7 +286,7 @@ impl ImportService {
                 let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
                 (parsed, payloads.default_cover()?)
             }
-            crate::import::MetadataSeed::FileTags => {
+            Some(crate::import::MetadataProvenance::FileTags) => {
                 let folder_name = folder
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -310,8 +315,8 @@ impl ImportService {
                 // files' own tags.
                 (parsed, None)
             }
-            crate::import::MetadataSeed::Manual => {
-                let parsed = crate::import::manual_mapper::map_manual_candidate_to_db(
+            None => {
+                let parsed = crate::import::direct_entry_mapper::map_direct_entry_candidate_to_db(
                     &categorized,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
@@ -436,8 +441,10 @@ impl ImportService {
         // File Tags captured its embedded image in the same snapshot that
         // seeded the pane, so the worker never opens the tags a second time.
         let embedded_cover = if selected_cover.is_none()
-            && matches!(metadata_seed, crate::import::MetadataSeed::FileTags)
-        {
+            && matches!(
+                metadata_provenance,
+                Some(crate::import::MetadataProvenance::FileTags)
+            ) {
             file_tag_snapshot
                 .and_then(|snapshot| snapshot.embedded_cover.as_ref())
                 .map(|cover| (cover.data.clone(), cover.content_type.clone()))

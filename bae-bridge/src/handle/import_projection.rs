@@ -222,7 +222,7 @@ impl crate::types::BridgeTriageRow {
             matched,
             selectable,
             import_status,
-            metadata_seed,
+            metadata_provenance,
         } = row;
         crate::types::BridgeTriageRow {
             candidate_key,
@@ -241,7 +241,8 @@ impl crate::types::BridgeTriageRow {
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
-            metadata_seed: metadata_seed.map(crate::types::BridgeMetadataSeed::from_core),
+            metadata_provenance: metadata_provenance
+                .map(crate::types::BridgeMetadataProvenance::from_core),
         }
     }
 }
@@ -280,6 +281,7 @@ impl crate::types::BridgeTriagePlacement {
     pub(crate) fn from_core(placement: bae_core::import::TriagePlacement) -> Self {
         use bae_core::import::TriagePlacement as P;
         match placement {
+            P::Pending => Self::Pending,
             P::Ready => Self::Ready,
             P::NeedsYou { group, reason } => Self::NeedsYou {
                 group: crate::types::BridgeNeedsYouGroup::from_core(group),
@@ -302,7 +304,6 @@ impl crate::types::BridgeNeedsYouGroup {
             G::CountsOrLengthsDisagree => Self::CountsOrLengthsDisagree,
             G::AlreadyInLibrary => Self::AlreadyInLibrary,
             G::NoMatch => Self::NoMatch,
-            G::NeedsMetadata => Self::NeedsMetadata,
             G::StillIdentifying => Self::StillIdentifying,
         }
     }
@@ -316,7 +317,6 @@ impl crate::types::BridgeNeedsYouReason {
             R::Disagreement(needs_you) => Self::Disagreement {
                 disagreement: crate::types::BridgeNeedsYou::from_core(needs_you),
             },
-            R::NeedsMetadata => Self::NeedsMetadata,
             R::StillIdentifying { phase } => Self::StillIdentifying {
                 phase: crate::types::BridgeIdentifyPhase::from_core(phase),
             },
@@ -513,7 +513,6 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(|row| crate::types::BridgeReadyRowRef {
                     candidate_key: row.candidate_key,
-                    metadata_seed: crate::types::BridgeMetadataSeed::from_core(row.metadata_seed),
                     cover_thumbnail_url: row.cover_thumbnail_url,
                 })
                 .collect(),
@@ -586,7 +585,11 @@ impl crate::types::BridgeImportCandidateDetail {
             release,
             picked_library_status,
             file_evidence,
-            edit,
+            metadata_draft,
+            metadata_draft_is_blank,
+            metadata_provenance,
+            metadata_revision,
+            initial_metadata_source,
             mapping,
             unprobed,
             cover,
@@ -610,7 +613,14 @@ impl crate::types::BridgeImportCandidateDetail {
                 .into_iter()
                 .map(crate::types::BridgeFileEvidence::from_core)
                 .collect(),
-            edit: edit.map(crate::types::BridgeRawReleaseEdit::from_core),
+            metadata_draft: crate::types::BridgeRawReleaseEdit::from_core(metadata_draft),
+            metadata_draft_is_blank,
+            metadata_provenance: metadata_provenance
+                .map(crate::types::BridgeMetadataProvenance::from_core),
+            metadata_revision,
+            initial_metadata_source: crate::types::BridgeDefaultImportMetadataSource::from_core(
+                initial_metadata_source,
+            ),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
             unprobed: unprobed
                 .into_iter()

@@ -128,16 +128,32 @@ internal sealed class ImportService
     public Func<string, bool> CancelAutoIdentify { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: CancelAutoIdentify not wired");
 
-    /// <summary>Manual metadata search (the re-identify dialog's fallback and the
+    /// <summary>Typed metadata search (the re-identify dialog's fallback and the
     /// import confirm's search). Async — it blocks on network / DB.</summary>
     public Func<string, string, string, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
         = (_, _, _) => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
 
-    /// <summary>Select the metadata seed this candidate will import. The
-    /// per-candidate read delivers the pane's next value.</summary>
-    public Func<string, BridgeMetadataSeed, Task<(bool Current, string? Error)>> SelectCandidateMetadataSeed { get; init; }
-        = (_, _) => throw new InvalidOperationException(
-            "ImportService stub: SelectCandidateMetadataSeed not wired");
+    /// <summary>Replace the draft from an online release.</summary>
+    public Func<string, BridgeMetadataSource, string,
+        Task<(bool Current, (ulong? Revision, string? Error) Result)>>
+        ApplyCandidateExternalMetadata
+    { get; init; }
+        = (_, _, _) => throw new InvalidOperationException(
+            "ImportService stub: ApplyCandidateExternalMetadata not wired");
+
+    /// <summary>Replace the draft from the candidate's file tags.</summary>
+    public Func<string, Task<(bool Current, (ulong? Revision, string? Error) Result)>>
+        ApplyCandidateFileTags
+    { get; init; }
+        = _ => throw new InvalidOperationException(
+            "ImportService stub: ApplyCandidateFileTags not wired");
+
+    /// <summary>Clear the draft while preserving file mapping decisions.</summary>
+    public Func<string, Task<(bool Current, (ulong? Revision, string? Error) Result)>>
+        ClearCandidateMetadata
+    { get; init; }
+        = _ => throw new InvalidOperationException(
+            "ImportService stub: ClearCandidateMetadata not wired");
 
     /// <summary>Read the folder's embedded tags without selecting them.</summary>
     public Func<string, Task<(bool Current, (BridgeReleaseUserEdit? Edit, string? Error) Result)>> PreviewFileTags { get; init; }
@@ -244,9 +260,16 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
         SearchReleases = (source, artist, album) =>
             session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
-        SelectCandidateMetadataSeed = (candidateKey, seed) =>
+        ApplyCandidateExternalMetadata = (candidateKey, source, releaseId) =>
             session.RunForCurrentHandle(handle =>
-                NativeBae.SelectCandidateMetadataSeed(handle, candidateKey, seed)),
+                NativeBae.ApplyCandidateExternalMetadata(
+                    handle, candidateKey, source, releaseId)),
+        ApplyCandidateFileTags = candidateKey =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.ApplyCandidateFileTags(handle, candidateKey)),
+        ClearCandidateMetadata = candidateKey =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.ClearCandidateMetadata(handle, candidateKey)),
         PreviewFileTags = candidateKey =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.PreviewFileTags(handle, candidateKey)),

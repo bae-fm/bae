@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>എണ്ണമോ ദൈർഘ്യമോ യോജിക്കുന്നില്ല</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ഇതിനകം ലൈബ്രറിയിൽ</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>പൊരുത്തം കണ്ടെത്തിയില്ല</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>മെറ്റാഡാറ്റ ആവശ്യമാണ്</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ഇപ്പോഴും തിരിച്ചറിയുന്നു</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>തിരിച്ചറിയുന്നു</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ഇപ്പോഴും തിരിച്ചറിയുന്ന ഇനത്തിലേക്ക് പോകുക</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>പുതിയത്</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>ചേർക്കുക</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>നീക്കം ചെയ്യുക</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>ഉറവിടം തിരഞ്ഞെടുത്തിട്ടില്ലാത്ത ഇനങ്ങൾ ഇതിൽ തുറക്കുക</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>അവസാനം ഉപയോഗിച്ചത്</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Lookup സ്ഥാനാർഥികളെ സ്വയമേവ തിരിച്ചറിയുക</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>ഒരു സ്ഥാനാർഥി Lookup ഉപയോഗിക്കുമ്പോൾ മാത്രമേ സ്വയമേവയുള്ള തിരിച്ചറിയൽ കവർ വാചകം, ബാർകോഡുകൾ, ഡിസ്ക് ID-കൾ എന്നിവ വായിക്കൂ. ഫയൽ ടാഗുകളും മാനുവലും ഇത് ഒരിക്കലും പ്രവർത്തിപ്പിക്കില്ല.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>ആൽബം ശീർഷകം</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>പ്രയോഗിക്കുക</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>മെറ്റാഡാറ്റ മായ്ക്കുക</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>സ്ഥാനാർഥിയുടെ ഫയലുകളും മാപ്പിംഗ് തിരഞ്ഞെടുപ്പുകളും മാറ്റമില്ലാതെ തുടരും.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>മെറ്റാഡാറ്റ മായ്ക്കണോ?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>മറ്റൊരു റിലീസ് കണ്ടെത്തുക…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>സ്ഥാനാർഥിയെ വീണ്ടും വായിക്കാൻ ശ്രമിക്കുക.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക തുറക്കുമ്പോഴെല്ലാം കവർ വാചകം, ബാർകോഡുകൾ, ഡിസ്ക് IDകൾ എന്നിവ സ്വയമേവ വായിച്ച് പൊരുത്തം തിരയുന്നു.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>ഡിഫോൾട്ട് മെറ്റാഡാറ്റ ഉറവിടം</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>ഒന്നുമില്ല</value></data>
 </root>

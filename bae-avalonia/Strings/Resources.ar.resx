@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>اختلاف الأعداد أو المدد</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>موجود بالفعل في المكتبة</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>لا يوجد تطابق</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>بيانات وصفية مطلوبة</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>لا يزال قيد التحديد</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>جارٍ التحديد</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>الانتقال إلى مرشَّح ما زال قيد التعرّف</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>جديد</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>إضافة</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>إزالة</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>فتح المرشحين بدون مصدر محدد في</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>آخر استخدام</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>تحديد مرشحي البحث تلقائيًا</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>يقرأ التعرّف التلقائي نص الغلاف والرموز الشريطية ومعرّفات الأقراص فقط عندما يستخدم العنصر المرشّح «البحث». لا تشغّله وسوم الملفات والوضع اليدوي مطلقًا.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>عنوان الألبوم</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>تطبيق</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>مسح البيانات الوصفية</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>مسح البيانات الوصفية؟</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>البحث عن إصدار آخر…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>البحث عبر الإنترنت…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>حاول قراءة العنصر المرشّح مرة أخرى.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>التعرّف تلقائيًا</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>التعرّف تلقائيًا</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>يقرأ نص الغلاف والرموز الشريطية ومعرّفات الأقراص ويبحث عن تطابق تلقائيًا كلما فُتح «البحث عبر الإنترنت».</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>مصدر البيانات الوصفية الافتراضي</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>بلا</value></data>
 </root>

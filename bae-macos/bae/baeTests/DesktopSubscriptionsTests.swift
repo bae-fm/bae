@@ -56,13 +56,16 @@ struct DesktopSubscriptionsTests {
         let observations = ImportSelectionObservations(
             appHandle: handle,
             importStore: store,
-            uiStore: UiStore(),
-            configStore: PreviewData.configStore()
+            uiStore: UiStore()
         )
 
         observations.selectionChanged([MappingFixtures.candidateKey])
         handle.deliver(
-            MappingFixtures.detail(mapping: nil, metadataSeed: nil)
+            MappingFixtures.detail(
+                mapping: nil,
+                edit: MappingFixtures.blankEdit,
+                metadataProvenance: nil
+            )
         )
         for _ in 0..<100 where store.selectedCandidates.isEmpty {
             await Task.yield()

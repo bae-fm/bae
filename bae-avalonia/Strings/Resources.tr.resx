@@ -371,7 +371,6 @@
   <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Sayılar veya Süreler Uyuşmuyor</value></data>
   <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Kitaplıkta Zaten Var</value></data>
   <data name="import.needs_you.no_match" xml:space="preserve"><value>Eşleşme Yok</value></data>
-  <data name="import.needs_you.needs_metadata" xml:space="preserve"><value>Meta veri gerekli</value></data>
   <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Hâlâ Tanımlanıyor</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Tanımlanıyor</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Hâlâ tanımlanan bir adaya git</value></data>
@@ -468,8 +467,19 @@
   <data name="artist.assignments.new" xml:space="preserve"><value>Yeni</value></data>
   <data name="artist.assignments.add" xml:space="preserve"><value>Ekle</value></data>
   <data name="artist.assignments.remove" xml:space="preserve"><value>Kaldır</value></data>
-  <data name="settings.import.open_unseeded" xml:space="preserve"><value>Kaynağı seçilmemiş adayları şurada aç</value></data>
-  <data name="settings.import.last_used" xml:space="preserve"><value>Son kullanılan</value></data>
-  <data name="settings.import.automatic_lookup" xml:space="preserve"><value>Arama adaylarını otomatik olarak tanımla</value></data>
-  <data name="settings.import.automatic_lookup_help" xml:space="preserve"><value>Otomatik tanımlama kapak metnini, barkodları ve disk kimliklerini yalnızca bir aday Arama’yı kullandığında okur. Dosya etiketleri ve Elle bunu hiçbir zaman çalıştırmaz.</value></data>
+  <data name="import.metadata.album_title_placeholder" xml:space="preserve"><value>Albüm adı</value></data>
+  <data name="import.metadata.apply" xml:space="preserve"><value>Uygula</value></data>
+  <data name="import.metadata.clear" xml:space="preserve"><value>Meta verileri temizle</value></data>
+  <data name="import.metadata.clear_body" xml:space="preserve"><value>Adayın dosyaları ve eşleme seçimleri değişmeden kalır.</value></data>
+  <data name="import.metadata.clear_title" xml:space="preserve"><value>Meta veriler temizlensin mi?</value></data>
+  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Başka bir sürüm bul…</value></data>
+  <data name="import.metadata.find_online" xml:space="preserve"><value>Çevrimiçi bul</value></data>
+  <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Çevrimiçi bul…</value></data>
+  <data name="import.metadata.try_again" xml:space="preserve"><value>Adayı yeniden okumayı deneyin.</value></data>
+  <data name="import.search.identify_automatically" xml:space="preserve"><value>Otomatik tanımla</value></data>
+  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Otomatik tanımla</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Çevrimiçi bul her açıldığında kapak metnini, barkodları ve disk kimliklerini otomatik olarak okur ve eşleşme arar.</value></data>
+  <data name="settings.import.default_source" xml:space="preserve"><value>Varsayılan meta veri kaynağı</value></data>
+  <data name="settings.import.find_online" xml:space="preserve"><value>Çevrimiçi bul</value></data>
+  <data name="settings.import.none" xml:space="preserve"><value>Yok</value></data>
 </root>

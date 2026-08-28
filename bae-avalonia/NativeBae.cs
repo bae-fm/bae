@@ -588,17 +588,13 @@ internal static partial class NativeBae
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
 
-    internal static string? SetAutomaticImportMetadataLookup(
+    internal static string? SetAutomaticImportIdentification(
         AppHandle handle, bool enabled) =>
-        CaptureError(() => handle.SetAutomaticImportMetadataLookup(enabled));
+        CaptureError(() => handle.SetAutomaticImportIdentification(enabled));
 
-    internal static string? SetDefaultImportMetadataMode(
-        AppHandle handle, BridgeDefaultImportMetadataMode mode) =>
-        CaptureError(() => handle.SetDefaultImportMetadataMode(mode));
-
-    internal static string? SetLastImportMetadataMode(
-        AppHandle handle, BridgeImportMetadataMode mode) =>
-        CaptureError(() => handle.SetLastImportMetadataMode(mode));
+    internal static string? SetDefaultImportMetadataSource(
+        AppHandle handle, BridgeDefaultImportMetadataSource source) =>
+        CaptureError(() => handle.SetDefaultImportMetadataSource(source));
 
     internal static BridgeConfig GetConfig(AppHandle handle) => handle.GetConfig();
 
@@ -856,13 +852,41 @@ internal static partial class NativeBae
 
     internal static void PreviewTogglePause(AppHandle handle) => handle.PreviewTogglePause();
 
-    /// <summary>Select the candidate's metadata seed. The per-candidate read
-    /// delivers the pane's next value.</summary>
-    internal static string? SelectCandidateMetadataSeed(
+    internal static (ulong? Revision, string? Error) ApplyCandidateExternalMetadata(
         AppHandle handle,
         string candidateKey,
-        BridgeMetadataSeed seed) =>
-        CaptureError(() => Await(() => handle.SelectCandidateMetadataSeed(candidateKey, seed)));
+        BridgeMetadataSource source,
+        string releaseId)
+    {
+        ulong? revision = null;
+        var error = CaptureError(() =>
+            revision = Await(() => handle.SelectCandidateMetadataProvenance(
+                candidateKey,
+                new BridgeMetadataProvenance.ExternalRelease(source, releaseId))));
+        return (revision, error);
+    }
+
+    internal static (ulong? Revision, string? Error) ApplyCandidateFileTags(
+        AppHandle handle,
+        string candidateKey)
+    {
+        ulong? revision = null;
+        var error = CaptureError(() =>
+            revision = Await(() => handle.SelectCandidateMetadataProvenance(
+                candidateKey,
+                new BridgeMetadataProvenance.FileTags())));
+        return (revision, error);
+    }
+
+    internal static (ulong? Revision, string? Error) ClearCandidateMetadata(
+        AppHandle handle,
+        string candidateKey)
+    {
+        ulong? revision = null;
+        var error = CaptureError(() =>
+            revision = Await(() => handle.ClearCandidateMetadata(candidateKey)));
+        return (revision, error);
+    }
 
     internal static (BridgeReleaseUserEdit? Edit, string? Error) PreviewFileTags(
         AppHandle handle, string candidateKey) =>

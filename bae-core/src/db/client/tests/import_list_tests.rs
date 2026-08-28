@@ -14,7 +14,7 @@ use crate::import::folder_scanner::{
 };
 use crate::import::list::{ImportListItem, ImportListRequest, ImportListView};
 use crate::import::search::{MetadataResult, SourceTracks};
-use crate::import::{MetadataSeed, PayloadSource, TriageTab};
+use crate::import::{MetadataProvenance, PayloadSource, TriageTab};
 use coven::FixedClock;
 use std::path::PathBuf;
 
@@ -65,12 +65,32 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
 
 /// One scanned candidate under a fresh watched root.
 async fn scanned(db: &Database, root: &str, name: &str) -> FolderCandidate {
+    scanned_with_source(
+        db,
+        root,
+        name,
+        crate::config::DefaultImportMetadataSource::FindOnline,
+    )
+    .await
+}
+
+async fn scanned_with_source(
+    db: &Database,
+    root: &str,
+    name: &str,
+    source: crate::config::DefaultImportMetadataSource,
+) -> FolderCandidate {
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     let candidate = candidate(root, name);
-    db.save_folder_scan_item(root, generation, &ScanItem::Valid(candidate.clone()))
-        .await
-        .unwrap();
+    db.save_folder_scan_item_with_initial_source(
+        root,
+        generation,
+        &ScanItem::Valid(candidate.clone()),
+        source,
+    )
+    .await
+    .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
     candidate
 }
@@ -120,7 +140,7 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
                 durations: crate::import::probe::ProbedDurations::totalling(1_000),
             },
             expected_edit_revision: 0,
-            metadata_seed: None,
+            metadata_provenance: None,
         })
         .await
         .unwrap());
@@ -168,6 +188,42 @@ fn rows(projection: &crate::import::ImportListProjection) -> Vec<crate::import::
         .collect()
 }
 
+#[tokio::test]
+async fn sweepable_candidates_are_valid_find_online_candidates() {
+    let (db, tmp) = empty_db().await;
+    let online_root = tmp.path().join("online");
+    let tags_root = tmp.path().join("tags");
+    let none_root = tmp.path().join("none");
+    for root in [&online_root, &tags_root, &none_root] {
+        std::fs::create_dir_all(root).unwrap();
+    }
+    let online = scanned_with_source(
+        &db,
+        online_root.to_str().unwrap(),
+        "Online Candidate",
+        crate::config::DefaultImportMetadataSource::FindOnline,
+    )
+    .await;
+    scanned_with_source(
+        &db,
+        tags_root.to_str().unwrap(),
+        "Tags Candidate",
+        crate::config::DefaultImportMetadataSource::FileTags,
+    )
+    .await;
+    scanned_with_source(
+        &db,
+        none_root.to_str().unwrap(),
+        "Unseeded Candidate",
+        crate::config::DefaultImportMetadataSource::None,
+    )
+    .await;
+
+    let candidates = db.load_sweepable_candidates().await.unwrap();
+
+    assert_eq!(candidates, vec![online]);
+}
+
 /// A candidate the user picked a release for leads with that release as its
 /// own archived documents describe it — not with whatever the verdict named.
 #[tokio::test]
@@ -187,13 +243,19 @@ async fn a_picked_row_leads_with_the_archived_document() {
     }])
     .await
     .unwrap();
-    db.save_candidate_metadata_seed(
+    let draft = db
+        .load_import_candidate_pane_rows(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .metadata_draft;
+    db.replace_candidate_metadata(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
-        &MetadataSeed::ExternalRelease {
+        &draft,
+        Some(&MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-picked".to_string(),
-        },
+        }),
     )
     .await
     .unwrap();
@@ -220,13 +282,19 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
     let root = root.to_str().unwrap();
     let candidate = scanned(&db, root, "Album").await;
     save_verdict(&db, &candidate, "mb-verdict").await;
-    db.save_candidate_metadata_seed(
+    let draft = db
+        .load_import_candidate_pane_rows(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .metadata_draft;
+    db.replace_candidate_metadata(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
-        &MetadataSeed::ExternalRelease {
+        &draft,
+        Some(&MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-never-fetched".to_string(),
-        },
+        }),
     )
     .await
     .unwrap();
@@ -238,7 +306,7 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
     let row = rows(&projection).remove(0);
     assert!(row.matched.is_none());
     assert!(
-        row.metadata_seed.is_some(),
+        row.metadata_provenance.is_some(),
         "the decision itself is still on the row"
     );
 }

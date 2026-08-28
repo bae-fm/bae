@@ -293,10 +293,10 @@ pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
     units_of(&audio_layout(files))
 }
 
-/// Blank editable tracks over the candidate's physical audio layout. Manual
-/// metadata entry names nothing from files or sheets, but sheet slicing and
+/// Blank editable tracks over the candidate's physical audio layout. Direct
+/// entry names nothing from files or sheets, but sheet slicing and
 /// disc assignment remain physical facts about where the samples live.
-pub(crate) fn manual_track_rows(files: &CategorizedFiles) -> Vec<TrackUserEdit> {
+pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUserEdit> {
     let sheet_discs: HashMap<&str, i32> = files
         .carving_sheets()
         .into_iter()

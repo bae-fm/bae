@@ -36,10 +36,10 @@ async fn two_sequential_imports() {
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
-                metadata_seed: MetadataSeed::ExternalRelease {
+                metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_keys[i].clone(),
-                },
+                }),
                 user_edit: None,
             })
             .await
@@ -103,7 +103,7 @@ async fn reimport_cover_download_failure_preserves_prior_release() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await
     .expect("initial import succeeds");
@@ -117,7 +117,7 @@ async fn reimport_cover_download_failure_preserves_prior_release() {
             MetadataSource::MusicBrainz,
         )),
         StorageMode::Local,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await;
 
@@ -151,7 +151,7 @@ async fn reimport_decode_verification_failure_preserves_prior_release() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await
     .expect("initial import succeeds while decode verification is disabled");
@@ -163,7 +163,7 @@ async fn reimport_decode_verification_failure_preserves_prior_release() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await;
 
@@ -200,7 +200,7 @@ async fn successful_reimport_replaces_prior_release_once() {
         &album_dir,
         None,
         StorageMode::Remote,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await
     .expect("initial remote import queues upload");
@@ -226,7 +226,7 @@ async fn successful_reimport_replaces_prior_release_once() {
         &album_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await
     .expect("re-import succeeds");
@@ -290,7 +290,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         &prior_dir,
         None,
         StorageMode::Local,
-        MetadataSeed::FileTags,
+        MetadataProvenance::FileTags,
     )
     .await
     .expect("prior local import succeeds");
@@ -321,7 +321,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,
-            metadata_seed: MetadataSeed::FileTags,
+            metadata_provenance: Some(MetadataProvenance::FileTags),
             user_edit: None,
         })
         .await

@@ -5,9 +5,7 @@
 //! pick. All three are read for the entries inside a requested window and for
 //! the one key a selection names — never for the queue.
 
-use super::super::folder_scans::{
-    load_candidate_file_tag_snapshot, load_item_by_key, load_resolved_boundaries,
-};
+use super::super::folder_scans::{load_item_by_key, load_resolved_boundaries};
 use super::super::identity::check_releases_in_library_on;
 use super::super::import_state::{load_pane_rows_on, load_states_on};
 use super::super::payloads::load_release_payloads_on;
@@ -57,7 +55,7 @@ pub(super) fn materialise(
                 // search settles a folder on a release the verdict never
                 // named. With nothing archived behind the pick the row leads
                 // with its folder name rather than someone else's release.
-                if let Some(seed) = row.metadata_seed.clone() {
+                if let Some(seed) = row.metadata_provenance.clone() {
                     row.matched = picked_release(sql, &seed)?;
                 }
                 Ok(ImportListItem::Candidate {
@@ -112,9 +110,9 @@ fn resolved_boundaries(
 /// behind a release pick.
 fn picked_release(
     sql: &SqlReadContext<'_>,
-    pick: &MetadataSeed,
+    pick: &MetadataProvenance,
 ) -> Result<Option<MatchedRelease>, DbError> {
-    let MetadataSeed::ExternalRelease {
+    let MetadataProvenance::ExternalRelease {
         source, release_id, ..
     } = pick
     else {
@@ -136,8 +134,6 @@ fn picked_release(
 pub(super) fn load_candidate_detail_on(
     sql: &SqlReadContext<'_>,
     key: &str,
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
 ) -> Result<Option<ImportCandidateDetailProjection>, DbError> {
     let Some((_, stored)) = load_item_by_key(sql, key)? else {
         return Ok(None);
@@ -182,13 +178,27 @@ pub(super) fn load_candidate_detail_on(
     let identify = current.as_ref().and_then(|state| state.identify.as_ref());
     let picked = current
         .as_ref()
-        .and_then(|state| state.metadata_seed.clone());
+        .and_then(|state| state.metadata_provenance.clone());
     let durations = current
         .as_ref()
         .map(|state| state.durations.clone())
         .unwrap_or_default();
     let signals = current.as_ref().and_then(|state| state.signals.clone());
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
+    let (initial_metadata_source, metadata_revision) = sql.query_row(
+        "SELECT c.initial_metadata_source, s.metadata_revision \
+             FROM scan_candidate c JOIN import_candidate_state s \
+               ON s.content_hash = c.content_hash \
+             WHERE c.watched_folder_path = ? AND c.path = ?",
+        params![
+            candidate.watched_folder_path,
+            candidate.path.to_string_lossy()
+        ],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+    )?;
+    let initial_metadata_source = initial_metadata_source.parse().map_err(DbError::Message)?;
+    let metadata_revision = u64::try_from(metadata_revision)
+        .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))?;
 
     let mut answer = None;
     let mut resumed_identify_state = crate::identify::IdentifyState::Idle;
@@ -217,15 +227,7 @@ pub(super) fn load_candidate_detail_on(
         matched = picked_release(sql, pick)?;
     }
 
-    let pane = pane_of(
-        sql,
-        &candidate,
-        picked.as_ref(),
-        &durations,
-        &pane_rows,
-        clock,
-        ids,
-    )?;
+    let pane = pane_of(sql, &candidate, picked.as_ref(), &durations, &pane_rows)?;
     let picked_library_status = match pane.release.as_ref() {
         Some(release) => check_releases_in_library_on(
             sql,
@@ -259,11 +261,13 @@ pub(super) fn load_candidate_detail_on(
         resumed_identify_state,
         answer,
         matched,
-        metadata_seed: picked,
+        metadata_provenance: picked,
+        metadata_revision,
+        initial_metadata_source,
         imported_release,
         release: pane.release,
         picked_library_status,
-        edit: pane.edit,
+        metadata_draft: pane.edit,
         mapping: pane.mapping,
         unprobed,
         cover,
@@ -278,7 +282,7 @@ pub(super) fn load_candidate_detail_on(
 /// open question.
 struct PaneValue {
     release: Option<ImportSearchReleaseDetail>,
-    edit: Option<RawReleaseEdit>,
+    edit: RawReleaseEdit,
     mapping: MappingTable,
 }
 
@@ -286,30 +290,20 @@ struct PaneValue {
 fn pane_of(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
-    picked: Option<&MetadataSeed>,
+    picked: Option<&MetadataProvenance>,
     durations: &ProbedDurations,
     rows: &DbCandidatePaneRows,
-    clock: &dyn coven::Clock,
-    ids: &dyn coven::IdProvider,
 ) -> Result<PaneValue, DbError> {
-    let message = |error: crate::import::ImportError| DbError::Message(error.to_string());
-    let Some(picked) = picked else {
-        return Ok(PaneValue {
-            release: None,
-            edit: None,
-            mapping: crate::import::pane::unpicked_mapping(&candidate.files, durations),
-        });
-    };
-    let pick = match picked {
-        MetadataSeed::ExternalRelease {
+    let release = match picked {
+        Some(MetadataProvenance::ExternalRelease {
             source, release_id, ..
-        } => {
+        }) => {
             let release = MetadataRef::new(release_id.clone(), *source);
             // A stored pick always has readable documents: the pick write
             // archives them first. Serving half a pane instead would hide the
             // break rather than state it.
             let payloads = load_release_payloads_on(sql, &release)
-                .map_err(message)?
+                .map_err(|error| DbError::Message(error.to_string()))?
                 .ok_or_else(|| {
                     DbError::Message(format!(
                         "{} is picked for {} but nothing stored its lookups",
@@ -317,62 +311,25 @@ fn pane_of(
                         candidate.path.display()
                     ))
                 })?;
-            crate::import::pane::release_pane(
-                &payloads,
-                &candidate.files,
-                durations,
-                &rows.edit,
-                &rows.track_edits,
-                clock,
-                ids,
+            Some(
+                payloads
+                    .detail()
+                    .map_err(|error| DbError::Message(error.to_string()))?,
             )
-            .map_err(message)?
         }
-        MetadataSeed::FileTags => {
-            let candidate_path = candidate.path.to_string_lossy();
-            let stored = load_candidate_file_tag_snapshot(
-                sql,
-                &candidate.watched_folder_path,
-                &candidate_path,
-            )?
-            .ok_or_else(|| {
-                DbError::Message(format!(
-                    "{} is picked for File Tags but is not a stored candidate",
-                    candidate.path.display()
-                ))
-            })?;
-            let snapshot = stored.snapshot.filter(|snapshot| {
-                snapshot.scan_generation == stored.scan_generation
-                    && snapshot.file_edit_revision == candidate.file_edit_revision
-            });
-            let snapshot = snapshot.ok_or_else(|| {
-                DbError::Message(format!(
-                    "{} is picked for File Tags but has no current metadata snapshot",
-                    candidate.path.display()
-                ))
-            })?;
-            crate::import::pane::file_tags_pane(
-                &candidate.files,
-                &snapshot,
-                Some(&candidate.name),
-                durations,
-                &rows.edit,
-                &rows.track_edits,
-                clock,
-                ids,
-            )
-            .map_err(message)?
-        }
-        MetadataSeed::Manual => crate::import::pane::manual_pane(
-            &candidate.files,
-            durations,
-            &rows.edit,
-            &rows.track_edits,
-        ),
+        Some(MetadataProvenance::FileTags) | None => None,
     };
+    let pick = crate::import::pane::draft_pane(
+        release,
+        &candidate.files,
+        durations,
+        rows.metadata_draft.clone(),
+        &rows.track_mappings,
+        picked,
+    );
     Ok(PaneValue {
         release: pick.release,
-        edit: Some(pick.edit),
+        edit: pick.edit,
         mapping: pick.mapping,
     })
 }

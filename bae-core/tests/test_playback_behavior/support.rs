@@ -6,7 +6,7 @@ const RELEASE_THAT_WAS_DELETED: &str = "763072b0-643f-4469-8ac7-799c4550a769"; /
 
 use bae_core::db::Database;
 use bae_core::discogs::models::{DiscogsArtist, DiscogsRelease, DiscogsTrack};
-use bae_core::import::{ImportCommand, MetadataSeed, MetadataSource, StorageMode};
+use bae_core::import::{ImportCommand, MetadataProvenance, MetadataSource, StorageMode};
 use bae_core::library::LibraryManager;
 use bae_core::playback::{
     PlaybackPauseReason, PlaybackProgress, PlaybackState, RepeatMode,
@@ -497,10 +497,10 @@ where
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
-            metadata_seed: MetadataSeed::ExternalRelease {
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
-            },
+            }),
             user_edit: None,
         })
         .await

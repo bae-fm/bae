@@ -24,27 +24,18 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    pub fn set_automatic_import_metadata_lookup(&self, enabled: bool) -> Result<(), BridgeError> {
+    pub fn set_automatic_import_identification(&self, enabled: bool) -> Result<(), BridgeError> {
         self.services
-            .set_automatic_import_metadata_lookup(enabled)
+            .set_automatic_import_identification(enabled)
             .map_err(BridgeError::config)
     }
 
-    pub fn set_default_import_metadata_mode(
+    pub fn set_default_import_metadata_source(
         &self,
-        mode: crate::types::BridgeDefaultImportMetadataMode,
+        source: crate::types::BridgeDefaultImportMetadataSource,
     ) -> Result<(), BridgeError> {
         self.services
-            .set_default_import_metadata_mode(mode.into_core())
-            .map_err(BridgeError::config)
-    }
-
-    pub fn set_last_import_metadata_mode(
-        &self,
-        mode: crate::types::BridgeImportMetadataMode,
-    ) -> Result<(), BridgeError> {
-        self.services
-            .set_last_import_metadata_mode(mode.into_core())
+            .set_default_import_metadata_source(source.into_core())
             .map_err(BridgeError::config)
     }
 

@@ -395,22 +395,21 @@ internal sealed class ImportStore : IDisposable
         }
         else
         {
-            var mode = _settings.Current?.ResolvedImportMetadataMode
-                ?? throw new InvalidOperationException(
-                    "candidate detail arrived before the settings snapshot");
-            candidate.ResolvePresentedMetadataMode(mode);
+            candidate.ResolveInitialMetadataPresentation();
         }
         _candidates[key] = candidate;
         Changed?.Invoke();
     }
 
-    /// <summary>Present one metadata surface for the active candidate without
-    /// changing its stored seed.</summary>
-    public void PresentMetadataMode(string key, BridgeImportMetadataMode mode)
+    /// <summary>Present the draft or one source browser without changing the
+    /// stored draft.</summary>
+    public void PresentMetadata(
+        string key,
+        ImportMetadataPresentation presentation)
     {
         if (_candidates.TryGetValue(key, out var candidate))
         {
-            candidate.PresentMetadataMode(mode);
+            candidate.PresentMetadata(presentation);
             Changed?.Invoke();
         }
     }
@@ -477,9 +476,18 @@ internal sealed class ImportStore : IDisposable
         CompleteFileTagsPreview(key, session, result.Edit);
     }
 
-    public async Task<bool> SelectCandidateMetadataSeed(
-        string key, BridgeMetadataSeed seed) =>
-        await Write(() => _import.SelectCandidateMetadataSeed(key, seed));
+    public async Task<ulong?> ApplyCandidateExternalMetadata(
+        string key,
+        BridgeMetadataSource source,
+        string releaseId) =>
+        await WriteRevision(() =>
+            _import.ApplyCandidateExternalMetadata(key, source, releaseId));
+
+    public async Task<ulong?> ApplyCandidateFileTags(string key) =>
+        await WriteRevision(() => _import.ApplyCandidateFileTags(key));
+
+    public async Task<bool> ClearCandidateMetadata(string key) =>
+        await WriteRevision(() => _import.ClearCandidateMetadata(key)) is not null;
 
     public async Task<bool> SetCandidateAlbumArtists(
         string key, IReadOnlyList<BridgeArtistAssignment> assignments) =>
@@ -733,6 +741,22 @@ internal sealed class ImportStore : IDisposable
             return false;
         }
         return true;
+    }
+
+    private async Task<ulong?> WriteRevision(
+        Func<Task<(bool Current, (ulong? Revision, string? Error) Result)>> operation)
+    {
+        var (current, result) = await operation();
+        if (!current)
+        {
+            return null;
+        }
+        if (result.Error is { } error)
+        {
+            _showError(Loc.Chrome("import.error_title"), error);
+            return null;
+        }
+        return result.Revision;
     }
 
     // Put one of a candidate's files in a role, or put it back. Core persists

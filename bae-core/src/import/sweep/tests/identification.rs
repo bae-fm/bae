@@ -86,7 +86,7 @@ async fn a_stored_verdict_is_not_re_fetched() {
         after_first > 0,
         "the first pass has to actually ask the provider"
     );
-    assert!(fixture.stored_for(&dir).await.is_some());
+    assert!(fixture.identified_for(&dir).await.is_some());
 
     fixture.sweep_once().await;
 
@@ -127,7 +127,7 @@ async fn a_retry_ignores_the_previous_run_s_terminal_state() {
 
     let mut events = fixture.import.subscribe_events();
     fixture.sweep_once().await;
-    assert!(fixture.stored_for(&dir).await.is_none());
+    assert!(fixture.identified_for(&dir).await.is_none());
     // The failed run's own terminal event, exactly as the lingering driver
     // would broadcast it again.
     let stale = drain_events(&mut events)
@@ -168,7 +168,7 @@ async fn a_retry_ignores_the_previous_run_s_terminal_state() {
         .unwrap();
 
     assert!(
-        fixture.stored_for(&dir).await.is_some(),
+        fixture.identified_for(&dir).await.is_some(),
         "the retry stores its own answer, not the previous run's"
     );
 }
@@ -186,7 +186,7 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
 
     fixture.sweep_once().await;
     assert!(
-        fixture.stored_for(&dir).await.is_none(),
+        fixture.identified_for(&dir).await.is_none(),
         "a failed lookup must leave no row — a stored failure is a stored answer"
     );
 
@@ -205,7 +205,7 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
     fixture.sweep_once().await;
 
     assert!(
-        fixture.stored_for(&dir).await.is_some(),
+        fixture.identified_for(&dir).await.is_some(),
         "the candidate is retried, and the retry stores"
     );
 }
@@ -504,7 +504,7 @@ async fn a_settled_verdict_never_stores_without_its_documents() {
     fixture.sweep_once().await;
 
     assert!(
-        fixture.stored_for(&dir).await.is_none(),
+        fixture.identified_for(&dir).await.is_none(),
         "a lead whose documents could not be fetched stores no verdict"
     );
     assert!(
@@ -527,7 +527,7 @@ async fn a_settled_verdict_never_stores_without_its_documents() {
     ]);
     fixture.sweep_once().await;
 
-    assert!(fixture.stored_for(&dir).await.is_some(), "the retry stores");
+    assert!(fixture.identified_for(&dir).await.is_some(), "the retry stores");
     assert!(
         fixture.archived("mb-order-1").await.is_some(),
         "with the documents the verdict rests on"
@@ -562,7 +562,10 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
 
     // Exactly what the explicit Lookup action does.
     fixture.start_explicit_lookup(&dir);
-    let row = tokio::time::timeout(Duration::from_secs(20), fixture.await_row(&dir))
+    let row = tokio::time::timeout(
+        Duration::from_secs(20),
+        fixture.await_identified_row(&dir),
+    )
         .await
         .expect("the explicit Lookup recorder stores the verdict");
 
@@ -619,9 +622,9 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
 
     fixture
         .import
-        .select_candidate_metadata_seed(
+        .select_candidate_metadata_provenance(
             dir.to_string_lossy().into_owned(),
-            crate::import::MetadataSeed::ExternalRelease {
+            crate::import::MetadataProvenance::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-offline-1".to_string(),
             },
@@ -636,7 +639,7 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
     let release = detail.release.expect("the pick names a release");
     assert_eq!(release.release_id, "mb-offline-1");
     assert_eq!(release.tracks.len(), 2);
-    let edit = detail.edit.expect("a pick draws the metadata form");
+    let edit = detail.metadata_draft;
     assert_eq!(edit.album_title, "Album");
     assert_eq!(
         release
@@ -675,9 +678,9 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
 
     let error = fixture
         .import
-        .select_candidate_metadata_seed(
+        .select_candidate_metadata_provenance(
             dir.to_string_lossy().into_owned(),
-            crate::import::MetadataSeed::ExternalRelease {
+            crate::import::MetadataProvenance::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-missing-1".to_string(),
             },
@@ -713,13 +716,13 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
         "nothing has fetched this release yet"
     );
 
-    let pick = || crate::import::MetadataSeed::ExternalRelease {
+    let pick = || crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-manual-1".to_string(),
     };
     fixture
         .import
-        .select_candidate_metadata_seed(dir.to_string_lossy().into_owned(), pick())
+        .select_candidate_metadata_provenance(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("a manual pick fetches");
 
@@ -732,7 +735,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let before = fixture.provider.requests().len();
     fixture
         .import
-        .select_candidate_metadata_seed(dir.to_string_lossy().into_owned(), pick())
+        .select_candidate_metadata_provenance(dir.to_string_lossy().into_owned(), pick())
         .await
         .expect("re-picking reads what the first pick archived");
     assert_eq!(
@@ -776,8 +779,8 @@ async fn a_skipped_candidate_is_not_swept() {
         fixture.provider.requests()
     );
     assert!(
-        fixture.stored_for(&dir).await.is_none(),
-        "and leaves no row"
+        fixture.identified_for(&dir).await.is_none(),
+        "and produces no identification result"
     );
 }
 
@@ -816,7 +819,7 @@ async fn unskipping_a_stored_candidate_mid_pass_counts_it_immediately() {
     );
     fixture.scan(2).await;
     fixture.start_explicit_lookup(&stored);
-    fixture.await_row(&stored).await;
+    fixture.await_identified_row(&stored).await;
     fixture
         .import
         .set_candidate_skipped(stored.to_string_lossy().into_owned(), true)
