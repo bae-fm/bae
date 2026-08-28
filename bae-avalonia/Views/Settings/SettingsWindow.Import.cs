@@ -45,14 +45,19 @@ internal sealed partial class SettingsWindow
                 () => RenderCurrent(renderers));
         };
         content.Children.Add(automatic);
-        content.Children.Add(SecondaryLabel(
-            Loc.Chrome("settings.import.automatic_identification_help")));
+        var automaticHelp = SecondaryLabel(
+            Loc.Chrome("settings.import.automatic_identification_help"));
+        content.Children.Add(automaticHelp);
 
         renderers.Add(fresh =>
         {
             _refreshingSettings = true;
             SelectSource(source, fresh.DefaultImportMetadataSource);
             automatic.IsChecked = fresh.AutomaticImportIdentification;
+            var showsAutomatic = fresh.DefaultImportMetadataSource
+                == BridgeDefaultImportMetadataSource.FindOnline;
+            automatic.IsVisible = showsAutomatic;
+            automaticHelp.IsVisible = showsAutomatic;
             _refreshingSettings = false;
         });
     }

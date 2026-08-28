@@ -30,19 +30,25 @@ struct ImportSettingsTab: View {
                     Text("None")
                         .tag(BridgeDefaultImportMetadataSource.none)
                 }
-                Toggle(
-                    "Identify automatically",
-                    isOn: automaticIdentification
-                )
+                if configStore.config.defaultImportMetadataSource == .findOnline
+                {
+                    Toggle(
+                        "Identify automatically",
+                        isOn: automaticIdentification
+                    )
+                }
             } header: {
                 Text("Metadata")
             } footer: {
-                Text(
-                    "Automatically reads cover text, barcodes, and disc IDs and searches for a match whenever Find online opens."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                if configStore.config.defaultImportMetadataSource == .findOnline
+                {
+                    Text(
+                        "Automatically reads cover text, barcodes, and disc IDs and searches for a match whenever Find online opens."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
 
             Section {
