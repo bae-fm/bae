@@ -873,12 +873,12 @@ fn stored_pick(
 }
 
 /// What belongs to a pick and not to the folder: the metadata typed over the
-/// picked release, the row edits addressed by its track identities, and the
-/// cover chosen from its art.
+/// picked release, the row edits addressed by its track identities, and remote
+/// art offered by that release. A local cover remains valid across seeds.
 fn clear_pick_dependent_rows(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
     pane_rows::delete_edit(sql, content_hash)?;
     pane_rows::delete_track_edits(sql, content_hash)?;
-    pane_rows::delete_cover(sql, content_hash)?;
+    pane_rows::delete_remote_cover(sql, content_hash)?;
     Ok(())
 }
 

@@ -663,10 +663,11 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
 }
 
 /// Picking a different release takes the metadata typed over the old one, the
-/// rows addressed by its track identities, and the cover chosen from its art.
-/// Re-picking the same release keeps all three.
+/// rows addressed by its track identities, and remote art belonging to it. A
+/// cover chosen from the candidate's own files remains valid. Re-picking the
+/// same release keeps every choice.
 #[tokio::test]
-async fn picking_a_different_release_clears_what_belonged_to_the_old_one() {
+async fn picking_a_different_release_clears_only_what_belonged_to_the_old_one() {
     let (db, _tmp) = empty_db().await;
     let hash = pane_candidate().content_hash();
     db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-1"))
@@ -695,8 +696,31 @@ async fn picking_a_different_release_clears_what_belonged_to_the_old_one() {
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(cleared.edit, CandidateEditOverlay::default());
-    assert_eq!(cleared.cover, None);
+    assert_eq!(
+        cleared.cover,
+        Some(CoverSelection::Local("cover.jpg".to_string()))
+    );
     assert!(cleared.track_edits.is_empty());
+
+    db.save_import_candidate_cover(
+        &hash,
+        &CoverSelection::Remote(
+            "https://example.invalid/front".to_string(),
+            MetadataSource::MusicBrainz,
+        ),
+    )
+    .await
+    .unwrap();
+    db.save_candidate_metadata_seed(&hash, "/music/Album", &release_pick("rel-3"))
+        .await
+        .unwrap();
+    assert_eq!(
+        db.load_import_candidate_pane_rows(&hash)
+            .await
+            .unwrap()
+            .cover,
+        None
+    );
 }
 
 /// A verdict never revises a person's pick, so it never takes their edits

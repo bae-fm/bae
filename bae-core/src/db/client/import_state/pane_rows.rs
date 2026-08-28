@@ -70,9 +70,12 @@ pub(super) fn save_cover(
     Ok(())
 }
 
-pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
+pub(super) fn delete_remote_cover(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
     sql.execute(
-        "DELETE FROM import_candidate_cover WHERE content_hash = ?",
+        "DELETE FROM import_candidate_cover WHERE content_hash = ? AND kind = 'remote'",
         [content_hash],
     )?;
     Ok(())
