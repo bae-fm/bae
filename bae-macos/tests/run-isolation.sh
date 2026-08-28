@@ -47,6 +47,8 @@ require_argument "-configuration"
 require_argument "Local"
 require_argument "PRODUCT_BUNDLE_IDENTIFIER=fm.bae.desktop"
 require_argument "PRODUCT_NAME=bae"
+require_argument "GENERATE_INFOPLIST_FILE=NO"
+require_argument "INFOPLIST_FILE=bae/Info.plist"
 
 show_build_settings() {
     local configuration="$1"
@@ -86,6 +88,27 @@ if ! grep -Eq \
     <<< "$debug_settings"
 then
     echo "The Debug test and preview host does not use its separate identity" >&2
+    exit 1
+fi
+
+if ! grep -Eq \
+    '^[[:space:]]*GENERATE_INFOPLIST_FILE = YES$' \
+    <<< "$debug_settings"
+then
+    echo "The Debug test and preview host does not generate its own Info.plist" >&2
+    exit 1
+fi
+
+if grep -Eq '^[[:space:]]*INFOPLIST_FILE = .+$' <<< "$debug_settings"; then
+    echo "The Debug test and preview host uses the application Info.plist" >&2
+    exit 1
+fi
+
+if ! grep -Eq \
+    '^[[:space:]]*INFOPLIST_KEY_LSUIElement = YES$' \
+    <<< "$debug_settings"
+then
+    echo "The Debug test and preview host appears in the Dock" >&2
     exit 1
 fi
 

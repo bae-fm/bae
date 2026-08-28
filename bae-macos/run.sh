@@ -106,6 +106,8 @@ xcodebuild -project bae-macos/bae/bae.xcodeproj \
     -scheme bae \
     -configuration "$CONFIG" \
     -derivedDataPath "$DERIVED_DATA" \
+    GENERATE_INFOPLIST_FILE=NO \
+    INFOPLIST_FILE=bae/Info.plist \
     PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
     PRODUCT_NAME="$PRODUCT_NAME" \
     build

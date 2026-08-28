@@ -135,6 +135,12 @@ targets:
           # Xcode previews run an app process; a separate identity lets that
           # process coexist with the app launched by run.sh.
           PRODUCT_BUNDLE_IDENTIFIER: fm.bae.desktop.xcode
+          # XCTest suspends its app host before injecting the test bundle. A
+          # generated agent-app plist keeps that pre-start process out of the
+          # Dock; run.sh overrides these settings for its runnable product.
+          GENERATE_INFOPLIST_FILE: YES
+          INFOPLIST_FILE: ""
+          INFOPLIST_KEY_LSUIElement: YES
         Local:
           # run.sh builds into its own product directory while retaining the
           # installed app identity. XCTest hosts remain under Debug and cannot
