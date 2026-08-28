@@ -356,7 +356,7 @@ internal sealed partial class ImportMappingPane : UserControl
             sections.Children.Add(BuildFailureBanner(failure));
         }
         _table = null;
-        if (_candidate is { Detail: not null, PresentedMetadataModeHasSelectedSeed: true })
+        if (_candidate is { Detail: not null })
         {
             var mapping = _candidate.Mapping;
             var actions = MappingActions();

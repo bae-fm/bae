@@ -49,6 +49,18 @@ public sealed class ImportMappingPaneTests
             image => image.Width == ImportMetadataSourceSection.CoverSize);
     }
 
+    [AvaloniaFact]
+    public void CandidateMappingRemainsVisibleBeforeMetadataIsAffirmed()
+    {
+        var (pane, _) = Show(Detail(metadataSeed: null));
+
+        Assert.Contains("Track One", Fields(pane));
+        Assert.Contains("Track Two", Fields(pane));
+        Assert.DoesNotContain(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("action.import")));
+    }
+
     // The pane leads with the folder it is about — the one fact nothing below
     // it can change — with the audio it holds beside the name.
     [AvaloniaFact]

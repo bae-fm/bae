@@ -158,6 +158,39 @@ private func makeMatchListScene() -> MatchListScene {
 @Suite("Import mapping pane")
 struct ImportMappingPaneTests {
     @MainActor
+    @Test("candidate mapping remains visible before metadata is affirmed")
+    func unseededCandidateKeepsMappingVisible() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable,
+            metadataSeed: nil
+        )
+        let candidate = try #require(
+            store.selectedCandidates[MappingFixtures.candidateKey]
+        )
+        let size = NSSize(width: 1_000, height: 760)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportMappingPreview.make(
+                candidate: candidate,
+                storageCloud: .constant(false),
+                storagePinned: .constant(false)
+            )
+            .frame(width: size.width, height: size.height)
+            .importPreviewEnvironment(),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        let scrollViews = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSScrollView }
+        // The pane itself scrolls vertically; the mapping table adds its own
+        // horizontal scroller for the candidate's source-to-track rows.
+        #expect(scrollViews.count >= 2)
+        withExtendedLifetime(window) {}
+    }
+
+    @MainActor
     @Test(
         "restored and arriving match lists appear inline until identity settles"
     )

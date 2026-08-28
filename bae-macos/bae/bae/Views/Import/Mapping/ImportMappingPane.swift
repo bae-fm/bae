@@ -70,7 +70,7 @@ struct ImportMappingPane: View {
                 )
                 metadataSourceSection
                 banners
-                if candidate.presentedMetadataModeHasSelectedSeed {
+                if candidate.detail != nil {
                     if !mapping.images.isEmpty {
                         ImportMappingGallery(
                             images: mapping.images,
