@@ -569,4 +569,4 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
     );
 }
 
-// ── identity-choice + user-edit at commit ──────────────────────────────────
+// ── metadata seed + user edit at commit ────────────────────────────────────

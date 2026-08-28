@@ -127,7 +127,7 @@ impl LibraryManager {
     ///   files. Errors if they aren't reachable on disk (cloud-only, no local copy).
     ///
     /// Identity rows and the `metadata_source` columns are untouched: reset replays
-    /// from the existing pointer rather than changing it. Identity changes go
+    /// from the stored seed rather than changing it. Identity changes go
     /// through `set_identity`.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn reset_metadata_to_source(
@@ -143,8 +143,7 @@ impl LibraryManager {
             .await?
             .ok_or_else(|| LibraryError::Import(format!("Release '{release_id}' not found")))?;
 
-        // Which external source seeded this release, or `None` for the one
-        // pointer that names no source at all.
+        // Which external source seeded this release, or `None` for File Tags.
         let external_source = match release.metadata_source {
             ReleaseMetadataSource::MusicBrainz => Some(MetadataSource::MusicBrainz),
             ReleaseMetadataSource::Discogs => Some(MetadataSource::Discogs),
@@ -158,7 +157,7 @@ impl LibraryManager {
 
         let parsed = match external_source {
             Some(source) => {
-                // The pointer names which source release seeded this one, and
+                // The stored source release names which payload seeded this one, and
                 // the documents are keyed by exactly that — so what is read back
                 // cannot belong to a pressing the release was pointed away from.
                 let source_release_id =
@@ -199,7 +198,7 @@ impl LibraryManager {
     }
 
     /// Re-identify commit: translate the user's `ReleaseReseed` into a fully
-    /// cross-linked identity vec plus metadata pointer, then `set_identity`. Mirrors
+    /// cross-linked identity vec plus metadata seed, then `set_identity`. Mirrors
     /// the import commit pipeline, so a re-identified release lands with the same
     /// identity-row shape an initial import would produce.
     ///
@@ -207,16 +206,17 @@ impl LibraryManager {
     ///   `prepare_release` (which composes the MB↔Discogs cross-linking, fetching
     ///   and storing when nothing has yet) and project the mapper's identity vec
     ///   as it stands. Those documents are keyed by the picked
-    ///   release, which is what the new pointer names, so reset-to-source replays
+    ///   release, which is what the new seed names, so reset-to-source replays
     ///   the same seed. The picked release's track count is checked against the existing
     ///   track rows, and a mismatch errors before the identity write — a 12-track
     ///   release can't replace a 10-track rip. Album/release/track row data is not
-    ///   touched: the identity pointer flips, the rows stay as the user last had them.
+    ///   touched: the identity rows and metadata seed change; the rows stay as
+    ///   the user last had them.
     /// - **File Tags** — empty identities, `metadata_source = file_tags`,
     ///   `metadata_source_release_id = NULL`; the release always
     ///   lands on a fresh album. The old source's album/release/track rows would
     ///   still show its metadata, so the same call reseeds them from the local file
-    ///   tags, projecting through the now-`FileTags` pointer with
+    ///   tags, projecting through the new `FileTags` seed with
     ///   [`Self::reset_metadata_to_source`] and writing the result with
     ///   [`Self::apply_release_metadata_user_edit`]. A tag-sparse rip reseeds to a
     ///   blank-but-editable title/artist rather than erroring.
@@ -224,11 +224,11 @@ impl LibraryManager {
     pub async fn re_identify_release(
         &self,
         release_id: &str,
-        identity_choice: crate::import::ReleaseReseed,
+        reseed: crate::import::ReleaseReseed,
     ) -> Result<(), LibraryError> {
         use crate::import::{MetadataSeed, ReleaseReseed};
 
-        let (new_identities, metadata_pointer) = match &identity_choice {
+        let (new_identities, metadata_seed) = match &reseed {
             ReleaseReseed::ExternalRelease { release_ref } => {
                 let payloads = crate::import::service::prepare_release(
                     self,
@@ -258,25 +258,25 @@ impl LibraryManager {
                     )));
                 }
 
-                let pointer = MetadataSeed::ExternalRelease {
+                let seed = MetadataSeed::ExternalRelease {
                     source: release_ref.source,
                     release_id: release_ref.id.clone(),
                 };
-                (parsed.identities, pointer)
+                (parsed.identities, seed)
             }
             ReleaseReseed::FileTags => (Vec::new(), MetadataSeed::FileTags),
         };
 
-        self.set_identity(release_id, new_identities, metadata_pointer)
+        self.set_identity(release_id, new_identities, metadata_seed)
             .await?;
 
-        // File Tags flips the pointer to FileTags but leaves the old source's rows
+        // File Tags changes the seed but leaves the old source's rows
         // in place, still showing the prior metadata. Reseed them here by projecting
-        // through the now-FileTags pointer. A tag-sparse rip projects to a
+        // through the new File Tags seed. A tag-sparse rip projects to a
         // blank-but-editable title/artist — the prompt the user answers in the
         // editor — so this writes through the ungated path. The blank is not a user
         // edit, and the user-edit gate would reject it.
-        if matches!(identity_choice, ReleaseReseed::FileTags) {
+        if matches!(reseed, ReleaseReseed::FileTags) {
             let edit = self.reset_metadata_to_source(release_id).await?;
             self.write_release_metadata(release_id, &edit).await?;
         }

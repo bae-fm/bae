@@ -23,7 +23,7 @@ impl AppServices {
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_select_candidate_metadata_seed => select_candidate_metadata_seed(candidate_key: String, pick: crate::import::MetadataSeed) -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_select_candidate_metadata_seed => select_candidate_metadata_seed(candidate_key: String, seed: crate::import::MetadataSeed) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_refresh_watched_folder => refresh_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_folder_release_decision => set_folder_release_decision(key: crate::import::FolderReleaseDecisionKey, decision: crate::import::FolderReleaseDecision) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_sheet_binding_options => sheet_binding_options(candidate_key: String, sheet_file_id: String) -> Result<Vec<crate::import::folder_scanner::SheetBindingOption>, crate::import::ImportError>);

@@ -108,7 +108,7 @@ final class ReleaseEditor: Observable {
             reIdentifyRelease: {
                 try await handle.reIdentifyRelease(
                     releaseId: $0,
-                    identityChoice: $1
+                    reseed: $1
                 )
             },
             seedReleaseEdit: {

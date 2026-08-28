@@ -117,7 +117,7 @@ async fn re_identify_to_unknown_clears_identities_and_moves_album() {
         .unwrap();
     assert_ne!(new_album_id, album.id);
 
-    // Identity rows wiped, metadata pointer flipped to file_tags.
+    // Identity rows are cleared and the metadata seed becomes File Tags.
     let identities = manager
         .database
         .get_release_identities(&release.id)

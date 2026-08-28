@@ -178,13 +178,13 @@ impl ImportServiceHandle {
 
     /// Build an import command from what the candidate stores and enqueue it.
     ///
-    /// Nothing about the release rides in: the pick, the metadata the user
-    /// typed, the rows they corrected and the cover they chose are all rows
-    /// under this candidate's content hash, so the commit reads the very
+    /// Nothing about the release rides in: the metadata seed, the metadata the
+    /// user typed, the rows they corrected and the cover they chose are all
+    /// rows under this candidate's content hash, so the commit reads the very
     /// values the pane drew. The caller says only where the files should live.
     ///
-    /// The worker sources the release itself — `prepare_release` for a picked
-    /// release, reading the documents the pick archived; the stored snapshot
+    /// The worker sources the release itself — `prepare_release` for an external
+    /// release, reading the documents the seed archived; the stored snapshot
     /// for File Tags.
     pub async fn start_import(
         &self,
@@ -208,9 +208,10 @@ impl ImportServiceHandle {
             .load_import_candidate_state(&content_hash)
             .await?
             .filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-        let Some(pick) = state.as_ref().and_then(|state| state.metadata_seed.clone()) else {
+        let Some(metadata_seed) = state.as_ref().and_then(|state| state.metadata_seed.clone())
+        else {
             return Err(crate::import::ImportError::Internal {
-                detail: format!("nothing is picked for {candidate_key}"),
+                detail: format!("no metadata seed is selected for {candidate_key}"),
             });
         };
         let durations = state.map(|state| state.durations).unwrap_or_default();
@@ -219,7 +220,7 @@ impl ImportServiceHandle {
             .load_import_candidate_pane_rows(&content_hash)
             .await?;
 
-        let file_tag_snapshot = if matches!(pick, crate::import::MetadataSeed::FileTags) {
+        let file_tag_snapshot = if matches!(metadata_seed, crate::import::MetadataSeed::FileTags) {
             let Some(stored) = self
                 .library_manager
                 .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
@@ -289,7 +290,7 @@ impl ImportServiceHandle {
             None
         };
 
-        let seed_for_pane = pick.clone();
+        let seed_for_pane = metadata_seed.clone();
         let files = candidate.files.clone();
         let folder_name = candidate.name.clone();
         let clock = self.clock.clone();
@@ -303,7 +304,7 @@ impl ImportServiceHandle {
             crate::import::MetadataSeed::ExternalRelease {
                 source, release_id, ..
             } => PaneSeed::ExternalRelease(
-                self.payloads_for_pick(
+                self.payloads_for_seed(
                     candidate_key,
                     &crate::import::MetadataRef::new(release_id.clone(), *source),
                 )
@@ -377,7 +378,7 @@ impl ImportServiceHandle {
             selected_cover,
             storage_mode,
             pin,
-            metadata_seed: pick,
+            metadata_seed,
             user_edit: Some(user_edit),
         };
 

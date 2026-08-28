@@ -2,9 +2,9 @@ import BaeKit
 import Foundation
 
 /// What committing a candidate needs from the caller: where its files should
-/// live. Everything about the release — the pick, the metadata, the corrected
-/// rows, the cover — is stored under the candidate, so the commit reads the
-/// very values the pane drew.
+/// live. Everything about the release — the metadata seed, the edited fields,
+/// the corrected rows, the cover — is stored under the candidate, so the
+/// commit reads the very values the pane drew.
 struct ImportCommitRequest: Sendable {
     let candidateKey: String
     let storageMode: BridgeStorageMode
@@ -126,7 +126,7 @@ private struct ImportOperations: Sendable {
             selectCandidateMetadataSeed: {
                 try await handle.selectCandidateMetadataSeed(
                     candidateKey: $0,
-                    pick: $1
+                    seed: $1
                 )
             },
             previewFileTags: {

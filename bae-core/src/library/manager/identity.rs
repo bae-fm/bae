@@ -25,12 +25,12 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Replace a release's identity rows and metadata-source pointer in one shot,
+    /// Replace a release's identity rows and metadata seed in one shot,
     /// moving the release between albums when the new identity doesn't fit its
     /// current one.
     ///
     /// `new_identities` is empty (File Tags), or carries the already-cross-linked
-    /// `(source, source_group_id, source_release_id)` rows. `metadata_pointer` sets
+    /// `(source, source_group_id, source_release_id)` rows. `metadata_seed` sets
     /// the `metadata_source` / `metadata_source_release_id` columns a later
     /// re-projection reads to replay the seed. Nothing about the archived
     /// provider documents changes: they are keyed by the source release, so
@@ -56,7 +56,7 @@ impl LibraryManager {
         &self,
         release_id: &str,
         new_identities: Vec<crate::import::ReleaseIdentity>,
-        metadata_pointer: crate::import::MetadataSeed,
+        metadata_seed: crate::import::MetadataSeed,
     ) -> Result<(), LibraryError> {
         let current_album_id = self
             .database
@@ -69,7 +69,7 @@ impl LibraryManager {
             .await?;
 
         let (new_metadata_source, new_metadata_source_release_id) =
-            metadata_pointer_to_columns(metadata_pointer);
+            metadata_seed_to_columns(metadata_seed);
 
         // The atomic call does all source-album bookkeeping inside its transaction
         // (empty-check, primary_release_id repair, album_artists copy) — those
@@ -222,12 +222,12 @@ fn identities_fit_album(
 /// Project a `MetadataSeed` onto the two `releases` columns it sets:
 /// `metadata_source`, always present, and `metadata_source_release_id`, NULL when
 /// the source is `file_tags`.
-fn metadata_pointer_to_columns(
-    pointer: crate::import::MetadataSeed,
+fn metadata_seed_to_columns(
+    seed: crate::import::MetadataSeed,
 ) -> (crate::db::ReleaseMetadataSource, Option<String>) {
     use crate::db::ReleaseMetadataSource;
     use crate::import::{MetadataSeed, MetadataSource};
-    match pointer {
+    match seed {
         MetadataSeed::ExternalRelease { source, release_id } => {
             let column_source = match source {
                 MetadataSource::MusicBrainz => ReleaseMetadataSource::MusicBrainz,

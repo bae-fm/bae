@@ -203,18 +203,18 @@ impl ImportServiceHandle {
         .await
     }
 
-    /// Record the identity the user chose for a candidate — the pressing they
-    /// picked, or the decision to read the folder's own tags — keyed by the
+    /// Record the metadata seed the user chose for a candidate — an external
+    /// release, the folder's file tags, or manual entry — keyed by the
     /// folder's current content hash, so selection reopens the pane answered
     /// after a restart. Only explicit choices land here: a Ready row's
-    /// auto-pick is derived from its stored verdict and re-derives on every
-    /// open, so it never writes one.
+    /// automatic external-release seed is derived from its stored verdict and
+    /// re-derives on every open, so it never writes one.
     pub(crate) async fn set_candidate_metadata_seed(
         &self,
         candidate_key: String,
-        pick: crate::import::MetadataSeed,
+        seed: crate::import::MetadataSeed,
     ) -> Result<(), crate::import::ImportError> {
-        let content_hash = match &pick {
+        let content_hash = match &seed {
             crate::import::MetadataSeed::FileTags => self
                 .file_tag_snapshot(&candidate_key)
                 .await?
@@ -233,12 +233,12 @@ impl ImportServiceHandle {
             }
         };
         self.library_manager
-            .save_candidate_metadata_seed(&content_hash, &candidate_key, &pick)
+            .save_candidate_metadata_seed(&content_hash, &candidate_key, &seed)
             .await?;
         Ok(())
     }
 
-    /// Tell the surfaces a candidate's identity is decided.
+    /// Tell the surfaces a candidate's metadata seed is decided.
     pub(crate) fn announce_metadata_seed(&self, candidate_key: String) {
         send_event(
             &self.event_tx,

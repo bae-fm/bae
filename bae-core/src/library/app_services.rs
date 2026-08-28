@@ -779,7 +779,7 @@ impl AppServices {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, save_track_suggested_name => save_track_suggested_name(track_id: &str, preset_id: &str) -> Result<String, crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    delegate_async!(manager, re_identify_release => re_identify_release(release_id: &str, identity_choice: crate::import::ReleaseReseed) -> Result<(), crate::library::LibraryError>);
+    delegate_async!(manager, re_identify_release => re_identify_release(release_id: &str, reseed: crate::import::ReleaseReseed) -> Result<(), crate::library::LibraryError>);
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     delegate_async!(manager, reset_metadata_to_source => reset_metadata_to_source(release_id: &str) -> Result<crate::import::ReleaseUserEdit, crate::library::LibraryError>);
     delegate_async!(manager, apply_release_metadata_user_edit => apply_release_metadata_user_edit(release_id: &str, edit: &crate::import::ReleaseUserEdit) -> Result<(), crate::library::LibraryError>);

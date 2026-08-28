@@ -207,20 +207,20 @@ impl ImportServiceHandle {
         Ok(covers)
     }
 
-    /// The documents behind a pick, and where they come from.
+    /// The documents behind an external-release seed, and where they come from.
     ///
-    /// A pick that is the candidate's settled lead **reads** them: identification
+    /// A seed matching the candidate's settled lead **reads** them: identification
     /// stored them before it stored the verdict that named this release, so they
     /// are there, and a miss is a broken invariant rather than a cold cache.
     /// Re-fetching on a miss would serve the pane and hide the break, so it
     /// fails instead.
     ///
-    /// Every other pick — another pressing in a list, a manual search result, a
-    /// release being re-identified — is one identification never fetched. It
-    /// goes through [`crate::import::service::prepare_release`], which reads
-    /// whatever is archived and pays for the rest, so opening it a second time
-    /// is local too.
-    pub(super) async fn payloads_for_pick(
+    /// Every other external-release seed — another pressing in a list, a manual
+    /// search result, a release being re-identified — is one identification
+    /// never fetched. It goes through [`crate::import::service::prepare_release`],
+    /// which reads whatever is archived and pays for the rest, so opening it a
+    /// second time is local too.
+    pub(super) async fn payloads_for_seed(
         &self,
         candidate_key: &str,
         release: &crate::import::MetadataRef,
@@ -282,13 +282,13 @@ impl ImportServiceHandle {
             && only.source_tracks.is_some())
     }
 
-    /// Decide a candidate's identity — the pressing the user picked, or the
-    /// decision to read the folder's own tags.
+    /// Choose the metadata seed this candidate will commit: an external release,
+    /// the folder's file tags, or manual entry.
     ///
-    /// **The documents land before the pick does.** A stored pick is the
+    /// **The documents land before the seed does.** A stored external seed is the
     /// promise that opening that candidate needs no network, so the fetch goes
     /// first and a failure stores nothing: the pane keeps whatever it had and
-    /// says the pick failed. Identification writes the same record itself when
+    /// says the seed failed. Identification writes the same record itself when
     /// a verdict settles on exactly one match; this is the path for the
     /// choices only a person can make.
     ///
@@ -297,19 +297,19 @@ impl ImportServiceHandle {
     pub async fn select_candidate_metadata_seed(
         &self,
         candidate_key: String,
-        pick: crate::import::MetadataSeed,
+        seed: crate::import::MetadataSeed,
     ) -> Result<(), crate::import::ImportError> {
         if let crate::import::MetadataSeed::ExternalRelease {
             source, release_id, ..
-        } = &pick
+        } = &seed
         {
-            self.payloads_for_pick(
+            self.payloads_for_seed(
                 &candidate_key,
                 &crate::import::MetadataRef::new(release_id.clone(), *source),
             )
             .await?;
         }
-        self.set_candidate_metadata_seed(candidate_key.clone(), pick)
+        self.set_candidate_metadata_seed(candidate_key.clone(), seed)
             .await?;
         self.announce_metadata_seed(candidate_key);
         Ok(())

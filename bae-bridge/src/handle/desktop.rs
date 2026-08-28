@@ -199,9 +199,9 @@ impl AppHandle {
         self.services.rerun_identify(candidate_key);
     }
 
-    /// Decide a candidate's identity — the pressing the user picked, or the
-    /// decision to read the folder's own tags. The release's documents land
-    /// before the pick does, so the candidate's next value draws whole;
+    /// Choose the metadata seed this candidate will commit. An external
+    /// release's documents land before the seed does, so the candidate's next
+    /// value draws whole;
     /// nothing comes back, because that value is what the pane renders.
     /// Identification writes the same record itself when a verdict settles on
     /// exactly one match; this is the path for the choices only a person can
@@ -209,11 +209,11 @@ impl AppHandle {
     pub async fn select_candidate_metadata_seed(
         self: std::sync::Arc<Self>,
         candidate_key: String,
-        pick: crate::types::BridgeMetadataSeed,
+        seed: crate::types::BridgeMetadataSeed,
     ) -> Result<(), BridgeError> {
         self.run_exported(move |this| async move {
             this.services
-                .import_select_candidate_metadata_seed(candidate_key, pick.into_core())
+                .import_select_candidate_metadata_seed(candidate_key, seed.into_core())
                 .await
                 .map_err(BridgeError::import)
         })
@@ -221,7 +221,7 @@ impl AppHandle {
     }
 
     /// Re-identify commit. Translates the user's `ReleaseReseed` into a fully
-    /// cross-linked identity vec + metadata pointer, then writes via
+    /// cross-linked identity vec plus the new metadata seed, then writes via
     /// `set_identity` — the outcome is indistinguishable from re-importing the
     /// release with the same choice.
     ///
@@ -232,12 +232,12 @@ impl AppHandle {
     pub async fn re_identify_release(
         self: std::sync::Arc<Self>,
         release_id: String,
-        identity_choice: crate::types::BridgeReleaseReseed,
+        reseed: crate::types::BridgeReleaseReseed,
     ) -> Result<String, BridgeError> {
         self.run_exported(move |this| async move {
-            let core_choice = identity_choice.into_core();
+            let core_reseed = reseed.into_core();
             this.services
-                .re_identify_release(&release_id, core_choice)
+                .re_identify_release(&release_id, core_reseed)
                 .await
                 .map_err(BridgeError::import)?;
             this.services
@@ -518,10 +518,10 @@ impl AppHandle {
         .await
     }
 
-    /// Commit a candidate. Nothing about the release rides in: the pick, the
-    /// metadata typed over it, the corrected rows and the chosen cover are all
-    /// stored under the candidate, so the commit consumes the very values the
-    /// pane drew.
+    /// Commit a candidate. Nothing about the release rides in: the metadata
+    /// seed, the metadata typed over it, the corrected rows and the chosen cover
+    /// are all stored under the candidate, so the commit consumes the very
+    /// values the pane drew.
     pub async fn start_import(
         self: std::sync::Arc<Self>,
         candidate_key: String,
