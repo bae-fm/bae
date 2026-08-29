@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -237,36 +236,25 @@ internal sealed partial class ImportSectionView
         {
             column.Children.Add(ImportProgressLine.Build(_import, row.CandidateKey));
         }
-        else if (row.Placement is BridgeTriagePlacement.Ready)
+        else if (RowSubLine(row) is { Length: > 0 } subLine)
         {
-            // An ordinary resolved row is two lines: title, then artist.
-            if (RowArtist(row) is { Length: > 0 } artist)
+            var sub = new TextBlock
             {
-                column.Children.Add(ReadyLine(artist, 12.5, opacity: 1));
-            }
+                Text = subLine,
+                FontSize = 12.5,
+                MaxLines = 1,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+                Margin = new Thickness(0, 1, 0, 0),
+            };
+            sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            column.Children.Add(sub);
         }
-        else
-        {
-            if (RowSubLine(row) is { Length: > 0 } subLine)
-            {
-                var sub = new TextBlock
-                {
-                    Text = subLine,
-                    FontSize = 12.5,
-                    MaxLines = 1,
-                    TextTrimming = TextTrimming.CharacterEllipsis,
-                    Margin = new Thickness(0, 1, 0, 0),
-                };
-                sub[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-                column.Children.Add(sub);
-            }
 
-            if (upload is ImportUploadObservation.Active)
-            {
-                var bar = CloudProgressBar(upload);
-                bar.Margin = new Thickness(0, 7, 0, 0);
-                column.Children.Add(bar);
-            }
+        if (upload is ImportUploadObservation.Active)
+        {
+            var bar = CloudProgressBar(upload);
+            bar.Margin = new Thickness(0, 7, 0, 0);
+            column.Children.Add(bar);
         }
 
         var actions = BuildRowActions(row);
@@ -279,32 +267,17 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The Ready row's artist line.
-    private static Control ReadyLine(string text, double fontSize, double opacity)
-    {
-        var line = new TextBlock
-        {
-            Text = text,
-            FontSize = fontSize,
-            Opacity = opacity,
-            MaxLines = 1,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-            Margin = new Thickness(0, 1, 0, 0),
-        };
-        line[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        return line;
-    }
-
-    // The second line: the matched release's metadata, a disagreement sentence,
-    // the still-identifying phase, or an import failure — whichever `row` is
-    // actually saying. A Ready row draws its own lines and is not asked.
+    // The second line: the resolved artist, a disagreement sentence, the
+    // still-identifying phase, or an import failure — whichever `row` is
+    // actually saying.
     private string? RowSubLine(BridgeTriageRow row) => row.Placement switch
     {
-        BridgeTriagePlacement.Skipped => MetadataLine(row),
+        BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped =>
+            RowArtist(row),
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
             BridgeDisplay.LocalizedLine(phase.Phase),
         BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
-            MetadataLine(row),
+            RowArtist(row),
         BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
             row.Matched?.Artist,
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
@@ -313,39 +286,6 @@ internal sealed partial class ImportSectionView
             ImportSubLine(row),
         _ => null,
     };
-
-    private static string? MetadataLine(BridgeTriageRow row)
-    {
-        if (row.MetadataSummary is not null)
-        {
-            return null;
-        }
-        if (row.Matched is not { } matched)
-        {
-            return null;
-        }
-        var parts = new List<string>();
-        if (!string.IsNullOrEmpty(matched.Artist))
-        {
-            parts.Add(matched.Artist!);
-        }
-        if (matched.Pressing is { } pressing)
-        {
-            if (pressing.Year is { } year)
-            {
-                parts.Add(year.ToString(CultureInfo.CurrentCulture));
-            }
-            if (!string.IsNullOrEmpty(pressing.Format))
-            {
-                parts.Add(pressing.Format!);
-            }
-            if (pressing.TrackCount is { } trackCount)
-            {
-                parts.Add(Loc.Chrome("import.candidate.tracks", "count", (long)trackCount));
-            }
-        }
-        return parts.Count == 0 ? null : string.Join(" · ", parts);
-    }
 
     private static string? RowArtist(BridgeTriageRow row)
     {
@@ -365,7 +305,7 @@ internal sealed partial class ImportSectionView
         // is the trailing glyph's to say, and how far they have come is the
         // bar's — a count of the files queued behind it answers a question
         // nobody asked of a row.
-        BridgeTriageImportStatus.Complete or null => MetadataLine(row),
+        BridgeTriageImportStatus.Complete or null => RowArtist(row),
         BridgeTriageImportStatus.Error error => BridgeDisplay.LocalizedLine(error.ErrorValue),
         _ => null,
     };
@@ -432,7 +372,7 @@ internal sealed partial class ImportSectionView
         switch (row.Placement)
         {
             case BridgeTriagePlacement.Ready:
-                return Chip(Loc.Chrome("import.row.ready"), "BaeSuccessBrush");
+                return new Panel();
             case BridgeTriagePlacement.NeedsYou(var group, var reason):
                 return NeedsYouTrailing(row, group, reason);
             case BridgeTriagePlacement.Importing:
@@ -492,7 +432,7 @@ internal sealed partial class ImportSectionView
                 ImportUploadObservation.Active =>
                     Icons.Glyph(Icons.ArrowUp, 14, "BaeTextSecondaryBrush"),
                 ImportUploadObservation.Finished =>
-                    DotIcon("BaeSuccessBrush", "✓"),
+                    new Panel(),
                 _ => throw new InvalidOperationException(
                     "a completed import has no upload observation"),
             },

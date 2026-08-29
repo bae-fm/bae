@@ -264,7 +264,7 @@ extension TriageRowView {
         case .pending:
             EmptyView()
         case .ready:
-            chip(String(localized: "Ready"), tint: .green)
+            EmptyView()
         case .needsYou(let group, let reason):
             needsYouTrailing(group: group, reason: reason)
         case .importing:
@@ -321,7 +321,7 @@ extension TriageRowView {
                 trailingIcon("arrow.up.circle", tint: .secondary)
             }
             else {
-                trailingIcon("checkmark.circle.fill", tint: .green)
+                EmptyView()
             }
         case .error:
             chip(String(localized: "Failed"), tint: .red)

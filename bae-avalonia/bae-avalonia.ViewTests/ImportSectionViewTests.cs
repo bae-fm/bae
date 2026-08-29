@@ -111,7 +111,7 @@ public sealed class ImportSectionViewTests
         Assert.Contains("Applied Draft", text);
         Assert.Contains("Draft Artist", text);
         Assert.DoesNotContain("Album Title", text);
-        Assert.Equal(2, text.Count(value => value is "Applied Draft" or "Draft Artist"));
+        Assert.Equal(new[] { "Applied Draft", "Draft Artist" }, text);
     }
 
     // A failed attempt is Pending work, and the row says what went wrong. It
@@ -238,7 +238,7 @@ public sealed class ImportSectionViewTests
         Assert.DoesNotContain(
             restingRow.GetLogicalDescendants(),
             control => control is ProgressBar);
-        Assert.Contains(
+        Assert.DoesNotContain(
             restingRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == "✓");
 
@@ -274,7 +274,7 @@ public sealed class ImportSectionViewTests
         Assert.DoesNotContain(
             finishedRow.GetLogicalDescendants(),
             control => control is ProgressBar);
-        Assert.Contains(
+        Assert.DoesNotContain(
             finishedRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == "✓");
     }
