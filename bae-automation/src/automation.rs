@@ -319,7 +319,10 @@ impl Automation {
                     AutomationReleaseStorageAction::MakeRemote,
                     "move to cloud",
                 )?;
-                let outbox_revision = self.services.make_release_remote(&release_id, pin).await?;
+                let outbox_revision = self
+                    .services
+                    .make_releases_remote(std::slice::from_ref(&release_id), pin)
+                    .await?;
                 Ok(AutomationStorageActionOutcome::CloudUploadQueued {
                     release_id,
                     outbox_revision,

@@ -4,12 +4,12 @@
 //! coven owns the blob lifecycle; bae drives the user-facing transition (guards,
 //! progress events) and calls into coven:
 //!
-//! - `make_release_remote`: `coven.make_remote` enqueues an upload per release
-//!   file from its external (in-place) source, uploads each, and on the last
-//!   publishes `remote` true and drops the external refs. User-provided source
-//!   files stay in place; host-provided local-store copies follow coven's cache
-//!   retention policy. The cover rides along. The commit wakes subscribed
-//!   release projections.
+//! - `make_releases_remote`: `coven.make_remote_batch` atomically enqueues every
+//!   selected release's blobs. It uploads each blob from its external (in-place)
+//!   source, and on the last publishes `remote` true and drops the external
+//!   refs. User-provided source files stay in place; host-provided local-store
+//!   copies follow coven's cache retention policy. The cover rides along. The
+//!   commit wakes subscribed release projections.
 //! - `make_release_local`: `coven.make_local` materializes every blob back to a
 //!   local file durability-first (release files to the chosen folder, the cover to
 //!   coven's local store), then flips `remote` false, registers the external refs,
@@ -57,8 +57,7 @@ pub async fn read_release_file_bytes(
     Ok(bytes)
 }
 
-/// Progress updates emitted during a pin, unpin, make-Remote, or make-Local
-/// operation.
+/// Progress updates emitted during a pin, unpin, or make-Local operation.
 #[derive(Debug, Clone)]
 pub enum TransferProgress {
     Started,
@@ -75,17 +74,14 @@ pub enum TransferProgress {
     },
 }
 
-/// The terminal fact a foreground storage command hands back to its caller.
-/// Moving to cloud finishes the command at the durable-queue boundary, so its
-/// outbox revision is part of the result; the background outbox owns every
-/// phase after it.
+/// The terminal fact a foreground pin, unpin, or make-Local command hands back
+/// to its caller.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransferOutcome {
     Complete,
-    CloudUploadQueued { outbox_revision: u64 },
 }
 
-/// Pin/unpin/make-Remote/make-Local service for releases.
+/// Pin, unpin, and make-Local service for releases.
 pub struct TransferService {
     library_manager: LibraryManager,
 }
@@ -148,31 +144,6 @@ impl TransferService {
         rx
     }
 
-    /// Make a Local release Remote: upload it to the cloud home, keeping its blobs
-    /// pinned in coven's cache iff `pin`. Returns a receiver for progress updates;
-    /// the upload progress flows through the outbox snapshot, so this emits Started
-    /// then Complete (the uploads are now queued and draining via coven).
-    pub fn make_release_remote(
-        &self,
-        release_id: String,
-        pin: bool,
-    ) -> mpsc::UnboundedReceiver<TransferProgress> {
-        let (rx, _) = spawn_transfer(
-            self.library_manager.clone(),
-            release_id,
-            ReleaseStorageAction::MakeRemote,
-            move |release_id, library_manager, _tx| async move {
-                // Hand the whole transition to coven: it verifies every external source,
-                // enqueues the uploads, and kicks the loop. Per-file upload progress flows
-                // through the outbox snapshot; durable publication flips the gate and the
-                // cloud-outbox live query reports that terminal handoff.
-                let outbox_revision = library_manager.coven_make_remote(&release_id, pin).await?;
-                Ok(TransferOutcome::CloudUploadQueued { outbox_revision })
-            },
-        );
-        rx
-    }
-
     /// Make a Remote release Local: copy its files to `new_path` and drop the
     /// cloud copies (coven owns the durability-first ordering). Returns a receiver
     /// for progress updates.
@@ -218,7 +189,6 @@ where
 {
     let (tx, rx) = mpsc::unbounded_channel();
     let task = tokio::spawn(async move {
-        let label = transfer_label(action);
         let result = run_transfer(
             release_id.clone(),
             action,
@@ -228,11 +198,7 @@ where
         )
         .await;
         if let Err(e) = result {
-            error!("{} failed for release {}: {}", label, release_id, e);
-            library_manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
-                action,
-                release_id: LocalId(release_id.clone()),
-            });
+            record_transfer_failed(&library_manager, &release_id, action, &e);
             send_progress(
                 &tx,
                 TransferProgress::Failed {
@@ -258,16 +224,7 @@ where
 {
     let file_count = start_transfer(&release_id, action, &library_manager, &tx).await?;
     let outcome = run(release_id.clone(), library_manager.clone(), tx.clone()).await?;
-    info!(
-        action = ?action,
-        release_id = %release_id,
-        "release transfer complete"
-    );
-    library_manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
-        action,
-        release_id: LocalId(release_id.clone()),
-        file_count,
-    });
+    record_transfer_completed(&library_manager, &release_id, action, file_count);
     send_progress(
         &tx,
         TransferProgress::Complete {
@@ -286,6 +243,22 @@ async fn start_transfer(
     library_manager: &LibraryManager,
     tx: &ProgressTx,
 ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+    let file_count = validate_transfer_preconditions(release_id, action, library_manager).await?;
+    send_progress(tx, TransferProgress::Started);
+    info!(
+        action = ?action,
+        release_id = %release_id,
+        file_count,
+        "release transfer started"
+    );
+    Ok(file_count)
+}
+
+pub(crate) async fn validate_transfer_preconditions(
+    release_id: &str,
+    action: ReleaseStorageAction,
+    library_manager: &LibraryManager,
+) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
     let release = library_manager
         .get_release_by_id(release_id)
         .await?
@@ -302,14 +275,43 @@ async fn start_transfer(
         return Err("Release has no files".into());
     }
 
-    send_progress(tx, TransferProgress::Started);
+    Ok(files.len() as u32)
+}
+
+pub(crate) fn record_transfer_completed(
+    library_manager: &LibraryManager,
+    release_id: &str,
+    action: ReleaseStorageAction,
+    file_count: u32,
+) {
     info!(
         action = ?action,
-        release_id = %release_id,
-        file_count = files.len(),
-        "release transfer started"
+        release_id,
+        "release transfer complete"
     );
-    Ok(files.len() as u32)
+    library_manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
+        action,
+        release_id: LocalId(release_id.to_string()),
+        file_count,
+    });
+}
+
+pub(crate) fn record_transfer_failed(
+    library_manager: &LibraryManager,
+    release_id: &str,
+    action: ReleaseStorageAction,
+    failure: &dyn std::fmt::Display,
+) {
+    error!(
+        action = ?action,
+        release_id,
+        failure = %failure,
+        "release transfer failed"
+    );
+    library_manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
+        action,
+        release_id: LocalId(release_id.to_string()),
+    });
 }
 
 fn action_expects_remote(action: ReleaseStorageAction) -> bool {
@@ -325,15 +327,6 @@ fn wrong_state_error(action: ReleaseStorageAction) -> &'static str {
         ReleaseStorageAction::Unpin => "Cannot unpin a local release",
         ReleaseStorageAction::MakeRemote => "Release is already remote",
         ReleaseStorageAction::MakeLocal => "Release is already local",
-    }
-}
-
-fn transfer_label(action: ReleaseStorageAction) -> &'static str {
-    match action {
-        ReleaseStorageAction::Pin => "pin",
-        ReleaseStorageAction::Unpin => "unpin",
-        ReleaseStorageAction::MakeRemote => "make-remote",
-        ReleaseStorageAction::MakeLocal => "make-local",
     }
 }
 
@@ -412,6 +405,20 @@ mod tests {
         (manager, diagnostics, transport, home)
     }
 
+    async fn shipped_events(
+        diagnostics: &Diagnostics,
+        transport: &RecordingTransport,
+    ) -> Vec<DiagnosticEvent> {
+        diagnostics.flush().await.expect("flush succeeds");
+        transport
+            .requests()
+            .iter()
+            .flat_map(|request| {
+                serde_json::from_slice::<Vec<DiagnosticEvent>>(&request.body).unwrap()
+            })
+            .collect()
+    }
+
     /// Pinning a release that isn't in the library fails the transfer's
     /// precondition check, which ships `storage_transfer_failed` — an Error-level
     /// event — through the real diagnostics pipeline to the wire.
@@ -428,17 +435,33 @@ mod tests {
             });
         running.finish().await.expect("transfer task completes");
 
-        diagnostics.flush().await.expect("flush succeeds");
-        let events: Vec<DiagnosticEvent> = transport
-            .requests()
-            .iter()
-            .flat_map(|r| serde_json::from_slice::<Vec<DiagnosticEvent>>(&r.body).unwrap())
-            .collect();
+        let events = shipped_events(&diagnostics, &transport).await;
         let failed = events
             .iter()
             .find(|e| e.name == "storage_transfer_failed")
             .expect("a failed transfer ships storage_transfer_failed");
         assert_eq!(failed.fields["action"], serde_json::json!("pin"));
+        assert_eq!(
+            failed.fields["release_id"],
+            serde_json::json!("missing-release")
+        );
+    }
+
+    #[tokio::test]
+    async fn a_failed_move_to_cloud_batch_ships_storage_transfer_failed() {
+        let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
+
+        manager
+            .make_releases_remote(&["missing-release".to_string()], false)
+            .await
+            .expect_err("the missing release refuses the batch");
+
+        let events = shipped_events(&diagnostics, &transport).await;
+        let failed = events
+            .iter()
+            .find(|event| event.name == "storage_transfer_failed")
+            .expect("a failed batch ships storage_transfer_failed");
+        assert_eq!(failed.fields["action"], serde_json::json!("make_remote"));
         assert_eq!(
             failed.fields["release_id"],
             serde_json::json!("missing-release")

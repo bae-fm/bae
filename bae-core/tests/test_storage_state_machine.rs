@@ -289,7 +289,9 @@ async fn test_manage_refused_when_sync_not_running() {
 
     // The manager's make-Remote gate refuses up front when the pipeline is down —
     // nothing would ever drain the queue to flip the release Remote.
-    let result = mgr.make_release_remote(&release_id, false).await;
+    let result = mgr
+        .make_releases_remote(std::slice::from_ref(&release_id), false)
+        .await;
     assert!(
         result.is_err(),
         "make-Remote must fail when the upload pipeline isn't running, got {result:?}"

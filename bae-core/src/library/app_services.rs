@@ -750,7 +750,7 @@ impl AppServices {
     delegate_async!(manager, change_cover => change_cover(release_id: &str, selection: crate::library::CoverSelection) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, set_album_primary_release => set_album_primary_release(album_id: &str, primary_release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, unpin_release => unpin_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
-    delegate_async!(manager, make_release_remote => make_release_remote(release_id: &str, pin: bool) -> Result<u64, crate::library::LibraryError>);
+    delegate_async!(manager, make_releases_remote => make_releases_remote(release_ids: &[String], pin: bool) -> Result<u64, crate::library::LibraryError>);
     delegate_async!(manager, make_release_local => make_release_local(release_id: &str, new_path: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, delete_release => delete_release(release_id: &str) -> Result<(), crate::library::LibraryError>);
     delegate_async!(manager, save_s3_config => save_s3_config(data: crate::sync::S3ConfigData) -> Result<(), crate::library::LibraryError>);

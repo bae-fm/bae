@@ -733,17 +733,18 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
 struct TransferValueGuard {
     transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
     transfer_values: tokio::sync::watch::Sender<HashMap<String, ReleaseStorageAction>>,
-    release_id: String,
+    release_ids: Vec<String>,
 }
 
 impl Drop for TransferValueGuard {
     fn drop(&mut self) {
-        let actions = {
+        {
             let mut actions = self.transfer_actions.lock().unwrap();
-            actions.remove(&self.release_id);
-            actions.clone()
-        };
-        self.transfer_values.send_replace(actions);
+            for release_id in &self.release_ids {
+                actions.remove(release_id);
+            }
+            self.transfer_values.send_replace(actions.clone());
+        }
     }
 }
 

@@ -118,16 +118,20 @@ final class StorageActionRunner {
         }
     }
 
-    /// Confirm callback for `MoveToCloudConfirmSheet`: move each pending
-    /// release to cloud storage, pinning it when `pin` is set.
+    /// Confirm callback for `MoveToCloudConfirmSheet`: admit every pending
+    /// release as one cloud-storage batch, pinning it when `pin` is set.
     func confirmMoveToCloud(pin: Bool) {
         guard let releaseIds = pendingMoveToCloud else {
             preconditionFailure("move-to-cloud confirmation has no releases")
         }
         pendingMoveToCloud = nil
-        runEach(releaseIds) {
-            releaseId in
-            try await self.releaseEditor.moveReleaseToCloud(releaseId, pin)
+        Task {
+            do {
+                try await releaseEditor.moveReleasesToCloud(releaseIds, pin)
+            }
+            catch {
+                uiStore.showError(error)
+            }
         }
     }
 

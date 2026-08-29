@@ -14,20 +14,37 @@ impl LibraryManager {
         release_id: &str,
         pin: bool,
     ) -> Result<u64, LibraryError> {
-        // The album title rides onto the queue rows here, while the release is
-        // certainly there to read it from — the queue outliving that row is the
-        // whole reason the rows carry a name of their own.
-        let album_title = self.database.release_album_title(release_id).await?;
-        let ordered_blobs = self
-            .release_pinnable_blobs(release_id)
-            .await?
-            .into_iter()
-            .map(|entry| entry.blob)
-            .collect();
-        self.database
-            .make_remote("releases", release_id, &album_title, pin, ordered_blobs)
+        self.coven_make_remote_batch(&[release_id.to_string()], pin)
             .await
-            .map_err(|e| LibraryError::Storage(format!("make release {release_id} remote: {e}")))?;
+    }
+
+    pub async fn coven_make_remote_batch(
+        &self,
+        release_ids: &[String],
+        pin: bool,
+    ) -> Result<u64, LibraryError> {
+        let mut roots = Vec::with_capacity(release_ids.len());
+        for release_id in release_ids {
+            // The album title rides onto the queue rows here, while the release is
+            // certainly there to read it from — the queue outliving that row is the
+            // whole reason the rows carry a name of their own.
+            let album_title = self.database.release_album_title(release_id).await?;
+            let ordered_blobs = self
+                .release_pinnable_blobs(release_id)
+                .await?
+                .into_iter()
+                .map(|entry| entry.blob)
+                .collect();
+            roots.push(coven::MakeRemoteRoot {
+                id: release_id.clone(),
+                label: album_title,
+                refs: ordered_blobs,
+            });
+        }
+        self.database
+            .make_remote_batch("releases", roots, pin)
+            .await
+            .map_err(|e| LibraryError::Storage(format!("make releases remote: {e}")))?;
         // Publish the same canonical projection the durable live query emits
         // before the initiating command can clear its foreground label or emit
         // RemoteUploadQueued. This gives both entrypoints one continuous state
@@ -323,28 +340,64 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Move a Local release to Cloud: upload its files to the cloud home. `pin`
-    /// chooses whether coven keeps the blobs in `storage/pinned/` (offline) vs the
-    /// evictable cache. Once the upload lands, the remote release no longer refers
-    /// to the user's source path; the source file itself remains untouched.
-    pub async fn make_release_remote(
+    /// Move Local releases to Cloud as one admission. `pin` chooses whether
+    /// coven keeps the blobs in `storage/pinned/` (offline) vs the evictable
+    /// cache. Once the upload lands, a remote release no longer refers to the
+    /// user's source path; the source file itself remains untouched.
+    pub async fn make_releases_remote(
         &self,
-        release_id: &str,
+        release_ids: &[String],
         pin: bool,
     ) -> Result<u64, LibraryError> {
-        let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
-        let rx = transfer_service.make_release_remote(release_id.to_string(), pin);
-        match self
-            .drive_transfer(release_id, ReleaseStorageAction::MakeRemote, rx)
-            .await?
-        {
-            crate::storage::transfer::TransferOutcome::CloudUploadQueued { outbox_revision } => {
-                Ok(outbox_revision)
-            }
-            crate::storage::transfer::TransferOutcome::Complete => {
-                panic!("make-Remote completed without its durable outbox revision")
-            }
+        if release_ids.is_empty() {
+            return Err(LibraryError::Validation(
+                "move-to-cloud batch has no releases".to_string(),
+            ));
         }
+        let admission = async {
+            let mut file_counts = Vec::with_capacity(release_ids.len());
+            for release_id in release_ids {
+                let file_count = crate::storage::transfer::validate_transfer_preconditions(
+                    release_id,
+                    ReleaseStorageAction::MakeRemote,
+                    self,
+                )
+                .await
+                .map_err(|error| LibraryError::Storage(error.to_string()))?;
+                file_counts.push((release_id.clone(), file_count));
+            }
+            let value_guard =
+                self.admit_transfer_values(release_ids, ReleaseStorageAction::MakeRemote)?;
+            let revision = self.coven_make_remote_batch(release_ids, pin).await?;
+            Ok::<_, LibraryError>((revision, file_counts, value_guard))
+        }
+        .await;
+        let (revision, file_counts, _value_guard) = match admission {
+            Ok(admitted) => admitted,
+            Err(error) => {
+                let mut recorded = std::collections::HashSet::with_capacity(release_ids.len());
+                for release_id in release_ids {
+                    if recorded.insert(release_id) {
+                        crate::storage::transfer::record_transfer_failed(
+                            self,
+                            release_id,
+                            ReleaseStorageAction::MakeRemote,
+                            &error,
+                        );
+                    }
+                }
+                return Err(error);
+            }
+        };
+        for (release_id, file_count) in file_counts {
+            crate::storage::transfer::record_transfer_completed(
+                self,
+                &release_id,
+                ReleaseStorageAction::MakeRemote,
+                file_count,
+            );
+        }
+        Ok(revision)
     }
 
     /// Make a Cloud release Local: copy its files back out to `new_path` and
@@ -422,6 +475,40 @@ impl LibraryManager {
         }
     }
 
+    /// Admit every foreground transfer action under one lock. Either every
+    /// release becomes active in the value stream or none does.
+    fn admit_transfer_values(
+        &self,
+        release_ids: &[String],
+        action: ReleaseStorageAction,
+    ) -> Result<TransferValueGuard, LibraryError> {
+        {
+            let mut actions = self.transfer_actions.lock().unwrap();
+            let mut selected = std::collections::HashSet::with_capacity(release_ids.len());
+            for release_id in release_ids {
+                if !selected.insert(release_id) {
+                    return Err(LibraryError::Validation(format!(
+                        "release {release_id} appears more than once in the storage batch"
+                    )));
+                }
+                if actions.contains_key(release_id) {
+                    return Err(LibraryError::Storage(format!(
+                        "release {release_id} already has an active storage transition"
+                    )));
+                }
+            }
+            for release_id in release_ids {
+                actions.insert(release_id.clone(), action);
+            }
+            self.transfer_values.send_replace(actions.clone());
+        }
+        Ok(TransferValueGuard {
+            transfer_actions: self.transfer_actions.clone(),
+            transfer_values: self.transfer_values.clone(),
+            release_ids: release_ids.to_vec(),
+        })
+    }
+
     /// Drain a transfer's progress channel and publish its active action through
     /// the transfer value stream. On `Failed` the transfer channel's error string
     /// is wrapped as a `Storage` failure and surfaced to the caller.
@@ -438,7 +525,7 @@ impl LibraryManager {
         let _value_guard = TransferValueGuard {
             transfer_actions: self.transfer_actions.clone(),
             transfer_values: self.transfer_values.clone(),
-            release_id: release_id.to_string(),
+            release_ids: vec![release_id.to_string()],
         };
 
         let outcome = loop {
@@ -450,12 +537,9 @@ impl LibraryManager {
             };
             match progress {
                 TransferProgress::Started => {
-                    let actions = {
-                        let mut actions = self.transfer_actions.lock().unwrap();
-                        actions.insert(release_id.to_string(), action);
-                        actions.clone()
-                    };
-                    self.transfer_values.send_replace(actions);
+                    let mut actions = self.transfer_actions.lock().unwrap();
+                    actions.insert(release_id.to_string(), action);
+                    self.transfer_values.send_replace(actions.clone());
                 }
                 TransferProgress::Progress { progress } => {
                     if matches!(action, ReleaseStorageAction::Pin) {

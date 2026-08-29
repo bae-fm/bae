@@ -3,6 +3,17 @@ import os.log
 
 private let logger = Logger.bae("OutboxStore")
 
+/// One foreground attempt to admit a cloud-upload batch. The store retains the
+/// attempt's identity so an overlapping command can fail without clearing a
+/// handoff still owned by another command.
+public final class CloudUploadCommand: Sendable {
+    fileprivate let releaseIds: [String]
+
+    fileprivate init(releaseIds: [String]) {
+        self.releaseIds = releaseIds
+    }
+}
+
 /// Mirror of core's cloud outbox processing snapshot, rendered by the Storage
 /// Manager's queue panel and used by every storage row to read its
 /// per-release upload count (no cached `pendingUploads` field on
@@ -16,6 +27,7 @@ public class OutboxStore {
     /// This closes the callback-order gap between the command result and the
     /// outbox subscription without copying durable queue state into Swift.
     private var cloudUploadHandoffs: [String: CloudUploadHandoff] = [:]
+    private var cloudUploadCommands: [String: Set<ObjectIdentifier>] = [:]
 
     public init(snapshot: BridgeOutboxSnapshot) {
         self.snapshot = snapshot
@@ -32,15 +44,15 @@ public class OutboxStore {
         cloudUploadHandoffs = cloudUploadHandoffs.filter {
             releaseId,
             handoff in
-            if snapshot.perRelease[releaseId] != nil {
-                return false
-            }
             switch handoff {
             case .queueing:
-                return true
+                return snapshot.perRelease[releaseId] == nil
             case .awaiting(let revision):
                 return snapshot.revision < revision
             }
+        }
+        cloudUploadCommands = cloudUploadCommands.filter {
+            cloudUploadHandoffs[$0.key] == .queueing
         }
     }
 
@@ -61,45 +73,72 @@ public class OutboxStore {
         storageUploadObservation(forRelease: releaseId) != nil
     }
 
-    /// Begin the foreground portion of a Storage action before the bridge call
-    /// can enqueue its durable work.
-    public func beginCloudUpload(forRelease releaseId: String) {
-        precondition(
-            snapshot.perRelease[releaseId] == nil
-                && cloudUploadHandoffs[releaseId] == nil,
-            "release already has a cloud upload transition"
-        )
-        cloudUploadHandoffs[releaseId] = .queueing
+    /// Begin the foreground portion of one batch before the bridge can admit
+    /// its durable work. Overlapping attempts share the queueing handoff until
+    /// every attempt fails or one publishes a durable queue revision.
+    public func beginCloudUploads(forReleases releaseIds: [String])
+        -> CloudUploadCommand
+    {
+        let command = CloudUploadCommand(releaseIds: releaseIds)
+        let selected = Set(releaseIds)
+        guard !releaseIds.isEmpty, selected.count == releaseIds.count else {
+            return command
+        }
+        let commandId = ObjectIdentifier(command)
+        for releaseId in releaseIds {
+            guard snapshot.perRelease[releaseId] == nil else { continue }
+            switch cloudUploadHandoffs[releaseId] {
+            case nil:
+                cloudUploadHandoffs[releaseId] = .queueing
+                cloudUploadCommands[releaseId] = [commandId]
+            case .queueing:
+                cloudUploadCommands[releaseId, default: []].insert(commandId)
+            case .awaiting:
+                break
+            }
+        }
+        return command
     }
 
     /// Hand a successful Storage command to the retained outbox revision it
     /// published. If that value already won the callback race, it remains the
     /// authority; if the whole upload already finished, no transition remains.
-    public func cloudUploadQueued(
-        forRelease releaseId: String,
+    public func cloudUploadsQueued(
+        for command: CloudUploadCommand,
         atRevision revision: UInt64
     ) {
-        precondition(
-            cloudUploadHandoffs[releaseId] == .queueing
-                || snapshot.perRelease[releaseId] != nil,
-            "cloud upload receipt arrived without its foreground command"
-        )
-        if snapshot.perRelease[releaseId] != nil
-            || snapshot.revision >= revision
-        {
-            cloudUploadHandoffs.removeValue(forKey: releaseId)
-        }
-        else {
-            cloudUploadHandoffs[releaseId] = .awaiting(revision: revision)
+        for releaseId in command.releaseIds {
+            cloudUploadCommands.removeValue(forKey: releaseId)
+            if snapshot.revision >= revision {
+                cloudUploadHandoffs.removeValue(forKey: releaseId)
+            }
+            else {
+                cloudUploadHandoffs[releaseId] = .awaiting(
+                    revision: revision
+                )
+            }
         }
     }
 
-    /// End a foreground command that failed before durable enqueue.
-    public func cloudUploadFailed(forRelease releaseId: String) {
-        precondition(
-            cloudUploadHandoffs.removeValue(forKey: releaseId) != nil,
-            "cloud upload failed without its foreground command"
-        )
+    /// End a foreground batch that failed before durable enqueue. Handoffs not
+    /// owned by this command are left alone.
+    public func cloudUploadsFailed(for command: CloudUploadCommand) {
+        let commandId = ObjectIdentifier(command)
+        for releaseId in command.releaseIds {
+            guard var commands = cloudUploadCommands[releaseId] else {
+                continue
+            }
+            commands.remove(commandId)
+            if commands.isEmpty {
+                cloudUploadCommands.removeValue(forKey: releaseId)
+                if cloudUploadHandoffs[releaseId] == .queueing {
+                    cloudUploadHandoffs.removeValue(forKey: releaseId)
+                }
+            }
+            else {
+                cloudUploadCommands[releaseId] = commands
+            }
+        }
     }
 
     /// A Storage surface's full upload state, including the short command-to-

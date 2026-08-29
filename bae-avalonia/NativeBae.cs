@@ -518,14 +518,14 @@ internal static partial class NativeBae
     internal static string? UnpinRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(() => handle.UnpinRelease(releaseId)));
 
-    internal static (ulong? Revision, string? Error) MakeReleaseRemote(
+    internal static (ulong? Revision, string? Error) MakeReleasesRemote(
         AppHandle handle,
-        string releaseId,
+        IReadOnlyList<string> releaseIds,
         bool pin)
     {
         ulong? revision = null;
         var error = CaptureError(() =>
-            revision = Await(() => handle.MakeReleaseRemote(releaseId, pin)));
+            revision = Await(() => handle.MakeReleasesRemote(releaseIds.ToArray(), pin)));
         return (revision, error);
     }
 

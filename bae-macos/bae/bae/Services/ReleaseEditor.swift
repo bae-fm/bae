@@ -11,8 +11,8 @@ final class ReleaseEditor: Observable {
         @Sendable (
             _ releaseId: String, _ selection: BridgeCoverSelection
         ) async throws -> Void
-    private let moveReleaseToCloudAction:
-        @Sendable (_ releaseId: String, _ pin: Bool) async throws -> UInt64
+    private let moveReleasesToCloudAction:
+        @Sendable (_ releaseIds: [String], _ pin: Bool) async throws -> UInt64
     private let outboxStore: OutboxStore
     let makeReleaseLocal:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
@@ -36,8 +36,8 @@ final class ReleaseEditor: Observable {
         changeCover:
             @escaping @Sendable (String, BridgeCoverSelection)
             async throws -> Void = { _, _ in },
-        moveReleaseToCloud:
-            @escaping @Sendable (String, Bool) async throws -> UInt64 =
+        moveReleasesToCloud:
+            @escaping @Sendable ([String], Bool) async throws -> UInt64 =
             { _, _ in throw StubError.notImplemented },
         outboxStore: OutboxStore,
         makeReleaseLocal:
@@ -71,7 +71,7 @@ final class ReleaseEditor: Observable {
             }
     ) {
         self.changeCover = changeCover
-        moveReleaseToCloudAction = moveReleaseToCloud
+        moveReleasesToCloudAction = moveReleasesToCloud
         self.outboxStore = outboxStore
         self.makeReleaseLocal = makeReleaseLocal
         self.deleteRelease = deleteRelease
@@ -94,8 +94,8 @@ final class ReleaseEditor: Observable {
                     selection: $1
                 )
             },
-            moveReleaseToCloud: {
-                try await handle.makeReleaseRemote(releaseId: $0, pin: $1)
+            moveReleasesToCloud: {
+                try await handle.makeReleasesRemote(releaseIds: $0, pin: $1)
             },
             outboxStore: outboxStore,
             makeReleaseLocal: {
@@ -133,19 +133,25 @@ final class ReleaseEditor: Observable {
     /// the foreground command and the retained outbox subscription. The bridge
     /// returns the exact revision it published; `OutboxStore` owns the handoff
     /// until that revision arrives or proves the upload already finished.
-    func moveReleaseToCloud(_ releaseId: String, _ pin: Bool) async throws {
-        outboxStore.beginCloudUpload(forRelease: releaseId)
+    func moveReleasesToCloud(_ releaseIds: [String], _ pin: Bool) async throws {
+        let command = outboxStore.beginCloudUploads(
+            forReleases: releaseIds
+        )
         do {
-            let revision = try await moveReleaseToCloudAction(releaseId, pin)
-            outboxStore.cloudUploadQueued(
-                forRelease: releaseId,
+            let revision = try await moveReleasesToCloudAction(releaseIds, pin)
+            outboxStore.cloudUploadsQueued(
+                for: command,
                 atRevision: revision
             )
         }
         catch {
-            outboxStore.cloudUploadFailed(forRelease: releaseId)
+            outboxStore.cloudUploadsFailed(for: command)
             throw error
         }
+    }
+
+    func moveReleaseToCloud(_ releaseId: String, _ pin: Bool) async throws {
+        try await moveReleasesToCloud([releaseId], pin)
     }
 
     #if DEBUG

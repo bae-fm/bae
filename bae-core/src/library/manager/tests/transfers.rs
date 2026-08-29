@@ -528,11 +528,21 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
         &[("track.flac", b"track-bytes")],
     )
     .await;
+    let second_release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("publish-queue-second"),
+        "Second Album Title",
+        &[("second.flac", b"second-track-bytes")],
+    )
+    .await;
     let mut values = manager.subscribe_outbox_values();
     assert!(values.borrow_and_update().is_none());
 
     let queued_revision = manager
-        .make_release_remote(&release.id, false)
+        .make_releases_remote(
+            &[release.id.clone(), second_release.id.clone()],
+            false,
+        )
         .await
         .unwrap();
 
@@ -546,6 +556,82 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
         .upload_groups
         .iter()
         .any(|group| group.release_id == release.id));
+    assert!(snapshot
+        .upload_groups
+        .iter()
+        .any(|group| group.release_id == second_release.id));
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_move_to_cloud_batch_refuses_an_active_target_without_admitting_another() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let new_release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("new-target"),
+        "First Album",
+        &[("first.flac", b"first-bytes")],
+    )
+    .await;
+    let active_release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("active-target"),
+        "Second Album",
+        &[("second.flac", b"second-bytes")],
+    )
+    .await;
+    manager
+        .coven_make_remote(&active_release.id, false)
+        .await
+        .expect("admit the existing transition");
+
+    manager
+        .make_releases_remote(
+            &[new_release.id.clone(), active_release.id.clone()],
+            false,
+        )
+        .await
+        .expect_err("an active target refuses the whole batch");
+
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&new_release.id)
+            .await
+            .expect("read the new target's transition"),
+        None,
+        "the new target was not admitted before the active target refused the batch",
+    );
+}
+
+#[cfg(feature = "test-utils")]
+#[tokio::test]
+async fn a_move_to_cloud_batch_refuses_duplicate_release_ids_without_admission() {
+    let (manager, temp_dir) = setup_test_manager().await;
+    connect_test_cloud(&manager).await;
+    let release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("duplicate-target"),
+        "Album Title",
+        &[("track.flac", b"track-bytes")],
+    )
+    .await;
+
+    manager
+        .make_releases_remote(&[release.id.clone(), release.id.clone()], false)
+        .await
+        .expect_err("a duplicate target refuses the whole batch");
+
+    assert_eq!(
+        manager
+            .database
+            .make_remote_progress_for_release(&release.id)
+            .await
+            .expect("read the target's transition"),
+        None,
+        "the duplicate target was not admitted",
+    );
 }
 
 /// The queue names the release it was queued under, and keeps that name.

@@ -17,6 +17,7 @@ internal sealed class StorageStore
     private BridgeDownloadSnapshot? _downloadsSnapshot;
     private BridgeOutputSnapshot? _outputSnapshot;
     private readonly Dictionary<string, CloudUploadHandoff> _cloudUploadHandoffs = new();
+    private readonly Dictionary<string, HashSet<CloudUploadCommand>> _cloudUploadCommands = new();
     public event Action? Changed;
 
     public StorageStore(DownloadsService downloads)
@@ -35,11 +36,13 @@ internal sealed class StorageStore
         _outbox = snapshot;
         foreach (var (releaseId, handoff) in _cloudUploadHandoffs.ToArray())
         {
-            if (snapshot.PerRelease.ContainsKey(releaseId)
+            if (handoff is CloudUploadHandoff.Queueing
+                    && snapshot.PerRelease.ContainsKey(releaseId)
                 || handoff is CloudUploadHandoff.Awaiting awaiting
                     && snapshot.Revision >= awaiting.Revision)
             {
                 _cloudUploadHandoffs.Remove(releaseId);
+                _cloudUploadCommands.Remove(releaseId);
             }
         }
         Changed?.Invoke();
@@ -121,48 +124,80 @@ internal sealed class StorageStore
         _outbox?.PerRelease.TryGetValue(releaseId, out var progress) == true
         && progress.CanCancel;
 
-    private void BeginCloudUpload(string releaseId)
+    private CloudUploadCommand BeginCloudUploads(IReadOnlyList<string> releaseIds)
     {
-        if (_outbox?.PerRelease.ContainsKey(releaseId) == true
-            || !_cloudUploadHandoffs.TryAdd(releaseId, new CloudUploadHandoff.Queueing()))
+        var command = new CloudUploadCommand(releaseIds);
+        var selected = releaseIds.ToHashSet();
+        if (releaseIds.Count == 0
+            || selected.Count != releaseIds.Count)
         {
-            throw new InvalidOperationException(
-                $"Release {releaseId} already has a cloud upload transition");
+            return command;
+        }
+        foreach (var releaseId in releaseIds)
+        {
+            if (_outbox?.PerRelease.ContainsKey(releaseId) == true)
+            {
+                continue;
+            }
+            if (!_cloudUploadHandoffs.TryGetValue(releaseId, out var handoff))
+            {
+                _cloudUploadHandoffs.Add(releaseId, new CloudUploadHandoff.Queueing());
+                _cloudUploadCommands.Add(releaseId, [command]);
+            }
+            else if (handoff is CloudUploadHandoff.Queueing)
+            {
+                if (!_cloudUploadCommands.TryGetValue(releaseId, out var commands))
+                {
+                    commands = [];
+                    _cloudUploadCommands.Add(releaseId, commands);
+                }
+                commands.Add(command);
+            }
+        }
+        Changed?.Invoke();
+        return command;
+    }
+
+    private void CloudUploadsQueued(CloudUploadCommand command, ulong revision)
+    {
+        foreach (var releaseId in command.ReleaseIds)
+        {
+            _cloudUploadCommands.Remove(releaseId);
+            if (_outbox?.Revision >= revision)
+            {
+                _cloudUploadHandoffs.Remove(releaseId);
+            }
+            else
+            {
+                _cloudUploadHandoffs[releaseId] = new CloudUploadHandoff.Awaiting(revision);
+            }
         }
         Changed?.Invoke();
     }
 
-    private void CloudUploadQueued(string releaseId, ulong revision)
+    private void EndCloudUploadBatchWithoutReceipt(CloudUploadCommand command)
     {
-        if (!_cloudUploadHandoffs.ContainsKey(releaseId)
-            && _outbox?.PerRelease.ContainsKey(releaseId) != true)
+        var changed = false;
+        foreach (var releaseId in command.ReleaseIds)
         {
-            throw new InvalidOperationException(
-                $"Release {releaseId} received a cloud queue receipt without its foreground command");
+            if (!_cloudUploadCommands.TryGetValue(releaseId, out var commands))
+            {
+                continue;
+            }
+            commands.Remove(command);
+            if (commands.Count == 0)
+            {
+                _cloudUploadCommands.Remove(releaseId);
+                if (_cloudUploadHandoffs.GetValueOrDefault(releaseId)
+                    is CloudUploadHandoff.Queueing)
+                {
+                    changed |= _cloudUploadHandoffs.Remove(releaseId);
+                }
+            }
         }
-        if (_outbox?.PerRelease.ContainsKey(releaseId) == true
-            || _outbox?.Revision >= revision)
-        {
-            _cloudUploadHandoffs.Remove(releaseId);
-        }
-        else
-        {
-            _cloudUploadHandoffs[releaseId] = new CloudUploadHandoff.Awaiting(revision);
-        }
-        Changed?.Invoke();
-    }
-
-    private void EndCloudUploadCommandWithoutReceipt(string releaseId)
-    {
-        if (_cloudUploadHandoffs.Remove(releaseId))
+        if (changed)
         {
             Changed?.Invoke();
-            return;
-        }
-        if (_outbox?.PerRelease.ContainsKey(releaseId) != true)
-        {
-            throw new InvalidOperationException(
-                $"Release {releaseId} ended cloud upload without its foreground command or outbox state");
         }
     }
 
@@ -207,8 +242,8 @@ internal sealed class StorageStore
         switch (action)
         {
             case BridgeReleaseStorageAction.Pin:
-                // Pin enqueues the whole selection in one call (the download queue
-                // takes a list); the rest apply per release.
+                // Pin enqueues the whole selection in one call; Move to Cloud
+                // has its own batch path below, while Unpin applies per release.
                 var (pinCurrent, pinError) = await _downloads.QueuePins(releaseIds);
                 return pinCurrent ? pinError : null;
             case BridgeReleaseStorageAction.Unpin:
@@ -226,27 +261,24 @@ internal sealed class StorageStore
     private async System.Threading.Tasks.Task<string?> MoveToCloudAcross(
         List<string> releaseIds)
     {
-        foreach (var releaseId in releaseIds)
+        var command = BeginCloudUploads(releaseIds);
+        var (current, result) = await _downloads.MakeReleasesRemote(releaseIds, false);
+        if (!current)
         {
-            BeginCloudUpload(releaseId);
-            var (current, result) = await _downloads.MakeReleaseRemote(releaseId, false);
-            if (!current)
-            {
-                EndCloudUploadCommandWithoutReceipt(releaseId);
-                return null;
-            }
-            if (result.Error is { } error)
-            {
-                EndCloudUploadCommandWithoutReceipt(releaseId);
-                return error;
-            }
-            if (result.Revision is not { } revision)
-            {
-                EndCloudUploadCommandWithoutReceipt(releaseId);
-                return null;
-            }
-            CloudUploadQueued(releaseId, revision);
+            EndCloudUploadBatchWithoutReceipt(command);
+            return null;
         }
+        if (result.Error is { } error)
+        {
+            EndCloudUploadBatchWithoutReceipt(command);
+            return error;
+        }
+        if (result.Revision is not { } revision)
+        {
+            EndCloudUploadBatchWithoutReceipt(command);
+            return null;
+        }
+        CloudUploadsQueued(command, revision);
         return null;
     }
 
@@ -269,6 +301,16 @@ internal sealed class StorageStore
 
         return null;
     }
+}
+
+internal sealed class CloudUploadCommand
+{
+    public CloudUploadCommand(IReadOnlyList<string> releaseIds)
+    {
+        ReleaseIds = releaseIds.ToArray();
+    }
+
+    public IReadOnlyList<string> ReleaseIds { get; }
 }
 
 internal abstract record CloudUploadHandoff

@@ -240,13 +240,13 @@ struct StorageCloudUploadHandoffTests {
     func commandHandsOffWithoutAStandingLocalFrame() {
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
 
-        store.beginCloudUpload(forRelease: "release-a")
+        let command = store.beginCloudUploads(forReleases: ["release-a"])
         #expect(
             store.storageUploadObservation(forRelease: "release-a")
                 == .queueing
         )
 
-        store.cloudUploadQueued(forRelease: "release-a", atRevision: 2)
+        store.cloudUploadsQueued(for: command, atRevision: 2)
         #expect(
             store.storageUploadObservation(forRelease: "release-a")
                 == .awaiting
@@ -269,13 +269,13 @@ struct StorageCloudUploadHandoffTests {
     @Test("a queue value that wins the callback race remains authoritative")
     func queueValueMayArriveBeforeTheCommandReceipt() {
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        store.beginCloudUpload(forRelease: "release-a")
+        let command = store.beginCloudUploads(forReleases: ["release-a"])
 
         var active = OutboxStore.emptySnapshot
         active.revision = 2
         active.perRelease["release-a"] = active.total
         store.applySnapshot(active)
-        store.cloudUploadQueued(forRelease: "release-a", atRevision: 2)
+        store.cloudUploadsQueued(for: command, atRevision: 2)
 
         guard
             case .active = store.storageUploadObservation(
@@ -290,11 +290,112 @@ struct StorageCloudUploadHandoffTests {
     @Test("a refused enqueue returns the release to its resting state")
     func failedCommandEndsItsLocalTransition() {
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
-        store.beginCloudUpload(forRelease: "release-a")
-        store.cloudUploadFailed(forRelease: "release-a")
+        let command = store.beginCloudUploads(forReleases: ["release-a"])
+        store.cloudUploadsFailed(for: command)
 
         #expect(
             store.storageUploadObservation(forRelease: "release-a") == nil
         )
+    }
+
+    @Test("an active target refuses the batch without admitting another")
+    func activeTargetRefusesTheWholeBatch() {
+        var snapshot = OutboxStore.emptySnapshot
+        snapshot.perRelease["release-b"] = snapshot.total
+        let store = OutboxStore(snapshot: snapshot)
+
+        let command = store.beginCloudUploads(
+            forReleases: ["release-a", "release-b"]
+        )
+        store.cloudUploadsFailed(for: command)
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a") == nil
+        )
+        #expect(
+            store.storageUploadObservation(forRelease: "release-b")
+                == .active(snapshot.total)
+        )
+    }
+
+    @Test("a batch handoff covers every release until the queue arrives")
+    func batchHandoffCoversEveryRelease() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let releaseIds = ["release-a", "release-b"]
+
+        let command = store.beginCloudUploads(forReleases: releaseIds)
+        for releaseId in releaseIds {
+            #expect(
+                store.storageUploadObservation(forRelease: releaseId)
+                    == .queueing
+            )
+        }
+
+        store.cloudUploadsQueued(for: command, atRevision: 2)
+        for releaseId in releaseIds {
+            #expect(
+                store.storageUploadObservation(forRelease: releaseId)
+                    == .awaiting
+            )
+        }
+    }
+
+    @Test("an overlapping loser cannot clear the winning command's handoff")
+    func overlappingCommandsKeepTheWinningHandoff() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let releaseIds = ["release-a"]
+
+        let first = store.beginCloudUploads(forReleases: releaseIds)
+        let second = store.beginCloudUploads(forReleases: releaseIds)
+        store.cloudUploadsFailed(for: first)
+
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a")
+                == .queueing
+        )
+        store.cloudUploadsQueued(for: second, atRevision: 2)
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
+        )
+    }
+}
+
+@Suite("ReleaseEditor cloud batches")
+@MainActor
+struct ReleaseEditorCloudBatchTests {
+    @Test("the selected releases cross the bridge in one command")
+    func selectionCrossesTheBridgeTogether() async throws {
+        let recorder = CloudBatchRecorder()
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let editor = ReleaseEditor(
+            moveReleasesToCloud: { releaseIds, pin in
+                await recorder.append(releaseIds: releaseIds, pin: pin)
+                return 2
+            },
+            outboxStore: store
+        )
+
+        try await editor.moveReleasesToCloud(
+            ["release-a", "release-b"],
+            true
+        )
+
+        let calls = await recorder.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.releaseIds == ["release-a", "release-b"])
+        #expect(calls.first?.pin == true)
+    }
+}
+
+private actor CloudBatchRecorder {
+    struct Call: Sendable {
+        let releaseIds: [String]
+        let pin: Bool
+    }
+
+    private(set) var calls: [Call] = []
+
+    func append(releaseIds: [String], pin: Bool) {
+        calls.append(Call(releaseIds: releaseIds, pin: pin))
     }
 }
