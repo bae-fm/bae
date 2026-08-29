@@ -169,3 +169,5 @@ cargo run --quiet \
   -- "${checker_args[@]}" "$ROOT"
 
 python3 scripts/swift-owner-dependency-boundary.py
+python3 scripts/ui-projection-boundary.py
+python3 scripts/tests/ui-projection-boundary-test.py
