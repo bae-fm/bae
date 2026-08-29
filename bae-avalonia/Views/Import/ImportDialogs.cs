@@ -214,6 +214,7 @@ internal sealed class ImportDialogs
         {
             BridgeCoverImageSource.Local local => new ImageContent.LocalFile(local.Path),
             BridgeCoverImageSource.Remote remote => new ImageContent.Remote(remote.Url),
+            BridgeCoverImageSource.Bytes bytes => new ImageContent.Bytes(bytes.Data),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(cover), cover.ThumbnailSource, "Unknown cover image source"),
         };

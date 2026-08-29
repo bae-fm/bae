@@ -747,12 +747,14 @@ impl Database {
         content_hash: &str,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::import::RawReleaseEdit,
+        cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let candidate_path = candidate_path.to_string();
         let content_hash = content_hash.to_string();
         let snapshot = snapshot.clone();
         let draft = draft.clone();
+        let cover = cover.cloned();
         self.call(move |sql| {
             let current: Option<(String, i64, i64)> = sql
                 .query_row(
@@ -790,6 +792,9 @@ impl Database {
             )?;
             pane_rows::replace_draft(sql, &content_hash, &draft)?;
             pane_rows::delete_cover(sql, &content_hash)?;
+            if let Some(cover) = &cover {
+                pane_rows::save_cover(sql, &content_hash, cover)?;
+            }
             u64::try_from(revision)
                 .map_err(|_| DbError::Message("candidate metadata revision is negative".into()))
         })

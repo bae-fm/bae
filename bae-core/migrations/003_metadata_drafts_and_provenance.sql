@@ -245,17 +245,17 @@ CREATE TABLE IF NOT EXISTS import_candidate_failure (
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE
 ) STRICT;
 
--- The cover the user chose for this candidate: one of the folder's own images,
--- or one of the picked release's remote covers. No row means the picked
--- release's default cover stands; a row is written only on an explicit choice.
+-- The cover applied to this candidate: one of the folder's own images, embedded
+-- File Tags artwork, or one of the picked release's remote covers. File Tags
+-- records its deterministic default here; no row means no cover was applied.
 CREATE TABLE IF NOT EXISTS import_candidate_cover (
     content_hash TEXT PRIMARY KEY,
-    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote')),
+    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote', 'embedded')),
     file_id      TEXT,
     url          TEXT,
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((kind = 'local') = (file_id IS NOT NULL)),
+    CHECK ((kind IN ('local', 'embedded')) = (file_id IS NOT NULL)),
     CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
 ) STRICT;
 

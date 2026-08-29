@@ -193,12 +193,12 @@ INSERT INTO import_candidate_failure SELECT * FROM import_candidate_failure_v1;
 
 CREATE TABLE import_candidate_cover (
     content_hash TEXT PRIMARY KEY,
-    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote')),
+    kind         TEXT NOT NULL CHECK (kind IN ('local', 'remote', 'embedded')),
     file_id      TEXT,
     url          TEXT,
     source       TEXT CHECK (source IS NULL OR source IN ('musicbrainz', 'discogs')),
     FOREIGN KEY (content_hash) REFERENCES import_candidate_state (content_hash) ON DELETE CASCADE,
-    CHECK ((kind = 'local') = (file_id IS NOT NULL)),
+    CHECK ((kind IN ('local', 'embedded')) = (file_id IS NOT NULL)),
     CHECK ((kind = 'remote') = (url IS NOT NULL AND source IS NOT NULL))
 ) STRICT;
 

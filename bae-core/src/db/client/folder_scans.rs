@@ -21,7 +21,8 @@ use crate::import::folder_scanner::{FolderReleaseDecisionKey, ScanItem};
 use std::path::{Path, PathBuf};
 
 pub(super) use read::{
-    load_candidate_items, load_item_by_key, load_resolved_boundaries, stored_entries,
+    load_candidate_file_tag_snapshot, load_candidate_items, load_item_by_key,
+    load_resolved_boundaries, stored_entries,
 };
 pub(super) use write::{delete_entry, insert_candidate_files, StoredEntry};
 

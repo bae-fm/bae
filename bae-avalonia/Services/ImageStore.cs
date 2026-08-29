@@ -45,6 +45,7 @@ internal abstract record ImageContent
     {
         BridgeCoverImageSource.Local local => new LocalFile(local.Path),
         BridgeCoverImageSource.Remote remote => new Remote(remote.Url),
+        BridgeCoverImageSource.Bytes bytes => new Bytes(bytes.Data),
         _ => throw new ArgumentOutOfRangeException(nameof(source)),
     };
 

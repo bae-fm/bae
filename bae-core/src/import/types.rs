@@ -778,6 +778,9 @@ pub enum CoverSelection {
     Remote(String, MetadataSource),
     /// Local file in the album folder (relative path from album root)
     Local(String),
+    /// Artwork embedded in one audio file, identified by that file's relative
+    /// path in the File Tags snapshot.
+    Embedded(String),
 }
 
 /// Progress updates during import

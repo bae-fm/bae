@@ -518,6 +518,77 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     );
 }
 
+#[tokio::test]
+async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    let candidate = scanned_with_source(
+        &db,
+        root,
+        "Album",
+        crate::config::DefaultImportMetadataSource::FileTags,
+    )
+    .await;
+    let hash = candidate.files.content_hash();
+    let draft = db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .metadata_draft;
+    let bytes = vec![1, 2, 3, 4];
+    let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
+        scan_generation: 1,
+        file_edit_revision: 0,
+        files: vec![crate::import::file_tag_snapshot::FileTagFact {
+            observation: crate::import::file_tag_snapshot::FileObservation {
+                relative_path: "01.flac".to_string(),
+                size: 1_000,
+                modified_at_ns: 1,
+            },
+            content_type: Some(crate::util::content_type::ContentType::Flac),
+            title: None,
+            track_artist: None,
+            album_title: None,
+            album_artist: None,
+            year: None,
+            track_number: None,
+            disc_number: None,
+        }],
+        embedded_cover: Some(crate::import::file_tag_snapshot::EmbeddedCoverFact {
+            source_relative_path: "01.flac".to_string(),
+            content_type: crate::util::content_type::ContentType::Jpeg,
+            data: bytes.clone(),
+        }),
+    };
+    db.replace_candidate_file_tags_metadata(
+        root,
+        &candidate.path.to_string_lossy(),
+        &hash,
+        &snapshot,
+        &draft,
+        Some(&crate::import::CoverSelection::Embedded(
+            "01.flac".to_string(),
+        )),
+    )
+    .await
+    .unwrap();
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    let summary = rows(&projection)
+        .remove(0)
+        .metadata_summary
+        .expect("the row carries its File Tags draft");
+    assert_eq!(
+        summary.cover_thumbnail,
+        Some(crate::import::CoverImageSource::Bytes { data: bytes })
+    );
+}
+
 /// The failure the last attempt stored is a placement fact, so the list reads
 /// it: after a relaunch, with nothing running, the row that failed is still on
 /// Pending — the folder is not in the library and the work is waiting on

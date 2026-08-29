@@ -130,13 +130,14 @@ pub fn musicbrainz_covers(response: &crate::musicbrainz::MbReleaseResponse) -> V
     covers
 }
 
-/// Where a cover's bytes are read from — a remote address, or a file the
-/// folder holds.
+/// Where a cover's bytes are read from — a remote address, a file the folder
+/// holds, or the candidate's stored File Tags snapshot.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoverImageSource {
     Remote { url: String },
     Local { path: std::path::PathBuf },
+    Bytes { data: Vec<u8> },
 }
 
 /// The cover a candidate will be committed with, and where to draw it from.
@@ -174,6 +175,17 @@ impl CoverChoice {
             selection: crate::import::CoverSelection::Local(file_id),
             preview: CoverImageSource::Local { path: path.clone() },
             thumbnail: CoverImageSource::Local { path },
+        }
+    }
+
+    /// Artwork stored in the candidate's File Tags snapshot. The source file
+    /// identifies the selection; the snapshot owns the exact bytes rendered
+    /// by both the pane and the sidebar.
+    pub fn embedded(source_file_id: String, data: Vec<u8>) -> Self {
+        Self {
+            selection: crate::import::CoverSelection::Embedded(source_file_id),
+            preview: CoverImageSource::Bytes { data: data.clone() },
+            thumbnail: CoverImageSource::Bytes { data },
         }
     }
 }

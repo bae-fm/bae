@@ -567,6 +567,11 @@ impl AppHandle {
                     url: selection.url,
                     source: selection.source.into_core(),
                 },
+                BridgeCoverSelection::EmbeddedCover { source_file_id } => {
+                    return Err(BridgeError::internal(format!(
+                        "embedded candidate cover {source_file_id} is not a library cover choice"
+                    )))
+                }
             };
 
             this.services

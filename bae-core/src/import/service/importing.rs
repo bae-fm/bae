@@ -407,7 +407,9 @@ impl ImportService {
                     }
                 }
             }
-            (Some(CoverSelection::Local(_)), _) | (None, None) => None,
+            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)), _) | (None, None) => {
+                None
+            }
         };
 
         step_times.push(("write_cover_art", last_step_start.elapsed()));
@@ -431,23 +433,39 @@ impl ImportService {
             &categorized,
         )?;
 
-        let selected_cover_path = match &selected_cover {
-            Some(CoverSelection::Local(path)) => Some(path.as_str()),
-            _ => None,
-        };
-
-        // Embedded cover art is the lowest-priority source: `run_import` uses it
-        // only when neither an explicit pick nor a folder image supplies one.
         // File Tags captured its embedded image in the same snapshot that
         // seeded the pane, so the worker never opens the tags a second time.
-        let embedded_cover = if selected_cover.is_none()
-            && matches!(
-                metadata_provenance,
-                Some(crate::import::MetadataProvenance::FileTags)
-            ) {
-            file_tag_snapshot
-                .and_then(|snapshot| snapshot.embedded_cover.as_ref())
-                .map(|cover| (cover.data.clone(), cover.content_type.clone()))
+        // A stored embedded selection names the source audio exactly; no
+        // different snapshot image may silently stand in for it.
+        let embedded_cover = if matches!(
+            metadata_provenance,
+            Some(crate::import::MetadataProvenance::FileTags)
+        ) {
+            let cover = file_tag_snapshot.and_then(|snapshot| snapshot.embedded_cover.as_ref());
+            match (&selected_cover, cover) {
+                (Some(CoverSelection::Embedded(source_file_id)), Some(cover))
+                    if &cover.source_relative_path == source_file_id =>
+                {
+                    Some((cover.data.clone(), cover.content_type.clone()))
+                }
+                (Some(CoverSelection::Embedded(source_file_id)), Some(cover)) => {
+                    return Err(crate::import::ImportError::CoverArt {
+                        detail: format!(
+                            "Selected embedded cover {source_file_id} does not match snapshot source {}",
+                            cover.source_relative_path
+                        ),
+                    })
+                }
+                (Some(CoverSelection::Embedded(source_file_id)), None) => {
+                    return Err(crate::import::ImportError::CoverArt {
+                        detail: format!(
+                            "Selected embedded cover {source_file_id} is absent from the File Tags snapshot"
+                        ),
+                    })
+                }
+                (None, Some(cover)) => Some((cover.data.clone(), cover.content_type.clone())),
+                _ => None,
+            }
         } else {
             None
         };
@@ -472,7 +490,7 @@ impl ImportService {
             &mut prepared,
             &discovered_files,
             &tracks_to_files,
-            selected_cover_path,
+            selected_cover.as_ref(),
             &import_id,
             &candidate_key,
             embedded_cover,
@@ -552,7 +570,7 @@ impl ImportService {
         prepared: &mut PreparedMetadata,
         discovered_files: &[ScannedFile],
         tracks_to_files: &[TrackFile],
-        selected_cover_path: Option<&str>,
+        selected_cover: Option<&CoverSelection>,
         import_id: &str,
         candidate_key: &str,
         embedded_cover: Option<(Vec<u8>, crate::util::content_type::ContentType)>,
@@ -732,17 +750,35 @@ impl ImportService {
             });
         }
 
-        // Cover priority: Remote > local folder image > embedded. Finalize writes
-        // the winner's bytes and row in one coven batch.
+        // A selected cover is exact. With no selection, File Tags' embedded
+        // artwork leads, then the folder's deterministic image default.
+        // Finalize writes the winner's bytes and row in one coven batch.
         let cover_candidate = match remote_cover_image.take() {
             Some(remote) => Some(remote),
-            None => match self.pick_folder_cover(discovered_files, selected_cover_path)? {
-                Some(local) => Some(local),
-                None => embedded_cover.map(|(bytes, _content_type)| cover_image::CoverCandidate {
-                    bytes,
-                    source: "embedded".to_string(),
-                    source_url: None,
-                }),
+            None => match selected_cover {
+                Some(CoverSelection::Local(path)) => {
+                    self.pick_folder_cover(discovered_files, Some(path))?
+                }
+                Some(CoverSelection::Embedded(_)) => {
+                    embedded_cover.map(|(bytes, _content_type)| cover_image::CoverCandidate {
+                        bytes,
+                        source: "embedded".to_string(),
+                        source_url: None,
+                    })
+                }
+                Some(CoverSelection::Remote(_, _)) => {
+                    return Err(crate::import::ImportError::CoverArt {
+                        detail: "selected remote cover produced no downloaded image".to_string(),
+                    })
+                }
+                None => match embedded_cover {
+                    Some((bytes, _content_type)) => Some(cover_image::CoverCandidate {
+                        bytes,
+                        source: "embedded".to_string(),
+                        source_url: None,
+                    }),
+                    None => self.pick_folder_cover(discovered_files, None)?,
+                },
             },
         };
         // Resize the winner to a ≤600px JPEG thumbnail — one funnel for all three

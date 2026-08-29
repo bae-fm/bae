@@ -240,6 +240,10 @@ impl ImportServiceHandle {
                     self.ids.as_ref(),
                 )?;
                 let draft = crate::import::pane::candidate_draft_from_source(pane);
+                let cover = crate::import::file_tag_snapshot::default_cover(
+                    &snapshot_candidate.files,
+                    &snapshot,
+                );
                 return Ok(self
                     .library_manager
                     .replace_candidate_file_tags_metadata(
@@ -248,6 +252,7 @@ impl ImportServiceHandle {
                         &snapshot_candidate.files.content_hash(),
                         &snapshot,
                         &draft,
+                        cover.as_ref(),
                     )
                     .await?);
             }

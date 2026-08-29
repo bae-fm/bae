@@ -74,6 +74,9 @@ pub(super) fn save_cover(
     require_state_row(sql, content_hash, "cover choice")?;
     let (kind, file_id, url, source) = match cover {
         CoverSelection::Local(file_id) => ("local", Some(file_id.as_str()), None, None),
+        CoverSelection::Embedded(source_file_id) => {
+            ("embedded", Some(source_file_id.as_str()), None, None)
+        }
         CoverSelection::Remote(url, source) => {
             ("remote", None, Some(url.as_str()), Some(source.as_str()))
         }
@@ -359,6 +362,9 @@ pub(crate) fn load_covers_on(
             "local" => CoverSelection::Local(
                 file_id.ok_or_else(|| DbError::Message("a local cover names no file".into()))?,
             ),
+            "embedded" => CoverSelection::Embedded(file_id.ok_or_else(|| {
+                DbError::Message("an embedded cover names no source file".into())
+            })?),
             "remote" => CoverSelection::Remote(
                 url.ok_or_else(|| DbError::Message("a remote cover names no address".into()))?,
                 MetadataSource::from_str(

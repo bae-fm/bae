@@ -34,6 +34,7 @@ impl ImportService {
             ids.as_ref(),
         )?;
         let draft = crate::import::pane::candidate_draft_from_source(pane);
+        let cover = crate::import::file_tag_snapshot::default_cover(&candidate.files, &snapshot);
         Ok(library_manager
             .replace_candidate_file_tags_metadata(
                 &candidate.watched_folder_path,
@@ -41,6 +42,7 @@ impl ImportService {
                 &candidate.files.content_hash(),
                 &snapshot,
                 &draft,
+                cover.as_ref(),
             )
             .await?)
     }

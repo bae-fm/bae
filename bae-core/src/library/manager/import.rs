@@ -423,6 +423,7 @@ impl LibraryManager {
         content_hash: &str,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::import::RawReleaseEdit,
+        cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, LibraryError> {
         Ok(self
             .database
@@ -432,6 +433,7 @@ impl LibraryManager {
                 content_hash,
                 snapshot,
                 draft,
+                cover,
             )
             .await?)
     }

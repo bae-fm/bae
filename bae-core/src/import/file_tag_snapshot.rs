@@ -150,6 +150,54 @@ pub(crate) fn extract_file_tag_snapshot(
     })
 }
 
+/// The cover File Tags applies with its draft. Embedded artwork is part of the
+/// same snapshot and therefore leads. Without one, conventional `cover.*` and
+/// `folder.*` images lead by case-insensitive path order; every other image is
+/// ordered by file size and then by path.
+pub(crate) fn default_cover(
+    files: &super::folder_scanner::CategorizedFiles,
+    snapshot: &FileTagSnapshot,
+) -> Option<super::CoverSelection> {
+    if let Some(cover) = &snapshot.embedded_cover {
+        return Some(super::CoverSelection::Embedded(
+            cover.source_relative_path.clone(),
+        ));
+    }
+    files
+        .artwork()
+        .min_by(|left, right| artwork_order(left, right))
+        .map(|file| super::CoverSelection::Local(file.relative_path.clone()))
+}
+
+fn artwork_order(
+    left: &super::folder_scanner::ScannedFile,
+    right: &super::folder_scanner::ScannedFile,
+) -> std::cmp::Ordering {
+    let left_name = left.relative_path.to_lowercase();
+    let right_name = right.relative_path.to_lowercase();
+    match (conventional_artwork(left), conventional_artwork(right)) {
+        (true, true) => left_name
+            .cmp(&right_name)
+            .then_with(|| left.relative_path.cmp(&right.relative_path)),
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        (false, false) => left
+            .size
+            .cmp(&right.size)
+            .then_with(|| left_name.cmp(&right_name))
+            .then_with(|| left.relative_path.cmp(&right.relative_path)),
+    }
+}
+
+fn conventional_artwork(file: &super::folder_scanner::ScannedFile) -> bool {
+    std::path::Path::new(&file.relative_path)
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .is_some_and(|stem| {
+            stem.eq_ignore_ascii_case("cover") || stem.eq_ignore_ascii_case("folder")
+        })
+}
+
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
     let metadata = std::fs::metadata(&file.path).map_err(|error| ImportError::FileTags {
         detail: format!("failed to stat {}: {error}", file.path.display()),
@@ -305,6 +353,40 @@ pub fn read_embedded_cover(
 mod tests {
     use super::*;
 
+    fn artwork(relative_path: &str, size: u64) -> ScannedFile {
+        ScannedFile::new(
+            PathBuf::from("/candidate").join(relative_path),
+            relative_path.to_string(),
+            size,
+        )
+    }
+
+    fn files_with_artwork(
+        artwork: impl IntoIterator<Item = ScannedFile>,
+    ) -> super::super::folder_scanner::CategorizedFiles {
+        use super::super::folder_scanner::{CandidateFile, CategorizedFiles, FileRole};
+        CategorizedFiles {
+            files: artwork
+                .into_iter()
+                .map(|file| CandidateFile {
+                    file,
+                    role: FileRole::Artwork,
+                    proposed_audio: false,
+                })
+                .collect(),
+            format_label: String::new(),
+        }
+    }
+
+    fn snapshot(embedded_cover: Option<EmbeddedCoverFact>) -> FileTagSnapshot {
+        FileTagSnapshot {
+            scan_generation: 1,
+            file_edit_revision: 0,
+            files: Vec::new(),
+            embedded_cover,
+        }
+    }
+
     #[derive(Default)]
     struct CountingReader(std::sync::atomic::AtomicUsize);
 
@@ -372,5 +454,54 @@ mod tests {
             matches!(error, ImportError::FileTags { detail } if detail.contains("changed after"))
         );
         assert_eq!(reader.0.load(std::sync::atomic::Ordering::Relaxed), 0);
+    }
+
+    #[test]
+    fn embedded_artwork_leads_every_folder_image() {
+        let files = files_with_artwork([artwork("cover.jpg", 1), artwork("folder.png", 1)]);
+        let snapshot = snapshot(Some(EmbeddedCoverFact {
+            source_relative_path: "01.flac".to_string(),
+            content_type: ContentType::Jpeg,
+            data: vec![1, 2, 3],
+        }));
+
+        assert_eq!(
+            default_cover(&files, &snapshot),
+            Some(super::super::CoverSelection::Embedded(
+                "01.flac".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn conventional_folder_artwork_uses_case_insensitive_name_order() {
+        let files = files_with_artwork([
+            artwork("z/Folder.png", 50),
+            artwork("A/COVER.jpg", 500),
+            artwork("front.jpg", 1),
+        ]);
+
+        assert_eq!(
+            default_cover(&files, &snapshot(None)),
+            Some(super::super::CoverSelection::Local(
+                "A/COVER.jpg".to_string()
+            ))
+        );
+    }
+
+    #[test]
+    fn remaining_folder_artwork_uses_size_then_name() {
+        let files = files_with_artwork([
+            artwork("large.jpg", 500),
+            artwork("b/scan.png", 20),
+            artwork("A/scan.png", 20),
+        ]);
+
+        assert_eq!(
+            default_cover(&files, &snapshot(None)),
+            Some(super::super::CoverSelection::Local(
+                "A/scan.png".to_string()
+            ))
+        );
     }
 }

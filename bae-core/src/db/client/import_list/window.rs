@@ -135,6 +135,33 @@ fn row_cover_source(
                 path: PathBuf::from(path),
             })
         }
+        CoverSelection::Embedded(source_file_id) => {
+            let snapshot = super::super::folder_scans::load_candidate_file_tag_snapshot(
+                sql,
+                &candidate.watched_folder_path,
+                &candidate.path,
+            )?
+            .and_then(|stored| stored.snapshot)
+            .ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {} selects embedded cover without a File Tags snapshot",
+                    candidate.path
+                ))
+            })?;
+            let cover = snapshot.embedded_cover.ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {} selects embedded cover without stored artwork",
+                    candidate.path
+                ))
+            })?;
+            if cover.source_relative_path != *source_file_id {
+                return Err(DbError::Message(format!(
+                    "candidate {} selects embedded cover from {source_file_id}, but its snapshot stores {}",
+                    candidate.path, cover.source_relative_path
+                )));
+            }
+            Ok(crate::import::CoverImageSource::Bytes { data: cover.data })
+        }
     }
 }
 
@@ -291,10 +318,41 @@ pub(super) fn load_candidate_detail_on(
         .as_ref()
         .map(|release| release.cover_art.clone())
         .unwrap_or_default();
+    let embedded_cover = match pane_rows.cover.as_ref() {
+        Some(CoverSelection::Embedded(source_file_id)) => {
+            let snapshot = super::super::folder_scans::load_candidate_file_tag_snapshot(
+                sql,
+                &candidate.watched_folder_path,
+                &candidate.path.to_string_lossy(),
+            )?
+            .and_then(|stored| stored.snapshot)
+            .ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {} selects embedded cover without a File Tags snapshot",
+                    candidate.path.display()
+                ))
+            })?;
+            let cover = snapshot.embedded_cover.ok_or_else(|| {
+                DbError::Message(format!(
+                    "candidate {} selects embedded cover without stored artwork",
+                    candidate.path.display()
+                ))
+            })?;
+            if cover.source_relative_path != *source_file_id {
+                return Err(DbError::Message(format!(
+                    "candidate {} selects embedded cover from {source_file_id}, but its snapshot stores {}",
+                    candidate.path.display(), cover.source_relative_path
+                )));
+            }
+            Some(cover)
+        }
+        _ => None,
+    };
     let cover = chosen_cover(
         &candidate.files,
         pane_rows.cover.as_ref(),
         pane.release.as_ref(),
+        embedded_cover.as_ref(),
     );
     let unprobed = unprobed_units(&candidate.files, picked.is_some(), &durations);
 
@@ -386,6 +444,7 @@ fn chosen_cover(
     files: &CategorizedFiles,
     chosen: Option<&CoverSelection>,
     release: Option<&ImportSearchReleaseDetail>,
+    embedded_cover: Option<&crate::import::file_tag_snapshot::EmbeddedCoverFact>,
 ) -> Option<CoverChoice> {
     let default = || {
         release
@@ -399,6 +458,9 @@ fn chosen_cover(
             .find(|image| &image.relative_path == file_id)
             .map(|image| CoverChoice::local(file_id.clone(), image.path.clone()))
             .or_else(default),
+        Some(CoverSelection::Embedded(source_file_id)) => embedded_cover
+            .filter(|cover| &cover.source_relative_path == source_file_id)
+            .map(|cover| CoverChoice::embedded(source_file_id.clone(), cover.data.clone())),
         Some(CoverSelection::Remote(url, source)) => {
             let matching = release
                 .into_iter()

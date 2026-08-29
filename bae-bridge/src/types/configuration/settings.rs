@@ -630,6 +630,9 @@ impl BridgeCoverSelection {
                     selection.source.into_core(),
                 )
             }
+            BridgeCoverSelection::EmbeddedCover { source_file_id } => {
+                bae_core::import::CoverSelection::Embedded(source_file_id)
+            }
         }
     }
 }

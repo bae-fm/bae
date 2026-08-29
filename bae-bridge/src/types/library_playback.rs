@@ -744,6 +744,7 @@ pub struct BridgeRemoteCoverSelection {
 pub enum BridgeCoverImageSource {
     Remote { url: String },
     Local { path: String },
+    Bytes { data: Vec<u8> },
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -753,6 +754,9 @@ pub enum BridgeCoverSelection {
     },
     RemoteCover {
         selection: BridgeRemoteCoverSelection,
+    },
+    EmbeddedCover {
+        source_file_id: String,
     },
 }
 

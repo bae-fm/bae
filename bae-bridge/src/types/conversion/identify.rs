@@ -168,6 +168,9 @@ impl BridgeCoverChoice {
                         selection: bridge_remote_cover_selection(url, source),
                     }
                 }
+                bae_core::import::CoverSelection::Embedded(source_file_id) => {
+                    BridgeCoverSelection::EmbeddedCover { source_file_id }
+                }
             },
             preview_source: BridgeCoverImageSource::from_core(preview),
             thumbnail_source: BridgeCoverImageSource::from_core(thumbnail),
@@ -183,6 +186,7 @@ impl BridgeCoverImageSource {
             bae_core::import::CoverImageSource::Local { path } => Self::Local {
                 path: path.to_string_lossy().into_owned(),
             },
+            bae_core::import::CoverImageSource::Bytes { data } => Self::Bytes { data },
         }
     }
 }

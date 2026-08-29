@@ -269,10 +269,9 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
     assert_cover_row_describes_stored_bytes(&f, &release_id).await;
 }
 
-/// A folder image outranks the embedded picture: when both exist, the
-/// folder artwork is the cover and the embedded picture is ignored.
+/// Embedded artwork leads the folder's images when File Tags supplies both.
 #[tokio::test]
-async fn file_tags_import_folder_image_wins_over_embedded_cover() {
+async fn file_tags_import_embedded_cover_wins_over_folder_image() {
     support::tracing_init();
 
     let f = ImportFixture::new().await;
@@ -289,7 +288,7 @@ async fn file_tags_import_folder_image_wins_over_embedded_cover() {
         }],
     );
     // A folder image alongside the embedded-cover audio. No explicit
-    // selection — the auto-pick must still prefer this folder image.
+    // selection — File Tags' embedded artwork still leads.
     let scans = album_dir.join("scans");
     fs::create_dir_all(&scans).unwrap();
     fs::write(scans.join("cover.jpg"), embedded_cover_jpeg()).unwrap();
@@ -319,8 +318,8 @@ async fn file_tags_import_folder_image_wins_over_embedded_cover() {
             .unwrap()
             .expect("a cover should be written");
     assert_eq!(
-        cover.source, "local",
-        "the folder image must win over the embedded picture, got source {:?}",
+        cover.source, "embedded",
+        "the embedded picture must win over the folder image, got source {:?}",
         cover.source
     );
 }

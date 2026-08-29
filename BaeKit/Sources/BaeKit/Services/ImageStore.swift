@@ -39,6 +39,8 @@ public enum ImageContent: Equatable, Hashable, Sendable {
             self = .localFile(path: path)
         case .remote(let url):
             self = .remote(url: url)
+        case .bytes(let data):
+            self = .bytes(Data(data))
         }
     }
 

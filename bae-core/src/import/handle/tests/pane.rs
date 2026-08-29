@@ -130,6 +130,7 @@ struct CountingFileTagReader {
         std::sync::mpsc::SyncSender<()>,
         std::sync::Arc<std::sync::Barrier>,
     )>,
+    embedded_cover: Option<Vec<u8>>,
 }
 
 impl CountingFileTagReader {
@@ -138,6 +139,7 @@ impl CountingFileTagReader {
             reads: std::sync::atomic::AtomicUsize::new(0),
             fail_on_read: None,
             first_read: None,
+            embedded_cover: None,
         }
     }
 
@@ -146,6 +148,7 @@ impl CountingFileTagReader {
             reads: std::sync::atomic::AtomicUsize::new(0),
             fail_on_read: Some(fail_on_read),
             first_read: None,
+            embedded_cover: None,
         }
     }
 
@@ -157,6 +160,16 @@ impl CountingFileTagReader {
             reads: std::sync::atomic::AtomicUsize::new(0),
             fail_on_read: None,
             first_read: Some((entered, resume)),
+            embedded_cover: None,
+        }
+    }
+
+    fn with_embedded_cover(data: Vec<u8>) -> Self {
+        Self {
+            reads: std::sync::atomic::AtomicUsize::new(0),
+            fail_on_read: None,
+            first_read: None,
+            embedded_cover: Some(data),
         }
     }
 
@@ -193,7 +206,13 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             year: Some(2020),
             track_number: Some(u32::try_from(index + 1).unwrap()),
             disc_number: Some(1),
-            embedded_cover: None,
+            embedded_cover: if index == 0 {
+                self.embedded_cover.clone().map(|data| {
+                    (data, crate::util::content_type::ContentType::Jpeg)
+                })
+            } else {
+                None
+            },
         })
     }
 }
@@ -760,27 +779,15 @@ async fn a_dropped_track_leaves_the_table() {
     shut_down(handle).await;
 }
 
-/// A chosen cover comes back as the image on disk it names.
+/// Applying File Tags persists the default cover, so the pane and queue keep
+/// drawing it without relying on selection state.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_chosen_cover_comes_back_pointed_at_the_file() {
+async fn file_tags_persists_the_conventional_folder_cover() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
-    assert!(
-        pane(&handle, &key).await.cover.is_none(),
-        "the folder's own tags offer no cover until one is chosen"
-    );
-
-    handle
-        .set_candidate_cover(
-            &key,
-            crate::import::CoverSelection::Local("cover.jpg".to_string()),
-        )
-        .await
-        .unwrap();
-
     let cover = pane(&handle, &key)
         .await
         .cover
-        .expect("the choice is what the pane draws");
+        .expect("File Tags applies its deterministic default cover");
     assert_eq!(
         cover.selection,
         crate::import::CoverSelection::Local("cover.jpg".to_string())
@@ -791,6 +798,61 @@ async fn a_chosen_cover_comes_back_pointed_at_the_file() {
     assert!(path.ends_with("cover.jpg"));
 
     shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let bytes = vec![1, 2, 3, 4];
+    handle
+        .file_tag_snapshot_with_reader(
+            &key,
+            std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(bytes.clone())),
+        )
+        .await
+        .unwrap();
+    handle
+        .select_candidate_metadata_provenance(
+            key.clone(),
+            crate::import::MetadataProvenance::FileTags,
+        )
+        .await
+        .unwrap();
+
+    let cover = pane(&handle, &key)
+        .await
+        .cover
+        .expect("the embedded default is projected");
+    assert_eq!(
+        cover.selection,
+        crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
+    );
+    assert_eq!(
+        cover.preview,
+        crate::import::cover_art::CoverImageSource::Bytes {
+            data: bytes.clone()
+        }
+    );
+    shut_down(handle).await;
+
+    let reopened = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    assert_eq!(
+        pane(&reopened, &key)
+            .await
+            .cover
+            .expect("the persisted embedded default survives a relaunch")
+            .selection,
+        crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
+    );
+    shut_down(reopened).await;
 }
 
 /// The pane asks for the units nothing has measured, and asks once: probing
