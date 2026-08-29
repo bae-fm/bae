@@ -92,6 +92,7 @@
             skipped: UInt32,
             watchedFolders: [BridgeWatchedFolder],
             folderScanStatuses: [BridgeWatchedFolderScanStatus] = [],
+            folderScanActivity: BridgeFolderScanActivity? = nil,
             groupKeys: [BridgeFolderReleaseDecisionKey] = [],
             ready: [BridgeReadyRowRef] = [],
             firstUnidentified: BridgeFirstUnidentifiedRowRef? = nil
@@ -104,6 +105,7 @@
                 ),
                 watchedFolders: watchedFolders,
                 folderScanStatuses: folderScanStatuses,
+                folderScanActivity: folderScanActivity,
                 groupKeys: groupKeys,
                 ready: ready,
                 firstUnidentified: firstUnidentified

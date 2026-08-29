@@ -103,9 +103,15 @@ internal static class PreviewData
                 new BridgeWatchedFolderScanStatus(
                     ImportRoot,
                     "Incoming",
-                    new BridgeFolderScanStatus.Scanning(),
+                    new BridgeFolderScanStatus.Scanning(2),
                     OnNetworkVolume: false),
             },
+            FolderScanActivity = new BridgeFolderScanActivity(
+                2,
+                new[]
+                {
+                    new BridgeActiveFolderScan(ImportRoot, "Incoming", 2),
+                }),
         };
 
     // A folder read as several releases: the header that says so and offers to
@@ -181,6 +187,7 @@ internal static class PreviewData
         Counts: new BridgeTriageTabCounts(Pending: pending, Done: 0, Skipped: 0),
         WatchedFolders: ImportWatchedFolders.ToArray(),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        FolderScanActivity: null,
         GroupKeys: groupKeys.ToArray(),
         Ready: ready.ToArray(),
         FirstUnidentified: null);

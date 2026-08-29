@@ -90,6 +90,13 @@ internal sealed partial class ImportSectionView : UserControl
     private readonly Button _progressLine;
     private string? _progressGoToKey;
 
+    // Folder scans have no denominator. Their filter-row control stays
+    // indeterminate and opens the per-root current-generation counts core
+    // projected alongside the total.
+    private readonly Button _scanProgressButton;
+    private readonly TextBlock _scanProgressCount = new() { FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center };
+    private readonly StackPanel _scanProgressFolders = new() { Spacing = 8, Width = 240 };
+
     public ImportSectionView(AppService app, ImportDialogs dialogs)
     {
         _app = app;
@@ -126,6 +133,7 @@ internal sealed partial class ImportSectionView : UserControl
 
         _progressLine = BuildProgressLine();
         _progressButton = BuildProgressButton();
+        _scanProgressButton = BuildScanProgressButton();
 
         _listMenuButton = ChromeButton("⋯", 15, _listMenuWarning);
         _listMenuButton.Click += (_, _) => { _listMenuButton.Flyout = BuildListMenuFlyout(); _listMenuButton.Flyout.ShowAt(_listMenuButton); };
@@ -216,7 +224,7 @@ internal sealed partial class ImportSectionView : UserControl
 
     private Control BuildFilterRow()
     {
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"), ColumnSpacing = 6 };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto,Auto"), ColumnSpacing = 6 };
         var searchGlyph = Icons.Glyph(Icons.Search, 13, "BaeTextSecondaryBrush");
         Grid.SetColumn(searchGlyph, 0);
 
@@ -224,13 +232,16 @@ internal sealed partial class ImportSectionView : UserControl
 
         Grid.SetColumn(_clearFilterButton, 2);
 
-        Grid.SetColumn(_progressButton, 3);
+        Grid.SetColumn(_scanProgressButton, 3);
 
-        Grid.SetColumn(_listMenuButton, 4);
+        Grid.SetColumn(_progressButton, 4);
+
+        Grid.SetColumn(_listMenuButton, 5);
 
         row.Children.Add(searchGlyph);
         row.Children.Add(_filterBox);
         row.Children.Add(_clearFilterButton);
+        row.Children.Add(_scanProgressButton);
         row.Children.Add(_progressButton);
         row.Children.Add(_listMenuButton);
 
@@ -271,6 +282,41 @@ internal sealed partial class ImportSectionView : UserControl
             Flyout = new Flyout { Content = _progressLine },
         };
         ToolTip.SetTip(button, Loc.Chrome("import.progress.identifying"));
+        return button;
+    }
+
+    private Button BuildScanProgressButton()
+    {
+        _scanProgressCount[!TextBlock.ForegroundProperty] =
+            new DynamicResourceExtension("BaeTextSecondaryBrush");
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            Children =
+            {
+                new Spinner { Width = 12, Height = 12 },
+                _scanProgressCount,
+            },
+        };
+        var button = new Button
+        {
+            Content = content,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Padding = new Thickness(4),
+            Flyout = new Flyout
+            {
+                Content = new Border
+                {
+                    Padding = new Thickness(12),
+                    Child = _scanProgressFolders,
+                },
+            },
+        };
+        var label = Loc.Core("ui.import.scan.activity");
+        ToolTip.SetTip(button, label);
+        Avalonia.Automation.AutomationProperties.SetName(button, label);
         return button;
     }
 
@@ -478,6 +524,7 @@ internal sealed partial class ImportSectionView : UserControl
         RenderTabBar();
         _clearFilterButton.IsVisible = _import.FilterText.Length > 0;
         RenderProgressIndicator();
+        RenderScanProgressIndicator();
         _listMenuWarning.IsVisible = _import.Summary.FolderScanStatuses
             .Any(scan => scan.Status is BridgeFolderScanStatus.Failed);
         RenderFootBar();
@@ -594,6 +641,50 @@ internal sealed partial class ImportSectionView : UserControl
         _progressBarHost.Children.Add(ImportProgressLine.Bar(fraction));
         _progressGoToKey = _import.Summary.FirstUnidentified?.CandidateKey;
         _progressLine.IsEnabled = _progressGoToKey is not null;
+    }
+
+    private void RenderScanProgressIndicator()
+    {
+        if (_import.Summary.FolderScanActivity is not { } activity)
+        {
+            _scanProgressButton.IsVisible = false;
+            _scanProgressFolders.Children.Clear();
+            return;
+        }
+
+        _scanProgressButton.IsVisible = true;
+        _scanProgressCount.Text = Loc.Core(
+            "ui.import.scan.found",
+            "count",
+            (long)activity.FoundCount);
+        _scanProgressFolders.Children.Clear();
+        foreach (var folder in activity.Folders)
+        {
+            var row = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+                ColumnSpacing = 12,
+            };
+            var name = new TextBlock
+            {
+                Text = folder.WatchedFolderName,
+                TextTrimming = TextTrimming.CharacterEllipsis,
+            };
+            var count = new TextBlock
+            {
+                Text = Loc.Core(
+                    "ui.import.scan.found",
+                    "count",
+                    (long)folder.FoundCount),
+            };
+            count[!TextBlock.ForegroundProperty] =
+                new DynamicResourceExtension("BaeTextSecondaryBrush");
+            Grid.SetColumn(name, 0);
+            Grid.SetColumn(count, 1);
+            row.Children.Add(name);
+            row.Children.Add(count);
+            _scanProgressFolders.Children.Add(row);
+        }
     }
 
     // ── The foot bar ─────────────────────────────────────────────────────────

@@ -286,3 +286,42 @@ Completed in `d367990e3`.
   ordering as the tie-breaker.
 - Project the persisted choice into the main pane and sidebar across
   deselection and relaunch.
+
+### Folder scan activity
+
+- Show one indeterminate filter-bar indicator while any watched folder is
+  scanning.
+- Project the current-generation candidate count per active root and the total
+  across active roots from the core list query.
+- Exclude retained older-generation rows during a rescan.
+- Open the per-root counts from the indicator and remove it as soon as no scan
+  is active.
+- Keep macOS and Avalonia renderers projection-only.
+
+### Blank metadata draft editor
+
+- Render a stable editor rather than a placeholder summary card while the
+  metadata draft is blank.
+- Keep the cover target, Find online and File tags actions, and editable fields
+  in that editor.
+- Transform the same region into the applied summary card once the draft is
+  nonblank; show its field form under Details and update its summary live.
+- Return to the blank editor after Clear metadata without changing files,
+  images, or mapping decisions.
+
+### Find online methods
+
+- Present Automatic and Search manually as methods inside one stable Find
+  online page.
+- Keep each method's state and results separate while hidden.
+- Show empty-result copy only after the corresponding operation completes.
+- Keep result confirmation open through release-data loading, then apply and
+  return to the metadata card.
+
+### Automatic online lookup
+
+- Put Identify automatically in its own Online lookup settings section.
+- Start it for newly discovered Find online candidates and when Find online is
+  opened manually, never for None or File Tags candidates.
+- Restore an existing active or completed run; repeat only through Run again.
+- Keep the trigger in core candidate workflow state.

@@ -219,6 +219,73 @@ public sealed class ImportSectionViewTests
         Assert.Equal(new[] { "4", "2", "3" }, badges);
     }
 
+    [AvaloniaFact]
+    public void ActiveFolderScansRenderOneTotalAndPerFolderCurrentGenerationCounts()
+    {
+        var firstRoot = PreviewData.ImportRoot;
+        var secondRoot = $"{PreviewData.ImportRoot}-two";
+        var activity = new BridgeFolderScanActivity(
+            179,
+            new[]
+            {
+                new BridgeActiveFolderScan(firstRoot, "Incoming", 124),
+                new BridgeActiveFolderScan(secondRoot, "Archive", 55),
+            });
+        var summary = PreviewData.ImportSummary with
+        {
+            FolderScanStatuses = new[]
+            {
+                new BridgeWatchedFolderScanStatus(
+                    firstRoot,
+                    "Incoming",
+                    new BridgeFolderScanStatus.Scanning(124),
+                    OnNetworkVolume: false),
+                new BridgeWatchedFolderScanStatus(
+                    secondRoot,
+                    "Archive",
+                    new BridgeFolderScanStatus.Scanning(55),
+                    OnNetworkVolume: false),
+            },
+            FolderScanActivity = activity,
+        };
+        var view = BuildView(PreviewData.ImportItems, summary);
+
+        var label = Loc.Core("ui.import.scan.activity");
+        var button = view
+            .GetLogicalDescendants()
+            .OfType<Button>()
+            .Single(control =>
+                Avalonia.Automation.AutomationProperties.GetName(control) == label);
+        Assert.True(button.IsVisible);
+        Assert.Contains(
+            button.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("ui.import.scan.found", "count", 179L));
+
+        var flyout = Assert.IsType<Flyout>(button.Flyout);
+        var content = Assert.IsType<Border>(flyout.Content);
+        var lines = content
+            .GetLogicalDescendants()
+            .OfType<TextBlock>()
+            .Select(text => text.Text)
+            .ToList();
+        Assert.Contains("Incoming", lines);
+        Assert.Contains("Archive", lines);
+        Assert.Contains(Loc.Core("ui.import.scan.found", "count", 124L), lines);
+        Assert.Contains(Loc.Core("ui.import.scan.found", "count", 55L), lines);
+    }
+
+    [AvaloniaFact]
+    public void FolderScanIndicatorLeavesImmediatelyWhenNoScanIsActive()
+    {
+        var view = BuildView(PreviewData.ImportItems, PreviewData.ImportSummary);
+
+        Assert.DoesNotContain(
+            view.GetLogicalDescendants().OfType<Button>(),
+            control => control.IsVisible
+                && Avalonia.Automation.AutomationProperties.GetName(control)
+                    == Loc.Core("ui.import.scan.activity"));
+    }
+
     // An imported release reads its cloud work off the outbox: while the
     // outbox holds it the row draws the transfer with one indicator — the
     // upload arrow and the bar — and once it is gone the row is done.
@@ -437,6 +504,7 @@ public sealed class ImportSectionViewTests
             Skipped: tab is BridgeTriageTab.Skipped ? 1u : 0u),
         WatchedFolders: PreviewData.ImportWatchedFolders.ToArray(),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        FolderScanActivity: null,
         GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
         Ready: placement is BridgeTriagePlacement.Ready
             ? new[]
@@ -482,6 +550,7 @@ public sealed class ImportSectionViewTests
         Counts: new BridgeTriageTabCounts(Pending: 4, Done: 2, Skipped: 3),
         WatchedFolders: PreviewData.ImportWatchedFolders.ToArray(),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        FolderScanActivity: null,
         GroupKeys: new[] { PreviewData.ImportGroupKey },
         Ready: Array.Empty<BridgeReadyRowRef>(),
         FirstUnidentified: null);

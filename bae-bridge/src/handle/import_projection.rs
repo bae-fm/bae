@@ -60,8 +60,8 @@ impl crate::types::BridgeWatchedFolderScanStatus {
             watched_folder_name: status.watched_folder_name,
             on_network_volume: status.on_network_volume,
             status: match status.status {
-                bae_core::import::FolderScanStatus::Scanning => {
-                    crate::types::BridgeFolderScanStatus::Scanning
+                bae_core::import::FolderScanStatus::Scanning { found_count } => {
+                    crate::types::BridgeFolderScanStatus::Scanning { found_count }
                 }
                 bae_core::import::FolderScanStatus::Complete => {
                     crate::types::BridgeFolderScanStatus::Complete
@@ -496,6 +496,7 @@ impl crate::types::BridgeImportQueueSummary {
             counts,
             watched_folders,
             folder_scan_statuses,
+            folder_scan_activity,
             group_keys,
             ready,
             first_unidentified,
@@ -519,6 +520,20 @@ impl crate::types::BridgeImportQueueSummary {
                 .into_iter()
                 .map(crate::types::BridgeWatchedFolderScanStatus::from_core)
                 .collect(),
+            folder_scan_activity: folder_scan_activity.map(|activity| {
+                crate::types::BridgeFolderScanActivity {
+                    found_count: activity.found_count,
+                    folders: activity
+                        .folders
+                        .into_iter()
+                        .map(|folder| crate::types::BridgeActiveFolderScan {
+                            watched_folder_path: folder.watched_folder_path,
+                            watched_folder_name: folder.watched_folder_name,
+                            found_count: folder.found_count,
+                        })
+                        .collect(),
+                }
+            }),
             group_keys: group_keys
                 .into_iter()
                 .map(crate::types::BridgeFolderReleaseDecisionKey::from_core)

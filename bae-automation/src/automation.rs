@@ -77,7 +77,7 @@ impl Automation {
                                         status.watched_folder_path
                                     )));
                                 }
-                                bae_core::import::FolderScanStatus::Scanning => {}
+                                bae_core::import::FolderScanStatus::Scanning { .. } => {}
                             }
                         }
                     }

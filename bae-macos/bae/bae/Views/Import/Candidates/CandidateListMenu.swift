@@ -166,7 +166,7 @@ struct CandidateListMenu: View, Equatable {
             ],
             refreshingFolders: [],
             scanStatuses: [
-                "/Music/Rips": .scanning,
+                "/Music/Rips": .scanning(foundCount: 8),
                 "/Volumes/Vault": .failed(
                     error: "The volume could not be reached."
                 ),

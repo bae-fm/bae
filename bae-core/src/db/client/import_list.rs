@@ -218,14 +218,20 @@ fn scan_statuses(
         .map(|(index, folder)| (folder.path.as_str(), index))
         .collect();
     let mut statuses = Vec::new();
-    for (watched_folder_path, status, error) in sql.query(
-        "SELECT watched_folder_path, status, error FROM folder_scan_roots",
+    for (watched_folder_path, status, error, found_count) in sql.query(
+        "SELECT roots.watched_folder_path, roots.status, roots.error, COUNT(candidate.path) \
+         FROM folder_scan_roots AS roots \
+         LEFT JOIN scan_candidate AS candidate \
+           ON candidate.watched_folder_path = roots.watched_folder_path \
+          AND candidate.generation = roots.generation \
+         GROUP BY roots.watched_folder_path, roots.status, roots.error",
         [],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, Option<String>>(2)?,
+                row.get::<_, i64>(3)?,
             ))
         },
     )? {
@@ -238,7 +244,9 @@ fn scan_statuses(
                 ))
             })?;
         let status = match (status.as_str(), error) {
-            ("scanning", None) => FolderScanStatus::Scanning,
+            ("scanning", None) => FolderScanStatus::Scanning {
+                found_count: to_u64(found_count, "current folder-scan candidate count")?,
+            },
             ("complete", None) => FolderScanStatus::Complete,
             ("failed", Some(error)) => FolderScanStatus::Failed { error },
             (status, error) => {

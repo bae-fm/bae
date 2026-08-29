@@ -8,6 +8,36 @@ import Testing
 @Suite("Import candidate checkbox")
 struct ImportCandidateCheckboxTests {
     @MainActor
+    @Test("folder scan activity renders an indeterminate progress control")
+    func folderScanActivityRendersIndeterminateProgress() throws {
+        let size = NSSize(width: 180, height: 40)
+        let (_, host) = SnapshotTestSupport.hostInWindow(
+            FolderScanProgressIndicator(
+                activity: BridgeFolderScanActivity(
+                    foundCount: 179,
+                    folders: [
+                        BridgeActiveFolderScan(
+                            watchedFolderPath: "/imports/incoming",
+                            watchedFolderName: "Incoming",
+                            foundCount: 179
+                        )
+                    ]
+                )
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        host.layoutSubtreeIfNeeded()
+        let progress = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSProgressIndicator }
+                .first
+        )
+        #expect(progress.isIndeterminate)
+    }
+
+    @MainActor
     @Test("a row renders without resolving the outbox environment")
     func rowRendersFromSuppliedUploadPresentation() {
         let size = NSSize(width: 400, height: 80)

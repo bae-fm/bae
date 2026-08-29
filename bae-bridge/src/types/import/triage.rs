@@ -187,7 +187,7 @@ pub fn bridge_network_folder_check_minutes() -> u32 {
 
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeFolderScanStatus {
-    Scanning,
+    Scanning { found_count: u64 },
     Complete,
     Failed { error: String },
 }

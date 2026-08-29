@@ -149,10 +149,10 @@ pub use handle::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use list::{
-    FirstUnidentifiedRowRef, ImportCandidateDetail, ImportCandidateDetailProjection,
-    ImportCandidateListLocation, ImportListItem, ImportListOrder, ImportListProjection,
-    ImportListRequest, ImportListSnapshot, ImportListSubscription, ImportListSubscriptionError,
-    ImportListView, ImportListWindow, ImportQueueSummary, ReadyRowRef,
+    ActiveFolderScan, FirstUnidentifiedRowRef, FolderScanActivity, ImportCandidateDetail,
+    ImportCandidateDetailProjection, ImportCandidateListLocation, ImportListItem, ImportListOrder,
+    ImportListProjection, ImportListRequest, ImportListSnapshot, ImportListSubscription,
+    ImportListSubscriptionError, ImportListView, ImportListWindow, ImportQueueSummary, ReadyRowRef,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use mapping::{

@@ -250,6 +250,9 @@ struct ImportCandidateListContent: View {
                                 )
                             )
                         }
+                        if let activity = summary.folderScanActivity {
+                            FolderScanProgressIndicator(activity: activity)
+                        }
                         CandidateListMenu(
                             watchedFolders: importStore.watchedFolders,
                             refreshingFolders: uiStore.refreshingWatchedFolders,

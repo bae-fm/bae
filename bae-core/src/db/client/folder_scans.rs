@@ -508,8 +508,14 @@ fn load_folder_scan_snapshots_on(
     sql: &SqlReadContext<'_>,
 ) -> Result<Vec<DbFolderScanSnapshot>, DbError> {
     let roots = sql.query(
-        "SELECT watched_folder_path, generation, status, error \
-         FROM folder_scan_roots ORDER BY watched_folder_path",
+        "SELECT roots.watched_folder_path, roots.generation, roots.status, roots.error, \
+                COUNT(candidate.path) \
+         FROM folder_scan_roots AS roots \
+         LEFT JOIN scan_candidate AS candidate \
+           ON candidate.watched_folder_path = roots.watched_folder_path \
+          AND candidate.generation = roots.generation \
+         GROUP BY roots.watched_folder_path, roots.generation, roots.status, roots.error \
+         ORDER BY roots.watched_folder_path",
         [],
         |row| {
             Ok((
@@ -517,19 +523,22 @@ fn load_folder_scan_snapshots_on(
                 row.get::<_, i64>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, Option<String>>(3)?,
+                row.get::<_, i64>(4)?,
             ))
         },
     )?;
 
     let mut snapshots = Vec::with_capacity(roots.len());
-    for (watched_folder_path, generation, status, error) in roots {
+    for (watched_folder_path, generation, status, error, found_count) in roots {
         let generation = u64::try_from(generation).map_err(|_| {
             DbError::Message(format!(
                 "folder scan root {watched_folder_path} has a negative generation"
             ))
         })?;
         let status = match (status.as_str(), error) {
-            ("scanning", None) => crate::import::FolderScanStatus::Scanning,
+            ("scanning", None) => crate::import::FolderScanStatus::Scanning {
+                found_count: columns::to_u64(found_count, "current folder-scan candidate count")?,
+            },
             ("complete", None) => crate::import::FolderScanStatus::Complete,
             ("failed", Some(error)) => crate::import::FolderScanStatus::Failed { error },
             (status, error) => {

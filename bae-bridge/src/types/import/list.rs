@@ -94,6 +94,7 @@ pub struct BridgeImportQueueSummary {
     pub counts: BridgeTriageTabCounts,
     pub watched_folders: Vec<BridgeWatchedFolder>,
     pub folder_scan_statuses: Vec<BridgeWatchedFolderScanStatus>,
+    pub folder_scan_activity: Option<BridgeFolderScanActivity>,
     /// Every group header the whole queue has, across all tabs — what
     /// disclosure state is retained against.
     pub group_keys: Vec<BridgeFolderReleaseDecisionKey>,
@@ -102,6 +103,19 @@ pub struct BridgeImportQueueSummary {
     /// The first row the identify count is still waiting on, unfiltered, plus
     /// its position when the current view contains it.
     pub first_unidentified: Option<BridgeFirstUnidentifiedRowRef>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeFolderScanActivity {
+    pub found_count: u64,
+    pub folders: Vec<BridgeActiveFolderScan>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeActiveFolderScan {
+    pub watched_folder_path: String,
+    pub watched_folder_name: String,
+    pub found_count: u64,
 }
 
 #[derive(Debug, Clone, uniffi::Record)]

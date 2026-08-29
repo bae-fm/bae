@@ -283,7 +283,7 @@ impl ImportService {
                 status: crate::import::WatchedFolderScanStatus {
                     watched_folder_path: watched_folder.path,
                     watched_folder_name: watched_folder.name,
-                    status: crate::import::FolderScanStatus::Scanning,
+                    status: crate::import::FolderScanStatus::Scanning { found_count: 0 },
                     on_network_volume: volume_kind(root) == VolumeKind::Network,
                 },
             }),

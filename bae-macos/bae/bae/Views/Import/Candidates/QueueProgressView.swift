@@ -115,6 +115,62 @@ struct QueueProgressIndicator: View {
     }
 }
 
+/// The filter row's one signal that watched folders are being scanned. Core
+/// supplies both the total and the per-root current-generation counts; this
+/// view only formats and renders them.
+struct FolderScanProgressIndicator: View {
+    let activity: BridgeFolderScanActivity
+
+    @State
+    private var detailsShown = false
+
+    var body: some View {
+        Button {
+            detailsShown = true
+        } label: {
+            HStack(spacing: 4) {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 11, height: 11)
+                Text(
+                    verbatim: coreString(
+                        "ui.import.scan.found",
+                        Int(activity.foundCount)
+                    )
+                )
+                .font(.system(size: 11.5))
+                .monospacedDigit()
+            }
+            .foregroundStyle(.secondary)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(coreString("ui.import.scan.activity"))
+        .popover(isPresented: $detailsShown, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(activity.folders, id: \.watchedFolderPath) { folder in
+                    HStack(spacing: 12) {
+                        Text(verbatim: folder.watchedFolderName)
+                            .lineLimit(1)
+                        Spacer(minLength: 12)
+                        Text(
+                            verbatim: coreString(
+                                "ui.import.scan.found",
+                                Int(folder.foundCount)
+                            )
+                        )
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .font(.system(size: 12))
+            .frame(width: 240)
+            .padding(12)
+        }
+    }
+}
+
 #if DEBUG
     // MARK: - Previews
 
@@ -136,6 +192,28 @@ struct QueueProgressIndicator: View {
         )
         .padding()
         .frame(width: 280)
+        .windowBackground()
+    }
+
+    #Preview("Folder scan progress") {
+        FolderScanProgressIndicator(
+            activity: BridgeFolderScanActivity(
+                foundCount: 179,
+                folders: [
+                    BridgeActiveFolderScan(
+                        watchedFolderPath: "/imports/one",
+                        watchedFolderName: "Incoming",
+                        foundCount: 124
+                    ),
+                    BridgeActiveFolderScan(
+                        watchedFolderPath: "/imports/two",
+                        watchedFolderName: "Archive",
+                        foundCount: 55
+                    ),
+                ]
+            )
+        )
+        .padding()
         .windowBackground()
     }
 #endif

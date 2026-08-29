@@ -572,6 +572,7 @@ struct ImportListPageSourceTests {
                 ),
                 watchedFolders: [BridgeWatchedFolder(path: "/w", name: "w")],
                 folderScanStatuses: [],
+                folderScanActivity: nil,
                 groupKeys: [],
                 ready: [],
                 firstUnidentified: firstUnidentifiedCandidateKey.map {

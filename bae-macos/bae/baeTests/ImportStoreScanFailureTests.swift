@@ -33,6 +33,7 @@ struct ImportStoreScanFailureTests {
             counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
             watchedFolders: [],
             folderScanStatuses: statuses,
+            folderScanActivity: nil,
             groupKeys: [],
             ready: [],
             firstUnidentified: nil

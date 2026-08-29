@@ -32,7 +32,7 @@ pub struct WatchedFolderScanStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderScanStatus {
-    Scanning,
+    Scanning { found_count: u64 },
     Complete,
     Failed { error: String },
 }

@@ -265,6 +265,9 @@ pub struct ImportQueueSummary {
     pub counts: TriageTabCounts,
     pub watched_folders: Vec<WatchedFolder>,
     pub folder_scan_statuses: Vec<WatchedFolderScanStatus>,
+    /// The current walks, already filtered and totalled for the filter-bar
+    /// activity control. Absent as soon as no root is scanning.
+    pub folder_scan_activity: Option<FolderScanActivity>,
     /// Every group header the whole queue has, across all tabs — what
     /// disclosure state is retained against.
     pub group_keys: Vec<FolderReleaseDecisionKey>,
@@ -273,6 +276,22 @@ pub struct ImportQueueSummary {
     /// The first row the identify count is still waiting on, unfiltered, plus
     /// its position when the current view contains it.
     pub first_unidentified: Option<FirstUnidentifiedRowRef>,
+}
+
+/// Live folder-scan activity for the list chrome. Counts come from each
+/// root's current generation, never from the list windows a UI has loaded.
+#[derive(Debug, Clone, PartialEq)]
+pub struct FolderScanActivity {
+    pub found_count: u64,
+    pub folders: Vec<ActiveFolderScan>,
+}
+
+/// One root in [`FolderScanActivity`], in watched-folder order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ActiveFolderScan {
+    pub watched_folder_path: String,
+    pub watched_folder_name: String,
+    pub found_count: u64,
 }
 
 /// One read of the list: the requested windows, the total, and the chrome.

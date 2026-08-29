@@ -36,6 +36,7 @@ class ImportStore {
         counts: BridgeTriageTabCounts(pending: 0, done: 0, skipped: 0),
         watchedFolders: [],
         folderScanStatuses: [],
+        folderScanActivity: nil,
         groupKeys: [],
         ready: [],
         firstUnidentified: nil

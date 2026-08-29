@@ -435,7 +435,7 @@ async fn adding_an_already_watched_folder_reads_it_again() {
                     if status.watched_folder_path == root_key
                         && matches!(
                             status.status,
-                            bae_core::import::FolderScanStatus::Scanning
+                            bae_core::import::FolderScanStatus::Scanning { .. }
                         )
             )
         },

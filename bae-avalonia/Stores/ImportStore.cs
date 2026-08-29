@@ -141,6 +141,7 @@ internal sealed class ImportStore : IDisposable
         Counts: new BridgeTriageTabCounts(Pending: 0, Done: 0, Skipped: 0),
         WatchedFolders: Array.Empty<BridgeWatchedFolder>(),
         FolderScanStatuses: Array.Empty<BridgeWatchedFolderScanStatus>(),
+        FolderScanActivity: null,
         GroupKeys: Array.Empty<BridgeFolderReleaseDecisionKey>(),
         Ready: Array.Empty<BridgeReadyRowRef>(),
         FirstUnidentified: null);

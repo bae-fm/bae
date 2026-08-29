@@ -349,10 +349,21 @@
                         BridgeWatchedFolderScanStatus(
                             watchedFolderPath: releaseQueueRoot,
                             watchedFolderName: releaseQueueWatchedFolder.name,
-                            status: .scanning,
+                            status: .scanning(foundCount: 27),
                             onNetworkVolume: false
                         )
                     ],
+                    folderScanActivity: BridgeFolderScanActivity(
+                        foundCount: 27,
+                        folders: [
+                            BridgeActiveFolderScan(
+                                watchedFolderPath: releaseQueueRoot,
+                                watchedFolderName: releaseQueueWatchedFolder
+                                    .name,
+                                foundCount: 27
+                            )
+                        ]
+                    ),
                     groupKeys: [releaseQueueGroupKey],
                     ready: readyRows(releaseQueueRows)
                 )
