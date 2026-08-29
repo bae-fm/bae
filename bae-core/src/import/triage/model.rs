@@ -292,7 +292,6 @@ pub struct MatchedRelease {
 pub struct TriageMetadataSummary {
     pub album_title: String,
     pub album_artist_assignments: Vec<crate::import::ArtistAssignment>,
-    pub cover_thumbnail: Option<crate::import::CoverImageSource>,
 }
 
 impl TriageMetadataSummary {
@@ -306,7 +305,6 @@ impl TriageMetadataSummary {
         Some(Self {
             album_title: draft.album_title.clone(),
             album_artist_assignments: draft.album_artist_assignments.clone(),
-            cover_thumbnail: None,
         })
     }
 }
@@ -405,6 +403,9 @@ pub struct TriageRow {
     /// The applied editable draft, independent of selection and of the
     /// identification result the row originally matched.
     pub metadata_summary: Option<TriageMetadataSummary>,
+    /// The cover selected for this candidate, independent of whether its
+    /// editable metadata contains text.
+    pub cover_thumbnail: Option<crate::import::CoverImageSource>,
     /// Whether this row takes a bulk-import checkbox — exactly the Ready rows,
     /// which is the whole point of the Ready rule. Carried rather than left to
     /// each UI so the rule is stated once.

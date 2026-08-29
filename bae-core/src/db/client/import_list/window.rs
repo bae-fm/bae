@@ -58,19 +58,17 @@ pub(super) fn materialise(
                 if let Some(seed) = row.metadata_provenance.clone() {
                     row.matched = picked_release(sql, &seed)?;
                 }
-                if let Some(summary) = row.metadata_summary.as_mut() {
-                    let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
-                        DbError::Message(format!("candidate {} has no content hash", scanned.path))
-                    })?;
-                    let selected = rows
-                        .states
-                        .get(content_hash)
-                        .filter(|state| state.edit_revision == scanned.file_edit_revision)
-                        .and_then(|state| state.selected_cover.as_ref());
-                    summary.cover_thumbnail = selected
-                        .map(|cover| row_cover_source(sql, scanned, cover))
-                        .transpose()?;
-                }
+                let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
+                    DbError::Message(format!("candidate {} has no content hash", scanned.path))
+                })?;
+                let selected = rows
+                    .states
+                    .get(content_hash)
+                    .filter(|state| state.edit_revision == scanned.file_edit_revision)
+                    .and_then(|state| state.selected_cover.as_ref());
+                row.cover_thumbnail = selected
+                    .map(|cover| row_cover_source(sql, scanned, cover))
+                    .transpose()?;
                 Ok(ImportListItem::Candidate {
                     row,
                     is_group_member: *is_group_member,

@@ -393,6 +393,7 @@
                         skipAction: .skip,
                         matched: nil,
                         metadataSummary: nil,
+                        coverThumbnail: cover?.thumbnailSource,
                         selectable: !edit.albumTitle.isEmpty,
                         importStatus: nil,
                         metadataProvenance: metadataProvenance

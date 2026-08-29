@@ -412,7 +412,6 @@ pub struct BridgeMatchedRelease {
 pub struct BridgeTriageMetadataSummary {
     pub album_title: String,
     pub album_artist_assignments: Vec<BridgeArtistAssignment>,
-    pub cover_thumbnail: Option<BridgeCoverImageSource>,
 }
 
 /// The metadata source selected for a candidate. Mirror of
@@ -471,6 +470,9 @@ pub struct BridgeTriageRow {
     pub skip_action: Option<BridgeTriageSkipAction>,
     pub matched: Option<BridgeMatchedRelease>,
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
+    /// The cover selected for this candidate, even when its metadata draft is
+    /// otherwise blank.
+    pub cover_thumbnail: Option<BridgeCoverImageSource>,
     /// Whether this row takes a bulk-import checkbox.
     pub selectable: bool,
     /// Where the candidate's import stands, without its progress: the row

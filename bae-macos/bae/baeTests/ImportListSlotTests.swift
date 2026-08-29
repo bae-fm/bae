@@ -124,6 +124,7 @@ private func candidateItem(_ index: Int) -> BridgeImportListItem {
             skipAction: .unskip,
             matched: nil,
             metadataSummary: nil,
+            coverThumbnail: nil,
             selectable: false,
             importStatus: nil,
             metadataProvenance: nil

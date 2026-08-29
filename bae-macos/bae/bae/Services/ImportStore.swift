@@ -164,7 +164,7 @@ class ImportStore {
     /// The candidate's stored draft cover, or its match thumbnail when the
     /// draft has no explicit cover.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
-        row.metadataSummary?.coverThumbnail.map(ImageContent.init(bridge:))
+        row.coverThumbnail.map(ImageContent.init(bridge:))
             ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
     }
 

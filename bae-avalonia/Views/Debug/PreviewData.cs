@@ -146,8 +146,8 @@ internal static class PreviewData
                 Matched: null,
                 MetadataSummary: new BridgeTriageMetadataSummary(
                     AlbumTitle: "Applied Draft",
-                    AlbumArtistAssignments: ArtistAssignments,
-                    CoverThumbnail: null),
+                    AlbumArtistAssignments: ArtistAssignments),
+                CoverThumbnail: null,
                 Selectable: true,
                 ImportStatus: null,
                 MetadataProvenance: null),
@@ -205,6 +205,7 @@ internal static class PreviewData
             SkipAction: BridgeTriageSkipAction.Skip,
             Matched: null,
             MetadataSummary: null,
+            CoverThumbnail: null,
             Selectable: true,
             ImportStatus: null,
             MetadataProvenance: null);

@@ -93,8 +93,7 @@ public sealed class ImportSectionViewTests
             [
                 new BridgeArtistAssignment.New(
                     new BridgeNewArtistSeed("Draft Artist", null, null, null)),
-            ],
-            CoverThumbnail: null);
+            ]);
         var view = BuildView(
             MatchedItems(
                 placement,
@@ -459,7 +458,8 @@ public sealed class ImportSectionViewTests
         BridgeTriageSkipAction? skipAction,
         BridgeTriageImportStatus? importStatus = null,
         bool isGroupMember = false,
-        BridgeTriageMetadataSummary? metadataSummary = null) => new()
+        BridgeTriageMetadataSummary? metadataSummary = null,
+        BridgeCoverImageSource? coverThumbnail = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -483,6 +483,7 @@ public sealed class ImportSectionViewTests
                         BridgeMetadataSource.MusicBrainz,
                         BridgeMatchedSignal.DiscId)),
                 MetadataSummary: metadataSummary,
+                CoverThumbnail: coverThumbnail,
                 Selectable: placement is BridgeTriagePlacement.Ready,
                 ImportStatus: importStatus,
                 MetadataProvenance: placement

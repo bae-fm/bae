@@ -110,7 +110,8 @@ private func readyRow(
     _ key: String,
     title: String,
     coverThumbnailUrl: String? = nil,
-    metadataSummary: BridgeTriageMetadataSummary? = nil
+    metadataSummary: BridgeTriageMetadataSummary? = nil,
+    coverThumbnail: BridgeCoverImageSource? = nil
 ) -> BridgeTriageRow {
     BridgeTriageRow(
         candidateKey: key,
@@ -128,6 +129,7 @@ private func readyRow(
             coverThumbnailUrl: coverThumbnailUrl
         ),
         metadataSummary: metadataSummary,
+        coverThumbnail: coverThumbnail,
         selectable: true,
         importStatus: nil,
         metadataProvenance: .externalRelease(
@@ -156,6 +158,7 @@ private func needsYouRow(
         skipAction: .skip,
         matched: nil,
         metadataSummary: nil,
+        coverThumbnail: nil,
         selectable: false,
         importStatus: nil,
         metadataProvenance: nil
@@ -175,6 +178,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         skipAction: nil,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         metadataSummary: nil,
+        coverThumbnail: nil,
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
         metadataProvenance: nil
@@ -194,6 +198,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         skipAction: .unskip,
         matched: nil,
         metadataSummary: nil,
+        coverThumbnail: nil,
         selectable: false,
         importStatus: nil,
         metadataProvenance: nil
@@ -382,9 +387,9 @@ struct ImportStoreSidebarCoverTests {
                 coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg",
                 metadataSummary: BridgeTriageMetadataSummary(
                     albumTitle: "Applied Draft",
-                    albumArtistAssignments: [],
-                    coverThumbnail: choice.thumbnailSource
-                )
+                    albumArtistAssignments: []
+                ),
+                coverThumbnail: choice.thumbnailSource
             )
             store.applyCandidateDetail(
                 key: key,

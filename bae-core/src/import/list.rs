@@ -430,6 +430,7 @@ impl ImportCandidateDetailProjection {
                 &metadata_draft,
                 metadata_provenance.clone().filter(|_| actionable),
             ),
+            cover_thumbnail: None,
             placement,
             import_status,
             metadata_provenance: metadata_provenance.clone().filter(|_| actionable),

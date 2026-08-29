@@ -239,6 +239,7 @@
                 skipAction: .skip,
                 matched: nil,
                 metadataSummary: nil,
+                coverThumbnail: nil,
                 selectable: true,
                 importStatus: nil,
                 metadataProvenance: nil

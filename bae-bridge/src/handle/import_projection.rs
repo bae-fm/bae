@@ -221,6 +221,7 @@ impl crate::types::BridgeTriageRow {
             skip_action,
             matched,
             metadata_summary,
+            cover_thumbnail,
             selectable,
             import_status,
             metadata_provenance,
@@ -248,11 +249,9 @@ impl crate::types::BridgeTriageRow {
                         .into_iter()
                         .map(crate::types::BridgeArtistAssignment::from_core)
                         .collect(),
-                    cover_thumbnail: summary
-                        .cover_thumbnail
-                        .map(crate::types::BridgeCoverImageSource::from_core),
                 }
             }),
+            cover_thumbnail: cover_thumbnail.map(crate::types::BridgeCoverImageSource::from_core),
             selectable,
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance

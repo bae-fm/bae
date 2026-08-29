@@ -44,6 +44,7 @@
             skipAction: BridgeTriageSkipAction?,
             matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
+            coverThumbnail: BridgeCoverImageSource? = nil,
             selectable: Bool,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil
@@ -60,6 +61,7 @@
                 skipAction: skipAction,
                 matched: matched,
                 metadataSummary: metadataSummary,
+                coverThumbnail: coverThumbnail,
                 selectable: selectable,
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance

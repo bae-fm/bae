@@ -404,6 +404,7 @@ extension MappingFixtures {
                 skipAction: .skip,
                 matched: nil,
                 metadataSummary: nil,
+                coverThumbnail: nil,
                 selectable: !edit.albumTitle.isEmpty,
                 importStatus: nil,
                 metadataProvenance: metadataProvenance

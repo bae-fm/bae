@@ -110,7 +110,7 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(checkboxSlot, 0);
         grid.Children.Add(checkboxSlot);
 
-        BridgeCoverImageSource? coverSource = row.MetadataSummary?.CoverThumbnail;
+        BridgeCoverImageSource? coverSource = row.CoverThumbnail;
         if (coverSource is null && row.Matched?.CoverThumbnailUrl is { Length: > 0 } url)
         {
             coverSource = new BridgeCoverImageSource.Remote(url);

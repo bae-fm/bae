@@ -511,7 +511,56 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .expect("the row carries its applied draft");
     assert_eq!(summary.album_title, "Edited Album");
     assert_eq!(
-        summary.cover_thumbnail,
+        row.cover_thumbnail,
+        Some(crate::import::CoverImageSource::Local {
+            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+        })
+    );
+}
+
+#[tokio::test]
+async fn the_list_projects_a_selected_cover_without_metadata() {
+    let (db, tmp) = empty_db().await;
+    let root = tmp.path().join("watched");
+    std::fs::create_dir_all(&root).unwrap();
+    let root = root.to_str().unwrap();
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    let mut candidate = candidate(root, "Album");
+    candidate.files.files.push(CandidateFile {
+        proposed_audio: false,
+        file: ScannedFile::new(
+            PathBuf::from(format!("{root}/Album/cover.jpg")),
+            "cover.jpg".to_string(),
+            500,
+        ),
+        role: FileRole::Artwork,
+    });
+    db.save_folder_scan_item_with_initial_source(
+        root,
+        generation,
+        &ScanItem::Valid(candidate.clone()),
+        crate::config::DefaultImportMetadataSource::None,
+    )
+    .await
+    .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    db.save_import_candidate_cover(
+        &candidate.files.content_hash(),
+        &crate::import::CoverSelection::Local("cover.jpg".to_string()),
+    )
+    .await
+    .unwrap();
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    let row = rows(&projection).remove(0);
+    assert!(row.metadata_summary.is_none());
+    assert_eq!(
+        row.cover_thumbnail,
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         })
@@ -579,12 +628,11 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
         .load_import_list(request(TriageTab::Pending).await)
         .await
         .unwrap();
-    let summary = rows(&projection)
-        .remove(0)
-        .metadata_summary
+    let row = rows(&projection).remove(0);
+    row.metadata_summary
         .expect("the row carries its File Tags draft");
     assert_eq!(
-        summary.cover_thumbnail,
+        row.cover_thumbnail,
         Some(crate::import::CoverImageSource::Bytes { data: bytes })
     );
 }
