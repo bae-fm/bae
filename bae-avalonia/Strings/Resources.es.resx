@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Identificar automáticamente</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Identificar automáticamente</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Lee automáticamente el texto de la portada, los códigos de barras y los ID de disco, y busca una coincidencia cada vez que se abre Buscar en línea.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Se ejecuta cuando un candidato comienza con Buscar en línea o cuando lo abres manualmente.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Fuente de metadatos predeterminada</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Buscar en línea</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Ninguna</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Búsqueda en línea</value></data>
 </root>

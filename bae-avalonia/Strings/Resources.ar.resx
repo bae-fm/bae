@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>عام</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>التعرّف تلقائيًا</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>التعرّف تلقائيًا</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>يقرأ نص الغلاف والرموز الشريطية ومعرّفات الأقراص ويبحث عن تطابق تلقائيًا كلما فُتح «البحث عبر الإنترنت».</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>يعمل عندما يبدأ المرشح بخيار «البحث عبر الإنترنت» أو عندما تفتحه يدويًا.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>مصدر البيانات الوصفية الافتراضي</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>بلا</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
 </root>

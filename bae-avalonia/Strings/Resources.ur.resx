@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>عمومی</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>خودکار طور پر شناخت کریں</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>خودکار طور پر شناخت کریں</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>آن لائن تلاش کھلنے پر سرورق کا متن، بارکوڈز اور ڈسک آئی ڈیز خودکار طور پر پڑھتا اور مماثلت تلاش کرتا ہے۔</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>جب کوئی امیدوار آن لائن تلاش سے شروع ہو یا آپ اسے خود کھولیں تو چلتا ہے۔</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ڈیفالٹ میٹا ڈیٹا ماخذ</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>آن لائن تلاش کریں</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>کوئی نہیں</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>آن لائن تلاش</value></data>
 </root>

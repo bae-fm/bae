@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>일반</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>자동으로 식별</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>자동으로 식별</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>온라인에서 찾기를 열 때마다 커버 글자, 바코드 및 디스크 ID를 자동으로 읽고 일치 항목을 검색합니다.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>후보가 온라인에서 찾기로 시작하거나 사용자가 직접 열 때 실행됩니다.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>기본 메타데이터 소스</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>온라인에서 찾기</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>없음</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>온라인 검색</value></data>
 </root>

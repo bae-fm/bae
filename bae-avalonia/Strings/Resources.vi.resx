@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>Chung</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Tự động nhận dạng</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Tự động nhận dạng</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Tự động đọc chữ trên bìa, mã vạch và ID đĩa rồi tìm kết quả khớp mỗi khi mở Tìm trên mạng.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Chạy khi một ứng viên bắt đầu bằng Tìm trên mạng hoặc khi bạn tự mở mục này.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Nguồn siêu dữ liệu mặc định</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Tìm trên mạng</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Không có</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Tra cứu trực tuyến</value></data>
 </root>

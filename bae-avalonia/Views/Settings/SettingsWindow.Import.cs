@@ -29,6 +29,7 @@ internal sealed partial class SettingsWindow
         content.Children.Add(SecondaryLabel(Loc.Chrome("settings.import.default_source")));
         content.Children.Add(source);
 
+        content.Children.Add(SectionLabel(Loc.Chrome("settings.import.online_lookup")));
         var automatic = new CheckBox
         {
             Content = Loc.Chrome("settings.import.automatic_identification"),
@@ -54,10 +55,6 @@ internal sealed partial class SettingsWindow
             _refreshingSettings = true;
             SelectSource(source, fresh.DefaultImportMetadataSource);
             automatic.IsChecked = fresh.AutomaticImportIdentification;
-            var showsAutomatic = fresh.DefaultImportMetadataSource
-                == BridgeDefaultImportMetadataSource.FindOnline;
-            automatic.IsVisible = showsAutomatic;
-            automaticHelp.IsVisible = showsAutomatic;
             _refreshingSettings = false;
         });
     }

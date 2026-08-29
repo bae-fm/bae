@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>सामान्य</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>आपोआप ओळखा</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>आपोआप ओळखा</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ऑनलाइन शोध उघडल्यावर मुखपृष्ठावरील मजकूर, बारकोड आणि डिस्क ID आपोआप वाचतो आणि जुळणारा निकाल शोधतो.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>उमेदवार ऑनलाइन शोधने सुरू झाल्यावर किंवा तुम्ही ते स्वतः उघडल्यावर चालते.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>डीफॉल्ट मेटाडेटा स्रोत</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन शोधा</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>काहीही नाही</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>ऑनलाइन शोध</value></data>
 </root>

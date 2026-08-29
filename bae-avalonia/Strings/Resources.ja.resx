@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>自動で識別</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>自動で識別</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>「オンラインで検索」を開くたびに、カバーの文字、バーコード、ディスクIDを自動で読み取り、一致するリリースを検索します。</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>候補が「オンラインで検索」で始まるとき、または手動で開いたときに実行されます。</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>デフォルトのメタデータソース</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>なし</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>オンライン検索</value></data>
 </root>

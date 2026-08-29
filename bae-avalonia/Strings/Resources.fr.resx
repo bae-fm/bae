@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>Général</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Identifier automatiquement</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Identifier automatiquement</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Lit automatiquement le texte de la pochette, les codes-barres et les identifiants de disque, puis recherche une correspondance chaque fois que Rechercher en ligne s’ouvre.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>S’exécute lorsqu’un candidat commence avec Rechercher en ligne ou lorsque vous l’ouvrez manuellement.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Source de métadonnées par défaut</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Rechercher en ligne</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Aucune</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Recherche en ligne</value></data>
 </root>

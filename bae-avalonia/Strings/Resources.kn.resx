@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>ಸಾಮಾನ್ಯ</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ತೆರೆದಾಗ ಕವರ್ ಪಠ್ಯ, ಬಾರ್‌ಕೋಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್ IDಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಓದಿ ಹೊಂದಾಣಿಕೆಯನ್ನು ಹುಡುಕುತ್ತದೆ.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯು ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ಮೂಲಕ ಪ್ರಾರಂಭವಾದಾಗ ಅಥವಾ ನೀವು ಅದನ್ನು ಕೈಯಾರೆ ತೆರೆದಾಗ ಚಲಿಸುತ್ತದೆ.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ಡೀಫಾಲ್ಟ್ ಮೆಟಾಡೇಟಾ ಮೂಲ</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ಯಾವುದೂ ಇಲ್ಲ</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>ಆನ್‌ಲೈನ್ ಹುಡುಕಾಟ</value></data>
 </root>

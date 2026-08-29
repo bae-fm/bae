@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>自動識別</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>自動識別</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>每次開啟「在線上尋找」時，自動讀取封面文字、條碼和光碟 ID 並搜尋相符項目。</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>當候選項目從「在線尋找」開始，或您手動開啟它時執行。</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>預設中繼資料來源</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>在線上尋找</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>無</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>在線尋找</value></data>
 </root>

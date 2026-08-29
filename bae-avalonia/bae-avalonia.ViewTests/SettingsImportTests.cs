@@ -15,7 +15,7 @@ namespace Bae.Desktop.ViewTests;
 public sealed class SettingsImportTests
 {
     [AvaloniaFact]
-    public void ImportSettingsExposeAutomaticIdentificationOnlyForFindOnline()
+    public void ImportSettingsKeepOnlineLookupIndependentOfDefaultSource()
     {
         var app = AppService.Stubbed(
             new SessionStore(Dispatcher.UIThread),
@@ -56,12 +56,15 @@ public sealed class SettingsImportTests
             content.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text
                 == Loc.Chrome("settings.import.automatic_identification_help"));
+        Assert.Contains(
+            content.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Chrome("settings.import.online_lookup"));
 
-        foreach (var (source, visible) in new[]
+        foreach (var source in new[]
         {
-            (BridgeDefaultImportMetadataSource.FindOnline, true),
-            (BridgeDefaultImportMetadataSource.FileTags, false),
-            (BridgeDefaultImportMetadataSource.None, false),
+            BridgeDefaultImportMetadataSource.FindOnline,
+            BridgeDefaultImportMetadataSource.FileTags,
+            BridgeDefaultImportMetadataSource.None,
         })
         {
             Assert.Single(renderers)(new Settings
@@ -69,8 +72,8 @@ public sealed class SettingsImportTests
                 DefaultImportMetadataSource = source,
                 AutomaticImportIdentification = true,
             });
-            Assert.Equal(visible, automatic.IsVisible);
-            Assert.Equal(visible, help.IsVisible);
+            Assert.True(automatic.IsVisible);
+            Assert.True(help.IsVisible);
         }
     }
 }

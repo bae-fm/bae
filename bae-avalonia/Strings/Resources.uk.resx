@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>Загальний</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Визначати автоматично</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Визначати автоматично</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Автоматично читає текст обкладинки, штрихкоди й ідентифікатори дисків та шукає збіг щоразу, коли відкривається «Знайти онлайн».</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Запускається, коли кандидат починає зі «Знайти онлайн» або коли ви відкриваєте це вручну.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Типове джерело метаданих</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Немає</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>Пошук онлайн</value></data>
 </root>

@@ -479,8 +479,9 @@
   <data name="import.search.general" xml:space="preserve"><value>כללי</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>קורא אוטומטית את הטקסט מהעטיפה, הברקודים ומזהי הדיסק ומחפש התאמה בכל פתיחה של חיפוש באינטרנט.</value></data>
+  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>פועל כאשר מועמד מתחיל עם חיפוש באינטרנט או כשפותחים אותו ידנית.</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>מקור מטא־נתונים כברירת מחדל</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ללא</value></data>
+  <data name="settings.import.online_lookup" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
 </root>
