@@ -319,6 +319,7 @@ struct ArtistAssignmentsField: View {
             editor
                 .frame(width: 320)
                 .padding(12)
+                .background { PopoverBehavior() }
         }
     }
 
