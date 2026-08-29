@@ -39,6 +39,8 @@ struct ReIdentifySheet: View {
     private var uiStore
     @Environment(\.openSettings)
     private var openSettings
+    @Environment(SettingsNavigation.self)
+    private var settingsNavigation
 
     @State
     private var phase: Phase = .identifying
@@ -167,7 +169,12 @@ struct ReIdentifySheet: View {
                     liveSignals: signals
                 ),
                 mode: $searchMode,
-                openSettings: { openSettings() },
+                openSettings: {
+                    settingsNavigation.open(
+                        .discogs,
+                        present: { openSettings() }
+                    )
+                },
                 onUseFileTags: { commit(.fileTags) },
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers

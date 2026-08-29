@@ -15,6 +15,7 @@
                 .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
                 .environment(PreviewData.configStore())
                 .environment(Library.stub())
+                .environment(SettingsNavigation())
                 .windowBackground()
         }
     }

@@ -146,6 +146,8 @@ private struct ImportOnlineMetadataBrowser: View {
     private var configStore
     @Environment(\.openSettings)
     private var openSettings
+    @Environment(SettingsNavigation.self)
+    private var settingsNavigation
     @State
     private var mode: SearchMode = .automatic
 
@@ -185,7 +187,12 @@ private struct ImportOnlineMetadataBrowser: View {
                             liveSignals: signals
                         ),
                         mode: $mode,
-                        openSettings: { openSettings() },
+                        openSettings: {
+                            settingsNavigation.open(
+                                .discogs,
+                                present: { openSettings() }
+                            )
+                        },
                         onSelect: { result in
                             ImportSearchFlow.applyMetadata(
                                 importer: importer,

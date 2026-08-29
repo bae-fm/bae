@@ -44,6 +44,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     /// after the complete application service has been initialized.
     private let libraryBrowseSession: LibraryBrowseSession
     private let storageManagerStore: StorageManagerStore
+    private let settingsNavigation = SettingsNavigation()
 
     // MARK: - Desktop-only domain services
 
@@ -200,6 +201,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             .environment(desktopSubscriptions.importList)
             .environment(libraryBrowseSession)
             .environment(storageManagerStore)
+            .environment(settingsNavigation)
             .environment(previewAudio)
             .environment(releaseEditor)
             .environment(importer)

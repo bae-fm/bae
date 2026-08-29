@@ -33,6 +33,17 @@ enum SettingsTab: Hashable, CaseIterable {
     }
 }
 
+@MainActor
+@Observable
+final class SettingsNavigation {
+    var selectedTab: SettingsTab = .library
+
+    func open(_ tab: SettingsTab, present: () -> Void) {
+        selectedTab = tab
+        present()
+    }
+}
+
 /// The settings window: the panes down the side, the chosen one beside them.
 ///
 /// A sidebar and not the toolbar strip a settings window usually has, because
@@ -47,19 +58,25 @@ struct SettingsView: View {
     let checkForUpdatesViewModel: CheckForUpdatesViewModel
     let onForgetLibrary: () -> Void
 
-    @State
-    private var selectedTab: SettingsTab = .library
+    @Environment(SettingsNavigation.self)
+    private var navigation
 
     var body: some View {
+        @Bindable
+        var navigation = navigation
         NavigationSplitView(columnVisibility: .constant(.all)) {
-            List(SettingsTab.allCases, id: \.self, selection: $selectedTab) {
+            List(
+                SettingsTab.allCases,
+                id: \.self,
+                selection: $navigation.selectedTab
+            ) {
                 tab in
                 Label(tab.title, systemImage: tab.symbol)
                     .tag(tab)
             }
             .navigationSplitViewColumnWidth(190)
         } detail: {
-            pane
+            pane(for: navigation.selectedTab)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar(removing: .sidebarToggle)
@@ -68,7 +85,7 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private var pane: some View {
+    private func pane(for selectedTab: SettingsTab) -> some View {
         switch selectedTab {
         case .library:
             LibrarySettingsTab(onForgetLibrary: onForgetLibrary)

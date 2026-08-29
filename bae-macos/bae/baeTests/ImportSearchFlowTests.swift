@@ -8,6 +8,49 @@ import XCTest
 @testable import bae
 
 @MainActor
+final class SettingsNavigationTests: XCTestCase {
+    func testOpeningDiscogsSelectsItsPaneBeforePresentation() {
+        let navigation = SettingsNavigation()
+        var selectionAtPresentation: SettingsTab?
+
+        navigation.open(.discogs) {
+            selectionAtPresentation = navigation.selectedTab
+        }
+
+        #expect(selectionAtPresentation == .discogs)
+    }
+
+    func testDiscogsKeyFieldTakesFocusWhenItAppears() async {
+        let size = NSSize(width: 500, height: 320)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            DiscogsSettingsContent(
+                draft: .constant(""),
+                status: .notConfigured,
+                isValidating: false,
+                saveError: nil,
+                readError: nil,
+                onSave: {},
+                onRecheck: {},
+                onRemove: {}
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+
+        let textFields = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSTextField }
+        XCTAssertTrue(
+            textFields.contains { $0.currentEditor() === window.firstResponder }
+        )
+        withExtendedLifetime(window) {}
+    }
+}
+
+@MainActor
 @Suite("Find online method presentation")
 struct FindOnlineMethodPresentationTests {
     @Test("idle automatic method has no empty-result message")

@@ -154,6 +154,8 @@ struct DiscogsSettingsContent: View {
     let onSave: () -> Void
     let onRecheck: () -> Void
     let onRemove: () -> Void
+    @FocusState
+    private var keyFieldIsFocused: Bool
 
     var body: some View {
         Form {
@@ -213,6 +215,8 @@ struct DiscogsSettingsContent: View {
                 text: $draft,
                 prompt: Text("Paste your key here")
             )
+            .focused($keyFieldIsFocused)
+            .task { keyFieldIsFocused = true }
             if isValidating {
                 ProgressView().controlSize(.small)
             }
