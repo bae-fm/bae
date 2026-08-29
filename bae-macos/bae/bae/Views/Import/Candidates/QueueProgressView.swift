@@ -52,8 +52,7 @@ struct QueueProgressView: View {
 }
 
 /// The filter row's compact stand-in for the line above: a ring at the sweep's
-/// fraction and how many candidates it still has to reach, opening the line
-/// itself on click. The ring is a glance — the numbers are in the popover.
+/// fraction, opening the counts on click.
 struct QueueProgressIndicator: View {
     let identified: UInt32
     let total: UInt32
@@ -70,21 +69,9 @@ struct QueueProgressIndicator: View {
         Button {
             lineShown = true
         } label: {
-            HStack(spacing: 4) {
-                ring
-                // The same two numbers the popover shows, so the glance and
-                // the line it opens never disagree. Verbatim: this is digits
-                // and a separator, and each number is already formatted for
-                // the locale.
-                Text(
-                    verbatim:
-                        "\(identified.formatted()) / \(total.formatted())"
-                )
-                .font(.system(size: 11.5))
-                .monospacedDigit()
-            }
-            .foregroundStyle(.secondary)
-            .contentShape(Rectangle())
+            ring
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help("Identifying")
@@ -129,21 +116,11 @@ struct FolderScanProgressIndicator: View {
         Button {
             detailsShown = true
         } label: {
-            HStack(spacing: 4) {
-                ProgressView()
-                    .controlSize(.small)
-                    .frame(width: 11, height: 11)
-                Text(
-                    verbatim: coreString(
-                        "ui.import.scan.found",
-                        Int(activity.foundCount)
-                    )
-                )
-                .font(.system(size: 11.5))
-                .monospacedDigit()
-            }
-            .foregroundStyle(.secondary)
-            .contentShape(Rectangle())
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 11, height: 11)
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(coreString("ui.import.scan.activity"))
