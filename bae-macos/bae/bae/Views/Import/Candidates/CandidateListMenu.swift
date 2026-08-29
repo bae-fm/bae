@@ -38,14 +38,47 @@ struct CandidateListMenu: View, Equatable {
     ) -> Bool {
         lhs.watchedFolders == rhs.watchedFolders
             && lhs.refreshingFolders == rhs.refreshingFolders
-            && lhs.scanStatuses == rhs.scanStatuses
             && lhs.networkFolders == rhs.networkFolders
+            && hasFailedScan(in: lhs.scanStatuses)
+                == hasFailedScan(in: rhs.scanStatuses)
+            && lhs.watchedFolders.allSatisfy { folder in
+                scanPresentation(
+                    lhs.scanStatuses[folder.path],
+                    equals: rhs.scanStatuses[folder.path]
+                )
+            }
     }
 
     private var hasFailedScan: Bool {
-        scanStatuses.values.contains { status in
+        Self.hasFailedScan(in: scanStatuses)
+    }
+
+    nonisolated private static func hasFailedScan(
+        in statuses: [String: BridgeFolderScanStatus]
+    ) -> Bool {
+        statuses.values.contains { status in
             if case .failed = status { return true }
             return false
+        }
+    }
+
+    /// Compare exactly what a root's menu entry renders. Scan progress updates
+    /// the queue's found count, but this menu renders the same spinner for the
+    /// entire scan; replacing it for every count closes an open system menu.
+    nonisolated private static func scanPresentation(
+        _ lhs: BridgeFolderScanStatus?,
+        equals rhs: BridgeFolderScanStatus?
+    ) -> Bool {
+        switch (lhs, rhs) {
+        case (.scanning, .scanning):
+            true
+        case (.failed(let lhsError), .failed(let rhsError)):
+            lhsError == rhsError
+        case (.complete, .complete), (.complete, nil), (nil, .complete),
+            (nil, nil):
+            true
+        default:
+            false
         }
     }
 
