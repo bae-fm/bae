@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+if [ "${BAE_SKIP_RUST_BRIDGE:-NO}" = YES ]; then
+  exit 0
+fi
+
 # Scheme pre-actions inherit Xcode settings for every Apple platform. Cargo
 # build scripts treat several of those names as compiler inputs, so run the
 # bridge build with only the host settings it actually needs.
@@ -19,6 +23,7 @@ if [ "${BAE_MACOS_PREPARE_CLEAN_ENV:-0}" != 1 ]; then
     TMPDIR="${TMPDIR:-/tmp}" \
     DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
     MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-15.0}" \
+    CONFIGURATION="${CONFIGURATION:-Debug}" \
     BAE_BRIDGE_FEATURES="${BAE_BRIDGE_FEATURES:-oauth-providers,cloudkit,desktop}" \
     BAE_MACOS_PREPARE_CLEAN_ENV=1
   for var in FFMPEG_DIR PKG_CONFIG_PATH LIBRARY_PATH DYLD_LIBRARY_PATH \
@@ -38,4 +43,8 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(dirname "$SCRIPT_DIR")
 cd "$REPO_ROOT"
 
-./bae-bridge/build-macos.sh
+if [ "$CONFIGURATION" = Release ]; then
+  ./bae-bridge/build-macos.sh --release
+else
+  ./bae-bridge/build-macos.sh
+fi

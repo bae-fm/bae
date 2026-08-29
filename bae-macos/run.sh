@@ -71,15 +71,6 @@ esac
 
 export BAE_BRIDGE_FEATURES="$BAE_BRIDGE_FEATURES_VALUE"
 
-if [[ "$SKIP_RUST" == false ]]; then
-    if [[ "$RELEASE" == true ]]; then
-        ./bae-bridge/build-macos.sh --release
-    else
-        ./bae-bridge/build-macos.sh
-    fi
-    ./bae-bridge/install-swift-bindings.sh macos
-fi
-
 if [[ "$RELEASE" == true ]]; then
     CONFIG=Release
 else
@@ -97,16 +88,21 @@ DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DAT
 
 # Pass app inputs under private names. The app target maps these to Xcode build
 # settings; package resource bundles do not, so they retain generated plists.
-xcodebuild -project bae-macos/bae/bae.xcodeproj \
-    -scheme bae \
-    -configuration "$CONFIG" \
-    -derivedDataPath "$DERIVED_DATA" \
-    BAE_RUN_APP_GENERATE_INFOPLIST_FILE=NO \
-    BAE_RUN_APP_INFOPLIST_FILE=bae/Info.plist \
-    BAE_RUN_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
-    BAE_RUN_APP_PRODUCT_NAME="$PRODUCT_NAME" \
-    BAE_RUN_APP_LSUIELEMENT=NO \
-    build
+XCODEBUILD_ARGUMENTS=(
+    -project bae-macos/bae/bae.xcodeproj
+    -scheme bae
+    -configuration "$CONFIG"
+    -derivedDataPath "$DERIVED_DATA"
+    BAE_RUN_APP_GENERATE_INFOPLIST_FILE=NO
+    BAE_RUN_APP_INFOPLIST_FILE=bae/Info.plist
+    BAE_RUN_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID"
+    BAE_RUN_APP_PRODUCT_NAME="$PRODUCT_NAME"
+    BAE_RUN_APP_LSUIELEMENT=NO
+)
+if [[ "$SKIP_RUST" == true ]]; then
+    XCODEBUILD_ARGUMENTS+=(BAE_SKIP_RUST_BRIDGE=YES)
+fi
+xcodebuild "${XCODEBUILD_ARGUMENTS[@]}" build
 
 if [[ "$OPEN" == true ]]; then
     open "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app" --env BAE_IMPORT_TRACE=1
