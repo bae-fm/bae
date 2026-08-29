@@ -6,6 +6,7 @@ mod pane_rows;
 mod rows;
 mod signal_rows;
 mod verdict_rows;
+mod watched_folder_removal;
 
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use duration_rows::{delete_durations, delete_slice_durations, insert_durations};
@@ -112,35 +113,6 @@ impl Database {
                 "INSERT INTO watched_import_folders (path, position) VALUES (?, ?)",
                 params![path, position],
             )? == 1)
-        })
-        .await
-    }
-
-    /// Stop watching the folder `path` names. Keyed the same way as the add,
-    /// so whichever spelling reaches here names the row the add created.
-    /// Returns the keys of the scan entries the removal cascaded away, or
-    /// `None` when the folder was not watched.
-    pub async fn remove_watched_import_folder(
-        &self,
-        path: &str,
-    ) -> Result<Option<Vec<String>>, DbError> {
-        let path = Self::canonical_watched_root(path)?;
-        if !self.watched_import_roots().await?.contains(&path) {
-            return Ok(None);
-        }
-        self.call(move |sql| {
-            let entry_keys = stored_entries(sql, &path)?
-                .into_iter()
-                .map(|(key, _)| key)
-                .collect();
-            let removed =
-                sql.execute("DELETE FROM watched_import_folders WHERE path = ?", [&path])?;
-            if removed != 1 {
-                return Err(DbError::Message(format!(
-                    "removing watched folder {path} changed {removed} rows; expected one"
-                )));
-            }
-            Ok(Some(entry_keys))
         })
         .await
     }

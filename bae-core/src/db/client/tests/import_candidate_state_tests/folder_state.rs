@@ -283,9 +283,26 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
     .await
     .unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scanned_candidate(root, "Release"))
+    let candidate = scanned_candidate(root, "Release");
+    let crate::import::folder_scanner::ScanItem::Valid(candidate_files) = &candidate else {
+        panic!("the fixture must produce a valid candidate");
+    };
+    let content_hash = candidate_files.files.content_hash();
+    db.save_folder_scan_item(root, generation, &candidate)
         .await
         .unwrap();
+    db.save_import_candidate_edit_field(
+        &content_hash,
+        crate::import::CandidateEditField::AlbumTitle,
+        "Edited Album Title",
+    )
+    .await
+    .unwrap();
+    assert!(db
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .is_some());
 
     assert!(db.remove_watched_import_folder(root).await.unwrap().is_some());
     assert!(db
@@ -302,6 +319,11 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
         None
     );
     assert!(db.load_folder_scan_snapshots().await.unwrap().is_empty());
+    assert!(db
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .is_none());
 }
 
 #[tokio::test]
