@@ -17,6 +17,9 @@ struct TriageRowView: View {
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
+    /// The imported release's cloud transition, resolved by the list owner
+    /// that already observes the outbox.
+    let uploadObservation: UploadObservation?
     /// Non-nil exactly when `row.selectable`. Passed in rather than read off
     /// `row` again so the list content is the one place selection state
     /// (`UiStore`) meets the row.
@@ -29,12 +32,10 @@ struct TriageRowView: View {
             _ decision: BridgeFolderReleaseDecision
         ) -> Void
 
-    @Environment(OutboxStore.self)
-    private var outboxStore
-
     init(
         row: BridgeTriageRow,
         coverContent: ImageContent?,
+        uploadObservation: UploadObservation?,
         selection: Binding<Bool>?,
         isGroupMember: Bool,
         onSkip: @escaping (_ skipped: Bool) -> Void,
@@ -46,6 +47,7 @@ struct TriageRowView: View {
     ) {
         self.row = row
         self.coverContent = coverContent
+        self.uploadObservation = uploadObservation
         self.selection = selection
         self.isGroupMember = isGroupMember
         self.onSkip = onSkip
@@ -170,7 +172,7 @@ struct TriageRowView: View {
                 folderTitle
             }
             stateLine
-            if let progress = cloudUploadObservation?.progressBar {
+            if let progress = uploadObservation?.progressBar {
                 ProgressTrackBar(
                     progress: progress.fraction,
                     trackHeight: 3
@@ -314,7 +316,7 @@ extension TriageRowView {
         case .importing:
             ProgressView().controlSize(.small)
         case .complete:
-            if case .active = cloudUploadObservation {
+            if case .active = uploadObservation {
                 // Still going up to the cloud — the same arrow the storage
                 // queue marks an active upload with, and nothing else: the
                 // release is in the library either way.
@@ -331,16 +333,6 @@ extension TriageRowView {
             // same, so the glyph is.
             trailingIcon("checkmark.circle.fill", tint: .green)
         }
-    }
-
-    /// The imported release's cloud transition, where the outbox holds one.
-    /// A release with nothing queued is absent from the outbox, which is what
-    /// "the import is done" reads as here.
-    private var cloudUploadObservation: UploadObservation? {
-        guard case .complete(let releaseId, _) = row.importStatus else {
-            return nil
-        }
-        return outboxStore.persistedUploadObservation(forRelease: releaseId)
     }
 
     private func trailingIcon<S: ShapeStyle>(_ systemName: String, tint: S)
@@ -375,6 +367,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReady
                 ),
+                uploadObservation: nil,
                 selection: .constant(true),
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -384,6 +377,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPickAPressing
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -393,6 +387,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -402,6 +397,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -411,6 +407,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowNoMatch
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -420,6 +417,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowStillIdentifying
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -429,6 +427,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowDoneImported
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -438,6 +437,7 @@ extension TriageRowView {
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowFailed
                 ),
+                uploadObservation: nil,
                 selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
@@ -445,7 +445,6 @@ extension TriageRowView {
         }
         .padding()
         .frame(width: 340)
-        .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(PreviewData.artImageStore())
         .candidateReaderPreviewEnvironment()
         .windowBackground()

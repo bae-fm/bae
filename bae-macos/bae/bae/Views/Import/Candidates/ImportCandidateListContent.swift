@@ -130,6 +130,8 @@ struct ImportCandidateListContent: View {
     private var uiStore
     @Environment(ImageStore.self)
     private var imageStore
+    @Environment(OutboxStore.self)
+    private var outboxStore
     @Environment(\.displayScale)
     private var displayScale
     @State
@@ -499,6 +501,7 @@ extension ImportCandidateListContent {
         TriageRowView(
             row: row,
             coverContent: importStore.sidebarCover(for: row),
+            uploadObservation: uploadObservation(for: row),
             selection: row.selectable ? readySelection(for: row) : nil,
             isGroupMember: isGroupMember,
             onSkip: { onSkip(row.candidateKey, $0) },
@@ -506,6 +509,17 @@ extension ImportCandidateListContent {
         )
         .tag(row.candidateKey)
         .disabled(!row.actionable)
+    }
+
+    private func uploadObservation(
+        for row: BridgeTriageRow
+    ) -> UploadObservation? {
+        guard case .complete(let releaseId, _) = row.importStatus else {
+            return nil
+        }
+        return outboxStore.persistedUploadObservation(
+            forRelease: releaseId
+        )
     }
 
     /// An invalid folder isn't selectable — selecting its key is a no-op

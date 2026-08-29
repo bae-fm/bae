@@ -8,6 +8,28 @@ import Testing
 @Suite("Import candidate checkbox")
 struct ImportCandidateCheckboxTests {
     @MainActor
+    @Test("a row renders without resolving the outbox environment")
+    func rowRendersFromSuppliedUploadPresentation() {
+        let size = NSSize(width: 400, height: 80)
+        let (_, host) = SnapshotTestSupport.hostInWindow(
+            TriageRowView(
+                row: PreviewData.triageRowDoneImported,
+                coverContent: nil,
+                uploadObservation: nil,
+                selection: nil,
+                isGroupMember: false,
+                onSkip: { _ in }
+            )
+            .environment(ImageStore.stub())
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        host.layoutSubtreeIfNeeded()
+        #expect(host.fittingSize.height > 0)
+    }
+
+    @MainActor
     @Test("an unchecked candidate can be checked inside the selectable list")
     func uncheckedCandidateCanBeChecked() async throws {
         try await assertCheckboxCanBeChecked(isGroupMember: false)
