@@ -77,7 +77,7 @@ struct StorageManagerView: View {
                                 totalSize: storageManagerStore.totalSize
                             )
                         }
-                        .frame(minWidth: 440)
+                        .frame(minWidth: 440, maxHeight: .infinity)
 
                         if let releaseId = StorageTransferInspector.releaseId(
                             in: selection
@@ -86,8 +86,10 @@ struct StorageManagerView: View {
                                 releaseId: releaseId,
                                 selection: $selection
                             )
+                            .frame(maxHeight: .infinity)
                         }
                     }
+                    .frame(maxHeight: .infinity)
                 }
             }
             else {
@@ -207,6 +209,19 @@ struct StorageManagerView: View {
     #Preview("Dense — compact") {
         StorageManagerPreviewScene()
             .frame(width: 700, height: 400)
+    }
+
+    #Preview("Dense — compact, selected without transfer") {
+        StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-4",
+            downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+            outputSnapshot: PreviewData.emptyOutputSnapshot,
+            outboxSnapshot: PreviewData.outboxSnapshot(
+                uploadGroups: [],
+                deletes: []
+            )
+        )
+        .frame(width: 700, height: 400)
     }
 
     #Preview("Empty") {

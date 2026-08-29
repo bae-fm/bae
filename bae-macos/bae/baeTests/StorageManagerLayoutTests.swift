@@ -28,6 +28,43 @@ final class StorageManagerLayoutTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(tableScrollView.frame.height, 220)
     }
 
+    func testSelectingReleaseWithoutTransferKeepsAvailableHeight() async throws
+    {
+        let size = NSSize(width: 700, height: 400)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene(
+                downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+                outputSnapshot: PreviewData.emptyOutputSnapshot,
+                outboxSnapshot: PreviewData.outboxSnapshot(
+                    uploadGroups: [],
+                    deletes: []
+                )
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let tableScrollView = try XCTUnwrap(storageTable(in: host))
+        let outlineView = try XCTUnwrap(
+            tableScrollView.documentView as? NSOutlineView
+        )
+        let heightBeforeSelection = tableScrollView.frame.height
+
+        outlineView.selectRowIndexes(
+            IndexSet(integer: 3),
+            byExtendingSelection: false
+        )
+        try await settle(host)
+
+        let heightAfterSelection = tableScrollView.frame.height
+        XCTAssertGreaterThanOrEqual(
+            heightAfterSelection,
+            heightBeforeSelection - 1
+        )
+        withExtendedLifetime(window) {}
+    }
+
     func testTableUsesIntentionalColumnSizing() async throws {
         let size = NSSize(width: 1_440, height: 900)
         let (_, host) = SnapshotTestSupport.hostInWindow(
