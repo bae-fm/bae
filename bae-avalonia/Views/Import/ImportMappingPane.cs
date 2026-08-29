@@ -380,7 +380,6 @@ internal sealed partial class ImportMappingPane : UserControl
 
         var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };
         sections.Children.Add(FolderLine());
-        sections.Children.Add(ImportPaneUi.ZoneTitle(Loc.Core("ui.import.metadata.title")));
         sections.Children.Add(BuildMetadataSource().Build());
         if (_import.ReleaseLibraryStatus is { } status)
         {

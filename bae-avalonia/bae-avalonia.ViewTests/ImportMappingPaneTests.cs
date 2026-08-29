@@ -68,6 +68,18 @@ public sealed class ImportMappingPaneTests
             button => Equals(button.Content, Loc.Chrome("action.import")));
     }
 
+    [AvaloniaFact]
+    public void MetadataCardDoesNotRepeatASectionHeading()
+    {
+        var (pane, _) = Show(Detail(
+            metadataProvenance: null,
+            edit: BlankEdit()));
+
+        Assert.DoesNotContain(
+            Loc.Core("ui.import.metadata.title"),
+            Texts(pane));
+    }
+
     // The pane leads with the folder it is about — the one fact nothing below
     // it can change — with the audio it holds beside the name.
     [AvaloniaFact]
