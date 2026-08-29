@@ -80,6 +80,9 @@ private struct ImportOperations: Sendable {
         @Sendable (String, [BridgeArtistAssignment]) async throws -> Void
     let setCandidateTrackEdit:
         @Sendable (String, BridgeRawTrackEdit) async throws -> Void
+    let setCandidateTrackArtists:
+        @Sendable (String, [String], BridgeTrackArtistAssignments) async throws
+            -> Void
     let dropCandidateTrack: @Sendable (String, String) async throws -> Void
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
@@ -203,6 +206,13 @@ private struct ImportOperations: Sendable {
                     track: $1
                 )
             },
+            setCandidateTrackArtists: {
+                try await handle.setCandidateTrackArtists(
+                    candidateKey: $0,
+                    trackIds: $1,
+                    assignments: $2
+                )
+            },
             dropCandidateTrack: {
                 try await handle.dropCandidateTrack(
                     candidateKey: $0,
@@ -322,6 +332,10 @@ final class Importer: Sendable, Observable {
         setCandidateTrackEdit:
             @escaping @Sendable (String, BridgeRawTrackEdit) async throws ->
             Void = { _, _ in },
+        setCandidateTrackArtists:
+            @escaping @Sendable (
+                String, [String], BridgeTrackArtistAssignments
+            ) async throws -> Void = { _, _, _ in },
         dropCandidateTrack:
             @escaping @Sendable (String, String) async throws -> Void = {
                 _,
@@ -371,6 +385,7 @@ final class Importer: Sendable, Observable {
             setCandidateEditField: setCandidateEditField,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
             setCandidateTrackEdit: setCandidateTrackEdit,
+            setCandidateTrackArtists: setCandidateTrackArtists,
             dropCandidateTrack: dropCandidateTrack,
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
@@ -546,6 +561,20 @@ extension Importer {
         _ track: BridgeRawTrackEdit
     ) async throws {
         try await operations.setCandidateTrackEdit(candidateKey, track)
+    }
+
+    /// Replace the artist assignments of the named mapping-table rows in one
+    /// commit, so a spreadsheet fill cannot stop halfway down the selection.
+    func setCandidateTrackArtists(
+        _ candidateKey: String,
+        _ trackIds: [String],
+        _ assignments: BridgeTrackArtistAssignments
+    ) async throws {
+        try await operations.setCandidateTrackArtists(
+            candidateKey,
+            trackIds,
+            assignments
+        )
     }
 
     /// Take one mapping-table row out of the import.

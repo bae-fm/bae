@@ -176,6 +176,14 @@ internal sealed class ImportService
     public Func<string, BridgeRawTrackEdit, Task<(bool Current, string? Error)>> SetCandidateTrackEdit { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: SetCandidateTrackEdit not wired");
 
+    /// <summary>Replace the artist assignments of the named mapping-table rows
+    /// in one commit.</summary>
+    public Func<string, IReadOnlyList<string>, BridgeTrackArtistAssignments,
+        Task<(bool Current, string? Error)>> SetCandidateTrackArtists
+    { get; init; }
+        = (_, _, _) => throw new InvalidOperationException(
+            "ImportService stub: SetCandidateTrackArtists not wired");
+
     /// <summary>Take one mapping-table row out of the import.</summary>
     public Func<string, string, Task<(bool Current, string? Error)>> DropCandidateTrack { get; init; }
         = (_, _) => throw new InvalidOperationException("ImportService stub: DropCandidateTrack not wired");
@@ -286,6 +294,10 @@ internal sealed class ImportService
         SetCandidateTrackEdit = (candidateKey, track) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.SetCandidateTrackEdit(handle, candidateKey, track)),
+        SetCandidateTrackArtists = (candidateKey, trackIds, assignments) =>
+            session.RunForCurrentHandle(handle =>
+                NativeBae.SetCandidateTrackArtists(
+                    handle, candidateKey, trackIds, assignments)),
         DropCandidateTrack = (candidateKey, trackId) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.DropCandidateTrack(handle, candidateKey, trackId)),

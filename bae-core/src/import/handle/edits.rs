@@ -66,6 +66,21 @@ impl ImportServiceHandle {
         Ok(())
     }
 
+    /// Set the same artist assignments on every named mapping-table row as one
+    /// edit, preserving each row's title and audio mapping.
+    pub async fn set_candidate_track_artists(
+        &self,
+        candidate_key: &str,
+        track_ids: Vec<String>,
+        assignments: crate::import::TrackArtistAssignments,
+    ) -> Result<(), crate::import::ImportError> {
+        let hash = self.edited_candidate_hash(candidate_key).await?;
+        self.library_manager
+            .replace_import_candidate_track_artists(&hash, &track_ids, &assignments)
+            .await?;
+        Ok(())
+    }
+
     /// Take one mapping-table row out of the import: the release commits
     /// without that track. Nothing on disk changes.
     pub async fn drop_candidate_track(

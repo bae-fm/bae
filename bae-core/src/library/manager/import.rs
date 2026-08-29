@@ -537,6 +537,19 @@ impl LibraryManager {
             .await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn replace_import_candidate_track_artists(
+        &self,
+        content_hash: &str,
+        track_ids: &[String],
+        assignments: &crate::import::TrackArtistAssignments,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .replace_import_candidate_track_artists(content_hash, track_ids, assignments)
+            .await?)
+    }
+
     /// Every candidate's user-set file decisions, keyed by content hash — what
     /// a folder scan needs so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.

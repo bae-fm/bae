@@ -79,6 +79,7 @@ struct ImportMappingFileRowTests {
             preview: { _ in },
             stopPreview: {},
             editTrack: { _ in },
+            setTrackArtists: { _, _ in },
             chooseFile: { _, _ in },
             drop: { _ in },
             exclude: { _ in },

@@ -159,6 +159,16 @@ extension ImportMappingFlow {
                     )
                 }
             },
+            setTrackArtists: { trackIds, assignments in
+                start {
+                    await setTrackArtists(
+                        key: key,
+                        trackIds: trackIds,
+                        assignments: assignments,
+                        services: services
+                    )
+                }
+            },
             chooseFile: { trackId, audio in
                 start {
                     await chooseFile(

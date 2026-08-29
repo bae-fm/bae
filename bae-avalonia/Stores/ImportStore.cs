@@ -722,6 +722,15 @@ internal sealed class ImportStore : IDisposable
     public async Task<bool> SetCandidateTrackEdit(string key, BridgeRawTrackEdit track) =>
         await Write(() => _import.SetCandidateTrackEdit(key, track));
 
+    // Replace the artist assignments of the named mapping-table rows in one
+    // commit.
+    public async Task<bool> SetCandidateTrackArtists(
+        string key,
+        IReadOnlyList<string> trackIds,
+        BridgeTrackArtistAssignments assignments) =>
+        await Write(() => _import.SetCandidateTrackArtists(
+            key, trackIds, assignments));
+
     // Take one mapping-table row out of the import.
     public async Task<bool> DropCandidateTrack(string key, string trackId) =>
         await Write(() => _import.DropCandidateTrack(key, trackId));

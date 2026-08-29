@@ -26,6 +26,16 @@ public sealed class ImportMappingTableTests
     private const string SheetId = "disc.cue";
     private const string ContainerPath = "/folder/disc.flac";
 
+    [Fact]
+    public void ArtistFillFollowsTheSelectedRowDownward()
+    {
+        var selection = new ArtistFillSelection(sourceIndex: 1);
+
+        selection.ExtendTo(3);
+
+        Assert.Equal(new[] { 1, 2, 3 }, selection.Indexes());
+    }
+
     // ── The table, rendered ──────────────────────────────────────────────────
 
     // Tracks and files are two questions, so they are two sections. A file the
@@ -394,6 +404,7 @@ public sealed class ImportMappingTableTests
                 Preview: preview ?? (_ => { }),
                 StopPreview: () => { },
                 EditTrack: _ => { },
+                SetTrackArtists: (_, _) => { },
                 ChooseFile: (_, _) => { },
                 Drop: _ => { },
                 Exclude: _ => { }),
@@ -417,7 +428,10 @@ public sealed class ImportMappingTableTests
     {
         var section = (StackPanel)((StackPanel)table).Children[index];
         var scroller = (ScrollViewer)section.Children[1];
-        return ((StackPanel)scroller.Content!).Children.OfType<Control>().ToList();
+        var rows = scroller.Content is Grid layers
+            ? (StackPanel)layers.Children[0]
+            : (StackPanel)scroller.Content!;
+        return rows.Children.OfType<Control>().ToList();
     }
 
     /// <summary>A row's left half, which is the first cell of its grid.</summary>

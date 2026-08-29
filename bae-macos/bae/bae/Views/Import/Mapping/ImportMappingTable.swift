@@ -31,6 +31,12 @@ struct ImportMappingTable: View {
     /// row never has less than its columns need.
     @State
     private var paneWidth: CGFloat = ImportMappingColumns.minimumTableWidth
+    @State
+    var artistFillSelection: ArtistFillSelection?
+    @State
+    var artistCellFrames: [String: CGRect] = [:]
+
+    let artistFillCoordinateSpace = "ImportMappingTable.artistFill"
 
     private var tableWidth: CGFloat {
         max(paneWidth, ImportMappingColumns.minimumTableWidth)
@@ -45,7 +51,8 @@ struct ImportMappingTable: View {
             section(
                 title: coreString("ui.import.mapping.tracks_title"),
                 trailing: table.reconciliation
-                    .flatMap(bridgeSlotReconciliationText)
+                    .flatMap(bridgeSlotReconciliationText),
+                supportsArtistFill: true
             ) {
                 trackHeaderRow
                 ForEach(table.rows, id: \.rowId) { row in
@@ -70,16 +77,18 @@ struct ImportMappingTable: View {
     private func section<Rows: View>(
         title: String,
         trailing: String? = nil,
+        supportsArtistFill: Bool = false,
         @ViewBuilder rows: () -> Rows
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             FormSectionHeader(title: title, trailing: trailing)
             ScrollView(.horizontal) {
-                VStack(spacing: 0) {
-                    rows()
+                if supportsArtistFill {
+                    artistFillRows(rows)
                 }
-                .frame(width: tableWidth, alignment: .leading)
-                .formGroupCard()
+                else {
+                    rowStack(rows)
+                }
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .onGeometryChange(for: CGFloat.self) { geo in
@@ -88,6 +97,29 @@ struct ImportMappingTable: View {
                 paneWidth = $0
             }
         }
+    }
+
+    private func rowStack<Rows: View>(
+        @ViewBuilder _ rows: () -> Rows
+    ) -> some View {
+        VStack(spacing: 0) {
+            rows()
+        }
+        .frame(width: tableWidth, alignment: .leading)
+        .formGroupCard()
+    }
+
+    private func artistFillRows<Rows: View>(
+        @ViewBuilder _ rows: () -> Rows
+    ) -> some View {
+        rowStack(rows)
+            .coordinateSpace(name: artistFillCoordinateSpace)
+            .onPreferenceChange(ArtistCellFramePreferenceKey.self) {
+                artistCellFrames = $0
+            }
+            .overlay(alignment: .topLeading) {
+                artistFillOverlay
+            }
     }
 
     // MARK: - Tracks
@@ -126,6 +158,8 @@ struct ImportMappingTable: View {
             isMeasuring: unit.source.audio.map(unprobed.contains) ?? false,
             evidence: evidenceFor(unit),
             actions: actions,
+            artistFillCoordinateSpace: artistFillCoordinateSpace,
+            onSelectArtist: selectArtist,
         )
         .rowChrome(
             background: unit.source.audioPath == previewingPath

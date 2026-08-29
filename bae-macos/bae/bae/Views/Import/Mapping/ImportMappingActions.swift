@@ -27,6 +27,8 @@ struct ImportMappingActions {
     let stopPreview: () -> Void
     /// Write a row's edited track back onto the row that commits it.
     let editTrack: (BridgeRawTrackEdit) -> Void
+    /// Apply one artist choice to the named track rows as one operation.
+    let setTrackArtists: ([String], BridgeTrackArtistAssignments) -> Void
     /// Point a row at one of the folder's audio units: the row's track id,
     /// then the unit.
     let chooseFile: (String, BridgeAudioFile) -> Void

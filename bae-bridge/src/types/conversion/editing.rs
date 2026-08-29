@@ -49,7 +49,7 @@ impl BridgeTrackArtistAssignments {
         }
     }
 
-    pub(super) fn into_core(self) -> bae_core::import::TrackArtistAssignments {
+    pub(crate) fn into_core(self) -> bae_core::import::TrackArtistAssignments {
         match self {
             Self::AlbumArtists => bae_core::import::TrackArtistAssignments::AlbumArtists,
             Self::Explicit { assignments } => bae_core::import::TrackArtistAssignments::Explicit(

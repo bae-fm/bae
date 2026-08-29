@@ -882,6 +882,8 @@ internal sealed partial class ImportMappingPane : UserControl
         Preview: path => _app.Playback.PreviewPlay(path),
         StopPreview: () => _app.Playback.PreviewStop(),
         EditTrack: track => _ = EditTrack(track),
+        SetTrackArtists: (trackIds, assignments) =>
+            _ = SetTrackArtists(trackIds, assignments),
         ChooseFile: (trackId, audio) => _ = ChooseFile(trackId, audio),
         Drop: trackId => _ = Drop(trackId),
         Exclude: fileId => _ = Exclude(fileId));
@@ -925,6 +927,17 @@ internal sealed partial class ImportMappingPane : UserControl
         if (_key is { } key)
         {
             await _import.SetCandidateTrackEdit(key, track);
+        }
+    }
+
+    // Apply one row's artist assignments to the selected rows atomically.
+    private async Task SetTrackArtists(
+        IReadOnlyList<string> trackIds,
+        BridgeTrackArtistAssignments assignments)
+    {
+        if (_key is { } key)
+        {
+            await _import.SetCandidateTrackArtists(key, trackIds, assignments);
         }
     }
 

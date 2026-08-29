@@ -620,6 +620,26 @@ impl AppHandle {
         .await
     }
 
+    /// Set the same artist assignments on every named mapping-table row.
+    pub async fn set_candidate_track_artists(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        track_ids: Vec<String>,
+        assignments: crate::types::BridgeTrackArtistAssignments,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_track_artists(
+                    &candidate_key,
+                    track_ids,
+                    assignments.into_core(),
+                )
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
     /// Replace the candidate's ordered album-artist choices. Existing artists
     /// are carried by library ID; new artists carry their explicit metadata.
     pub async fn set_candidate_album_artists(

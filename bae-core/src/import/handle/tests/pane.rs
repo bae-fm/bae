@@ -710,6 +710,33 @@ async fn an_edited_track_row_redraws_alone() {
     shut_down(handle).await;
 }
 
+/// One spreadsheet fill writes the same artist choice onto every named row
+/// while preserving each row's title and audio mapping.
+#[tokio::test(flavor = "multi_thread")]
+async fn track_artist_assignments_fill_across_named_rows() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let before = track_rows(&pane(&handle, &key).await.mapping);
+    let target_ids = before.iter().map(|track| track.id.clone()).collect();
+    let assignments = crate::import::TrackArtistAssignments::Explicit(vec![
+        crate::import::ArtistAssignment::new("Filled Artist"),
+    ]);
+
+    handle
+        .set_candidate_track_artists(&key, target_ids, assignments.clone())
+        .await
+        .unwrap();
+
+    let after = track_rows(&pane(&handle, &key).await.mapping);
+    assert_eq!(after.len(), before.len());
+    for (before, after) in before.iter().zip(after.iter()) {
+        assert_eq!(after.artist_assignments, assignments);
+        assert_eq!(after.title, before.title);
+        assert_eq!(after.file, before.file);
+    }
+
+    shut_down(handle).await;
+}
+
 /// A dropped row leaves the table: the release commits without that track.
 #[tokio::test(flavor = "multi_thread")]
 async fn a_dropped_track_leaves_the_table() {

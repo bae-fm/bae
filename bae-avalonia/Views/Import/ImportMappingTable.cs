@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
@@ -22,7 +24,7 @@ namespace Bae.Desktop;
 /// carves; a collapsed directory is one row, because the roles of fourteen rip
 /// logs are one fact.
 /// </summary>
-internal sealed class ImportMappingTable
+internal sealed partial class ImportMappingTable
 {
     private readonly BridgeMappingTable _table;
     private readonly Func<string, Task<List<ImportSheetBindingOption>>> _bindingOptions;
@@ -48,6 +50,15 @@ internal sealed class ImportMappingTable
     // of them at once when the pane is resized. One column grid means one list.
     private readonly List<Grid> _grids = new();
 
+    // Artist cells in their displayed order. The assignment is read through a
+    // closure because editing the source cell does not rebuild the table.
+    private readonly List<ArtistFillCell> _artistCells = new();
+    private ArtistFillSelection? _artistFillSelection;
+    private Canvas? _artistFillCanvas;
+    private Border? _artistFillBorder;
+    private Border? _artistFillHandle;
+    private bool _draggingArtistFill;
+
     internal ImportMappingTable(
         BridgeMappingTable table,
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
@@ -71,6 +82,8 @@ internal sealed class ImportMappingTable
     {
         _rowHosts.Clear();
         _grids.Clear();
+        _artistCells.Clear();
+        _artistFillSelection = null;
         var sections = new StackPanel { Spacing = 18 };
         sections.Children.Add(Section(
             Loc.Core("ui.import.mapping.tracks_title"),
@@ -78,7 +91,8 @@ internal sealed class ImportMappingTable
                 ? MappingTableReading.ReconciliationLine(reconciliation)
                 : null,
             TrackHeaderRow(),
-            TrackRows()));
+            TrackRows(),
+            supportsArtistFill: true));
         var files = FileRows();
         if (files.Count > 0)
         {
@@ -150,7 +164,12 @@ internal sealed class ImportMappingTable
     /// scrolls sideways rather than squeezing a column past the point it says
     /// anything, and both sections resolve against the same width so their
     /// columns stay aligned.</summary>
-    private Control Section(string title, string? trailing, Control header, List<Control> rows)
+    private Control Section(
+        string title,
+        string? trailing,
+        Control header,
+        List<Control> rows,
+        bool supportsArtistFill = false)
     {
         var column = new StackPanel { Spacing = 0, MinWidth = ImportMappingColumns.MinimumWidth };
         column.Children.Add(header);
@@ -158,9 +177,18 @@ internal sealed class ImportMappingTable
         {
             column.Children.Add(row);
         }
+        Control content = column;
+        if (supportsArtistFill)
+        {
+            var layers = new Grid { MinWidth = ImportMappingColumns.MinimumWidth };
+            layers.Children.Add(column);
+            layers.Children.Add(ArtistFillOverlay());
+            column.LayoutUpdated += (_, _) => UpdateArtistFillOverlay();
+            content = layers;
+        }
         var scroller = new ScrollViewer
         {
-            Content = column,
+            Content = content,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Disabled,
         };
@@ -404,8 +432,29 @@ internal sealed class ImportMappingTable
         title.TextChanged += (_, _) => WriteBack();
         Avalonia.Controls.Grid.SetColumn(title, 1);
         grid.Children.Add(title);
-        Avalonia.Controls.Grid.SetColumn(artist, 2);
-        grid.Children.Add(artist);
+        var artistCell = new Border
+        {
+            Background = Brushes.Transparent,
+            Child = artist,
+        };
+        var artistIndex = _artistCells.Count;
+        artistCell.AddHandler(
+            InputElement.PointerPressedEvent,
+            (_, e) =>
+            {
+                if (e.GetCurrentPoint(artistCell).Properties.IsLeftButtonPressed)
+                {
+                    _artistFillSelection = new ArtistFillSelection(artistIndex);
+                    UpdateArtistFillOverlay();
+                }
+            },
+            RoutingStrategies.Tunnel);
+        _artistCells.Add(new ArtistFillCell(
+            track.Id,
+            artistCell,
+            () => currentArtistAssignments));
+        Avalonia.Controls.Grid.SetColumn(artistCell, 2);
+        grid.Children.Add(artistCell);
 
         var length = new TextBlock
         {

@@ -222,6 +222,40 @@ pub(super) fn save_track_edit(
     )
 }
 
+fn replace_track_artist_assignments(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    track_ids: &[String],
+    assignments: &TrackArtistAssignments,
+) -> Result<(), DbError> {
+    require_state_row(sql, content_hash, "track artist fill")?;
+    let (assignment_kind, explicit) = match assignments {
+        TrackArtistAssignments::AlbumArtists => ("album_artists", None),
+        TrackArtistAssignments::Explicit(assignments) => ("explicit", Some(assignments.as_slice())),
+    };
+    for track_id in track_ids {
+        let changed = sql.execute(
+            "UPDATE import_candidate_track_edit SET artist_assignment_kind = ? \
+             WHERE content_hash = ? AND track_id = ?",
+            params![assignment_kind, content_hash, track_id],
+        )?;
+        if changed != 1 {
+            return Err(DbError::Message(format!(
+                "track artist fill changed {changed} rows for {track_id}; expected exactly one"
+            )));
+        }
+        sql.execute(
+            "DELETE FROM import_candidate_track_artist_assignment \
+             WHERE content_hash = ? AND track_id = ?",
+            params![content_hash, track_id],
+        )?;
+        if let Some(explicit) = explicit {
+            insert_track_artist_assignments(sql, content_hash, track_id, explicit)?;
+        }
+    }
+    Ok(())
+}
+
 pub(super) fn delete_track_mappings(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -875,6 +909,28 @@ impl Database {
         let edit = edit.clone();
         self.call(move |sql| {
             save_track_edit(sql, &content_hash, &edit)?;
+            advance_metadata_revision(sql, &content_hash)
+        })
+        .await
+    }
+
+    /// Replace the artist assignments of every named track in one transaction.
+    pub async fn replace_import_candidate_track_artists(
+        &self,
+        content_hash: &str,
+        track_ids: &[String],
+        assignments: &TrackArtistAssignments,
+    ) -> Result<u64, DbError> {
+        if track_ids.is_empty() {
+            return Err(DbError::Message(
+                "a track artist fill must name at least one track".into(),
+            ));
+        }
+        let content_hash = content_hash.to_string();
+        let track_ids = track_ids.to_vec();
+        let assignments = assignments.clone();
+        self.call(move |sql| {
+            replace_track_artist_assignments(sql, &content_hash, &track_ids, &assignments)?;
             advance_metadata_revision(sql, &content_hash)
         })
         .await

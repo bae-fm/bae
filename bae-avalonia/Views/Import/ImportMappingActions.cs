@@ -26,6 +26,8 @@ namespace Bae.Desktop;
 /// <param name="StopPreview">Stop whatever is auditioning.</param>
 /// <param name="EditTrack">Write a row's edited track back onto the row that
 /// commits it.</param>
+/// <param name="SetTrackArtists">Apply one artist choice to the named track
+/// rows as one operation.</param>
 /// <param name="ChooseFile">Point a row at one of the folder's audio units: the
 /// row's track id, then the unit.</param>
 /// <param name="Drop">Remove a row from the import entirely — a track the
@@ -41,6 +43,7 @@ internal sealed record ImportMappingActions(
     Action<string> Preview,
     Action StopPreview,
     Action<BridgeRawTrackEdit> EditTrack,
+    Action<IReadOnlyList<string>, BridgeTrackArtistAssignments> SetTrackArtists,
     Action<string, BridgeAudioFile> ChooseFile,
     Action<string> Drop,
     Action<string> Exclude);

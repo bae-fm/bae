@@ -24,6 +24,8 @@ struct ImportMappingTrackRow: View {
     /// other row.
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
+    var artistFillCoordinateSpace: String?
+    var onSelectArtist: (String) -> Void = { _ in }
 
     @State
     private var hovering = false
@@ -127,6 +129,23 @@ struct ImportMappingTrackRow: View {
                 },
             )
             .frame(width: columns.artist)
+            .simultaneousGesture(
+                TapGesture().onEnded { onSelectArtist(track.id) }
+            )
+            .background {
+                if let artistFillCoordinateSpace {
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: ArtistCellFramePreferenceKey.self,
+                            value: [
+                                track.id: geometry.frame(
+                                    in: .named(artistFillCoordinateSpace)
+                                )
+                            ]
+                        )
+                    }
+                }
+            }
         }
         else {
             Spacer().frame(width: columns.artist)

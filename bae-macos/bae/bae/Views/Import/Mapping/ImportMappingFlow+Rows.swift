@@ -19,6 +19,25 @@ extension ImportMappingFlow {
         }
     }
 
+    /// Apply one row's artist assignments to the selected rows atomically.
+    @MainActor
+    static func setTrackArtists(
+        key: String,
+        trackIds: [String],
+        assignments: BridgeTrackArtistAssignments,
+        services: ImportMappingServices
+    ) async {
+        await write(services: services) {
+            try await services.importer.setCandidateTrackArtists(
+                key,
+                trackIds,
+                assignments
+            )
+        } describe: { line in
+            String(localized: "Couldn't change that track: \(line)")
+        }
+    }
+
     /// Point a row at one of the folder's audio units. The row starts writing
     /// that audio because the editor is what says which audio a track's samples
     /// come from — core's reading of the folder produced the row, and this is

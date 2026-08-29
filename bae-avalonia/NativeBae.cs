@@ -918,6 +918,16 @@ internal static partial class NativeBae
         AppHandle handle, string candidateKey, BridgeRawTrackEdit track) =>
         CaptureError(() => Await(() => handle.SetCandidateTrackEdit(candidateKey, track)));
 
+    /// <summary>Replace the artist assignments of the named mapping-table rows
+    /// in one commit.</summary>
+    internal static string? SetCandidateTrackArtists(
+        AppHandle handle,
+        string candidateKey,
+        IReadOnlyList<string> trackIds,
+        BridgeTrackArtistAssignments assignments) =>
+        CaptureError(() => Await(() => handle.SetCandidateTrackArtists(
+            candidateKey, trackIds.ToArray(), assignments)));
+
     /// <summary>Take one mapping-table row out of the import.</summary>
     internal static string? DropCandidateTrack(
         AppHandle handle, string candidateKey, string trackId) =>
