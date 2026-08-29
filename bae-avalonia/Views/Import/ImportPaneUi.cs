@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Media;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -124,4 +125,15 @@ internal static class ImportPaneUi
         button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         return button;
     }
+
+    internal static ComboBox MetadataSourcePicker(int selectedIndex = 0) => new()
+    {
+        ItemsSource = new[]
+        {
+            BridgeMetadataSource.Discogs,
+            BridgeMetadataSource.MusicBrainz,
+        },
+        SelectedIndex = selectedIndex,
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+    };
 }

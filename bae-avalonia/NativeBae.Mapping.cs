@@ -444,10 +444,6 @@ internal static partial class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(reason), reason, "Unknown validation reason"),
         };
 
-
-    internal static BridgeMetadataSource MetadataSource(string source) =>
-        source == "discogs" ? BridgeMetadataSource.Discogs : BridgeMetadataSource.MusicBrainz;
-
     private static BridgeHomeStorage HomeStorage(string storage) =>
         storage == "browsable" ? BridgeHomeStorage.Browsable : BridgeHomeStorage.Opaque;
 

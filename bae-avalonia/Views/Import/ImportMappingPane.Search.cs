@@ -127,12 +127,7 @@ internal sealed partial class ImportMappingPane
             ManualSearchType.Barcode));
         column.Children.Add(types);
 
-        var sourceBox = new ComboBox
-        {
-            ItemsSource = new[] { "discogs", "musicbrainz" },
-            SelectedIndex = _searchSource,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        };
+        var sourceBox = ImportPaneUi.MetadataSourcePicker(_searchSource);
         sourceBox.SelectionChanged += (_, _) => _searchSource = sourceBox.SelectedIndex;
         var sourceField = new StackPanel { Spacing = 4 };
         sourceField.Children.Add(DialogUi.SectionLabel(Loc.Chrome("search.field.source")));
@@ -161,7 +156,7 @@ internal sealed partial class ImportMappingPane
         {
             search.IsEnabled = false;
             var key = new ManualSearchKey(_manualSearchType, _searchSource);
-            var query = ManualSearchQuery((string)sourceBox.SelectedItem!);
+            var query = ManualSearchQuery((BridgeMetadataSource)sourceBox.SelectedItem!);
             var (current, found) = await _app.Import.SearchReleases(query);
             search.IsEnabled = true;
             if (!current)
@@ -255,19 +250,19 @@ internal sealed partial class ImportMappingPane
         return fields;
     }
 
-    private BridgeSearchQuery ManualSearchQuery(string source) =>
+    private BridgeSearchQuery ManualSearchQuery(BridgeMetadataSource source) =>
         _manualSearchType switch
         {
             ManualSearchType.General => new BridgeSearchQuery.General(
                 _searchArtist,
                 _searchAlbum,
-                NativeBae.MetadataSource(source)),
+                source),
             ManualSearchType.Catalog => new BridgeSearchQuery.CatalogNumber(
                 _searchCatalog,
-                NativeBae.MetadataSource(source)),
+                source),
             ManualSearchType.Barcode => new BridgeSearchQuery.Barcode(
                 _searchBarcode,
-                NativeBae.MetadataSource(source)),
+                source),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(_manualSearchType), _manualSearchType, "Unknown manual search type"),
         };

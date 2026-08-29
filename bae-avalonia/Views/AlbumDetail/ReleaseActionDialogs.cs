@@ -146,7 +146,7 @@ internal sealed class ReleaseActionDialogs
             var albumField = DialogUi.Field(Loc.Chrome("search.field.album"), out var albumBox);
             artistBox.Text = seedArtist;
             albumBox.Text = seedAlbum;
-            var sourceBox = new ComboBox { ItemsSource = new[] { "discogs", "musicbrainz" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch };
+            var sourceBox = ImportPaneUi.MetadataSourcePicker();
             var sourceCaption = new TextBlock { Text = Loc.Chrome("search.field.source"), FontSize = 12.5 };
             sourceCaption[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
             var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceBox } };
@@ -215,13 +215,13 @@ internal sealed class ReleaseActionDialogs
 
             searchButton.Click += async (_, _) =>
             {
-                var source = (string)sourceBox.SelectedItem!;
+                var source = (BridgeMetadataSource)sourceBox.SelectedItem!;
                 searchButton.IsEnabled = false;
                 var (current, search) = await _app.Import.SearchReleases(
                     new BridgeSearchQuery.General(
                         artistBox.Text ?? string.Empty,
                         albumBox.Text ?? string.Empty,
-                        NativeBae.MetadataSource(source)));
+                        source));
                 searchButton.IsEnabled = true;
                 if (!current)
                 {
