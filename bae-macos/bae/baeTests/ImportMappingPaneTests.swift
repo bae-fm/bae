@@ -172,6 +172,55 @@ private func makeMatchListScene() -> MatchListScene {
 @Suite("Import mapping pane")
 struct ImportMappingPaneTests {
     @MainActor
+    @Test("blank draft renders the editor without a summary placeholder")
+    func blankDraftRendersEditorWithoutSummaryPlaceholder() async throws {
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable,
+            metadataProvenance: nil,
+            edit: MappingFixtures.blankEdit
+        )
+        let candidate = try #require(
+            store.selectedCandidates[MappingFixtures.candidateKey]
+        )
+        let size = NSSize(width: 1_000, height: 760)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportMappingPreview.make(
+                candidate: candidate,
+                storageCloud: .constant(false),
+                storagePinned: .constant(false)
+            )
+            .frame(width: size.width, height: size.height)
+            .importPreviewEnvironment(),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        let labels = SnapshotTestSupport.descendants(of: host)
+            .compactMap { ($0 as? NSTextField)?.stringValue }
+        #expect(
+            labels.filter { $0 == String(localized: "Album title") }.count
+                == 1
+        )
+        #expect(labels.contains(String(localized: "Find online…")))
+        #expect(
+            labels.contains(coreString("ui.import.metadata.file_tags") + "…")
+        )
+        let albumTitleField = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .first { $0.placeholderString == String(localized: "Album title") }
+        )
+        let albumTitleFrame = albumTitleField.convert(
+            albumTitleField.bounds,
+            to: host
+        )
+        #expect(albumTitleFrame.minX > 180)
+        withExtendedLifetime(window) {}
+    }
+
+    @MainActor
     @Test("candidate mapping remains visible before metadata is affirmed")
     func unseededCandidateKeepsMappingVisible() async throws {
         let store = MappingFixtures.store(

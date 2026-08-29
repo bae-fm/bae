@@ -38,6 +38,30 @@ public sealed class ImportMetadataSourceSectionTests
     }
 
     [AvaloniaFact]
+    public void BlankDraftDoesNotRenderAReleaseSummaryPlaceholder()
+    {
+        var section = Build(
+            draftIsBlank: true,
+            title: Loc.Chrome("import.metadata.album_title_placeholder"),
+            edit: BlankEdit());
+
+        Assert.DoesNotContain(
+            Loc.Chrome("import.metadata.album_title_placeholder"),
+            Texts(section));
+        Assert.Contains(
+            section.GetLogicalDescendants().OfType<TextBox>(),
+            field => field.Text == string.Empty);
+
+        var card = Assert.IsType<Border>(section);
+        var body = Assert.IsType<StackPanel>(card.Child);
+        var layout = Assert.IsType<Grid>(Assert.Single(body.Children));
+        Assert.Equal(2, layout.ColumnDefinitions.Count);
+        var editor = Assert.IsType<StackPanel>(
+            Assert.Single(layout.Children, child => Grid.GetColumn(child) == 1));
+        Assert.NotEmpty(editor.GetLogicalDescendants().OfType<TextBox>());
+    }
+
+    [AvaloniaFact]
     public void AppliedDraftKeepsEveryMetadataActionVisible()
     {
         var presentations = new List<ImportMetadataPresentation>();
@@ -113,6 +137,18 @@ public sealed class ImportMetadataSourceSectionTests
         new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
         Array.Empty<BridgeRawTrackEdit>());
 
+    private static BridgeRawReleaseEdit BlankEdit() => new(
+        string.Empty,
+        Array.Empty<BridgeArtistAssignment>(),
+        new BridgeRawPressingEdit(
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty),
+        Array.Empty<BridgeRawTrackEdit>());
+
     private static BridgeReleaseUserEdit FileTagsEdit() => new(
         "Album Title",
         new BridgeArtistAssignment[]
@@ -131,13 +167,15 @@ public sealed class ImportMetadataSourceSectionTests
         Action<ImportMetadataPresentation>? onPresent = null,
         Action? onUseFileTags = null,
         Action? onClearMetadata = null,
-        Action<BridgeCandidateEditField, string>? onEditField = null) =>
+        Action<BridgeCandidateEditField, string>? onEditField = null,
+        string? title = null,
+        BridgeRawReleaseEdit? edit = null) =>
         new ImportMetadataSourceSection
         {
             Presentation = presentation,
             DraftIsBlank = draftIsBlank,
-            Title = "Album Title",
-            Edit = Edit(),
+            Title = title ?? "Album Title",
+            Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",
             ProvenanceLabel = null,
             ProvenanceUri = null,

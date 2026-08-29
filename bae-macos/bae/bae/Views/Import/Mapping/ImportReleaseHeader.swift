@@ -63,19 +63,33 @@ struct ImportReleaseHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 16) {
-                cover
-                ImportReleaseSummaryView(
-                    summary: releaseSummary,
-                    style: .card
-                )
-                actionControl
+            if draftIsBlank {
+                HStack(alignment: .top, spacing: 16) {
+                    cover
+                    VStack(alignment: .leading, spacing: 12) {
+                        actionControl
+                        if let editValues {
+                            ReleaseFieldsForm(
+                                values: editValues,
+                                writer: editActions
+                            )
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
-            if let editValues, draftIsBlank {
-                ReleaseFieldsForm(values: editValues, writer: editActions)
-            }
-            else if let editValues {
-                details(editValues)
+            else {
+                HStack(alignment: .top, spacing: 16) {
+                    cover
+                    ImportReleaseSummaryView(
+                        summary: releaseSummary,
+                        style: .card
+                    )
+                    actionControl
+                }
+                if let editValues {
+                    details(editValues)
+                }
             }
             if let commit {
                 commitRow(commit)

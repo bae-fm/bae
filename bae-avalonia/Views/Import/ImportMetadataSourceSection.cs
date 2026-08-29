@@ -67,6 +67,10 @@ internal sealed class ImportMetadataSourceSection
         {
             return new Spinner { Width = 16, Height = 16 };
         }
+        if (DraftIsBlank)
+        {
+            return BlankDraftCard(Edit);
+        }
         return Card(
             Title,
             ArtistAssignmentDisplay.Join(Edit.AlbumArtistAssignments),
@@ -74,8 +78,32 @@ internal sealed class ImportMetadataSourceSection
             Edit,
             ProvenanceLabel,
             DraftActions(),
-            includeSelectedValues: true,
-            showFieldsDirectly: DraftIsBlank);
+            includeSelectedValues: true);
+    }
+
+    private Control BlankDraftCard(BridgeRawReleaseEdit edit)
+    {
+        var layout = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions($"{CoverSize},*"),
+            ColumnSpacing = 14,
+        };
+        var cover = CoverTile(includeSelectedValues: true);
+        Grid.SetColumn(cover, 0);
+        layout.Children.Add(cover);
+
+        var editor = new StackPanel { Spacing = 12 };
+        editor.Children.Add(DraftActions());
+        editor.Children.Add(ReleaseFields(edit));
+        Grid.SetColumn(editor, 1);
+        layout.Children.Add(editor);
+
+        var body = new StackPanel { Spacing = 12, Children = { layout } };
+        if (CommitRow is not null)
+        {
+            body.Children.Add(CommitRow);
+        }
+        return CardBorder(body);
     }
 
     private Control DraftActions()
@@ -119,8 +147,7 @@ internal sealed class ImportMetadataSourceSection
                 actionControl: ActionButton(
                     Loc.Chrome("import.metadata.apply"),
                     OnUseFileTags),
-                includeSelectedValues: false,
-                showFieldsDirectly: false));
+                includeSelectedValues: false));
             return column;
         }
         if (IsReading)
@@ -175,8 +202,7 @@ internal sealed class ImportMetadataSourceSection
         BridgeRawReleaseEdit? edit,
         string? provenanceLabel,
         Control? actionControl,
-        bool includeSelectedValues,
-        bool showFieldsDirectly)
+        bool includeSelectedValues)
     {
         var grid = new Grid
         {
@@ -223,25 +249,23 @@ internal sealed class ImportMetadataSourceSection
         var body = new StackPanel { Spacing = 12, Children = { grid } };
         if (edit is not null)
         {
-            if (showFieldsDirectly)
+            body.Children.Add(new Expander
             {
-                body.Children.Add(ReleaseFields(edit));
-            }
-            else
-            {
-                body.Children.Add(new Expander
-                {
-                    Header = Loc.Chrome("import.pane.details"),
-                    FontSize = 12,
-                    HorizontalAlignment = HorizontalAlignment.Stretch,
-                    Content = ReleaseFields(edit),
-                });
-            }
+                Header = Loc.Chrome("import.pane.details"),
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Content = ReleaseFields(edit),
+            });
         }
         if (includeSelectedValues && CommitRow is not null)
         {
             body.Children.Add(CommitRow);
         }
+        return CardBorder(body);
+    }
+
+    private static Border CardBorder(Control body)
+    {
         var card = new Border
         {
             CornerRadius = new CornerRadius(8),
