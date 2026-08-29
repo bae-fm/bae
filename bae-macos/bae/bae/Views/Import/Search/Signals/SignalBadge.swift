@@ -21,6 +21,7 @@ struct SignalBadgeChip: View {
                 Text(value)
                     .font(.system(size: 11.5, design: .monospaced))
                     .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .strikethrough(signal.excluded, color: .secondary)
@@ -125,21 +126,15 @@ struct SignalBadgeChip: View {
 struct SignalBadge: View {
     let signal: BridgeToolbarSignal
     let onToggle: () -> Void
-
-    @State
-    private var hovering = false
+    let onRetry: () -> Void
 
     var body: some View {
         Button(action: onToggle) {
             SignalBadgeChip(signal: signal)
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .popover(isPresented: $hovering, arrowEdge: .bottom) {
-            SignalBadgePopover(signal: signal)
-                // Chips sit above the popover, which grows downward — its
-                // visual anchor is its top edge. Exit stays instant, like a
-                // tooltip's.
+        .hoverPopover(arrowEdge: .bottom) {
+            SignalBadgePopover(signal: signal, onRetry: onRetry)
                 .popoverEntrance(anchor: .top)
                 .background { PopoverBehavior() }
         }
@@ -192,6 +187,7 @@ struct CatalogSignalBadge: View {
                     options: []
                 ),
                 onToggle: {},
+                onRetry: {},
             )
             SignalBadge(
                 signal: BridgeToolbarSignal(
@@ -203,6 +199,7 @@ struct CatalogSignalBadge: View {
                     options: []
                 ),
                 onToggle: {},
+                onRetry: {},
             )
             SignalBadge(
                 signal: BridgeToolbarSignal(
@@ -214,6 +211,7 @@ struct CatalogSignalBadge: View {
                     options: []
                 ),
                 onToggle: {},
+                onRetry: {},
             )
             CatalogSignalBadge(
                 signal: BridgeToolbarSignal(

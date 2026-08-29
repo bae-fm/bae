@@ -5,6 +5,7 @@ import SwiftUI
 /// untruncated value, its current state, and the click-to-toggle hint.
 struct SignalBadgePopover: View {
     let signal: BridgeToolbarSignal
+    let onRetry: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -38,6 +39,11 @@ struct SignalBadgePopover: View {
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 12)
+                if case .failed = signal.state {
+                    Button("Retry", action: onRetry)
+                        .buttonStyle(.link)
+                        .font(.system(size: 11.5))
+                }
                 Text(signal.excluded ? "Click to include" : "Click to exclude")
                     .font(.system(size: 11.5))
                     .foregroundStyle(Theme.accent)
@@ -60,7 +66,8 @@ struct SignalBadgePopover: View {
                 state: .found(count: 1),
                 excluded: false,
                 options: []
-            )
+            ),
+            onRetry: {}
         )
         .padding()
         .windowBackground()

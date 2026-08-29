@@ -3,6 +3,7 @@ import BaeKit
 import Foundation
 import SwiftUI
 import Testing
+import XCTest
 
 @testable import bae
 
@@ -63,6 +64,50 @@ struct FindOnlineMethodPresentationTests {
             .compactMap { ($0 as? NSTextField)?.stringValue }
         withExtendedLifetime(window) {}
         return labels
+    }
+}
+
+@MainActor
+final class SignalBadgePopoverTests: XCTestCase {
+    func testFailedLookupOffersRetryBesideItsSignalValue() async throws {
+        var didRetry = false
+        let signal = BridgeToolbarSignal(
+            kind: .barcode,
+            value: "0123456789012",
+            origin: .artwork,
+            state: .failed(failure: .network),
+            excluded: false,
+            options: []
+        )
+        let rendered = await render(
+            SignalBadgePopover(signal: signal, onRetry: { didRetry = true })
+        )
+
+        XCTAssertTrue(rendered.labels.contains("0123456789012"))
+        let retryButton = try XCTUnwrap(rendered.buttons.first)
+        retryButton.performClick(nil)
+        XCTAssertTrue(didRetry)
+    }
+
+    private func render<V: View>(_ view: V) async -> (
+        labels: [String],
+        buttons: [NSButton]
+    ) {
+        let size = NSSize(width: 300, height: 220)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            view.frame(width: size.width, height: size.height),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let descendants = SnapshotTestSupport.descendants(of: host)
+        let labels = descendants.compactMap {
+            ($0 as? NSTextField)?.stringValue
+        }
+        let buttons = descendants.compactMap { $0 as? NSButton }
+        withExtendedLifetime(window) {}
+        return (labels, buttons)
     }
 }
 

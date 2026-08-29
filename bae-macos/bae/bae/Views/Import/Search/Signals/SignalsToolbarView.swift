@@ -96,7 +96,11 @@ struct SignalsToolbarView: View {
                     )
                 }
                 else {
-                    SignalBadge(signal: signal, onToggle: { toggle(signal) })
+                    SignalBadge(
+                        signal: signal,
+                        onToggle: { toggle(signal) },
+                        onRetry: onRerun
+                    )
                 }
             }
         }
