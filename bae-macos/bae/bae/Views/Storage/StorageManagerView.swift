@@ -18,8 +18,8 @@ struct StorageManagerView: View {
     private var outputs
     @Environment(ConfigStore.self)
     private var configStore
-    // The queue sections and inspector read their stores at the leaf; uiStore
-    // is read here to surface queue action errors in this window (it's a
+    // The inspector reads transfer stores at the leaf; uiStore is read here to
+    // surface transfer and storage-action errors in this window (it's a
     // separate scene from MainAppView, which owns the other error alert).
     @Environment(UiStore.self)
     private var uiStore
@@ -37,6 +37,10 @@ struct StorageManagerView: View {
     /// available from the environment.
     @State
     private var runner: StorageActionRunner?
+
+    init(initialSelection: Set<String> = []) {
+        _selection = State(initialValue: initialSelection)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,17 +71,13 @@ struct StorageManagerView: View {
                                 library: library,
                                 runner: runner,
                             )
-
-                            DownloadsSection()
-                            OutputSection()
-                            OutboxSection()
                             Divider()
                             StorageFooter(
                                 list: list,
                                 totalSize: storageManagerStore.totalSize
                             )
                         }
-                        .frame(minWidth: 480)
+                        .frame(minWidth: 440)
 
                         if let releaseId = StorageTransferInspector.releaseId(
                             in: selection
@@ -143,30 +143,103 @@ struct StorageManagerView: View {
 }
 
 #if DEBUG
-    #Preview("Full screen") {
-        let library = PreviewData.storageLibrary()
+    @MainActor
+    struct StorageManagerPreviewScene: View {
+        let library: Library
         let libraryStore = LibraryStore()
         let uiStore = UiStore()
-        StorageManagerView()
-            .environment(library)
-            .environment(
-                StorageManagerStore(
-                    library: library,
-                    libraryStore: libraryStore,
-                    onError: { uiStore.showError($0) }
+        let downloadStore: DownloadStore
+        let outputStore: OutputStore
+        let outboxStore: OutboxStore
+
+        let initialSelection: Set<String>
+
+        init(
+            rows: [BridgeStorageRow] = PreviewData.storageRows,
+            selectedReleaseId: String? = nil,
+            downloadSnapshot: BridgeDownloadSnapshot =
+                PreviewData
+                .downloadSnapshot(),
+            outputSnapshot: BridgeOutputSnapshot = PreviewData.outputSnapshot(),
+            outboxSnapshot: BridgeOutboxSnapshot = PreviewData.outboxSnapshot()
+        ) {
+            library = PreviewData.storageLibrary(rows: rows)
+            initialSelection = selectedReleaseId.map { [$0] } ?? []
+            downloadStore = PreviewData.downloadStore(downloadSnapshot)
+            outputStore = PreviewData.outputStore(outputSnapshot)
+            outboxStore = PreviewData.outboxStore(outboxSnapshot)
+        }
+
+        var body: some View {
+            StorageManagerView(initialSelection: initialSelection)
+                .environment(library)
+                .environment(
+                    StorageManagerStore(
+                        library: library,
+                        libraryStore: libraryStore,
+                        onError: { uiStore.showError($0) }
+                    )
                 )
-            )
-            .environment(ImageStore.stub())
-            .environment(libraryStore)
-            .environment(ReleaseEditor.stub())
-            .environment(Sync.stub())
-            .environment(Downloads.stub())
-            .environment(Outputs.stub())
-            .environment(PreviewData.configStore())
-            .environment(uiStore)
-            .environment(PreviewData.downloadStore())
-            .environment(PreviewData.outputStore())
-            .environment(PreviewData.outboxStore())
+                .environment(ImageStore.stub())
+                .environment(libraryStore)
+                .environment(ReleaseEditor.stub())
+                .environment(Sync.stub())
+                .environment(Downloads.stub())
+                .environment(Outputs.stub())
+                .environment(PreviewData.configStore())
+                .environment(uiStore)
+                .environment(downloadStore)
+                .environment(outputStore)
+                .environment(outboxStore)
+        }
+    }
+
+    #Preview("Dense — wide, inspector open") {
+        StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
+            .frame(width: 1_440, height: 900)
+    }
+
+    #Preview("Dense — standard, inspector open") {
+        StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
             .frame(width: 940, height: 760)
+    }
+
+    #Preview("Dense — compact") {
+        StorageManagerPreviewScene()
+            .frame(width: 700, height: 400)
+    }
+
+    #Preview("Empty") {
+        StorageManagerPreviewScene(rows: [])
+            .frame(width: 940, height: 600)
+    }
+
+    #Preview("Empty-ish") {
+        StorageManagerPreviewScene(
+            rows: Array(PreviewData.storageRows.prefix(2))
+        )
+        .frame(width: 940, height: 600)
+    }
+
+    #Preview("Empty-ish — inspector open") {
+        StorageManagerPreviewScene(
+            rows: Array(PreviewData.storageRows.prefix(2)),
+            selectedReleaseId: "rel-row-1"
+        )
+        .frame(width: 940, height: 600)
+    }
+
+    #Preview("One sync upload — inspector open") {
+        StorageManagerPreviewScene(
+            rows: Array(PreviewData.storageRows.prefix(2)),
+            selectedReleaseId: "rel-row-2",
+            downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+            outputSnapshot: PreviewData.emptyOutputSnapshot,
+            outboxSnapshot: PreviewData.outboxSnapshot(
+                uploadGroups: [PreviewData.uploadGroupDone],
+                deletes: []
+            )
+        )
+        .frame(width: 940, height: 600)
     }
 #endif

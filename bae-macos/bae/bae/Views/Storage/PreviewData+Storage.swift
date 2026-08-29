@@ -28,8 +28,9 @@
         /// One active, one queued, one failed — the three download-row states.
         static let downloadOps: [BridgeDownloadOp] = [
             BridgeDownloadOp(
-                releaseId: "rel-dl-1",
-                title: "Album Title A",
+                releaseId: "rel-row-1",
+                title:
+                    "Album Title with an Intentionally Long Descriptive Subtitle",
                 fileCount: 12,
                 totalSize: 367_000_000,
                 createdAt: queuedAt(minutesAgo: 1),
@@ -42,15 +43,15 @@
                 )
             ),
             BridgeDownloadOp(
-                releaseId: "rel-dl-2",
-                title: "Album Title B",
+                releaseId: "rel-row-2",
+                title: "B",
                 fileCount: 9,
                 totalSize: 210_000_000,
                 createdAt: queuedAt(minutesAgo: 3),
                 state: .queued
             ),
             BridgeDownloadOp(
-                releaseId: "rel-dl-3",
+                releaseId: "rel-row-3",
                 title: "Album Title C",
                 fileCount: 15,
                 totalSize: 512_000_000,
@@ -82,13 +83,20 @@
             DownloadStore(snapshot: snapshot)
         }
 
+        static let emptyDownloadSnapshot = BridgeDownloadSnapshot(
+            downloads: [],
+            total: BridgeDownloadProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
+            paused: false
+        )
+
         // MARK: - Export / save queue
 
         /// One active save, one queued export, one failed export — the output-row
         /// states across both kinds.
         static let outputOps: [BridgeOutputOp] = [
             BridgeOutputOp(
-                releaseId: "rel-out-1",
+                releaseId: "rel-row-1",
                 targetDir: "/Music/Exports",
                 title: "Album Title A",
                 fileCount: 12,
@@ -98,7 +106,7 @@
                 kind: .save(presetName: "FLAC")
             ),
             BridgeOutputOp(
-                releaseId: "rel-out-2",
+                releaseId: "rel-row-2",
                 targetDir: "/Music/Exports",
                 title: "Album Title B",
                 fileCount: 9,
@@ -108,7 +116,7 @@
                 kind: .export
             ),
             BridgeOutputOp(
-                releaseId: "rel-out-3",
+                releaseId: "rel-row-3",
                 targetDir: "/Music/Exports",
                 title: "Album Title C",
                 fileCount: 15,
@@ -141,6 +149,13 @@
         ) -> OutputStore {
             OutputStore(snapshot: snapshot)
         }
+
+        static let emptyOutputSnapshot = BridgeOutputSnapshot(
+            outputs: [],
+            total: BridgeOutputProgress(queued: 0, active: 0, failed: 0),
+            summaryParts: [],
+            paused: false
+        )
 
         // MARK: - Cloud outbox (uploads + deletes)
 
@@ -227,15 +242,16 @@
         }
 
         static let uploadGroup = BridgeUploadReleaseGroup(
-            releaseId: "rel-up-1",
-            displayTitle: "Album Title A",
+            releaseId: "rel-row-1",
+            displayTitle:
+                "Album Title with an Intentionally Long Descriptive Subtitle",
             files: uploadFileOps,
             progress: uploadProgress(activity: .uploading)
         )
 
         /// A second group whose blobs landed and whose release is publishing.
         static let uploadGroupDone = BridgeUploadReleaseGroup(
-            releaseId: "rel-up-2",
+            releaseId: "rel-row-2",
             displayTitle: "Album Title B",
             files: [
                 BridgeUploadFileOp(
@@ -409,48 +425,60 @@
 
         // MARK: - Whole-screen: seeded list + Library
 
-        /// The storage rows the table renders: one local, one cloud, one
-        /// pinned. Album summaries share one album id per row for the join.
-        static let storageRows: [BridgeStorageRow] = [
-            storageRow(
-                releaseId: "rel-row-1",
-                albumId: "album-row-1",
-                title: "Album Title A",
-                artist: "Artist Name A",
-                storageState: .local,
-                pinned: false,
-                fileCount: 10,
-                totalSize: 280_000_000
-            ),
-            storageRow(
-                releaseId: "rel-row-2",
-                albumId: "album-row-2",
-                title: "Album Title B",
-                artist: "Artist Name B",
-                storageState: .remote,
-                pinned: false,
-                fileCount: 12,
-                totalSize: 367_000_000
-            ),
-            storageRow(
-                releaseId: "rel-row-3",
-                albumId: "album-row-3",
-                title: "Album Title C",
-                artist: "Artist Name C",
-                storageState: .remote,
-                pinned: true,
-                fileCount: 9,
-                totalSize: 210_000_000
-            ),
-        ]
+        /// Dense rows spanning the names, formats, storage states, file counts,
+        /// and sizes the whole-screen previews must keep readable.
+        static let storageRows: [BridgeStorageRow] = {
+            let titles = [
+                "Album Title with an Intentionally Long Descriptive Subtitle",
+                "B",
+                "Album Title C",
+                "Two-Disc Archival Collection with Additional Session Material",
+                "Live Set",
+                "Untitled Recording",
+                "Album Title — Expanded Edition",
+                "Collection Volume 08",
+            ]
+            let artists = [
+                "Artist Name with Multiple Collaborators and Ensemble Members",
+                "A",
+                "Artist Name C",
+                "Various Artists",
+                "Ensemble Name",
+                "Unknown Artist",
+            ]
+            let formats: [String?] = [
+                "FLAC", "MP3", "ALAC", "CUE+APE", "WAV", nil,
+            ]
+
+            return (1...28)
+                .map { index in
+                    let isRemote = index % 3 != 0
+                    return storageRow(
+                        releaseId: "rel-row-\(index)",
+                        albumId: "album-row-\(index)",
+                        title: titles[(index - 1) % titles.count],
+                        artist: artists[(index - 1) % artists.count],
+                        year: index % 7 == 0 ? nil : Int32(1980 + index),
+                        format: formats[(index - 1) % formats.count],
+                        storageState: isRemote ? .remote : .local,
+                        pinned: isRemote && index % 4 == 0,
+                        transfer: index == 5 ? .pin : nil,
+                        fileCount: Int64(1 + index % 24),
+                        totalSize: Int64(48_000_000 + index * 83_000_000)
+                    )
+                }
+        }()
 
         private static func storageRow(
             releaseId: String,
             albumId: String,
             title: String,
             artist: String,
+            year: Int32? = 2021,
+            format: String? = "FLAC",
             storageState: BridgeReleaseStorageState,
             pinned: Bool = false,
+            transfer: BridgeReleaseStorageAction? = nil,
             fileCount: Int64 = 12,
             totalSize: Int64 = 210_000_000
         ) -> BridgeStorageRow {
@@ -458,11 +486,11 @@
                 release: BridgeReleaseSummary(
                     id: releaseId,
                     albumId: albumId,
-                    format: "FLAC",
+                    format: format,
                     storageState: storageState,
                     pinned: pinned,
                     storageActions: [],
-                    transferAction: nil,
+                    transferAction: transfer,
                     fileCount: fileCount,
                     totalSize: totalSize,
                     cover: nil
@@ -470,7 +498,7 @@
                 album: BridgeAlbum(
                     id: albumId,
                     title: title,
-                    year: 2021,
+                    year: year,
                     isCompilation: false,
                     artistNames: artist,
                     releaseIds: [releaseId],

@@ -11,7 +11,7 @@ func formattedDownloadBytesProgress(done: UInt64, total: UInt64) -> String {
         format: NSLocalizedString(
             "core.download.bytes_progress",
             tableName: "Core",
-            bundle: .main,
+            bundle: .module,
             comment: "Transferred bytes out of total bytes"
         ),
         done.formattedDownloadBytes,

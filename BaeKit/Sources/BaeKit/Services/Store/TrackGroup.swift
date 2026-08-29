@@ -26,7 +26,7 @@ public struct TrackGroup {
         let format = NSLocalizedString(
             key,
             tableName: "Core",
-            bundle: .main,
+            bundle: .module,
             comment: ""
         )
         switch side {

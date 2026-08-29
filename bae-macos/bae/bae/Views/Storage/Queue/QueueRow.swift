@@ -1,9 +1,10 @@
 import Foundation
 import SwiftUI
 
-/// Row scaffolding shared by the download, export, and outbox-delete queue
-/// rows: leading icon, caller content, then the trailing state badge /
-/// queued-time / cancel cluster.
+/// Row scaffolding shared by the download and export queue
+/// rows: a title/detail block with enqueue time and cancel action, then the
+/// state on its own line. The vertical shape leaves the title readable in the
+/// transfer inspector instead of forcing every field into one horizontal row.
 ///
 /// The cancel button is optional — a row for work that cannot be abandoned (a
 /// cloud tombstone, whose object would otherwise be stranded) passes no
@@ -25,34 +26,38 @@ struct QueueRow<Content: View, Badge: View>: View {
     let badge: () -> Badge
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundStyle(.secondary)
-                .frame(width: 16)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: icon)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
 
-            content()
+                VStack(alignment: .leading, spacing: 3) {
+                    content()
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
+                Text(queuedRelativeLabel(createdAt))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize()
+
+                if let cancel {
+                    Button(action: cancel.action) {
+                        Image(systemName: "xmark.circle")
+                    }
+                    .buttonStyle(.plain)
+                    .help(cancel.help)
+                }
+            }
 
             badge()
                 .font(.caption)
-                .frame(width: 130, alignment: .leading)
-
-            Text(queuedRelativeLabel(createdAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(width: 90, alignment: .trailing)
-
-            if let cancel {
-                Button(action: cancel.action) {
-                    Image(systemName: "xmark.circle")
-                }
-                .buttonStyle(.plain)
-                .help(cancel.help)
-            }
+                .lineLimit(1)
+                .padding(.leading, 28)
         }
         .padding(.horizontal)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 }
 

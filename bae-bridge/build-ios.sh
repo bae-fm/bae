@@ -147,6 +147,7 @@ run_host_cargo run --bin uniffi-bindgen generate \
 
 echo "Generating localization String Catalog (Apple)..."
 run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir bae-ios/bae/bae
+run_host_cargo run -q -p bae-loc --bin loc-gen -- emit --target apple --out-dir BaeKit/Sources/BaeKit/Resources
 
 # Install the iOS-flavored bindings into the BaeBridge target (os(iOS)-gated).
 # The iOS app must compile against the bindings whose checksum symbols the iOS

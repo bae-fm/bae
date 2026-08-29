@@ -227,7 +227,7 @@ public enum StorageUploadObservation: Equatable {
             return NSLocalizedString(
                 bridgeTransferActionKey(action: .makeRemote),
                 tableName: "Core",
-                bundle: .main,
+                bundle: .module,
                 comment: ""
             )
         case .awaiting:

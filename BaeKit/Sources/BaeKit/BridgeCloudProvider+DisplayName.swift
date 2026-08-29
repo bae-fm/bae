@@ -51,5 +51,10 @@ public func localizedCloudProviderName(provider: BridgeCloudProvider?) -> String
         }
         return provider.displayName
     }
-    return NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
+    return NSLocalizedString(
+        key,
+        tableName: "Core",
+        bundle: .module,
+        comment: ""
+    )
 }

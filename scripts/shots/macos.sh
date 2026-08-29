@@ -61,7 +61,12 @@ for scene in \
     import-release-ambiguity-narrow \
     import-release-queue-collapsed \
     import-release-scanning-refresh \
-    import-release-resolved-reversal
+    import-release-resolved-reversal \
+    storage-manager-dense \
+    storage-manager-empty \
+    storage-manager-empty-ish \
+    storage-manager-empty-ish-inspector \
+    storage-manager-one-sync-inspector
 do
     png="$OUT_DIR/${scene}@macos.png"
     if [[ ! -s "$png" ]]; then

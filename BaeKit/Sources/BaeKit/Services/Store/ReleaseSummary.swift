@@ -154,7 +154,7 @@ public final class ReleaseSummary: Identifiable {
                 label: NSLocalizedString(
                     bridgeTransferActionKey(action: $0),
                     tableName: "Core",
-                    bundle: .main,
+                    bundle: .module,
                     comment: ""
                 )
             )

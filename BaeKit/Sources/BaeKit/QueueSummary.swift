@@ -9,7 +9,12 @@ public enum QueueSummary {
     /// "{done} of {total}" byte-progress line. Callers apply their own
     /// arguments.
     public static func message(_ key: String) -> String {
-        NSLocalizedString(key, tableName: "Core", bundle: .main, comment: "")
+        NSLocalizedString(
+            key,
+            tableName: "Core",
+            bundle: .module,
+            comment: ""
+        )
     }
 
     /// Localized "{count} <state>" — or the pluralized pending-delete line —

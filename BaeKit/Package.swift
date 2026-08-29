@@ -65,7 +65,8 @@ let package = Package(
             dependencies: [
                 "BaeBridge",
                 .product(name: "Sentry", package: "sentry-cocoa"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
     ]
 )

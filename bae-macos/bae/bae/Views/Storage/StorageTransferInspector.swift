@@ -68,7 +68,7 @@ struct StorageTransferInspectorContent {
 
 /// The trailing detail pane for one selected release's active transfers. The
 /// item list is limited to records whose authoritative release id matches the
-/// selection; queue-wide status and controls remain in the main pane.
+/// selection.
 struct StorageTransferInspector: View {
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -125,7 +125,7 @@ struct StorageTransferInspector: View {
                 }
             }
         }
-        .frame(minWidth: 420, idealWidth: 520, maxWidth: 620)
+        .frame(minWidth: 360, idealWidth: 440, maxWidth: 520)
     }
 
     private var header: some View {

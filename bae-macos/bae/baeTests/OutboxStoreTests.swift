@@ -122,45 +122,6 @@ struct StorageStatusBandCloudTransitionTests {
     }
 }
 
-@Suite("Cloud upload pause presentation")
-@MainActor
-struct CloudUploadPausePresentationTests {
-    @Test("a pause failure reaches the storage manager error alert")
-    func pauseFailureIsDisplayed() async {
-        let uiStore = UiStore()
-        let sync = Sync(
-            setSyncPaused: { _ in throw StubError.notImplemented }
-        )
-
-        await OutboxSection.setPaused(true, sync: sync, uiStore: uiStore)
-
-        #expect(uiStore.lastError != nil)
-    }
-
-    @Test("the queue reports the absolute paused state")
-    func stoppedQueueReportsPaused() {
-        #expect(
-            OutboxSection.pauseStatusText(.paused)
-                == String(localized: "Paused")
-        )
-        #expect(OutboxSection.pauseStatusText(.running) == nil)
-    }
-
-    @Test("pause state does not replace the durable queue counts")
-    func pausedQueueKeepsItsCounts() {
-        let status = QueueSectionHeaderStatus(
-            pauseStatusText: String(localized: "Paused"),
-            summaryText: QueueSummary.countLabel("core.queue.queued", 14)
-        )
-
-        #expect(status.pauseText == String(localized: "Paused"))
-        #expect(
-            status.summaryText
-                == QueueSummary.countLabel("core.queue.queued", 14)
-        )
-    }
-}
-
 @Suite("Cloud import queue presentation")
 struct CloudImportQueuePresentationTests {
     @Test("a restored import rejoins its release's durable upload")

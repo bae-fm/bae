@@ -10,29 +10,39 @@ struct OutboxFileRow: View {
     let file: BridgeUploadFileOp
 
     var body: some View {
-        HStack(spacing: 12) {
-            stateIcon
-                .frame(width: 16)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 12) {
+                stateIcon
+                    .frame(width: 16)
 
-            Text(displayName)
-                .font(.caption)
-                .lineLimit(1)
-                .foregroundStyle(.secondary)
+                Text(displayName)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .foregroundStyle(.secondary)
 
-            Spacer()
+                Spacer()
 
-            ProgressTrackBar(progress: file.bar?.fraction ?? 0)
-                .frame(width: 140)
-                .opacity(file.bar == nil ? 0 : 1)
+                if file.bar == nil {
+                    Text(bytesText)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .foregroundStyle(.tertiary)
+                }
+            }
 
-            Text(bytesText)
-                .font(.caption)
-                .monospacedDigit()
-                .lineLimit(1)
-                .foregroundStyle(.tertiary)
-                // Wide enough for the phase-named form ("Uploading 6.2 MB of
-                // 12.4 MB"), which is what a transferring file reads as.
-                .frame(width: 190, alignment: .leading)
+            if file.bar != nil {
+                HStack(spacing: 8) {
+                    ProgressTrackBar(progress: file.bar?.fraction ?? 0)
+                    Text(bytesText)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize()
+                }
+                .padding(.leading, 28)
+            }
         }
         .padding(.leading, 44)
         .padding(.trailing)

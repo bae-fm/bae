@@ -81,7 +81,8 @@ struct StorageTableView: NSViewRepresentable {
         outlineView.allowsColumnReordering = true
         outlineView.allowsColumnResizing = true
         outlineView.usesAlternatingRowBackgroundColors = true
-        outlineView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        outlineView.columnAutoresizingStyle =
+            .firstColumnOnlyAutoresizingStyle
         outlineView.indentationPerLevel = 16
         outlineView.rowHeight = 28
         outlineView.style = .inset
@@ -107,6 +108,7 @@ struct StorageTableView: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.documentView = outlineView
         scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
         coordinator.outlineView = outlineView

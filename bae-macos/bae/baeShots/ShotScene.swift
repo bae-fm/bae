@@ -91,5 +91,57 @@ struct ShotScene {
                 )
             )
         },
+        ShotScene(
+            id: "storage-manager-dense",
+            size: CGSize(width: 1_440, height: 900)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
+            )
+        },
+        ShotScene(
+            id: "storage-manager-empty",
+            size: CGSize(width: 940, height: 600)
+        ) {
+            AnyView(StorageManagerPreviewScene(rows: []))
+        },
+        ShotScene(
+            id: "storage-manager-empty-ish",
+            size: CGSize(width: 940, height: 600)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(
+                    rows: Array(PreviewData.storageRows.prefix(2))
+                )
+            )
+        },
+        ShotScene(
+            id: "storage-manager-empty-ish-inspector",
+            size: CGSize(width: 940, height: 600)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(
+                    rows: Array(PreviewData.storageRows.prefix(2)),
+                    selectedReleaseId: "rel-row-1"
+                )
+            )
+        },
+        ShotScene(
+            id: "storage-manager-one-sync-inspector",
+            size: CGSize(width: 940, height: 600)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(
+                    rows: Array(PreviewData.storageRows.prefix(2)),
+                    selectedReleaseId: "rel-row-2",
+                    downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+                    outputSnapshot: PreviewData.emptyOutputSnapshot,
+                    outboxSnapshot: PreviewData.outboxSnapshot(
+                        uploadGroups: [PreviewData.uploadGroupDone],
+                        deletes: []
+                    )
+                )
+            )
+        },
     ]
 }

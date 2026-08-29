@@ -1,7 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One expandable queue-pane row per release (matching the storage table):
+/// One expandable transfer-inspector row per release (matching the storage
+/// table):
 /// the release title, its file count and cumulative byte progress, a
 /// determinate progress bar, and an aggregate state badge. Expanded (the
 /// default), it lists every file with its own state and live progress.
@@ -17,39 +18,46 @@ struct OutboxReleaseRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Button {
-                    expanded.toggle()
-                } label: {
-                    Image(
-                        systemName: expanded ? "chevron.down" : "chevron.right"
-                    )
-                    .foregroundStyle(.secondary)
-                    .frame(width: 16)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 12) {
+                    Button {
+                        expanded.toggle()
+                    } label: {
+                        Image(
+                            systemName: expanded
+                                ? "chevron.down" : "chevron.right"
+                        )
+                        .foregroundStyle(.secondary)
+                        .frame(width: 16)
+                    }
+                    .buttonStyle(.plain)
+                    .help(expanded ? "Hide files" : "Show files")
+
+                    Text(group.displayTitle)
+                        .lineLimit(1)
                 }
-                .buttonStyle(.plain)
-                .help(expanded ? "Hide files" : "Show files")
 
-                Text(group.displayTitle)
-                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Text(releaseDetail)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
 
-                Text(releaseDetail)
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                    Spacer()
 
-                Spacer()
+                    UploadActivityLabel(progress: group.progress)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .padding(.leading, 28)
 
                 ProgressTrackBar(progress: group.progress.bar?.fraction ?? 0)
-                    .frame(width: 140)
                     .opacity(group.progress.bar == nil ? 0 : 1)
-
-                UploadActivityLabel(progress: group.progress)
-                    .font(.caption)
-                    .frame(width: 130, alignment: .leading)
+                    .padding(.leading, 28)
             }
             .padding(.horizontal)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
             .contentShape(Rectangle())
             .contextMenu {
                 if group.progress.canCancel {
