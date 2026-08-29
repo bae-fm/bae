@@ -210,7 +210,9 @@ struct ImportMappingPaneTests {
         let albumTitleField = try #require(
             SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSTextField }
-                .first { $0.placeholderString == String(localized: "Album title") }
+                .first {
+                    $0.placeholderString == String(localized: "Album title")
+                }
         )
         let albumTitleFrame = albumTitleField.convert(
             albumTitleField.bounds,
