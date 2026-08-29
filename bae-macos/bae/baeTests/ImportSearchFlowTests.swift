@@ -51,6 +51,41 @@ final class SettingsNavigationTests: XCTestCase {
 }
 
 @MainActor
+final class ManualSearchWorkspaceTests: XCTestCase {
+    func testIdleManualSearchHasNoResultsScroller() async {
+        let state = ImportSearchState(
+            identifyState: .idle,
+            error: nil,
+            searchGroups: [],
+            selectedReleaseId: nil,
+            loadingReleaseId: nil,
+            isSearching: false,
+            hasSearched: false,
+            isImporting: false,
+            libraryStatuses: [:],
+            discogsEnabled: true,
+            signals: nil,
+            signalsToolbar: BridgeSignalsToolbar(signals: [])
+        )
+        let size = NSSize(width: 900, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportSearchPane.preview(state: state, mode: .manual)
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        XCTAssertFalse(
+            SnapshotTestSupport.descendants(of: host)
+                .contains { $0 is NSScrollView }
+        )
+        withExtendedLifetime(window) {}
+    }
+}
+
+@MainActor
 @Suite("Find online method presentation")
 struct FindOnlineMethodPresentationTests {
     @Test("idle automatic method has no empty-result message")

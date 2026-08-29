@@ -229,31 +229,36 @@ struct ImportSearchPane: View {
             onSearch: onSearch,
             onOpenSettings: onOpenSettings,
         )
-        Divider()
-
-        if state.isSearching {
-            ProgressView("Searching...")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        else if state.hasSearched && state.searchGroups.isEmpty {
-            ContentUnavailableView(
-                "No matches found",
-                systemImage: "magnifyingglass",
-                description: Text(
-                    "Try different search terms or another source"
-                ),
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        else {
-            ReleaseGroupListView(
-                groups: state.searchGroups,
-                isImporting: state.isImporting,
-                libraryStatuses: state.libraryStatuses,
-                selectedReleaseId: state.selectedReleaseId,
-                loadingReleaseId: state.loadingReleaseId,
-                onSelect: onSelect,
-            )
+        if state.isSearching || state.hasSearched
+            || !state.searchGroups.isEmpty
+        {
+            Divider()
+            if state.isSearching {
+                ProgressView("Searching...")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+            }
+            else if state.searchGroups.isEmpty {
+                ContentUnavailableView(
+                    "No matches found",
+                    systemImage: "magnifyingglass",
+                    description: Text(
+                        "Try different search terms or another source"
+                    ),
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            }
+            else {
+                ReleaseGroupListView(
+                    groups: state.searchGroups,
+                    isImporting: state.isImporting,
+                    libraryStatuses: state.libraryStatuses,
+                    selectedReleaseId: state.selectedReleaseId,
+                    loadingReleaseId: state.loadingReleaseId,
+                    onSelect: onSelect,
+                )
+            }
         }
     }
 }

@@ -209,7 +209,7 @@ private struct ImportOnlineMetadataBrowser: View {
                         }
                     )
                 }
-                .frame(maxWidth: .infinity, minHeight: 300)
+                .frame(maxWidth: .infinity)
                 .formGroupCard()
             }
         }
