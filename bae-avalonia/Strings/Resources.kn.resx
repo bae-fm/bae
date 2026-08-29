@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>ಜೋಡಣೆ ಪ್ರಾರಂಭವಾಗುತ್ತಿದೆ…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>ಅನುಮೋದನೆಗಾಗಿ ಕಾಯಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ಬೆರಳಚ್ಚು: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳನ್ನು ಬಳಸಿ</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>ಹಸ್ತಚಾಲಿತವಾಗಿ ನಮೂದಿಸಿ</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ಆಲ್ಬಮ್ ಕಲಾವಿದ</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>ಲೈಬ್ರರಿ</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ತೆರವುಗೊಳಿಸಿ</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯ ಫೈಲ್‌ಗಳು ಮತ್ತು ಮ್ಯಾಪಿಂಗ್ ಆಯ್ಕೆಗಳು ಬದಲಾಗುವುದಿಲ್ಲ.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>ಮೆಟಾಡೇಟಾ ತೆರವುಗೊಳಿಸುವುದೇ?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>ಮತ್ತೊಂದು ಬಿಡುಗಡೆಯನ್ನು ಹುಡುಕಿ…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯನ್ನು ಮತ್ತೆ ಓದಲು ಪ್ರಯತ್ನಿಸಿ.</value></data>

@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>पेयरिंग शुरू हो रही है…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>मंज़ूरी की प्रतीक्षा…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>फिंगरप्रिंट: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>फ़ाइल टैग इस्तेमाल करें</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>मैन्युअल रूप से दर्ज करें</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>एल्बम कलाकार</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>लाइब्रेरी</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>मेटाडेटा साफ़ करें</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>उम्मीदवार की फ़ाइलें और मैपिंग विकल्प अपरिवर्तित रहेंगे।</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>मेटाडेटा साफ़ करें?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>कोई दूसरी रिलीज़ खोजें…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ऑनलाइन खोजें…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>उम्मीदवार को फिर से पढ़ने की कोशिश करें।</value></data>

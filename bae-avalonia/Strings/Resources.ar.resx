@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>بدء الاقتران…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>في انتظار الموافقة…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>البصمة: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>استخدام وسوم الملفات</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>إدخال يدويًا</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>فنان الألبوم</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>المكتبة</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>مسح البيانات الوصفية</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>ستبقى ملفات العنصر المرشّح وخيارات المطابقة دون تغيير.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>مسح البيانات الوصفية؟</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>البحث عن إصدار آخر…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>البحث عبر الإنترنت…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>حاول قراءة العنصر المرشّح مرة أخرى.</value></data>

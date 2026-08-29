@@ -114,14 +114,10 @@ internal sealed class ImportMetadataSourceSection
             Spacing = 6,
         };
         actions.Children.Add(ActionButton(
-            DraftIsBlank
-                ? Loc.Chrome("import.metadata.find_online_ellipsis")
-                : Loc.Chrome("import.metadata.find_another_release"),
+            Loc.Chrome("import.metadata.find_online_ellipsis"),
             () => OnPresent(ImportMetadataPresentation.FindOnline)));
         actions.Children.Add(ActionButton(
-            DraftIsBlank
-                ? Loc.Core("ui.import.metadata.file_tags") + "…"
-                : Loc.Chrome("import.metadata.use_file_tags") + "…",
+            Loc.Core("ui.import.metadata.file_tags") + "…",
             () => OnPresent(ImportMetadataPresentation.FileTags)));
         if (!DraftIsBlank)
         {

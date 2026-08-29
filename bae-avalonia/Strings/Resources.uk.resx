@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Запуск сполучення…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Очікування схвалення…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Відбиток: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Використати теги файлів</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Ввести вручну</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Виконавець альбому</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Медіатека</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Очистити метадані</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Файли кандидата й вибрані зіставлення залишаться без змін.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Очистити метадані?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Знайти інше видання…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Знайти онлайн…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Спробуйте прочитати кандидата ще раз.</value></data>

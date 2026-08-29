@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Démarrage de l’association…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>En attente d’approbation…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Empreinte : {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Utiliser les tags des fichiers</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Saisir manuellement</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Artiste de l'album</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Bibliothèque</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Effacer les métadonnées</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Les fichiers du candidat et les choix de correspondance resteront inchangés.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Effacer les métadonnées ?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Rechercher une autre édition…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Rechercher en ligne</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Rechercher en ligne…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Essayez de relire le candidat.</value></data>

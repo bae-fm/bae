@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Đang bắt đầu ghép đôi…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Đang chờ phê duyệt…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Dấu vân tay: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Dùng thẻ của tệp</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Nhập thủ công</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Nghệ sĩ album</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Thư viện</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Xóa siêu dữ liệu</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Các tệp và lựa chọn ánh xạ của mục sẽ không thay đổi.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Xóa siêu dữ liệu?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Tìm bản phát hành khác…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Tìm trên mạng</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Tìm trên mạng…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Hãy thử đọc lại mục này.</value></data>

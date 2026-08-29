@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Pokretanje uparivanja…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Čekanje odobrenja…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Otisak: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Upotrijebi oznake datoteka</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Unesi ručno</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Izvođač albuma</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Knjižnica</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Izbriši metapodatke</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Datoteke kandidata i odabiri mapiranja ostat će nepromijenjeni.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Izbrisati metapodatke?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Pronađi drugo izdanje…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Pronađi na internetu</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Pronađi na internetu…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Pokušajte ponovno pročitati kandidata.</value></data>

@@ -487,7 +487,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Starting pairing…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Waiting for approval…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Fingerprint: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Use File Tags</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Enter Manually</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Album artist</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Library</value></data>
@@ -499,7 +498,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Clear metadata</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>The candidate files and mapping choices will remain unchanged.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Clear metadata?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Find another release…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Find online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Find online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Try reading the candidate again.</value></data>

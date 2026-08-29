@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>జత చేయడం ప్రారంభమవుతోంది…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>ఆమోదం కోసం వేచి ఉంది…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ఫింగర్‌ప్రింట్: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ఫైల్ ట్యాగ్‌లను ఉపయోగించు</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>మాన్యువల్‌గా నమోదు చేయండి</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ఆల్బమ్ కళాకారుడు</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>లైబ్రరీ</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>మెటాడేటాను తొలగించు</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>అభ్యర్థి ఫైళ్లు మరియు మ్యాపింగ్ ఎంపికలు మారవు.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>మెటాడేటాను తొలగించాలా?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>మరొక విడుదలను కనుగొను…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>అభ్యర్థిని మళ్లీ చదవడానికి ప్రయత్నించండి.</value></data>

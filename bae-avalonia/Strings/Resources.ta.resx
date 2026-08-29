@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>இணைத்தல் தொடங்குகிறது…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>ஒப்புதலுக்காகக் காத்திருக்கிறது…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>கைரேகை: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>கோப்புக் குறிச்சொற்களைப் பயன்படுத்து</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>கைமுறையாக உள்ளிடு</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ஆல்பம் கலைஞர்</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>நூலகம்</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>மெட்டாடேட்டாவை அழி</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>தேர்வின் கோப்புகளும் மேப்பிங் விருப்பங்களும் மாறாமல் இருக்கும்.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>மெட்டாடேட்டாவை அழிக்கவா?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>வேறொரு வெளியீட்டைத் தேடு…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>இணையத்தில் தேடு</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>இணையத்தில் தேடு…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>தேர்வை மீண்டும் படிக்க முயலவும்.</value></data>

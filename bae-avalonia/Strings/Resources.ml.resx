@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>പെയറിംഗ് ആരംഭിക്കുന്നു…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>അനുമതിക്കായി കാത്തിരിക്കുന്നു…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>വിരലടയാളം: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ഫയൽ ടാഗുകൾ ഉപയോഗിക്കുക</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>മാനുവലായി നൽകുക</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ആൽബം ആർട്ടിസ്റ്റ്</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>ലൈബ്രറി</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>മെറ്റാഡാറ്റ മായ്ക്കുക</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>സ്ഥാനാർഥിയുടെ ഫയലുകളും മാപ്പിംഗ് തിരഞ്ഞെടുപ്പുകളും മാറ്റമില്ലാതെ തുടരും.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>മെറ്റാഡാറ്റ മായ്ക്കണോ?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>മറ്റൊരു റിലീസ് കണ്ടെത്തുക…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>സ്ഥാനാർഥിയെ വീണ്ടും വായിക്കാൻ ശ്രമിക്കുക.</value></data>

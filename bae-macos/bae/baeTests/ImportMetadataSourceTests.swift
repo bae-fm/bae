@@ -1,4 +1,6 @@
+import AppKit
 import BaeKit
+import SwiftUI
 import Testing
 
 @testable import bae
@@ -76,6 +78,50 @@ private final class MetadataSourceRecorder {
 struct ImportMetadataSourceTests {}
 
 extension ImportMetadataSourceTests {
+    @Test("an applied draft names both replacement sources directly")
+    func appliedDraftNamesReplacementSources() async {
+        let view = ImportReleaseHeader(
+            releaseSummary: ImportReleaseSummary(
+                candidate: PreviewData.mappingCandidate,
+                editValues: PreviewData.confirmEditValues
+            ),
+            draftIsBlank: false,
+            isReading: false,
+            coverContent: nil,
+            hasCoverOptions: false,
+            editValues: PreviewData.confirmEditValues,
+            editActions: ReleaseFieldWriter { _, _ in },
+            commit: nil,
+            sourceActions: ImportReleaseSourceActions(
+                findOnline: {},
+                useFileTags: {},
+                clearMetadata: {}
+            ),
+            localCoverSelections: [:],
+            onEditCover: {},
+            onSelectCover: { _ in }
+        )
+        .frame(width: 900, height: 360)
+        .importPreviewEnvironment()
+        .environment(Library.stub())
+
+        let size = NSSize(width: 900, height: 360)
+        let (window, host) = SnapshotTestSupport.hostInWindow(view, size: size)
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let labels = SnapshotTestSupport.descendants(of: host)
+            .compactMap { ($0 as? NSButton)?.title }
+
+        #expect(labels.contains(String(localized: "Find online…")))
+        #expect(
+            labels.contains(
+                coreString("ui.import.metadata.file_tags") + "…"
+            )
+        )
+        withExtendedLifetime(window) {}
+    }
+
     @Test("an unpopulated draft opens its configured source")
     func unpopulatedDraftOpensConfiguredSource() throws {
         for (source, expected) in [

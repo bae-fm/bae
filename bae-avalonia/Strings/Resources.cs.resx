@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Spouštění párování…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Čeká se na schválení…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Otisk: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Použít značky souborů</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Zadat ručně</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Interpret alba</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Knihovna</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Vymazat metadata</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Soubory kandidáta a volby mapování zůstanou beze změny.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Vymazat metadata?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Najít jiné vydání…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Najít online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Najít online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Zkuste kandidáta načíst znovu.</value></data>

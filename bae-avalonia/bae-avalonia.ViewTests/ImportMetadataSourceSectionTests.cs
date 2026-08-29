@@ -71,8 +71,8 @@ public sealed class ImportMetadataSourceSectionTests
             onPresent: presentations.Add,
             onClearMetadata: () => clears++);
 
-        Click(section, Loc.Chrome("import.metadata.find_another_release"));
-        Click(section, Loc.Chrome("import.metadata.use_file_tags") + "…");
+        Click(section, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Click(section, Loc.Core("ui.import.metadata.file_tags") + "…");
         Click(section, Loc.Chrome("import.metadata.clear"));
 
         Assert.Equal(

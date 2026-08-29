@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Стартиране на сдвояването…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Изчакване на одобрение…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Отпечатък: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Използване на етикетите на файловете</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Въвеждане ръчно</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Изпълнител на албума</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Библиотека</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Изчистване на метаданните</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>Файловете на кандидата и изборите за съпоставяне ще останат непроменени.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Изчистване на метаданните?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Търсене на друго издание…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Търсене онлайн</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Търсене онлайн…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Опитайте да прочетете кандидата отново.</value></data>

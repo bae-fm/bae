@@ -194,16 +194,10 @@ struct ImportReleaseHeader: View {
                 .controlSize(.small)
                 .opacity(isReading ? 1 : 0)
             if draftIsBlank {
-                Button("Find online…") {
-                    sourceActions.findOnline()
-                }
-                .buttonStyle(.borderedProminent)
+                findOnlineButton.buttonStyle(.borderedProminent)
             }
             else {
-                Button("Find another release…") {
-                    sourceActions.findOnline()
-                }
-                .buttonStyle(.bordered)
+                findOnlineButton.buttonStyle(.bordered)
             }
             Button {
                 sourceActions.useFileTags()
@@ -222,6 +216,12 @@ struct ImportReleaseHeader: View {
             }
         }
         .disabled(isReading)
+    }
+
+    private var findOnlineButton: some View {
+        Button("Find online…") {
+            sourceActions.findOnline()
+        }
     }
 
     private var cover: some View {

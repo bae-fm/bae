@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>กำลังเริ่มจับคู่…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>กำลังรอการอนุมัติ…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>ลายนิ้วมือ: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>ใช้แท็กของไฟล์</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>ป้อนด้วยตนเอง</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>ศิลปินอัลบั้ม</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>คลัง</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>ล้างข้อมูลเมตา</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>ไฟล์ของรายการและตัวเลือกการจับคู่จะยังคงเดิม</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>ล้างข้อมูลเมตาหรือไม่</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>ค้นหารุ่นอื่น…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>ค้นหาออนไลน์</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ค้นหาออนไลน์…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ลองอ่านรายการอีกครั้ง</value></data>

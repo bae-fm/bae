@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>正在開始配對…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>正在等待核准…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>指紋：{fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>使用檔案標籤</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>手動輸入</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>專輯演出者</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>資料庫</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>清除中繼資料</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>候選項目的檔案和對應選擇將維持不變。</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>清除中繼資料？</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>尋找其他發行版本…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>在線上尋找</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在線上尋找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>請嘗試重新讀取候選項目。</value></data>

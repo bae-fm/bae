@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>Koppelen wordt gestart…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>Wachten op goedkeuring…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>Vingerafdruk: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>Bestandstags gebruiken</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>Handmatig invoeren</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>Albumartiest</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>Bibliotheek</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>Metagegevens wissen</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>De bestanden en toewijzingen van de kandidaat blijven ongewijzigd.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>Metagegevens wissen?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>Andere uitgave zoeken…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>Online zoeken</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Online zoeken…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Probeer de kandidaat opnieuw te lezen.</value></data>

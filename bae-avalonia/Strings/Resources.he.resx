@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>מתחיל צימוד…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>בהמתנה לאישור…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>טביעת אצבע: {fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>שימוש בתגיות הקבצים</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>הזנה ידנית</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>אמן האלבום</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>ספרייה</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>ניקוי המטא־נתונים</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>קובצי המועמד ובחירות המיפוי יישארו ללא שינוי.</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>לנקות את המטא־נתונים?</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>חיפוש מהדורה אחרת…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>חיפוש באינטרנט…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>נסו לקרוא שוב את המועמד.</value></data>

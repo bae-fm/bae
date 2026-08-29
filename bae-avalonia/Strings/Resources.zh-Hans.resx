@@ -460,7 +460,6 @@
   <data name="join.starting_pairing" xml:space="preserve"><value>正在开始配对…</value></data>
   <data name="join.waiting_approval" xml:space="preserve"><value>正在等待批准…</value></data>
   <data name="join.fingerprint" xml:space="preserve"><value>指纹：{fingerprint}</value></data>
-  <data name="import.metadata.use_file_tags" xml:space="preserve"><value>使用文件标签</value></data>
   <data name="import.metadata.enter_manually" xml:space="preserve"><value>手动输入</value></data>
   <data name="artist.assignments.album_artist" xml:space="preserve"><value>专辑艺术家</value></data>
   <data name="artist.assignments.library" xml:space="preserve"><value>资料库</value></data>
@@ -472,7 +471,6 @@
   <data name="import.metadata.clear" xml:space="preserve"><value>清除元数据</value></data>
   <data name="import.metadata.clear_body" xml:space="preserve"><value>候选项的文件和映射选择将保持不变。</value></data>
   <data name="import.metadata.clear_title" xml:space="preserve"><value>清除元数据？</value></data>
-  <data name="import.metadata.find_another_release" xml:space="preserve"><value>查找其他发行版…</value></data>
   <data name="import.metadata.find_online" xml:space="preserve"><value>在线查找</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在线查找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>请尝试重新读取候选项。</value></data>
