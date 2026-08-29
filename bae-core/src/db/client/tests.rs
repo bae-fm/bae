@@ -115,4 +115,7 @@ mod queue_cover_tests;
 mod live_query_tests;
 
 #[cfg(test)]
+mod folder_scan_live_query_tests;
+
+#[cfg(test)]
 mod file_tag_snapshot_tests;

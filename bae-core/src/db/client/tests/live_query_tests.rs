@@ -22,7 +22,7 @@ const COMPOSER_LINK_ID: &str = "8621fd15-044a-44dd-ae70-dd6de30e35da";
 const OTHER_COMPOSER_LINK_ID: &str = "49a10300-3036-4301-9e1b-a50a76a46032";
 const INSERTED_COMPOSER_LINK_ID: &str = "9168d755-3ed6-446c-a0ec-5f4039e18a6f";
 
-async fn live_db() -> (Database, tempfile::TempDir) {
+pub(super) async fn live_db() -> (Database, tempfile::TempDir) {
     let temp = tempfile::TempDir::new().unwrap();
     let db = Database::new_test(
         temp.path().join("library.db").to_str().unwrap(),
@@ -670,7 +670,7 @@ async fn release_library_status_subscription_delivers_identity_changes() {
 
 /// The import list's request carries the view and the windows, so every test
 /// below states both.
-fn list_request(
+pub(super) fn list_request(
     tab: crate::import::TriageTab,
     windows: impl IntoIterator<Item = (u64, u64)>,
 ) -> crate::import::ImportListRequest {
@@ -689,7 +689,7 @@ fn list_request(
     }
 }
 
-fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
+pub(super) fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::ScanItem {
     use crate::import::folder_scanner::{
         CandidateFile, CategorizedFiles, FileRole, ReleaseFileScope, ScanItem, ScannedFile,
     };
@@ -718,7 +718,7 @@ fn scan_candidate(root: &str, name: &str) -> crate::import::folder_scanner::Scan
     })
 }
 
-fn candidate_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
+pub(super) fn candidate_names(projection: &crate::import::ImportListProjection) -> Vec<String> {
     projection
         .windows
         .iter()
@@ -771,99 +771,6 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
         .unwrap();
     assert_eq!(imported.total_count, 0, "Pending no longer holds the row");
     assert_eq!(imported.summary.counts.done, 1);
-}
-
-/// The list is a live query over the scan tables, so a scan item written while
-/// someone is watching wakes it. A candidate's rows span several tables now; a
-/// dependency missed on any of them would leave the list showing the previous
-/// scan until something unrelated changed.
-#[tokio::test]
-async fn import_list_wakes_on_a_scan_item() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
-    db.add_watched_import_folder(root).await.unwrap();
-    let generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
-        .await
-        .unwrap();
-
-    let mut live =
-        db.subscribe_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]));
-    let initial = live.next().await.into_result().unwrap();
-    assert_eq!(candidate_names(&initial), vec!["first".to_string()]);
-    let initial_scan = initial
-        .summary
-        .folder_scan_activity
-        .as_ref()
-        .expect("the open generation projects scan activity");
-    assert_eq!(initial_scan.found_count, 1);
-    assert_eq!(initial_scan.folders[0].found_count, 1);
-
-    db.save_folder_scan_item(root, generation, &scan_candidate(root, "second"))
-        .await
-        .unwrap();
-    let grown = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("a scan item wakes the list")
-        .into_result()
-        .unwrap();
-    assert_eq!(
-        candidate_names(&grown),
-        vec!["first".to_string(), "second".to_string()]
-    );
-    assert_eq!(grown.total_count, 2);
-    let grown_scan = grown
-        .summary
-        .folder_scan_activity
-        .expect("the scan activity updates with the current generation");
-    assert_eq!(grown_scan.found_count, 2);
-    assert_eq!(grown_scan.folders[0].found_count, 2);
-
-    db.finish_folder_scan(root, generation, None).await.unwrap();
-    let complete = tokio::time::timeout(Duration::from_secs(2), live.next())
-        .await
-        .expect("finishing the scan wakes the list")
-        .into_result()
-        .unwrap();
-    assert_eq!(complete.summary.folder_scan_activity, None);
-}
-
-/// A rescan retains the previous generation until the new walk succeeds, but
-/// progress counts only the entries encountered by the generation in flight.
-#[tokio::test]
-async fn import_list_scan_activity_excludes_retained_previous_generation_rows() {
-    let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
-    db.add_watched_import_folder(root).await.unwrap();
-    let old_generation = db.begin_folder_scan(root).await.unwrap();
-    for name in ["retained", "encountered"] {
-        db.save_folder_scan_item(root, old_generation, &scan_candidate(root, name))
-            .await
-            .unwrap();
-    }
-    db.finish_folder_scan(root, old_generation, None)
-        .await
-        .unwrap();
-
-    let current_generation = db.begin_folder_scan(root).await.unwrap();
-    db.save_folder_scan_item(
-        root,
-        current_generation,
-        &scan_candidate(root, "encountered"),
-    )
-    .await
-    .unwrap();
-
-    let projection = db
-        .load_import_list(list_request(crate::import::TriageTab::Pending, [(0, 50)]))
-        .await
-        .unwrap();
-    let activity = projection
-        .summary
-        .folder_scan_activity
-        .expect("the rescan projects activity");
-    assert_eq!(activity.found_count, 1);
-    assert_eq!(activity.folders[0].found_count, 1);
 }
 
 /// Moving the window is a request change, not a commit: the query reruns and
