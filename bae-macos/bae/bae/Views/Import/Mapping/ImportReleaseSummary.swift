@@ -63,6 +63,18 @@ struct ImportReleaseSummary {
     }
 
     init?(row: BridgeTriageRow) {
+        if let summary = row.metadataSummary {
+            titleIsPlaceholder = summary.albumTitle.isEmpty
+            title =
+                summary.albumTitle.isEmpty ? "Album title" : summary.albumTitle
+            let artistNames = summary.albumArtistAssignments.map(\.displayName)
+            artist =
+                artistNames.isEmpty
+                ? nil : ListFormatter.localizedString(byJoining: artistNames)
+            factsLine = ""
+            provenance = nil
+            return
+        }
         guard let matched = row.matched else { return nil }
         title = matched.title
         titleIsPlaceholder = false
@@ -128,6 +140,8 @@ struct ImportReleaseSummaryView: View {
                 }
             }
             .padding(.top, style.factsTopPadding)
+            .frame(height: style.factsHeight)
+            .opacity(style.showsFacts ? 1 : 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -208,6 +222,20 @@ extension ImportReleaseSummaryView.Style {
         switch self {
         case .sidebar: 1
         case .card: 4
+        }
+    }
+
+    fileprivate var showsFacts: Bool {
+        switch self {
+        case .sidebar: false
+        case .card: true
+        }
+    }
+
+    fileprivate var factsHeight: CGFloat? {
+        switch self {
+        case .sidebar: 0
+        case .card: nil
         }
     }
 

@@ -336,6 +336,7 @@ fn place_row(
         skip_action: placement.skip_action(),
         selectable: matches!(placement, TriagePlacement::Ready),
         matched: verdict.and_then(MatchedRelease::of_summary),
+        metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         placement,
         import_status,
         metadata_provenance,

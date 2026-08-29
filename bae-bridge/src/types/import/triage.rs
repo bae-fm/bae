@@ -407,6 +407,14 @@ pub struct BridgeMatchedRelease {
     pub evidence: BridgeMatchEvidence,
 }
 
+/// The candidate's applied editable metadata, projected for its sidebar row.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeTriageMetadataSummary {
+    pub album_title: String,
+    pub album_artist_assignments: Vec<BridgeArtistAssignment>,
+    pub cover_thumbnail: Option<BridgeCoverImageSource>,
+}
+
 /// The metadata source selected for a candidate. Mirror of
 /// `bae_core::import::MetadataProvenance`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -462,6 +470,7 @@ pub struct BridgeTriageRow {
     pub placement: BridgeTriagePlacement,
     pub skip_action: Option<BridgeTriageSkipAction>,
     pub matched: Option<BridgeMatchedRelease>,
+    pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// Whether this row takes a bulk-import checkbox.
     pub selectable: bool,
     /// Where the candidate's import stands, without its progress: the row

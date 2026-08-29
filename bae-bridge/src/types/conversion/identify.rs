@@ -169,21 +169,21 @@ impl BridgeCoverChoice {
                     }
                 }
             },
-            preview_source: cover_image_source(preview),
-            thumbnail_source: cover_image_source(thumbnail),
+            preview_source: BridgeCoverImageSource::from_core(preview),
+            thumbnail_source: BridgeCoverImageSource::from_core(thumbnail),
         }
     }
 }
 
 #[cfg(feature = "desktop")]
-fn cover_image_source(source: bae_core::import::CoverImageSource) -> BridgeCoverImageSource {
-    match source {
-        bae_core::import::CoverImageSource::Remote { url } => {
-            BridgeCoverImageSource::Remote { url }
+impl BridgeCoverImageSource {
+    pub(crate) fn from_core(source: bae_core::import::CoverImageSource) -> Self {
+        match source {
+            bae_core::import::CoverImageSource::Remote { url } => Self::Remote { url },
+            bae_core::import::CoverImageSource::Local { path } => Self::Local {
+                path: path.to_string_lossy().into_owned(),
+            },
         }
-        bae_core::import::CoverImageSource::Local { path } => BridgeCoverImageSource::Local {
-            path: path.to_string_lossy().into_owned(),
-        },
     }
 }
 

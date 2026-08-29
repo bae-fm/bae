@@ -451,72 +451,71 @@ async fn a_verdict_from_another_revision_does_not_resume() {
     assert!(detail.matched.is_none());
 }
 
-/// The list reads placement columns and nothing else. Everything stored for
-/// the pane — what the audio plays for, the extracted signals, the metadata
-/// and rows the user typed, the cover — is read only when a candidate is
-/// opened, so the queue cannot pay for it.
-///
-/// `import_candidate_failure` is the one exception, and it is deliberate: an
-/// error is where the row goes, not something the pane decorates it with. It
-/// has its own test below.
+/// The sidebar owns the compact applied-draft projection. Closing the detail
+/// subscription therefore cannot erase the title or selected cover from the
+/// row.
 #[tokio::test]
-async fn the_list_reads_none_of_what_the_pane_stores() {
+async fn the_list_projects_the_applied_draft_and_cover() {
     let (db, tmp) = empty_db().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir_all(&root).unwrap();
     let root = root.to_str().unwrap();
-    let candidate = scanned(&db, root, "Album").await;
-    save_verdict(&db, &candidate, "mb-verdict").await;
-    let hash = candidate.files.content_hash();
-
-    db.save_import_candidate_durations(
-        &hash,
-        &crate::import::probe::ProbedDurations::totalling(180_000),
+    db.add_watched_import_folder(root).await.unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    let mut candidate = candidate(root, "Album");
+    candidate.files.files.push(CandidateFile {
+        proposed_audio: false,
+        file: ScannedFile::new(
+            PathBuf::from(format!("{root}/Album/cover.jpg")),
+            "cover.jpg".to_string(),
+            500,
+        ),
+        role: FileRole::Artwork,
+    });
+    db.save_folder_scan_item_with_initial_source(
+        root,
+        generation,
+        &ScanItem::Valid(candidate.clone()),
+        crate::config::DefaultImportMetadataSource::FindOnline,
     )
     .await
     .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+    save_verdict(&db, &candidate, "mb-verdict").await;
+    let hash = candidate.files.content_hash();
+
     db.save_import_candidate_cover(
         &hash,
         &crate::import::CoverSelection::Local("cover.jpg".to_string()),
     )
     .await
     .unwrap();
-    db.save_import_candidate_edit_field(&hash, crate::import::CandidateEditField::Year, "1991")
-        .await
-        .unwrap();
-    db.save_import_candidate_track_edit(
+    db.save_import_candidate_edit_field(
         &hash,
-        &crate::import::CandidateTrackEdit::dropped("import-track-0"),
+        crate::import::CandidateEditField::AlbumTitle,
+        "Edited Album",
     )
     .await
     .unwrap();
-
-    let before = db
-        .load_import_list(request(TriageTab::Pending).await)
-        .await
-        .unwrap();
-    db.call(|sql| {
-        for table in [
-            "import_candidate_file_duration",
-            "import_candidate_signal_value",
-            "import_candidate_signals",
-            "import_candidate_cover",
-            "import_candidate_edit",
-            "import_candidate_track_edit",
-        ] {
-            sql.execute(&format!("DELETE FROM {table}"), [])?;
-        }
-        Ok(())
-    })
-    .await
-    .unwrap();
-    let after = db
-        .load_import_list(request(TriageTab::Pending).await)
+    db.save_import_candidate_edit_field(&hash, crate::import::CandidateEditField::Year, "1991")
         .await
         .unwrap();
 
-    assert_eq!(rows(&before), rows(&after));
-    assert_eq!(before.summary, after.summary);
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    let row = rows(&projection).remove(0);
+    let summary = row
+        .metadata_summary
+        .expect("the row carries its applied draft");
+    assert_eq!(summary.album_title, "Edited Album");
+    assert_eq!(
+        summary.cover_thumbnail,
+        Some(crate::import::CoverImageSource::Local {
+            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+        })
+    );
 }
 
 /// The failure the last attempt stored is a placement fact, so the list reads

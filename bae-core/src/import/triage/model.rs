@@ -282,6 +282,35 @@ pub struct MatchedRelease {
     pub evidence: MatchEvidence,
 }
 
+/// The candidate's stored editable metadata as one compact sidebar value.
+///
+/// This is independent of the verdict's lead: applying File Tags or editing a
+/// chosen release changes the draft without changing what identification once
+/// matched. The list owns this projection so every row keeps showing the
+/// applied values when its detail subscription closes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TriageMetadataSummary {
+    pub album_title: String,
+    pub album_artist_assignments: Vec<crate::import::ArtistAssignment>,
+    pub cover_thumbnail: Option<crate::import::CoverImageSource>,
+}
+
+impl TriageMetadataSummary {
+    pub(crate) fn of(
+        draft: &crate::import::RawReleaseEdit,
+        provenance: Option<crate::import::MetadataProvenance>,
+    ) -> Option<Self> {
+        if draft.is_blank() && provenance.is_none() {
+            return None;
+        }
+        Some(Self {
+            album_title: draft.album_title.clone(),
+            album_artist_assignments: draft.album_artist_assignments.clone(),
+            cover_thumbnail: None,
+        })
+    }
+}
+
 impl MatchedRelease {
     /// The release a stored verdict leads with, read off the columns of its
     /// lead match row, or `None` when it named none.
@@ -373,6 +402,9 @@ pub struct TriageRow {
     pub skip_action: Option<TriageSkipAction>,
     /// The release the row leads with. `None` and the folder name is the title.
     pub matched: Option<MatchedRelease>,
+    /// The applied editable draft, independent of selection and of the
+    /// identification result the row originally matched.
+    pub metadata_summary: Option<TriageMetadataSummary>,
     /// Whether this row takes a bulk-import checkbox — exactly the Ready rows,
     /// which is the whole point of the Ready rule. Carried rather than left to
     /// each UI so the rule is stated once.

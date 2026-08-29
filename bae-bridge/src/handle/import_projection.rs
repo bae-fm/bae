@@ -220,6 +220,7 @@ impl crate::types::BridgeTriageRow {
             placement,
             skip_action,
             matched,
+            metadata_summary,
             selectable,
             import_status,
             metadata_provenance,
@@ -239,6 +240,19 @@ impl crate::types::BridgeTriageRow {
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
+            metadata_summary: metadata_summary.map(|summary| {
+                crate::types::BridgeTriageMetadataSummary {
+                    album_title: summary.album_title,
+                    album_artist_assignments: summary
+                        .album_artist_assignments
+                        .into_iter()
+                        .map(crate::types::BridgeArtistAssignment::from_core)
+                        .collect(),
+                    cover_thumbnail: summary
+                        .cover_thumbnail
+                        .map(crate::types::BridgeCoverImageSource::from_core),
+                }
+            }),
             selectable,
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance

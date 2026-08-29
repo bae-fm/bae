@@ -160,10 +160,10 @@ class ImportStore {
         items = items.filter { loaded.contains($0.key) }
     }
 
-    /// The candidate's selected/default cover, or the queue's match thumbnail
-    /// before identification has supplied one.
+    /// The candidate's stored draft cover, or its match thumbnail when the
+    /// draft has no explicit cover.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
-        candidate(forKey: row.candidateKey)?.cover?.thumbnailContent
+        row.metadataSummary?.coverThumbnail.map(ImageContent.init(bridge:))
             ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
     }
 

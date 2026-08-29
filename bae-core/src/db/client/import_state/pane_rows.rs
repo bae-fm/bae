@@ -333,7 +333,7 @@ pub(crate) fn load_pane_rows_on(
 }
 
 /// Every candidate's cover choice, or the one `only` names.
-fn load_covers_on(
+pub(crate) fn load_covers_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
 ) -> Result<HashMap<String, CoverSelection>, DbError> {

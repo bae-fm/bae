@@ -83,6 +83,37 @@ public sealed class ImportSectionViewTests
         Assert.Equal(CandidateKey, SelectedKey(view));
     }
 
+    [AvaloniaFact]
+    public void AppliedDraftRowUsesItsPersistedTwoLineSummary()
+    {
+        var placement = new BridgeTriagePlacement.Ready();
+        var summary = new BridgeTriageMetadataSummary(
+            AlbumTitle: "Applied Draft",
+            AlbumArtistAssignments:
+            [
+                new BridgeArtistAssignment.New(
+                    new BridgeNewArtistSeed("Draft Artist", null, null, null)),
+            ],
+            CoverThumbnail: null);
+        var view = BuildView(
+            MatchedItems(
+                placement,
+                BridgeTriageSkipAction.Skip,
+                metadataSummary: summary),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+
+        var text = CandidateRow(view)
+            .GetLogicalDescendants()
+            .OfType<TextBlock>()
+            .Select(block => block.Text)
+            .Where(value => !string.IsNullOrEmpty(value))
+            .ToList();
+        Assert.Contains("Applied Draft", text);
+        Assert.Contains("Draft Artist", text);
+        Assert.DoesNotContain("Album Title", text);
+        Assert.Equal(2, text.Count(value => value is "Applied Draft" or "Draft Artist"));
+    }
+
     // A failed attempt is Pending work, and the row says what went wrong. It
     // offers no buttons of its own: retrying is the ordinary import, from the
     // pane the row opens like any other.
@@ -360,7 +391,8 @@ public sealed class ImportSectionViewTests
         BridgeTriagePlacement placement,
         BridgeTriageSkipAction? skipAction,
         BridgeTriageImportStatus? importStatus = null,
-        bool isGroupMember = false) => new()
+        bool isGroupMember = false,
+        BridgeTriageMetadataSummary? metadataSummary = null) => new()
     {
         new BridgeImportListItem.Candidate(
             PreviewData.CandidateStableKey(CandidateKey),
@@ -383,6 +415,7 @@ public sealed class ImportSectionViewTests
                     Evidence: new BridgeMatchEvidence(
                         BridgeMetadataSource.MusicBrainz,
                         BridgeMatchedSignal.DiscId)),
+                MetadataSummary: metadataSummary,
                 Selectable: placement is BridgeTriagePlacement.Ready,
                 ImportStatus: importStatus,
                 MetadataProvenance: placement

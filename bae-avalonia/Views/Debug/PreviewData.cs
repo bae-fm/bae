@@ -138,6 +138,10 @@ internal static class PreviewData
                 Placement: new BridgeTriagePlacement.Ready(),
                 SkipAction: BridgeTriageSkipAction.Skip,
                 Matched: null,
+                MetadataSummary: new BridgeTriageMetadataSummary(
+                    AlbumTitle: "Applied Draft",
+                    AlbumArtistAssignments: ArtistAssignments,
+                    CoverThumbnail: null),
                 Selectable: true,
                 ImportStatus: null,
                 MetadataProvenance: null),
@@ -193,6 +197,7 @@ internal static class PreviewData
             Placement: new BridgeTriagePlacement.Ready(),
             SkipAction: BridgeTriageSkipAction.Skip,
             Matched: null,
+            MetadataSummary: null,
             Selectable: true,
             ImportStatus: null,
             MetadataProvenance: null);

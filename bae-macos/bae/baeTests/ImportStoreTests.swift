@@ -109,7 +109,8 @@ private func matchedRelease(
 private func readyRow(
     _ key: String,
     title: String,
-    coverThumbnailUrl: String? = nil
+    coverThumbnailUrl: String? = nil,
+    metadataSummary: BridgeTriageMetadataSummary? = nil
 ) -> BridgeTriageRow {
     BridgeTriageRow(
         candidateKey: key,
@@ -126,6 +127,7 @@ private func readyRow(
             title: title,
             coverThumbnailUrl: coverThumbnailUrl
         ),
+        metadataSummary: metadataSummary,
         selectable: true,
         importStatus: nil,
         metadataProvenance: .externalRelease(
@@ -153,6 +155,7 @@ private func needsYouRow(
         placement: .needsYou(group: group, reason: reason),
         skipAction: .skip,
         matched: nil,
+        metadataSummary: nil,
         selectable: false,
         importStatus: nil,
         metadataProvenance: nil
@@ -171,6 +174,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         placement: .done,
         skipAction: nil,
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
+        metadataSummary: nil,
         selectable: false,
         importStatus: .complete(releaseId: "rel-\(key)", albumId: "al-\(key)"),
         metadataProvenance: nil
@@ -189,6 +193,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         placement: .skipped,
         skipAction: .unskip,
         matched: nil,
+        metadataSummary: nil,
         selectable: false,
         importStatus: nil,
         metadataProvenance: nil
@@ -358,16 +363,10 @@ struct ShownIdentifyStateTests {
 @Suite("ImportStore sidebar covers")
 struct ImportStoreSidebarCoverTests {
     @MainActor
-    @Test("the sidebar uses every cover core answers with")
-    func selectedCoversWinOverQueueThumbnail() throws {
+    @Test("applied row covers remain after deselection")
+    func appliedCoversSurviveDeselection() throws {
         let store = ImportStore()
         let key = "/w/subject"
-        let row = readyRow(
-            key,
-            title: "Subject",
-            coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
-        )
-
         let remoteCover = try #require(PreviewData.remoteCovers.last)
         let localArtwork = try #require(
             PreviewData.bridgeCandidateFiles.images.last
@@ -377,6 +376,16 @@ struct ImportStoreSidebarCoverTests {
             try #require(localArtwork.coverChoice),
         ]
         for choice in choices {
+            let row = readyRow(
+                key,
+                title: "Subject",
+                coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg",
+                metadataSummary: BridgeTriageMetadataSummary(
+                    albumTitle: "Applied Draft",
+                    albumArtistAssignments: [],
+                    coverThumbnail: choice.thumbnailSource
+                )
+            )
             store.applyCandidateDetail(
                 key: key,
                 detail: detail(
@@ -387,42 +396,13 @@ struct ImportStoreSidebarCoverTests {
                     cover: choice
                 )
             )
+            store.selectedCandidates.removeValue(forKey: key)
 
             #expect(
                 store.sidebarCover(for: row)
                     == ImageContent(bridge: choice.thumbnailSource)
             )
         }
-    }
-
-    @MainActor
-    @Test("the sidebar uses the picked release's default cover")
-    func defaultCoverWinsOverQueueThumbnail() throws {
-        let store = ImportStore()
-        let key = "/w/subject"
-        let releaseDetail = PreviewData.releaseDetailBridge
-        let defaultCover = try #require(releaseDetail.defaultCover)
-        let row = readyRow(
-            key,
-            title: "Subject",
-            coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
-        )
-        store.applyCandidateDetail(
-            key: key,
-            detail: detail(
-                folderPath: key,
-                watchedFolderPath: "/w",
-                name: "Subject",
-                row: row,
-                cover: defaultCover,
-                release: releaseDetail
-            )
-        )
-
-        #expect(
-            store.sidebarCover(for: row)
-                == ImageContent(bridge: defaultCover.thumbnailSource)
-        )
     }
 
     @Test(

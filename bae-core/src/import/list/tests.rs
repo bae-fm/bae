@@ -115,6 +115,8 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
             release_id: release_id.to_string(),
         }),
         metadata_draft_valid: true,
+        metadata_summary: None,
+        selected_cover: None,
     }
 }
 
@@ -131,6 +133,8 @@ fn several_matches_state() -> CandidateStateListRow {
         probed_total_duration_ms: 2_400_000,
         metadata_provenance: None,
         metadata_draft_valid: false,
+        metadata_summary: None,
+        selected_cover: None,
     }
 }
 
@@ -147,6 +151,8 @@ fn not_found_state() -> CandidateStateListRow {
         probed_total_duration_ms: 2_400_000,
         metadata_provenance: None,
         metadata_draft_valid: false,
+        metadata_summary: None,
+        selected_cover: None,
     }
 }
 

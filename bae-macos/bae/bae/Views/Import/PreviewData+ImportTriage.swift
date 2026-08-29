@@ -43,6 +43,7 @@
             placement: BridgeTriagePlacement,
             skipAction: BridgeTriageSkipAction?,
             matched: BridgeMatchedRelease?,
+            metadataSummary: BridgeTriageMetadataSummary? = nil,
             selectable: Bool,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil
@@ -58,6 +59,7 @@
                 placement: placement,
                 skipAction: skipAction,
                 matched: matched,
+                metadataSummary: metadataSummary,
                 selectable: selectable,
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance
@@ -216,6 +218,7 @@
                 format: releaseDetailBridge.format,
                 trackCount: releaseDetailBridge.trackCount
             ),
+            metadataSummary: nil,
             selectable: true,
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
@@ -246,6 +249,7 @@
                     signal: nil
                 )
             ),
+            metadataSummary: nil,
             selectable: false,
             importStatus: nil
         )
@@ -260,6 +264,7 @@
             ),
             skipAction: .skip,
             matched: nil,
+            metadataSummary: nil,
             selectable: false
         )
 
@@ -278,6 +283,7 @@
                 year: 1994,
                 trackCount: 10
             ),
+            metadataSummary: nil,
             selectable: false
         )
 
@@ -295,6 +301,7 @@
                 trackCount: 14,
                 signal: .barcode
             ),
+            metadataSummary: nil,
             selectable: false
         )
 
@@ -306,6 +313,7 @@
             ),
             skipAction: .skip,
             matched: nil,
+            metadataSummary: nil,
             selectable: false
         )
 
@@ -317,6 +325,7 @@
             ),
             skipAction: .skip,
             matched: nil,
+            metadataSummary: nil,
             selectable: false
         )
 
@@ -340,6 +349,7 @@
                 title: importTabImportingCandidate.displayName,
                 trackCount: 15
             ),
+            metadataSummary: nil,
             selectable: false,
             importStatus: .importing
         )
@@ -349,6 +359,7 @@
             placement: .skipped,
             skipAction: .unskip,
             matched: nil,
+            metadataSummary: nil,
             selectable: false
         )
 
@@ -361,6 +372,7 @@
                 title: importTabDoneCandidate.displayName,
                 trackCount: 5
             ),
+            metadataSummary: nil,
             selectable: false,
             importStatus: .complete(
                 releaseId: "preview-release",
@@ -379,6 +391,7 @@
                 source: .discogs,
                 signal: .barcode
             ),
+            metadataSummary: nil,
             selectable: false,
             importStatus: .error(
                 error: .Diagnostic(
@@ -402,6 +415,7 @@
                     format: releaseDetailBridge.format,
                     trackCount: releaseDetailBridge.trackCount
                 ),
+                metadataSummary: nil,
                 selectable: true,
                 metadataProvenance: .externalRelease(
                     source: releaseDetailBridge.source,
@@ -416,6 +430,7 @@
                 ),
                 skipAction: .skip,
                 matched: nil,
+                metadataSummary: nil,
                 selectable: false
             ),
         ]

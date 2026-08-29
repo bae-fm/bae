@@ -16,7 +16,6 @@ struct TriageRowView: View {
     static let coverPointSize: CGFloat = 44
 
     let row: BridgeTriageRow
-    let importStore: ImportStore
     let coverContent: ImageContent?
     /// Non-nil exactly when `row.selectable`. Passed in rather than read off
     /// `row` again so the list content is the one place selection state
@@ -35,7 +34,6 @@ struct TriageRowView: View {
 
     init(
         row: BridgeTriageRow,
-        importStore: ImportStore,
         coverContent: ImageContent?,
         selection: Binding<Bool>?,
         isGroupMember: Bool,
@@ -47,7 +45,6 @@ struct TriageRowView: View {
             ) -> Void = { _, _ in }
     ) {
         self.row = row
-        self.importStore = importStore
         self.coverContent = coverContent
         self.selection = selection
         self.isGroupMember = isGroupMember
@@ -154,19 +151,10 @@ struct TriageRowView: View {
 
     // MARK: - Meta
 
-    /// The selected candidate's editor is authoritative while it is open, so
-    /// this repeats exactly what the header says as fields are changed. Rows
-    /// without a live detail use the list projection's matched release.
+    /// The list projection owns the persisted draft summary, so it remains
+    /// visible independently of selection.
     private var releaseSummary: ImportReleaseSummary? {
-        if let candidate = importStore.candidate(forKey: row.candidateKey),
-            let editValues = candidate.edit
-        {
-            return ImportReleaseSummary(
-                candidate: candidate,
-                editValues: editValues
-            )
-        }
-        return ImportReleaseSummary(row: row)
+        ImportReleaseSummary(row: row)
     }
 
     @ViewBuilder
@@ -384,7 +372,6 @@ extension TriageRowView {
         VStack(alignment: .leading, spacing: 0) {
             TriageRowView(
                 row: PreviewData.triageRowReady,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowReady
                 ),
@@ -394,7 +381,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowPickAPressing,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowPickAPressing
                 ),
@@ -404,7 +390,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowSeveralMatchesFromSignals,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
@@ -414,7 +399,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowAlreadyInLibrary,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
@@ -424,7 +408,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowNoMatch,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowNoMatch
                 ),
@@ -434,7 +417,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowStillIdentifying,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowStillIdentifying
                 ),
@@ -444,7 +426,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowDoneImported,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowDoneImported
                 ),
@@ -454,7 +435,6 @@ extension TriageRowView {
             )
             TriageRowView(
                 row: PreviewData.triageRowFailed,
-                importStore: importStore,
                 coverContent: importStore.sidebarCover(
                     for: PreviewData.triageRowFailed
                 ),

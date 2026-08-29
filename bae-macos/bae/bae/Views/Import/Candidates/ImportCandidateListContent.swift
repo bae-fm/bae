@@ -498,7 +498,6 @@ extension ImportCandidateListContent {
     ) -> some View {
         TriageRowView(
             row: row,
-            importStore: importStore,
             coverContent: importStore.sidebarCover(for: row),
             selection: row.selectable ? readySelection(for: row) : nil,
             isGroupMember: isGroupMember,

@@ -251,4 +251,38 @@ Completed in `d367990e3`.
 
 ## Active and ordered queue
 
-No queued work.
+### Persistent candidate row metadata
+
+- Project each candidate's applied metadata draft and selected cover in the
+  authoritative import-list row.
+- Keep the applied title, artist, and cover visible after the detail pane is
+  closed or another candidate is selected.
+- Render the same persisted row projection on macOS and Avalonia.
+
+### Visible metadata-source actions
+
+- Keep metadata-source actions visible on the applied draft card in every
+  state instead of moving them into an overflow menu.
+- Preserve the clear-metadata confirmation and stable card layout.
+
+### Import pane metadata heading
+
+- Remove the redundant Metadata section heading from both desktop import
+  panes.
+
+### Resolved candidate row badges
+
+- Remove ordinary Ready, File Tags, MusicBrainz, and Discogs success badges
+  from resolved sidebar rows.
+- Keep statuses for exceptional and active states, while provenance remains in
+  the main pane.
+
+### File Tags default cover
+
+- Persist the first embedded artwork under deterministic candidate-file order
+  when File Tags supplies one.
+- Otherwise prefer a case-insensitive `cover.*` or `folder.*` image under
+  deterministic name order, then the smallest remaining image with filename
+  ordering as the tie-breaker.
+- Project the persisted choice into the main pane and sidebar across
+  deselection and relaunch.

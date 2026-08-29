@@ -238,6 +238,7 @@
                 placement: .ready,
                 skipAction: .skip,
                 matched: nil,
+                metadataSummary: nil,
                 selectable: true,
                 importStatus: nil,
                 metadataProvenance: nil

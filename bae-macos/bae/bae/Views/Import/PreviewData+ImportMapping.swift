@@ -392,6 +392,7 @@
                             && edit.albumTitle.isEmpty ? .pending : .ready,
                         skipAction: .skip,
                         matched: nil,
+                        metadataSummary: nil,
                         selectable: !edit.albumTitle.isEmpty,
                         importStatus: nil,
                         metadataProvenance: metadataProvenance

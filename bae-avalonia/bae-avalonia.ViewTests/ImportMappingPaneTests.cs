@@ -451,6 +451,7 @@ public sealed class ImportMappingPaneTests
         Placement: new BridgeTriagePlacement.Ready(),
         SkipAction: BridgeTriageSkipAction.Skip,
         Matched: null,
+        MetadataSummary: null,
         Selectable: true,
         ImportStatus: null,
         MetadataProvenance: metadataProvenance);

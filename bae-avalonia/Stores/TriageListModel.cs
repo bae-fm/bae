@@ -23,12 +23,16 @@ internal static class TriageListModel
 {
     // The title a row leads with — the matched release's, or the folder name
     // when nothing matched. The row's own text, formatted by the UI.
-    internal static string DisplayTitle(BridgeTriageRow row) => row.Matched?.Title ?? row.FolderName;
+    internal static string DisplayTitle(BridgeTriageRow row) =>
+        row.MetadataSummary?.AlbumTitle is { Length: > 0 } title
+            ? title
+            : row.Matched?.Title ?? row.FolderName;
 
     // Whether DisplayTitle fell through to the folder name — the rows that take
     // a folder glyph, so the title reads as a place on disk rather than a
     // release nobody has matched.
-    internal static bool TitleIsFolderName(BridgeTriageRow row) => row.Matched is null;
+    internal static bool TitleIsFolderName(BridgeTriageRow row) =>
+        row.MetadataSummary is null && row.Matched is null;
 
     // The order core reads the persisted preference as.
     internal static BridgeImportListOrder ListOrder(CandidateSortOrder order) => order switch

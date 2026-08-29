@@ -58,6 +58,19 @@ pub(super) fn materialise(
                 if let Some(seed) = row.metadata_provenance.clone() {
                     row.matched = picked_release(sql, &seed)?;
                 }
+                if let Some(summary) = row.metadata_summary.as_mut() {
+                    let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
+                        DbError::Message(format!("candidate {} has no content hash", scanned.path))
+                    })?;
+                    let selected = rows
+                        .states
+                        .get(content_hash)
+                        .filter(|state| state.edit_revision == scanned.file_edit_revision)
+                        .and_then(|state| state.selected_cover.as_ref());
+                    summary.cover_thumbnail = selected
+                        .map(|cover| row_cover_source(sql, scanned, cover))
+                        .transpose()?;
+                }
                 Ok(ImportListItem::Candidate {
                     row,
                     is_group_member: *is_group_member,
@@ -91,6 +104,38 @@ pub(super) fn materialise(
             }
         })
         .collect()
+}
+
+fn row_cover_source(
+    sql: &SqlReadContext<'_>,
+    candidate: &ScanCandidateListRow,
+    cover: &CoverSelection,
+) -> Result<crate::import::CoverImageSource, DbError> {
+    match cover {
+        CoverSelection::Remote(url, _) => {
+            Ok(crate::import::CoverImageSource::Remote { url: url.clone() })
+        }
+        CoverSelection::Local(file_id) => {
+            let path = sql
+                .query_row(
+                    "SELECT absolute_path FROM scan_candidate_file \
+                     WHERE watched_folder_path = ? AND candidate_path = ? \
+                       AND relative_path = ?",
+                    params![candidate.watched_folder_path, candidate.path, file_id],
+                    |row| row.get::<_, String>(0),
+                )
+                .optional()?
+                .ok_or_else(|| {
+                    DbError::Message(format!(
+                        "candidate {} selects missing cover file {file_id}",
+                        candidate.path
+                    ))
+                })?;
+            Ok(crate::import::CoverImageSource::Local {
+                path: PathBuf::from(path),
+            })
+        }
+    }
 }
 
 fn resolved_boundaries(

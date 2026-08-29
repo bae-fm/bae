@@ -64,6 +64,8 @@ pub struct CandidateStateListRow {
     pub probed_total_duration_ms: u64,
     pub metadata_provenance: Option<MetadataProvenance>,
     pub metadata_draft_valid: bool,
+    pub metadata_summary: Option<crate::import::TriageMetadataSummary>,
+    pub selected_cover: Option<crate::import::CoverSelection>,
 }
 
 /// Every column the queue is placed from, in one read.
@@ -329,7 +331,8 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
 }
 
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
-    let drafts = super::import_state::load_drafts_on(sql, None)?;
+    let mut drafts = super::import_state::load_drafts_on(sql, None)?;
+    let mut covers = super::import_state::load_covers_on(sql, None)?;
     let mut match_counts: HashMap<String, u32> = HashMap::new();
     for (content_hash, count) in sql.query(
         "SELECT content_hash, COUNT(*) FROM import_candidate_match \
@@ -386,9 +389,18 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 })
             })
             .transpose()?;
-        let metadata_draft_valid = drafts
-            .get(&content_hash)
-            .is_some_and(|draft| draft.clone().shape().is_ok());
+        let metadata_provenance = metadata_provenance?;
+        let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
+            DbError::Message(format!(
+                "candidate {content_hash} has no editable metadata draft"
+            ))
+        })?;
+        let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
+        let metadata_summary = crate::import::TriageMetadataSummary::of(
+            &metadata_draft,
+            metadata_provenance.clone(),
+        );
+        let selected_cover = covers.remove(&content_hash);
         states.insert(
             content_hash,
             CandidateStateListRow {
@@ -398,8 +410,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                     .map(|probed| to_u64(probed, "a candidate's probed total"))
                     .transpose()?
                     .unwrap_or_default(),
-                metadata_provenance: metadata_provenance?,
+                metadata_provenance,
                 metadata_draft_valid,
+                metadata_summary,
+                selected_cover,
             },
         );
     }

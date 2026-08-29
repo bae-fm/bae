@@ -889,6 +889,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 placement: .skipped,
                 skipAction: .unskip,
                 matched: nil,
+                metadataSummary: nil,
                 selectable: false,
                 importStatus: nil,
                 metadataProvenance: nil

@@ -2,7 +2,7 @@ use super::super::*;
 
 #[cfg(feature = "desktop")]
 impl BridgeArtistAssignment {
-    pub(super) fn from_core(assignment: bae_core::import::ArtistAssignment) -> Self {
+    pub(crate) fn from_core(assignment: bae_core::import::ArtistAssignment) -> Self {
         match assignment {
             bae_core::import::ArtistAssignment::Existing { artist } => Self::Existing {
                 artist: BridgeExistingArtist::from_core(artist),

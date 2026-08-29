@@ -111,7 +111,12 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(checkboxSlot, 0);
         grid.Children.Add(checkboxSlot);
 
-        var cover = BuildCover(row.Matched?.CoverThumbnailUrl);
+        BridgeCoverImageSource? coverSource = row.MetadataSummary?.CoverThumbnail;
+        if (coverSource is null && row.Matched?.CoverThumbnailUrl is { Length: > 0 } url)
+        {
+            coverSource = new BridgeCoverImageSource.Remote(url);
+        }
+        var cover = BuildCover(coverSource);
         cover.Margin = new Thickness(0, 7, 10, 7);
         Grid.SetColumn(cover, 1);
         grid.Children.Add(cover);
@@ -184,14 +189,14 @@ internal sealed partial class ImportSectionView
         return button;
     }
 
-    private Control BuildCover(string? coverThumbnailUrl)
+    private Control BuildCover(BridgeCoverImageSource? coverSource)
     {
         var image = new Image { Width = 44, Height = 44, Stretch = Stretch.UniformToFill };
         var host = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = image };
         host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
-        if (!string.IsNullOrEmpty(coverThumbnailUrl))
+        if (coverSource is not null)
         {
-            _app.Images.Bind(image, new ImageContent.Remote(coverThumbnailUrl), ImageWidths.Row);
+            _app.Images.Bind(image, ImageContent.ForCoverSource(coverSource), ImageWidths.Row);
         }
         return host;
     }
@@ -234,16 +239,10 @@ internal sealed partial class ImportSectionView
         }
         else if (row.Placement is BridgeTriagePlacement.Ready)
         {
-            // A Ready row says the same three things the pane header does —
-            // the title above, then who it is by, then the pressing — rather
-            // than packing all of it into one line.
-            if (row.Matched?.Artist is { Length: > 0 } artist)
+            // An ordinary resolved row is two lines: title, then artist.
+            if (RowArtist(row) is { Length: > 0 } artist)
             {
                 column.Children.Add(ReadyLine(artist, 12.5, opacity: 1));
-            }
-            if (PressingLine(row) is { Length: > 0 } pressing)
-            {
-                column.Children.Add(ReadyLine(pressing, 11.5, opacity: 0.7));
             }
         }
         else
@@ -280,8 +279,7 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // One of the Ready row's own lines. This app has no third text brush, so
-    // the pressing line reads as one step quieter through opacity.
+    // The Ready row's artist line.
     private static Control ReadyLine(string text, double fontSize, double opacity)
     {
         var line = new TextBlock
@@ -318,6 +316,10 @@ internal sealed partial class ImportSectionView
 
     private static string? MetadataLine(BridgeTriageRow row)
     {
+        if (row.MetadataSummary is not null)
+        {
+            return null;
+        }
         if (row.Matched is not { } matched)
         {
             return null;
@@ -345,28 +347,14 @@ internal sealed partial class ImportSectionView
         return parts.Count == 0 ? null : string.Join(" · ", parts);
     }
 
-    // The pressing on its own: `CD · 1991 · 10 tracks`, with whatever the
-    // source did not say left out.
-    private static string? PressingLine(BridgeTriageRow row)
+    private static string? RowArtist(BridgeTriageRow row)
     {
-        if (row.Matched?.Pressing is not { } pressing)
+        if (row.MetadataSummary is { } summary)
         {
-            return null;
+            var joined = ArtistAssignmentDisplay.Join(summary.AlbumArtistAssignments);
+            return string.IsNullOrEmpty(joined) ? null : joined;
         }
-        var parts = new List<string>();
-        if (!string.IsNullOrEmpty(pressing.Format))
-        {
-            parts.Add(pressing.Format!);
-        }
-        if (pressing.Year is { } year)
-        {
-            parts.Add(year.ToString(CultureInfo.CurrentCulture));
-        }
-        if (pressing.TrackCount is { } trackCount)
-        {
-            parts.Add(Loc.Chrome("import.candidate.tracks", "count", (long)trackCount));
-        }
-        return parts.Count == 0 ? null : string.Join(" · ", parts);
+        return row.Matched?.Artist;
     }
 
     private static string? ImportSubLine(BridgeTriageRow row) => row.ImportStatus switch
