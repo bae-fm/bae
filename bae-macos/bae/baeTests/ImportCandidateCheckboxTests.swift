@@ -2,6 +2,7 @@ import AppKit
 import BaeKit
 import SwiftUI
 import Testing
+import XCTest
 
 @testable import bae
 
@@ -156,6 +157,68 @@ struct ImportCandidateCheckboxTests {
         }
     }
 
+}
+
+final class PopoverAnimationTests: XCTestCase {
+    @MainActor
+    func testFolderScanDetailsDisablePopoverAnimation() async throws {
+        let size = NSSize(width: 180, height: 40)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            FolderScanProgressIndicator(
+                activity: BridgeFolderScanActivity(
+                    foundCount: 179,
+                    folders: [
+                        BridgeActiveFolderScan(
+                            watchedFolderPath: "/imports/incoming",
+                            watchedFolderName: "Incoming",
+                            foundCount: 179
+                        )
+                    ]
+                )
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        host.layoutSubtreeIfNeeded()
+        let center = host.convert(
+            NSPoint(x: host.bounds.midX, y: host.bounds.midY),
+            to: nil
+        )
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type,
+                    location: center,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber,
+                    context: nil,
+                    eventNumber: 0,
+                    clickCount: 1,
+                    pressure: type == .leftMouseDown ? 1 : 0
+                )
+            )
+            window.sendEvent(event)
+        }
+        let popoverConfigured = expectation(
+            description: "popover behavior reaches the AppKit popover"
+        )
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            popoverConfigured.fulfill()
+        }
+        await fulfillment(of: [popoverConfigured], timeout: 1)
+
+        let popover = try XCTUnwrap(
+            NSApp.windows
+                .compactMap { window in
+                    ObjCExceptionGuard.value(forKey: "_popover", on: window)
+                        as? NSPopover
+                }
+                .first
+        )
+        XCTAssertFalse(popover.animates)
+    }
 }
 
 @MainActor

@@ -96,6 +96,7 @@ struct QueueProgressIndicator: View {
             )
             .frame(width: 220)
             .padding(12)
+            .background { PopoverBehavior() }
         }
     }
 
@@ -167,6 +168,7 @@ struct FolderScanProgressIndicator: View {
             .font(.system(size: 12))
             .frame(width: 240)
             .padding(12)
+            .background { PopoverBehavior() }
         }
     }
 }
