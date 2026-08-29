@@ -3,11 +3,20 @@ import SwiftUI
 
 extension AppDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
-        guard runtime.startsApplicationServices else { return }
+        guard runtime != .preview else { return }
         guard let application = notification.object as? NSApplication else {
             preconditionFailure(
                 "The launch notification did not contain NSApplication"
             )
+        }
+        Self.setRegularActivationPolicyIfNeeded(application)
+    }
+
+    static func setRegularActivationPolicyIfNeeded(
+        _ application: NSApplication
+    ) {
+        if application.activationPolicy() == .regular {
+            return
         }
         precondition(
             application.setActivationPolicy(.regular),
