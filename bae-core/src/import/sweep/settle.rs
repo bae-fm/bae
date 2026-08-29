@@ -1,5 +1,38 @@
 use super::*;
 
+enum SettledLead {
+    NoExternalRelease,
+    ExternalRelease {
+        provenance: crate::import::MetadataProvenance,
+        payloads: crate::import::payloads::ReleasePayloads,
+    },
+}
+
+fn metadata_for_settled_lead(
+    context: &SweepContext,
+    candidate: &FolderCandidate,
+    durations: &crate::import::probe::ProbedDurations,
+    settled_lead: SettledLead,
+) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
+    match settled_lead {
+        SettledLead::NoExternalRelease => Ok(crate::import::CandidateMetadataDraft {
+            edit: crate::import::pane::blank_candidate_draft(&candidate.files),
+            provenance: None,
+            cover: None,
+        }),
+        SettledLead::ExternalRelease {
+            provenance,
+            payloads,
+        } => Ok(crate::import::CandidateMetadataDraft {
+            edit: context
+                .import
+                .external_candidate_draft(&payloads, candidate, durations)?,
+            provenance: Some(provenance),
+            cover: None,
+        }),
+    }
+}
+
 /// Turn one candidate's terminal state into a stored row, or into nothing.
 /// Returns whether a row was written.
 pub(super) async fn finish_candidate(
@@ -17,11 +50,29 @@ pub(super) async fn finish_candidate(
         return false;
     };
 
-    if !settle_lead(context, &mut verdict, token).await {
+    let Some(signals) = entry.signals.as_ref() else {
+        warn!(
+            "sweep: {} reached a verdict with no signals; writing no row",
+            entry.job.representative().path.display()
+        );
         return false;
-    }
+    };
+    let Some(settled_lead) = settle_lead(context, &mut verdict, token).await else {
+        return false;
+    };
 
     let candidate = entry.job.representative();
+    let metadata =
+        match metadata_for_settled_lead(context, candidate, &signals.durations, settled_lead) {
+            Ok(metadata) => metadata,
+            Err(error) => {
+                warn!(
+                    "sweep: could not project metadata for {} ({error}); writing no row",
+                    candidate.path.display()
+                );
+                return false;
+            }
+        };
     save(
         context,
         token,
@@ -29,8 +80,10 @@ pub(super) async fn finish_candidate(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
         &verdict,
-        entry.signals.clone(),
+        Some(signals.clone()),
         candidate.file_edit_revision,
+        entry.expected_metadata_revision,
+        metadata,
     )
     .await
 }
@@ -49,6 +102,8 @@ pub(super) async fn save(
     verdict: &TerminalVerdict,
     signals: Option<crate::signals::Signals>,
     expected_edit_revision: u64,
+    expected_metadata_revision: u64,
+    metadata: crate::import::CandidateMetadataDraft,
 ) -> bool {
     if token.is_cancelled() {
         return false;
@@ -62,29 +117,14 @@ pub(super) async fn save(
         warn!("sweep: {folder_path} reached a verdict with no signals; writing no row");
         return false;
     };
-    // A single settled match is the applied metadata source: identification made the
-    // decision a click makes on a several-match row, so it lands the same way,
-    // at the same claim a click lands, and the pane reopens on it after a
-    // restart. Anything else leaves the question open, and takes with it
-    // whatever pick a superseded verdict of this run's own had made — a pick a
-    // person made stands either way.
-    let metadata_provenance = match verdict {
-        TerminalVerdict::Found { matches, .. } if matches.len() == 1 => {
-            let only = &matches[0];
-            Some(crate::import::MetadataProvenance::ExternalRelease {
-                source: only.source,
-                release_id: only.release_id.clone(),
-            })
-        }
-        _ => None,
-    };
     let row = NewImportCandidateVerdict {
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals,
         expected_edit_revision,
-        metadata_provenance,
+        expected_metadata_revision,
+        metadata,
     };
     let wrote = match context
         .import
@@ -102,8 +142,8 @@ pub(super) async fn save(
     };
     if !wrote {
         debug!(
-            "sweep: discarded stale verdict for {} at file-edit revision {}",
-            row.folder_path, expected_edit_revision
+            "sweep: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
+            row.folder_path, expected_edit_revision, expected_metadata_revision
         );
         return false;
     }
@@ -133,12 +173,12 @@ async fn settle_lead(
     context: &SweepContext,
     verdict: &mut TerminalVerdict,
     token: &CancellationToken,
-) -> bool {
+) -> Option<SettledLead> {
     let TerminalVerdict::Found { matches, .. } = verdict else {
-        return true;
+        return Some(SettledLead::NoExternalRelease);
     };
     let [only_match] = matches.as_mut_slice() else {
-        return true;
+        return Some(SettledLead::NoExternalRelease);
     };
     let release = MetadataRef::new(&only_match.release_id, only_match.source);
 
@@ -151,7 +191,7 @@ async fn settle_lead(
         biased;
         // Shutdown mid-lookup is a transport failure by another name: nothing
         // was learned, so nothing is written and the next launch asks again.
-        _ = token.cancelled() => return false,
+        _ = token.cancelled() => return None,
         payloads = settle => payloads,
     };
     let payloads = match payloads {
@@ -161,7 +201,7 @@ async fn settle_lead(
                 "sweep: could not settle {} ({error}); writing no row",
                 only_match.release_id
             );
-            return false;
+            return None;
         }
     };
     match payloads.source_tracks() {
@@ -170,14 +210,20 @@ async fn settle_lead(
             // tracklist — so the verdict stores with the match unverifiable, and
             // the Ready rule lands it in Needs you rather than admitting it.
             only_match.source_tracks = Some(source_tracks);
-            true
+            Some(SettledLead::ExternalRelease {
+                provenance: crate::import::MetadataProvenance::ExternalRelease {
+                    source: only_match.source,
+                    release_id: only_match.release_id.clone(),
+                },
+                payloads,
+            })
         }
         Err(error) => {
             debug!(
                 "sweep: {} states no readable tracklist ({error}); writing no row",
                 only_match.release_id
             );
-            false
+            None
         }
     }
 }
@@ -224,9 +270,21 @@ pub(super) async fn record_explicit_lookup_verdict(
         // re-identified. It has no content hash to key a row by.
         return;
     };
+    let expected_metadata_revision = match super::candidate_metadata_revision(context, &candidate)
+        .await
+    {
+        Ok(revision) => revision,
+        Err(error) => {
+            warn!(
+                    "sweep: cannot read the metadata revision for {candidate_key} ({error}); recording no verdict"
+                );
+            return;
+        }
+    };
     let mut entry = ExplicitLookupInFlight {
         candidate,
         signals: None,
+        expected_metadata_revision,
     };
 
     loop {
@@ -265,9 +323,29 @@ pub(super) async fn record_explicit_lookup_verdict(
                 // Settles here too: a row a person's own run wrote is a row the
                 // queue treats as answered, and the promise that an answered
                 // lead opens offline holds however the answer was reached.
-                if !settle_lead(context, &mut verdict, token).await {
+                let Some(signals) = entry.signals.as_ref() else {
+                    warn!(
+                        "sweep: {candidate_key} reached a verdict with no signals; writing no row"
+                    );
                     continue;
-                }
+                };
+                let Some(settled_lead) = settle_lead(context, &mut verdict, token).await else {
+                    continue;
+                };
+                let metadata = match metadata_for_settled_lead(
+                    context,
+                    &entry.candidate,
+                    &signals.durations,
+                    settled_lead,
+                ) {
+                    Ok(metadata) => metadata,
+                    Err(error) => {
+                        warn!(
+                            "sweep: could not project metadata for {candidate_key} ({error}); writing no row"
+                        );
+                        continue;
+                    }
+                };
                 if save(
                     context,
                     token,
@@ -275,8 +353,10 @@ pub(super) async fn record_explicit_lookup_verdict(
                     &entry.candidate.files.content_hash(),
                     &entry.candidate.path.to_string_lossy(),
                     &verdict,
-                    entry.signals.clone(),
+                    Some(signals.clone()),
                     entry.candidate.file_edit_revision,
+                    entry.expected_metadata_revision,
+                    metadata,
                 )
                 .await
                 {

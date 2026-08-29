@@ -57,7 +57,12 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
         verdict: sample_verdict(),
         signals,
         expected_edit_revision: 0,
-        metadata_provenance: None,
+        expected_metadata_revision: 0,
+        metadata: crate::import::CandidateMetadataDraft {
+            edit: crate::import::pane::blank_candidate_draft(&pane_candidate()),
+            provenance: None,
+            cover: None,
+        },
     })
     .await
     .unwrap()
@@ -355,7 +360,12 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 verdict: sample_verdict(),
                 signals: scanning,
                 expected_edit_revision: 0,
-                metadata_provenance: None,
+                expected_metadata_revision: 0,
+                metadata: crate::import::CandidateMetadataDraft {
+                    edit: crate::import::pane::blank_candidate_draft(&pane_candidate()),
+                    provenance: None,
+                    cover: None,
+                },
             })
             .await
             .expect_err("a scanning signal is not storable");
@@ -833,7 +843,12 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             verdict: sample_verdict(),
             signals: signals_with(ProbedDurations::default()),
             expected_edit_revision: 0,
-            metadata_provenance: Some(release_pick("rel-1")),
+            expected_metadata_revision: 2,
+            metadata: crate::import::CandidateMetadataDraft {
+                edit: metadata_draft("Different album", "Different Artist"),
+                provenance: Some(release_pick("rel-1")),
+                cover: None,
+            },
         })
         .await
         .unwrap()
@@ -849,5 +864,67 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             .pressing
             .year,
         "1991"
+    );
+}
+
+/// A field edit made while identification is running wins even when the
+/// current source was chosen by identification. The result was derived from
+/// the older draft revision and therefore cannot replace the newer text.
+#[tokio::test]
+async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let first_pick = release_pick("rel-first");
+    assert!(db
+        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+            content_hash: hash.clone(),
+            folder_path: "/music/Album".to_string(),
+            verdict: sample_verdict(),
+            signals: signals_with(ProbedDurations::default()),
+            expected_edit_revision: 0,
+            expected_metadata_revision: 0,
+            metadata: crate::import::CandidateMetadataDraft {
+                edit: metadata_draft("First album", "Artist"),
+                provenance: Some(first_pick.clone()),
+                cover: None,
+            },
+        })
+        .await
+        .unwrap());
+    db.save_import_candidate_edit_field(
+        &hash,
+        CandidateEditField::AlbumTitle,
+        "Person's title",
+    )
+    .await
+    .unwrap();
+
+    assert!(!db
+        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+            content_hash: hash.clone(),
+            folder_path: "/music/Album".to_string(),
+            verdict: sample_verdict(),
+            signals: signals_with(ProbedDurations::default()),
+            expected_edit_revision: 0,
+            expected_metadata_revision: 1,
+            metadata: crate::import::CandidateMetadataDraft {
+                edit: metadata_draft("Second album", "Different Artist"),
+                provenance: Some(release_pick("rel-second")),
+                cover: None,
+            },
+        })
+        .await
+        .unwrap());
+
+    let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    assert_eq!(state.metadata_revision, 2);
+    assert_eq!(state.metadata_provenance, Some(first_pick));
+    assert_eq!(
+        db.load_import_candidate_pane_rows(&hash)
+            .await
+            .unwrap()
+            .metadata_draft
+            .album_title,
+        "Person's title"
     );
 }

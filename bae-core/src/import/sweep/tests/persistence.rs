@@ -35,7 +35,8 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
             verdict: TerminalVerdict::NotFoundAnywhere,
             signals: settled_signals(Default::default()),
             expected_edit_revision: 0,
-            metadata_provenance: None,
+            expected_metadata_revision: 0,
+            metadata: blank_metadata_for_dir(&late),
         })
         .await
         .unwrap();
@@ -128,6 +129,21 @@ fn row_with_verdict(
         signals: None,
         file_edits: Default::default(),
         metadata_provenance: None,
+        metadata_revision: 0,
+    }
+}
+
+fn blank_metadata_for_dir(dir: &Path) -> crate::import::CandidateMetadataDraft {
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        dir,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("the candidate folder is readable");
+    crate::import::CandidateMetadataDraft {
+        edit: crate::import::pane::blank_candidate_draft(&files),
+        provenance: None,
+        cover: None,
     }
 }
 
@@ -185,7 +201,8 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
         expected_edit_revision: 0,
-        metadata_provenance: None,
+        expected_metadata_revision: 0,
+        metadata: blank_metadata_for_dir(&dir),
     };
 
     assert!(
@@ -231,7 +248,8 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
                 expected_edit_revision: 0,
-                metadata_provenance: None,
+                expected_metadata_revision: 0,
+                metadata: blank_metadata_for_dir(&dir),
             },
         )
         .await
@@ -825,6 +843,14 @@ async fn a_stored_verdict_takes_over_from_the_recorded_runtime_state() {
         fixture.identified_for(&dir).await.is_some(),
         "the candidate really was identified"
     );
+    let pane = fixture
+        .pane(&dir)
+        .await
+        .expect("the identified candidate reads back");
+    assert_eq!(
+        pane.metadata_draft.album_title, "Album",
+        "the automatic release choice seeds the editable metadata draft"
+    );
     // The write's event reaches the recorder through the bus; poll for it.
     let cleared = tokio::time::timeout(Duration::from_secs(10), async {
         loop {
@@ -949,6 +975,8 @@ async fn a_verdict_with_no_signals_writes_nothing() {
         &TerminalVerdict::NotFoundAnywhere,
         None,
         0,
+        0,
+        blank_metadata_for_dir(&dir),
     )
     .await;
 

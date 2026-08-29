@@ -629,6 +629,25 @@ impl Fixture {
         group_id: &str,
         probed_total_ms: u64,
     ) {
+        let candidate = self
+            .import
+            .sweepable_candidate(&dir.to_string_lossy())
+            .await
+            .expect("the candidate state is readable")
+            .expect("the scanned candidate is sweepable");
+        let mut edit = crate::import::pane::blank_candidate_draft(&candidate.files);
+        edit.album_title = "Album".to_string();
+        edit.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
+            seed: crate::import::NewArtistSeed {
+                name: "Artist".to_string(),
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: None,
+            },
+        }];
+        for (index, track) in edit.tracks.iter_mut().enumerate() {
+            track.title = format!("Track {}", index + 1);
+        }
         let verdict = TerminalVerdict::Found {
             matches: vec![MetadataResult {
                 source: crate::import::MetadataSource::MusicBrainz,
@@ -677,10 +696,15 @@ impl Fixture {
                         ))
                     },
                     expected_edit_revision: 0,
-                    metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
-                        source: crate::import::MetadataSource::MusicBrainz,
-                        release_id: release_id.to_string(),
-                    }),
+                    expected_metadata_revision: 0,
+                    metadata: crate::import::CandidateMetadataDraft {
+                        edit,
+                        provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
+                            source: crate::import::MetadataSource::MusicBrainz,
+                            release_id: release_id.to_string(),
+                        }),
+                        cover: None,
+                    },
                 },
             )
             .await

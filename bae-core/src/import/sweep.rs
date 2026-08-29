@@ -237,11 +237,15 @@ struct InFlight {
     /// reports one; by the time a verdict is terminal the identify machine has
     /// consumed a settled snapshot, so this holds it.
     signals: Option<crate::signals::Signals>,
+    /// Editable metadata revision this run began from. A later edit makes the
+    /// terminal result stale even when the candidate's files did not change.
+    expected_metadata_revision: u64,
 }
 
 struct ExplicitLookupInFlight {
     candidate: FolderCandidate,
     signals: Option<crate::signals::Signals>,
+    expected_metadata_revision: u64,
 }
 
 /// What a finished candidate reports back to the pass loop.
@@ -384,6 +388,21 @@ async fn run_pass_once(
             job.candidates.swap(0, representative_index);
             let candidate = job.representative().clone();
             let key = candidate.path.to_string_lossy().into_owned();
+            let expected_metadata_revision = match candidate_metadata_revision(context, &candidate)
+                .await
+            {
+                Ok(revision) => revision,
+                Err(error) => {
+                    warn!(
+                            "sweep: cannot read the metadata revision for {key} ({error}); aborting pass"
+                        );
+                    for running_key in in_flight.keys() {
+                        context.release(running_key);
+                    }
+                    finishing.shutdown().await;
+                    return PassOutcome::Complete;
+                }
+            };
             context.ours.lock().unwrap().insert(key.clone());
             // Identify first: it takes its bus subscription synchronously, so
             // extraction's first snapshot cannot be emitted into a void.
@@ -405,6 +424,7 @@ async fn run_pass_once(
                     job,
                     run,
                     signals: None,
+                    expected_metadata_revision,
                 },
             );
         }
@@ -873,6 +893,23 @@ async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<Folder
             None
         }
     }
+}
+
+async fn candidate_metadata_revision(
+    context: &SweepContext,
+    candidate: &FolderCandidate,
+) -> Result<u64, crate::library::LibraryError> {
+    context
+        .library_manager
+        .load_import_candidate_state(&candidate.files.content_hash())
+        .await?
+        .map(|state| state.metadata_revision)
+        .ok_or_else(|| {
+            crate::library::LibraryError::Internal(format!(
+                "candidate {} has no persisted state row",
+                candidate.path.display()
+            ))
+        })
 }
 
 /// Announce how much of the queue has been answered.

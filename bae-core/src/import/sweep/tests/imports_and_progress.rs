@@ -607,6 +607,8 @@ async fn a_cancelled_candidate_writes_no_row() {
                 durations: crate::import::probe::ProbedDurations::default(),
             }),
             0,
+            0,
+            blank_metadata_for_dir(&dir),
         )
         .await,
         "the write is gated on the token, not only the lookup before it"

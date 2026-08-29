@@ -414,6 +414,22 @@ impl Database {
                 verdict.expected_edit_revision
             ))
         })?;
+        let expected_metadata =
+            i64::try_from(verdict.expected_metadata_revision).map_err(|_| {
+                DbError::Message(format!(
+                    "candidate metadata revision {} exceeds SQLite's integer range",
+                    verdict.expected_metadata_revision
+                ))
+            })?;
+        let next_metadata_revision = verdict
+            .expected_metadata_revision
+            .checked_add(1)
+            .ok_or_else(|| DbError::Message("candidate metadata revision exhausted".into()))?;
+        let next_metadata = i64::try_from(next_metadata_revision).map_err(|_| {
+            DbError::Message(format!(
+                "candidate metadata revision {next_metadata_revision} exceeds SQLite's integer range"
+            ))
+        })?;
         // The column is the sum of the duration rows this same write lays
         // down, derived here so the two can never disagree.
         let probed = i64::try_from(verdict.signals.probed_total_duration_ms()).map_err(|_| {
@@ -424,14 +440,14 @@ impl Database {
         // question about the stored revision, so it is asked on the read
         // connection. A verdict derived from file decisions the row has since
         // moved past writes nothing, and must not open a write to say so.
-        let current: Option<i64> = {
+        let current: Option<(i64, i64)> = {
             let content_hash = verdict.content_hash.clone();
             self.read(move |sql| {
                 Ok(sql
                     .query_row(
-                        "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
+                        "SELECT edit_revision, metadata_revision FROM import_candidate_state WHERE content_hash = ?",
                         [&content_hash],
-                        |row| row.get(0),
+                        |row| Ok((row.get(0)?, row.get(1)?)),
                     )
                     .optional()?)
             })
@@ -441,8 +457,12 @@ impl Database {
         // decision landing between the read and the write leaves them writing
         // nothing rather than writing over it.
         let update_existing = match current {
-            Some(current) if current == expected => true,
-            None if expected == 0 => false,
+            Some((current_edit, current_metadata))
+                if current_edit == expected && current_metadata == expected_metadata =>
+            {
+                true
+            }
+            None if expected == 0 && expected_metadata == 0 => false,
             // The row has moved past the file decisions this verdict was
             // derived from, or it names a revision no row ever had. Either way
             // there is nothing to write.
@@ -450,12 +470,9 @@ impl Database {
         };
         self.call(move |sql| {
             let columns = verdict_columns(&verdict.verdict);
-            let pick = verdict.metadata_provenance.as_ref().map(seed_columns);
-            // A verdict never replaces a person's pick, so only an
-            // identification pick can be superseded here — and only then does
-            // the metadata typed over the release it named go with it.
-            let superseded = stored_pick(sql, &verdict.content_hash)?
-                .filter(|stored| stored.author == MetadataProvenanceAuthor::Identification);
+            let pick = verdict.metadata.provenance.as_ref().map(seed_columns);
+            let preserve_user_metadata = stored_pick_author(sql, &verdict.content_hash)?
+                == Some(MetadataProvenanceAuthor::User);
             // A pick identification made belongs to the verdict that made it,
             // so this write replaces it — with the new verdict's own
             // conclusion, or with nothing when it concluded none. A pick a
@@ -477,8 +494,11 @@ impl Database {
                          provenance_author = CASE \
                              WHEN provenance_author = 'user' THEN 'user' \
                              WHEN :provenance_kind IS NULL THEN NULL \
-                             ELSE 'identification' END \
-                     WHERE content_hash = :content_hash AND edit_revision = :expected",
+                             ELSE 'identification' END, \
+                         metadata_revision = CASE WHEN :preserve_user_metadata \
+                             THEN metadata_revision ELSE :next_metadata END \
+                     WHERE content_hash = :content_hash AND edit_revision = :expected \
+                         AND metadata_revision = :expected_metadata",
                     named_params! {
                         ":folder_path": verdict.folder_path,
                         ":kind": columns.kind,
@@ -491,6 +511,9 @@ impl Database {
                         ":provenance_release_id": pick.as_ref().and_then(|pick| pick.release_id),
                         ":content_hash": verdict.content_hash,
                         ":expected": expected,
+                        ":expected_metadata": expected_metadata,
+                        ":next_metadata": next_metadata,
+                        ":preserve_user_metadata": preserve_user_metadata,
                     },
                 )? == 1
             } else {
@@ -499,8 +522,8 @@ impl Database {
                          (content_hash, folder_path, verdict_kind, verdict_track_count, \
                           verdict_matched_barcode, probed_total_duration_ms, identified_at, \
                           provenance_kind, provenance_source, provenance_release_id, provenance_author, \
-                          edit_revision) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                          edit_revision, metadata_revision) \
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
                     params![
                         verdict.content_hash,
                         verdict.folder_path,
@@ -514,6 +537,7 @@ impl Database {
                         pick.as_ref().and_then(|pick| pick.release_id),
                         pick.as_ref()
                             .map(|_| MetadataProvenanceAuthor::Identification.as_str()),
+                        next_metadata,
                     ],
                 )? == 1
             };
@@ -522,9 +546,15 @@ impl Database {
                 // superseded ones go in the same transaction that replaces it.
                 delete_matches(sql, &verdict.content_hash)?;
                 insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
-                if let Some(superseded) = superseded {
-                    if superseded.identity != pick_identity(verdict.metadata_provenance.as_ref()) {
-                        clear_pick_dependent_rows(sql, &verdict.content_hash)?;
+                if !preserve_user_metadata {
+                    pane_rows::replace_draft(
+                        sql,
+                        &verdict.content_hash,
+                        &verdict.metadata.edit,
+                    )?;
+                    pane_rows::delete_cover(sql, &verdict.content_hash)?;
+                    if let Some(cover) = &verdict.metadata.cover {
+                        pane_rows::save_cover(sql, &verdict.content_hash, cover)?;
                     }
                 }
                 delete_durations(sql, &verdict.content_hash)?;
@@ -836,60 +866,19 @@ impl Database {
     }
 }
 
-/// What a candidate's pick names, as the three columns that say which release
-/// it is. The claim is deliberately left out: lowering a claim on the same
-/// release is not picking a different release.
-type PickIdentity = (String, Option<String>, Option<String>);
-
-/// The pick a candidate row holds, with who made it.
-struct StoredPick {
-    author: MetadataProvenanceAuthor,
-    identity: Option<PickIdentity>,
-}
-
-fn pick_identity(pick: Option<&crate::import::MetadataProvenance>) -> Option<PickIdentity> {
-    pick.map(|pick| {
-        let columns = seed_columns(pick);
-        (
-            columns.kind.to_string(),
-            columns.source.map(str::to_string),
-            columns.release_id.map(str::to_string),
-        )
-    })
-}
-
-fn stored_pick(
+fn stored_pick_author(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-) -> Result<Option<StoredPick>, DbError> {
-    struct PickRow {
-        kind: Option<String>,
-        source: Option<String>,
-        release_id: Option<String>,
-        author: Option<String>,
-    }
-    let row = sql
+) -> Result<Option<MetadataProvenanceAuthor>, DbError> {
+    let author = sql
         .query_row(
-            "SELECT provenance_kind, provenance_source, provenance_release_id, provenance_author \
-             FROM import_candidate_state WHERE content_hash = ?",
+            "SELECT provenance_author FROM import_candidate_state WHERE content_hash = ?",
             [content_hash],
-            |row| {
-                Ok(PickRow {
-                    kind: row.get(0)?,
-                    source: row.get(1)?,
-                    release_id: row.get(2)?,
-                    author: row.get(3)?,
-                })
-            },
+            |row| row.get::<_, Option<String>>(0),
         )
-        .optional()?;
-    let Some(PickRow {
-        kind,
-        source,
-        release_id,
-        author: Some(author),
-    }) = row
-    else {
+        .optional()?
+        .flatten();
+    let Some(author) = author else {
         return Ok(None);
     };
     let author = match author.as_str() {
@@ -901,18 +890,7 @@ fn stored_pick(
             )))
         }
     };
-    Ok(Some(StoredPick {
-        author,
-        identity: kind.map(|kind| (kind, source, release_id)),
-    }))
-}
-
-/// A selected cover belongs to the metadata draft it accompanied. Metadata
-/// replacement clears that selection while leaving candidate image files and
-/// every physical mapping untouched.
-fn clear_pick_dependent_rows(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
-    pane_rows::delete_cover(sql, content_hash)?;
-    Ok(())
+    Ok(Some(author))
 }
 
 /// Rewrite the file rows of every scanned candidate at `content_hash` and

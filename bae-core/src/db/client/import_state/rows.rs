@@ -86,6 +86,7 @@ struct StateRow {
     identified_at: Option<DateTime<Utc>>,
     metadata_provenance: Option<MetadataProvenance>,
     edit_revision: i64,
+    metadata_revision: i64,
 }
 
 fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
@@ -106,12 +107,13 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
             row.get("provenance_release_id")?,
         )?,
         edit_revision: row.get("edit_revision")?,
+        metadata_revision: row.get("metadata_revision")?,
     })
 }
 
 const STATE_COLUMNS: &str = "content_hash, folder_path, verdict_kind, verdict_track_count, \
      verdict_matched_barcode, probed_total_duration_ms, identified_at, provenance_kind, \
-     provenance_source, provenance_release_id, edit_revision";
+     provenance_source, provenance_release_id, edit_revision, metadata_revision";
 
 const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, year, \
      format, label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
@@ -187,6 +189,12 @@ pub(crate) fn load_states_on(
                 state.content_hash
             ))
         })?;
+        let metadata_revision = u64::try_from(state.metadata_revision).map_err(|_| {
+            DbError::Message(format!(
+                "import candidate {} has a negative metadata revision",
+                state.content_hash
+            ))
+        })?;
         out.insert(
             state.content_hash.clone(),
             DbImportCandidateState {
@@ -197,6 +205,7 @@ pub(crate) fn load_states_on(
                 identify,
                 file_edits,
                 metadata_provenance: state.metadata_provenance,
+                metadata_revision,
             },
         );
     }

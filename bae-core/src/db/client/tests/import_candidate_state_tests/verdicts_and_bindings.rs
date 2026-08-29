@@ -97,7 +97,12 @@ fn new_candidate_row(
         verdict: verdict.clone(),
         signals: sample_signals(probed_total_duration_ms),
         expected_edit_revision: 0,
-        metadata_provenance: None,
+        expected_metadata_revision: 0,
+        metadata: crate::import::CandidateMetadataDraft {
+            edit: metadata_draft("", ""),
+            provenance: None,
+            cover: None,
+        },
     }
 }
 
@@ -245,11 +250,12 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
     let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
 
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    settled.metadata_provenance = Some(release_pick("mb-rel-1"));
+    settled.metadata.provenance = Some(release_pick("mb-rel-1"));
     db.save_import_candidate_verdict(&settled).await.unwrap();
 
-    let re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
-    assert_eq!(re_run.metadata_provenance, None, "nothing was found to pick");
+    let mut re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
+    re_run.expected_metadata_revision = 1;
+    assert_eq!(re_run.metadata.provenance, None, "nothing was found to pick");
     db.save_import_candidate_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -282,7 +288,8 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .await
         .unwrap();
 
-    let re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
+    let mut re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
+    re_run.expected_metadata_revision = 2;
     db.save_import_candidate_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -304,11 +311,12 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
 
     let mut first = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    first.metadata_provenance = Some(release_pick("mb-rel-first"));
+    first.metadata.provenance = Some(release_pick("mb-rel-first"));
     db.save_import_candidate_verdict(&first).await.unwrap();
 
     let mut second = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    second.metadata_provenance = Some(release_pick("mb-rel-second"));
+    second.expected_metadata_revision = 1;
+    second.metadata.provenance = Some(release_pick("mb-rel-second"));
     db.save_import_candidate_verdict(&second).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -334,7 +342,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     let edits = crate::import::folder_scanner::CandidateFileEdits::default();
 
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    settled.metadata_provenance = Some(release_pick("mb-rel-derived"));
+    settled.metadata.provenance = Some(release_pick("mb-rel-derived"));
     db.save_import_candidate_verdict(&settled).await.unwrap();
     db.save_import_candidate_file_edits(&hash, "/music/Album", 0, &edits, &[])
         .await

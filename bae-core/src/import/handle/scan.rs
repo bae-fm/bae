@@ -207,6 +207,24 @@ impl ImportServiceHandle {
     /// source. The projection completes before the database transaction, which
     /// replaces the draft and provenance together while leaving all physical
     /// file and track decisions untouched.
+    pub(crate) fn external_candidate_draft(
+        &self,
+        payloads: &crate::import::payloads::ReleasePayloads,
+        candidate: &crate::import::folder_scanner::FolderCandidate,
+        durations: &crate::import::probe::ProbedDurations,
+    ) -> Result<crate::import::RawReleaseEdit, crate::import::ImportError> {
+        let pane = crate::import::pane::release_pane(
+            payloads,
+            &candidate.files,
+            durations,
+            &crate::import::CandidateEditOverlay::default(),
+            &[],
+            self.clock.as_ref(),
+            self.ids.as_ref(),
+        )?;
+        Ok(crate::import::pane::candidate_draft_from_source(pane))
+    }
+
     pub(crate) async fn set_candidate_metadata_provenance(
         &self,
         candidate_key: String,
@@ -226,7 +244,7 @@ impl ImportServiceHandle {
             .await?
             .map(|state| state.durations)
             .unwrap_or_default();
-        let pane = match &provenance {
+        match &provenance {
             crate::import::MetadataProvenance::FileTags => {
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
                 let pane = crate::import::pane::file_tags_pane(
@@ -263,22 +281,18 @@ impl ImportServiceHandle {
                         &crate::import::MetadataRef::new(release_id.clone(), *source),
                     )
                     .await?;
-                crate::import::pane::release_pane(
-                    &payloads,
-                    &candidate.files,
-                    &durations,
-                    &crate::import::CandidateEditOverlay::default(),
-                    &[],
-                    self.clock.as_ref(),
-                    self.ids.as_ref(),
-                )?
+                let draft = self.external_candidate_draft(&payloads, &candidate, &durations)?;
+                return Ok(self
+                    .library_manager
+                    .replace_candidate_metadata(
+                        &content_hash,
+                        &candidate_key,
+                        &draft,
+                        Some(&provenance),
+                    )
+                    .await?);
             }
-        };
-        let draft = crate::import::pane::candidate_draft_from_source(pane);
-        Ok(self
-            .library_manager
-            .replace_candidate_metadata(&content_hash, &candidate_key, &draft, Some(&provenance))
-            .await?)
+        }
     }
 
     /// Clear source metadata while retaining the candidate's physical layout

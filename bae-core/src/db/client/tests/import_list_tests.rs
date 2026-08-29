@@ -140,7 +140,12 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
                 durations: crate::import::probe::ProbedDurations::totalling(1_000),
             },
             expected_edit_revision: 0,
-            metadata_provenance: None,
+            expected_metadata_revision: 0,
+            metadata: crate::import::CandidateMetadataDraft {
+                edit: crate::import::pane::blank_candidate_draft(&candidate.files),
+                provenance: None,
+                cover: None,
+            },
         })
         .await
         .unwrap());

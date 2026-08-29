@@ -97,7 +97,24 @@ async fn pure_reads_use_the_read_connection() {
                 durations: bae_core::import::probe::ProbedDurations::default(),
             },
             expected_edit_revision: 7,
-            metadata_provenance: None,
+            expected_metadata_revision: 7,
+            metadata: bae_core::import::CandidateMetadataDraft {
+                edit: bae_core::import::RawReleaseEdit {
+                    album_title: "Unwritten candidate".to_string(),
+                    album_artist_assignments: Vec::new(),
+                    pressing: bae_core::import::RawPressingEdit {
+                        year: String::new(),
+                        format: String::new(),
+                        label: String::new(),
+                        catalog_number: String::new(),
+                        country: String::new(),
+                        barcode: String::new(),
+                    },
+                    tracks: Vec::new(),
+                },
+                provenance: None,
+                cover: None,
+            },
         })
         .await
         .unwrap());

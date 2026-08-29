@@ -45,14 +45,15 @@ pub struct NewImportCandidateVerdict {
     pub signals: crate::signals::Signals,
     /// File-decision revision used to derive this verdict.
     pub expected_edit_revision: u64,
-    /// The identity the verdict itself decides — a single settled match IS the
-    /// pick, made by identification instead of by a click. `None` decides
-    /// nothing (several matches, a conflict, nothing found).
-    ///
-    /// Either way it replaces whatever identification concluded last time: the
-    /// pick belongs to the verdict that made it. A pick a person made outranks
-    /// both and is left alone.
-    pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    /// Metadata revision identification began from. The write refuses a result
+    /// when the editable draft changed while the run was in flight.
+    pub expected_metadata_revision: u64,
+    /// The editable metadata state this verdict concludes. A single match
+    /// carries the projected release draft and its provenance; every other
+    /// verdict carries the blank candidate draft. It replaces an earlier
+    /// identification result as one unit, while a person's newer choice or
+    /// edit wins through `expected_metadata_revision`.
+    pub metadata: crate::import::CandidateMetadataDraft,
 }
 
 /// What identification concluded about one candidate. Present as a whole or
@@ -91,6 +92,10 @@ pub struct DbImportCandidateState {
     /// alike — it names a release, not a shape; one identification concluded
     /// lives exactly as long as the verdict that concluded it.
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    /// Revision of the editable metadata group. Every draft, artist, track, or
+    /// cover mutation advances it so a source projection cannot overwrite a
+    /// newer edit.
+    pub metadata_revision: u64,
 }
 
 /// Everything a person settled about one candidate through its pane, keyed by
