@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>آن لائن تلاش کریں</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>آن لائن تلاش کریں…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>امیدوار کو دوبارہ پڑھنے کی کوشش کریں۔</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>عمومی</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>خودکار طور پر شناخت کریں</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>خودکار طور پر شناخت کریں</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>آن لائن تلاش کھلنے پر سرورق کا متن، بارکوڈز اور ڈسک آئی ڈیز خودکار طور پر پڑھتا اور مماثلت تلاش کرتا ہے۔</value></data>

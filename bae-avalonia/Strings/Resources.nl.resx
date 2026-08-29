@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Online zoeken</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Online zoeken…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Probeer de kandidaat opnieuw te lezen.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Algemeen</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Automatisch identificeren</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Automatisch identificeren</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Leest automatisch hoestekst, barcodes en nummers van schijven en zoekt een overeenkomst wanneer Online zoeken wordt geopend.</value></data>

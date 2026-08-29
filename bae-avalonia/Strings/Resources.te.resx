@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>అభ్యర్థిని మళ్లీ చదవడానికి ప్రయత్నించండి.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>సాధారణం</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>ఆటోమేటిక్‌గా గుర్తించు</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>ఆటోమేటిక్‌గా గుర్తించు</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను తెరిచినప్పుడల్లా కవర్ టెక్స్ట్, బార్‌కోడ్‌లు మరియు డిస్క్ IDలను ఆటోమేటిక్‌గా చదివి సరిపోలిక కోసం వెతుకుతుంది.</value></data>

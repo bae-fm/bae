@@ -1,16 +1,9 @@
 import BaeKit
 
-/// Which half of the find-release sheet is showing.
-///
-/// The two answer the same question in different ways — what identification
-/// turned up, and what a typed search turns up — and showing both at once made
-/// the sheet read as a form with some chips above it. One at a time, and the
-/// header row says how to get to the other.
+/// The selected Find online method. Each method keeps its own state while the
+/// other is hidden.
 enum SearchMode {
-    /// What identification found: the signals toolbar over its matches, or the
-    /// line saying it found nothing.
-    case signals
-    /// The typed search: the source picker, the fields, and their results.
+    case automatic
     case manual
 }
 

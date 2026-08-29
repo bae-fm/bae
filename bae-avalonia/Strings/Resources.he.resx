@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>חיפוש באינטרנט…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>נסו לקרוא שוב את המועמד.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>כללי</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>קורא אוטומטית את הטקסט מהעטיפה, הברקודים ומזהי הדיסק ומחפש התאמה בכל פתיחה של חיפוש באינטרנט.</value></data>

@@ -42,7 +42,7 @@ extension ImportSearchFlow {
         input: SearchPaneInput,
         mode: Binding<SearchMode>,
         openSettings: @escaping () -> Void,
-        onUseFileTags: (() -> Void)?,
+        onUseFileTags: (() -> Void)? = nil,
         onSelect: ((BridgeMetadataResult) -> Void)? = nil
     ) -> some View {
         let key = input.key
@@ -75,6 +75,9 @@ extension ImportSearchFlow {
             onUseFileTags: onUseFileTags,
             onToggleSignal: { signal in
                 services.importer.toggleSignalForCandidate(key, signal)
+            },
+            onIdentify: {
+                services.importer.identifyForExplicitLookup(key)
             },
             onRerun: { services.importer.rerunIdentifyForCandidate(key) },
             onSelect: resolvedOnSelect,

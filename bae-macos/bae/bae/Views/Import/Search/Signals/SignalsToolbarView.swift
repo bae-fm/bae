@@ -6,9 +6,7 @@ import SwiftUI
 /// spins while its lookup runs, shows a result count when settled, and takes
 /// itself in or out of the run on click — the catalog by picking one of the
 /// numbers extracted from the candidate. The header carries the automatic
-/// identification action
-/// (or an `Identifying…` spinner) and the `Search manually` /
-/// File Tags escape.
+/// identification action (or an `Identifying…` spinner).
 ///
 /// Core pre-shapes the whole badge list (`BridgeSignalsToolbar`); this view iterates
 /// and renders — no domain logic here.
@@ -16,9 +14,6 @@ struct SignalsToolbarView: View {
     let toolbar: BridgeSignalsToolbar
     let onToggle: (BridgeSignalToggle) -> Void
     let onRerun: () -> Void
-    let onSearchManually: () -> Void
-    /// `nil` suppresses the File Tags pill — a CD carries no local
-    /// data to seed a File Tags import until it's ripped.
     let onUseFileTags: (() -> Void)?
 
     /// The pipeline is still identifying while any badge is looking up. Drives
@@ -65,7 +60,7 @@ struct SignalsToolbarView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 11))
-                        Text("Identify automatically")
+                        Text("Run again")
                     }
                 }
                 .buttonStyle(.link)
@@ -74,21 +69,15 @@ struct SignalsToolbarView: View {
 
             Spacer()
 
-            HStack(spacing: 8) {
+            if let onUseFileTags {
                 GhostPill(
-                    icon: "magnifyingglass",
-                    label: "Search manually",
-                    action: onSearchManually
+                    icon: nil,
+                    verbatimLabel:
+                        coreString("ui.import.metadata.file_tags") + "…",
+                    action: onUseFileTags
                 )
-                if let onUseFileTags {
-                    GhostPill(
-                        icon: nil,
-                        verbatimLabel:
-                            coreString("ui.import.metadata.file_tags") + "…",
-                        action: onUseFileTags
-                    )
-                }
             }
+
         }
     }
 
@@ -129,8 +118,7 @@ struct SignalsToolbarView: View {
             toolbar: PreviewData.toolbarBothRunning,
             onToggle: { _ in },
             onRerun: {},
-            onSearchManually: {},
-            onUseFileTags: {},
+            onUseFileTags: nil,
         )
         .frame(width: 720)
         .windowBackground()
@@ -141,8 +129,7 @@ struct SignalsToolbarView: View {
             toolbar: PreviewData.toolbarOneSettled,
             onToggle: { _ in },
             onRerun: {},
-            onSearchManually: {},
-            onUseFileTags: {},
+            onUseFileTags: nil,
         )
         .frame(width: 720)
         .windowBackground()
@@ -153,8 +140,7 @@ struct SignalsToolbarView: View {
             toolbar: PreviewData.toolbarBarcodeExcluded,
             onToggle: { _ in },
             onRerun: {},
-            onSearchManually: {},
-            onUseFileTags: {},
+            onUseFileTags: nil,
         )
         .frame(width: 720)
         .windowBackground()
@@ -165,8 +151,7 @@ struct SignalsToolbarView: View {
             toolbar: PreviewData.toolbarBothMatched,
             onToggle: { _ in },
             onRerun: {},
-            onSearchManually: {},
-            onUseFileTags: {},
+            onUseFileTags: nil,
         )
         .frame(width: 720)
         .windowBackground()
@@ -177,7 +162,6 @@ struct SignalsToolbarView: View {
             toolbar: PreviewData.toolbarSkippedNoSignals,
             onToggle: { _ in },
             onRerun: {},
-            onSearchManually: {},
             onUseFileTags: nil,
         )
         .frame(width: 720)

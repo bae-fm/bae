@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Buscar online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Buscar online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Tente ler o candidato novamente.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Geral</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Identificar automaticamente</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Identificar automaticamente</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Lê automaticamente o texto da capa, os códigos de barras e os IDs de disco e busca uma correspondência sempre que Buscar online é aberto.</value></data>

@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>സ്ഥാനാർഥിയെ വീണ്ടും വായിക്കാൻ ശ്രമിക്കുക.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>പൊതുവായത്</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക തുറക്കുമ്പോഴെല്ലാം കവർ വാചകം, ബാർകോഡുകൾ, ഡിസ്ക് IDകൾ എന്നിവ സ്വയമേവ വായിച്ച് പൊരുത്തം തിരയുന്നു.</value></data>

@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Pronađi na internetu</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Pronađi na internetu…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Pokušajte ponovno pročitati kandidata.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Općenito</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Automatski prepoznaj</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Automatski prepoznaj</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Automatski čita tekst omota, crtične kodove i ID-ove diskova te traži podudaranje svaki put kada se otvori Pronađi na internetu.</value></data>

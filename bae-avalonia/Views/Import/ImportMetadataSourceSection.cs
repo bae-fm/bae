@@ -175,15 +175,19 @@ internal sealed class ImportMetadataSourceSection
 
     private Control BrowserHeader(string title)
     {
-        var row = new StackPanel
+        var row = new Grid
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
+            ColumnDefinitions = new ColumnDefinitions("*,Auto,*"),
         };
-        row.Children.Add(ActionButton(
+        var back = ActionButton(
             Loc.Chrome("action.back"),
-            () => OnPresent(ImportMetadataPresentation.Draft)));
-        row.Children.Add(ImportPaneUi.Cell(title));
+            () => OnPresent(ImportMetadataPresentation.Draft));
+        Grid.SetColumn(back, 0);
+        back.HorizontalAlignment = HorizontalAlignment.Left;
+        row.Children.Add(back);
+        var heading = ImportPaneUi.Cell(title);
+        Grid.SetColumn(heading, 1);
+        row.Children.Add(heading);
         return row;
     }
 

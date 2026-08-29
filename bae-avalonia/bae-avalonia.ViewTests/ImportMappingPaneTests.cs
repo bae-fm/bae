@@ -137,7 +137,135 @@ public sealed class ImportMappingPaneTests
         Assert.Empty(identified);
         Assert.Contains(
             pane.GetLogicalDescendants().OfType<Button>(),
-            button => Equals(button.Content, Loc.Chrome("action.search")));
+            button => Equals(button.Content, Loc.Chrome("import.search.auto")));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(
+                button.Content,
+                Loc.Chrome("import.row.search_manually")));
+        Click(pane, Loc.Chrome("import.search.auto"));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(
+                button.Content,
+                Loc.Chrome("import.search.identify_automatically")));
+        Assert.DoesNotContain(
+            Loc.Chrome("import.search.no_automatic_matches"),
+            Texts(pane));
+
+        Click(pane, Loc.Chrome("import.search.identify_automatically"));
+        Assert.Equal(new[] { CandidateKey }, identified);
+    }
+
+    [AvaloniaFact]
+    public void AutomaticMethodShowsSignalBadgesAndRunAgain()
+    {
+        var runtime = new BridgeCandidateRuntimeSnapshot(
+            new BridgeIdentifyState.NotFoundAnywhere(),
+            new BridgeSignalsToolbar(new[]
+            {
+                new BridgeToolbarSignal(
+                    BridgeSignalKind.Barcode,
+                    "0123456789012",
+                    BridgeSignalOrigin.Artwork,
+                    new BridgeSignalState.NoMatch(),
+                    false,
+                    Array.Empty<BridgeSignalOption>()),
+            }),
+            null);
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            running: runtime,
+            initialPresentation: ImportMetadataPresentation.FindOnline);
+
+        Assert.Contains(Loc.Chrome("signal.kind.barcode"), Texts(pane));
+        Assert.Contains("0123456789012", Texts(pane));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(
+                ToolTip.GetTip(button),
+                Loc.Chrome("import.rerun_identify")));
+    }
+
+    [AvaloniaFact]
+    public void ManualSearchStartsBlankAndSurvivesMethodChanges()
+    {
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            automaticIdentification: false);
+
+        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        Assert.DoesNotContain("Album", Fields(pane));
+
+        var artist = FieldByLabel(
+            pane,
+            Loc.Chrome("import.field.artist_manual"));
+        artist.Text = "Typed artist";
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("Typed artist", artist.Text);
+
+        Click(pane, Loc.Chrome("import.search.auto"));
+        Assert.DoesNotContain("Typed artist", Fields(pane));
+        Click(pane, Loc.Chrome("import.row.search_manually"));
+
+        Assert.Contains("Typed artist", Fields(pane));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("import.search.general")));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("signal.kind.catalog")));
+        Assert.Contains(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("signal.kind.barcode")));
+    }
+
+    [AvaloniaFact]
+    public void ManualSearchDispatchesTheSelectedQueryType()
+    {
+        var searches = new List<BridgeSearchQuery>();
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            automaticIdentification: false,
+            searches: searches);
+
+        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        FieldByLabel(pane, Loc.Chrome("import.field.artist_manual")).Text = "Typed artist";
+        FieldByLabel(pane, Loc.Chrome("search.field.album")).Text = "Typed album";
+        Dispatcher.UIThread.RunJobs();
+        Click(pane, Loc.Chrome("action.search"));
+        Dispatcher.UIThread.RunJobs();
+
+        Click(pane, Loc.Chrome("signal.kind.catalog"));
+        FieldByLabel(pane, Loc.Chrome("signal.kind.catalog")).Text = "CAT-1";
+        Dispatcher.UIThread.RunJobs();
+        Click(pane, Loc.Chrome("action.search"));
+        Dispatcher.UIThread.RunJobs();
+
+        Click(pane, Loc.Chrome("signal.kind.barcode"));
+        FieldByLabel(pane, Loc.Chrome("signal.kind.barcode")).Text = "0123456789012";
+        Dispatcher.UIThread.RunJobs();
+        Click(pane, Loc.Chrome("action.search"));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Collection(
+            searches,
+            query => Assert.Equal(
+                new BridgeSearchQuery.General(
+                    "Typed artist",
+                    "Typed album",
+                    BridgeMetadataSource.Discogs),
+                query),
+            query => Assert.Equal(
+                new BridgeSearchQuery.CatalogNumber(
+                    "CAT-1",
+                    BridgeMetadataSource.Discogs),
+                query),
+            query => Assert.Equal(
+                new BridgeSearchQuery.Barcode(
+                    "0123456789012",
+                    BridgeMetadataSource.Discogs),
+                query));
     }
 
     [AvaloniaFact]
@@ -269,7 +397,8 @@ public sealed class ImportMappingPaneTests
         IReadOnlyList<ReleaseCandidateChoice>? matches = null,
         ImportMetadataPresentation? initialPresentation = null,
         ulong applicationRevision = 1,
-        List<Action<BridgeImportCandidateDetail?>>? detailCallbacks = null)
+        List<Action<BridgeImportCandidateDetail?>>? detailCallbacks = null,
+        List<BridgeSearchQuery>? searches = null)
     {
         // Controls may only be built on the headless session's dispatcher
         // thread, which [AvaloniaFact] is what supplies.
@@ -297,6 +426,13 @@ public sealed class ImportMappingPaneTests
             {
                 identified?.Add(key);
                 return Task.FromResult(true);
+            },
+            SearchReleases = query =>
+            {
+                searches?.Add(query);
+                return Task.FromResult((
+                    true,
+                    ((List<ReleaseCandidateChoice>?)new(), (string?)null)));
             },
             PreviewFileTags = _ => Task.FromResult((
                 true,
@@ -547,6 +683,15 @@ public sealed class ImportMappingPaneTests
     private static IReadOnlyList<string> Fields(Control pane) =>
         pane.GetLogicalDescendants().OfType<TextBox>()
             .Select(box => box.Text ?? string.Empty).ToList();
+
+    private static TextBox FieldByLabel(Control pane, string label) =>
+        Assert.IsType<TextBox>(
+            Assert.IsType<StackPanel>(
+                Assert.Single(
+                    pane.GetLogicalDescendants().OfType<StackPanel>(),
+                    panel => panel.Children.OfType<TextBlock>()
+                        .Any(text => text.Text == label)))
+            .Children.OfType<TextBox>().Single());
 
     private static IReadOnlyList<string> Texts(Control pane) =>
         pane.GetLogicalDescendants().OfType<TextBlock>()

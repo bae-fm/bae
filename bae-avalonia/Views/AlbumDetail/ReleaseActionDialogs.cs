@@ -217,7 +217,11 @@ internal sealed class ReleaseActionDialogs
             {
                 var source = (string)sourceBox.SelectedItem!;
                 searchButton.IsEnabled = false;
-                var (current, search) = await _app.Import.SearchReleases(source, artistBox.Text ?? string.Empty, albumBox.Text ?? string.Empty);
+                var (current, search) = await _app.Import.SearchReleases(
+                    new BridgeSearchQuery.General(
+                        artistBox.Text ?? string.Empty,
+                        albumBox.Text ?? string.Empty,
+                        NativeBae.MetadataSource(source)));
                 searchButton.IsEnabled = true;
                 if (!current)
                 {

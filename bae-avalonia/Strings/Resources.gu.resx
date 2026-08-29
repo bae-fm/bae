@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ઓનલાઇન શોધો</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ઓનલાઇન શોધો…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ઉમેદવારને ફરી વાંચવાનો પ્રયાસ કરો.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>સામાન્ય</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>આપમેળે ઓળખો</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>આપમેળે ઓળખો</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ઓનલાઇન શોધ ખૂલે ત્યારે કવરનું લખાણ, બારકોડ અને ડિસ્ક ID આપમેળે વાંચે છે અને મેળ શોધે છે.</value></data>

@@ -130,8 +130,8 @@ internal sealed class ImportService
 
     /// <summary>Typed metadata search (the re-identify dialog's fallback and the
     /// import confirm's search). Async — it blocks on network / DB.</summary>
-    public Func<string, string, string, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
-        = (_, _, _) => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
+    public Func<BridgeSearchQuery, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
 
     /// <summary>Replace the draft from an online release.</summary>
     public Func<string, BridgeMetadataSource, string,
@@ -266,8 +266,8 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.AutoIdentifyRelease(handle, candidateKey, releaseId)),
         CancelAutoIdentify = candidateKey =>
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
-        SearchReleases = (source, artist, album) =>
-            session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, source, artist, album)),
+        SearchReleases = query =>
+            session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, query)),
         ApplyCandidateExternalMetadata = (candidateKey, source, releaseId) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.ApplyCandidateExternalMetadata(

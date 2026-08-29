@@ -28,8 +28,7 @@ struct ImportMetadataSourceSection: View {
                 ImportOnlineMetadataBrowser(
                     candidateKey: candidate.key,
                     runtime: runtime,
-                    onBack: { onPresent(.draft) },
-                    onUseFileTags: { onPresent(.fileTags) }
+                    onBack: { onPresent(.draft) }
                 )
             case .fileTags:
                 fileTagsBrowser
@@ -138,7 +137,6 @@ private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
     let onBack: () -> Void
-    let onUseFileTags: () -> Void
 
     @Environment(Importer.self)
     private var importer
@@ -149,20 +147,23 @@ private struct ImportOnlineMetadataBrowser: View {
     @Environment(\.openSettings)
     private var openSettings
     @State
-    private var mode: SearchMode = .signals
+    private var mode: SearchMode = .automatic
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Button {
-                    onBack()
-                } label: {
-                    Label("Back", systemImage: "chevron.left")
-                }
-                .buttonStyle(.link)
+            ZStack {
                 Text("Find online")
                     .font(.system(size: 13, weight: .semibold))
-                Spacer()
+                    .frame(maxWidth: .infinity)
+                HStack {
+                    Button {
+                        onBack()
+                    } label: {
+                        Label("Back", systemImage: "chevron.left")
+                    }
+                    .buttonStyle(.link)
+                    Spacer()
+                }
             }
             .padding(.horizontal, 4)
             .padding(.bottom, 8)
@@ -185,7 +186,6 @@ private struct ImportOnlineMetadataBrowser: View {
                         ),
                         mode: $mode,
                         openSettings: { openSettings() },
-                        onUseFileTags: onUseFileTags,
                         onSelect: { result in
                             ImportSearchFlow.applyMetadata(
                                 importer: importer,

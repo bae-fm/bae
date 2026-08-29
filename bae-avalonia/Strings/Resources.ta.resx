@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>இணையத்தில் தேடு</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>இணையத்தில் தேடு…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>தேர்வை மீண்டும் படிக்க முயலவும்.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>பொது</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>தானாக அடையாளம் காண்</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>தானாக அடையாளம் காண்</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>இணையத்தில் தேடு திறக்கும்போதெல்லாம் அட்டை உரை, பட்டைக்குறியீடுகள் மற்றும் வட்டு IDகளைத் தானாகப் படித்து பொருத்தத்தைத் தேடும்.</value></data>

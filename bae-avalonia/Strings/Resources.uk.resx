@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Знайти онлайн…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Спробуйте прочитати кандидата ще раз.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Загальний</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Визначати автоматично</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Визначати автоматично</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Автоматично читає текст обкладинки, штрихкоди й ідентифікатори дисків та шукає збіг щоразу, коли відкривається «Знайти онлайн».</value></data>

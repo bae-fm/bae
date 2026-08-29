@@ -8,8 +8,7 @@ import SwiftUI
 /// callbacks.
 struct ImportSearchPane: View {
     let state: ImportSearchState
-    /// Which of the two the sheet is showing. Held by whoever opened the
-    /// sheet, so closing it and opening it again starts on the signals.
+    /// Which method the stable Find online page is showing.
     @Binding
     var mode: SearchMode
     @Binding
@@ -26,14 +25,16 @@ struct ImportSearchPane: View {
     var searchBarcode: String
     let onSearch: () -> Void
     let onOpenSettings: () -> Void
-    /// Set when the candidate can seed from local files (folder imports always
-    /// can). `nil` suppresses the "Skip identifying" action.
+    /// Re-identifying an existing library release can still use its local file
+    /// tags directly. Folder import source changes live on the draft card.
     let onUseFileTags: (() -> Void)?
     /// Act on a signal in the toolbar — take the disc ID or barcode in or out
     /// of the run, or pick which extracted catalog number the run looks up.
     /// The state the import projection delivers is re-derived from what is
     /// left checked.
     let onToggleSignal: (BridgeSignalToggle) -> Void
+    /// Start the first automatic identification run from the idle state.
+    let onIdentify: () -> Void
     /// Run signal extraction and lookup again from either online-search view.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
@@ -71,6 +72,13 @@ struct ImportSearchPane: View {
         return false
     }
 
+    private var hasAutomaticRunStarted: Bool {
+        if case .idle = state.identifyState {
+            return false
+        }
+        return true
+    }
+
     /// Whether the toolbar row renders: live badges when the signals are
     /// known, or just its escapes (Auto / Search manually) on a resumed
     /// verdict — a terminal state stood back up from the store, whose raw
@@ -96,7 +104,6 @@ struct ImportSearchPane: View {
                 toolbar: state.signalsToolbar,
                 onToggle: onToggleSignal,
                 onRerun: onRerun,
-                onSearchManually: { mode = .manual },
                 onUseFileTags: onUseFileTags,
             )
         }
@@ -104,18 +111,36 @@ struct ImportSearchPane: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            methodPicker
             switch mode {
-            case .signals:
+            case .automatic:
                 toolbar
                 errorLine
-                signalsResult
+                if hasAutomaticRunStarted {
+                    signalsResult
+                }
+                else {
+                    identifyAction
+                }
             case .manual:
-                manualHeader
                 errorLine
                 manualForm
             }
         }
         .padding(.top, 6)
+    }
+
+    private var methodPicker: some View {
+        Picker(selection: $mode) {
+            Text("Automatic").tag(SearchMode.automatic)
+            Text("Search manually").tag(SearchMode.manual)
+        } label: {
+            EmptyView()
+        }
+        .labelsHidden()
+        .pickerStyle(.segmented)
+        .frame(width: 300)
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -134,12 +159,18 @@ struct ImportSearchPane: View {
 
     // MARK: - Signals
 
+    private var identifyAction: some View {
+        Button("Identify automatically", action: onIdentify)
+            .buttonStyle(.borderedProminent)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     /// What identification made of the folder: its matches, the spinner while
     /// it is still looking, or the one line saying it has nothing — with the
     /// way over to the typed search on that same line.
     @ViewBuilder
     private var signalsResult: some View {
-        if let found = foundResult {
+        if let found = foundResult, !found.groups.isEmpty {
             ReleaseGroupListView(
                 groups: found.groups,
                 isImporting: state.isImporting,
@@ -160,7 +191,7 @@ struct ImportSearchPane: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        else {
+        else if hasAutomaticRunStarted {
             nothingFoundLine
         }
     }
@@ -170,22 +201,11 @@ struct ImportSearchPane: View {
     @ViewBuilder
     private var nothingFoundLine: some View {
         HStack(spacing: 8) {
-            switch state.identifyState {
-            case .notFoundAnywhere:
-                Image(systemName: "info.circle.fill")
-                    .foregroundStyle(.orange)
-                Text("No automatic matches found")
-                    .font(.callout)
-            default:
-                Image(systemName: "magnifyingglass.circle.fill")
-                    .foregroundStyle(.secondary)
-                Text("No identifying signals yet. Search manually")
-                    .font(.callout)
-            }
-            DiscIdInfoTip()
-            Button("Search manually") { mode = .manual }
-                .buttonStyle(.link)
+            Image(systemName: "info.circle.fill")
+                .foregroundStyle(.orange)
+            Text("No automatic matches found")
                 .font(.callout)
+            DiscIdInfoTip()
             Spacer()
         }
         .padding(.horizontal, 18)
@@ -194,36 +214,6 @@ struct ImportSearchPane: View {
     }
 
     // MARK: - Manual
-
-    /// The way back. `Signals` returns to what identification already found;
-    /// Identify automatically reruns extraction and lookup.
-    private var manualHeader: some View {
-        HStack(spacing: 10) {
-            Button {
-                mode = .signals
-            } label: {
-                Label("Signals", systemImage: "chevron.left")
-            }
-            .buttonStyle(.link)
-            Spacer()
-            Button {
-                mode = .signals
-                onRerun()
-            } label: {
-                Label(
-                    "Identify automatically",
-                    systemImage: "arrow.clockwise"
-                )
-            }
-            .buttonStyle(.link)
-        }
-        .font(.system(size: 12.5))
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
-        }
-    }
 
     @ViewBuilder
     private var manualForm: some View {
@@ -245,17 +235,7 @@ struct ImportSearchPane: View {
             ProgressView("Searching...")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        else if !state.hasSearched {
-            ContentUnavailableView(
-                "No results",
-                systemImage: "magnifyingglass",
-                description: Text(
-                    "Search MusicBrainz or Discogs to find metadata"
-                ),
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        else if state.searchGroups.isEmpty {
+        else if state.hasSearched && state.searchGroups.isEmpty {
             ContentUnavailableView(
                 "No matches found",
                 systemImage: "magnifyingglass",
@@ -287,7 +267,7 @@ struct ImportSearchPane: View {
         @MainActor
         static func preview(
             state: ImportSearchState,
-            mode: SearchMode = .signals,
+            mode: SearchMode = .automatic,
             searchArtist: String = "",
             searchAlbum: String = "",
         ) -> ImportSearchPane {
@@ -302,8 +282,9 @@ struct ImportSearchPane: View {
                 searchBarcode: .constant(""),
                 onSearch: {},
                 onOpenSettings: {},
-                onUseFileTags: {},
+                onUseFileTags: nil,
                 onToggleSignal: { _ in },
+                onIdentify: {},
                 onRerun: {},
                 onSelect: { _ in },
             )
@@ -312,6 +293,12 @@ struct ImportSearchPane: View {
 
     #Preview("Main Pane - Exact Matches") {
         ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
+            .frame(width: 1212, height: 982)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Main Pane - Auto-lookup idle") {
+        ImportSearchPane.preview(state: PreviewData.searchStateIdle)
             .frame(width: 1212, height: 982)
             .importPreviewEnvironment()
     }

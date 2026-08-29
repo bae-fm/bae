@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>البحث عبر الإنترنت…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>حاول قراءة العنصر المرشّح مرة أخرى.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>عام</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>التعرّف تلقائيًا</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>التعرّف تلقائيًا</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>يقرأ نص الغلاف والرموز الشريطية ومعرّفات الأقراص ويبحث عن تطابق تلقائيًا كلما فُتح «البحث عبر الإنترنت».</value></data>

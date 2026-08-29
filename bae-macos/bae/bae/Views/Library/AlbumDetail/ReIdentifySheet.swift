@@ -53,7 +53,7 @@ struct ReIdentifySheet: View {
     /// Which half of the identify pane is showing. The sheet owns it, so it
     /// opens on what identification found.
     @State
-    private var searchMode: SearchMode = .signals
+    private var searchMode: SearchMode = .automatic
 
     private enum Phase: Equatable {
         case identifying
@@ -168,14 +168,6 @@ struct ReIdentifySheet: View {
                 ),
                 mode: $searchMode,
                 openSettings: { openSettings() },
-                // Re-identify "Skip identifying" diverges from the
-                // import flow: it commits File Tags in one click (no
-                // editable seed page). The identity flips to FileTags
-                // and the rows are reseeded from the rip's file tags as
-                // part of the commit (graceful seeding), so the release
-                // immediately reflects its own tags rather than the
-                // prior source's metadata — there's no post-commit
-                // refresh prompt for File Tags.
                 onUseFileTags: { commit(.fileTags) },
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers

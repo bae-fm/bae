@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ऑनलाइन शोधा</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ऑनलाइन शोधा…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>उमेदवार पुन्हा वाचून पाहा.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>सामान्य</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>आपोआप ओळखा</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>आपोआप ओळखा</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ऑनलाइन शोध उघडल्यावर मुखपृष्ठावरील मजकूर, बारकोड आणि डिस्क ID आपोआप वाचतो आणि जुळणारा निकाल शोधतो.</value></data>

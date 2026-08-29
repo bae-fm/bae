@@ -445,7 +445,7 @@ internal static partial class NativeBae
         };
 
 
-    private static BridgeMetadataSource MetadataSource(string source) =>
+    internal static BridgeMetadataSource MetadataSource(string source) =>
         source == "discogs" ? BridgeMetadataSource.Discogs : BridgeMetadataSource.MusicBrainz;
 
     private static BridgeHomeStorage HomeStorage(string storage) =>

@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>অনলাইনে খুঁজুন</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>অনলাইনে খুঁজুন…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>প্রার্থীটি আবার পড়ার চেষ্টা করুন।</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>সাধারণ</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>স্বয়ংক্রিয়ভাবে শনাক্ত করুন</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>স্বয়ংক্রিয়ভাবে শনাক্ত করুন</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>অনলাইনে খুঁজুন খোলা হলে স্বয়ংক্রিয়ভাবে প্রচ্ছদের লেখা, বারকোড ও ডিস্ক আইডি পড়ে এবং মিল খোঁজে।</value></data>

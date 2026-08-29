@@ -335,6 +335,22 @@
             ),
         ])
 
+        /// Find online before an automatic run starts.
+        static let searchStateIdle = ImportSearchState(
+            identifyState: .idle,
+            error: nil,
+            searchGroups: [],
+            selectedReleaseId: nil,
+            loadingReleaseId: nil,
+            isSearching: false,
+            hasSearched: false,
+            isImporting: false,
+            libraryStatuses: [:],
+            discogsEnabled: true,
+            signals: nil,
+            signalsToolbar: BridgeSignalsToolbar(signals: [])
+        )
+
         /// Exact-match display state: the disc ID and the chosen catalog number both
         /// name the same group.
         static let searchStateFoundExact = ImportSearchState(

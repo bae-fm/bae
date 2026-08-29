@@ -1,9 +1,70 @@
+import AppKit
 import BaeKit
 import Foundation
 import SwiftUI
 import Testing
 
 @testable import bae
+
+@MainActor
+@Suite("Find online method presentation")
+struct FindOnlineMethodPresentationTests {
+    @Test("idle automatic method has no empty-result message")
+    func idleAutomaticMethodHasNoEmptyResultMessage() async {
+        let labels = await labels(
+            for: ImportSearchPane.preview(state: idleState)
+        )
+
+        #expect(labels.contains(String(localized: "Automatic")))
+        #expect(labels.contains(String(localized: "Search manually")))
+        #expect(labels.contains(String(localized: "Identify automatically")))
+        #expect(
+            !labels.contains(String(localized: "No automatic matches found"))
+        )
+    }
+
+    @Test("manual method has no empty-result message before a search")
+    func manualMethodHasNoEmptyResultMessageBeforeSearch() async {
+        let labels = await labels(
+            for: ImportSearchPane.preview(state: idleState, mode: .manual)
+        )
+
+        #expect(!labels.contains(String(localized: "No results")))
+        #expect(!labels.contains(String(localized: "No matches found")))
+    }
+
+    private var idleState: ImportSearchState {
+        ImportSearchState(
+            identifyState: .idle,
+            error: nil,
+            searchGroups: [],
+            selectedReleaseId: nil,
+            loadingReleaseId: nil,
+            isSearching: false,
+            hasSearched: false,
+            isImporting: false,
+            libraryStatuses: [:],
+            discogsEnabled: true,
+            signals: nil,
+            signalsToolbar: BridgeSignalsToolbar(signals: [])
+        )
+    }
+
+    private func labels<V: View>(for view: V) async -> [String] {
+        let size = NSSize(width: 900, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            view.frame(width: size.width, height: size.height),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let labels = SnapshotTestSupport.descendants(of: host)
+            .compactMap { ($0 as? NSTextField)?.stringValue }
+        withExtendedLifetime(window) {}
+        return labels
+    }
+}
 
 @MainActor
 @Suite("ImportSearchFlow metadata application")

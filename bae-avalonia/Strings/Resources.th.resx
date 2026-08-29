@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ค้นหาออนไลน์</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ค้นหาออนไลน์…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ลองอ่านรายการอีกครั้ง</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>ทั่วไป</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>ระบุโดยอัตโนมัติ</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>ระบุโดยอัตโนมัติ</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>อ่านข้อความบนปก บาร์โค้ด และ ID แผ่นดิสก์โดยอัตโนมัติ แล้วค้นหารายการที่ตรงกันทุกครั้งที่เปิดค้นหาออนไลน์</value></data>

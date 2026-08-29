@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>在線上尋找</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在線上尋找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>請嘗試重新讀取候選項目。</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>自動識別</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>自動識別</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>每次開啟「在線上尋找」時，自動讀取封面文字、條碼和光碟 ID 並搜尋相符項目。</value></data>

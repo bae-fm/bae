@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>온라인에서 찾기</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>온라인에서 찾기…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>후보를 다시 읽어 보세요.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>일반</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>자동으로 식별</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>자동으로 식별</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>온라인에서 찾기를 열 때마다 커버 글자, 바코드 및 디스크 ID를 자동으로 읽고 일치 항목을 검색합니다.</value></data>

@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>在线查找</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在线查找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>请尝试重新读取候选项。</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>常规</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>自动识别</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>自动识别</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>每次打开“在线查找”时，自动读取封面文字、条码和光盘 ID 并搜索匹配项。</value></data>

@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>オンラインで検索…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>候補をもう一度読み込んでください。</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>自動で識別</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>自動で識別</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>「オンラインで検索」を開くたびに、カバーの文字、バーコード、ディスクIDを自動で読み取り、一致するリリースを検索します。</value></data>

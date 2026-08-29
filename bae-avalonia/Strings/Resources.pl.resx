@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Znajdź online</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Znajdź online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Spróbuj ponownie odczytać kandydata.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Ogólne</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Identyfikuj automatycznie</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Identyfikuj automatycznie</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Automatycznie odczytuje tekst okładki, kody kreskowe i identyfikatory dysków oraz szuka dopasowania przy każdym otwarciu Znajdź online.</value></data>

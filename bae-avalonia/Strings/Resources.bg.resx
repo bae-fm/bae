@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Търсене онлайн</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Търсене онлайн…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Опитайте да прочетете кандидата отново.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Общи</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Автоматично разпознаване</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Автоматично разпознаване</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Автоматично прочита текста на обложката, баркодовете и идентификаторите на дискове и търси съвпадение при всяко отваряне на „Търсене онлайн“.</value></data>

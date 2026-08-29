@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯನ್ನು ಮತ್ತೆ ಓದಲು ಪ್ರಯತ್ನಿಸಿ.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>ಸಾಮಾನ್ಯ</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ತೆರೆದಾಗ ಕವರ್ ಪಠ್ಯ, ಬಾರ್‌ಕೋಡ್‌ಗಳು ಮತ್ತು ಡಿಸ್ಕ್ IDಗಳನ್ನು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಓದಿ ಹೊಂದಾಣಿಕೆಯನ್ನು ಹುಡುಕುತ್ತದೆ.</value></data>

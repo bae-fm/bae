@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>Çevrimiçi bul</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Çevrimiçi bul…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Adayı yeniden okumayı deneyin.</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>Genel</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>Otomatik tanımla</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>Otomatik tanımla</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Çevrimiçi bul her açıldığında kapak metnini, barkodları ve disk kimliklerini otomatik olarak okur ve eşleşme arar.</value></data>

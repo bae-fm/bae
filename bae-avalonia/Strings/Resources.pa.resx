@@ -476,6 +476,7 @@
   <data name="import.metadata.find_online" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭੋ</value></data>
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭੋ…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ਉਮੀਦਵਾਰ ਨੂੰ ਦੁਬਾਰਾ ਪੜ੍ਹਨ ਦੀ ਕੋਸ਼ਿਸ਼ ਕਰੋ।</value></data>
+  <data name="import.search.general" xml:space="preserve"><value>ਆਮ</value></data>
   <data name="import.search.identify_automatically" xml:space="preserve"><value>ਆਪਣੇ ਆਪ ਪਛਾਣੋ</value></data>
   <data name="settings.import.automatic_identification" xml:space="preserve"><value>ਆਪਣੇ ਆਪ ਪਛਾਣੋ</value></data>
   <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭੋ ਖੁੱਲ੍ਹਣ ’ਤੇ ਕਵਰ ਦਾ ਟੈਕਸਟ, ਬਾਰਕੋਡ ਅਤੇ ਡਿਸਕ ID ਆਪਣੇ ਆਪ ਪੜ੍ਹਦਾ ਹੈ ਅਤੇ ਮੇਲ ਲੱਭਦਾ ਹੈ।</value></data>
