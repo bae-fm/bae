@@ -80,36 +80,28 @@ internal sealed class ImportMetadataSourceSection
 
     private Control DraftActions()
     {
-        if (DraftIsBlank)
+        var actions = new StackPanel
         {
-            var actions = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 6,
-            };
-            actions.Children.Add(ActionButton(
-                Loc.Chrome("import.metadata.find_online_ellipsis"),
-                () => OnPresent(ImportMetadataPresentation.FindOnline)));
-            actions.Children.Add(ActionButton(
-                Loc.Core("ui.import.metadata.file_tags") + "…",
-                () => OnPresent(ImportMetadataPresentation.FileTags)));
-            return actions;
-        }
-
-        var menu = ImportPaneUi.RowButton("⋯");
-        var flyout = new MenuFlyout();
-        flyout.Items.Add(MenuItem(
-            Loc.Chrome("import.metadata.find_another_release"),
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+        };
+        actions.Children.Add(ActionButton(
+            DraftIsBlank
+                ? Loc.Chrome("import.metadata.find_online_ellipsis")
+                : Loc.Chrome("import.metadata.find_another_release"),
             () => OnPresent(ImportMetadataPresentation.FindOnline)));
-        flyout.Items.Add(MenuItem(
-            Loc.Chrome("import.metadata.use_file_tags") + "…",
+        actions.Children.Add(ActionButton(
+            DraftIsBlank
+                ? Loc.Core("ui.import.metadata.file_tags") + "…"
+                : Loc.Chrome("import.metadata.use_file_tags") + "…",
             () => OnPresent(ImportMetadataPresentation.FileTags)));
-        flyout.Items.Add(new Separator());
-        flyout.Items.Add(MenuItem(
-            Loc.Chrome("import.metadata.clear"),
-            OnClearMetadata));
-        menu.Flyout = flyout;
-        return menu;
+        if (!DraftIsBlank)
+        {
+            actions.Children.Add(ActionButton(
+                Loc.Chrome("import.metadata.clear"),
+                OnClearMetadata));
+        }
+        return actions;
     }
 
     private Control FileTagsContent()
@@ -166,13 +158,6 @@ internal sealed class ImportMetadataSourceSection
             () => OnPresent(ImportMetadataPresentation.Draft)));
         row.Children.Add(ImportPaneUi.Cell(title));
         return row;
-    }
-
-    private static MenuItem MenuItem(string label, Action action)
-    {
-        var item = new MenuItem { Header = label };
-        item.Click += (_, _) => action();
-        return item;
     }
 
     private Button ActionButton(string label, Action action)

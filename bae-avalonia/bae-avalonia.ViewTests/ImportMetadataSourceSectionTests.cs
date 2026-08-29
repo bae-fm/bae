@@ -38,6 +38,30 @@ public sealed class ImportMetadataSourceSectionTests
     }
 
     [AvaloniaFact]
+    public void AppliedDraftKeepsEveryMetadataActionVisible()
+    {
+        var presentations = new List<ImportMetadataPresentation>();
+        var clears = 0;
+        var section = Build(
+            draftIsBlank: false,
+            onPresent: presentations.Add,
+            onClearMetadata: () => clears++);
+
+        Click(section, Loc.Chrome("import.metadata.find_another_release"));
+        Click(section, Loc.Chrome("import.metadata.use_file_tags") + "…");
+        Click(section, Loc.Chrome("import.metadata.clear"));
+
+        Assert.Equal(
+            new[]
+            {
+                ImportMetadataPresentation.FindOnline,
+                ImportMetadataPresentation.FileTags,
+            },
+            presentations);
+        Assert.Equal(1, clears);
+    }
+
+    [AvaloniaFact]
     public void FileTagsPreviewAppliesTheDisplayedSource()
     {
         var applications = 0;
@@ -106,6 +130,7 @@ public sealed class ImportMetadataSourceSectionTests
         BridgeReleaseUserEdit? fileTagsPreview = null,
         Action<ImportMetadataPresentation>? onPresent = null,
         Action? onUseFileTags = null,
+        Action? onClearMetadata = null,
         Action<BridgeCandidateEditField, string>? onEditField = null) =>
         new ImportMetadataSourceSection
         {
@@ -128,7 +153,7 @@ public sealed class ImportMetadataSourceSectionTests
             OnPresent = onPresent ?? (_ => { }),
             OnReadFileTags = () => { },
             OnUseFileTags = onUseFileTags ?? (() => { }),
-            OnClearMetadata = () => { },
+            OnClearMetadata = onClearMetadata ?? (() => { }),
             OnEditCover = () => { },
             OnSelectCover = _ => { },
             OnEditField = onEditField ?? ((_, _) => { }),

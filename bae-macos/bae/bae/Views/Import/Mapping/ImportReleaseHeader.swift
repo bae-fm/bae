@@ -173,8 +173,7 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// A blank draft exposes its two prefill sources. A populated draft keeps
-    /// replacement and clear actions in one overflow menu.
+    /// Source replacement and clearing stay visible on the card they affect.
     private var actionControl: some View {
         HStack(spacing: 8) {
             ProgressView()
@@ -185,40 +184,27 @@ struct ImportReleaseHeader: View {
                     sourceActions.findOnline()
                 }
                 .buttonStyle(.borderedProminent)
-                Button {
-                    sourceActions.useFileTags()
-                } label: {
-                    Text(
-                        verbatim: coreString("ui.import.metadata.file_tags")
-                            + "…"
-                    )
+            }
+            else {
+                Button("Find another release…") {
+                    sourceActions.findOnline()
                 }
                 .buttonStyle(.bordered)
             }
-            else {
-                Menu {
-                    Button("Find another release…") {
-                        sourceActions.findOnline()
-                    }
-                    Button {
-                        sourceActions.useFileTags()
-                    } label: {
-                        Text(
-                            verbatim: coreString("ui.import.metadata.file_tags")
-                                + "…"
-                        )
-                    }
-                    Divider()
-                    Button("Clear metadata", role: .destructive) {
-                        confirmsClear = true
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
+            Button {
+                sourceActions.useFileTags()
+            } label: {
+                Text(
+                    verbatim: coreString("ui.import.metadata.file_tags")
+                        + "…"
+                )
+            }
+            .buttonStyle(.bordered)
+            if !draftIsBlank {
+                Button("Clear metadata", role: .destructive) {
+                    confirmsClear = true
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
+                .buttonStyle(.bordered)
             }
         }
         .disabled(isReading)
