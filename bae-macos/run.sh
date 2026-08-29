@@ -95,16 +95,17 @@ cd bae-macos/bae && xcodegen && cd ../..
 DERIVED_DATA="${BAE_MACOS_RUN_DERIVED_DATA_PATH:-.build/runDerivedData}"
 DERIVED_DATA="$(cd bae-macos/bae && mkdir -p "$DERIVED_DATA" && cd "$DERIVED_DATA" && pwd)"
 
-# Keep the installed app identity explicit for runnable Debug and Release
-# products; the Xcode-owned Debug host has a separate identity in project.yml.
+# Pass app inputs under private names. The app target maps these to Xcode build
+# settings; package resource bundles do not, so they retain generated plists.
 xcodebuild -project bae-macos/bae/bae.xcodeproj \
     -scheme bae \
     -configuration "$CONFIG" \
     -derivedDataPath "$DERIVED_DATA" \
-    GENERATE_INFOPLIST_FILE=NO \
-    INFOPLIST_FILE=bae/Info.plist \
-    PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
-    PRODUCT_NAME="$PRODUCT_NAME" \
+    BAE_RUN_APP_GENERATE_INFOPLIST_FILE=NO \
+    BAE_RUN_APP_INFOPLIST_FILE=bae/Info.plist \
+    BAE_RUN_APP_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+    BAE_RUN_APP_PRODUCT_NAME="$PRODUCT_NAME" \
+    BAE_RUN_APP_LSUIELEMENT=NO \
     build
 
 if [[ "$OPEN" == true ]]; then
