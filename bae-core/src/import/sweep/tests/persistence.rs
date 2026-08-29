@@ -264,6 +264,74 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
     );
 }
 
+/// A stale pane can still render Lookup as idle after the command has already
+/// started its run. Repeating the entry command must leave that run registered:
+/// `identify.start` supersedes, so starting again would cancel the work already
+/// in flight and replace its run id.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn explicit_lookup_during_an_active_run_keeps_the_existing_run() {
+    let fixture = Fixture::new("explicit-keeps-active-run").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.scan(1).await;
+    let mut events = fixture.import.subscribe_events();
+
+    fixture.start_explicit_lookup_and_await_run(&dir).await;
+    wait_for_request(&fixture.provider, "/discid/", 1).await;
+    let first_run = loop {
+        let event = tokio::time::timeout(Duration::from_secs(10), events.recv())
+            .await
+            .expect("the active run broadcasts its state")
+            .expect("the import event bus remains open");
+        if let ImportEvent::IdentifyStateChanged {
+            candidate_key, run, ..
+        } = event
+        {
+            if candidate_key == key {
+                break run;
+            }
+        }
+    };
+
+    // The caller still sees Idle and repeats the ordinary entry command.
+    fixture.start_explicit_lookup(&dir);
+
+    let replacement = tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if let ImportEvent::IdentifyStateChanged {
+                candidate_key, run, ..
+            } = events
+                .recv()
+                .await
+                .expect("the import event bus remains open")
+            {
+                if candidate_key == key && run != first_run {
+                    return run;
+                }
+            }
+        }
+    })
+    .await;
+    fixture.provider.release();
+
+    assert!(
+        replacement.is_err(),
+        "the repeated entry command replaced the active identify run"
+    );
+    assert_eq!(
+        fixture.provider.count_containing("/discid/"),
+        1,
+        "the repeated entry command started another provider lookup"
+    );
+    assert!(
+        fixture.identify.is_running(&key),
+        "the original identify run remains registered"
+    );
+}
+
 /// A driver being torn down after settling broadcasts `Idle` on its way out —
 /// the sweep cancels its own drivers once they settle. The recorded runtime
 /// keeps the terminal state: the candidate's answer doesn't stop being its

@@ -56,9 +56,12 @@ impl QueueSweepHandle {
                     );
                     return;
                 };
-                if !has_stored_verdict(&this.context, &candidate_key).await {
-                    this.start_explicit_lookup_run(candidate_key, candidate);
+                if has_stored_verdict(&this.context, &candidate_key).await
+                    || this.context.identify.is_running(&candidate_key)
+                {
+                    return;
                 }
+                this.start_explicit_lookup_run(candidate_key, candidate);
             },
             &self.runtime_handle,
         );
