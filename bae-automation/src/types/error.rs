@@ -68,6 +68,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Database(e) => Self::Database(e.to_string()),
             LibraryError::Io(e) => Self::Unavailable(e.to_string()),
             LibraryError::Import(e) => Self::Import(e),
+            LibraryError::ArtistIdentityConflict(e) => Self::Import(e.to_string()),
             LibraryError::Export(e) | LibraryError::Save(e) => Self::Unavailable(e),
             // A rejected metadata edit is the caller's bad input, not an import
             // failure — MCP sees it as `validation`, the kind it can act on.

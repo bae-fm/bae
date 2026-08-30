@@ -9,6 +9,20 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::import::MetadataSource;
 
+/// Two exact provider identities that currently belong to different library
+/// artists. Import stops until a person confirms that the two rows represent
+/// one artist or corrects the source metadata.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("artist '{incoming_artist_name}' has source IDs belonging to different library artists")]
+pub struct ArtistIdentityConflict {
+    pub incoming_artist_name: String,
+    pub discogs_artist_id: String,
+    pub musicbrainz_artist_id: String,
+    pub discogs_artist: crate::import::ExistingArtist,
+    pub musicbrainz_artist: crate::import::ExistingArtist,
+}
+
 /// Why an import failed. One class per distinguishable failure the pipeline
 /// actually produces.
 #[derive(Debug, thiserror::Error)]

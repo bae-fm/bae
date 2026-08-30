@@ -43,5 +43,6 @@ struct ImportMappingActions {
 /// What the commit bar calls back into.
 struct ImportCommitActions {
     let confirmImport: () -> Void
+    let mergeArtists: (String) -> Void
     let viewInLibrary: (String) -> Void
 }

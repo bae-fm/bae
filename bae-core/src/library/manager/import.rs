@@ -471,11 +471,11 @@ impl LibraryManager {
         content_hash: &str,
         folder_path: &str,
         edit_revision: u64,
-        error: &str,
+        failure: &crate::import::ImportFailure,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .save_import_candidate_failure(content_hash, folder_path, edit_revision, error)
+            .save_import_candidate_failure(content_hash, folder_path, edit_revision, failure)
             .await?)
     }
 

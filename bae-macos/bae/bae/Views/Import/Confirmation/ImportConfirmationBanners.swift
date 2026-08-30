@@ -21,6 +21,8 @@ struct ImportConfirmationBanners: View {
     let failure: BridgeImportFailure?
     /// Try the failed import again.
     let onRetry: () -> Void
+    /// Keep the named library artist and absorb the other row.
+    let onMergeArtists: (String) -> Void
     let onViewInLibrary: (String) -> Void
 
     var body: some View {
@@ -76,19 +78,24 @@ struct ImportConfirmationBanners: View {
         }
 
         if importStatus == nil, let failure {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text(failure.error)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                Spacer()
-                Button("Retry") { onRetry() }
-                    .controlSize(.small)
+            switch failure {
+            case .error(let error, _):
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text(error)
+                        .font(.callout)
+                        .foregroundStyle(.red)
+                    Spacer()
+                    Button("Retry") { onRetry() }
+                        .controlSize(.small)
+                }
+                .padding(10)
+                .background(Color.red.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            case .artistIdentityConflict(_, _, let conflict):
+                artistIdentityConflict(conflict)
             }
-            .padding(10)
-            .background(Color.red.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
 
         if let error {
@@ -103,6 +110,50 @@ struct ImportConfirmationBanners: View {
             .background(Color.red.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 6))
         }
+    }
+
+    private func artistIdentityConflict(
+        _ conflict: BridgeArtistIdentityConflict
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Image(systemName: "person.2.badge.gearshape.fill")
+                    .foregroundStyle(.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(conflict.incomingArtistName)
+                        .fontWeight(.semibold)
+                    Text(
+                        "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+                    )
+                }
+                .font(.callout)
+                .foregroundStyle(.orange)
+            }
+            HStack(spacing: 8) {
+                Button {
+                    onMergeArtists(conflict.discogsArtist.artistId)
+                } label: {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Keep Discogs Artist")
+                        Text(conflict.discogsArtist.name)
+                            .font(.caption)
+                    }
+                }
+                Button {
+                    onMergeArtists(conflict.musicbrainzArtist.artistId)
+                } label: {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Keep MusicBrainz Artist")
+                        Text(conflict.musicbrainzArtist.name)
+                            .font(.caption)
+                    }
+                }
+            }
+            .controlSize(.small)
+        }
+        .padding(10)
+        .background(Color.orange.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -119,11 +170,12 @@ struct ImportConfirmationBanners: View {
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
-                failure: BridgeImportFailure(
+                failure: BridgeImportFailure.error(
                     error: "The folder is no longer where it was",
                     failedAt: "2026-08-23T04:00:00Z"
                 ),
                 onRetry: {},
+                onMergeArtists: { _ in },
                 onViewInLibrary: { _ in },
             )
         }

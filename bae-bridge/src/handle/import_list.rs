@@ -44,6 +44,23 @@ impl AppHandle {
         .await
     }
 
+    pub async fn merge_candidate_artist_identity_conflict(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        surviving_artist_id: String,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_merge_candidate_artist_identity_conflict(
+                    &candidate_key,
+                    &surviving_artist_id,
+                )
+                .await
+                .map_err(BridgeError::import)
+        })
+        .await
+    }
+
     /// One candidate as the pane reads it, and every later read of it.
     pub fn subscribe_import_candidate(
         &self,

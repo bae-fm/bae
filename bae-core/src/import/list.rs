@@ -376,7 +376,7 @@ impl ImportCandidateDetailProjection {
         let import_status = import_status_of(
             facts.importing,
             imported_release.as_ref(),
-            failure.as_ref().map(|failure| failure.error.as_str()),
+            failure.as_ref().map(ImportFailure::error),
         );
         let known = match (answer.filter(|_| actionable), facts.identify_phase) {
             (Some(classification), _) => CandidateAnswer::Classified(classification),

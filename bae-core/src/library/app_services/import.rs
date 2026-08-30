@@ -20,6 +20,7 @@ impl AppServices {
     delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
     delegate_async!(import, import_preview_file_tags_for_folder => preview_file_tags_for_folder(candidate_key: String) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError>);
     delegate_async!(import, import_start_import => start_import(candidate_key: &str, storage_mode: crate::import::StorageMode, pin: bool) -> Result<String, crate::import::ImportError>);
+    delegate_async!(import, import_merge_candidate_artist_identity_conflict => merge_candidate_artist_identity_conflict(candidate_key: &str, surviving_artist_id: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);
     delegate_async!(import, import_revalidate_discogs_token => revalidate_discogs_token() -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_remove_discogs_token => remove_discogs_token() -> Result<(), crate::import::ImportError>);

@@ -6,12 +6,16 @@ use crate::import::probe::{ProbedDurations, ProbedUnit};
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
-    ExistingArtist, NewArtistSeed, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    ExistingArtist, ImportFailure, NewArtistSeed, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
     TrackArtistAssignments,
 };
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
 };
+use uuid::Uuid;
+
+#[path = "pane_rows/artist_identity_conflicts.rs"]
+mod artist_identity_conflicts;
 
 fn pane_candidate() -> CategorizedFiles {
     track_files_candidate(&[("01 Track.flac", 111), ("CDImage.flac", 222)])
@@ -390,7 +394,12 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
-    db.save_import_candidate_failure(&hash, "/music/Album", 0, "the folder vanished")
+    db.save_import_candidate_failure(
+        &hash,
+        "/music/Album",
+        0,
+        &ImportFailure::error_only("the folder vanished", fixed_identified_at()),
+    )
         .await
         .unwrap();
 
@@ -400,8 +409,8 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .unwrap()
         .failure
         .expect("the failure is stored");
-    assert_eq!(failure.error, "the folder vanished");
-    assert_eq!(failure.failed_at, fixed_identified_at());
+    assert_eq!(failure.error(), "the folder vanished");
+    assert_eq!(failure.failed_at(), fixed_identified_at());
     assert!(db
         .load_import_candidate_pane_rows(&hash)
         .await
@@ -409,7 +418,12 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .metadata_draft
         .is_blank());
 
-    db.save_import_candidate_failure(&hash, "/music/Album", 0, "the disc would not read")
+    db.save_import_candidate_failure(
+        &hash,
+        "/music/Album",
+        0,
+        &ImportFailure::error_only("the disc would not read", fixed_identified_at()),
+    )
         .await
         .unwrap();
     assert_eq!(
@@ -418,7 +432,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
             .unwrap()
             .failure
             .unwrap()
-            .error,
+            .error(),
         "the disc would not read",
         "the second failure replaces the first"
     );

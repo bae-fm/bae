@@ -12,8 +12,8 @@ use super::*;
 use crate::db::client::candidate_state_rows::{require_state_row, save_cover, COVER_COLUMNS};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CandidateTrackMappingEdit,
-    CoverSelection, ExistingArtist, ImportFailure, NewArtistSeed, RawPressingEdit, RawReleaseEdit,
-    RawTrackEdit, TrackArtistAssignments, TrackEditState,
+    CoverSelection, ExistingArtist, NewArtistSeed, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
+    TrackArtistAssignments, TrackEditState,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, year, format, \
@@ -695,29 +695,6 @@ fn load_track_artist_assignments_on(
     Ok(out)
 }
 
-/// The failure the last import of `only` left, or every candidate's.
-fn load_failures_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
-) -> Result<HashMap<String, ImportFailure>, DbError> {
-    let rows = sql.query(
-        "SELECT content_hash, error, failed_at FROM import_candidate_failure \
-         WHERE :only IS NULL OR content_hash = :only",
-        named_params! { ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("error")?,
-                rfc3339_column(row, "failed_at")?,
-            ))
-        },
-    )?;
-    Ok(rows
-        .into_iter()
-        .map(|(content_hash, error, failed_at)| (content_hash, ImportFailure { error, failed_at }))
-        .collect())
-}
-
 impl Database {
     /// Everything a person settled about one candidate through its pane.
     pub async fn load_import_candidate_pane_rows(
@@ -741,46 +718,6 @@ impl Database {
         let durations = durations.clone();
         self.call(move |sql| insert_durations(sql, &content_hash, &durations))
             .await
-    }
-
-    /// Record that an import of this candidate failed, so the pane still
-    /// offers Retry after a relaunch.
-    ///
-    /// The anchor row is created when nothing has identified or picked the
-    /// candidate: an import driven straight from a command has no pick behind
-    /// it, and the failure is still a fact about those bytes.
-    pub async fn save_import_candidate_failure(
-        &self,
-        content_hash: &str,
-        folder_path: &str,
-        edit_revision: u64,
-        error: &str,
-    ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
-        let folder_path = folder_path.to_string();
-        let error = error.to_string();
-        let edit_revision = i64::try_from(edit_revision).map_err(|_| {
-            DbError::Message(format!(
-                "candidate edit revision {edit_revision} exceeds SQLite's integer range"
-            ))
-        })?;
-        let now = self.inner.clock.now().to_rfc3339();
-        self.call(move |sql| {
-            sql.execute(
-                "INSERT INTO import_candidate_state (content_hash, folder_path, edit_revision) \
-                 VALUES (?, ?, ?) ON CONFLICT (content_hash) DO NOTHING",
-                params![content_hash, folder_path, edit_revision],
-            )?;
-            sql.execute(
-                "INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
-                 VALUES (?, ?, ?) \
-                 ON CONFLICT (content_hash) DO UPDATE SET \
-                     error = excluded.error, failed_at = excluded.failed_at",
-                params![content_hash, error, now],
-            )?;
-            Ok(())
-        })
-        .await
     }
 
     /// Forget the last failure — what queueing an import of this candidate

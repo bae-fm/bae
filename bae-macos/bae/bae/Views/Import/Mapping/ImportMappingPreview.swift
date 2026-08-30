@@ -48,6 +48,7 @@
                 mappingActions: inertMappingActions(),
                 commitActions: ImportCommitActions(
                     confirmImport: {},
+                    mergeArtists: { _ in },
                     viewInLibrary: { _ in },
                 ),
                 onPresentMetadata: { _ in },

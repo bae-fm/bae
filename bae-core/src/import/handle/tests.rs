@@ -8,6 +8,7 @@ const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967"; // was "track-1"
 
 use super::*;
 use crate::db::{Database, DbArtist};
+use crate::library::LibraryError;
 use crate::test_logs::capture_warn_logs_async;
 use chrono::Utc;
 use serial_test::serial;

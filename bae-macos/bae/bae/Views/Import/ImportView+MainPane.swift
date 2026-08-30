@@ -51,6 +51,12 @@ extension ImportView {
             mappingActions: mappingActions(for: candidate),
             commitActions: ImportCommitActions(
                 confirmImport: { commitConfirmedImport(candidate: candidate) },
+                mergeArtists: {
+                    mergeArtistIdentityConflict(
+                        candidate: candidate,
+                        keeping: $0
+                    )
+                },
                 viewInLibrary: { uiStore.navigateToAlbum($0) },
             ),
             onPresentMetadata: {

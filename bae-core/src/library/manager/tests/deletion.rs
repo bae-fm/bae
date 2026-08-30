@@ -196,7 +196,12 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
     let (candidate_hash, candidate_track_id) = create_candidate_draft(&manager).await;
     manager
         .database
-        .save_import_candidate_failure(&candidate_hash, "/music/candidate", 0, "not imported")
+        .save_import_candidate_failure(
+            &candidate_hash,
+            "/music/candidate",
+            0,
+            &crate::import::ImportFailure::error_only("not imported", manager.clock.now()),
+        )
         .await
         .unwrap();
     manager

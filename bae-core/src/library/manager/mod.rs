@@ -113,6 +113,9 @@ pub enum LibraryError {
     Io(#[from] std::io::Error),
     #[error("Import error: {0}")]
     Import(String),
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("Import error: {0}")]
+    ArtistIdentityConflict(#[source] Box<crate::import::ArtistIdentityConflict>),
     /// A verbatim release export (reproducing the imported file set) failed.
     #[error("Export error: {0}")]
     Export(String),
@@ -182,6 +185,13 @@ impl From<coven::ApproveDevicePairingError> for LibraryError {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl From<crate::import::ArtistIdentityConflict> for LibraryError {
+    fn from(error: crate::import::ArtistIdentityConflict) -> Self {
+        Self::ArtistIdentityConflict(Box::new(error))
+    }
+}
+
 /// A stored fragment we refuse to join onto a local path surfaces as an import
 /// failure: the row it came from is unusable, and the copy it was for does not run.
 impl From<crate::storage::path_fragment::PathFragmentError> for LibraryError {
@@ -216,6 +226,8 @@ impl LibraryError {
             | LibraryError::DevicePairingTransport(_) => C::Membership,
             LibraryError::DeviceJoinAbandoned => C::Membership,
             LibraryError::Import(_) | LibraryError::Edit(_) => C::Import,
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            LibraryError::ArtistIdentityConflict(_) => C::Import,
             LibraryError::Export(_) => C::Export,
             LibraryError::Save(_) => C::Save,
             LibraryError::MasterKey(_) | LibraryError::Identity(_) => C::Keyring,

@@ -113,7 +113,9 @@ impl ImportService {
             // The typed error becomes a user-facing string only here, at the
             // pipeline's terminal consumer. The variant Displays embed their
             // `#[from]` source messages, so `to_string()` carries the chain.
-            let error = e.to_string();
+            let failed_at = self.library_manager.now();
+            let failure = Self::terminal_failure(&e, failed_at);
+            let error = failure.error().to_string();
 
             // The row goes first and the event second: the event is what the
             // pane showing this import redraws from, and the row is what a
@@ -122,7 +124,7 @@ impl ImportService {
             // to see.
             if let Err(write) = self
                 .library_manager
-                .save_import_candidate_failure(&content_hash, &folder_path, edit_revision, &error)
+                .save_import_candidate_failure(&content_hash, &folder_path, edit_revision, &failure)
                 .await
             {
                 error!("could not record the failed import of {folder_path}: {write}");
@@ -135,6 +137,26 @@ impl ImportService {
                     progress: ImportProgress::Failed { error, import_id },
                 },
             );
+        }
+    }
+
+    pub(super) fn terminal_failure(
+        error: &crate::import::ImportError,
+        failed_at: chrono::DateTime<chrono::Utc>,
+    ) -> crate::import::ImportFailure {
+        let message = error.to_string();
+        match error {
+            crate::import::ImportError::Db(
+                crate::library::LibraryError::ArtistIdentityConflict(conflict),
+            ) => crate::import::ImportFailure::ArtistIdentityConflict {
+                error: message,
+                failed_at,
+                conflict: conflict.as_ref().clone(),
+            },
+            _ => crate::import::ImportFailure::Error {
+                error: message,
+                failed_at,
+            },
         }
     }
 

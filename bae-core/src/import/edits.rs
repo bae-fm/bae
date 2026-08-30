@@ -152,11 +152,42 @@ impl CandidateTrackEdit {
 }
 
 /// The last import of this candidate that failed, as the pane still shows it
-/// after a relaunch.
+/// after a relaunch. A recoverable identity conflict carries the two library
+/// artists the person can consolidate.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ImportFailure {
-    pub error: String,
-    pub failed_at: DateTime<Utc>,
+pub enum ImportFailure {
+    Error {
+        error: String,
+        failed_at: DateTime<Utc>,
+    },
+    ArtistIdentityConflict {
+        error: String,
+        failed_at: DateTime<Utc>,
+        conflict: crate::import::ArtistIdentityConflict,
+    },
+}
+
+impl ImportFailure {
+    pub fn error_only(error: impl Into<String>, failed_at: DateTime<Utc>) -> Self {
+        Self::Error {
+            error: error.into(),
+            failed_at,
+        }
+    }
+
+    pub fn error(&self) -> &str {
+        match self {
+            Self::Error { error, .. } | Self::ArtistIdentityConflict { error, .. } => error,
+        }
+    }
+
+    pub fn failed_at(&self) -> DateTime<Utc> {
+        match self {
+            Self::Error { failed_at, .. } | Self::ArtistIdentityConflict { failed_at, .. } => {
+                *failed_at
+            }
+        }
+    }
 }
 
 /// Lay every stored row edit over a freshly projected table.

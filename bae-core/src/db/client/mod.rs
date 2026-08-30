@@ -34,6 +34,7 @@ pub use artist::{
     ComposerDetailProjection, ComposerPageProjection, WorkDetailProjection,
 };
 mod artist;
+mod artist_identity_merge;
 mod blobs;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod candidate_state_rows;

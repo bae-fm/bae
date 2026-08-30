@@ -135,6 +135,7 @@ struct ImportMappingPane: View {
             error: candidate.error,
             failure: candidate.failure,
             onRetry: commitActions.confirmImport,
+            onMergeArtists: commitActions.mergeArtists,
             onViewInLibrary: commitActions.viewInLibrary,
         )
     }

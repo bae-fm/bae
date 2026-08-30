@@ -87,6 +87,8 @@ private struct ImportOperations: Sendable {
     let candidateRuntime: @Sendable (String) -> BridgeCandidateRuntimeSnapshot?
     let candidateSignals: @Sendable (String) -> Signals?
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
+    let mergeCandidateArtistIdentityConflict:
+        @Sendable (String, String) async throws -> Void
     let setAutomaticIdentification: @MainActor @Sendable (Bool) throws -> Void
     let setDefaultMetadataSource:
         @MainActor @Sendable (BridgeDefaultImportMetadataSource) throws -> Void
@@ -233,6 +235,12 @@ private struct ImportOperations: Sendable {
                     pin: request.pin
                 )
             },
+            mergeCandidateArtistIdentityConflict: {
+                try await handle.mergeCandidateArtistIdentityConflict(
+                    candidateKey: $0,
+                    survivingArtistId: $1
+                )
+            },
             setAutomaticIdentification: {
                 try handle.setAutomaticImportIdentification(enabled: $0)
             },
@@ -351,6 +359,11 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
             },
+        mergeCandidateArtistIdentityConflict:
+            @escaping @Sendable (String, String) async throws -> Void = {
+                _,
+                _ in
+            },
         setAutomaticIdentification:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
         setDefaultMetadataSource:
@@ -390,6 +403,8 @@ final class Importer: Sendable, Observable {
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
             startImport: startImport,
+            mergeCandidateArtistIdentityConflict:
+                mergeCandidateArtistIdentityConflict,
             setAutomaticIdentification: setAutomaticIdentification,
             setDefaultMetadataSource: setDefaultMetadataSource
         )
@@ -587,6 +602,16 @@ extension Importer {
 
     func startImport(_ request: ImportCommitRequest) async throws {
         try await operations.startImport(request)
+    }
+
+    func mergeCandidateArtistIdentityConflict(
+        _ candidateKey: String,
+        keeping survivingArtistId: String
+    ) async throws {
+        try await operations.mergeCandidateArtistIdentityConflict(
+            candidateKey,
+            survivingArtistId
+        )
     }
 
     @MainActor

@@ -177,10 +177,24 @@ pub struct BridgeImportCandidateDetail {
 }
 
 /// An import that failed, as the pane still shows it after a relaunch.
-///
 /// `failed_at` is RFC 3339; the UI formats it in its own locale.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeImportFailure {
+    Error {
+        error: String,
+        failed_at: String,
+    },
+    ArtistIdentityConflict {
+        error: String,
+        failed_at: String,
+        conflict: BridgeArtistIdentityConflict,
+    },
+}
+
+/// The two library rows an incoming cross-provider artist identity connected.
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeImportFailure {
-    pub error: String,
-    pub failed_at: String,
+pub struct BridgeArtistIdentityConflict {
+    pub incoming_artist_name: String,
+    pub discogs_artist: BridgeExistingArtist,
+    pub musicbrainz_artist: BridgeExistingArtist,
 }

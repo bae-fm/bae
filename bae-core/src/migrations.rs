@@ -25,6 +25,11 @@ pub fn all() -> Vec<coven::Migration> {
             "metadata_drafts_and_provenance",
             METADATA_DRAFTS_AND_PROVENANCE_SQL,
         ),
+        coven::Migration::sql(
+            4,
+            "import_artist_identity_conflicts",
+            include_str!("../migrations/004_import_artist_identity_conflicts.sql"),
+        ),
     ]
 }
 
@@ -214,6 +219,12 @@ mod tests {
     fn version_two() -> Vec<coven::Migration> {
         let mut migrations = all();
         migrations.truncate(2);
+        migrations
+    }
+
+    fn version_three() -> Vec<coven::Migration> {
+        let mut migrations = all();
+        migrations.truncate(3);
         migrations
     }
 
@@ -541,7 +552,8 @@ mod tests {
             .expect("seed version-two state");
         drop(handle);
 
-        let handle = open(store_dir, "migration-drafts", all()).expect("migrate to version three");
+        let handle =
+            open(store_dir, "migration-drafts", version_three()).expect("migrate to version three");
         handle
             .read(|sql| {
                 let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -582,5 +594,52 @@ mod tests {
             })
             .await
             .expect("insert source-less release");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn migration_four_adds_conflict_storage_without_merging_existing_artists() {
+        let temp = tempfile::tempdir().expect("temp store");
+        let store_dir = StoreDir::new_ephemeral(temp.path());
+        let handle = open(store_dir.clone(), "migration-conflicts", version_three())
+            .expect("open version three");
+        handle
+            .write(|sql| {
+                sql.execute_batch(
+                    "INSERT INTO artists (
+                         id, name, discogs_artist_id, musicbrainz_artist_id,
+                         _updated_at, created_at
+                     ) VALUES
+                         ('11111111-1111-4111-8111-111111111111', 'Artist Name', 'discogs-1', NULL,
+                          '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z'),
+                         ('22222222-2222-4222-8222-222222222222', 'Artist Name', NULL, 'mb-1',
+                          '2026-01-02T03:04:05Z', '2026-01-02T03:04:05Z');",
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("seed separate provider-linked artists");
+        drop(handle);
+
+        let handle =
+            open(store_dir, "migration-conflicts", all()).expect("migrate to version four");
+        handle
+            .read(|sql| {
+                let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+                assert_eq!(version, 4);
+                let artist_count: i64 =
+                    sql.query_row("SELECT COUNT(*) FROM artists", [], |row| row.get(0))?;
+                assert_eq!(artist_count, 2);
+                let conflict_table_count: i64 = sql.query_row(
+                    "SELECT COUNT(*) FROM sqlite_schema \
+                     WHERE type = 'table' AND name = 'import_candidate_artist_identity_conflict'",
+                    [],
+                    |row| row.get(0),
+                )?;
+                assert_eq!(conflict_table_count, 1);
+                Ok(())
+            })
+            .await
+            .expect("read version-four state");
     }
 }

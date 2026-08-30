@@ -198,7 +198,12 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     ];
 
     for (content_hash, folder_path, provenance) in &cases {
-        db.save_import_candidate_failure(content_hash, folder_path, 0, "test anchor")
+        db.save_import_candidate_failure(
+            content_hash,
+            folder_path,
+            0,
+            &crate::import::ImportFailure::error_only("test anchor", fixed_identified_at()),
+        )
             .await
             .unwrap();
         db.replace_candidate_metadata(

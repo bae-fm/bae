@@ -357,6 +357,32 @@ impl ImportServiceHandle {
         Ok(import_id)
     }
 
+    /// Resolve the recoverable artist conflict stored for this candidate by
+    /// keeping the selected library row and absorbing the other one.
+    pub async fn merge_candidate_artist_identity_conflict(
+        &self,
+        candidate_key: &str,
+        surviving_artist_id: &str,
+    ) -> Result<(), crate::import::ImportError> {
+        let Some(ImportCandidateSnapshot::Folder {
+            candidate,
+            actionable: true,
+            ..
+        }) = self.get_candidate(candidate_key).await?
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not a scanned folder candidate"),
+            });
+        };
+        self.library_manager
+            .merge_import_artist_identity_conflict(
+                &candidate.files.content_hash(),
+                surviving_artist_id,
+            )
+            .await?;
+        Ok(())
+    }
+
     /// Validate a submitted Discogs key against Discogs, then persist it only if
     /// it isn't outright rejected. Validating first means a typo (401) never
     /// stores a bad key, while an offline/rate-limited save still stores the key

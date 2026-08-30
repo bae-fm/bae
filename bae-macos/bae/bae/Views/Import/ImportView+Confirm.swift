@@ -38,4 +38,28 @@ extension ImportView {
             }
         }
     }
+
+    /// Consolidate the two library artist rows named by the persisted import
+    /// conflict. The candidate subscription removes the conflict banner only
+    /// after core commits every reference move and deletes the absorbed row.
+    func mergeArtistIdentityConflict(
+        candidate: Candidate,
+        keeping survivingArtistId: String
+    ) {
+        importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
+        Task { @MainActor in
+            do {
+                try await importer.mergeCandidateArtistIdentityConflict(
+                    candidate.key,
+                    keeping: survivingArtistId
+                )
+            }
+            catch is CancellationError {}
+            catch {
+                importStore.mutateCandidate(forKey: candidate.key) {
+                    $0.error = error.displayLine ?? error.localizedDescription
+                }
+            }
+        }
+    }
 }

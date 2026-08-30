@@ -298,6 +298,54 @@ impl CoordinatorHarness {
     }
 }
 
+#[test]
+fn terminal_import_failure_preserves_an_artist_identity_conflict() {
+    let failed_at = chrono::DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
+        .unwrap()
+        .with_timezone(&chrono::Utc);
+    let discogs_artist = crate::import::ExistingArtist {
+        artist_id: "artist-discogs".to_string(),
+        name: "Artist One".to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: None,
+        discogs_artist_id: Some("discogs-1".to_string()),
+    };
+    let musicbrainz_artist = crate::import::ExistingArtist {
+        artist_id: "artist-musicbrainz".to_string(),
+        name: "Artist Two".to_string(),
+        sort_name: None,
+        musicbrainz_artist_id: Some("musicbrainz-1".to_string()),
+        discogs_artist_id: None,
+    };
+    let error = crate::import::ImportError::Db(
+        crate::import::ArtistIdentityConflict {
+            incoming_artist_name: "Mapped Artist".to_string(),
+            discogs_artist_id: "discogs-1".to_string(),
+            musicbrainz_artist_id: "musicbrainz-1".to_string(),
+            discogs_artist: discogs_artist.clone(),
+            musicbrainz_artist: musicbrainz_artist.clone(),
+        }
+        .into(),
+    );
+
+    let failure = ImportService::terminal_failure(&error, failed_at);
+
+    assert!(matches!(
+        failure,
+        crate::import::ImportFailure::ArtistIdentityConflict {
+            failed_at: actual_failed_at,
+            conflict: crate::import::ArtistIdentityConflict {
+                discogs_artist: actual_discogs,
+                musicbrainz_artist: actual_musicbrainz,
+                ..
+            },
+            ..
+        } if actual_failed_at == failed_at
+            && actual_discogs == discogs_artist
+            && actual_musicbrainz == musicbrainz_artist
+    ));
+}
+
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
