@@ -91,5 +91,34 @@ fn truncated_flac_packet_stream() -> Vec<u8> {
     flac_data
 }
 
+fn mp3_with_invalid_terminal_packet() -> (Vec<u8>, usize) {
+    let sample_rate = 44_100u32;
+    let samples: Vec<i32> = (0..sample_rate as usize * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (0.5 * i32::MAX as f64 * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+    let clean = encode_i32(
+        EncodeFormat::Mp3 { bitrate_kbps: 128 },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
+    let expected_samples = decode_audio(buffer_from(&clean), None, None)
+        .expect("clean decode")
+        .samples
+        .len();
+    let frame_start = clean
+        .windows(2)
+        .position(|bytes| bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)
+        .expect("encoded MP3 frame");
+    let mut damaged = clean.clone();
+    damaged.extend_from_slice(&clean[frame_start..frame_start + 16]);
+    damaged.extend_from_slice(b"LYRICSBEGININD0000000LYRICS200TAG");
+    (damaged, expected_samples)
+}
+
 include!("tests/decode_and_encode.rs");
 include!("tests/seek_and_stream.rs");

@@ -572,7 +572,7 @@ unsafe fn decode_buffer_to_sink_impl(
             );
             close_input_and_free_custom_avio(&mut fmt_ctx, avio);
             let _ = Box::from_raw(avio_ctx_ptr);
-            sink.set_decode_error_count(get_ffmpeg_errors());
+            sink.add_decode_error_count(get_ffmpeg_errors());
             return result;
         }
         Err(ProbedAudioCodecOpenError::Codec { error, .. }) => {
@@ -678,9 +678,9 @@ unsafe fn decode_buffer_to_sink_impl(
     drop(resources);
 
     // A verifying sink flags a broken decode off this count.
-    sink.set_decode_error_count(get_ffmpeg_errors());
+    sink.add_decode_error_count(get_ffmpeg_errors());
     if let Ok(discarded_packets) = &result {
-        sink.set_discarded_packet_count(*discarded_packets);
+        sink.add_discarded_packet_count(*discarded_packets);
     }
 
     result?;
@@ -770,9 +770,10 @@ unsafe fn seek_to_sample_or_warn(
 /// ceiling handed to the reader so the fill buffers the rest of this track;
 /// `None` keeps the whole file (a per-track file, or an album's last track).
 ///
-/// Decodes one segment of a track. Returns the number of fatal FFmpeg errors
-/// it hit. It does not mark the sink finished: a track is a sequence of
-/// segments (pregap, main) and only the caller knows when the last one ends.
+/// Decodes one segment of a track. Returns its fatal FFmpeg errors plus invalid
+/// packets discarded while decoding continued. It does not mark the sink
+/// finished: a track is a sequence of segments (pregap, main) and only the
+/// caller knows when the last one ends.
 pub fn decode_audio_streaming(
     buffer: SharedSparseBuffer,
     sink: &mut TrackSink,
@@ -971,25 +972,24 @@ unsafe fn decode_audio_streaming_impl(
         channels as usize,
         start_at_sample,
         stop_at_sample,
-        InvalidPacketHandling::Reject,
+        InvalidPacketHandling::Discard,
         &mut out,
     );
     let samples_output = out.samples_output();
 
     drop(resources);
-    loop_result.map_err(StreamingDecodeError::decode)?;
+    let discarded_packet_count = loop_result.map_err(StreamingDecodeError::decode)?;
 
-    let error_count = get_ffmpeg_errors();
+    let fatal_error_count = get_ffmpeg_errors();
+    let error_count = fatal_error_count.saturating_add(discarded_packet_count);
     if error_count > 0 {
         warn!(
-            "Streaming AVIO decode had {} fatal FFmpeg errors",
-            error_count
+            "Streaming AVIO decode had {fatal_error_count} fatal FFmpeg errors and {discarded_packet_count} discarded invalid packets"
         );
     }
 
     info!(
-        "Streaming AVIO segment decode complete: {}Hz, {}ch, {} samples, {} fatal errors",
-        sample_rate, channels, samples_output, error_count
+        "Streaming AVIO segment decode complete: {sample_rate}Hz, {channels}ch, {samples_output} samples, {fatal_error_count} fatal errors, {discarded_packet_count} discarded invalid packets"
     );
 
     Ok(error_count)

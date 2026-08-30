@@ -616,39 +616,12 @@ fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
             self.samples += samples.len();
         }
 
-        fn set_discarded_packet_count(&mut self, count: u32) {
-            self.discarded_packets = count;
+        fn add_discarded_packet_count(&mut self, count: u32) {
+            self.discarded_packets = self.discarded_packets.saturating_add(count);
         }
     }
 
-    let sample_rate = 44_100u32;
-    let samples: Vec<i32> = (0..sample_rate as usize * 2)
-        .map(|i| {
-            let t = (i / 2) as f64 / sample_rate as f64;
-            (0.5
-                * i32::MAX as f64
-                * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
-        })
-        .collect();
-    let clean = encode_i32(
-        EncodeFormat::Mp3 { bitrate_kbps: 128 },
-        &samples,
-        sample_rate,
-        2,
-    )
-    .unwrap();
-    let frame_start = clean
-        .windows(2)
-        .position(|bytes| bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)
-        .expect("encoded MP3 frame");
-    let mut damaged = clean.clone();
-    damaged.extend_from_slice(&clean[frame_start..frame_start + 16]);
-    damaged.extend_from_slice(b"LYRICSBEGININD0000000LYRICS200TAG");
-
-    let expected_samples = decode_audio(buffer_from(&clean), None, None)
-        .expect("clean decode")
-        .samples
-        .len();
+    let (damaged, expected_samples) = mp3_with_invalid_terminal_packet();
     assert!(
         decode_audio(buffer_from(&damaged), None, None).is_err(),
         "a strict whole-file decode must still report the invalid packet"
@@ -665,6 +638,30 @@ fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
     assert!(result.is_ok(), "verifying sink decode failed: {result:?}");
     assert_eq!(sink.samples, expected_samples);
     assert_eq!(sink.discarded_packets, 1);
+}
+
+#[test]
+fn streaming_decode_continues_after_an_invalid_terminal_mp3_packet() {
+    use crate::playback::create_track_stream_pair_with_capacity;
+
+    init();
+    let (damaged, expected_samples) = mp3_with_invalid_terminal_packet();
+    let (mut sink, source, _ready) =
+        create_track_stream_pair_with_capacity(44_100, 2, expected_samples + 1024);
+    let error_count = decode_audio_streaming(
+        buffer_from(&damaged),
+        &mut sink,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    )
+    .expect("playback decode");
+
+    assert_eq!(error_count, 1);
+    assert_eq!(source.samples_decoded() as usize, expected_samples);
 }
 
 /// AAC export needs the native `aac` encoder (planar float input) and the
@@ -963,7 +960,7 @@ fn test_streaming_decode_treats_cancelled_input_as_normal_stop() {
 }
 
 #[test]
-fn streaming_decode_rejects_truncated_flac_packet_stream() {
+fn streaming_decode_reports_truncated_flac_packet_stream() {
     use crate::playback::create_track_stream_pair_with_capacity;
     use crate::playback::sparse_buffer::create_sparse_buffer;
 
@@ -976,17 +973,14 @@ fn streaming_decode_rejects_truncated_flac_packet_stream() {
     let (mut sink, source, _ready) = create_track_stream_pair_with_capacity(44100, 1, 100000);
     let token = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
-    let err = decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token)
-        .expect_err("truncated FLAC must fail");
+    let error_count =
+        decode_audio_streaming(buffer, &mut sink, None, None, None, None, None, token)
+            .expect("playback keeps the decodable prefix");
 
-    match err {
-        StreamingDecodeError::Decode(message) => {
-            assert!(
-                message.contains("Failed to send packet"),
-                "unexpected decode error: {message}"
-            );
-        }
-        StreamingDecodeError::InputCancelled => panic!("truncation is not cancellation"),
-    }
+    assert!(error_count > 0, "truncation must remain observable");
+    assert!(
+        source.samples_decoded() > 0,
+        "the decodable prefix remains playable"
+    );
     assert!(!source.producer_finished());
 }

@@ -218,11 +218,11 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
         }
     }
 
-    fn set_decode_error_count(&mut self, count: u32) {
+    fn add_decode_error_count(&mut self, count: u32) {
         self.decode_error_count = self.decode_error_count.saturating_add(count);
     }
 
-    fn set_discarded_packet_count(&mut self, count: u32) {
+    fn add_discarded_packet_count(&mut self, count: u32) {
         self.discarded_packet_count = self.discarded_packet_count.saturating_add(count);
     }
 
@@ -451,15 +451,6 @@ pub(super) async fn measure_loudness(
                     };
                 }
             }
-            if sink.discarded_packet_count > 0 {
-                warn!(
-                    "loudness: discarded {} invalid packet(s) for track {}; decoded {} of {:?} expected frames",
-                    sink.discarded_packet_count,
-                    idx + 1,
-                    sink.done_frames,
-                    sink.total_frames,
-                );
-            }
             let broken = sink.broken_reason();
             let measured = match sink.into_result() {
                 Ok((meter, Some(m))) => Some((meter, m.loudness_lufs, m.peak_linear)),
@@ -519,6 +510,10 @@ pub(super) async fn measure_loudness(
         broken: broken_tracks,
     }
 }
+
+#[cfg(test)]
+#[path = "loudness_recovery_tests.rs"]
+mod recovery_tests;
 
 #[cfg(test)]
 mod tests {
@@ -608,8 +603,8 @@ mod tests {
         );
 
         let mut complete_with_discard = sink_with(Some(1000), 1000, 0);
-        crate::audio_codec::DecodedSink::set_discarded_packet_count(&mut complete_with_discard, 1);
-        crate::audio_codec::DecodedSink::set_discarded_packet_count(&mut complete_with_discard, 1);
+        crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
+        crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut complete_with_discard, 1);
         assert_eq!(complete_with_discard.discarded_packet_count, 2);
         assert!(
             complete_with_discard.broken_reason().is_none(),
@@ -617,7 +612,7 @@ mod tests {
         );
 
         let mut unknown_with_discard = sink_with(None, 0, 0);
-        crate::audio_codec::DecodedSink::set_discarded_packet_count(&mut unknown_with_discard, 1);
+        crate::audio_codec::DecodedSink::add_discarded_packet_count(&mut unknown_with_discard, 1);
         assert!(
             unknown_with_discard.broken_reason().is_some(),
             "a discarded packet needs an expected frame count to prove recovery"
@@ -627,7 +622,7 @@ mod tests {
     /// End-to-end over the real decoder: a window that falls in a truncated
     /// FLAC's missing tail is flagged broken (the decode errors out or produces
     /// far too few frames), while the same window of the intact fixture decodes
-    /// clean. Rides the same `set_decode_error_count` + frame count the import
+    /// clean. Rides the same decode-error count + frame count the import
     /// verify uses.
     #[test]
     fn truncated_flac_decode_is_flagged_broken_intact_is_not() {

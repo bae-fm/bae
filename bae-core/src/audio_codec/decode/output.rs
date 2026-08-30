@@ -3,7 +3,6 @@ use super::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum InvalidPacketHandling {
     Reject,
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     Discard,
 }
 
@@ -266,11 +265,16 @@ pub(super) unsafe fn run_decode_loop(
             continue;
         }
 
+        let packet_pts = (*res.packet).pts;
+        let packet_position = (*res.packet).pos;
+        let packet_size = (*res.packet).size;
         let ret = avcodec_send_packet(res.codec_ctx, res.packet);
         av_packet_unref(res.packet);
 
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
         if ret == AVERROR_INVALIDDATA && invalid_packet_handling == InvalidPacketHandling::Discard {
+            warn!(
+                "discarding invalid compressed packet: stream={stream_index} pts={packet_pts} position={packet_position} size={packet_size}"
+            );
             discarded_invalid_packets = discarded_invalid_packets.saturating_add(1);
             continue;
         }
