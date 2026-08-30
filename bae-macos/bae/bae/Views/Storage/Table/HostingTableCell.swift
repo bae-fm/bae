@@ -3,7 +3,7 @@ import SwiftUI
 
 /// An `NSTableCellView` that draws its content through a single reused
 /// `NSHostingView`. Dequeued per column so SwiftUI cell views (covers, badges,
-/// labels) render inside the `NSOutlineView`.
+/// labels) render inside the `NSTableView`.
 final class HostingTableCell: NSTableCellView {
     private var hosting: NSHostingView<AnyView>?
 

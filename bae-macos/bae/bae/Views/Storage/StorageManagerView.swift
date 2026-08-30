@@ -35,6 +35,7 @@ struct StorageManagerView: View {
     private var selection: Set<String> = []
     @State
     private var inspectorPresented: Bool
+    private let initialInspectorTab: StorageInspectorTab
     /// Runs row context-menu transitions; built lazily once the services are
     /// available from the environment.
     @State
@@ -42,12 +43,14 @@ struct StorageManagerView: View {
 
     init(
         initialSelection: Set<String> = [],
-        initialInspectorPresented: Bool = false
+        initialInspectorPresented: Bool = false,
+        initialInspectorTab: StorageInspectorTab = .contents
     ) {
         _selection = State(initialValue: initialSelection)
         _inspectorPresented = State(
             initialValue: initialInspectorPresented
         )
+        self.initialInspectorTab = initialInspectorTab
     }
 
     var body: some View {
@@ -76,7 +79,6 @@ struct StorageManagerView: View {
                                 sort: $sort,
                                 sortingEnabled: filter != .uploading,
                                 libraryStore: libraryStore,
-                                library: library,
                                 runner: runner,
                             )
                             Divider()
@@ -88,15 +90,15 @@ struct StorageManagerView: View {
                         .frame(minWidth: 440, maxHeight: .infinity)
 
                         if inspectorPresented,
-                            let releaseId = StorageTransferInspector.releaseId(
+                            let releaseId = StorageInspector.releaseId(
                                 in: selection
                             )
                         {
-                            StorageTransferInspector(
+                            StorageInspector(
                                 releaseId: releaseId,
-                                isPresented: $inspectorPresented
+                                isPresented: $inspectorPresented,
+                                initialTab: initialInspectorTab
                             )
-                            .frame(maxHeight: .infinity)
                         }
                     }
                     .frame(maxHeight: .infinity)
@@ -111,7 +113,7 @@ struct StorageManagerView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Toggle(isOn: $inspectorPresented) {
-                    Label("Transfers", systemImage: "sidebar.trailing")
+                    Label("Inspector", systemImage: "sidebar.trailing")
                 }
                 .toggleStyle(.button)
                 .disabled(selection.count != 1)
@@ -181,11 +183,13 @@ struct StorageManagerView: View {
 
         let initialSelection: Set<String>
         let initialInspectorPresented: Bool
+        let initialInspectorTab: StorageInspectorTab
 
         init(
             rows: [BridgeStorageRow] = PreviewData.storageRows,
             selectedReleaseId: String? = nil,
             inspectorPresented: Bool = false,
+            inspectorTab: StorageInspectorTab = .contents,
             downloadSnapshot: BridgeDownloadSnapshot =
                 PreviewData
                 .downloadSnapshot(),
@@ -195,6 +199,7 @@ struct StorageManagerView: View {
             library = PreviewData.storageLibrary(rows: rows)
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
+            initialInspectorTab = inspectorTab
             downloadStore = PreviewData.downloadStore(downloadSnapshot)
             outputStore = PreviewData.outputStore(outputSnapshot)
             outboxStore = PreviewData.outboxStore(outboxSnapshot)
@@ -203,7 +208,8 @@ struct StorageManagerView: View {
         var body: some View {
             StorageManagerView(
                 initialSelection: initialSelection,
-                initialInspectorPresented: initialInspectorPresented
+                initialInspectorPresented: initialInspectorPresented,
+                initialInspectorTab: initialInspectorTab
             )
             .environment(library)
             .environment(
@@ -287,6 +293,7 @@ struct StorageManagerView: View {
             rows: Array(PreviewData.storageRows.prefix(2)),
             selectedReleaseId: "rel-row-2",
             inspectorPresented: true,
+            inspectorTab: .transfers,
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(

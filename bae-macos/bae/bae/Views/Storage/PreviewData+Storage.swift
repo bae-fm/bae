@@ -434,7 +434,7 @@
         )
 
         /// An audio file row (carries a format descriptor) and an image file row
-        /// (no descriptor) — the two `StorageFileCell` shapes.
+        /// (no descriptor) — the two file-content shapes.
         static let storageAudioFile = BridgeFile(
             id: "file-audio-1",
             originalFilename: "01 Track Title.flac",
@@ -576,7 +576,12 @@
         static func storageLibrary(
             rows: [BridgeStorageRow] = storageRows
         ) -> Library {
-            Library(
+            let details = Dictionary(
+                uniqueKeysWithValues: rows.map { row in
+                    (row.id, storageReleaseDetail(for: row))
+                }
+            )
+            return Library(
                 subscribeStorageProjection: { _, _, offset, limit, callback in
                     let start = min(Int(offset), rows.count)
                     let end = min(start + Int(limit), rows.count)
@@ -594,7 +599,62 @@
                         )
                     )
                     return PreviewStorageSubscription()
+                },
+                subscribeReleaseDetail: { releaseId, callback in
+                    callback.onValue(value: details[releaseId])
+                    return PreviewStorageSubscription()
                 }
+            )
+        }
+
+        private static func storageReleaseDetail(
+            for row: BridgeStorageRow
+        ) -> BridgeRelease {
+            let audioFile = BridgeFile(
+                id: "\(row.id)-audio",
+                originalFilename: "01 Track Title.flac",
+                fileSize: 34_000_000,
+                contentType: "audio/flac",
+                isImage: false,
+                audioFormat: BridgeAudioFormat(
+                    codec: "FLAC",
+                    sampleRateHz: 44_100,
+                    bitsPerSample: 16,
+                    bitrateKbps: nil,
+                    channels: 2
+                )
+            )
+            let imageFile = BridgeFile(
+                id: "\(row.id)-image",
+                originalFilename: "cover.jpg",
+                fileSize: 2_400_000,
+                contentType: "image/jpeg",
+                isImage: true,
+                audioFormat: nil
+            )
+            let files = [audioFile, imageFile]
+            return BridgeRelease(
+                id: row.release.id,
+                albumId: row.release.albumId,
+                displayName: row.album.title,
+                year: row.album.year,
+                format: row.release.format,
+                label: nil,
+                catalogNumber: nil,
+                country: nil,
+                storageState: row.release.storageState,
+                pinned: row.release.pinned,
+                storageActions: row.release.storageActions,
+                transferAction: row.release.transferAction,
+                tracks: [],
+                trackGroups: [],
+                files: files,
+                imageFiles: [imageFile],
+                galleryItems: [],
+                totalDuration: nil,
+                fileCount: Int64(files.count),
+                totalSize: files.reduce(Int64(0)) { $0 + $1.fileSize },
+                cover: row.release.cover
             )
         }
     }

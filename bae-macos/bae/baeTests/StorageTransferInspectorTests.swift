@@ -77,13 +77,13 @@ struct StorageTransferInspectorTests {
 
     @Test("inspector requires exactly one selected release")
     func inspectorRequiresExactlyOneSelectedRelease() {
-        #expect(StorageTransferInspector.releaseId(in: []) == nil)
+        #expect(StorageInspector.releaseId(in: []) == nil)
         #expect(
-            StorageTransferInspector.releaseId(in: ["rel-selected"])
+            StorageInspector.releaseId(in: ["rel-selected"])
                 == "rel-selected"
         )
         #expect(
-            StorageTransferInspector.releaseId(
+            StorageInspector.releaseId(
                 in: ["rel-selected", "rel-other"]
             ) == nil
         )

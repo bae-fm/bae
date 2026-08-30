@@ -66,9 +66,8 @@ struct StorageTransferInspectorContent {
     }
 }
 
-/// The trailing detail pane for one selected release's active transfers. The
-/// item list is limited to records whose authoritative release id matches the
-/// selection.
+/// The selected release's active transfers. The item list is limited to records
+/// whose authoritative release id matches the selection.
 struct StorageTransferInspector: View {
     @Environment(DownloadStore.self)
     private var downloadStore
@@ -86,14 +85,6 @@ struct StorageTransferInspector: View {
     private var uiStore
 
     let releaseId: String
-    @Binding
-    var isPresented: Bool
-
-    static func releaseId(in selection: Set<String>) -> String? {
-        guard selection.count == 1 else { return nil }
-        return selection.first
-    }
-
     var body: some View {
         let content = StorageTransferInspectorContent(
             releaseId: releaseId,
@@ -101,12 +92,10 @@ struct StorageTransferInspector: View {
             outputs: outputStore.snapshot,
             outbox: outboxStore.snapshot
         )
-        VStack(spacing: 0) {
-            header
-            Divider()
+        Group {
             if content.items.isEmpty {
                 ContentUnavailableView(
-                    "Nothing here yet",
+                    "No active transfers",
                     systemImage: "arrow.up.arrow.down.circle"
                 )
             }
@@ -121,24 +110,7 @@ struct StorageTransferInspector: View {
                 }
             }
         }
-        .frame(minWidth: 360, idealWidth: 440, maxWidth: 520)
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Transfers")
-                .font(.headline)
-            Spacer()
-            Button {
-                isPresented = false
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .buttonStyle(.plain)
-            .help("Close")
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder

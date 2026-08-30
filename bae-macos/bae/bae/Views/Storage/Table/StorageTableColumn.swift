@@ -5,7 +5,7 @@ import SwiftUI
 // MARK: - Columns
 
 /// Identifiers and seed metadata for the six storage columns. The widths are
-/// the initial layout only; the outline view owns resize/reorder at runtime.
+/// the initial layout only; the table view owns resize/reorder at runtime.
 /// The storage column has no sort field — storage state isn't a sort key the
 /// core exposes.
 enum StorageTableColumn: String, CaseIterable {

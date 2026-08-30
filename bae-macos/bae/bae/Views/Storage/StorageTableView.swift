@@ -5,42 +5,16 @@ import SwiftUI
 
 private let logger = Logger.bae("StorageTable")
 
-// MARK: - Items
-
-/// A root row: one release at a fixed list position. Reference identity is
-/// stable across `reloadData`, so the outline view preserves expansion and
-/// selection when the data source reloads. The release id is resolved lazily
-/// through `list.idAt(index)` — the item is just the position.
-private final class StorageReleaseItem {
-    let index: Int
-    init(index: Int) { self.index = index }
-}
-
-/// A child row under an expanded release: one file. Carries the file payload
-/// and its owning release id (the file columns render directly off the file;
-/// the release id is only used to map a file selection back to its release).
-private final class StorageFileItem {
-    let file: BridgeFile
-    let releaseId: String
-    init(file: BridgeFile, releaseId: String) {
-        self.file = file
-        self.releaseId = releaseId
-    }
-}
-
 // MARK: - Representable
 
-/// An `NSOutlineView`-backed storage table: the outline view handles the table
+/// An `NSTableView`-backed storage table: AppKit handles the table
 /// mechanics (resizable / reorderable columns, header sort indicators,
-/// disclosure triangles, shift/cmd selection) with SwiftUI-hosted cell content
-/// so covers and the storage badge reuse `ImageView` / `Theme` instead of
-/// reimplementing image loading in AppKit.
+/// shift/cmd selection) with SwiftUI-hosted cell content so covers and the
+/// storage badge reuse `ImageView` / `Theme`.
 ///
-/// Releases are root rows (lazy-loaded in batches by position); expanding a
-/// release shows its files (loaded on demand). Selection binds to release ids;
-/// the column sort maps to a `BridgeStorageSort` and goes back through the
-/// caller's `rebuildList()` (server-side — the header indicator only reflects
-/// it).
+/// Releases are lazy-loaded in batches by position. Their files belong to the
+/// selected-release inspector, not to child rows in this table. Selection binds
+/// to release ids; column sorting maps to `BridgeStorageSort`.
 struct StorageTableView: NSViewRepresentable {
     let list: StorageList
     @Binding
@@ -49,7 +23,6 @@ struct StorageTableView: NSViewRepresentable {
     var sort: BridgeStorageSort
     let sortingEnabled: Bool
     let libraryStore: LibraryStore
-    let library: Library
     let runner: StorageActionRunner
 
     @Environment(ImageStore.self)
@@ -64,7 +37,6 @@ struct StorageTableView: NSViewRepresentable {
             sort: $sort,
             sortingEnabled: sortingEnabled,
             libraryStore: libraryStore,
-            library: library,
             runner: runner,
             imageStore: imageStore,
             outboxStore: outboxStore,
@@ -73,19 +45,18 @@ struct StorageTableView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSScrollView {
         let coordinator = context.coordinator
-        let outlineView = NSOutlineView()
-        outlineView.dataSource = coordinator
-        outlineView.delegate = coordinator
-        outlineView.menu = coordinator.makeContextMenu()
-        outlineView.allowsMultipleSelection = true
-        outlineView.allowsColumnReordering = true
-        outlineView.allowsColumnResizing = true
-        outlineView.usesAlternatingRowBackgroundColors = true
-        outlineView.columnAutoresizingStyle =
+        let tableView = NSTableView()
+        tableView.dataSource = coordinator
+        tableView.delegate = coordinator
+        tableView.menu = coordinator.makeContextMenu()
+        tableView.allowsMultipleSelection = true
+        tableView.allowsColumnReordering = true
+        tableView.allowsColumnResizing = true
+        tableView.usesAlternatingRowBackgroundColors = true
+        tableView.columnAutoresizingStyle =
             .firstColumnOnlyAutoresizingStyle
-        outlineView.indentationPerLevel = 16
-        outlineView.rowHeight = 28
-        outlineView.style = .inset
+        tableView.rowHeight = 28
+        tableView.style = .inset
 
         for column in StorageTableColumn.allCases {
             let tableColumn = NSTableColumn(
@@ -95,30 +66,24 @@ struct StorageTableView: NSViewRepresentable {
             tableColumn.width = column.width
             tableColumn.minWidth = column.minWidth
             tableColumn.isEditable = false
-            outlineView.addTableColumn(tableColumn)
+            tableView.addTableColumn(tableColumn)
         }
-        // First column carries the disclosure triangle.
-        outlineView.outlineTableColumn = outlineView.tableColumn(
-            withIdentifier: NSUserInterfaceItemIdentifier(
-                StorageTableColumn.album.rawValue
-            )
-        )
-        coordinator.configureSorting(on: outlineView, sort: sort)
+        coordinator.configureSorting(on: tableView, sort: sort)
 
         let scrollView = NSScrollView()
-        scrollView.documentView = outlineView
+        scrollView.documentView = tableView
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
-        coordinator.outlineView = outlineView
+        coordinator.tableView = tableView
         return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        guard let outlineView = scrollView.documentView as? NSOutlineView else {
+        guard let tableView = scrollView.documentView as? NSTableView else {
             logger.error(
-                "Storage scroll view is missing its outline document view"
+                "Storage scroll view is missing its table document view"
             )
             return
         }
@@ -136,15 +101,14 @@ struct StorageTableView: NSViewRepresentable {
             sortingEnabled: sortingEnabled,
         )
 
-        // A new list instance, a new generation, or a changed count means the
-        // root rows changed identity or length — rebuild the cached items and
-        // reload from scratch.
-        if coordinator.syncRootItems(totalCount: totalCount, epoch: epoch) {
-            outlineView.reloadData()
+        // A new generation or changed count means the rows changed identity or
+        // length, so the table must reload from the list.
+        if coordinator.syncRows(totalCount: totalCount, epoch: epoch) {
+            tableView.reloadData()
         }
 
-        coordinator.configureSorting(on: outlineView, sort: sort)
-        coordinator.applySelection(selection, to: outlineView)
+        coordinator.configureSorting(on: tableView, sort: sort)
+        coordinator.applySelection(selection, to: tableView)
     }
 }
 
@@ -152,38 +116,23 @@ struct StorageTableView: NSViewRepresentable {
 
 extension StorageTableView {
     @MainActor
-    final class Coordinator: NSObject, NSOutlineViewDataSource,
-        NSOutlineViewDelegate
+    final class Coordinator: NSObject, NSTableViewDataSource,
+        NSTableViewDelegate
     {
         private(set) var list: StorageList
         private let selection: Binding<Set<String>>
         private let sort: Binding<BridgeStorageSort>
         private var sortingEnabled: Bool
         private let libraryStore: LibraryStore
-        private let library: Library
         private let runner: StorageActionRunner
         private var imageStore: ImageStore
         private var outboxStore: OutboxStore
-        weak var outlineView: NSOutlineView?
+        weak var tableView: NSTableView?
 
-        /// Cached root items, one per position, reused across `reloadData` so
-        /// the outline view keeps expansion and selection. Rebuilt only when
-        /// the list epoch or count changes.
-        private var rootItems: [StorageReleaseItem] = []
         private var rootEpoch: LoadEpoch?
         private var rootCount = 0
 
-        /// Stable file-row items per release, keyed by release id. The outline
-        /// view identifies items by object identity, so an expanded release MUST
-        /// hand back the same `StorageFileItem` instances across every reload —
-        /// otherwise AppKit treats each `reloadData` as a fresh set of children
-        /// and re-inserts/animates the expanded rows on every reload. Built once
-        /// from a release's loaded files; dropped when its detail reloads (on
-        /// expand) or the root list changes.
-        private var fileItemsByRelease: [String: [StorageFileItem]] = [:]
-        private var detailTasksByRelease: [String: Task<Void, Never>] = [:]
-
-        /// True while we push selection into the outline view, so the
+        /// True while we push selection into the table view, so the
         /// resulting `selectionDidChange` delegate callback doesn't write the
         /// same value back through the binding (and fight the next update).
         private var applyingSelection = false
@@ -194,7 +143,6 @@ extension StorageTableView {
             sort: Binding<BridgeStorageSort>,
             sortingEnabled: Bool,
             libraryStore: LibraryStore,
-            library: Library,
             runner: StorageActionRunner,
             imageStore: ImageStore,
             outboxStore: OutboxStore,
@@ -204,7 +152,6 @@ extension StorageTableView {
             self.sort = sort
             self.sortingEnabled = sortingEnabled
             self.libraryStore = libraryStore
-            self.library = library
             self.runner = runner
             self.imageStore = imageStore
             self.outboxStore = outboxStore
@@ -216,125 +163,25 @@ extension StorageTableView {
             outboxStore: OutboxStore,
             sortingEnabled: Bool,
         ) {
-            if self.list !== list {
-                cancelDetailSubscriptions()
-            }
             self.list = list
             self.imageStore = imageStore
             self.outboxStore = outboxStore
             self.sortingEnabled = sortingEnabled
         }
 
-        /// Rebuild the cached root items when the list's epoch or count
-        /// changes. Returns whether a reload is needed.
-        func syncRootItems(totalCount: Int, epoch: LoadEpoch) -> Bool {
+        /// Detect a changed list generation or row count. Returns whether the
+        /// table must reload.
+        func syncRows(totalCount: Int, epoch: LoadEpoch) -> Bool {
             guard rootEpoch != epoch || rootCount != totalCount else {
                 return false
             }
             rootEpoch = epoch
             rootCount = totalCount
-            rootItems = (0..<totalCount).map { StorageReleaseItem(index: $0) }
-            // Positions (and which release sits at each) may have moved, so the
-            // cached file items no longer belong to these rows.
-            fileItemsByRelease.removeAll()
-            cancelDetailSubscriptions()
             return true
         }
 
-        private func cancelDetailSubscriptions() {
-            for task in detailTasksByRelease.values {
-                task.cancel()
-            }
-            detailTasksByRelease.removeAll()
-        }
-
-        /// Stable file-row items for a release, cached so the outline view sees
-        /// the same child objects across reloads. Returns `[]` (without caching)
-        /// until the release's detail is loaded, so the cache fills the first
-        /// time the files are present and stays stable thereafter.
-        private func fileItems(forReleaseId id: String) -> [StorageFileItem] {
-            if let cached = fileItemsByRelease[id] {
-                return cached
-            }
-            guard let files = libraryStore.releaseDetails[id]?.files else {
-                return []
-            }
-            let items = files.map { StorageFileItem(file: $0, releaseId: id) }
-            fileItemsByRelease[id] = items
-            return items
-        }
-
-        // MARK: Data source
-
-        func outlineView(
-            _ outlineView: NSOutlineView,
-            numberOfChildrenOfItem item: Any?
-        ) -> Int {
-            switch item {
-            case nil:
-                return rootItems.count
-            case let release as StorageReleaseItem:
-                guard let id = list.idAt(release.index) else {
-                    return 0
-                }
-                // 0 until the release's detail loads on expand; the disclosure
-                // triangle still shows because `isItemExpandable` is true. A
-                // release always has files, so 0 here means "not loaded yet".
-                return fileItems(forReleaseId: id).count
-            default:
-                return 0
-            }
-        }
-
-        func outlineView(
-            _ outlineView: NSOutlineView,
-            child index: Int,
-            ofItem item: Any?
-        ) -> Any {
-            switch item {
-            case nil:
-                let release = rootItems[index]
-                ensureLoaded(positionOf: release.index)
-                return release
-            case let release as StorageReleaseItem:
-                // AppKit only asks for a child when `numberOfChildrenOfItem`
-                // reported > 0, which requires the id and loaded files — so
-                // both resolve here. If they don't (a page unloaded mid-query),
-                // there's no file to return; log and hand back the release so
-                // the table stays consistent rather than crashing. The cached
-                // items keep object identity stable across reloads.
-                guard let id = list.idAt(release.index) else {
-                    logger.error(
-                        "No release id for child \(index) of row \(release.index)"
-                    )
-                    return release
-                }
-                let items = fileItems(forReleaseId: id)
-                guard index < items.count else {
-                    logger.error(
-                        "No file at child \(index) of release row \(release.index)"
-                    )
-                    return release
-                }
-                return items[index]
-            default:
-                // Only releases report children, so AppKit never asks any
-                // other item for one — an unexpected parent is a broken
-                // data-source state.
-                logger.error(
-                    "Unexpected parent item type requesting child \(index)"
-                )
-                return rootItems.indices.contains(index)
-                    ? rootItems[index] : StorageReleaseItem(index: index)
-            }
-        }
-
-        func outlineView(
-            _ outlineView: NSOutlineView,
-            isItemExpandable item: Any
-        ) -> Bool {
-            // Every release has files; file rows are leaves.
-            item is StorageReleaseItem
+        func numberOfRows(in tableView: NSTableView) -> Int {
+            rootCount
         }
 
         // MARK: Lazy loading
@@ -342,8 +189,6 @@ extension StorageTableView {
         /// Kick off the page holding `position` if its id isn't loaded yet.
         /// `loadPage` coalesces concurrent asks for the same page, so calling
         /// this from every visible row issues at most one fetch per page.
-        /// Reloading after the fetch preserves expansion/selection because the
-        /// root items are stable.
         private func ensureLoaded(positionOf position: Int) {
             guard list.idAt(position) == nil else {
                 return
@@ -356,64 +201,12 @@ extension StorageTableView {
                 guard currentList === self.list else {
                     return
                 }
-                self.outlineView?.reloadData()
+                self.tableView?.reloadData()
                 self.applySelection(
                     self.selection.wrappedValue,
-                    to: self.outlineView
+                    to: self.tableView
                 )
             }
-        }
-
-        // MARK: Expansion
-
-        func outlineViewItemWillExpand(_ notification: Notification) {
-            guard
-                let release = notification.userInfo?["NSObject"]
-                    as? StorageReleaseItem
-            else {
-                logger.error("Expand notification carried no release item")
-                return
-            }
-            guard let id = list.idAt(release.index) else {
-                logger.error(
-                    "Expanding row \(release.index) resolved no release id; skipping file load"
-                )
-                return
-            }
-            guard detailTasksByRelease[id] == nil else {
-                return
-            }
-            let currentList = list
-            detailTasksByRelease[id] = Task { @MainActor in
-                await self.libraryStore.observeReleaseDetail(
-                    releaseId: id,
-                    library: self.library,
-                    onValue: {
-                        guard currentList === self.list else {
-                            return
-                        }
-                        self.fileItemsByRelease[id] = nil
-                        self.outlineView?
-                            .reloadItem(
-                                release,
-                                reloadChildren: true
-                            )
-                    }
-                )
-                self.detailTasksByRelease[id] = nil
-            }
-        }
-
-        func outlineViewItemDidCollapse(_ notification: Notification) {
-            guard
-                let release = notification.userInfo?["NSObject"]
-                    as? StorageReleaseItem,
-                let id = list.idAt(release.index)
-            else {
-                return
-            }
-            detailTasksByRelease.removeValue(forKey: id)?.cancel()
-            fileItemsByRelease.removeValue(forKey: id)
         }
     }
 }
@@ -421,12 +214,12 @@ extension StorageTableView {
 // MARK: - Sorting & selection
 
 extension StorageTableView.Coordinator {
-    func outlineView(
-        _ outlineView: NSOutlineView,
+    func tableView(
+        _ tableView: NSTableView,
         sortDescriptorsDidChange oldDescriptors: [NSSortDescriptor]
     ) {
         guard sortingEnabled,
-            let descriptor = outlineView.sortDescriptors.first,
+            let descriptor = tableView.sortDescriptors.first,
             let key = descriptor.key,
             let field = sortField(forDescriptorKey: key)
         else {
@@ -442,12 +235,12 @@ extension StorageTableView.Coordinator {
     }
 
     func configureSorting(
-        on outlineView: NSOutlineView,
+        on tableView: NSTableView,
         sort: BridgeStorageSort
     ) {
         for column in StorageTableColumn.allCases {
             guard
-                let tableColumn = outlineView.tableColumn(
+                let tableColumn = tableView.tableColumn(
                     withIdentifier: NSUserInterfaceItemIdentifier(
                         column.rawValue
                     )
@@ -461,19 +254,19 @@ extension StorageTableView.Coordinator {
                 : nil
         }
         guard sortingEnabled else {
-            if !outlineView.sortDescriptors.isEmpty {
-                outlineView.sortDescriptors = []
+            if !tableView.sortDescriptors.isEmpty {
+                tableView.sortDescriptors = []
             }
             return
         }
-        applySortIndicator(to: outlineView, sort: sort)
+        applySortIndicator(to: tableView, sort: sort)
     }
 
     /// Reflect the active `BridgeStorageSort` in the header indicator
     /// without re-triggering `sortDescriptorsDidChange` (set the array
     /// directly rather than mutating the column).
     func applySortIndicator(
-        to outlineView: NSOutlineView,
+        to tableView: NSTableView,
         sort: BridgeStorageSort
     ) {
         guard
@@ -490,38 +283,22 @@ extension StorageTableView.Coordinator {
             key: column.rawValue,
             ascending: sort.direction == .ascending
         )
-        if outlineView.sortDescriptors.first != descriptor {
-            outlineView.sortDescriptors = [descriptor]
+        if tableView.sortDescriptors.first != descriptor {
+            tableView.sortDescriptors = [descriptor]
         }
     }
 
     // MARK: Selection
 
-    /// The release id an outline item belongs to: a release row resolves
-    /// through `list.idAt(index)`, a file row carries its owning release id.
-    func releaseId(for item: Any) -> String? {
-        if let release = item as? StorageReleaseItem {
-            return list.idAt(release.index)
-        }
-        if let file = item as? StorageFileItem {
-            return file.releaseId
-        }
-        return nil
-    }
-
-    func outlineViewSelectionDidChange(_ notification: Notification) {
+    func tableViewSelectionDidChange(_ notification: Notification) {
         guard !applyingSelection,
-            let outlineView = notification.object as? NSOutlineView
+            let tableView = notification.object as? NSTableView
         else {
             return
         }
         var ids: Set<String> = []
-        for row in outlineView.selectedRowIndexes {
-            guard let item = outlineView.item(atRow: row) else {
-                logger.warning("Selected row \(row) resolved no item")
-                continue
-            }
-            if let id = releaseId(for: item) {
+        for row in tableView.selectedRowIndexes {
+            if let id = list.idAt(row) {
                 ids.insert(id)
             }
         }
@@ -530,38 +307,35 @@ extension StorageTableView.Coordinator {
         }
     }
 
-    /// Push the bound release-id selection into the outline view's row
+    /// Push the bound release-id selection into the table view's row
     /// selection, mapping each id to its loaded position. Guarded so the
     /// resulting delegate callback doesn't echo back through the binding.
     func applySelection(
         _ ids: Set<String>,
-        to outlineView: NSOutlineView?
+        to tableView: NSTableView?
     ) {
-        guard let outlineView else { return }
+        guard let tableView else { return }
         var rows = IndexSet()
         for id in ids {
-            // `position(of:)` reads loaded segments, which can briefly hold
-            // a position past freshly-rebuilt `rootItems` while a new live page
-            // is being installed. A selected id whose row isn't loaded can't
-            // be highlighted yet; skip it.
+            // `position(of:)` reads loaded segments, which can briefly hold a
+            // position past a freshly-rebuilt row count while a live page is
+            // being installed. A selected id whose row isn't loaded can't be
+            // highlighted yet; skip it.
             guard let position = list.position(of: id),
-                position < rootItems.count
+                position < rootCount
             else {
                 logger.debug(
                     "Selected release \(id) has no loaded row to highlight"
                 )
                 continue
             }
-            let row = outlineView.row(forItem: rootItems[position])
-            if row >= 0 {
-                rows.insert(row)
-            }
+            rows.insert(position)
         }
-        guard rows != outlineView.selectedRowIndexes else {
+        guard rows != tableView.selectedRowIndexes else {
             return
         }
         applyingSelection = true
-        outlineView.selectRowIndexes(rows, byExtendingSelection: false)
+        tableView.selectRowIndexes(rows, byExtendingSelection: false)
         applyingSelection = false
     }
 }
@@ -569,10 +343,10 @@ extension StorageTableView.Coordinator {
 // MARK: - Cell views
 
 extension StorageTableView.Coordinator {
-    func outlineView(
-        _ outlineView: NSOutlineView,
+    func tableView(
+        _ tableView: NSTableView,
         viewFor tableColumn: NSTableColumn?,
-        item: Any
+        row: Int
     ) -> NSView? {
         guard
             let tableColumn,
@@ -585,17 +359,18 @@ extension StorageTableView.Coordinator {
             )
             return nil
         }
-        let cell = dequeueCell(outlineView, column: column)
-        cell.host(content(for: item, column: column))
+        ensureLoaded(positionOf: row)
+        let cell = dequeueCell(tableView, column: column)
+        cell.host(content(forRow: row, column: column))
         return cell
     }
 
     private func dequeueCell(
-        _ outlineView: NSOutlineView,
+        _ tableView: NSTableView,
         column: StorageTableColumn
     ) -> HostingTableCell {
         let identifier = NSUserInterfaceItemIdentifier(column.rawValue)
-        if let reused = outlineView.makeView(
+        if let reused = tableView.makeView(
             withIdentifier: identifier,
             owner: self
         ) as? HostingTableCell {
@@ -611,32 +386,19 @@ extension StorageTableView.Coordinator {
     /// the storage badge reads `OutboxStore`).
     @ViewBuilder
     private func content(
-        for item: Any,
+        forRow row: Int,
         column: StorageTableColumn
     ) -> some View {
-        cellBody(for: item, column: column)
+        releaseCell(row: row, column: column)
             .environment(imageStore)
             .environment(outboxStore)
     }
 
-    @ViewBuilder
-    private func cellBody(
-        for item: Any,
-        column: StorageTableColumn
-    ) -> some View {
-        if let release = item as? StorageReleaseItem {
-            releaseCell(release, column: column)
-        }
-        else if let file = item as? StorageFileItem {
-            StorageFileCell(file: file.file, column: column)
-        }
-    }
-
     private func releaseCell(
-        _ release: StorageReleaseItem,
+        row: Int,
         column: StorageTableColumn
     ) -> AnyView {
-        guard let id = list.idAt(release.index) else {
+        guard let id = list.idAt(row) else {
             // The page covering this row hasn't loaded yet; the load is
             // already in flight from `ensureLoaded`. A standing bar shows
             // until the id arrives and the row reloads.
@@ -675,17 +437,15 @@ extension StorageTableView.Coordinator {
 extension StorageTableView.Coordinator: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        guard let outlineView else { return }
-        let clickedRow = outlineView.clickedRow
-        guard clickedRow >= 0,
-            let item = outlineView.item(atRow: clickedRow)
-        else {
+        guard let tableView else { return }
+        let clickedRow = tableView.clickedRow
+        guard clickedRow >= 0 else {
             return
         }
 
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
-        let targets = menuTargets(forClicked: item)
+        let targets = menuTargets(forClickedRow: clickedRow)
         guard !targets.isEmpty else { return }
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
@@ -766,11 +526,10 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         menu.addItem(item)
     }
 
-    /// Release ids the menu acts on. A file row maps to its owning release. If
-    /// the clicked release is already selected, act on the whole selection;
-    /// otherwise act on (and select) just that release.
-    private func menuTargets(forClicked item: Any) -> [String] {
-        guard let clickedId = releaseId(for: item) else {
+    /// If the clicked release is already selected, act on the whole selection;
+    /// otherwise act on and select that release.
+    private func menuTargets(forClickedRow row: Int) -> [String] {
+        guard let clickedId = list.idAt(row) else {
             logger.error("Right-clicked row resolved no release id")
             return []
         }
@@ -779,7 +538,7 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
             return Array(selection.wrappedValue)
         }
         selection.wrappedValue = [clickedId]
-        applySelection([clickedId], to: outlineView)
+        applySelection([clickedId], to: tableView)
         return [clickedId]
     }
 
