@@ -87,14 +87,15 @@ public sealed class ImportMappingPaneTests
     }
 
     // The pane leads with the folder it is about — the one fact nothing below
-    // it can change — with the audio it holds beside the name.
+    // it can change — and includes the source audio in its metadata section.
     [AvaloniaFact]
     public void ThePaneLeadsWithTheFolderItIsAbout()
     {
         var (pane, _) = Show(Detail());
 
         Assert.Contains("Album", Texts(pane));
-        Assert.Contains("FLAC", Texts(pane));
+        Assert.Contains(Texts(pane), text =>
+            text.StartsWith("FLAC", StringComparison.Ordinal));
     }
 
     [AvaloniaFact]
