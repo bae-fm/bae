@@ -393,7 +393,7 @@ internal sealed partial class ImportSectionView
                 // settled without an answer worth keeping, shows the clock —
                 // the same two glyphs the macOS row uses for the same three
                 // phases.
-                var indicator = stillIdentifying.Phase == BridgeIdentifyPhase.Running
+                Control indicator = stillIdentifying.Phase == BridgeIdentifyPhase.Running
                     ? new Spinner { Width = 14, Height = 14 }
                     : Icons.Glyph(Icons.Clock, 14, "BaeTextSecondaryBrush");
                 ToolTip.SetTip(
