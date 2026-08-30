@@ -35,8 +35,8 @@ struct ArtistAssignmentsFieldTests {
     }
 
     @MainActor
-    @Test("same-name choices expose their exact library identity")
-    func sameNameChoicesRemainDistinct() async throws {
+    @Test("existing artist results do not present internal IDs")
+    func existingArtistResultsHideInternalIds() async throws {
         let first = BridgeExistingArtist(
             artistId: "artist-1",
             name: "Artist Name",
@@ -55,7 +55,7 @@ struct ArtistAssignmentsFieldTests {
         let firstImage = try await renderChoice(first)
         let secondImage = try await renderChoice(second)
 
-        #expect(firstImage != secondImage)
+        #expect(firstImage == secondImage)
     }
 
     @MainActor
@@ -70,7 +70,8 @@ struct ArtistAssignmentsFieldTests {
                 onChange: { _ in }
             )
             .frame(width: size.width, height: size.height)
-            .environment(Library.stub()),
+            .environment(Library.stub())
+            .environment(UiStore()),
             size: size
         )
         defer {

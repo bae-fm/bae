@@ -277,19 +277,13 @@ struct ArtistAssignmentLabel: View {
     }
 }
 
-/// A library search choice retains its exact library ID beneath the display
-/// name, so otherwise identical result names remain independently selectable.
+/// The display name for an existing artist search result.
 struct ArtistSearchResultLabel: View {
     let artist: BridgeExistingArtist
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(artist.name)
-            Text(verbatim: artist.artistId)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        Text(artist.name)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -306,6 +300,8 @@ struct ArtistAssignmentsField: View {
 
     @Environment(Library.self)
     private var library
+    @Environment(UiStore.self)
+    private var uiStore
     @State
     private var isPresented = false
     @State
@@ -401,13 +397,24 @@ struct ArtistAssignmentsField: View {
                     .foregroundStyle(.red)
             }
             ForEach(results, id: \.artist.artistId) { result in
-                Button {
-                    onChange(assignments + [.existing(artist: result.artist)])
-                    query = ""
-                } label: {
-                    ArtistSearchResultLabel(artist: result.artist)
+                VStack(alignment: .leading, spacing: 1) {
+                    Button {
+                        onChange(
+                            assignments + [.existing(artist: result.artist)]
+                        )
+                        query = ""
+                    } label: {
+                        ArtistSearchResultLabel(artist: result.artist)
+                    }
+                    .buttonStyle(.plain)
+                    Button("View in Library") {
+                        isPresented = false
+                        uiStore.navigateToArtist(result.artist.artistId)
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .task(id: query) {
@@ -474,5 +481,6 @@ struct ArtistAssignmentsField: View {
         .background(Theme.background)
         .preferredColorScheme(.dark)
         .environment(PreviewData.artistAssignmentsLibrary())
+        .environment(UiStore())
     }
 #endif
