@@ -175,5 +175,6 @@ extension EditMetadataForm {
         .background(Theme.background)
         .preferredColorScheme(.dark)
         .environment(Library.stub())
+        .environment(UiStore())
     }
 #endif

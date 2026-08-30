@@ -53,23 +53,6 @@ extension BridgeMappingSource {
         }
     }
 
-    /// The audio unit this row's samples come from — the identity core keys a
-    /// measurement by. `nil` for a track the release names that the folder has
-    /// nothing for.
-    var audio: BridgeAudioFile? {
-        switch self {
-        case .file(let file):
-            .standalone(fileId: file.fileId)
-        case .sheetEntry(let entry):
-            .sheetSlice(
-                fileId: entry.containerId,
-                sheetId: entry.sheetId,
-                index: entry.index
-            )
-        case .missing:
-            nil
-        }
-    }
 }
 
 extension BridgeMappingRow {

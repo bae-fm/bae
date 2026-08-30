@@ -213,5 +213,6 @@ struct EditMetadataSheet: View {
             onCancel: {},
         )
         .environment(Library.stub())
+        .environment(UiStore())
     }
 #endif

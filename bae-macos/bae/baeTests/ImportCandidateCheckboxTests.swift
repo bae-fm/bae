@@ -180,34 +180,14 @@ final class PopoverAnimationTests: XCTestCase {
             size: size
         )
 
-        host.layoutSubtreeIfNeeded()
-        let center = host.convert(
-            NSPoint(x: host.bounds.midX, y: host.bounds.midY),
-            to: nil
+        await SnapshotTestSupport.settle(host)
+        let button = try XCTUnwrap(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSButton }
+                .first
         )
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try XCTUnwrap(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: center,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
-        }
-        let popoverConfigured = expectation(
-            description: "popover behavior reaches the AppKit popover"
-        )
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            popoverConfigured.fulfill()
-        }
-        await fulfillment(of: [popoverConfigured], timeout: 1)
+        button.performClick(nil)
+        await SnapshotTestSupport.settle(host)
 
         let popover = try XCTUnwrap(
             NSApp.windows
@@ -218,6 +198,7 @@ final class PopoverAnimationTests: XCTestCase {
                 .first
         )
         XCTAssertFalse(popover.animates)
+        withExtendedLifetime(window) {}
     }
 
     @MainActor
@@ -230,38 +211,19 @@ final class PopoverAnimationTests: XCTestCase {
                 onChange: { _ in }
             )
             .environment(PreviewData.artistAssignmentsLibrary())
+            .environment(UiStore())
             .frame(width: size.width, height: size.height),
             size: size
         )
 
-        host.layoutSubtreeIfNeeded()
-        let center = host.convert(
-            NSPoint(x: host.bounds.midX, y: host.bounds.midY),
-            to: nil
+        await SnapshotTestSupport.settle(host)
+        let button = try XCTUnwrap(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSButton }
+                .first
         )
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try XCTUnwrap(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: center,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
-        }
-        let popoverConfigured = expectation(
-            description: "popover behavior reaches the AppKit popover"
-        )
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            popoverConfigured.fulfill()
-        }
-        await fulfillment(of: [popoverConfigured], timeout: 1)
+        button.performClick(nil)
+        await SnapshotTestSupport.settle(host)
 
         let popover = try XCTUnwrap(
             NSApp.windows
@@ -272,6 +234,7 @@ final class PopoverAnimationTests: XCTestCase {
                 .first
         )
         XCTAssertFalse(popover.animates)
+        withExtendedLifetime(window) {}
     }
 }
 

@@ -469,6 +469,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                 editingCommands: editingCommands
             )
             .environment(Library.stub())
+            .environment(UiStore())
             .frame(width: size.width, height: size.height),
             size: size
         )
