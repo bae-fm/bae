@@ -1,12 +1,19 @@
 import SwiftUI
 
+enum StoragePinPreference {
+    /// Shared by every UI that asks whether a cloud-stored release should also
+    /// stay downloaded on this device. The stored key preserves the choice
+    /// already written by Import.
+    static let userDefaultsKey = "importStoragePinned"
+}
+
 /// Confirmation for moving a local release to cloud storage. The single
 /// toggle chooses whether the release is also pinned on this device.
 struct MoveToCloudConfirmSheet: View {
     let onConfirm: (_ pin: Bool) -> Void
     let onCancel: () -> Void
 
-    @State
+    @AppStorage(StoragePinPreference.userDefaultsKey)
     private var pin: Bool = true
 
     var body: some View {

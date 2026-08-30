@@ -19,7 +19,7 @@ struct ImportView: View {
     // `startImport`. Config.importStorageMode forces Local without a home.
     @AppStorage("importStorageCloud")
     var storageCloud: Bool = true
-    @AppStorage("importStoragePinned")
+    @AppStorage(StoragePinPreference.userDefaultsKey)
     var storagePinned: Bool = true
 
     @State
