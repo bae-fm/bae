@@ -1,6 +1,16 @@
 import BaeKit
 import SwiftUI
 
+@MainActor
+protocol ApplicationActivationPolicy: AnyObject {
+    func activationPolicy() -> NSApplication.ActivationPolicy
+    func setActivationPolicy(
+        _ activationPolicy: NSApplication.ActivationPolicy
+    ) -> Bool
+}
+
+extension NSApplication: ApplicationActivationPolicy {}
+
 extension AppDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         guard runtime != .preview else { return }
@@ -9,11 +19,18 @@ extension AppDelegate {
                 "The launch notification did not contain NSApplication"
             )
         }
+        prepareApplicationForLaunch(application)
+    }
+
+    func prepareApplicationForLaunch(
+        _ application: any ApplicationActivationPolicy
+    ) {
+        guard runtime != .preview else { return }
         Self.setRegularActivationPolicyIfNeeded(application)
     }
 
     static func setRegularActivationPolicyIfNeeded(
-        _ application: NSApplication
+        _ application: any ApplicationActivationPolicy
     ) {
         if application.activationPolicy() == .regular {
             return

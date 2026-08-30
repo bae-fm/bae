@@ -15,7 +15,7 @@ struct AppDelegateTests {
 
     @Test("already regular application keeps its activation policy")
     func alreadyRegularApplicationKeepsPolicy() {
-        let application = ActivationPolicyApplication(
+        let application = FakeActivationPolicyApplication(
             policy: .regular,
             transitionResult: false
         )
@@ -27,7 +27,7 @@ struct AppDelegateTests {
 
     @Test("hidden application adopts the regular activation policy")
     func hiddenApplicationAdoptsRegularPolicy() {
-        let application = ActivationPolicyApplication(
+        let application = FakeActivationPolicyApplication(
             policy: .accessory,
             transitionResult: true
         )
@@ -40,7 +40,7 @@ struct AppDelegateTests {
     @Test("preview host does not construct application services")
     func previewHostIsInert() {
         var serviceConstructionCount = 0
-        let application = ActivationPolicyApplication(
+        let application = FakeActivationPolicyApplication(
             policy: .accessory,
             transitionResult: true
         )
@@ -70,18 +70,13 @@ struct AppDelegateTests {
 
     @Test("unit-test host adopts the regular activation policy")
     func testHostAdoptsRegularPolicy() {
-        let application = ActivationPolicyApplication(
+        let application = FakeActivationPolicyApplication(
             policy: .accessory,
             transitionResult: true
         )
         let delegate = AppDelegate(runtime: .testHost)
 
-        delegate.applicationWillFinishLaunching(
-            Notification(
-                name: NSApplication.willFinishLaunchingNotification,
-                object: application
-            )
-        )
+        delegate.prepareApplicationForLaunch(application)
 
         #expect(application.requestedPolicies == [.regular])
     }
@@ -101,7 +96,9 @@ struct AppDelegateTests {
 }
 
 @MainActor
-private final class ActivationPolicyApplication: NSApplication {
+private final class FakeActivationPolicyApplication:
+    ApplicationActivationPolicy
+{
     private let policy: NSApplication.ActivationPolicy
     private let transitionResult: Bool
     private(set) var requestedPolicies: [NSApplication.ActivationPolicy] = []
@@ -112,19 +109,13 @@ private final class ActivationPolicyApplication: NSApplication {
     ) {
         self.policy = policy
         self.transitionResult = transitionResult
-        super.init()
     }
 
-    @available(*, unavailable)
-    required init?(coder: NSCoder) {
-        fatalError("ActivationPolicyApplication does not support decoding")
-    }
-
-    override func activationPolicy() -> NSApplication.ActivationPolicy {
+    func activationPolicy() -> NSApplication.ActivationPolicy {
         policy
     }
 
-    override func setActivationPolicy(
+    func setActivationPolicy(
         _ activationPolicy: NSApplication.ActivationPolicy
     ) -> Bool {
         requestedPolicies.append(activationPolicy)

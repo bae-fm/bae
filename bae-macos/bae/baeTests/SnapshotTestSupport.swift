@@ -15,7 +15,7 @@ enum SnapshotTestSupport {
         let bounds = NSRect(origin: .zero, size: size)
         let host = NSHostingView(rootView: view)
         host.frame = bounds
-        let window = NSWindow(
+        let window = SnapshotTestWindow(
             contentRect: bounds,
             styleMask: [.borderless],
             backing: .buffered,
@@ -56,4 +56,8 @@ enum SnapshotTestSupport {
     static func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
+}
+
+private final class SnapshotTestWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
 }
