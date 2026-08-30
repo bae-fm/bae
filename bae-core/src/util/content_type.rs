@@ -159,6 +159,16 @@ impl ContentType {
         )
     }
 
+    /// Whether this codec preserves a source sample width that can be shown as
+    /// bit depth. Perceptual codecs may report a coded-word width, but that is
+    /// not source sample bit depth.
+    pub(crate) fn is_lossless_audio(&self) -> bool {
+        matches!(
+            self,
+            Self::Flac | Self::Ape | Self::Alac | Self::Pcm | Self::WavPack | Self::Dsd
+        )
+    }
+
     pub fn is_image(&self) -> bool {
         matches!(
             self,
@@ -333,6 +343,28 @@ mod tests {
 
         assert!(ContentType::Other("image/heic".to_string()).is_image());
         assert!(!ContentType::Other("audio/flac".to_string()).is_image());
+    }
+
+    #[test]
+    fn lossless_audio_membership() {
+        for content_type in [
+            ContentType::Flac,
+            ContentType::Ape,
+            ContentType::Alac,
+            ContentType::Pcm,
+            ContentType::WavPack,
+            ContentType::Dsd,
+        ] {
+            assert!(content_type.is_lossless_audio(), "{content_type:?}");
+        }
+        for content_type in [
+            ContentType::Mp3,
+            ContentType::Aac,
+            ContentType::Opus,
+            ContentType::Vorbis,
+        ] {
+            assert!(!content_type.is_lossless_audio(), "{content_type:?}");
+        }
     }
 
     #[test]

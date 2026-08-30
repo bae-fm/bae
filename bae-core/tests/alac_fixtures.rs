@@ -153,9 +153,8 @@ fn probe_alac_returns_content_type_alac() {
 }
 
 /// Probe on an AAC `.m4a` fixture must return `ContentType::Aac`. AAC is a
-/// perceptual codec and does not carry a meaningful `bits_per_raw_sample`, so
-/// we do not assert on bit depth here (the codec round-trips through f32
-/// output regardless of source bit depth).
+/// perceptual codec, so a coded-word width is not source sample bit depth and
+/// must not be reported as one.
 #[test]
 fn probe_aac_returns_content_type_aac() {
     let path = fixture_dir().join("silence-aac.m4a");
@@ -164,6 +163,7 @@ fn probe_aac_returns_content_type_aac() {
     assert_eq!(probe.content_type, ContentType::Aac);
     assert_eq!(probe.sample_rate, 44100);
     assert_eq!(probe.channels, 2);
+    assert_eq!(probe.bits_per_sample, None);
 }
 
 // ─────────────────────────────── Import tests ───────────────────────────────

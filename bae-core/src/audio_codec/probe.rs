@@ -79,6 +79,8 @@ pub struct ProbeResult {
     pub content_type: ContentType,
     pub duration: std::time::Duration,
     pub sample_rate: u32,
+    /// Source bit depth for lossless audio. Perceptual codecs are `None` even
+    /// when FFmpeg exposes a coded-word width.
     pub bits_per_sample: Option<u32>,
     pub channels: u32,
 }
@@ -355,8 +357,11 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
         let duration = probed_duration(path, fmt_ctx, stream);
         let codecpar = (*stream).codecpar;
         let codec_id = (*codecpar).codec_id;
+        let content_type = content_type_from_codec_id(codec_id);
         let sample_rate = (*codecpar).sample_rate as u32;
-        let mut bits_per_sample = if (*codecpar).bits_per_raw_sample > 0 {
+        let mut bits_per_sample = if !content_type.is_lossless_audio() {
+            None
+        } else if (*codecpar).bits_per_raw_sample > 0 {
             Some((*codecpar).bits_per_raw_sample as u32)
         } else if (*codecpar).bits_per_coded_sample > 0 {
             Some((*codecpar).bits_per_coded_sample as u32)
@@ -376,7 +381,7 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
 
         if let Some(duration) = duration {
             Some(ProbeResult {
-                content_type: content_type_from_codec_id(codec_id),
+                content_type,
                 duration,
                 sample_rate,
                 bits_per_sample,
