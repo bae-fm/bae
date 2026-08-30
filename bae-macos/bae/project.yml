@@ -158,6 +158,7 @@ targets:
     platform: macOS
     sources:
       - baeTests
+      - baeTestSupport
     dependencies:
       - target: bae
     settings:
@@ -185,6 +186,7 @@ targets:
     platform: macOS
     sources:
       - baeShots
+      - baeTestSupport
     dependencies:
       - target: bae
     settings:
