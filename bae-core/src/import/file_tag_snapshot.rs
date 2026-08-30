@@ -3,8 +3,15 @@
 use super::folder_scanner::ScannedFile;
 use super::ImportError;
 use crate::util::content_type::ContentType;
+use lofty::config::ParseOptions;
+use lofty::file::{AudioFile, FileType};
+use lofty::id3::v2::{Frame, Id3v2Tag, Id3v2Version};
 use lofty::prelude::*;
 use lofty::probe::Probe;
+use lofty::tag::TagType;
+use lofty::TextEncoding;
+use std::fs::File;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
@@ -66,19 +73,33 @@ impl FileTagReader for LoftyFileTagReader {
         let probe = Probe::open(path).map_err(|error| ImportError::FileTags {
             detail: format!("failed to open {}: {error}", path.display()),
         })?;
+        let file_type = probe.file_type();
         let tagged = probe.read().map_err(|error| ImportError::FileTags {
             detail: format!("failed to read tags from {}: {error}", path.display()),
         })?;
         let tag = tagged.primary_tag().or_else(|| tagged.first_tag());
+        let legacy_text = match tag {
+            Some(tag) if tag.tag_type() == TagType::Id3v2 => legacy_id3v2_text(path, file_type)?,
+            Some(_) | None => LegacyId3v2Text::default(),
+        };
         let (title, track_artist, album_title, album_artist, track_number, disc_number, year) =
             match tag {
                 Some(tag) => (
-                    non_empty(tag.title().map(|value| value.to_string())),
-                    non_empty(tag.artist().map(|value| value.to_string())),
-                    non_empty(tag.album().map(|value| value.to_string())),
+                    non_empty(legacy_text.title.or_else(|| tag.title().map(String::from))),
                     non_empty(
-                        tag.get_string(ItemKey::AlbumArtist)
-                            .map(|value| value.to_string()),
+                        legacy_text
+                            .track_artist
+                            .or_else(|| tag.artist().map(String::from)),
+                    ),
+                    non_empty(
+                        legacy_text
+                            .album_title
+                            .or_else(|| tag.album().map(String::from)),
+                    ),
+                    non_empty(
+                        legacy_text
+                            .album_artist
+                            .or_else(|| tag.get_string(ItemKey::AlbumArtist).map(String::from)),
                     ),
                     tag.track(),
                     tag.disk(),
@@ -98,6 +119,122 @@ impl FileTagReader for LoftyFileTagReader {
             embedded_cover: tag.and_then(embedded_cover_from_tag),
         })
     }
+}
+
+#[derive(Default)]
+struct LegacyId3v2Text {
+    title: Option<String>,
+    track_artist: Option<String>,
+    album_title: Option<String>,
+    album_artist: Option<String>,
+}
+
+trait HasId3v2Tag {
+    fn id3v2_tag(&self) -> Option<&Id3v2Tag>;
+}
+
+macro_rules! impl_has_id3v2_tag {
+    ($($type:path),+ $(,)?) => {
+        $(
+            impl HasId3v2Tag for $type {
+                fn id3v2_tag(&self) -> Option<&Id3v2Tag> {
+                    self.id3v2()
+                }
+            }
+        )+
+    };
+}
+
+impl_has_id3v2_tag!(
+    lofty::aac::AacFile,
+    lofty::ape::ApeFile,
+    lofty::flac::FlacFile,
+    lofty::iff::aiff::AiffFile,
+    lofty::iff::wav::WavFile,
+    lofty::mpeg::MpegFile,
+    lofty::musepack::MpcFile,
+);
+
+fn legacy_id3v2_text(
+    path: &Path,
+    file_type: Option<FileType>,
+) -> Result<LegacyId3v2Text, ImportError> {
+    match file_type {
+        Some(FileType::Aac) => read_legacy_id3v2_text::<lofty::aac::AacFile>(path),
+        Some(FileType::Aiff) => read_legacy_id3v2_text::<lofty::iff::aiff::AiffFile>(path),
+        Some(FileType::Ape) => read_legacy_id3v2_text::<lofty::ape::ApeFile>(path),
+        Some(FileType::Flac) => read_legacy_id3v2_text::<lofty::flac::FlacFile>(path),
+        Some(FileType::Mpeg) => read_legacy_id3v2_text::<lofty::mpeg::MpegFile>(path),
+        Some(FileType::Mpc) => read_legacy_id3v2_text::<lofty::musepack::MpcFile>(path),
+        Some(FileType::Wav) => read_legacy_id3v2_text::<lofty::iff::wav::WavFile>(path),
+        Some(_) | None => Err(ImportError::FileTags {
+            detail: format!(
+                "{} exposed an ID3v2 tag through an audio format that cannot preserve its frame encoding",
+                path.display()
+            ),
+        }),
+    }
+}
+
+fn read_legacy_id3v2_text<F>(path: &Path) -> Result<LegacyId3v2Text, ImportError>
+where
+    F: AudioFile + HasId3v2Tag,
+{
+    let file = File::open(path).map_err(|error| ImportError::FileTags {
+        detail: format!("failed to open {}: {error}", path.display()),
+    })?;
+    let mut reader = BufReader::new(file);
+    let parsed =
+        F::read_from(&mut reader, ParseOptions::new().read_properties(false)).map_err(|error| {
+            ImportError::FileTags {
+                detail: format!(
+                    "failed to read ID3v2 frames from {}: {error}",
+                    path.display()
+                ),
+            }
+        })?;
+    let Some(tag) = parsed.id3v2_tag() else {
+        return Err(ImportError::FileTags {
+            detail: format!(
+                "{} was reported as ID3v2-tagged but its concrete tag was absent",
+                path.display()
+            ),
+        });
+    };
+    Ok(LegacyId3v2Text {
+        title: decoded_latin1_frame(tag, "TIT2"),
+        track_artist: decoded_latin1_frame(tag, "TPE1"),
+        album_title: decoded_latin1_frame(tag, "TALB"),
+        album_artist: decoded_latin1_frame(tag, "TPE2"),
+    })
+}
+
+fn decoded_latin1_frame(tag: &Id3v2Tag, id: &str) -> Option<String> {
+    let frame = tag.into_iter().find(|frame| frame.id_str() == id)?;
+    let Frame::Text(text) = frame else {
+        return None;
+    };
+    if text.encoding != TextEncoding::Latin1 {
+        return None;
+    }
+    let bytes = text
+        .value
+        .chars()
+        .map(|character| {
+            u8::try_from(u32::from(character))
+                .expect("Lofty's Latin-1 decoder emits only byte-valued scalars")
+        })
+        .collect::<Vec<_>>();
+    if tag.original_version() == Id3v2Version::V4 {
+        return Some(
+            bytes
+                .split(|byte| *byte == 0)
+                .map(|value| crate::text_encoding::decode_text(value).text)
+                .collect::<Vec<_>>()
+                .join("/"),
+        );
+    }
+    Some(crate::text_encoding::decode_text(&bytes).text)
 }
 
 pub(crate) fn observe_audio_files(
@@ -353,6 +490,72 @@ pub fn read_embedded_cover(
 mod tests {
     use super::*;
 
+    const PLACEHOLDER_MP3: &[u8] =
+        include_bytes!("../../test-fixtures/audio-format/placeholder-mp3.mp3");
+
+    fn synchsafe(value: usize) -> [u8; 4] {
+        [
+            ((value >> 21) & 0x7f) as u8,
+            ((value >> 14) & 0x7f) as u8,
+            ((value >> 7) & 0x7f) as u8,
+            (value & 0x7f) as u8,
+        ]
+    }
+
+    fn legacy_id3v23_frame(id: &[u8; 4], value: &str) -> Vec<u8> {
+        let (encoded, _, had_errors) = encoding_rs::WINDOWS_1251.encode(value);
+        assert!(!had_errors);
+        let size = encoded.len() + 1;
+        let mut frame = Vec::with_capacity(10 + size);
+        frame.extend_from_slice(id);
+        frame.extend_from_slice(&(size as u32).to_be_bytes());
+        frame.extend_from_slice(&[0, 0]);
+        frame.push(0);
+        frame.extend_from_slice(&encoded);
+        frame
+    }
+
+    fn legacy_cyrillic_mp3() -> Vec<u8> {
+        let mut frames = Vec::new();
+        frames.extend(legacy_id3v23_frame(b"TIT2", "Название дорожки"));
+        frames.extend(legacy_id3v23_frame(b"TPE1", "Имя исполнителя"));
+        frames.extend(legacy_id3v23_frame(b"TALB", "Название альбома"));
+        frames.extend(legacy_id3v23_frame(b"TPE2", "Исполнитель альбома"));
+
+        let mut file = b"ID3\x03\x00\x00".to_vec();
+        file.extend_from_slice(&synchsafe(frames.len()));
+        file.extend(frames);
+
+        let existing_tag_size = 10
+            + PLACEHOLDER_MP3[6..10]
+                .iter()
+                .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
+        file
+    }
+
+    fn legacy_cyrillic_multivalue_mp3() -> Vec<u8> {
+        let mut frames = legacy_id3v23_frame(b"TPE1", "Исполнитель Один");
+        let separator = frames.len();
+        frames.extend(legacy_id3v23_frame(b"TPE1", "Исполнитель Два"));
+        let second_frame = frames.split_off(separator);
+        let second_value = &second_frame[11..];
+        let combined_size = frames.len() - 10 + 1 + second_value.len();
+        frames[4..8].copy_from_slice(&(combined_size as u32).to_be_bytes());
+        frames.push(0);
+        frames.extend_from_slice(second_value);
+
+        let mut file = b"ID3\x04\x00\x00".to_vec();
+        file.extend_from_slice(&synchsafe(frames.len()));
+        file.extend(frames);
+        let existing_tag_size = 10
+            + PLACEHOLDER_MP3[6..10]
+                .iter()
+                .fold(0usize, |size, byte| (size << 7) | usize::from(*byte));
+        file.extend_from_slice(&PLACEHOLDER_MP3[existing_tag_size..]);
+        file
+    }
+
     fn artwork(relative_path: &str, size: u64) -> ScannedFile {
         ScannedFile::new(
             PathBuf::from("/candidate").join(relative_path),
@@ -405,6 +608,34 @@ mod tests {
                 embedded_cover: None,
             })
         }
+    }
+
+    #[test]
+    fn lofty_reader_decodes_legacy_cyrillic_id3_text() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("01.mp3");
+        std::fs::write(&path, legacy_cyrillic_mp3()).unwrap();
+
+        let read = LoftyFileTagReader.read(&path).unwrap();
+
+        assert_eq!(read.title.as_deref(), Some("Название дорожки"));
+        assert_eq!(read.track_artist.as_deref(), Some("Имя исполнителя"));
+        assert_eq!(read.album_title.as_deref(), Some("Название альбома"));
+        assert_eq!(read.album_artist.as_deref(), Some("Исполнитель альбома"));
+    }
+
+    #[test]
+    fn lofty_reader_preserves_id3v24_multivalue_normalization() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("01.mp3");
+        std::fs::write(&path, legacy_cyrillic_multivalue_mp3()).unwrap();
+
+        let read = LoftyFileTagReader.read(&path).unwrap();
+
+        assert_eq!(
+            read.track_artist.as_deref(),
+            Some("Исполнитель Один/Исполнитель Два")
+        );
     }
 
     #[test]
