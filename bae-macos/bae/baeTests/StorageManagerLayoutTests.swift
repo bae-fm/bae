@@ -149,6 +149,29 @@ final class StorageManagerLayoutTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
+    func testInspectorSplitOccupiesFullWindowHeight() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene(
+                selectedReleaseId: "rel-row-1",
+                inspectorPresented: true
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let splitView = try XCTUnwrap(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSSplitView }
+                .first
+        )
+        let splitFrame = splitView.convert(splitView.bounds, to: host)
+
+        XCTAssertEqual(splitFrame.height, host.bounds.height, accuracy: 1)
+        withExtendedLifetime(window) {}
+    }
+
     func testTableUsesIntentionalColumnSizing() async throws {
         let size = NSSize(width: 1_440, height: 900)
         let (_, host) = SnapshotTestSupport.hostInWindow(
@@ -180,5 +203,133 @@ final class StorageManagerLayoutTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(500))
         host.layoutSubtreeIfNeeded()
+    }
+}
+
+extension StorageManagerLayoutTests {
+    func testInspectorOpensWithoutSelection() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene(inspectorPresented: true)
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let tableScrollView = try XCTUnwrap(storageTable(in: host))
+
+        XCTAssertLessThan(tableScrollView.frame.width, size.width - 100)
+        withExtendedLifetime(window) {}
+    }
+
+    func testClearingSelectionKeepsInspectorOpen() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene(
+                selectedReleaseId: "rel-row-1",
+                inspectorPresented: true
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let tableScrollView = try XCTUnwrap(storageTable(in: host))
+        let tableView = try XCTUnwrap(
+            tableScrollView.documentView as? NSTableView
+        )
+        let widthWithSelection = tableScrollView.frame.width
+
+        tableView.deselectAll(nil)
+        try await settle(host)
+
+        XCTAssertEqual(
+            tableScrollView.frame.width,
+            widthWithSelection,
+            accuracy: 1
+        )
+        withExtendedLifetime(window) {}
+    }
+
+    func testDoubleClickingReleaseTogglesInspector() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene()
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let tableScrollView = try XCTUnwrap(storageTable(in: host))
+        let tableView = try XCTUnwrap(
+            tableScrollView.documentView as? NSTableView
+        )
+        let action = try XCTUnwrap(tableView.doubleAction)
+        let widthBeforeOpening = tableScrollView.frame.width
+
+        tableView.selectRowIndexes(
+            IndexSet(integer: 0),
+            byExtendingSelection: false
+        )
+        XCTAssertTrue(
+            NSApp.sendAction(action, to: tableView.target, from: tableView)
+        )
+        try await settle(host)
+
+        XCTAssertLessThan(
+            tableScrollView.frame.width,
+            widthBeforeOpening - 100
+        )
+
+        XCTAssertTrue(
+            NSApp.sendAction(action, to: tableView.target, from: tableView)
+        )
+        try await settle(host)
+        XCTAssertEqual(
+            tableScrollView.frame.width,
+            widthBeforeOpening,
+            accuracy: 1
+        )
+        withExtendedLifetime(window) {}
+    }
+
+    func testReleaseContextMenuOffersInspect() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene()
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let tableScrollView = try XCTUnwrap(storageTable(in: host))
+        let tableView = try XCTUnwrap(
+            tableScrollView.documentView as? NSTableView
+        )
+        let rowFrame = tableView.rect(ofRow: 0)
+        let pointInWindow = tableView.convert(
+            NSPoint(x: rowFrame.midX, y: rowFrame.midY),
+            to: nil
+        )
+        let event = try XCTUnwrap(
+            NSEvent.mouseEvent(
+                with: .rightMouseDown,
+                location: pointInWindow,
+                modifierFlags: [],
+                timestamp: 0,
+                windowNumber: window.windowNumber,
+                context: nil,
+                eventNumber: 1,
+                clickCount: 1,
+                pressure: 1
+            )
+        )
+        let menu = try XCTUnwrap(tableView.menu(for: event))
+        menu.delegate?.menuNeedsUpdate?(menu)
+
+        XCTAssertTrue(
+            menu.items.contains { $0.title == String(localized: "Inspect") }
+        )
+        withExtendedLifetime(window) {}
     }
 }

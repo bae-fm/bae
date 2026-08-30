@@ -122,7 +122,6 @@ struct ShotScene {
             AnyView(
                 StorageManagerPreviewScene(
                     rows: Array(PreviewData.storageRows.prefix(2)),
-                    selectedReleaseId: "rel-row-1",
                     inspectorPresented: true
                 )
             )

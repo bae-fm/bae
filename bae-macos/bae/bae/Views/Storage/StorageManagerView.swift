@@ -54,59 +54,16 @@ struct StorageManagerView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Picker("Filter", selection: $filter) {
-                Text("All").tag(BridgeStorageFilter.all)
-                Text("Local").tag(BridgeStorageFilter.local)
-                Text("Cloud").tag(BridgeStorageFilter.remote)
-                Text("Sync queue").tag(BridgeStorageFilter.uploading)
-            }
-            .pickerStyle(.segmented)
-            .padding()
+        HSplitView {
+            releaseList
+                .frame(minWidth: 440, maxHeight: .infinity)
 
-            if let list = storageManagerStore.list, let runner {
-                if let error = list.initialLoadError {
-                    LoadFailureView(line: error.line) {
-                        Task { await list.loadInitial() }
-                    }
-                }
-                else {
-                    HSplitView {
-                        VStack(spacing: 0) {
-                            StorageTableView(
-                                list: list,
-                                selection: $selection,
-                                sort: $sort,
-                                sortingEnabled: filter != .uploading,
-                                libraryStore: libraryStore,
-                                runner: runner,
-                            )
-                            Divider()
-                            StorageFooter(
-                                list: list,
-                                totalSize: storageManagerStore.totalSize
-                            )
-                        }
-                        .frame(minWidth: 440, maxHeight: .infinity)
-
-                        if inspectorPresented,
-                            let releaseId = StorageInspector.releaseId(
-                                in: selection
-                            )
-                        {
-                            StorageInspector(
-                                releaseId: releaseId,
-                                isPresented: $inspectorPresented,
-                                initialTab: initialInspectorTab
-                            )
-                        }
-                    }
-                    .frame(maxHeight: .infinity)
-                }
-            }
-            else {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if inspectorPresented {
+                StorageInspector(
+                    releaseId: StorageInspector.releaseId(in: selection),
+                    isPresented: $inspectorPresented,
+                    initialTab: initialInspectorTab
+                )
             }
         }
         .frame(minWidth: 700, minHeight: 400)
@@ -116,7 +73,6 @@ struct StorageManagerView: View {
                     Label("Inspector", systemImage: "sidebar.trailing")
                 }
                 .toggleStyle(.button)
-                .disabled(selection.count != 1)
             }
         }
         .onAppear {
@@ -152,17 +108,52 @@ struct StorageManagerView: View {
             // otherwise carry releases from the old filter into the new tab's
             // multi-select actions.
             selection = []
-            inspectorPresented = false
             updateQuery()
-        }
-        .onChange(of: selection) { _, selection in
-            if selection.count != 1 {
-                inspectorPresented = false
-            }
         }
         .onChange(of: sort) { _, _ in updateQuery() }
         .onDisappear {
             storageManagerStore.cancel()
+        }
+    }
+
+    private var releaseList: some View {
+        VStack(spacing: 0) {
+            Picker("Filter", selection: $filter) {
+                Text("All").tag(BridgeStorageFilter.all)
+                Text("Local").tag(BridgeStorageFilter.local)
+                Text("Cloud").tag(BridgeStorageFilter.remote)
+                Text("Sync queue").tag(BridgeStorageFilter.uploading)
+            }
+            .pickerStyle(.segmented)
+            .padding()
+
+            if let list = storageManagerStore.list, let runner {
+                if let error = list.initialLoadError {
+                    LoadFailureView(line: error.line) {
+                        Task { await list.loadInitial() }
+                    }
+                }
+                else {
+                    StorageTableView(
+                        list: list,
+                        selection: $selection,
+                        sort: $sort,
+                        inspectorPresented: $inspectorPresented,
+                        sortingEnabled: filter != .uploading,
+                        libraryStore: libraryStore,
+                        runner: runner,
+                    )
+                    Divider()
+                    StorageFooter(
+                        list: list,
+                        totalSize: storageManagerStore.totalSize
+                    )
+                }
+            }
+            else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
     }
 
@@ -282,7 +273,6 @@ struct StorageManagerView: View {
     #Preview("Empty-ish — inspector open") {
         StorageManagerPreviewScene(
             rows: Array(PreviewData.storageRows.prefix(2)),
-            selectedReleaseId: "rel-row-1",
             inspectorPresented: true
         )
         .frame(width: 940, height: 600)

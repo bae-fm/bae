@@ -5,10 +5,10 @@ enum StorageInspectorTab: Hashable {
     case transfers
 }
 
-/// The trailing inspector for one selected release. Contents and transfer
-/// activity share the same release selection and never alter the table shape.
+/// The trailing storage inspector. With one selected release, Contents and
+/// Transfers share that release; without one, the inspector remains available.
 struct StorageInspector: View {
-    let releaseId: String
+    let releaseId: String?
     @Binding
     var isPresented: Bool
 
@@ -16,7 +16,7 @@ struct StorageInspector: View {
     private var tab: StorageInspectorTab
 
     init(
-        releaseId: String,
+        releaseId: String?,
         isPresented: Binding<Bool>,
         initialTab: StorageInspectorTab = .contents
     ) {
@@ -34,19 +34,28 @@ struct StorageInspector: View {
         VStack(spacing: 0) {
             header
             Divider()
-            Picker("Inspector", selection: $tab) {
-                Text("Contents").tag(StorageInspectorTab.contents)
-                Text("Transfers").tag(StorageInspectorTab.transfers)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding()
+            if let releaseId {
+                Picker("Inspector", selection: $tab) {
+                    Text("Contents").tag(StorageInspectorTab.contents)
+                    Text("Transfers").tag(StorageInspectorTab.transfers)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .padding()
 
-            switch tab {
-            case .contents:
-                StorageContentsInspector(releaseId: releaseId)
-            case .transfers:
-                StorageTransferInspector(releaseId: releaseId)
+                switch tab {
+                case .contents:
+                    StorageContentsInspector(releaseId: releaseId)
+                case .transfers:
+                    StorageTransferInspector(releaseId: releaseId)
+                }
+            }
+            else {
+                ContentUnavailableView(
+                    "Select a release",
+                    systemImage: "sidebar.trailing"
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .frame(

@@ -21,6 +21,8 @@ struct StorageTableView: NSViewRepresentable {
     var selection: Set<String>
     @Binding
     var sort: BridgeStorageSort
+    @Binding
+    var inspectorPresented: Bool
     let sortingEnabled: Bool
     let libraryStore: LibraryStore
     let runner: StorageActionRunner
@@ -35,6 +37,7 @@ struct StorageTableView: NSViewRepresentable {
             list: list,
             selection: $selection,
             sort: $sort,
+            inspectorPresented: $inspectorPresented,
             sortingEnabled: sortingEnabled,
             libraryStore: libraryStore,
             runner: runner,
@@ -49,6 +52,10 @@ struct StorageTableView: NSViewRepresentable {
         tableView.dataSource = coordinator
         tableView.delegate = coordinator
         tableView.menu = coordinator.makeContextMenu()
+        tableView.target = coordinator
+        tableView.doubleAction = #selector(
+            Coordinator.handleInspectorDoubleClick(_:)
+        )
         tableView.allowsMultipleSelection = true
         tableView.allowsColumnReordering = true
         tableView.allowsColumnResizing = true
@@ -122,6 +129,7 @@ extension StorageTableView {
         private(set) var list: StorageList
         private let selection: Binding<Set<String>>
         private let sort: Binding<BridgeStorageSort>
+        private let inspectorPresented: Binding<Bool>
         private var sortingEnabled: Bool
         private let libraryStore: LibraryStore
         private let runner: StorageActionRunner
@@ -141,6 +149,7 @@ extension StorageTableView {
             list: StorageList,
             selection: Binding<Set<String>>,
             sort: Binding<BridgeStorageSort>,
+            inspectorPresented: Binding<Bool>,
             sortingEnabled: Bool,
             libraryStore: LibraryStore,
             runner: StorageActionRunner,
@@ -150,6 +159,7 @@ extension StorageTableView {
             self.list = list
             self.selection = selection
             self.sort = sort
+            self.inspectorPresented = inspectorPresented
             self.sortingEnabled = sortingEnabled
             self.libraryStore = libraryStore
             self.runner = runner
@@ -307,6 +317,19 @@ extension StorageTableView.Coordinator {
         }
     }
 
+    @objc
+    func handleInspectorDoubleClick(_ sender: NSTableView) {
+        let row =
+            sender.clickedRow >= 0 ? sender.clickedRow : sender.selectedRow
+        guard let releaseId = list.idAt(row) else {
+            return
+        }
+        let isOpenForRelease =
+            inspectorPresented.wrappedValue
+            && selection.wrappedValue == [releaseId]
+        setInspectorPresented(!isOpenForRelease, releaseId: releaseId)
+    }
+
     /// Push the bound release-id selection into the table view's row
     /// selection, mapping each id to its loaded position. Guarded so the
     /// resulting delegate callback doesn't echo back through the binding.
@@ -439,13 +462,15 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         menu.removeAllItems()
         guard let tableView else { return }
         let clickedRow = tableView.clickedRow
-        guard clickedRow >= 0 else {
+        guard clickedRow >= 0, let clickedId = list.idAt(clickedRow) else {
             return
         }
 
+        addInspectMenuItem(to: menu, releaseId: clickedId)
+
         // Right-click acts on the selection when the clicked row is part of it,
         // otherwise on just that row (and selects it).
-        let targets = menuTargets(forClickedRow: clickedRow)
+        let targets = menuTargets(forClickedRelease: clickedId)
         guard !targets.isEmpty else { return }
 
         // A release mid-transition (uploading, pinning, or becoming local) can't
@@ -507,6 +532,17 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
         )
     }
 
+    private func addInspectMenuItem(to menu: NSMenu, releaseId: String) {
+        addMenuItem(
+            to: menu,
+            title: String(localized: "Inspect"),
+            action: #selector(inspectReleaseAction(_:)),
+            symbol: "sidebar.trailing",
+            representedObject: releaseId
+        )
+        menu.addItem(.separator())
+    }
+
     /// Build a context-menu item targeting this coordinator and add it to the
     /// menu. Shared by the cancel-upload and storage-action branches.
     private func addMenuItem(
@@ -528,18 +564,31 @@ extension StorageTableView.Coordinator: NSMenuDelegate {
 
     /// If the clicked release is already selected, act on the whole selection;
     /// otherwise act on and select that release.
-    private func menuTargets(forClickedRow row: Int) -> [String] {
-        guard let clickedId = list.idAt(row) else {
-            logger.error("Right-clicked row resolved no release id")
-            return []
-        }
-
+    private func menuTargets(forClickedRelease clickedId: String) -> [String] {
         if selection.wrappedValue.contains(clickedId) {
             return Array(selection.wrappedValue)
         }
         selection.wrappedValue = [clickedId]
         applySelection([clickedId], to: tableView)
         return [clickedId]
+    }
+
+    @objc
+    private func inspectReleaseAction(_ sender: NSMenuItem) {
+        guard let releaseId = sender.representedObject as? String else {
+            logger.error("Inspect menu item carried no release id")
+            return
+        }
+        setInspectorPresented(true, releaseId: releaseId)
+    }
+
+    private func setInspectorPresented(
+        _ presented: Bool,
+        releaseId: String
+    ) {
+        selection.wrappedValue = [releaseId]
+        applySelection([releaseId], to: tableView)
+        inspectorPresented.wrappedValue = presented
     }
 
     @objc
