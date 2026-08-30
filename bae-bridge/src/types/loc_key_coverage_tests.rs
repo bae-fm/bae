@@ -39,6 +39,7 @@ const DIRECT_KEYS: &[&str] = &[
     "core.outbox.publishing",
     "core.outbox.cancelling",
     "core.outbox.retrying",
+    "core.outbox.source_unavailable",
     "core.outbox.throughput",
     "core.outbox.eta",
     // Device-pairing cancellation has no phase enum because cancellation is
