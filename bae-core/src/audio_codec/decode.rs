@@ -21,6 +21,8 @@ use tracing::{debug, info, warn};
 
 mod output;
 use output::*;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) mod verification;
 
 const CHANNEL_COUNT_ERROR: &str = "channel count must be greater than zero";
 
@@ -451,12 +453,13 @@ pub fn decode_audio_to_sink(
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
-    decode_audio_to_sink_with_seek(
+    decode_audio_to_sink_with_handling(
         buffer,
         None,
         start_sample,
         start_sample,
         end_sample,
+        InvalidPacketHandling::Reject,
         sink,
         cancel,
     )
@@ -477,6 +480,29 @@ pub(crate) fn decode_audio_to_sink_with_seek(
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
+    decode_audio_to_sink_with_handling(
+        buffer,
+        seek_to_byte,
+        seek_to_sample,
+        start_at_sample,
+        stop_at_sample,
+        InvalidPacketHandling::Reject,
+        sink,
+        cancel,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn decode_audio_to_sink_with_handling(
+    buffer: SharedSparseBuffer,
+    seek_to_byte: Option<u64>,
+    seek_to_sample: Option<u64>,
+    start_at_sample: Option<u64>,
+    stop_at_sample: Option<u64>,
+    invalid_packet_handling: InvalidPacketHandling,
+    sink: &mut dyn DecodedSink,
+    cancel: Arc<std::sync::atomic::AtomicBool>,
+) -> Result<(), String> {
     // SAFETY: every FFmpeg pointer the decode allocates lives and dies inside it.
     unsafe {
         decode_buffer_to_sink_impl(
@@ -485,6 +511,7 @@ pub(crate) fn decode_audio_to_sink_with_seek(
             seek_to_sample,
             start_at_sample,
             stop_at_sample,
+            invalid_packet_handling,
             sink,
             cancel,
         )
@@ -498,6 +525,7 @@ unsafe fn decode_buffer_to_sink_impl(
     seek_to_sample: Option<u64>,
     start_at_sample: Option<u64>,
     stop_at_sample: Option<u64>,
+    invalid_packet_handling: InvalidPacketHandling,
     sink: &mut dyn DecodedSink,
     cancel: Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<(), String> {
@@ -643,6 +671,7 @@ unsafe fn decode_buffer_to_sink_impl(
         channels as usize,
         start_at_sample,
         stop_at_sample,
+        invalid_packet_handling,
         &mut out,
     );
 
@@ -650,6 +679,9 @@ unsafe fn decode_buffer_to_sink_impl(
 
     // A verifying sink flags a broken decode off this count.
     sink.set_decode_error_count(get_ffmpeg_errors());
+    if let Ok(discarded_packets) = &result {
+        sink.set_discarded_packet_count(*discarded_packets);
+    }
 
     result?;
 
@@ -939,6 +971,7 @@ unsafe fn decode_audio_streaming_impl(
         channels as usize,
         start_at_sample,
         stop_at_sample,
+        InvalidPacketHandling::Reject,
         &mut out,
     );
     let samples_output = out.samples_output();

@@ -1,5 +1,12 @@
 use super::*;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum InvalidPacketHandling {
+    Reject,
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    Discard,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum FrameOutputWindow {
     Skip,
@@ -238,13 +245,15 @@ pub(super) unsafe fn run_decode_loop(
     channels: usize,
     start_sample: Option<u64>,
     stop_sample: Option<u64>,
+    invalid_packet_handling: InvalidPacketHandling,
     out: &mut dyn FrameOutput,
-) -> Result<(), String> {
+) -> Result<u32, String> {
     use ffmpeg_sys_next::*;
 
     let mut tracked_sample_pos: i64 = -1;
     let mut reached_stop = false;
     let mut consumer_stopped = false;
+    let mut discarded_invalid_packets = 0u32;
 
     'packets: while av_read_frame(res.fmt_ctx, res.packet) >= 0 {
         if out.cancelled() || reached_stop {
@@ -260,6 +269,11 @@ pub(super) unsafe fn run_decode_loop(
         let ret = avcodec_send_packet(res.codec_ctx, res.packet);
         av_packet_unref(res.packet);
 
+        #[cfg(not(any(target_os = "ios", target_os = "android")))]
+        if ret == AVERROR_INVALIDDATA && invalid_packet_handling == InvalidPacketHandling::Discard {
+            discarded_invalid_packets = discarded_invalid_packets.saturating_add(1);
+            continue;
+        }
         if ret < 0 {
             return Err(format!(
                 "Failed to send packet to decoder: {}",
@@ -333,7 +347,7 @@ pub(super) unsafe fn run_decode_loop(
         }
     }
 
-    Ok(())
+    Ok(discarded_invalid_packets)
 }
 
 unsafe fn convert_frame_to_i32(

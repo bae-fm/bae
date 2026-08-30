@@ -24,6 +24,8 @@ const AVIO_BUFFER_SIZE: usize = 32768;
 // unused there and fails the deny(warnings) mobile clippy build.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use decode::decode_audio_to_sink_with_seek;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use decode::verification::decode_audio_to_verifying_sink;
 pub use decode::{decode_audio, decode_audio_streaming, decode_audio_to_sink};
 #[cfg(any(test, feature = "test-utils"))]
 pub use encode::encode_i32;
@@ -96,6 +98,10 @@ pub trait DecodedSink {
     /// stream ends. Default: ignore it. A verifying sink captures it to flag a
     /// track whose bytes failed to decode. `0` for a clean decode.
     fn set_decode_error_count(&mut self, _count: u32) {}
+    /// Invalid compressed packets discarded while the remaining stream kept
+    /// decoding. A verifying sink combines this count with decoded-frame
+    /// completeness; strict decode callers reject the packet instead.
+    fn set_discarded_packet_count(&mut self, _count: u32) {}
 }
 
 /// Call once at startup.

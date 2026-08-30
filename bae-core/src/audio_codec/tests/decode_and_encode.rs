@@ -598,6 +598,75 @@ fn test_encode_mp3() {
     assert!(decoded.samples.len() > 40000, "Too few decoded samples");
 }
 
+#[test]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn sink_decode_discards_an_invalid_terminal_mp3_packet_after_complete_audio() {
+    init();
+
+    #[derive(Default)]
+    struct CountingSink {
+        samples: usize,
+        discarded_packets: u32,
+    }
+
+    impl DecodedSink for CountingSink {
+        fn on_format(&mut self, _sample_rate: u32, _channels: u32) {}
+
+        fn on_samples(&mut self, samples: &[i32]) {
+            self.samples += samples.len();
+        }
+
+        fn set_discarded_packet_count(&mut self, count: u32) {
+            self.discarded_packets = count;
+        }
+    }
+
+    let sample_rate = 44_100u32;
+    let samples: Vec<i32> = (0..sample_rate as usize * 2)
+        .map(|i| {
+            let t = (i / 2) as f64 / sample_rate as f64;
+            (0.5
+                * i32::MAX as f64
+                * (2.0 * std::f64::consts::PI * 440.0 * t).sin()) as i32
+        })
+        .collect();
+    let clean = encode_i32(
+        EncodeFormat::Mp3 { bitrate_kbps: 128 },
+        &samples,
+        sample_rate,
+        2,
+    )
+    .unwrap();
+    let frame_start = clean
+        .windows(2)
+        .position(|bytes| bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)
+        .expect("encoded MP3 frame");
+    let mut damaged = clean.clone();
+    damaged.extend_from_slice(&clean[frame_start..frame_start + 16]);
+    damaged.extend_from_slice(b"LYRICSBEGININD0000000LYRICS200TAG");
+
+    let expected_samples = decode_audio(buffer_from(&clean), None, None)
+        .expect("clean decode")
+        .samples
+        .len();
+    assert!(
+        decode_audio(buffer_from(&damaged), None, None).is_err(),
+        "a strict whole-file decode must still report the invalid packet"
+    );
+
+    let mut sink = CountingSink::default();
+    let result = decode_audio_to_verifying_sink(
+        buffer_from(&damaged),
+        None,
+        None,
+        &mut sink,
+        Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    );
+    assert!(result.is_ok(), "verifying sink decode failed: {result:?}");
+    assert_eq!(sink.samples, expected_samples);
+    assert_eq!(sink.discarded_packets, 1);
+}
+
 /// AAC export needs the native `aac` encoder (planar float input) and the
 /// `ipod`/.m4a muxer from the bundled FFmpeg. The muxer writes its sample-table
 /// index on finalize by seeking back, so this exercises the seekable path. AAC

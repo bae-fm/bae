@@ -30,7 +30,7 @@ pub(super) struct LoudnessResult {
 
 /// One track's decode outcome from the blocking measure task: the measurement
 /// (absent when unmeasured/silent/failed) and the broken-decode reason (absent
-/// when the decode produced the full window cleanly).
+/// when the decode produced enough of the expected window to be usable).
 struct TrackOutcome {
     measured: Option<(ebur128::EbuR128, f64, f64)>,
     broken: Option<String>,
@@ -127,9 +127,13 @@ struct LoudnessProgressSink {
     frames_done_before: u64,
     scan_total_frames: Option<u64>,
     /// Fatal FFmpeg errors reported by the decoder after the stream ends (0 for a
-    /// clean decode). Set once via `set_decode_error_count`; a non-zero count
-    /// flags the track as broken for import decode-verify.
+    /// clean decode). Accumulated across every segment; a non-zero count flags
+    /// the track as broken for import decode-verify.
     decode_error_count: u32,
+    /// Invalid compressed packets the verifying decode discarded while
+    /// continuing through the stream. They are acceptable only when the frame
+    /// count proves the requested window was substantially decoded.
+    discarded_packet_count: u32,
     frames_since_emit: u64,
     progress: LoudnessProgress,
 }
@@ -154,8 +158,9 @@ impl LoudnessProgressSink {
 
     /// Why this track's decode looks broken, if it does: a fatal FFmpeg error, or
     /// output frames far short of the expected window (a valid header over a
-    /// truncated body — the decode stops early). `None` means the decode produced
-    /// the full window cleanly. Advisory unless `verify_decode_on_import` is on.
+    /// truncated body — the decode stops early). Invalid packets are acceptable
+    /// only when the decoded frame count proves the window is substantially
+    /// complete. Advisory unless `verify_decode_on_import` is on.
     fn broken_reason(&self) -> Option<String> {
         if self.decode_error_count > 0 {
             return Some(format!("{} fatal decode error(s)", self.decode_error_count));
@@ -172,6 +177,11 @@ impl LoudnessProgressSink {
                     self.done_frames, total
                 ));
             }
+        } else if self.discarded_packet_count > 0 {
+            return Some(format!(
+                "{} invalid packet(s) with no expected frame count",
+                self.discarded_packet_count
+            ));
         }
         None
     }
@@ -209,7 +219,11 @@ impl crate::audio_codec::DecodedSink for LoudnessProgressSink {
     }
 
     fn set_decode_error_count(&mut self, count: u32) {
-        self.decode_error_count = count;
+        self.decode_error_count = self.decode_error_count.saturating_add(count);
+    }
+
+    fn set_discarded_packet_count(&mut self, count: u32) {
+        self.discarded_packet_count = self.discarded_packet_count.saturating_add(count);
     }
 
     fn on_samples(&mut self, samples: &[i32]) {
@@ -411,6 +425,7 @@ pub(super) async fn measure_loudness(
                 frames_done_before,
                 scan_total_frames,
                 decode_error_count: 0,
+                discarded_packet_count: 0,
                 frames_since_emit: 0,
                 progress: task_progress,
             };
@@ -419,7 +434,7 @@ pub(super) async fn measure_loudness(
             // error count and frame shortfall the sink captured.
             let never_cancelled = Arc::new(std::sync::atomic::AtomicBool::new(false));
             for (buffer, start_sample, end_sample) in decode_segments {
-                if let Err(e) = crate::audio_codec::decode_audio_to_sink(
+                if let Err(e) = crate::audio_codec::decode_audio_to_verifying_sink(
                     buffer,
                     Some(start_sample),
                     end_sample,
@@ -435,6 +450,15 @@ pub(super) async fn measure_loudness(
                         broken: Some(format!("decode failed: {e}")),
                     };
                 }
+            }
+            if sink.discarded_packet_count > 0 {
+                warn!(
+                    "loudness: discarded {} invalid packet(s) for track {}; decoded {} of {:?} expected frames",
+                    sink.discarded_packet_count,
+                    idx + 1,
+                    sink.done_frames,
+                    sink.total_frames,
+                );
             }
             let broken = sink.broken_reason();
             let measured = match sink.into_result() {
@@ -510,6 +534,7 @@ mod tests {
             frames_done_before: 0,
             scan_total_frames: total,
             decode_error_count: errors,
+            discarded_packet_count: 0,
             frames_since_emit: 0,
             progress: LoudnessProgress::new(&event_tx, "test", "release-1", "import-1"),
         }
@@ -527,6 +552,7 @@ mod tests {
                 frames_done_before,
                 scan_total_frames,
                 decode_error_count: 0,
+                discarded_packet_count: 0,
                 frames_since_emit: 0,
                 progress: LoudnessProgress::new(&event_tx, "test", "release-1", "import-1"),
             }
@@ -556,8 +582,8 @@ mod tests {
     }
 
     /// The broken signature: a gross frame shortfall (a truncated body under a
-    /// valid header) or any fatal decode error. A full-window decode and small
-    /// boundary rounding on a duration-derived expected count are not broken.
+    /// valid header) or any fatal decode error. A full-window decode, including
+    /// one that discarded an invalid packet, is not broken.
     #[test]
     fn broken_reason_flags_shortfall_and_errors_not_clean() {
         assert!(
@@ -579,6 +605,22 @@ mod tests {
         assert!(
             sink_with(None, 0, 0).broken_reason().is_none(),
             "with no expected count, a shortfall can't be asserted"
+        );
+
+        let mut complete_with_discard = sink_with(Some(1000), 1000, 0);
+        crate::audio_codec::DecodedSink::set_discarded_packet_count(&mut complete_with_discard, 1);
+        crate::audio_codec::DecodedSink::set_discarded_packet_count(&mut complete_with_discard, 1);
+        assert_eq!(complete_with_discard.discarded_packet_count, 2);
+        assert!(
+            complete_with_discard.broken_reason().is_none(),
+            "a discarded packet is recoverable when frame coverage is complete"
+        );
+
+        let mut unknown_with_discard = sink_with(None, 0, 0);
+        crate::audio_codec::DecodedSink::set_discarded_packet_count(&mut unknown_with_discard, 1);
+        assert!(
+            unknown_with_discard.broken_reason().is_some(),
+            "a discarded packet needs an expected frame count to prove recovery"
         );
     }
 
@@ -611,7 +653,7 @@ mod tests {
         let never = || Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         let mut sink = sink_with(Some(total), 0, 0);
-        let ok = crate::audio_codec::decode_audio_to_sink(
+        let ok = crate::audio_codec::decode_audio_to_verifying_sink(
             buffer_of(&clean),
             Some(start),
             Some(end),
@@ -629,7 +671,7 @@ mod tests {
         // audio, so the decode errors out or yields far too few frames.
         let truncated = &clean[..clean.len() * 6 / 10];
         let mut sink = sink_with(Some(total), 0, 0);
-        let res = crate::audio_codec::decode_audio_to_sink(
+        let res = crate::audio_codec::decode_audio_to_verifying_sink(
             buffer_of(truncated),
             Some(start),
             Some(end),
