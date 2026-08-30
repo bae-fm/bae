@@ -312,7 +312,8 @@ public sealed class ImportSectionViewTests
             0, 1, 0, 0, 0, 0, 0, 0,
             new BridgeUploadBar(BridgeUploadPhase.Preparing, 5, 20),
             BridgeUploadActivity.Preparing,
-            true);
+            true,
+            null);
         app.StorageStore.ApplyOutbox(Outbox(7, progress));
 
         // One indicator: the arrow, and the bar under the line. The row says
@@ -569,7 +570,7 @@ public sealed class ImportSectionViewTests
                 ["release-a"] = progress,
             },
         new BridgeUploadProgress(
-            0, 0, 0, 0, 0, 0, 0, 0, null, null, false),
+            0, 0, 0, 0, 0, 0, 0, 0, null, null, false, null),
         0,
         [],
         BridgeOutboxPauseState.Running,

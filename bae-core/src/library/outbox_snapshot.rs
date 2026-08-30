@@ -11,7 +11,7 @@
 //!   the durable phase with buffer-cadence byte progress; a restart loses only
 //!   those live counters and immediately retains coven's durable lower bound.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::db::DbOutboxQueue;
 use crate::library::upload_throughput::UploadThroughput;
@@ -233,6 +233,14 @@ pub enum UploadActivity {
     Uploaded,
 }
 
+/// An actionable condition that changes what a retrying upload needs from the
+/// person. Ordinary provider and publication failures have no issue here and
+/// remain automatic retries.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UploadIssue {
+    SourceUnavailable { paths: Vec<PathBuf> },
+}
+
 /// Upload progress as the UI renders it: per-phase counts plus each I/O stage's
 /// native byte units. Serves both a release and the whole queue. The bar the UI
 /// draws comes from [`UploadProgress::bar`], which picks one phase and counts
@@ -254,6 +262,9 @@ pub struct UploadProgress {
     /// Whether `upload_bytes_total` covers every upload in this slice. Provider
     /// byte sizes become exact only after preparation finishes.
     pub upload_bytes_total_complete: bool,
+    /// The actionable condition for this slice, if retries require something
+    /// from the person rather than another automatic attempt.
+    pub issue: Option<UploadIssue>,
 }
 
 impl Default for UploadProgress {
@@ -272,6 +283,7 @@ impl Default for UploadProgress {
             upload_bytes_done: 0,
             upload_bytes_total: 0,
             upload_bytes_total_complete: true,
+            issue: None,
         }
     }
 }
@@ -536,6 +548,24 @@ impl UploadProgress {
             .checked_add(progress.upload_bytes_total)
             .expect("provider byte total overflow");
         self.upload_bytes_total_complete &= progress.upload_bytes_total_complete;
+        if let Some(UploadIssue::SourceUnavailable { paths }) = &progress.issue {
+            for path in paths {
+                self.add_source_unavailable(path.clone());
+            }
+        }
+    }
+
+    fn add_source_unavailable(&mut self, path: PathBuf) {
+        match &mut self.issue {
+            Some(UploadIssue::SourceUnavailable { paths }) => {
+                if !paths.contains(&path) {
+                    paths.push(path);
+                }
+            }
+            None => {
+                self.issue = Some(UploadIssue::SourceUnavailable { paths: vec![path] });
+            }
+        }
     }
 }
 
@@ -682,9 +712,12 @@ impl GroupBuilder {
         }
     }
 
-    fn push(&mut self, file: UploadFileOp) {
+    fn push(&mut self, file: UploadFileOp, source_unavailable_path: Option<PathBuf>) {
         self.progress
             .add_upload(&file.state, file.source_bytes_total);
+        if let Some(path) = source_unavailable_path {
+            self.progress.add_source_unavailable(path);
+        }
         self.files.push(file);
     }
 
@@ -743,11 +776,19 @@ pub(crate) fn build_outbox_snapshot(
     for upload in queue.uploads {
         let blob_key = UploadBlobKey::from_row(&upload.blob);
         let bytes_total = upload.blob.plaintext_size();
+        let source_unavailable_path =
+            upload
+                .last_failure
+                .as_ref()
+                .and_then(|failure| match &failure.kind {
+                    coven::OutboxFailureKind::SourceUnavailable { path } => Some(path.clone()),
+                    coven::OutboxFailureKind::Other => None,
+                });
         let state = resolve_upload_state(
             upload.phase,
             upload.provider_bytes_total,
             transient.get(&blob_key).copied(),
-            upload.last_error,
+            upload.last_failure.map(|failure| failure.message),
         );
         let idx = *group_index
             .entry(upload.release_id.clone())
@@ -763,12 +804,15 @@ pub(crate) fn build_outbox_snapshot(
             group.display_title, upload.album_title,
             "one release cannot have conflicting queued album titles"
         );
-        group.push(UploadFileOp {
-            file_id: blob_key.stable_id(),
-            label: upload.label,
-            source_bytes_total: bytes_total,
-            state,
-        });
+        group.push(
+            UploadFileOp {
+                file_id: blob_key.stable_id(),
+                label: upload.label,
+                source_bytes_total: bytes_total,
+                state,
+            },
+            source_unavailable_path,
+        );
     }
 
     for make_remote in queue.make_remotes {

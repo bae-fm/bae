@@ -65,7 +65,7 @@ impl Database {
             .queued_uploads()
             .await?
             .first()
-            .map(|upload| (upload.attempt_count, upload.last_error.is_some())))
+            .map(|upload| (upload.attempt_count, upload.last_failure.is_some())))
     }
 
     pub async fn pending_and_blocked_writes_for_test(

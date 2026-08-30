@@ -52,6 +52,17 @@ struct OutboxReleaseRow: View {
                 }
                 .padding(.leading, 28)
 
+                ForEach(group.progress.sourceUnavailablePaths, id: \.self) {
+                    path in
+                    Text(path)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(path)
+                        .padding(.leading, 28)
+                }
+
                 ProgressTrackBar(progress: group.progress.bar?.fraction ?? 0)
                     .opacity(group.progress.bar == nil ? 0 : 1)
                     .padding(.leading, 28)
@@ -74,8 +85,12 @@ struct OutboxReleaseRow: View {
 
     private var releaseDetail: String {
         let files = String(localized: "\(group.files.count) files")
-        guard let bar = group.progress.bar else { return files }
-        return "\(files) \u{b7} \(bar.text)"
+        let retry =
+            group.progress.sourceUnavailablePaths.isEmpty
+            ? nil : group.progress.activityText
+        return [files, retry, group.progress.bar?.text]
+            .compactMap { $0 }
+            .joined(separator: " \u{b7} ")
     }
 }
 
@@ -90,5 +105,14 @@ struct OutboxReleaseRow: View {
         OutboxReleaseRow(group: PreviewData.uploadGroupDone, onCancel: {})
             .frame(width: 700)
             .padding(.vertical)
+    }
+
+    #Preview("Source unavailable") {
+        OutboxReleaseRow(
+            group: PreviewData.uploadGroupSourceUnavailable,
+            onCancel: {}
+        )
+        .frame(width: 700)
+        .padding(.vertical)
     }
 #endif

@@ -206,6 +206,29 @@ struct CloudImportQueuePresentationTests {
         )
     }
 
+    @Test("a missing source is primary while the retry count remains available")
+    func missingSourceIsActionable() {
+        var progress = OutboxStore.emptySnapshot.total
+        progress.retrying = 1
+        progress.activity = .retrying
+        progress.issue = .sourceUnavailable(paths: [
+            "/Volumes/Library/Album/01 Track.flac"
+        ])
+
+        #expect(
+            progress.primaryActivityText
+                == QueueSummary.message("core.outbox.source_unavailable")
+        )
+        #expect(
+            progress.activityText
+                == QueueSummary.countLabel("core.outbox.retrying", 1)
+        )
+        #expect(
+            progress.sourceUnavailablePaths
+                == ["/Volumes/Library/Album/01 Track.flac"]
+        )
+    }
+
     @Test("waiting for the first retained queue value is still queued")
     func awaitingQueueIsQueued() {
         #expect(

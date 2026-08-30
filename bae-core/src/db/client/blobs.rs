@@ -439,7 +439,7 @@ impl Database {
                     phase: upload.phase,
                     provider_bytes_total: upload.provider_bytes_total,
                     attempt_count: upload.attempt_count,
-                    last_error: upload.last_error,
+                    last_failure: upload.last_failure,
                     created_at: stamp_millis(&upload.created_at)?,
                     label,
                 })

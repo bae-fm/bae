@@ -88,6 +88,13 @@ pub enum BridgeUploadActivity {
     Uploaded,
 }
 
+/// An actionable condition for a retrying upload. Ordinary transient failures
+/// have no issue and continue retrying without asking the person for input.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeUploadIssue {
+    SourceUnavailable { paths: Vec<String> },
+}
+
 /// Which phase's bytes a progress bar counts. Mirror of bae-core's
 /// `UploadPhase`. Preparation reads plaintext source bytes; the provider write
 /// sends encrypted bytes of a different size.
@@ -190,6 +197,8 @@ pub struct BridgeUploadProgress {
     /// Whether coven can still unwind this transition. False after publication
     /// begins and while cancellation is already in progress.
     pub can_cancel: bool,
+    /// What the retry needs from the person, if anything.
+    pub issue: Option<BridgeUploadIssue>,
 }
 
 /// A queued download's state.

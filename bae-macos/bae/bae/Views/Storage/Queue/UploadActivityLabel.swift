@@ -23,7 +23,7 @@ struct UploadActivityLabel: View {
     }
 
     private var text: String {
-        guard let text = progress.activityText else {
+        guard let text = progress.primaryActivityText else {
             preconditionFailure(
                 "an active cloud upload has no projected activity label"
             )

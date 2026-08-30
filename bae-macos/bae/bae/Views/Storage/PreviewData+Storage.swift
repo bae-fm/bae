@@ -220,7 +220,8 @@
         ]
 
         static func uploadProgress(
-            activity: BridgeUploadActivity?
+            activity: BridgeUploadActivity?,
+            sourceUnavailablePaths: [String] = []
         ) -> BridgeUploadProgress {
             BridgeUploadProgress(
                 queued: 1,
@@ -237,7 +238,9 @@
                     bytesTotal: 149_000_000
                 ),
                 activity: activity,
-                canCancel: true
+                canCancel: true,
+                issue: sourceUnavailablePaths.isEmpty
+                    ? nil : .sourceUnavailable(paths: sourceUnavailablePaths)
             )
         }
 
@@ -278,7 +281,39 @@
                     bytesTotal: 18_100_000
                 ),
                 activity: .publishing,
-                canCancel: false
+                canCancel: false,
+                issue: nil
+            )
+        )
+
+        static let uploadGroupSourceUnavailable = BridgeUploadReleaseGroup(
+            releaseId: "rel-row-3",
+            displayTitle: "Album Title C",
+            files: [
+                BridgeUploadFileOp(
+                    fileId: "h-1",
+                    label: .filename(name: "01 Track Title.flac"),
+                    bar: nil,
+                    sourceBytesTotal: 24_000_000,
+                    state: .retrying,
+                    lastError: "The source file is unavailable."
+                )
+            ],
+            progress: BridgeUploadProgress(
+                queued: 0,
+                preparing: 0,
+                prepared: 0,
+                uploading: 0,
+                retrying: 1,
+                uploaded: 0,
+                publishing: 0,
+                cancelling: 0,
+                bar: nil,
+                activity: .retrying,
+                canCancel: true,
+                issue: .sourceUnavailable(paths: [
+                    "/Volumes/Music/Album Title C/01 Track Title.flac"
+                ])
             )
         )
 
@@ -327,7 +362,8 @@
                         bytesTotal: 167_000_000
                     ),
                     activity: .uploading,
-                    canCancel: false
+                    canCancel: false,
+                    issue: nil
                 ),
                 pendingDeletes: UInt32(deletes.count),
                 summaryParts: [

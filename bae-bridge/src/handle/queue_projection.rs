@@ -215,6 +215,7 @@ impl crate::types::BridgeUploadProgress {
             // The phase-scoped `bar` is what the UI draws and labels; the raw
             // per-phase byte sums it derives from stay in core.
             upload_bytes_total_complete: _,
+            issue,
         } = p;
         crate::types::BridgeUploadProgress {
             queued,
@@ -228,6 +229,22 @@ impl crate::types::BridgeUploadProgress {
             bar,
             activity,
             can_cancel,
+            issue: issue.map(crate::types::BridgeUploadIssue::from_core),
+        }
+    }
+}
+
+impl crate::types::BridgeUploadIssue {
+    fn from_core(issue: bae_core::library::UploadIssue) -> Self {
+        match issue {
+            bae_core::library::UploadIssue::SourceUnavailable { paths } => {
+                Self::SourceUnavailable {
+                    paths: paths
+                        .into_iter()
+                        .map(|path| path.to_string_lossy().into_owned())
+                        .collect(),
+                }
+            }
         }
     }
 }

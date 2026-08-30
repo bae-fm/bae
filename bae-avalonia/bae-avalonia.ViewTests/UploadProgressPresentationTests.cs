@@ -108,6 +108,27 @@ public sealed class UploadProgressPresentationTests
             UploadProgressPresentation.ActivityLabel(progress));
     }
 
+    [Fact]
+    public void MissingSourceReplacesTheRetryCountWithAnActionableStatus()
+    {
+        var progress = Progress(
+            queued: 0,
+            retrying: 1,
+            activity: BridgeUploadActivity.Retrying,
+            issue: new BridgeUploadIssue.SourceUnavailable(
+                ["/Volumes/Library/Album/01 Track.flac"]));
+
+        Assert.Equal(
+            Loc.Core("core.outbox.source_unavailable"),
+            UploadProgressPresentation.ActivityLabel(progress));
+        Assert.Equal(
+            ["/Volumes/Library/Album/01 Track.flac"],
+            UploadProgressPresentation.SourceUnavailablePaths(progress));
+        Assert.Equal(
+            Loc.Core("core.outbox.retrying", "count", 1),
+            UploadProgressPresentation.SecondaryActivityLabel(progress));
+    }
+
     private static BridgeOutboxSnapshot Snapshot(
         ulong revision,
         BridgeUploadProgress? progress = null) =>
@@ -132,7 +153,8 @@ public sealed class UploadProgressPresentationTests
         uint queued = 1,
         uint retrying = 0,
         BridgeUploadActivity? activity = null,
-        BridgeUploadBar? bar = null) =>
+        BridgeUploadBar? bar = null,
+        BridgeUploadIssue? issue = null) =>
         new(
             queued,
             0,
@@ -144,5 +166,6 @@ public sealed class UploadProgressPresentationTests
             0,
             bar,
             activity ?? BridgeUploadActivity.Queued,
-            true);
+            true,
+            issue);
 }

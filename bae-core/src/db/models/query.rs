@@ -334,8 +334,9 @@ pub struct DbOutboxUpload {
     pub provider_bytes_total: Option<u64>,
     /// Failed transfer attempts so far; 0 for one never yet tried.
     pub attempt_count: u64,
-    /// Why the last attempt failed, if one has.
-    pub last_error: Option<String>,
+    /// Why the last attempt failed, if one has. Coven preserves the failure's
+    /// actionable kind rather than reducing it to display prose.
+    pub last_failure: Option<coven::OutboxFailure>,
     /// Enqueue time as Unix epoch milliseconds, taken from coven's HLC stamp.
     pub created_at: i64,
     /// The domain label for this upload. Platforms localize the named image

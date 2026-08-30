@@ -1,6 +1,25 @@
 import Foundation
 
 extension BridgeUploadProgress {
+    /// The release-level state shown in Storage. A missing local source is the
+    /// actionable condition; the retry count remains available as secondary
+    /// queue detail.
+    public var primaryActivityText: String? {
+        switch issue {
+        case .sourceUnavailable:
+            QueueSummary.message("core.outbox.source_unavailable")
+        case nil:
+            activityText
+        }
+    }
+
+    public var sourceUnavailablePaths: [String] {
+        switch issue {
+        case .sourceUnavailable(let paths): paths
+        case nil: []
+        }
+    }
+
     /// Localized count for the dominant durable or transient phase. Core owns
     /// the dominant phase; this resolves its catalog key and matching count.
     public var activityText: String? {

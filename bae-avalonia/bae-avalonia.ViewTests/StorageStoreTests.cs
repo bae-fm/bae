@@ -284,7 +284,8 @@ public sealed class StorageStoreTests
             queued, 0, 0, 0, 0, 0, publishing, 0,
             new BridgeUploadBar(BridgeUploadPhase.Preparing, 0, 20),
             activity,
-            canCancel);
+            canCancel,
+            null);
         return new BridgeOutboxSnapshot(
             revision,
             [],
@@ -307,7 +308,7 @@ public sealed class StorageStoreTests
         [],
         new Dictionary<string, BridgeUploadProgress>(),
         new BridgeUploadProgress(
-            0, 0, 0, 0, 0, 0, 0, 0, null, null, false),
+            0, 0, 0, 0, 0, 0, 0, 0, null, null, false, null),
         0,
         [],
         BridgeOutboxPauseState.Running,

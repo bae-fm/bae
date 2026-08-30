@@ -107,7 +107,7 @@ fn queued_upload(file_id: &str, file_name: &str, file_size: u64) -> DbOutboxUplo
         phase: coven::QueuedUploadPhase::Pending,
         provider_bytes_total: None,
         attempt_count: 0,
-        last_error: None,
+        last_failure: None,
         created_at: 1_700_000_000_000,
         label: UploadFileLabel::Filename(file_name.to_string()),
         album_title: "Album Title".to_string(),
@@ -152,7 +152,7 @@ fn a_provider_transient_on_a_pending_row_is_a_stale_straggler() {
         // A recorded failure: the durable row reads its retry state.
         let mut queue = two_queued_uploads();
         queue.uploads[1].attempt_count = 1;
-        queue.uploads[1].last_error = Some("provider write failed".to_string());
+        queue.uploads[1].last_failure = Some(coven::OutboxFailure::other("provider write failed"));
         let snapshot = build(queue, &transient);
         assert_eq!(
             snapshot.upload_groups[0].files[1].state,
@@ -234,6 +234,26 @@ fn upload_groups_group_a_releases_files_with_aggregate_progress() {
     assert_eq!(group.progress.uploading, 0);
     assert_eq!(group.progress.preparation_bytes_total, 1100);
     assert!(group.progress.can_cancel());
+}
+
+#[test]
+fn source_unavailable_failure_projects_its_path_for_the_release() {
+    let mut queue = two_queued_uploads();
+    let source_path = std::path::PathBuf::from("/Volumes/Library/Album/01 Track.flac");
+    queue.uploads[0].attempt_count = 1;
+    queue.uploads[0].last_failure = Some(coven::OutboxFailure::source_unavailable(
+        source_path.clone(),
+        "source file is unavailable",
+    ));
+
+    let snapshot = build(queue, &HashMap::new());
+
+    assert_eq!(
+        snapshot.upload_groups[0].progress.issue,
+        Some(UploadIssue::SourceUnavailable {
+            paths: vec![source_path]
+        })
+    );
 }
 
 #[test]
@@ -382,7 +402,7 @@ fn upload_state_uses_the_blob_bearing_table_and_row() {
 fn a_recorded_failure_derives_retrying_with_its_error() {
     let mut queue = two_queued_uploads();
     queue.uploads[1].attempt_count = 1;
-    queue.uploads[1].last_error = Some("boom".to_string());
+    queue.uploads[1].last_failure = Some(coven::OutboxFailure::other("boom"));
 
     let snapshot = build(queue, &HashMap::new());
 
@@ -494,7 +514,7 @@ fn created_file_with_a_terminalization_error_remains_retryable() {
     queue.uploads[0].phase = coven::QueuedUploadPhase::Created;
     queue.uploads[0].provider_bytes_total = Some(116);
     queue.uploads[0].attempt_count = 1;
-    queue.uploads[0].last_error = Some("publication failed".to_string());
+    queue.uploads[0].last_failure = Some(coven::OutboxFailure::other("publication failed"));
 
     let snapshot = build(queue, &HashMap::new());
 

@@ -61,7 +61,9 @@ internal static class UploadProgressPresentation
             parts.Select(part => Loc.Core(part.Key, "count", part.Count)));
 
     public static string ActivityLabel(BridgeUploadProgress progress) =>
-        progress.Activity switch
+        progress.Issue is BridgeUploadIssue.SourceUnavailable
+            ? Loc.Core("core.outbox.source_unavailable")
+            : progress.Activity switch
         {
             BridgeUploadActivity.Cancelling => Loc.Core("core.outbox.cancelling", "count", progress.Cancelling),
             BridgeUploadActivity.Publishing => Loc.Core("core.outbox.publishing", "count", progress.Publishing),
@@ -74,6 +76,18 @@ internal static class UploadProgressPresentation
             _ => throw new InvalidOperationException(
                 "An active cloud upload has no projected activity"),
         };
+
+    public static IReadOnlyList<string> SourceUnavailablePaths(
+        BridgeUploadProgress progress) =>
+        progress.Issue is BridgeUploadIssue.SourceUnavailable sourceUnavailable
+            ? sourceUnavailable.Paths
+            : Array.Empty<string>();
+
+    public static string? SecondaryActivityLabel(BridgeUploadProgress progress) =>
+        progress.Issue is BridgeUploadIssue.SourceUnavailable
+        && progress.Activity == BridgeUploadActivity.Retrying
+            ? Loc.Core("core.outbox.retrying", "count", progress.Retrying)
+            : null;
 
     // "Uploading 3 MB of 221.2 MB": the phase the bar fills with, then the
     // exact bytes it fills with. Both come off the bar itself, so the text and

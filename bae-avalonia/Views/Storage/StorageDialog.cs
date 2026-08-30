@@ -534,6 +534,16 @@ internal sealed partial class StorageDialog
                 titleLine.Children.Add(Secondary(UploadBadgeLabel(group.Progress)));
                 var header = new StackPanel { Spacing = 2 };
                 header.Children.Add(titleLine);
+                foreach (var path in UploadProgressPresentation.SourceUnavailablePaths(group.Progress))
+                {
+                    var sourcePath = Secondary(path);
+                    ToolTip.SetTip(sourcePath, path);
+                    header.Children.Add(sourcePath);
+                }
+                if (UploadProgressPresentation.SecondaryActivityLabel(group.Progress) is { } retryDetail)
+                {
+                    header.Children.Add(Secondary(retryDetail));
+                }
                 if (group.Progress.Bar is { } groupBar)
                 {
                     header.Children.Add(new ProgressBar

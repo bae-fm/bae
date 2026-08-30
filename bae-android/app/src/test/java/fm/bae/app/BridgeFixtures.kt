@@ -227,6 +227,7 @@ object BridgeFixtures {
                     bar = null,
                     activity = null,
                     canCancel = false,
+                    issue = null,
                 ),
             pendingDeletes = 0u,
             summaryParts = emptyList(),
