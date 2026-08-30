@@ -330,7 +330,7 @@ struct Candidate: Equatable, Identifiable {
         // scanner's scan-event channel, so they start with an empty set.
         files = BridgeCandidateFiles(
             files: [],
-            formatLabel: "",
+            sourceAudio: nil,
             collapsedDirectories: []
         )
     }

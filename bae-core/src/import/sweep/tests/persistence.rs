@@ -99,10 +99,12 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
                     PathBuf::from(format!("{path}/01.flac")),
                     "01.flac".to_string(),
                     size,
-                ),
+                    1,
+                    format!("{size:064x}"),
+                )
+                .with_test_flac_audio(),
                 role: FileRole::Audio,
             }],
-            format_label: "FLAC".to_string(),
         },
         watched_folder_path: "/".to_string(),
         scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
@@ -125,7 +127,6 @@ fn row_with_verdict(
             probed_total_duration_ms: 0,
             identified_at: fixed_now(),
         }),
-        durations: Default::default(),
         signals: None,
         file_edits: Default::default(),
         metadata_provenance: None,
@@ -943,11 +944,12 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
 
     let row = fixture.stored_for(&dir).await.expect("a verdict is stored");
     assert_eq!(
-        row.durations,
-        fixture.probed_durations(&dir),
-        "every audio unit's measurement rides the verdict"
+        row.identify
+            .as_ref()
+            .expect("the verdict is stored")
+            .probed_total_duration_ms,
+        probed
     );
-    assert_eq!(row.durations.total_ms(), probed);
     let signals = row.signals.expect("the settled signals are stored");
     assert!(
         matches!(
@@ -957,7 +959,10 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
         "the disc ID the lookup used reads back: {:?}",
         signals.disc_id
     );
-    assert_eq!(signals.durations, row.durations);
+    assert!(
+        signals.durations.units.is_empty(),
+        "source durations are derived from the candidate scan, not duplicated in identify state"
+    );
 }
 
 /// A verdict with no signals behind it is not a verdict: the state machine

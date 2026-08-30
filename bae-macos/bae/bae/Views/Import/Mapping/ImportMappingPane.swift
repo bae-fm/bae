@@ -55,7 +55,6 @@ struct ImportMappingPane: View {
                     placement: candidate.row?.placement,
                     folderName: candidate.displayName,
                     folderPath: candidate.key,
-                    formatLabel: candidate.files.formatLabel,
                     onNavigateToPlacement: {
                         onNavigateToPlacement(candidate.key)
                     }
@@ -74,7 +73,6 @@ struct ImportMappingPane: View {
                         table: mapping,
                         bindingOptions: bindingOptions,
                         previewingPath: previewingPath,
-                        unprobed: Set(candidate.detail?.unprobed ?? []),
                         evidence: candidate.fileEvidence,
                         actions: mappingActions,
                     )

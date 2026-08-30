@@ -47,7 +47,7 @@ extension BridgeMappingSource {
     /// the file, or stated by the sheet for one of its entries.
     var durationMs: UInt64? {
         switch self {
-        case .file(let file): file.probedDurationMs
+        case .file(let file): file.durationMs
         case .sheetEntry(let entry): entry.durationMs
         case .missing: nil
         }

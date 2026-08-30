@@ -366,12 +366,63 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
 }
 
 pub(super) fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
+    let layout = row
+        .get::<_, Option<String>>("source_audio_layout")?
+        .map(|layout| match layout.as_str() {
+            "file" => Ok(crate::album_detail::SourceAudioLayout::File),
+            "cue" => Ok(crate::album_detail::SourceAudioLayout::Cue),
+            other => Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                0,
+                coven::rusqlite::types::Type::Text,
+                format!("invalid source_audio_layout {other:?}").into(),
+            )),
+        })
+        .transpose()?;
+    let source_audio = match (
+        row.get::<_, Option<String>>("source_audio_content_type")?,
+        row.get::<_, Option<i64>>("source_audio_duration_ms")?,
+        row.get::<_, Option<i64>>("source_audio_sample_rate_hz")?,
+        row.get::<_, Option<i64>>("source_audio_bits_per_sample")?,
+        row.get::<_, Option<i64>>("source_audio_bitrate_kbps")?,
+        row.get::<_, Option<i64>>("source_audio_channels")?,
+    ) {
+        (None, None, None, None, None, None) if layout.is_none() => None,
+        (
+            Some(content_type),
+            Some(duration_ms),
+            Some(sample_rate_hz),
+            bits_per_sample,
+            bitrate_kbps,
+            Some(channels),
+        ) => Some(crate::album_detail::SourceAudioFile {
+            layout,
+            content_type: ContentType::from_mime(&content_type),
+            duration_ms,
+            format: crate::album_detail::AudioFormat {
+                codec: ContentType::from_mime(&content_type)
+                    .display_name()
+                    .to_string(),
+                sample_rate_hz,
+                bits_per_sample,
+                bitrate_kbps,
+                channels,
+            },
+        }),
+        columns => {
+            return Err(coven::rusqlite::Error::FromSqlConversionFailure(
+                0,
+                coven::rusqlite::types::Type::Text,
+                format!("inconsistent release source-audio facts: {columns:?}").into(),
+            ))
+        }
+    };
     Ok(DbFile {
         id: row.get("id")?,
         release_id: row.get("release_id")?,
         original_filename: row.get("original_filename")?,
         file_size: row.get("file_size")?,
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
+        source_audio,
         cloud_path: row.get("cloud_path")?,
         content_hash: row.get("hash")?,
         created_at: rfc3339_column(row, "created_at")?,

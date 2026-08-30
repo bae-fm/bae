@@ -2,7 +2,7 @@
 // signals, the failure an import left, the cover, and the metadata and track
 // rows the user typed.
 
-use crate::import::probe::{ProbedDurations, ProbedUnit};
+use crate::import::probe::{SourceDurations, SourceDuration};
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
@@ -20,8 +20,8 @@ fn pane_candidate() -> CategorizedFiles {
     track_files_candidate(&[("01 Track.flac", 111), ("CDImage.flac", 222)])
 }
 
-fn file_unit(file_id: &str, duration_ms: Option<u64>) -> ProbedUnit {
-    ProbedUnit {
+fn file_unit(file_id: &str, duration_ms: Option<u64>) -> SourceDuration {
+    SourceDuration {
         audio: AudioFile::Standalone {
             file_id: file_id.to_string(),
         },
@@ -29,8 +29,8 @@ fn file_unit(file_id: &str, duration_ms: Option<u64>) -> ProbedUnit {
     }
 }
 
-fn slice_unit(index: u32, duration_ms: Option<u64>) -> ProbedUnit {
-    ProbedUnit {
+fn slice_unit(index: u32, duration_ms: Option<u64>) -> SourceDuration {
+    SourceDuration {
         audio: AudioFile::SheetSlice {
             file_id: "CDImage.flac".to_string(),
             sheet_id: "CDImage.cue".to_string(),
@@ -40,7 +40,7 @@ fn slice_unit(index: u32, duration_ms: Option<u64>) -> ProbedUnit {
     }
 }
 
-fn signals_with(durations: ProbedDurations) -> Signals {
+fn signals_with(durations: SourceDurations) -> Signals {
     Signals {
         disc_id: DiscIdSignal::Absent { track_count: 2 },
         barcode: BarcodeSignal::Absent,
@@ -148,14 +148,13 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
     }
 }
 
-/// The measurements a verdict carries come back exactly, kinds and absences
-/// included, and the total the column holds is derived from them.
+/// The verdict stores its derived total without duplicating per-file scan facts.
 #[tokio::test]
-async fn measured_durations_round_trip_with_the_verdict() {
+async fn verdict_stores_only_the_derived_total() {
     let (db, _tmp) = empty_db().await;
     let candidate = pane_candidate();
     let hash = candidate.content_hash();
-    let durations = ProbedDurations::new(vec![
+    let durations = SourceDurations::new(vec![
         file_unit("01 Track.flac", Some(180_000)),
         file_unit("CDImage.flac", Some(600_000)),
         slice_unit(0, Some(200_000)),
@@ -169,25 +168,7 @@ async fn measured_durations_round_trip_with_the_verdict() {
         .await
         .unwrap()
         .expect("the verdict wrote a row");
-    assert_eq!(
-        state.durations.units.len(),
-        durations.units.len(),
-        "{:?}",
-        state.durations
-    );
-    for unit in &durations.units {
-        assert_eq!(
-            state.durations.duration_of(&unit.audio),
-            Some(unit.duration_ms),
-            "{:?} came back different",
-            unit.audio
-        );
-    }
-    assert_eq!(
-        state.durations.total_ms(),
-        780_000,
-        "the total sums the files, and a slice with no timing is not one"
-    );
+    assert!(state.signals.unwrap().durations.units.is_empty());
     assert_eq!(
         state
             .identify
@@ -205,7 +186,7 @@ async fn measured_durations_round_trip_with_the_verdict() {
 async fn a_file_with_no_length_makes_the_total_unknown() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let durations = ProbedDurations::new(vec![
+    let durations = SourceDurations::new(vec![
         file_unit("01 Track.flac", Some(180_000)),
         file_unit("CDImage.flac", None),
     ]);
@@ -213,7 +194,6 @@ async fn a_file_with_no_length_makes_the_total_unknown() {
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
 
     let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
-    assert_eq!(state.durations.total_ms(), 0);
     assert_eq!(
         state.identify.unwrap().probed_total_duration_ms,
         0,
@@ -312,7 +292,7 @@ async fn every_settled_signal_shape_round_trips() {
             disc_id,
             barcode,
             text,
-            durations: ProbedDurations::new(vec![file_unit("01 Track.flac", Some(1_000))]),
+            durations: SourceDurations::new(vec![file_unit("01 Track.flac", Some(1_000))]),
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -324,7 +304,14 @@ async fn every_settled_signal_shape_round_trips() {
             .unwrap()
             .signals
             .unwrap_or_else(|| panic!("{what}: the signals read back"));
-        assert_eq!(stored, signals, "{what}");
+        assert_eq!(
+            stored,
+            Signals {
+                durations: SourceDurations::default(),
+                ..signals
+            },
+            "{what}"
+        );
     }
 }
 
@@ -341,7 +328,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
-            durations: ProbedDurations::default(),
+            durations: SourceDurations::default(),
         },
         Signals {
             disc_id: DiscIdSignal::Absent { track_count: 0 },
@@ -350,7 +337,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 catalogs: Vec::new(),
                 free_text: Vec::new(),
             },
-            durations: ProbedDurations::default(),
+            durations: SourceDurations::default(),
         },
     ] {
         let (db, _tmp) = empty_db().await;
@@ -664,7 +651,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
 async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let (db, _tmp) = empty_db().await;
     let (files, hash) = stored_pane_candidate(&db).await;
-    let durations = ProbedDurations::new(vec![
+    let durations = SourceDurations::new(vec![
         file_unit("01 Track.flac", Some(180_000)),
         file_unit("CDImage.flac", Some(600_000)),
         slice_unit(0, Some(200_000)),
@@ -705,14 +692,6 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .unwrap();
 
     let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
-    assert_eq!(
-        state.durations.units,
-        vec![
-            file_unit("01 Track.flac", Some(180_000)),
-            file_unit("CDImage.flac", Some(600_000)),
-        ],
-        "the slices go and the files stay"
-    );
     assert!(state.signals.is_none(), "the disc ID is recomputed");
 
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
@@ -885,7 +864,7 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             content_hash: hash.clone(),
             folder_path: "/music/Album".to_string(),
             verdict: sample_verdict(),
-            signals: signals_with(ProbedDurations::default()),
+            signals: signals_with(SourceDurations::default()),
             expected_edit_revision: 0,
             expected_metadata_revision: 2,
             metadata: crate::import::CandidateMetadataDraft {
@@ -924,7 +903,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
             content_hash: hash.clone(),
             folder_path: "/music/Album".to_string(),
             verdict: sample_verdict(),
-            signals: signals_with(ProbedDurations::default()),
+            signals: signals_with(SourceDurations::default()),
             expected_edit_revision: 0,
             expected_metadata_revision: 0,
             metadata: crate::import::CandidateMetadataDraft {
@@ -948,7 +927,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
             content_hash: hash.clone(),
             folder_path: "/music/Album".to_string(),
             verdict: sample_verdict(),
-            signals: signals_with(ProbedDurations::default()),
+            signals: signals_with(SourceDurations::default()),
             expected_edit_revision: 0,
             expected_metadata_revision: 1,
             metadata: crate::import::CandidateMetadataDraft {

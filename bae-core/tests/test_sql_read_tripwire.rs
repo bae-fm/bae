@@ -47,9 +47,9 @@ async fn pure_reads_use_the_read_connection() {
     db.has_pending_cloud_upload("missing").await.unwrap();
     db.outbox_queue().await.unwrap();
 
-    // The seven device-local tables the pane writes read back the same way.
-    // `load_import_candidate_state` covers import_candidate_file_duration,
-    // import_candidate_signals and import_candidate_signal_value;
+    // The six device-local tables the pane writes read back the same way.
+    // `load_import_candidate_state` covers import_candidate_signals and
+    // import_candidate_signal_value;
     // `load_import_candidate_pane_rows` covers import_candidate_failure,
     // import_candidate_cover, import_candidate_edit and
     // import_candidate_track_edit.
@@ -94,7 +94,7 @@ async fn pure_reads_use_the_read_connection() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
-                durations: bae_core::import::probe::ProbedDurations::default(),
+                durations: bae_core::import::probe::SourceDurations::default(),
             },
             expected_edit_revision: 7,
             expected_metadata_revision: 7,

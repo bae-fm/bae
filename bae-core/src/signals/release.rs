@@ -36,47 +36,41 @@ pub(crate) async fn resolve_release_identity(
     // On-disk paths come from coven's external refs (a Local release's files are
     // the user's own, in place). A remote file has no external ref and is skipped,
     // so a cloud-only release yields no paths and thus no disc ID.
-    let mut local_paths: Vec<PathBuf> = Vec::new();
+    let mut log_paths = Vec::new();
+    let mut cue_paths = Vec::new();
+    let mut audio_files = Vec::new();
     for f in &files {
         if let Some(path) = library_manager
             .file_local_path(&f.id)
             .await
             .map_err(|e| format!("Failed to resolve local path: {e}"))?
         {
-            if path.exists() {
-                local_paths.push(path);
+            if !path.exists() {
+                continue;
+            }
+            match path.extension().and_then(|extension| extension.to_str()) {
+                Some(extension) if extension.eq_ignore_ascii_case("log") => {
+                    log_paths.push(path.clone());
+                }
+                Some(extension) if extension.eq_ignore_ascii_case("cue") => {
+                    cue_paths.push(path.clone());
+                }
+                _ => {}
+            }
+            if let Some(source_audio) = &f.source_audio {
+                let duration_ms = u64::try_from(source_audio.duration_ms).map_err(|_| {
+                    format!(
+                        "Release file '{}' has a negative source-audio duration",
+                        f.id
+                    )
+                })?;
+                audio_files.push((path, duration_ms));
             }
         }
     }
 
-    let log_paths: Vec<PathBuf> = local_paths
-        .iter()
-        .filter(|p| {
-            p.extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.eq_ignore_ascii_case("log"))
-                .unwrap_or(false)
-        })
-        .cloned()
-        .collect();
-    let cue_paths: Vec<PathBuf> = local_paths
-        .iter()
-        .filter(|p| {
-            p.extension()
-                .and_then(|e| e.to_str())
-                .map(|e| e.eq_ignore_ascii_case("cue"))
-                .unwrap_or(false)
-        })
-        .cloned()
-        .collect();
-    let audio_paths: Vec<PathBuf> = local_paths
-        .iter()
-        .filter(|p| crate::util::content_type_hint::ContentTypeHint::path_is_audio(p))
-        .cloned()
-        .collect();
-
     let disc_id = tokio::task::spawn_blocking(move || {
-        crate::import::discid::compute_discid_from_paths(&log_paths, &cue_paths, &audio_paths)
+        crate::import::discid::compute_discid_from_paths(&log_paths, &cue_paths, &audio_files)
     })
     .await
     .map_err(|e| format!("DiscID compute task failed: {e}"))?;
@@ -273,6 +267,7 @@ mod tests {
             original_filename: "cover.jpg".to_string(),
             file_size: 5,
             content_type: ContentType::Jpeg,
+            source_audio: None,
             cloud_path: None,
             content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
@@ -420,6 +415,7 @@ mod tests {
                 original_filename: filename.to_string(),
                 file_size: size,
                 content_type,
+                source_audio: None,
                 cloud_path: None,
                 content_hash: crate::util::fs::hash_bytes(b"fixture"),
                 created_at: Utc::now(),

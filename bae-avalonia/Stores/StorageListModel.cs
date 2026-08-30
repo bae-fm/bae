@@ -13,7 +13,7 @@ public enum StorageTab { All, Local, Cloud, Uploading }
 // field here. SortDirection is reused from LibrarySort.cs. Sorting is applied
 // server-side (the storage subscription takes the field/direction), so this enum is
 // the vocabulary the column headers and the wire sort share.
-public enum StorageSortField { AlbumTitle, ArtistNames, Format, FileCount, TotalSize }
+public enum StorageSortField { AlbumTitle, ArtistNames, Media, FileCount, TotalSize }
 
 // The storage list's sort/persistence vocabulary. The tab-membership and
 // row-ordering math this module once did client-side over a full library
@@ -46,7 +46,7 @@ public static class StorageListModel
     {
         StorageSortField.AlbumTitle => "storage.column.album",
         StorageSortField.ArtistNames => "storage.column.artist",
-        StorageSortField.Format => "storage.column.format",
+        StorageSortField.Media => "core.release.media",
         StorageSortField.FileCount => "storage.column.files",
         StorageSortField.TotalSize => "storage.column.size",
         _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown storage sort field"),
@@ -78,7 +78,7 @@ public static class StorageListModel
     {
         StorageSortField.AlbumTitle => "albumTitle",
         StorageSortField.ArtistNames => "artistNames",
-        StorageSortField.Format => "format",
+        StorageSortField.Media => "media",
         StorageSortField.FileCount => "fileCount",
         StorageSortField.TotalSize => "totalSize",
         _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown storage sort field"),
@@ -97,7 +97,7 @@ public static class StorageListModel
         {
             case "albumTitle": field = StorageSortField.AlbumTitle; return true;
             case "artistNames": field = StorageSortField.ArtistNames; return true;
-            case "format": field = StorageSortField.Format; return true;
+            case "media": field = StorageSortField.Media; return true;
             case "fileCount": field = StorageSortField.FileCount; return true;
             case "totalSize": field = StorageSortField.TotalSize; return true;
             default: field = default; return false;

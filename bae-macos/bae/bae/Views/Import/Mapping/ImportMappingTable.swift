@@ -17,9 +17,6 @@ struct ImportMappingTable: View {
     let bindingOptions: [String: [BridgeSheetBindingOption]]
     /// The path currently auditioning, if any — the row playing it is accented.
     let previewingPath: String?
-    /// The audio units nothing has read yet. Their rows say so while the read
-    /// runs; every other length on the pane is already stored.
-    var unprobed: Set<BridgeAudioFile> = []
     /// Extracted identifying signals by their source file. The row for that
     /// file carries the chip independently of the selected pressing.
     var evidence: [BridgeFileEvidence] = []
@@ -155,7 +152,6 @@ struct ImportMappingTable: View {
             columns: columns.tracks,
             audioChoices: table.audioChoices,
             previewingPath: previewingPath,
-            isMeasuring: unit.source.audio.map(unprobed.contains) ?? false,
             evidence: evidenceFor(unit),
             actions: actions,
             artistFillCoordinateSpace: artistFillCoordinateSpace,

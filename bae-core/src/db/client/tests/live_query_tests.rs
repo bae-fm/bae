@@ -703,10 +703,12 @@ pub(super) fn scan_candidate(root: &str, name: &str) -> crate::import::folder_sc
                     format!("{root}/{name}/01.flac").into(),
                     "01.flac".to_string(),
                     1_000,
-                ),
+                    1,
+                    "0".repeat(64),
+                )
+                .with_test_flac_audio(),
                 role: FileRole::Audio,
             }],
-            format_label: "FLAC".to_string(),
         },
         watched_folder_path: root.to_string(),
         scope: ReleaseFileScope::Recursive,
@@ -840,7 +842,7 @@ async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let second = format!("{root}/second");
     db.call(move |sql| {
         sql.execute(
-            "UPDATE scan_candidate SET format_label = 'ALAC' WHERE path = ?1",
+            "UPDATE scan_candidate SET initial_metadata_source = 'none' WHERE path = ?1",
             params![second],
         )
         .map(|_| ())

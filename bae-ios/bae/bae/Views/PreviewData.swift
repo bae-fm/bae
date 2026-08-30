@@ -101,6 +101,7 @@ enum PreviewData {
                 BridgeTrackGroup(side: .flat, headerKey: nil, tracks: songs, totalDuration: nil)
             ],
             files: [],
+            sourceAudio: nil,
             imageFiles: [],
             galleryItems: [],
             totalDuration: .minutesOnly(minutes: 39),

@@ -13,23 +13,8 @@ public sealed class ImportCandidate
     public string Key { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int TrackCount { get; set; }
-    public string Format { get; set; } = string.Empty;
 
     public ImportCandidateRowStatus RowStatus { get; set; } = new();
-    public string StatusOverride { get; set; } = string.Empty;
-
-    /// <summary>The auto-identification or import status shown in the row.</summary>
-    public string Status
-    {
-        get
-        {
-            if (!string.IsNullOrEmpty(StatusOverride))
-            {
-                return StatusOverride;
-            }
-            return RowStatus.LocalizedLine;
-        }
-    }
 
     /// <summary>Candidate identities from a "found" result; empty otherwise.</summary>
     public List<ReleaseCandidateChoice> Matches { get; set; } = new();
@@ -38,7 +23,7 @@ public sealed class ImportCandidate
     /// for it, what that role makes of it, the roles it can be put in, and —
     /// for a track sheet — what it describes. The mapping table itself is core's
     /// projection over the same folder; this is what the pane reads for the
-    /// facts that sit outside it, the folder's format and its images. Null
+    /// facts that sit outside it, the source-audio summary and its images. Null
     /// before a candidate has been read.
     /// </summary>
     internal BridgeCandidateFiles? Files { get; set; }
@@ -187,6 +172,7 @@ public sealed class ImportCandidate
             var right = rhs.Files[index].File;
             if (left.Name != right.Name
                 || left.Size != right.Size
+                || left.ContentDigest != right.ContentDigest
                 || left.LocalPath != right.LocalPath)
             {
                 return false;
@@ -210,13 +196,7 @@ public sealed class ImportCandidate
         var parts = new List<string> { Name };
         parts.Add(Loc.Chrome("import.candidate.tracks", "count", TrackCount));
 
-        if (!string.IsNullOrEmpty(Format))
-        {
-            parts.Add(Format);
-        }
-
-        var line = string.Join("  ·  ", parts);
-        return string.IsNullOrEmpty(Status) ? line : $"{line}  —  {Status}";
+        return string.Join("  ·  ", parts);
     }
 }
 

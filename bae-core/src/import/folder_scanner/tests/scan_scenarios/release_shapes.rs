@@ -1,3 +1,57 @@
+#[test]
+fn same_size_audio_replacement_changes_the_scanned_candidate() {
+    let result = run_scenario(vec![FixtureEntry::File {
+        rel_path: "Album/01.flac".into(),
+        kind: FileKind::Flac,
+    }]);
+    let before = result.candidate("Album").clone();
+    let path = result.root.join("Album/01.flac");
+    let original_modified = std::fs::metadata(&path).unwrap().modified().unwrap();
+    let mut replacement = std::fs::read(&path).unwrap();
+    let last = replacement.last_mut().expect("fixture is not empty");
+    *last ^= 1;
+    std::fs::write(&path, replacement).unwrap();
+    std::fs::File::open(&path)
+        .unwrap()
+        .set_times(std::fs::FileTimes::new().set_modified(original_modified))
+        .unwrap();
+
+    let after = scan_valid(result.root.clone())
+        .into_iter()
+        .find(|candidate| candidate.display_path == "Album")
+        .expect("replacement remains a valid candidate");
+
+    assert_ne!(before, after);
+    assert_ne!(before.files.content_hash(), after.files.content_hash());
+}
+
+#[test]
+fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
+    let result = run_scenario(vec![FixtureEntry::File {
+        rel_path: "Album/01.flac".into(),
+        kind: FileKind::Flac,
+    }]);
+    let path = result.root.join("Album/01.flac");
+    let original_metadata = std::fs::metadata(&path).unwrap();
+    std::fs::write(&path, vec![0; original_metadata.len() as usize]).unwrap();
+    std::fs::File::open(&path)
+        .unwrap()
+        .set_times(
+            std::fs::FileTimes::new().set_modified(original_metadata.modified().unwrap()),
+        )
+        .unwrap();
+
+    let items = scan_items(result.root);
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Invalid(invalid)
+            if matches!(invalid.reason, InvalidReason::CorruptAudioFile { .. })
+    )));
+    assert!(!items
+        .iter()
+        .any(|item| matches!(item, ScanItem::Valid(candidate) if candidate.name == "Album")));
+}
+
 /// A release folder with a real FLAC and a zero-byte FLAC must be
 /// rejected. Mixing valid and zero-byte audio poisons the candidate.
 #[test]
@@ -54,6 +108,7 @@ fn io_error_validating_audio_surfaces_not_swallowed() {
     let tree = CandidateFileIndex::new(vec![FileEntry {
         path: PathBuf::from("Album/01.flac"),
         size: 1024,
+        modified_at_ns: 1,
     }]);
     // fs_root is an empty dir, so Album/01.flac does not exist on disk:
     // is_valid_audio's open fails with a genuine I/O error.
@@ -216,15 +271,15 @@ fn loose_junk_at_scan_root_ignored() {
 fn flat_flac_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Flac));
     let c = result.candidate("Album");
-    assert_eq!(c.files.format_label, "FLAC");
+    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::File, "FLAC");
     assert_eq!(c.files.audio().count(), 3);
     assert!(c.files.track_sheets().next().is_none());
 }
 
-/// A CUE next to the FLAC it names binds, and the folder is labelled
-/// "CUE+FLAC".
+/// A CUE next to the FLAC it names binds, and the folder reports a CUE-backed
+/// FLAC source descriptor.
 #[test]
-fn cue_flac_pair_binds_and_is_labelled() {
+fn cue_flac_pair_binds_and_reports_source_audio() {
     let result = run_scenario(vec![
         FixtureEntry::File {
             rel_path: "Album/Album.flac".into(),
@@ -239,7 +294,7 @@ fn cue_flac_pair_binds_and_is_labelled() {
         },
     ]);
     let c = result.candidate("Album");
-    assert_eq!(c.files.format_label, "CUE+FLAC");
+    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
     assert_eq!(c.files.bound_sheets().len(), 1);
 }
 
@@ -252,15 +307,15 @@ fn cue_flac_pair_binds_and_is_labelled() {
 fn mp3_release_surfaces_as_mp3_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Mp3));
     let c = result.candidate("Album");
-    assert_eq!(c.files.format_label, "MP3");
+    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::File, "MP3");
 }
 
-/// M4A tracks surface as TrackFiles / "M4A".
+/// M4A tracks surface as physical files with their probed codec.
 #[test]
 fn m4a_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::M4a));
     let c = result.candidate("Album");
-    assert_eq!(c.files.format_label, "M4A");
+    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::File, "ALAC");
     assert_eq!(c.files.audio().count(), 3);
 }
 
@@ -285,7 +340,7 @@ fn multi_file_cue_surfaces_as_cue_backed_release() {
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
     let c = &candidates[0];
-    assert_eq!(c.files.format_label, "CUE+ALAC");
+    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::Cue, "ALAC");
     assert_eq!(c.files.bound_sheets().len(), 1);
     assert_eq!(
         c.files
@@ -500,10 +555,10 @@ fn sibling_folders_keep_their_own_audio_layouts() {
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
     let track_files = &result.candidate("Collection/Track Files").files;
-    assert_eq!(track_files.format_label, "FLAC");
+    assert_uniform_source_audio(track_files, crate::album_detail::SourceAudioLayout::File, "FLAC");
     assert!(track_files.bound_sheets().is_empty());
     let cue_image = &result.candidate("Collection/Cue Image").files;
-    assert_eq!(cue_image.format_label, "CUE+FLAC");
+    assert_uniform_source_audio(cue_image, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
     assert_eq!(cue_image.bound_sheets().len(), 1);
 }
 

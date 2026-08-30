@@ -26,7 +26,7 @@ fn loose_tracks_yield_one_file_row_each() {
         std::fs::copy(fixtures.join(name), dir.join(name)).unwrap();
     }
 
-    let probed = probe_durations(&categorize(dir));
+    let probed = source_durations(&categorize(dir));
     assert_eq!(probed.units.len(), 2, "one row per audio file: {probed:?}");
     assert!(probed
         .units
@@ -40,14 +40,11 @@ fn loose_tracks_yield_one_file_row_each() {
     assert_eq!(probed.total_ms(), sum);
 }
 
-/// A file that will not open is written with no length rather than left out:
-/// the row is what says "we looked", and the total refuses to guess.
-///
-/// The scan refuses a folder holding audio it cannot read, so the file is
-/// broken after the scan — which is also the real case, a folder edited
-/// under an open pane.
+/// Durations describe the bytes accepted by the scan. A later disk mutation
+/// cannot silently replace those facts; import validates the stored digest
+/// before consuming them.
 #[test]
-fn an_unreadable_file_yields_a_row_with_no_length() {
+fn changed_file_bytes_do_not_replace_scanned_durations() {
     let tmp = TempDir::new().unwrap();
     let dir = tmp.path();
     let fixtures = Path::new("tests/fixtures/flac");
@@ -57,18 +54,15 @@ fn an_unreadable_file_yields_a_row_with_no_length() {
     let files = categorize(dir);
     std::fs::write(dir.join("02 Test Track 2.flac"), b"not audio at all").unwrap();
 
-    let probed = probe_durations(&files);
-    let broken = probed
+    let probed = source_durations(&files);
+    let scanned = probed
         .duration_of(&AudioFile::Standalone {
             file_id: "02 Test Track 2.flac".to_string(),
         })
-        .expect("the broken file still has a row");
-    assert_eq!(broken, None, "it was read and states no length");
-    assert_eq!(
-        probed.total_ms(),
-        0,
-        "one unreadable file makes the whole total unknown"
-    );
+        .expect("the scanned file has a row")
+        .expect("the scan persisted its duration");
+    assert!(scanned > 0);
+    assert!(probed.total_ms() > 0);
 }
 
 /// A CUE-carved container yields one file row for the container itself and one
@@ -93,7 +87,7 @@ fn a_cue_carved_container_yields_a_row_per_slice() {
     let container_id = sheet.audio.relative_path.clone();
     let track_count = sheet.sheet.playable_track_count();
 
-    let probed = probe_durations(&files);
+    let probed = source_durations(&files);
     let container = probed
         .duration_of(&AudioFile::Standalone {
             file_id: container_id.clone(),

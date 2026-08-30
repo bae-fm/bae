@@ -25,7 +25,6 @@ pub(crate) struct FileObservation {
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FileTagFact {
     pub observation: FileObservation,
-    pub content_type: Option<ContentType>,
     pub title: Option<String>,
     pub track_artist: Option<String>,
     pub album_title: Option<String>,
@@ -51,7 +50,6 @@ pub(crate) struct FileTagSnapshot {
 }
 
 pub(crate) struct FileTagRead {
-    pub content_type: Option<ContentType>,
     pub title: Option<String>,
     pub track_artist: Option<String>,
     pub album_title: Option<String>,
@@ -108,7 +106,6 @@ impl FileTagReader for LoftyFileTagReader {
                 None => (None, None, None, None, None, None, None),
             };
         Ok(FileTagRead {
-            content_type: probe_content_type(path),
             title,
             track_artist,
             album_title,
@@ -269,7 +266,6 @@ pub(crate) fn extract_file_tag_snapshot(
         }
         facts.push(FileTagFact {
             observation: before,
-            content_type: read.content_type,
             title: read.title,
             track_artist: read.track_artist,
             album_title: read.album_title,
@@ -344,20 +340,6 @@ fn changed_file_error(file: &ScannedFile) -> ImportError {
             "{} changed after its import candidate was scanned; rescan before reading file tags",
             file.path.display()
         ),
-    }
-}
-
-pub(crate) fn probe_content_type(path: &Path) -> Option<ContentType> {
-    let Some(path_str) = path.to_str() else {
-        tracing::warn!("failed to probe audio format of non-UTF-8 path: {path:?}");
-        return None;
-    };
-    match crate::audio_codec::probe_audio_from_path(path_str) {
-        Some(probe) => Some(probe.content_type),
-        None => {
-            tracing::warn!("failed to probe audio format of {}", path.display());
-            None
-        }
     }
 }
 
@@ -529,6 +511,8 @@ mod tests {
             PathBuf::from("/candidate").join(relative_path),
             relative_path.to_string(),
             size,
+            1,
+            format!("{size:064x}"),
         )
     }
 
@@ -545,7 +529,6 @@ mod tests {
                     proposed_audio: false,
                 })
                 .collect(),
-            format_label: String::new(),
         }
     }
 
@@ -565,7 +548,6 @@ mod tests {
         fn read(&self, _path: &Path) -> Result<FileTagRead, ImportError> {
             self.0.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             Ok(FileTagRead {
-                content_type: Some(ContentType::Flac),
                 title: Some("Track Alpha".to_string()),
                 track_artist: Some("Artist Alpha".to_string()),
                 album_title: Some("Album Alpha".to_string()),
@@ -617,7 +599,13 @@ mod tests {
             .iter()
             .enumerate()
             .map(|(index, path)| {
-                ScannedFile::new(path.clone(), format!("{:02}.flac", index + 1), 5)
+                ScannedFile::new(
+                    path.clone(),
+                    format!("{:02}.flac", index + 1),
+                    5,
+                    1,
+                    crate::util::fs::hash_file(path).unwrap(),
+                )
             })
             .collect::<Vec<_>>();
         let reader = CountingReader::default();
@@ -644,7 +632,7 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("01.flac");
         std::fs::write(&path, b"changed").unwrap();
-        let file = ScannedFile::new(path, "01.flac".to_string(), 5);
+        let file = ScannedFile::new(path, "01.flac".to_string(), 5, 1, "0".repeat(64));
         let reader = CountingReader::default();
 
         let error = extract_file_tag_snapshot(&[file], 1, 0, &reader).unwrap_err();

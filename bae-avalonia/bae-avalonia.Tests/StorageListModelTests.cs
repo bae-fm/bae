@@ -44,7 +44,7 @@ public sealed class StorageListModelTests
         {
             StorageSortField.AlbumTitle,
             StorageSortField.ArtistNames,
-            StorageSortField.Format,
+            StorageSortField.Media,
             StorageSortField.FileCount,
             StorageSortField.TotalSize,
         })

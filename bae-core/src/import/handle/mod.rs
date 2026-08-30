@@ -187,7 +187,7 @@ pub enum ScanEvent {
     /// The user bound one of a candidate's track sheets to an audio file, or
     /// cleared the binding. Carries the re-derived candidate, like
     /// [`Self::FolderCandidate`] — a bound sheet is a different disc, with a
-    /// different track count and format label, so every index holding those
+    /// different track count and source-audio summary, so every index holding those
     /// replaces its copy from this rather than keeping stale ones.
     ///
     /// It also says the candidate's stored identify verdict was cleared, which

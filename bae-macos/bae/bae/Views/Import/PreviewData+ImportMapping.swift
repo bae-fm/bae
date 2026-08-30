@@ -7,6 +7,14 @@
     extension PreviewData {
         // MARK: - The mapping table
 
+        private static let sourceAudioFormat = BridgeAudioFormat(
+            codec: "FLAC",
+            sampleRateHz: 44_100,
+            bitsPerSample: 16,
+            bitrateKbps: nil,
+            channels: 2
+        )
+
         /// One of the folder's audio files, as the mapping table's left half
         /// shows it. Track 4's file runs long against the release, which is
         /// what the row's two lengths are there to show.
@@ -17,7 +25,8 @@
                 name: "Track \(index).flac",
                 size: UInt64(35_000_000 + index * 2_000_000),
                 localPath: "/tmp/fake/Track \(index).flac",
-                probedDurationMs: UInt64(180_000 + index * 15000 + drift),
+                durationMs: UInt64(180_000 + index * 15000 + drift),
+                audioFormat: sourceAudioFormat,
                 role: .audio,
                 alternatives: [.audio, .notATrack],
                 roleChoice: .audio
@@ -33,7 +42,8 @@
                 name: file.file.fileName,
                 size: file.file.size,
                 localPath: file.file.localPath,
-                probedDurationMs: nil,
+                durationMs: nil,
+                audioFormat: file.file.audioFormat,
                 role: role,
                 alternatives: file.alternatives,
                 roleChoice: file.roleChoice
@@ -106,9 +116,17 @@
             file: BridgeFileInfo(
                 name: "Album Image.flac",
                 size: 221_100_000,
+                contentDigest: String(repeating: "b", count: 64),
                 dirPrefix: nil,
                 fileName: "Album Image.flac",
-                localPath: "/tmp/fake/Album Image.flac"
+                localPath: "/tmp/fake/Album Image.flac",
+                audioFormat: BridgeAudioFormat(
+                    codec: "FLAC",
+                    sampleRateHz: 44_100,
+                    bitsPerSample: 16,
+                    bitrateKbps: nil,
+                    channels: 2
+                )
             ),
             role: .audio,
             becomes: .slots(first: 1, last: 1),
@@ -118,7 +136,12 @@
 
         static let moreTracksCandidateFiles = BridgeCandidateFiles(
             files: [moreTracksAudio],
-            formatLabel: "FLAC",
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .file,
+                    format: sourceAudioFormat
+                )
+            ),
             collapsedDirectories: []
         )
 
@@ -184,7 +207,9 @@
                                         size: moreTracksAudio.file.size,
                                         localPath: moreTracksAudio.file
                                             .localPath,
-                                        probedDurationMs: 272_000,
+                                        durationMs: 272_000,
+                                        audioFormat: moreTracksAudio.file
+                                            .audioFormat,
                                         role: .audio,
                                         alternatives: moreTracksAudio
                                             .alternatives,
@@ -226,7 +251,8 @@
                 durationMs: durationMs,
                 containerId: mappedAudioContainer.file.name,
                 containerName: mappedAudioContainer.file.fileName,
-                containerLocalPath: mappedAudioContainer.file.localPath
+                containerLocalPath: mappedAudioContainer.file.localPath,
+                audioFormat: sourceAudioFormat
             )
             return BridgeMappingUnit(
                 source: .sheetEntry(entry: entry),
@@ -246,7 +272,8 @@
                 container: BridgeMappingContainer(
                     fileId: mappedAudioContainer.file.name,
                     name: mappedAudioContainer.file.fileName,
-                    size: mappedAudioContainer.file.size
+                    size: mappedAudioContainer.file.size,
+                    audioFormat: sourceAudioFormat
                 )
             ),
             assignment: .disc(number: 1),
@@ -314,7 +341,7 @@
                                 ),
                                 sourcePosition: "\(index)"
                             ),
-                            durationMs: mappingAudio(index).probedDurationMs
+                            durationMs: mappingAudio(index).durationMs
                         )
                     )
                 },
@@ -350,8 +377,7 @@
             edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
             cover: BridgeCoverChoice? = nil,
-            failure: BridgeImportFailure? = nil,
-            unprobed: [BridgeAudioFile] = []
+            failure: BridgeImportFailure? = nil
         ) -> Candidate {
             Candidate(
                 detail: BridgeImportCandidateDetail(
@@ -385,7 +411,6 @@
                     metadataRevision: 1,
                     initialMetadataSource: initialMetadataSource,
                     mapping: mapping,
-                    unprobed: unprobed,
                     cover: cover,
                     signals: nil,
                     failure: failure
@@ -617,7 +642,7 @@
                                 track: track,
                                 sourcePosition: nil
                             ),
-                            durationMs: mappingAudio(index + 1).probedDurationMs
+                            durationMs: mappingAudio(index + 1).durationMs
                         )
                     )
                 },

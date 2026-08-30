@@ -66,6 +66,7 @@ impl DirectoryReader for OsDirectoryReader {
                 files.push(FileEntry {
                     path: relative,
                     size: metadata.len(),
+                    modified_at_ns: file_modified_at_ns(&path, &metadata)?,
                 });
             }
         }
@@ -85,6 +86,29 @@ impl DirectoryReader for OsDirectoryReader {
         directories.sort_by(compare);
         Ok(DirectoryListing { files, directories })
     }
+}
+
+pub(crate) fn file_modified_at_ns(
+    path: &Path,
+    metadata: &std::fs::Metadata,
+) -> Result<i64, FolderScanError> {
+    let modified = metadata
+        .modified()
+        .map_err(|source| FolderScanError::io(path, source))?;
+    let elapsed = modified
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| {
+            FolderScanError::Other(format!(
+                "modification time is before the Unix epoch: {}",
+                path.display()
+            ))
+        })?;
+    i64::try_from(elapsed.as_nanos()).map_err(|_| {
+        FolderScanError::Other(format!(
+            "modification time exceeds SQLite's integer range: {}",
+            path.display()
+        ))
+    })
 }
 
 #[derive(Debug, Clone, Default)]

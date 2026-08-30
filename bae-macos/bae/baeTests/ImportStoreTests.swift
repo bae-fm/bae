@@ -28,7 +28,31 @@ private func makeStatus(albumId: String) -> BridgeLibraryStatus {
 /// these hand-build the minimal shapes the snapshot reducers consume.
 
 private func emptyBridgeFiles() -> BridgeCandidateFiles {
-    BridgeCandidateFiles(files: [], formatLabel: "", collapsedDirectories: [])
+    BridgeCandidateFiles(files: [], sourceAudio: nil, collapsedDirectories: [])
+}
+
+private func bridgeFiles(contentDigest: String) -> BridgeCandidateFiles {
+    BridgeCandidateFiles(
+        files: [
+            BridgeCandidateFile(
+                file: BridgeFileInfo(
+                    name: "01.flac",
+                    size: 100,
+                    contentDigest: contentDigest,
+                    dirPrefix: nil,
+                    fileName: "01.flac",
+                    localPath: "/music/01.flac",
+                    audioFormat: nil
+                ),
+                role: .audio,
+                becomes: .slots(first: 1, last: 1),
+                alternatives: [.audio, .notATrack],
+                roleChoice: .audio
+            )
+        ],
+        sourceAudio: nil,
+        collapsedDirectories: []
+    )
 }
 
 private func bridgeFolder(
@@ -238,7 +262,6 @@ private func detail(
             rows: [],
             reconciliation: nil
         ),
-        unprobed: [],
         cover: cover,
         signals: nil,
         failure: nil
@@ -318,50 +341,31 @@ struct ImportStoreCandidateDetailTests {
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)
     }
-}
 
-/// The one rule about which identify state a surface shows. It used to live on
-/// `Candidate`, reconciling two stored fields; the run in flight is not stored
-/// any more, so the rule is a function of the two values a surface holds.
-@Suite("The identify state a candidate shows")
-struct ShownIdentifyStateTests {
-    private func runtime(
-        _ state: BridgeIdentifyState
-    ) -> BridgeCandidateRuntimeSnapshot {
-        BridgeCandidateRuntimeSnapshot(
-            identifyState: state,
-            signalsToolbar: BridgeSignalsToolbar(signals: []),
-            import: nil
+    @Test("changed file bytes discard the loaded File Tags preview")
+    func changedFileBytesDiscardFileTagsPreview() {
+        var existing = folderCandidate(
+            folderPath: "/w1/a",
+            watchedFolderPath: "/w1",
+            name: "A"
         )
-    }
+        existing.files = bridgeFiles(
+            contentDigest: String(repeating: "a", count: 64)
+        )
+        existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
 
-    @Test("a live run outranks the stored verdict's resumed state")
-    func liveRunWins() {
-        let shown = shownIdentifyState(
-            resumed: .notFoundAnywhere,
-            runtime: runtime(
-                .triangulating(discid: .computing, barcode: .scanning)
-            )
+        var replacement = folderCandidate(
+            folderPath: "/w1/a",
+            watchedFolderPath: "/w1",
+            name: "A"
         )
-        #expect(shown == .triangulating(discid: .computing, barcode: .scanning))
-    }
+        replacement.files = bridgeFiles(
+            contentDigest: String(repeating: "b", count: 64)
+        )
 
-    @Test("nothing running leaves the resumed state")
-    func nothingRunning() {
-        #expect(
-            shownIdentifyState(resumed: .notFoundAnywhere, runtime: nil)
-                == .notFoundAnywhere
-        )
-    }
+        let merged = replacement.withSessionState(from: existing)
 
-    @Test("a run that is idle leaves the resumed state")
-    func idleRunDefersToTheVerdict() {
-        #expect(
-            shownIdentifyState(
-                resumed: .notFoundAnywhere,
-                runtime: runtime(.idle)
-            ) == .notFoundAnywhere
-        )
+        #expect(merged.fileTagsPreview == .unloaded)
     }
 }
 

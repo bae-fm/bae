@@ -154,8 +154,8 @@ struct ReleaseFieldsForm: View {
                 ),
                 row(
                     .format,
-                    label: String(localized: "Format"),
-                    placeholder: String(localized: "Format"),
+                    label: coreString("core.release.media"),
+                    placeholder: coreString("core.release.media"),
                     text: values.pressing.format,
                     width: .short,
                 ),

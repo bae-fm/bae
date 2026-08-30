@@ -428,7 +428,6 @@ internal sealed partial class ImportMappingPane : UserControl
                 () => _import.PreviewingPath,
                 _app.Library,
                 actions,
-                _candidate.Detail!.Unprobed,
                 _candidate.FileEvidence);
             // Both sections and their headings, as one block.
             sections.Children.Add(_table.Build());
@@ -484,7 +483,7 @@ internal sealed partial class ImportMappingPane : UserControl
     }
 
     // The folder the pane is about, at the top of it: what it is called on disk
-    // and what audio it holds. It leads the pane because it is the one fact
+    // on disk. It leads the pane because it is the one fact
     // nothing below can change — the release, the metadata and the mapping are
     // all readings of this folder. The name is selectable (a path is something
     // people copy) and the glyph beside it shows the folder in the file
@@ -515,17 +514,6 @@ internal sealed partial class ImportMappingPane : UserControl
         name[!SelectableTextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
         row.Children.Add(name);
 
-        if (_candidate?.Files?.FormatLabel is { Length: > 0 } formatLabel)
-        {
-            var format = new TextBlock
-            {
-                Text = formatLabel,
-                FontSize = 12,
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            format[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            row.Children.Add(format);
-        }
         return row;
     }
 
@@ -540,6 +528,7 @@ internal sealed partial class ImportMappingPane : UserControl
         Title = MetadataTitle(),
         Edit = _candidate?.Edit,
         MetaLine = MetaLine(),
+        SourceAudioLine = SourceAudioLine(_candidate?.Files),
         ProvenanceLabel = ProvenanceLabel(),
         ProvenanceUri = ProvenanceUri(),
         IsReading = _pickInFlight
@@ -619,7 +608,7 @@ internal sealed partial class ImportMappingPane : UserControl
     {
         if (_candidate?.Edit is not { } edit)
         {
-            return _candidate?.Files?.FormatLabel ?? string.Empty;
+            return string.Empty;
         }
         var mapping = _candidate.Mapping;
         string[] lead =
@@ -635,6 +624,9 @@ internal sealed partial class ImportMappingPane : UserControl
                 .Append(Loc.Chrome("import.candidate.tracks", "count", mapping.WillWriteCount()))
                 .Where(part => part.Length > 0));
     }
+
+    private static string SourceAudioLine(BridgeCandidateFiles? files) =>
+        BridgeDisplay.SourceAudio(files?.SourceAudio);
 
     private string? ProvenanceLabel() => _candidate?.MetadataProvenance switch
     {
@@ -683,7 +675,7 @@ internal sealed partial class ImportMappingPane : UserControl
     {
         if (_candidate?.FileTagsPreview is not { } preview)
         {
-            return _candidate?.Files?.FormatLabel ?? string.Empty;
+            return string.Empty;
         }
         return string.Join(
             "  ·  ",

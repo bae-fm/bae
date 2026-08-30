@@ -9,13 +9,21 @@ use std::path::Path;
 /// One accepted header shape: every `(offset, magic)` in it must match.
 type Magic = &'static [(usize, &'static [u8])];
 
+#[cfg(test)]
 const APE: Magic = &[(0, b"MAC ")];
+#[cfg(test)]
 const WAV: Magic = &[(0, b"RIFF"), (8, b"WAVE")];
+#[cfg(test)]
 const AIFF: Magic = &[(0, b"FORM"), (8, b"AIFF")];
+#[cfg(test)]
 const AIFC: Magic = &[(0, b"FORM"), (8, b"AIFC")];
+#[cfg(test)]
 const OGG: Magic = &[(0, b"OggS")];
+#[cfg(test)]
 const WAVPACK: Magic = &[(0, b"wvpk")];
+#[cfg(test)]
 const DSF: Magic = &[(0, b"DSD ")];
+#[cfg(test)]
 const DFF: Magic = &[(0, b"FRM8")];
 
 const JPEG: Magic = &[(0, &[0xFF, 0xD8, 0xFF])];
@@ -56,6 +64,7 @@ fn matches_any(path: &Path, alternatives: &[Magic]) -> io::Result<bool> {
 /// Whether the file's header is a well-formed FLAC prefix: the `fLaC` magic
 /// followed by a STREAMINFO block header (block type 0, length 34). More than a
 /// magic check, which is why it isn't a table entry.
+#[cfg(test)]
 pub(crate) fn is_valid_flac(path: &Path) -> io::Result<bool> {
     // fLaC magic (4) + STREAMINFO block header (4) + STREAMINFO data (34).
     let Some(header) = read_header(path, 42)? else {
@@ -75,6 +84,7 @@ pub(crate) fn is_valid_flac(path: &Path) -> io::Result<bool> {
 
 /// Whether the file opens with an ID3v2 tag or an MPEG sync word. The sync word
 /// is a bit pattern rather than a fixed magic, so this isn't a table entry either.
+#[cfg(test)]
 pub(crate) fn is_valid_mp3(path: &Path) -> io::Result<bool> {
     let Some(header) = read_header(path, 3)? else {
         return Ok(false);
@@ -84,6 +94,7 @@ pub(crate) fn is_valid_mp3(path: &Path) -> io::Result<bool> {
 }
 
 /// Whether the file opens with APE (Monkey's Audio)'s `MAC ` magic.
+#[cfg(test)]
 pub(crate) fn is_valid_ape(path: &Path) -> io::Result<bool> {
     matches_any(path, &[APE])
 }
@@ -91,6 +102,7 @@ pub(crate) fn is_valid_ape(path: &Path) -> io::Result<bool> {
 /// Whether an audio file's magic bytes match its extension. An extension with no
 /// known magic (`.m4a`, say) yields `Ok(true)` — an unrecognized format is not
 /// evidence of corruption, so it must not block the import.
+#[cfg(test)]
 pub(crate) fn is_valid_audio(path: &Path) -> io::Result<bool> {
     match extension(path).as_str() {
         "flac" => is_valid_flac(path),

@@ -11,7 +11,7 @@ enum SettledLead {
 fn metadata_for_settled_lead(
     context: &SweepContext,
     candidate: &FolderCandidate,
-    durations: &crate::import::probe::ProbedDurations,
+    durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
 ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
     match settled_lead {

@@ -496,7 +496,7 @@ internal static partial class NativeBae
     {
         StorageSortField.AlbumTitle => BridgeStorageSortField.AlbumTitle,
         StorageSortField.ArtistNames => BridgeStorageSortField.ArtistNames,
-        StorageSortField.Format => BridgeStorageSortField.Format,
+        StorageSortField.Media => BridgeStorageSortField.Media,
         StorageSortField.FileCount => BridgeStorageSortField.FileCount,
         StorageSortField.TotalSize => BridgeStorageSortField.TotalSize,
         _ => throw new ArgumentOutOfRangeException(nameof(field), field, "Unknown storage sort field"),

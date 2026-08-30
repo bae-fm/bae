@@ -514,6 +514,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         original_filename: f1.file_name().unwrap().to_string_lossy().into_owned(),
         file_size: std::fs::metadata(&f1).unwrap().len() as i64,
         content_type: ContentType::Flac,
+        source_audio: None,
         cloud_path: None,
         content_hash: bae_core::util::fs::hash_bytes(b"fixture"),
         created_at: now,
@@ -524,6 +525,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         original_filename: f2.file_name().unwrap().to_string_lossy().into_owned(),
         file_size: std::fs::metadata(&f2).unwrap().len() as i64,
         content_type: ContentType::Flac,
+        source_audio: None,
         cloud_path: None,
         content_hash: bae_core::util::fs::hash_bytes(b"fixture"),
         created_at: now,
@@ -544,7 +546,7 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         vec![ArtistAssignment::new("Tag Artist")]
     );
     assert_eq!(edit.pressing.year, Some(2010));
-    assert_eq!(edit.pressing.format.as_deref(), Some("FLAC"));
+    assert_eq!(edit.pressing.format, None);
     assert_eq!(edit.tracks.len(), 2);
     assert_eq!(edit.tracks[0].title, "Tag Track 1");
     assert_eq!(edit.tracks[1].title, "Tag Track 2");

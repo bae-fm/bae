@@ -5,10 +5,7 @@ use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;
 
 fn empty_categorized() -> CategorizedFiles {
-    CategorizedFiles {
-        files: Vec::new(),
-        format_label: "FLAC".to_string(),
-    }
+    CategorizedFiles { files: Vec::new() }
 }
 
 fn folder_candidate(path: &str, watched: &str) -> FolderCandidate {
@@ -91,7 +88,7 @@ fn extracted_signals() -> crate::signals::Signals {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
-        durations: crate::import::probe::ProbedDurations::totalling(1_000),
+        durations: crate::import::probe::SourceDurations::totalling(1_000),
     }
 }
 

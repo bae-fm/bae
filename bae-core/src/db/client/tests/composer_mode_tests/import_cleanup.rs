@@ -8,6 +8,20 @@ fn empty_cleanup_plan() -> DeleteCleanupPlan {
     DeleteCleanupPlan::default()
 }
 
+fn scanned_flac() -> crate::import::folder_scanner::ScannedAudio {
+    crate::import::folder_scanner::ScannedAudio {
+        content_type: ContentType::Flac,
+        duration_ms: 1_000,
+        format: crate::album_detail::AudioFormat {
+            codec: "FLAC".to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: Some(16),
+            bitrate_kbps: None,
+            channels: 2,
+        },
+    }
+}
+
 /// Shared arrange for the two reimport-replacement tests. Seeds `album-old` with
 /// `existing_release_ids` and its `primary_release_id` at `replaced_release_id`,
 /// then finalizes a reimport whose new release `rel-new` lands in the fresh
@@ -81,6 +95,7 @@ async fn finalize_reimport_replacing_release(
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
         file_path: tmp.path().join("Track Title New.flac"),
+        source_audio: scanned_flac(),
     }];
 
     let replacement = ImportReplacementDelete {
@@ -247,6 +262,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
         file_path: tmp.path().join("Track.flac"),
+        source_audio: scanned_flac(),
     }];
     let works = vec![DbWork {
         id: WORK_A.to_string(),
@@ -399,7 +415,7 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
         release_name: None,
         pressing: Pressing {
             year: Some(2026),
-            format: Some("FLAC".to_string()),
+            format: Some("CD".to_string()),
             label: None,
             catalog_number: None,
             country: None,
@@ -436,6 +452,7 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
         file_path: tmp.path().join("Track Title A.flac"),
+        source_audio: scanned_flac(),
     }];
 
     db.finalize_import_atomic(
@@ -609,6 +626,7 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
         file_path: tmp.path().join("Track Title A.flac"),
+        source_audio: scanned_flac(),
     }];
 
     // Finalize the import, pointing the album's primary at the release
@@ -744,7 +762,7 @@ async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically
 
     let pressing = || Pressing {
         year: Some(2026),
-        format: Some("FLAC".to_string()),
+        format: Some("CD".to_string()),
         label: None,
         catalog_number: None,
         country: None,
@@ -809,6 +827,7 @@ async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track(TRACK_A, RELEASE_A),
         file_path: tmp.path().join("Track A.flac"),
+        source_audio: scanned_flac(),
     }];
     // The failed release also credits artist-shared, so both artists are
     // rollback candidates; only artist-exclusive should be deleted.

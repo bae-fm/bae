@@ -266,7 +266,8 @@ extension ImportMappingTracksLayoutTests {
                     name: "track.flac",
                     size: 24_000_000,
                     localPath: audioPath,
-                    probedDurationMs: 180_000,
+                    durationMs: 180_000,
+                    audioFormat: MappingFixtures.audioFormat,
                     role: .audio,
                     alternatives: [.audio, .notATrack],
                     roleChoice: .audio
@@ -300,7 +301,8 @@ extension ImportMappingTracksLayoutTests {
                     container: BridgeMappingContainer(
                         fileId: longAudioName,
                         name: longAudioName,
-                        size: 460_000_000
+                        size: 460_000_000,
+                        audioFormat: MappingFixtures.audioFormat
                     )
                 )
                 : .unresolved(requested: [longAudioName]),

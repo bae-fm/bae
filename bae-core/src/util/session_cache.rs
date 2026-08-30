@@ -45,6 +45,15 @@ impl<V> SessionCache<V> {
             .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
             .put(key.into(), value);
     }
+
+    #[cfg(test)]
+    pub fn remove(&self, key: &str) {
+        self.inner
+            .get_or_init(|| new_cache(self.name, self.capacity))
+            .lock()
+            .unwrap_or_else(|_| panic!("{} mutex poisoned", self.name))
+            .pop(key);
+    }
 }
 
 fn new_cache<V>(name: &str, capacity: usize) -> Mutex<LruCache<String, V>> {

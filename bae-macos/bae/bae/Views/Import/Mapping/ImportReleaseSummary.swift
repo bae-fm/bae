@@ -1,14 +1,14 @@
 import BaeKit
 import SwiftUI
 
-/// The three lines that identify a release wherever import presents one.
-/// Sources differ, but the presentation does not: title, artist, then the
-/// pressing facts joined for the current locale.
+/// The release identity shown throughout import: title, artist, release facts,
+/// and the source-audio facts observed by the scan.
 struct ImportReleaseSummary {
     let title: String
     let titleIsPlaceholder: Bool
     let artist: String?
     let factsLine: String
+    let sourceAudioLine: String?
     let provenance: BridgeMetadataProvenance?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
@@ -44,6 +44,7 @@ struct ImportReleaseSummary {
             factsLine = trackText
         }
         self.provenance = provenance
+        sourceAudioLine = candidate.files.sourceAudio?.text
     }
 
     init(candidate: Candidate, fileTags values: BridgeReleaseUserEdit) {
@@ -60,6 +61,7 @@ struct ImportReleaseSummary {
             String(localized: "\(values.tracks.count) tracks"),
         ])
         provenance = .fileTags
+        sourceAudioLine = candidate.files.sourceAudio?.text
     }
 
     init?(row: BridgeTriageRow) {
@@ -73,6 +75,7 @@ struct ImportReleaseSummary {
                 ? nil : ListFormatter.localizedString(byJoining: artistNames)
             factsLine = ""
             provenance = nil
+            sourceAudioLine = nil
             return
         }
         guard let matched = row.matched else { return nil }
@@ -95,6 +98,7 @@ struct ImportReleaseSummary {
             factsLine = ""
         }
         provenance = nil
+        sourceAudioLine = nil
     }
 
     private static func factsLine(_ facts: [String?]) -> String {
@@ -142,6 +146,14 @@ struct ImportReleaseSummaryView: View {
             .padding(.top, style.factsTopPadding)
             .frame(height: style.factsHeight)
             .opacity(style.showsFacts ? 1 : 0)
+            Text(summary.sourceAudioLine ?? "")
+                .font(.system(size: 11.5))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .frame(height: style.sourceAudioHeight)
+                .opacity(
+                    style.showsFacts && summary.sourceAudioLine != nil ? 1 : 0
+                )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -233,6 +245,13 @@ extension ImportReleaseSummaryView.Style {
     }
 
     fileprivate var factsHeight: CGFloat? {
+        switch self {
+        case .sidebar: 0
+        case .card: nil
+        }
+    }
+
+    fileprivate var sourceAudioHeight: CGFloat? {
         switch self {
         case .sidebar: 0
         case .card: nil

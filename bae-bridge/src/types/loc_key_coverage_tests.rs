@@ -57,6 +57,16 @@ const DIRECT_KEYS: &[&str] = &[
     "core.duration.hours",
     "core.duration.minutes",
     "core.duration.hours_minutes",
+    // Source-audio formatters compose these labels and numeric facts directly.
+    "core.audio.label",
+    "core.audio.layout.cue",
+    "core.audio.list_separator",
+    "core.audio.mixed",
+    "core.audio.sample_rate_khz",
+    "core.audio.bitrate_kbps",
+    "core.audio.bit_depth",
+    "core.audio.channels.count",
+    "core.release.media",
     // Release-group card pressing count.
     "core.import.pressings",
     // Disconnect-sync confirmation: releases that live only in the cloud (the

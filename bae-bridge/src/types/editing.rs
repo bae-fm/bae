@@ -247,8 +247,8 @@ pub enum BridgeSlotReconciliation {
     MoreTracks { files: u32, tracks: u32 },
 }
 
-/// Whether a slot row's two lengths — the file's own, probed off disk, and the
-/// one the source states — are far enough apart that the row should say so.
+/// Whether a slot row's two lengths — the folder's own and the selected
+/// release's — are far enough apart that the row should say so.
 ///
 /// Core's judgement, not each surface's: how much two rips of one track may
 /// legitimately differ is one question, and two UIs each picking a number is
@@ -260,8 +260,8 @@ pub enum BridgeSlotReconciliation {
 /// It marks a row; it disables nothing.
 #[cfg(feature = "desktop")]
 #[uniffi::export]
-pub fn bridge_lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -> bool {
-    bae_core::import::lengths_disagree(probed_ms, source_ms)
+pub fn bridge_lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
+    bae_core::import::lengths_disagree(file_ms, release_ms)
 }
 
 /// The catalog key naming the reconciliation line, or `None` where there is no
@@ -327,10 +327,10 @@ pub struct BridgeMappingFile {
     pub size: u64,
     /// Absolute path — what auditioning this row plays.
     pub local_path: String,
-    /// Probed playing time in milliseconds, where the folder's audio has been
-    /// read. `None` for anything that is not audio, for audio nothing could be
-    /// read from, and while no release is picked.
-    pub probed_duration_ms: Option<u64>,
+    /// Playing time in milliseconds from the scan's stored facts. `None` for
+    /// non-audio files.
+    pub duration_ms: Option<u64>,
+    pub audio_format: Option<BridgeAudioFormat>,
     pub role: BridgeMappingRole,
     /// The roles this file can be put in, the one in force first. Empty when
     /// its role is nobody's decision to make.
@@ -358,6 +358,7 @@ pub struct BridgeMappingEntry {
     pub container_id: String,
     pub container_name: String,
     pub container_local_path: String,
+    pub audio_format: BridgeAudioFormat,
 }
 
 /// The left half of a mapping row: what the folder offers for it. Mirror of
@@ -412,6 +413,7 @@ pub struct BridgeMappingContainer {
     pub file_id: String,
     pub name: String,
     pub size: u64,
+    pub audio_format: BridgeAudioFormat,
 }
 
 /// A track sheet, as the header of the group of rows it carves. Mirror of

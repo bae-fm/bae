@@ -1,8 +1,6 @@
 //! Resolved release types (`ReleaseSummary`, `ReleaseDetail`) and the pure
 //! projections that produce them from raw DB aggregates.
 
-use tracing::{debug, warn};
-
 use super::*;
 use crate::db::{DbArtist, DbReleaseDetail, DbReleaseSummary};
 
@@ -33,7 +31,7 @@ pub(crate) struct ReleaseResolveCtx {
 pub struct ReleaseSummary {
     pub id: String,
     pub album_id: String,
-    /// "FLAC", "MP3", … `None` if unknown.
+    /// Release media such as "CD" or "Vinyl"; `None` if unknown.
     pub format: Option<String>,
     /// Local or Remote, from the shared `releases.remote` fact. Orthogonal to
     /// `pinned`.
@@ -100,6 +98,7 @@ pub struct ReleaseDetail {
     pub tracks: Vec<TrackDetail>,
     pub track_groups: Vec<TrackGroup>,
     pub files: Vec<FileDetail>,
+    pub source_audio: Option<SourceAudioSummary>,
     pub image_files: Vec<FileDetail>,
     /// The cover, then every image file the release has — including cloud-only ones,
     /// which the lightbox fetches on demand.
@@ -107,18 +106,15 @@ pub struct ReleaseDetail {
 }
 
 impl ReleaseDetail {
-    /// Joins per-track artist names (falling back to the album's), describes each
-    /// file's audio format, groups tracks by side, builds the gallery, derives
+    /// Joins per-track artist names (falling back to the album's), projects each
+    /// file's stored scan facts, groups tracks by side, builds the gallery, derives
     /// `display_name`, and composes the slim [`ReleaseSummary`].
     ///
     /// Both ordinary reads and subscriptions route through here, so the resolve
     /// logic stays in one place.
-    /// Resolve a raw release-detail row into the projection, plus a count of
-    /// audio-format orphans found (a segment naming a missing format, a format
-    /// naming an absent track, an audio file with no format row). This pure layer
-    /// only detects and logs each; the count lets the diagnostics-holding manager
-    /// caller ship the `audio_format_orphaned` anomaly without this layer growing
-    /// a diagnostics handle.
+    /// Resolve a raw release-detail row into the projection. The returned anomaly
+    /// count remains for the shared caller contract; source-audio facts no longer
+    /// depend on track-format joins and therefore add no orphan cases here.
     pub(crate) fn from_raw(
         raw: DbReleaseDetail,
         album_artists: &[DbArtist],
@@ -126,7 +122,7 @@ impl ReleaseDetail {
         ctx: &ReleaseResolveCtx,
     ) -> (ReleaseDetail, u32) {
         let release = raw.release;
-        let mut audio_format_orphans = 0u32;
+        let audio_format_orphans = 0u32;
 
         let has_multiple_sides = {
             let mut sides = std::collections::HashSet::new();
@@ -172,126 +168,24 @@ impl ReleaseDetail {
 
         let track_groups: Vec<TrackGroup> = crate::util::format::group_tracks_by_side(&tracks);
 
-        // Each audio segment names its owning file, and a single-file CUE rip has
-        // many track formats sharing one file through their segments. So group by
-        // file id, first row winning — every row for a file agrees on the
-        // file-level codec/rate/depth/channels.
-        //
-        // A file's audio duration (which a lossy file's average bitrate is derived
-        // from) is the sum of its tracks' durations, and stays `Some` only while
-        // every contributing track has a known duration: one unknown collapses the
-        // total to unknown, so no bitrate is ever derived from a partial sum.
-        let audio_formats = raw.audio_formats;
-        let audio_segments = raw.audio_segments;
-        let audio_format_by_id: std::collections::HashMap<&str, &crate::db::DbAudioFormat> =
-            audio_formats
-                .iter()
-                .map(|format| (format.id.as_str(), format))
-                .collect();
-        let track_durations: std::collections::HashMap<&str, Option<i64>> = tracks
-            .iter()
-            .map(|t| (t.id.as_str(), t.duration_ms))
-            .collect();
-        let mut file_format = std::collections::HashMap::new();
-        let mut file_audio_duration_ms: std::collections::HashMap<&str, Option<i64>> =
-            std::collections::HashMap::new();
-        for segment in &audio_segments {
-            let Some(af) = audio_format_by_id
-                .get(segment.audio_format_id.as_str())
-                .copied()
-            else {
-                warn!(
-                    "audio segment {} references missing audio_format {}; skipping format attribution",
-                    segment.id, segment.audio_format_id
-                );
-                audio_format_orphans += 1;
-                continue;
-            };
-            let file_id = segment.file_id.as_str();
-            file_format.entry(file_id).or_insert(af);
-            // `af` is joined from this release's own tracks, so its track must be in
-            // `track_durations`. A miss means that join invariant broke — log it
-            // rather than quietly fold it in as unknown.
-            let track_dur = segment
-                .end_sample
-                .map(|end| {
-                    (end.saturating_sub(segment.start_sample) * 1000) / af.sample_rate.max(1)
-                })
-                .or_else(|| match track_durations.get(af.track_id.as_str()) {
-                    Some(duration) => *duration,
-                    None => {
-                        warn!(
-                            "audio_format {} references track {} absent from the release; \
-                             treating its duration as unknown",
-                            af.id, af.track_id
-                        );
-                        audio_format_orphans += 1;
-                        None
-                    }
-                });
-            let slot = file_audio_duration_ms.entry(file_id).or_insert(Some(0));
-            *slot = match (*slot, track_dur) {
-                (Some(acc), Some(d)) => Some(acc + d),
-                _ => None,
-            };
-        }
-
         let files: Vec<FileDetail> = raw
             .files
             .into_iter()
-            .map(|f| {
-                let audio_format = match file_format.get(f.id.as_str()) {
-                    Some(af) => {
-                        // A lossy codec stores no bit depth, so the label shows an
-                        // average bitrate instead — file bytes over the file's audio
-                        // duration, and only when that duration is fully known.
-                        let bitrate_kbps = if af.bits_per_sample.is_none() {
-                            match file_audio_duration_ms.get(f.id.as_str()).copied().flatten() {
-                                Some(dur) if dur > 0 => Some(f.file_size * 8 / dur),
-                                _ => {
-                                    debug!(
-                                        "lossy file {} ({}) has no known positive audio \
-                                         duration; omitting bitrate from its format label",
-                                        f.id, f.original_filename
-                                    );
-                                    None
-                                }
-                            }
-                        } else {
-                            None
-                        };
-                        Some(AudioFormat {
-                            codec: af.content_type.display_name().to_string(),
-                            sample_rate_hz: af.sample_rate,
-                            bits_per_sample: af.bits_per_sample,
-                            bitrate_kbps,
-                            channels: af.channels,
-                        })
-                    }
-                    None => {
-                        // An image or cue legitimately has no format row; an *audio*
-                        // file without one is a data gap worth saying so about.
-                        if f.content_type.is_audio() {
-                            warn!(
-                                "release file {} ({}) is audio but has no audio_format row",
-                                f.id, f.original_filename
-                            );
-                            audio_format_orphans += 1;
-                        }
-                        None
-                    }
-                };
-                FileDetail {
-                    is_image: f.content_type.is_image(),
-                    content_type: f.content_type.to_string(),
-                    audio_format,
-                    id: f.id,
-                    original_filename: f.original_filename,
-                    file_size: f.file_size,
-                }
+            .map(|f| FileDetail {
+                is_image: f.content_type.is_image(),
+                content_type: f.content_type.to_string(),
+                source_audio: f.source_audio,
+                id: f.id,
+                original_filename: f.original_filename,
+                file_size: f.file_size,
             })
             .collect();
         let image_files: Vec<FileDetail> = files.iter().filter(|f| f.is_image).cloned().collect();
+        let source_audio = SourceAudioSummary::from_descriptors(
+            files
+                .iter()
+                .filter_map(|file| file.source_audio.as_ref()?.descriptor()),
+        );
 
         let file_count = files.len() as i64;
         let total_size: i64 = files.iter().map(|f| f.file_size).sum();
@@ -354,6 +248,7 @@ impl ReleaseDetail {
             tracks,
             track_groups,
             files,
+            source_audio,
             image_files,
             gallery_items: gallery,
         };

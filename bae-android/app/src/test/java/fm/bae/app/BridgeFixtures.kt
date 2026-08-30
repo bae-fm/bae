@@ -15,12 +15,14 @@ import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
 import uniffi.bae_bridge.BridgeGalleryItem
+import uniffi.bae_bridge.BridgeFile
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
+import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
@@ -61,6 +63,8 @@ object BridgeFixtures {
         id: String,
         albumId: String,
         trackGroups: List<BridgeTrackGroup> = emptyList(),
+        files: List<BridgeFile> = emptyList(),
+        sourceAudio: BridgeSourceAudioSummary? = null,
         galleryItems: List<BridgeGalleryItem> = emptyList(),
     ): BridgeRelease =
         BridgeRelease(
@@ -78,7 +82,8 @@ object BridgeFixtures {
             transferAction = null,
             tracks = trackGroups.flatMap { it.tracks },
             trackGroups = trackGroups,
-            files = emptyList(),
+            files = files,
+            sourceAudio = sourceAudio,
             imageFiles = emptyList(),
             galleryItems = galleryItems,
             totalDuration = null,

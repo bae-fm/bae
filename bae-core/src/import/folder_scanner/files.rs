@@ -19,15 +19,26 @@ pub struct ScannedFile {
     pub relative_path: String,
     /// File size in bytes
     pub size: u64,
+    pub modified_at_ns: i64,
+    /// SHA-256 of the file bytes observed by the scan. Import validates this
+    /// exact identity before using the persisted facts.
+    pub content_digest: String,
     /// Directory prefix of relative_path (e.g. "Disc 1/"). `None` when the
     /// file is at the candidate-folder root.
     pub dir_prefix: Option<String>,
     /// File name without directory prefix.
     pub file_name: String,
+    pub source_audio: Option<ScannedAudio>,
 }
 
 impl ScannedFile {
-    pub fn new(path: PathBuf, relative_path: String, size: u64) -> Self {
+    pub fn new(
+        path: PathBuf,
+        relative_path: String,
+        size: u64,
+        modified_at_ns: i64,
+        content_digest: String,
+    ) -> Self {
         let (dir_prefix, file_name) = match relative_path.rfind('/') {
             Some(idx) => (
                 Some(relative_path[..=idx].to_string()),
@@ -39,10 +50,36 @@ impl ScannedFile {
             path,
             relative_path,
             size,
+            modified_at_ns,
+            content_digest,
             dir_prefix,
             file_name,
+            source_audio: None,
         }
     }
+
+    #[cfg(test)]
+    pub(crate) fn with_test_flac_audio(mut self) -> Self {
+        self.source_audio = Some(ScannedAudio {
+            content_type: crate::util::content_type::ContentType::Flac,
+            duration_ms: 5_000,
+            format: crate::album_detail::AudioFormat {
+                codec: "FLAC".to_string(),
+                sample_rate_hz: 44_100,
+                bits_per_sample: Some(16),
+                bitrate_kbps: None,
+                channels: 2,
+            },
+        });
+        self
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct ScannedAudio {
+    pub content_type: crate::util::content_type::ContentType,
+    pub duration_ms: u64,
+    pub format: crate::album_detail::AudioFormat,
 }
 
 /// The job the scan proposes for a file. Every file the scan finds carries
@@ -461,10 +498,6 @@ pub struct CategorizedFiles {
     /// the role the scan proposed. All of them are the release's — see
     /// [`Self::release_files`].
     pub files: Vec<CandidateFile>,
-    /// e.g. "CUE+FLAC", "CUE+APE", "FLAC", "MP3". Computed during the scan
-    /// because a bound sheet's codec comes from an FFmpeg probe, never from the
-    /// extension.
-    pub format_label: String,
 }
 
 impl CategorizedFiles {
@@ -474,6 +507,28 @@ impl CategorizedFiles {
             .iter()
             .filter(|entry| matches!(entry.role, FileRole::Audio))
             .map(|entry| &entry.file)
+    }
+
+    pub fn source_audio_summary(&self) -> Option<crate::album_detail::SourceAudioSummary> {
+        use crate::album_detail::{SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary};
+        let carved_audio: std::collections::HashSet<&str> = self
+            .carving_sheets()
+            .into_iter()
+            .flat_map(|sheet| self.sheet_audio_files(&sheet))
+            .map(|file| file.relative_path.as_str())
+            .collect();
+        SourceAudioSummary::from_descriptors(self.audio().filter_map(|file| {
+            file.source_audio
+                .as_ref()
+                .map(|audio| SourceAudioDescriptor {
+                    layout: if carved_audio.contains(file.relative_path.as_str()) {
+                        SourceAudioLayout::Cue
+                    } else {
+                        SourceAudioLayout::File
+                    },
+                    format: audio.format.clone(),
+                })
+        }))
     }
 
     /// The release's images — the proposed cover and everything else.
@@ -549,6 +604,27 @@ impl CategorizedFiles {
             .collect()
     }
 
+    /// Every physical audio file a bound sheet speaks for. A single-file
+    /// sheet uses its effective binding; a multi-file sheet resolves every
+    /// audio reference in the sheet's directory.
+    pub fn sheet_audio_files<'a>(&'a self, bound: &BoundTrackSheet<'a>) -> Vec<&'a ScannedFile> {
+        if bound.sheet.single_file().is_some() {
+            return vec![bound.audio];
+        }
+        let Some(cue_dir) = bound.file.path.parent() else {
+            return Vec::new();
+        };
+        bound
+            .sheet
+            .audio_file_references()
+            .iter()
+            .filter_map(|reference| {
+                let path = cue_dir.join(reference);
+                self.audio().find(|audio| audio.path == path)
+            })
+            .collect()
+    }
+
     /// Total track count across the release: the tracks the carving sheets
     /// carve, or — with no sheet carving — one per audio file.
     pub fn track_count(&self) -> u32 {
@@ -564,14 +640,13 @@ impl CategorizedFiles {
     }
 
     /// This release's audio file paths, in `relative_path` order. The File Tags
-    /// import path reads embedded cover art from these, and the signal fast pass
-    /// probes their durations.
+    /// import path reads embedded cover art from these.
     pub fn audio_paths(&self) -> Vec<PathBuf> {
         self.audio().map(|file| file.path.clone()).collect()
     }
 
-    /// Stable content fingerprint of this release's file structure: a SHA-256
-    /// over the relative path + size of every file in [`Self::release_files`],
+    /// Stable content fingerprint of this release: a SHA-256 over the relative
+    /// path and byte digest of every file in [`Self::release_files`],
     /// sorted so the digest is independent of discovery order. Relative (not
     /// absolute) paths make it location-independent — the same rip hashes
     /// identically under any parent folder. Drives "already imported?"
@@ -621,18 +696,10 @@ impl CategorizedFiles {
         self.audio()
             .map(|audio| SheetBindingOption {
                 file_id: audio.relative_path.clone(),
-                offer: match cue_pair_codec_label(&audio.path) {
-                    Ok(CueCodecLabel::Supported(_)) => SheetBindingOffer::Offered,
-                    Ok(CueCodecLabel::Unsupported(codec)) => {
-                        SheetBindingOffer::RefusedCodec { codec }
-                    }
-                    Ok(CueCodecLabel::Unprobeable) => SheetBindingOffer::RefusedUnreadable,
-                    // A path FFmpeg cannot even open is unreadable by the only
-                    // measure that matters here.
-                    Err(e) => {
-                        debug!("{} cannot back a sheet binding: {e}", audio.relative_path);
-                        SheetBindingOffer::RefusedUnreadable
-                    }
+                offer: match cue_pair_codec_label(audio) {
+                    CueCodecLabel::Supported => SheetBindingOffer::Offered,
+                    CueCodecLabel::Unsupported(codec) => SheetBindingOffer::RefusedCodec { codec },
+                    CueCodecLabel::Unprobeable => SheetBindingOffer::RefusedUnreadable,
                 },
             })
             .collect()
@@ -641,7 +708,7 @@ impl CategorizedFiles {
     /// Apply the user's file decisions over what the scan proposed, and
     /// re-derive everything they decide: which files are audio, what each sheet
     /// ends up naming, the codec probe that can refuse a binding, and the
-    /// release's format label.
+    /// release's source-audio summary.
     ///
     /// Roles settle first. A file taken out of the tracklist stops being audio,
     /// so a sheet bound to it describes nothing — settling the bindings against
@@ -665,10 +732,11 @@ impl CategorizedFiles {
         )
         .expect("a fresh cancellation token cannot be cancelled")
         {
-            SettledBindings::Settled { cue_codec } => {
+            SettledBindings::Settled => {
                 settle_sheet_discs(&mut self.files, &edits.sheet_discs);
-                self.format_label = derive_format_label(&self.files, cue_codec)
-                    .ok_or(InvalidReason::NoValidAudio)?;
+                if self.audio().next().is_none() {
+                    return Err(InvalidReason::NoValidAudio);
+                }
                 Ok(())
             }
             SettledBindings::CorruptAudio { path } => Err(InvalidReason::CorruptAudioFile { path }),
@@ -785,21 +853,21 @@ impl CategorizedFiles {
     }
 }
 
-/// SHA-256 over the sorted `(relative_path, size)` of every file — the free
+/// SHA-256 over the sorted `(relative_path, content_digest)` of every file — the free
 /// function [`CategorizedFiles::content_hash`] is the method form of. Separate
 /// because the scan needs a candidate's hash while it is still assembling the
 /// candidate, to look up the bindings stored under it.
 pub(super) fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) -> String {
-    let mut entries: Vec<(&str, u64)> = files
-        .map(|file| (file.relative_path.as_str(), file.size))
+    let mut entries: Vec<(&str, &str)> = files
+        .map(|file| (file.relative_path.as_str(), file.content_digest.as_str()))
         .collect();
     entries.sort_unstable();
 
     let mut hasher = Sha256::new();
-    for (path, size) in entries {
+    for (path, content_digest) in entries {
         hasher.update(path.as_bytes());
         hasher.update([0u8]);
-        hasher.update(size.to_le_bytes());
+        hasher.update(content_digest.as_bytes());
         hasher.update([b'\n']);
     }
     format!("{:x}", hasher.finalize())

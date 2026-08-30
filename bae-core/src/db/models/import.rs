@@ -78,9 +78,6 @@ pub struct DbImportCandidateState {
     /// this candidate yet — including when a file decision cleared what had,
     /// because that verdict described a folder shape that no longer applies.
     pub identify: Option<DbCandidateIdentifyResult>,
-    /// What each of the candidate's audio units plays for. Empty when nothing
-    /// has read them.
-    pub durations: crate::import::probe::ProbedDurations,
     /// The signals identification settled on, or `None` when nothing has
     /// extracted them.
     pub signals: Option<crate::signals::Signals>,

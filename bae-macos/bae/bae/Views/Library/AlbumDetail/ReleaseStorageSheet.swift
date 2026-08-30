@@ -12,7 +12,7 @@ struct ReleaseStorageSheet: View {
     let onDone: () -> Void
 
     /// Column the file table sorts by. Defaults to filename; the user clicks a
-    /// column header to re-sort. The Format column is display-only (its value is
+    /// column header to re-sort. The Audio column is display-only (its value is
     /// optional, so there's no natural ordering key) — sort by Kind to group by
     /// content type.
     @State
@@ -68,9 +68,9 @@ struct ReleaseStorageSheet: View {
                 ) { file in
                     Text(file.originalFilename).lineLimit(1)
                 }
-                TableColumn("Format") { file in
+                TableColumn(coreString("core.audio.label")) { file in
                     // Audio files carry a label; non-audio files (images, cue)
-                    // have none, so their Format cell is simply empty.
+                    // have none, so their Audio cell is empty.
                     if let format = file.audioFormat {
                         Text(format.text)
                             .foregroundStyle(.secondary)

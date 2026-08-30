@@ -450,19 +450,6 @@ impl LibraryManager {
             .await?)
     }
 
-    /// Record what some of a candidate's audio units play for.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_import_candidate_durations(
-        &self,
-        content_hash: &str,
-        durations: &crate::import::probe::ProbedDurations,
-    ) -> Result<(), LibraryError> {
-        Ok(self
-            .database
-            .save_import_candidate_durations(content_hash, durations)
-            .await?)
-    }
-
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

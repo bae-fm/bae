@@ -25,6 +25,12 @@ namespace Bae.Desktop.ViewTests;
 public sealed class ImportMappingPaneTests
 {
     private const string CandidateKey = "/Music/Incoming/Album";
+    private static readonly BridgeAudioFormat SourceAudio = new(
+        Codec: "FLAC",
+        SampleRateHz: 44_100,
+        BitsPerSample: 16,
+        BitrateKbps: null,
+        Channels: 2);
 
     // Opening a candidate draws the whole pane at once: the header states the
     // release as the stored edit has it, the table lists the folder's units,
@@ -314,8 +320,10 @@ public sealed class ImportMappingPaneTests
     public void AStoredFailureShowsItsErrorAndOffersRetry()
     {
         var (pane, _) = Show(Detail(failure: new BridgeImportFailure(
-            Error: "the disk filled",
-            FailedAt: "2026-01-15T12:00:00Z")));
+            Error: new BridgeException.Diagnostic(
+                new BridgeErrorCategory.Import(),
+                "the disk filled"),
+            ArtistIdentityConflict: null)));
 
         Assert.Contains("the disk filled", Texts(pane));
         Assert.Contains(
@@ -546,7 +554,10 @@ public sealed class ImportMappingPaneTests
                 WatchedFolderPath: "/Music/Incoming",
                 Files: new BridgeCandidateFiles(
                     Array.Empty<BridgeCandidateFile>(),
-                    "FLAC",
+                    new BridgeSourceAudioSummary.Uniform(
+                        new BridgeSourceAudioDescriptor(
+                            BridgeSourceAudioLayout.File,
+                            SourceAudio)),
                     Array.Empty<BridgeCollapsedDirectory>()),
                 TrackCount: 2,
                 Skipped: false,
@@ -573,7 +584,6 @@ public sealed class ImportMappingPaneTests
                 Array.Empty<BridgeMappingImage>(),
                 new[] { TrackRow("01.flac", "Track One"), TrackRow("02.flac", "Track Two") },
                 Reconciliation: null),
-            Unprobed: Array.Empty<BridgeAudioFile>(),
             Cover: new BridgeCoverChoice(
                 new BridgeCoverSelection.ReleaseImage("cover.jpg"),
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg"),
@@ -618,7 +628,8 @@ public sealed class ImportMappingPaneTests
                 Name: fileId,
                 Size: 1024,
                 LocalPath: $"/Music/Incoming/Album/{fileId}",
-                ProbedDurationMs: 180_000,
+                DurationMs: 180_000,
+                AudioFormat: SourceAudio,
                 Role: BridgeMappingRole.Audio,
                 Alternatives: Array.Empty<BridgeFileRoleChoice>(),
                 RoleChoice: null)),

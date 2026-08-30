@@ -287,22 +287,126 @@ pub struct FileDetail {
     pub file_size: i64,
     pub is_image: bool,
     pub content_type: String,
-    /// Structured audio format. `None` for non-audio files (images, cue sheets)
-    /// and for audio files with no stored format row.
-    pub audio_format: Option<AudioFormat>,
+    /// The scan's facts for this physical source file. `None` for non-audio.
+    pub source_audio: Option<SourceAudioFile>,
 }
 
 /// The parts the UI composes into a one-line label ("FLAC · 44.1 kHz · 16-bit ·
 /// stereo"): the codec is a proper noun, the channel count maps to a localized word,
 /// and the numbers format per locale. A present `bits_per_sample` means lossless —
 /// show the bit depth; absent means lossy — show `bitrate_kbps` instead.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AudioFormat {
     pub codec: String,
     pub sample_rate_hz: i64,
     pub bits_per_sample: Option<i64>,
     pub bitrate_kbps: Option<i64>,
     pub channels: i64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum SourceAudioLayout {
+    File,
+    Cue,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SourceAudioDescriptor {
+    pub layout: SourceAudioLayout,
+    pub format: AudioFormat,
+}
+
+/// The scan facts persisted with one physical release file.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SourceAudioFile {
+    /// How this file contributes tracks. `None` when the physical audio is
+    /// carried with the release but excluded from its tracklist.
+    pub layout: Option<SourceAudioLayout>,
+    pub format: AudioFormat,
+    pub content_type: crate::util::content_type::ContentType,
+    pub duration_ms: i64,
+}
+
+impl SourceAudioFile {
+    pub fn descriptor(&self) -> Option<SourceAudioDescriptor> {
+        Some(SourceAudioDescriptor {
+            layout: self.layout?,
+            format: self.format.clone(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum SourceAudioSummary {
+    Uniform {
+        descriptor: SourceAudioDescriptor,
+    },
+    Mixed {
+        descriptors: Vec<SourceAudioDescriptor>,
+    },
+}
+
+impl SourceAudioSummary {
+    pub fn from_descriptors(
+        descriptors: impl IntoIterator<Item = SourceAudioDescriptor>,
+    ) -> Option<Self> {
+        let mut distinct = Vec::new();
+        for descriptor in descriptors {
+            if !distinct.contains(&descriptor) {
+                distinct.push(descriptor);
+            }
+        }
+        match distinct.len() {
+            0 => None,
+            1 => Some(Self::Uniform {
+                descriptor: distinct.remove(0),
+            }),
+            _ => Some(Self::Mixed {
+                descriptors: distinct,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod source_audio_summary_tests {
+    use super::*;
+
+    fn descriptor(codec: &str, sample_rate_hz: i64) -> SourceAudioDescriptor {
+        SourceAudioDescriptor {
+            layout: SourceAudioLayout::File,
+            format: AudioFormat {
+                codec: codec.to_string(),
+                sample_rate_hz,
+                bits_per_sample: Some(16),
+                bitrate_kbps: None,
+                channels: 2,
+            },
+        }
+    }
+
+    #[test]
+    fn repeated_descriptor_is_uniform() {
+        let flac = descriptor("FLAC", 44_100);
+
+        assert_eq!(
+            SourceAudioSummary::from_descriptors([flac.clone(), flac.clone()]),
+            Some(SourceAudioSummary::Uniform { descriptor: flac })
+        );
+    }
+
+    #[test]
+    fn mixed_descriptors_keep_first_seen_order() {
+        let flac = descriptor("FLAC", 44_100);
+        let mp3 = descriptor("MP3", 48_000);
+
+        assert_eq!(
+            SourceAudioSummary::from_descriptors([flac.clone(), mp3.clone(), flac.clone()]),
+            Some(SourceAudioSummary::Mixed {
+                descriptors: vec![flac, mp3],
+            })
+        );
+    }
 }
 
 /// A library image's reference: kind, subject id, and content version. The id is a

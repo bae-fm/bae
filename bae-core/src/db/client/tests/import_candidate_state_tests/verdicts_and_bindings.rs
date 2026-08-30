@@ -36,12 +36,18 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
         files: files
             .iter()
             .map(|(name, size)| CandidateFile {
-                file: ScannedFile::new(PathBuf::from(*name), name.to_string(), *size),
+                file: ScannedFile::new(
+                    PathBuf::from(*name),
+                    name.to_string(),
+                    *size,
+                    1,
+                    format!("{size:064x}"),
+                )
+                .with_test_flac_audio(),
                 role: FileRole::Audio,
                 proposed_audio: true,
             })
             .collect(),
-        format_label: "FLAC".to_string(),
     }
 }
 
@@ -81,7 +87,7 @@ fn sample_signals(probed_total_duration_ms: u64) -> crate::signals::Signals {
             catalogs: Vec::new(),
             free_text: Vec::new(),
         },
-        durations: crate::import::probe::ProbedDurations::totalling(probed_total_duration_ms),
+        durations: crate::import::probe::SourceDurations::totalling(probed_total_duration_ms),
     }
 }
 
@@ -400,29 +406,11 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     );
     db.save_import_candidate_verdict(&row).await.unwrap();
 
-    let at_new_location = CategorizedFiles {
-        files: vec![
-            CandidateFile {
-                file: ScannedFile::new(
-                    PathBuf::from("/music/New Location/Some Album/01 Track.flac"),
-                    "01 Track.flac".to_string(),
-                    123_456,
-                ),
-                role: FileRole::Audio,
-                proposed_audio: true,
-            },
-            CandidateFile {
-                file: ScannedFile::new(
-                    PathBuf::from("/music/New Location/Some Album/02 Track.flac"),
-                    "02 Track.flac".to_string(),
-                    234_567,
-                ),
-                role: FileRole::Audio,
-                proposed_audio: true,
-            },
-        ],
-        format_label: "FLAC".to_string(),
-    };
+    let mut at_new_location = at_old_location.clone();
+    for entry in &mut at_new_location.files {
+        entry.file.path = PathBuf::from("/music/New Location/Some Album")
+            .join(&entry.file.relative_path);
+    }
     assert_eq!(
         hash,
         at_new_location.content_hash(),
@@ -468,7 +456,7 @@ async fn no_row_is_written_for_a_transport_failure() {
                     catalogs: vec![],
                     free_text: vec![],
                 },
-                durations: crate::import::probe::ProbedDurations::default(),
+                durations: crate::import::probe::SourceDurations::default(),
             },
         },
     );

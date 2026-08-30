@@ -86,6 +86,14 @@ public sealed class ImportMetadataSourceSectionTests
     }
 
     [AvaloniaFact]
+    public void DraftRendersTheSourceAudioLine()
+    {
+        var section = Build(sourceAudioLine: "FLAC · 44.1 kHz · 16-bit · stereo");
+
+        Assert.Contains("FLAC · 44.1 kHz · 16-bit · stereo", Texts(section));
+    }
+
+    [AvaloniaFact]
     public void FileTagsPreviewAppliesTheDisplayedSource()
     {
         var applications = 0;
@@ -169,7 +177,8 @@ public sealed class ImportMetadataSourceSectionTests
         Action? onClearMetadata = null,
         Action<BridgeCandidateEditField, string>? onEditField = null,
         string? title = null,
-        BridgeRawReleaseEdit? edit = null) =>
+        BridgeRawReleaseEdit? edit = null,
+        string sourceAudioLine = "FLAC · 44.1 kHz · 16-bit · stereo") =>
         new ImportMetadataSourceSection
         {
             Presentation = presentation,
@@ -177,6 +186,7 @@ public sealed class ImportMetadataSourceSectionTests
             Title = title ?? "Album Title",
             Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",
+            SourceAudioLine = sourceAudioLine,
             ProvenanceLabel = null,
             ProvenanceUri = null,
             IsReading = isReading,

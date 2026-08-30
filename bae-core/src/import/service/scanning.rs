@@ -27,7 +27,7 @@ impl ImportService {
             &candidate.files,
             &snapshot,
             Some(&candidate.name),
-            &crate::import::probe::ProbedDurations::default(),
+            &crate::import::probe::SourceDurations::default(),
             &crate::import::CandidateEditOverlay::default(),
             &[],
             clock.as_ref(),

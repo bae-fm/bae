@@ -21,13 +21,14 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         }
     }
 
-    // Minimal on-disk release: one MP3 (satisfies the audio gate) and three
+    // On-disk release: one probeable FLAC and three
     // JPEGs for the OCR pass to iterate.
-    fn minimal_mp3() -> Vec<u8> {
-        let mut v = Vec::with_capacity(32);
-        v.extend_from_slice(b"ID3");
-        v.resize(32, 0);
-        v
+    fn fixture_flac() -> Vec<u8> {
+        std::fs::read(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/flac/01 Test Track 1.flac"
+        ))
+        .expect("read FLAC fixture")
     }
     fn minimal_jpeg() -> Vec<u8> {
         vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
@@ -38,7 +39,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     std::fs::create_dir_all(&root).unwrap();
     let release_folder = root.join("Artist Name - Album Title");
     std::fs::create_dir_all(&release_folder).unwrap();
-    std::fs::write(release_folder.join("01 - Track.mp3"), minimal_mp3()).unwrap();
+    std::fs::write(release_folder.join("01 - Track.flac"), fixture_flac()).unwrap();
     for img in ["p1.jpg", "p2.jpg", "p3.jpg"] {
         std::fs::write(release_folder.join(img), minimal_jpeg()).unwrap();
     }
@@ -175,7 +176,6 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
                     name: "Album".to_string(),
                     files: crate::import::folder_scanner::CategorizedFiles {
                         files: Vec::new(),
-                        format_label: "FLAC".to_string(),
                     },
                     watched_folder_path: root.to_string_lossy().into_owned(),
                     scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,

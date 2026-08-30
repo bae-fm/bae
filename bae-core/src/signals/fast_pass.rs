@@ -8,7 +8,7 @@ use super::candidate_text::{
 };
 use crate::import::discid::compute_discid_from_categorized;
 use crate::import::folder_scanner::CategorizedFiles;
-use crate::import::probe::{probe_durations, ProbedDurations};
+use crate::import::probe::{source_durations, SourceDurations};
 use crate::signals::{DiscIdSignal, SignalOrigin, SourcedValue};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -40,7 +40,7 @@ pub(super) struct FastPass {
     pub(super) cue_barcodes: Vec<SourcedValue>,
     /// What every one of the folder's audio units plays for, read off the same
     /// scan the disc ID came from.
-    pub(super) durations: ProbedDurations,
+    pub(super) durations: SourceDurations,
 }
 
 impl FastPass {
@@ -52,7 +52,7 @@ impl FastPass {
             artwork: Vec::new(),
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             cue_barcodes: Vec::new(),
-            durations: ProbedDurations::default(),
+            durations: SourceDurations::default(),
         }
     }
 }
@@ -117,7 +117,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFil
     // Disc ID, CUE-CATALOG barcodes, and the probed durations all come off the
     // same parsed scan, no re-read and no second walk over the audio.
     let track_count = categorized.track_count();
-    pass.durations = probe_durations(categorized);
+    pass.durations = source_durations(categorized);
     pass.disc_id = match compute_discid_from_categorized(categorized) {
         Some(computed) => DiscIdSignal::Computed {
             disc_id: computed.disc_id,
@@ -270,16 +270,23 @@ mod tests {
             PathBuf::from("/rel/Album.cue"),
             "Album.cue".to_string(),
             100,
+            1,
+            "0".repeat(64),
         );
         let flac = ScannedFile::new(
             PathBuf::from("/rel/Album.flac"),
             "Album.flac".to_string(),
             5_000_000,
-        );
+            1,
+            "1".repeat(64),
+        )
+        .with_test_flac_audio();
         let cover = ScannedFile::new(
             PathBuf::from("/rel/Artist Name - Album.png"),
             "Artist Name - Album.png".to_string(),
             10_000,
+            1,
+            "2".repeat(64),
         );
         let categorized = CategorizedFiles {
             files: vec![
@@ -311,7 +318,6 @@ mod tests {
                     role: FileRole::Artwork,
                 },
             ],
-            format_label: "CUE+FLAC".to_string(),
         };
 
         let inputs = enumerate_filename_inputs(&categorized);

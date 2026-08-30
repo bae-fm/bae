@@ -11,7 +11,7 @@ import SwiftUI
 enum StorageTableColumn: String, CaseIterable {
     case album
     case artist
-    case format
+    case media
     case storage
     case files
     case size
@@ -41,12 +41,12 @@ enum StorageTableColumn: String, CaseIterable {
                 minWidth: 100,
                 sortField: .artistNames
             )
-        case .format:
+        case .media:
             Spec(
-                title: String(localized: "Format"),
+                title: coreString("core.release.media"),
                 width: 80,
                 minWidth: 60,
-                sortField: .format
+                sortField: .media
             )
         case .storage:
             Spec(

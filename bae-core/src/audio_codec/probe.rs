@@ -299,6 +299,14 @@ pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
     result
 }
 
+/// Read audio properties from the bytes at `path` without consulting the
+/// metadata-keyed session cache. The folder scanner uses this after hashing
+/// the file so the persisted digest and facts always describe the same bytes.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn probe_audio_from_path_uncached(path: &str) -> Option<ProbeResult> {
+    open_and_probe(path)
+}
+
 /// How many times each path has been opened by [`open_and_probe`], so a test
 /// can assert that re-asking about a folder reads nothing off disk.
 #[cfg(test)]
@@ -318,6 +326,13 @@ pub(crate) fn probe_opens_for(path: &std::path::Path) -> u64 {
         .get(path)
         .copied()
         .unwrap_or(0)
+}
+
+/// Forget the cached answer for one test path so a later call proves whether
+/// the production path asked FFmpeg again rather than receiving a cache hit.
+#[cfg(test)]
+pub(crate) fn forget_probe_for(path: &std::path::Path) {
+    PROBE_CACHE.remove(path.to_str().expect("test paths are UTF-8"));
 }
 
 /// Open the file with FFmpeg and read its best audio stream. `None` (already

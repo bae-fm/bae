@@ -7,13 +7,14 @@
 use super::columns::*;
 use super::write::StoredEntry;
 use super::*;
+use crate::album_detail::AudioFormat;
 use crate::cue_flac::{CueIndex, CuePregap, CueSheet, CueTrack, CueTrackMode};
 use crate::import::file_tag_snapshot::{
     EmbeddedCoverFact, FileObservation, FileTagFact, FileTagSnapshot,
 };
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseDecisionKey,
-    InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem, ScannedFile,
+    InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem, ScannedAudio, ScannedFile,
 };
 use crate::util::content_type::ContentType;
 
@@ -191,7 +192,7 @@ fn load_file_tag_facts(
     candidate_path: &str,
 ) -> Result<Vec<FileTagFact>, DbError> {
     let rows = sql.query(
-        "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, tags.content_type, \
+        "SELECT tags.relative_path, tags.file_size, tags.modified_at_ns, \
                 tags.title, tags.track_artist, tags.album_title, tags.album_artist, \
                 tags.year, tags.track_number, tags.disc_number \
          FROM scan_candidate_file_tag AS tags \
@@ -211,10 +212,9 @@ fn load_file_tag_facts(
                 row.get::<_, Option<String>>(4)?,
                 row.get::<_, Option<String>>(5)?,
                 row.get::<_, Option<String>>(6)?,
-                row.get::<_, Option<String>>(7)?,
+                row.get::<_, Option<i64>>(7)?,
                 row.get::<_, Option<i64>>(8)?,
                 row.get::<_, Option<i64>>(9)?,
-                row.get::<_, Option<i64>>(10)?,
             ))
         },
     )?;
@@ -224,7 +224,6 @@ fn load_file_tag_facts(
                 relative_path,
                 size,
                 modified_at_ns,
-                content_type,
                 title,
                 track_artist,
                 album_title,
@@ -239,7 +238,6 @@ fn load_file_tag_facts(
                         size: to_u64(size, "a file-tag observation's size")?,
                         modified_at_ns,
                     },
-                    content_type: content_type.as_deref().map(ContentType::from_mime),
                     title,
                     track_artist,
                     album_title,
@@ -319,7 +317,6 @@ struct CandidateRow {
     file_root: Option<String>,
     scope: Option<String>,
     file_edit_revision: i64,
-    format_label: Option<String>,
     combine_ancestor_relative_path: Option<String>,
     invalid_reason: Option<String>,
     invalid_reason_path: Option<String>,
@@ -332,7 +329,7 @@ pub(crate) fn load_candidate_items(
 ) -> Result<Vec<StoredScanItem>, DbError> {
     let rows = sql.query(
         "SELECT path, generation, kind, name, display_path, file_root, scope, \
-                file_edit_revision, format_label, combine_ancestor_relative_path, \
+                file_edit_revision, combine_ancestor_relative_path, \
                 invalid_reason, invalid_reason_path \
          FROM scan_candidate \
          WHERE watched_folder_path = :root AND (:only IS NULL OR path = :only) \
@@ -348,10 +345,9 @@ pub(crate) fn load_candidate_items(
                 file_root: row.get(5)?,
                 scope: row.get(6)?,
                 file_edit_revision: row.get(7)?,
-                format_label: row.get(8)?,
-                combine_ancestor_relative_path: row.get(9)?,
-                invalid_reason: row.get(10)?,
-                invalid_reason_path: row.get(11)?,
+                combine_ancestor_relative_path: row.get(8)?,
+                invalid_reason: row.get(9)?,
+                invalid_reason_path: row.get(10)?,
             })
         },
     )?;
@@ -386,7 +382,6 @@ pub(crate) fn load_candidate_items(
                     name: row.name,
                     files: CategorizedFiles {
                         files: files.remove(&row.path).unwrap_or_default(),
-                        format_label: row.format_label.ok_or_else(|| missing("format label"))?,
                     },
                     watched_folder_path: watched_folder_path.to_string(),
                     scope: scope_of(&row.scope.ok_or_else(|| missing("scope"))?)?,
@@ -424,6 +419,14 @@ struct FileRow {
     relative_path: String,
     absolute_path: String,
     size: i64,
+    modified_at_ns: i64,
+    content_digest: String,
+    audio_content_type: Option<String>,
+    audio_duration_ms: Option<i64>,
+    audio_sample_rate_hz: Option<i64>,
+    audio_bits_per_sample: Option<i64>,
+    audio_bitrate_kbps: Option<i64>,
+    audio_channels: Option<i64>,
     file_name: String,
     dir_prefix: Option<String>,
     proposed_audio: bool,
@@ -441,7 +444,9 @@ fn load_files(
     only: Option<&str>,
 ) -> Result<HashMap<String, Vec<CandidateFile>>, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, relative_path, absolute_path, size, file_name, dir_prefix, \
+        "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, content_digest, \
+                audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
+                audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, dir_prefix, \
                 proposed_audio, role, sheet_binding, sheet_binding_file_id, \
                 sheet_binding_codec, sheet_disc, sheet_disc_number \
          FROM scan_candidate_file \
@@ -454,21 +459,30 @@ fn load_files(
                 relative_path: row.get(1)?,
                 absolute_path: row.get(2)?,
                 size: row.get(3)?,
-                file_name: row.get(4)?,
-                dir_prefix: row.get(5)?,
-                proposed_audio: row.get(6)?,
-                role: row.get(7)?,
-                sheet_binding: row.get(8)?,
-                sheet_binding_file_id: row.get(9)?,
-                sheet_binding_codec: row.get(10)?,
-                sheet_disc: row.get(11)?,
-                sheet_disc_number: row.get(12)?,
+                modified_at_ns: row.get(4)?,
+                content_digest: row.get(5)?,
+                audio_content_type: row.get(6)?,
+                audio_duration_ms: row.get(7)?,
+                audio_sample_rate_hz: row.get(8)?,
+                audio_bits_per_sample: row.get(9)?,
+                audio_bitrate_kbps: row.get(10)?,
+                audio_channels: row.get(11)?,
+                file_name: row.get(12)?,
+                dir_prefix: row.get(13)?,
+                proposed_audio: row.get(14)?,
+                role: row.get(15)?,
+                sheet_binding: row.get(16)?,
+                sheet_binding_file_id: row.get(17)?,
+                sheet_binding_codec: row.get(18)?,
+                sheet_disc: row.get(19)?,
+                sheet_disc_number: row.get(20)?,
             })
         },
     )?;
     let mut sheets = load_cue_sheets(sql, watched_folder_path, only)?;
     let mut files: HashMap<String, Vec<CandidateFile>> = HashMap::new();
     for row in rows {
+        let source_audio = source_audio_of(&row)?;
         let role = match row.role.as_str() {
             "audio" => FileRole::Audio,
             "artwork" => FileRole::Artwork,
@@ -509,14 +523,70 @@ fn load_files(
                     path: PathBuf::from(row.absolute_path),
                     relative_path: row.relative_path,
                     size: to_u64(row.size, "a file's size")?,
+                    modified_at_ns: row.modified_at_ns,
+                    content_digest: row.content_digest,
                     dir_prefix: row.dir_prefix,
                     file_name: row.file_name,
+                    source_audio,
                 },
                 role,
                 proposed_audio: row.proposed_audio,
             });
     }
     Ok(files)
+}
+
+fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
+    match (
+        row.audio_content_type.as_deref(),
+        row.audio_duration_ms,
+        row.audio_sample_rate_hz,
+        row.audio_bits_per_sample,
+        row.audio_bitrate_kbps,
+        row.audio_channels,
+    ) {
+        (None, None, None, None, None, None) if !row.proposed_audio => Ok(None),
+        (
+            Some(content_type),
+            Some(duration_ms),
+            Some(sample_rate_hz),
+            bits_per_sample,
+            bitrate_kbps,
+            Some(channels),
+        ) if row.proposed_audio => {
+            let content_type = ContentType::from_mime(content_type);
+            if !content_type.is_audio() {
+                return Err(DbError::Message(format!(
+                    "candidate audio file {} stores non-audio content type {}",
+                    row.relative_path,
+                    content_type.as_str()
+                )));
+            }
+            to_u64(sample_rate_hz, "an audio file's sample rate")?;
+            bits_per_sample
+                .map(|value| to_u64(value, "an audio file's bit depth"))
+                .transpose()?;
+            bitrate_kbps
+                .map(|value| to_u64(value, "an audio file's bitrate"))
+                .transpose()?;
+            to_u64(channels, "an audio file's channel count")?;
+            Ok(Some(ScannedAudio {
+                format: AudioFormat {
+                    codec: content_type.display_name().to_string(),
+                    sample_rate_hz,
+                    bits_per_sample,
+                    bitrate_kbps,
+                    channels,
+                },
+                content_type,
+                duration_ms: to_u64(duration_ms, "an audio file's duration")?,
+            }))
+        }
+        columns => Err(DbError::Message(format!(
+            "candidate file {} stores inconsistent source-audio facts: {columns:?}",
+            row.relative_path
+        ))),
+    }
 }
 
 pub(crate) fn load_resolved_boundaries(

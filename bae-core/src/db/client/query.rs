@@ -638,7 +638,7 @@ pub(super) fn storage_order_by(sort: &StorageSortCriterion) -> (String, bool) {
             ),
             true,
         ),
-        StorageSortField::Format => (
+        StorageSortField::Media => (
             format!(
                 "CASE WHEN r.format IS NULL THEN 1 ELSE 0 END {dir}, \
                  r.format COLLATE NOCASE {dir}, \

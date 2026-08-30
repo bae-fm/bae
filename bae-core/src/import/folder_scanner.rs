@@ -28,6 +28,7 @@ pub use candidates::*;
 pub use categorize::is_audio_file;
 use categorize::*;
 pub use files::*;
+pub(crate) use scan::file_modified_at_ns;
 pub use scan::*;
 
 const DOCUMENT_EXTENSIONS: &[&str] = &["cue", "log", "txt", "m3u", "m3u8"];
@@ -80,6 +81,7 @@ pub struct FileEntry {
     pub path: PathBuf,
     /// File size in bytes
     pub size: u64,
+    pub modified_at_ns: i64,
 }
 
 /// A pre-collected list of files for release candidate detection.

@@ -165,9 +165,6 @@ pub struct BridgeImportCandidateDetail {
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: BridgeMappingTable,
-    /// Audio units nothing has measured yet: their duration cells have no
-    /// number to show and render as still being read.
-    pub unprobed: Vec<BridgeAudioFile>,
     /// The cover this candidate commits with.
     pub cover: Option<BridgeCoverChoice>,
     /// The signals identification settled on, or `None` before it has.

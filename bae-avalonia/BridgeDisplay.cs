@@ -1,10 +1,57 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
 internal static class BridgeDisplay
 {
+    internal static string AudioFormat(BridgeAudioFormat format)
+    {
+        var parts = new List<string> { format.Codec };
+        if (format.BitsPerSample is null && format.BitrateKbps is { } bitrate)
+        {
+            parts.Add(Loc.Core("core.audio.bitrate_kbps", "value", bitrate));
+        }
+        parts.Add(Loc.Core(
+            "core.audio.sample_rate_khz",
+            "value",
+            (format.SampleRateHz / 1000d).ToString("0.#", CultureInfo.CurrentCulture)));
+        if (format.BitsPerSample is { } bits)
+        {
+            parts.Add(Loc.Core("core.audio.bit_depth", "value", bits));
+        }
+        var channelsKey = BaeBridgeMethods.BridgeAudioChannelsKey(format.Channels);
+        parts.Add(channelsKey is null
+            ? Loc.Core("core.audio.channels.count", "value", format.Channels)
+            : Loc.Core(channelsKey));
+        return string.Join(Loc.Core("core.audio.list_separator"), parts);
+    }
+
+    internal static string SourceAudioDescriptor(BridgeSourceAudioDescriptor descriptor)
+    {
+        var format = AudioFormat(descriptor.Format);
+        return descriptor.Layout == BridgeSourceAudioLayout.Cue
+            ? string.Join(
+                Loc.Core("core.audio.list_separator"),
+                Loc.Core("core.audio.layout.cue"),
+                format)
+            : format;
+    }
+
+    internal static string SourceAudio(BridgeSourceAudioSummary? summary) => summary switch
+    {
+        BridgeSourceAudioSummary.Uniform uniform =>
+            SourceAudioDescriptor(uniform.Descriptor),
+        BridgeSourceAudioSummary.Mixed mixed => string.Join(
+            Loc.Core("core.audio.list_separator"),
+            new[] { Loc.Core("core.audio.mixed") }
+                .Concat(mixed.Descriptors.Select(SourceAudioDescriptor))),
+        null => string.Empty,
+        _ => throw new ArgumentOutOfRangeException(nameof(summary), summary, "Unknown source audio"),
+    };
+
     /// <summary>
     /// The clock label for a raw millisecond duration ("3:07", "1:12:34"), or an
     /// empty string when there is nothing to label — no duration, or a negative

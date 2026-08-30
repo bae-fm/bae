@@ -31,7 +31,10 @@ pub(crate) fn automation_candidate_from_folder(
             folder.is_added,
         ),
         track_count: candidate.files.track_count(),
-        format_label: candidate.files.format_label.clone(),
+        source_audio: candidate
+            .files
+            .source_audio_summary()
+            .map(automation_source_audio_summary),
         content_hash: candidate.files.content_hash(),
         runtime: AutomationCandidateRuntime {
             toolbar: identify
@@ -64,6 +67,38 @@ pub(crate) fn automation_candidate_from_folder(
                 error: failure.error.clone(),
                 failed_at: failure.failed_at.to_rfc3339(),
             }),
+    }
+}
+
+fn automation_source_audio_summary(
+    summary: bae_core::album_detail::SourceAudioSummary,
+) -> AutomationSourceAudioSummary {
+    match summary {
+        bae_core::album_detail::SourceAudioSummary::Uniform { descriptor } => {
+            AutomationSourceAudioSummary::Uniform {
+                descriptor: automation_source_audio_descriptor(descriptor),
+            }
+        }
+        bae_core::album_detail::SourceAudioSummary::Mixed { descriptors } => {
+            AutomationSourceAudioSummary::Mixed {
+                descriptors: descriptors
+                    .into_iter()
+                    .map(automation_source_audio_descriptor)
+                    .collect(),
+            }
+        }
+    }
+}
+
+fn automation_source_audio_descriptor(
+    descriptor: bae_core::album_detail::SourceAudioDescriptor,
+) -> AutomationSourceAudioDescriptor {
+    AutomationSourceAudioDescriptor {
+        layout: match descriptor.layout {
+            bae_core::album_detail::SourceAudioLayout::File => AutomationSourceAudioLayout::File,
+            bae_core::album_detail::SourceAudioLayout::Cue => AutomationSourceAudioLayout::Cue,
+        },
+        format: automation_audio_format(descriptor.format),
     }
 }
 

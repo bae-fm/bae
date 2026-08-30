@@ -25,6 +25,12 @@ public sealed class ImportMappingTableTests
 {
     private const string SheetId = "disc.cue";
     private const string ContainerPath = "/folder/disc.flac";
+    private static readonly BridgeAudioFormat SourceAudio = new(
+        Codec: "FLAC",
+        SampleRateHz: 44_100,
+        BitsPerSample: 16,
+        BitrateKbps: null,
+        Channels: 2);
 
     [Fact]
     public void ArtistFillFollowsTheSelectedRowDownward()
@@ -307,7 +313,8 @@ public sealed class ImportMappingTableTests
             Name: "01.flac",
             Size: 1024,
             LocalPath: "/folder/01.flac",
-            ProbedDurationMs: 180_000,
+            DurationMs: 180_000,
+            AudioFormat: SourceAudio,
             Role: BridgeMappingRole.Audio,
             Alternatives: Array.Empty<BridgeFileRoleChoice>(),
             RoleChoice: null));
@@ -338,7 +345,8 @@ public sealed class ImportMappingTableTests
             Name: "01.flac",
             Size: 1024,
             LocalPath: "/folder/01.flac",
-            ProbedDurationMs: 180_000,
+            DurationMs: 180_000,
+            AudioFormat: SourceAudio,
             Role: BridgeMappingRole.Audio,
             Alternatives: Array.Empty<BridgeFileRoleChoice>(),
             RoleChoice: null));
@@ -407,7 +415,8 @@ public sealed class ImportMappingTableTests
             DurationMs: null,
             ContainerId: "disc.flac",
             ContainerName: "disc.flac",
-            ContainerLocalPath: ContainerPath)),
+            ContainerLocalPath: ContainerPath,
+            AudioFormat: SourceAudio)),
         new BridgeMappingBecomes.AwaitingPick(),
         DurationMs: null);
 
@@ -423,7 +432,10 @@ public sealed class ImportMappingTableTests
             Name: fileId,
             Size: 1024,
             LocalPath: $"/folder/{fileId}",
-            ProbedDurationMs: null,
+            DurationMs: null,
+            AudioFormat: fileId.EndsWith(".flac", StringComparison.Ordinal)
+                ? SourceAudio
+                : null,
             Role: BridgeMappingRole.Audio,
             Alternatives: System.Array.Empty<BridgeFileRoleChoice>(),
             RoleChoice: null));
@@ -470,7 +482,6 @@ public sealed class ImportMappingTableTests
                 ChooseFile: (_, _) => { },
                 Drop: _ => { },
                 Exclude: _ => { }),
-            unprobed: null,
             evidence: evidence).Build();
 
     /// <summary>The Tracks section's children: the column header, then one per

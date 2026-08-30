@@ -28,6 +28,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info, warn};
 
 mod cover_image;
+mod file_identity;
 mod folder_watcher;
 mod format_prep;
 mod importing;

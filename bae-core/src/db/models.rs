@@ -395,6 +395,9 @@ pub struct DbFile {
     pub original_filename: String,
     pub file_size: i64,
     pub content_type: ContentType,
+    /// The scan's complete facts for this physical source file. `None` for
+    /// non-audio files.
+    pub source_audio: Option<crate::album_detail::SourceAudioFile>,
     /// Readable cloud key for this file's blob, relative to the `release_files`
     /// namespace coven prepends (mirroring coven's `BlobRef.cloud_path`). `None`
     /// = the hashed-by-id layout (opaque homes); `Some` = the explicit readable
@@ -773,6 +776,7 @@ impl DbFile {
             original_filename: original_filename.to_string(),
             file_size,
             content_type,
+            source_audio: None,
             // Files start opaque-keyed (hashed by id). A browsable remote
             // import / manage sets the readable key explicitly before insert.
             cloud_path: None,

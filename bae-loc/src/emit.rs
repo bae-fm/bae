@@ -194,7 +194,13 @@ fn android_escape(s: &str) -> String {
             _ => out.push(c),
         }
     }
-    out
+    let has_boundary_whitespace = s.chars().next().is_some_and(char::is_whitespace)
+        || s.chars().next_back().is_some_and(char::is_whitespace);
+    if has_boundary_whitespace {
+        format!("\"{out}\"")
+    } else {
+        out
+    }
 }
 
 /// Emit `core_strings.xml` for one `locale`. Every message is a plain
@@ -387,6 +393,19 @@ value = "that release couldn't be found"
         );
         // Apostrophe escaped for the resource parser.
         assert!(xml.contains("couldn\\'t"), "{xml}");
+    }
+
+    #[test]
+    fn android_preserves_boundary_whitespace() {
+        let c = cat(r#"
+[messages."core.audio.list_separator"]
+value = " · "
+"#);
+        let xml = android_strings_xml(&c, "en", "en");
+        assert!(
+            xml.contains("<string name=\"core_audio_list_separator\">\" · \"</string>"),
+            "{xml}"
+        );
     }
 
     #[test]

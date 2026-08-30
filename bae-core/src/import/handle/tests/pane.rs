@@ -9,8 +9,7 @@
 /// the tables and picked as its own tags.
 ///
 /// The folder is stored rather than scanned for: the pane's writes are what is
-/// under test, and a real scan would only make when they run less certain. The
-/// files themselves are real — `probe_candidate_durations` opens them.
+/// under test, and a real scan would only make when they run less certain.
 async fn picked_candidate(
     manager: &LibraryManager,
     tmp: &TempDir,
@@ -34,7 +33,14 @@ async fn picked_candidate(
         let size = std::fs::metadata(&path).unwrap().len();
         files.push(CandidateFile {
             proposed_audio: true,
-            file: ScannedFile::new(path, relative_path, size),
+            file: ScannedFile::new(
+                path.clone(),
+                relative_path,
+                size,
+                1,
+                crate::util::fs::hash_file(&path).unwrap(),
+            )
+            .with_test_flac_audio(),
             role: FileRole::Audio,
         });
     }
@@ -42,7 +48,13 @@ async fn picked_candidate(
     std::fs::write(&cover_path, [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
     files.push(CandidateFile {
         proposed_audio: false,
-        file: ScannedFile::new(cover_path, "cover.jpg".to_string(), 5),
+        file: ScannedFile::new(
+            cover_path.clone(),
+            "cover.jpg".to_string(),
+            5,
+            1,
+            crate::util::fs::hash_file(&cover_path).unwrap(),
+        ),
         role: FileRole::Artwork,
     });
 
@@ -52,7 +64,6 @@ async fn picked_candidate(
         name: "Album".to_string(),
         files: CategorizedFiles {
             files,
-            format_label: "FLAC".to_string(),
         },
         watched_folder_path: root.to_string_lossy().into_owned(),
         scope: ReleaseFileScope::Recursive,
@@ -198,7 +209,6 @@ impl crate::import::file_tag_snapshot::FileTagReader for CountingFileTagReader {
             });
         }
         Ok(crate::import::file_tag_snapshot::FileTagRead {
-            content_type: Some(crate::util::content_type::ContentType::Flac),
             title: Some(format!("Track Title {}", index + 1)),
             track_artist: Some("Artist Name".to_string()),
             album_title: Some("Album Title".to_string()),
@@ -575,20 +585,6 @@ fn track_rows(table: &crate::import::MappingTable) -> Vec<crate::import::RawTrac
         .collect()
 }
 
-/// What every audio row of the table says its file plays for.
-fn probed_lengths(table: &crate::import::MappingTable) -> Vec<Option<u64>> {
-    use crate::import::mapping::{MappingRow, MappingSource};
-    table
-        .rows
-        .iter()
-        .flat_map(MappingRow::units)
-        .filter_map(|unit| match &unit.source {
-            MappingSource::File(file) => Some(file.probed_duration_ms),
-            _ => None,
-        })
-        .collect()
-}
-
 /// A typed field replaces that one field of the form and leaves the rest to
 /// the pick. Committing it empty is the person clearing the field, not undoing
 /// their edit: the blank is stored and the form comes back blank.
@@ -853,57 +849,4 @@ async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
         crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
     );
     shut_down(reopened).await;
-}
-
-/// The pane asks for the units nothing has measured, and asks once: probing
-/// writes a row per unit, the next read wants nothing, and a second probe of
-/// the same units replaces those rows rather than adding to them.
-#[tokio::test(flavor = "multi_thread")]
-async fn probing_answers_the_pane_and_stops_it_asking() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    let wanted = pane(&handle, &key).await.unprobed;
-    assert_eq!(
-        wanted.len(),
-        2,
-        "nothing has opened either file, so the pane asks for both"
-    );
-
-    handle
-        .probe_candidate_durations(&key, wanted.clone())
-        .await
-        .unwrap();
-
-    let after = pane(&handle, &key).await;
-    assert!(
-        after.unprobed.is_empty(),
-        "the rows are what ends the asking"
-    );
-    assert!(
-        probed_lengths(&after.mapping)
-            .iter()
-            .all(Option::is_some),
-        "and the table draws what they say"
-    );
-
-    let stored = handle
-        .library_manager
-        .load_import_candidate_state(&hash)
-        .await
-        .unwrap()
-        .expect("the pick wrote the state row");
-    assert_eq!(stored.durations.units.len(), 2);
-
-    handle.probe_candidate_durations(&key, wanted).await.unwrap();
-    let again = handle
-        .library_manager
-        .load_import_candidate_state(&hash)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        again.durations.units, stored.durations.units,
-        "probing the same units again replaces the rows, it does not stack them"
-    );
-
-    shut_down(handle).await;
 }

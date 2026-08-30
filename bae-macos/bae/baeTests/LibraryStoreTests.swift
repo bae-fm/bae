@@ -30,7 +30,7 @@ private func makeBridgeRelease(
     id: String = "release-1",
     albumId: String = "album-1",
     displayName: String = "Release One",
-    format: String? = "FLAC",
+    format: String? = "CD",
     storageState: BridgeReleaseStorageState = .remote,
     pinned: Bool = false,
     storageActions: [BridgeReleaseStorageAction] = [],
@@ -59,6 +59,7 @@ private func makeBridgeRelease(
         tracks: [],
         trackGroups: [],
         files: [],
+        sourceAudio: nil,
         imageFiles: [],
         galleryItems: [],
         totalDuration: totalDuration,
@@ -402,7 +403,7 @@ struct InternReleaseSummaryTests {
     func internFromBridgeRelease() {
         let store = LibraryStore()
         let bridge = makeBridgeRelease(
-            format: "MP3",
+            format: "12\" Vinyl",
             storageState: .remote,
             pinned: true,
             fileCount: 12,
@@ -418,7 +419,7 @@ struct InternReleaseSummaryTests {
 
         #expect(summary.id == "release-1")
         #expect(summary.albumId == "album-1")
-        #expect(summary.format == "MP3")
+        #expect(summary.format == "12\" Vinyl")
         #expect(summary.storageState == .remote)
         #expect(summary.pinned)
         #expect(summary.fileCount == 12)
@@ -511,21 +512,26 @@ struct InternReleaseDetailTests {
     @Test(
         "detail wraps the identity-stable summary from releaseSummaries slice"
     )
-    func detailWrapsCanonicalSummary() {
+    func detailWrapsCanonicalSummary() throws {
         let store = LibraryStore()
         let bridge = makeBridgeRelease()
 
         _ = store.internReleaseDetail(bridge)
 
-        let summaryFromDetail = store.releaseDetails["release-1"]!.summary
-        let summaryFromSlice = store.releaseSummaries["release-1"]!
+        let summaryFromDetail = try #require(
+            store.releaseDetails["release-1"]
+        )
+        .summary
+        let summaryFromSlice = try #require(
+            store.releaseSummaries["release-1"]
+        )
 
         #expect(summaryFromDetail === summaryFromSlice)
     }
 
     @MainActor
     @Test("intern twice preserves summary identity, replaces detail wholesale")
-    func internTwicePreservesSummaryIdentity() {
+    func internTwicePreservesSummaryIdentity() throws {
         let store = LibraryStore()
         let bridge1 = makeBridgeRelease(
             displayName: "V1",
@@ -533,7 +539,9 @@ struct InternReleaseDetailTests {
             pinned: false
         )
         _ = store.internReleaseDetail(bridge1)
-        let originalSummary = store.releaseSummaries["release-1"]!
+        let originalSummary = try #require(
+            store.releaseSummaries["release-1"]
+        )
 
         let bridge2 = makeBridgeRelease(
             displayName: "V2",
@@ -544,25 +552,26 @@ struct InternReleaseDetailTests {
 
         #expect(store.releaseSummaries["release-1"] === originalSummary)
         #expect(originalSummary.pinned)
-        #expect(store.releaseDetails["release-1"]!.displayName == "V2")
+        let updatedDetail = try #require(store.releaseDetails["release-1"])
+        #expect(updatedDetail.displayName == "V2")
         // Detail's summary pointer still matches the canonical one.
-        #expect(store.releaseDetails["release-1"]!.summary === originalSummary)
+        #expect(updatedDetail.summary === originalSummary)
     }
 
     @MainActor
     @Test("detail carries fat fields from BridgeRelease")
-    func detailCarriesFatFields() {
+    func detailCarriesFatFields() throws {
         let store = LibraryStore()
         let bridge = makeBridgeRelease(displayName: "Deluxe Edition")
 
         _ = store.internReleaseDetail(bridge)
 
-        let detail = store.releaseDetails["release-1"]!
+        let detail = try #require(store.releaseDetails["release-1"])
         #expect(detail.displayName == "Deluxe Edition")
         #expect(detail.totalDuration == .hoursAndMinutes(hours: 1, minutes: 45))
         // Interning a detail also interns its wrapped summary; the slim fields
-        // (here `format`) carry through from the same `BridgeRelease`.
-        #expect(detail.summary.format == "FLAC")
+        // (here the release media) carry through from the same `BridgeRelease`.
+        #expect(detail.summary.format == "CD")
     }
 
     @MainActor

@@ -20,7 +20,7 @@ struct StorageReleaseCell: View {
                 }
             case .artist:
                 Text(album.artistNames).lineLimit(1)
-            case .format:
+            case .media:
                 Text(release.format ?? "\u{2014}")
             case .storage:
                 StorageStateLabel(release: release)

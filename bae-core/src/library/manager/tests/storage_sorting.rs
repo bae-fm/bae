@@ -49,24 +49,24 @@ async fn storage_page_sort_by_artist_names() {
 }
 
 #[tokio::test]
-async fn storage_page_sort_by_format_nulls_last() {
+async fn storage_page_sort_by_media_nulls_last() {
     let (manager, _temp_dir) = setup_test_manager().await;
 
-    for (title, format) in &[
-        ("Album No Format", None),
+    for (title, media) in &[
+        ("Album No Media", None),
         ("Album CD", Some("CD")),
         ("Album Vinyl", Some("Vinyl")),
     ] {
         let mut album = create_test_album();
         album.title = title.to_string();
         let mut release = create_test_release(&album.id);
-        release.pressing.format = format.map(str::to_string);
+        release.pressing.format = media.map(str::to_string);
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
     }
 
     let asc = crate::db::StorageSortCriterion {
-        field: crate::db::StorageSortField::Format,
+        field: crate::db::StorageSortField::Media,
         direction: crate::db::SortDirection::Ascending,
     };
     let page = manager
@@ -74,8 +74,8 @@ async fn storage_page_sort_by_format_nulls_last() {
         .await
         .unwrap();
     let titles: Vec<_> = page.rows.iter().map(|r| r.album.title.clone()).collect();
-    // NULL format sorts last in both directions.
-    assert_eq!(titles, vec!["Album CD", "Album Vinyl", "Album No Format"]);
+    // Unknown media sorts last in both directions.
+    assert_eq!(titles, vec!["Album CD", "Album Vinyl", "Album No Media"]);
 }
 
 #[tokio::test]
@@ -96,6 +96,7 @@ async fn storage_page_sort_by_file_count() {
                 original_filename: format!("{i}.flac"),
                 file_size: 1000,
                 content_type: crate::util::content_type::ContentType::Flac,
+                source_audio: None,
                 cloud_path: None,
                 content_hash: crate::util::fs::hash_bytes(b"fixture"),
                 created_at: Utc::now(),
@@ -132,6 +133,7 @@ async fn storage_page_sort_by_total_size() {
             original_filename: "a.flac".to_string(),
             file_size: *file_size,
             content_type: crate::util::content_type::ContentType::Flac,
+            source_audio: None,
             cloud_path: None,
             content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),

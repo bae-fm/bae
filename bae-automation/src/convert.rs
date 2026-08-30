@@ -908,7 +908,9 @@ pub(super) fn automation_file_detail(file: FileDetail) -> AutomationFileDetail {
         file_size: file.file_size,
         is_image: file.is_image,
         content_type: file.content_type,
-        audio_format: file.audio_format.map(automation_audio_format),
+        audio_format: file
+            .source_audio
+            .map(|source_audio| automation_audio_format(source_audio.format)),
     }
 }
 

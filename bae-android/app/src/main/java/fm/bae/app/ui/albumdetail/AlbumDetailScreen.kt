@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
+import fm.bae.app.compactMetadataText
 import fm.bae.app.data.ImageStore
 import fm.bae.app.data.LiveQueryState
 import fm.bae.app.data.LocalImageStore
@@ -352,19 +353,7 @@ private fun AlbumDetailHeader(
     val album = detail.album
     val context = LocalContext.current
 
-    fun compactMeta(): String {
-        val release = selectedRelease ?: return ""
-        val audioFormat = release.files.firstNotNullOfOrNull { it.audioFormat }?.text(context)
-        return listOfNotNull(
-            release.year?.toString(),
-            release.format,
-            release.label,
-            release.catalogNumber,
-            release.country,
-            audioFormat,
-            context.durationUnitsText(release.totalDuration).ifEmpty { null },
-        ).joinToString(" · ")
-    }
+    fun compactMeta(): String = selectedRelease?.compactMetadataText(context).orEmpty()
     Row(verticalAlignment = Alignment.Top) {
         CoverImage(
             cover = cover,

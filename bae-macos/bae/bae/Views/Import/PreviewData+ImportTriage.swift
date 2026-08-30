@@ -6,6 +6,14 @@
     /// Preview fixtures for the import triage sidebar, candidate file listings,
     /// and the release chosen for a candidate.
     extension PreviewData {
+        private static let previewSourceAudioFormat = BridgeAudioFormat(
+            codec: "FLAC",
+            sampleRateHz: 44_100,
+            bitsPerSample: 16,
+            bitrateKbps: nil,
+            channels: 2
+        )
+
         // MARK: - Triage sidebar
 
         /// A `BridgeMatchedRelease` fixture with a settled single pressing —
@@ -592,9 +600,11 @@
                 file: BridgeFileInfo(
                     name: dirPrefix.map { $0 + name } ?? name,
                     size: size,
+                    contentDigest: String(repeating: "a", count: 64),
                     dirPrefix: dirPrefix,
                     fileName: name,
-                    localPath: localPath ?? "/tmp/fake/\(name)"
+                    localPath: localPath ?? "/tmp/fake/\(name)",
+                    audioFormat: role.isAudio ? previewSourceAudioFormat : nil
                 ),
                 role: role,
                 becomes: becomes,
@@ -725,7 +735,12 @@
                 supplementalVideo,
             ]
                 + previewLogDocuments,
-            formatLabel: "CUE+FLAC",
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .cue,
+                    format: previewSourceAudioFormat
+                )
+            ),
             collapsedDirectories: [previewLogsDirectory]
         )
 
@@ -835,7 +850,12 @@
                         )
                     ),
                 ],
-            formatLabel: "FLAC",
+            sourceAudio: .uniform(
+                descriptor: BridgeSourceAudioDescriptor(
+                    layout: .file,
+                    format: previewSourceAudioFormat
+                )
+            ),
             collapsedDirectories: []
         )
 

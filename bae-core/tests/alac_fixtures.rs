@@ -252,8 +252,7 @@ async fn import_standalone_aac_m4a() {
 // ─────────────────────────────── Scanner test ───────────────────────────────
 
 /// The folder scanner must recognize a CUE + ALAC `.m4a` pair, produce one
-/// release with three tracks, and tag it with the `"CUE+ALAC"` format label
-/// derived from `ContentType::Alac.display_name()`.
+/// release with three tracks, and report a CUE-backed ALAC source descriptor.
 #[test]
 fn scanner_recognizes_cue_alac_pair() {
     let temp_root = TempDir::new().expect("temp root");
@@ -289,7 +288,18 @@ fn scanner_recognizes_cue_alac_pair() {
         3,
         "three tracks in the CUE sheet"
     );
-    assert_eq!(candidate.files.format_label, "CUE+ALAC");
+    let summary = candidate
+        .files
+        .source_audio_summary()
+        .expect("source audio");
+    let bae_core::album_detail::SourceAudioSummary::Uniform { descriptor } = summary else {
+        panic!("expected uniform source audio")
+    };
+    assert_eq!(
+        descriptor.layout,
+        bae_core::album_detail::SourceAudioLayout::Cue
+    );
+    assert_eq!(descriptor.format.codec, "ALAC");
 }
 
 // ─────────────────────────────── Import CUE+ALAC ────────────────────────────

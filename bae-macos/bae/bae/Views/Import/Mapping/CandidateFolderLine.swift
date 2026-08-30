@@ -2,7 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// The folder the pane is about, at the top of it: what it is called on disk
-/// and what audio it holds. It leads the pane because it is the one fact
+/// on disk. It leads the pane because it is the one fact
 /// nothing below can change — the release, the metadata and the mapping are
 /// all readings of this folder.
 ///
@@ -13,8 +13,6 @@ struct CandidateFolderLine: View {
     let folderName: String
     /// The folder on disk — what the glyph reveals.
     let folderPath: String
-    /// The folder's audio shape ("FLAC", "CUE+FLAC").
-    let formatLabel: String
     let onNavigateToPlacement: () -> Void
 
     static func placementLabel(for placement: BridgeTriagePlacement) -> String {
@@ -57,11 +55,6 @@ struct CandidateFolderLine: View {
                 .textSelection(.enabled)
                 .lineLimit(1)
                 .truncationMode(.middle)
-            if !formatLabel.isEmpty {
-                Text(formatLabel)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
             Spacer(minLength: 0)
         }
     }
@@ -74,7 +67,6 @@ struct CandidateFolderLine: View {
             folderName:
                 "2010 \u{2013} Blue Sky Boys 1939\u{2013}1940 (256 kbps)",
             folderPath: "/Music/Blue Sky Boys",
-            formatLabel: "FLAC",
             onNavigateToPlacement: {}
         )
         .padding()

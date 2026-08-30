@@ -54,7 +54,8 @@ struct ImportMappingFileRowTests {
                     name: "excluded.flac",
                     size: 24_000_000,
                     localPath: "/tmp/excluded.flac",
-                    probedDurationMs: 180_000,
+                    durationMs: 180_000,
+                    audioFormat: MappingFixtures.audioFormat,
                     role: .other,
                     alternatives: [.audio, .notATrack],
                     roleChoice: .notATrack

@@ -43,10 +43,12 @@ async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
                 std::path::PathBuf::from("/music/candidate/01.flac"),
                 "01.flac".to_string(),
                 1_000,
-            ),
+                1,
+                "0".repeat(64),
+            )
+            .with_test_flac_audio(),
             role: crate::import::folder_scanner::FileRole::Audio,
         }],
-        format_label: "FLAC".to_string(),
     };
     let content_hash = files.content_hash();
     let candidate = crate::import::folder_scanner::FolderCandidate {

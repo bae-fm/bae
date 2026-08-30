@@ -33,10 +33,6 @@ internal sealed partial class ImportMappingTable
     private readonly LibraryService _library;
     private readonly IReadOnlyList<ImportAudioChoice> _audioChoices;
 
-    // The audio units nothing has read yet. Their rows say so while the read
-    // runs; every other length in the table is already stored.
-    private readonly IReadOnlyList<BridgeAudioFile> _unprobed;
-
     // What identified the release, by the file each piece was read off. The row
     // for that file carries the chip.
     private readonly IReadOnlyList<BridgeFileEvidence> _evidence;
@@ -65,7 +61,6 @@ internal sealed partial class ImportMappingTable
         Func<string?> previewingPath,
         LibraryService library,
         ImportMappingActions actions,
-        IReadOnlyList<BridgeAudioFile>? unprobed = null,
         IReadOnlyList<BridgeFileEvidence>? evidence = null)
     {
         _table = table;
@@ -74,7 +69,6 @@ internal sealed partial class ImportMappingTable
         _library = library;
         _actions = actions;
         _audioChoices = table.AudioChoices();
-        _unprobed = unprobed ?? Array.Empty<BridgeAudioFile>();
         _evidence = evidence ?? Array.Empty<BridgeFileEvidence>();
     }
 
@@ -331,7 +325,7 @@ internal sealed partial class ImportMappingTable
         }
         AddDurationCell(grid, unit, lengthsDiverge);
 
-        var source = SourceCell(unit.Source, lengthsDiverge, IsMeasuring(unit.Source));
+        var source = SourceCell(unit.Source, lengthsDiverge);
         var cell = new Panel();
         cell.Children.Add(source);
         if (track is { } editable)
@@ -368,7 +362,7 @@ internal sealed partial class ImportMappingTable
     private Control FileRow(BridgeMappingUnit unit)
     {
         var grid = Grid();
-        var source = SourceCell(unit.Source, lengthsDiverge: false, IsMeasuring(unit.Source));
+        var source = SourceCell(unit.Source, lengthsDiverge: false);
         Avalonia.Controls.Grid.SetColumn(source, 0);
         Avalonia.Controls.Grid.SetColumnSpan(source, 3);
         grid.Children.Add(source);
@@ -539,17 +533,11 @@ internal sealed partial class ImportMappingTable
 
     // ── The left half ────────────────────────────────────────────────────────
 
-    // Whether this row's audio has not been read yet. Its length is the one
-    // thing on the pane that is still being fetched, so it is the one place a
-    // spinner belongs.
-    private bool IsMeasuring(BridgeMappingSource source) =>
-        source.Audio() is { } audio && _unprobed.Contains(audio);
-
     private Control SourceCell(
-        BridgeMappingSource source, bool lengthsDiverge, bool isMeasuring) => source switch
+        BridgeMappingSource source, bool lengthsDiverge) => source switch
         {
-            BridgeMappingSource.File file => FileCell(file.FileValue, isMeasuring),
-            BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge, isMeasuring),
+            BridgeMappingSource.File file => FileCell(file.FileValue),
+            BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge),
             BridgeMappingSource.Missing => ImportPaneUi.Cell(
                 $"╌ {Loc.Core("ui.import.slots.no_file")}", secondary: true),
             _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown mapping source"),
@@ -558,7 +546,7 @@ internal sealed partial class ImportMappingTable
     // One of the folder's files, whole: its name in mono with its size after it,
     // the audition control where it is audio, and — where there is something to
     // open — opening it.
-    private Control FileCell(BridgeMappingFile file, bool isMeasuring)
+    private Control FileCell(BridgeMappingFile file)
     {
         var line = new StackPanel
         {
@@ -589,9 +577,10 @@ internal sealed partial class ImportMappingTable
         {
             line.Children.Add(name);
         }
-        if (isMeasuring)
+        if (file.AudioFormat is { } audioFormat)
         {
-            line.Children.Add(MeasuringSpinner());
+            line.Children.Add(ImportPaneUi.Cell(
+                BridgeDisplay.AudioFormat(audioFormat), secondary: true));
         }
         if (ImportEvidence.Of(file.FileId, _evidence) is { } found)
         {
@@ -611,7 +600,7 @@ internal sealed partial class ImportMappingTable
     // One entry of a track sheet: the number it prints, the title it gives, and
     // how long it says the entry runs. The audio is the container's, which is the
     // only file on disk there is to audition.
-    private Control EntryCell(BridgeMappingEntry entry, bool lengthsDiverge, bool isMeasuring)
+    private Control EntryCell(BridgeMappingEntry entry, bool lengthsDiverge)
     {
         var line = new StackPanel
         {
@@ -626,41 +615,21 @@ internal sealed partial class ImportMappingTable
         number.FontSize = 12;
         line.Children.Add(number);
         line.Children.Add(ImportPaneUi.Cell(entry.Title));
+        line.Children.Add(ImportPaneUi.Cell(
+            BridgeDisplay.AudioFormat(entry.AudioFormat), secondary: true));
 
-        if (isMeasuring)
+        var length = new TextBlock
         {
-            line.Children.Add(MeasuringSpinner());
-        }
-        else
-        {
-            var length = new TextBlock
-            {
-                Text = MappingTableReading.DurationText(entry.DurationMs),
-                FontSize = 11.5,
-                FontFamily = new FontFamily("monospace"),
-                Margin = new Thickness(8, 0, 0, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-            };
-            length[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
-                lengthsDiverge ? "BaeWarningBrush" : "BaeTextSecondaryBrush");
-            line.Children.Add(length);
-        }
-        return line;
-    }
-
-    // The one spinner on the pane: a row whose audio is still being read.
-    private static Control MeasuringSpinner()
-    {
-        var spinner = new ProgressBar
-        {
-            IsIndeterminate = true,
-            Width = 40,
-            Height = 3,
+            Text = MappingTableReading.DurationText(entry.DurationMs),
+            FontSize = 11.5,
+            FontFamily = new FontFamily("monospace"),
             Margin = new Thickness(8, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
-        ToolTip.SetTip(spinner, Loc.Chrome("import.measuring_length"));
-        return spinner;
+        length[!TextBlock.ForegroundProperty] = new DynamicResourceExtension(
+            lengthsDiverge ? "BaeWarningBrush" : "BaeTextSecondaryBrush");
+        line.Children.Add(length);
+        return line;
     }
 
     private Control AuditionButton(string path)

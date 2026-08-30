@@ -18,8 +18,6 @@ struct ImportMappingTrackRow: View {
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
     let previewingPath: String?
-    /// Whether this row's audio has not been read yet.
-    var isMeasuring: Bool = false
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
@@ -36,8 +34,8 @@ struct ImportMappingTrackRow: View {
     /// desktop surface has to reach the same answer.
     private var lengthsDiverge: Bool {
         bridgeLengthsDisagree(
-            probedMs: unit.source.durationMs,
-            sourceMs: unit.durationMs
+            fileMs: unit.source.durationMs,
+            releaseMs: unit.durationMs
         )
     }
 
@@ -163,7 +161,6 @@ struct ImportMappingTrackRow: View {
             source: unit.source,
             previewingPath: previewingPath,
             lengthsDiverge: lengthsDiverge,
-            isMeasuring: isMeasuring,
             evidence: evidence,
             actions: actions,
         )

@@ -35,7 +35,7 @@ use tempfile::TempDir;
 const SEEDED_DISC_ID: &str = "XwqRcz4RhAqRTfhE5nRxRKF4iFY-";
 const SEEDED_DISC_ID_FILE: &str = "Album.log";
 
-fn settled_signals(durations: crate::import::probe::ProbedDurations) -> Signals {
+fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
     Signals {
         disc_id: DiscIdSignal::Absent { track_count: 0 },
         barcode: BarcodeSignal::Absent,
@@ -450,11 +450,11 @@ impl Fixture {
     /// and the Ready rule compares against.
     /// What every fixture FLAC in `dir` plays for, as the fast pass measures
     /// it — the durations a stored verdict carries.
-    fn probed_durations(&self, dir: &Path) -> crate::import::probe::ProbedDurations {
-        crate::import::probe::ProbedDurations::new(
+    fn probed_durations(&self, dir: &Path) -> crate::import::probe::SourceDurations {
+        crate::import::probe::SourceDurations::new(
             FLAC_FIXTURES
                 .iter()
-                .map(|name| crate::import::probe::ProbedUnit {
+                .map(|name| crate::import::probe::SourceDuration {
                     audio: crate::import::AudioFile::Standalone {
                         file_id: (*name).to_string(),
                     },
@@ -691,7 +691,7 @@ impl Fixture {
                             track_count: 2,
                             source_file: Some(SEEDED_DISC_ID_FILE.to_string()),
                         },
-                        ..settled_signals(crate::import::probe::ProbedDurations::totalling(
+                        ..settled_signals(crate::import::probe::SourceDurations::totalling(
                             probed_total_ms,
                         ))
                     },

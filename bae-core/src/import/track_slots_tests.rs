@@ -3,7 +3,7 @@ use crate::import::folder_scanner::{
     collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDisc, SheetDiscEdits,
     StoredCandidateEdits,
 };
-use crate::import::probe::probe_durations;
+use crate::import::probe::source_durations;
 use std::fs;
 use std::path::Path;
 
@@ -93,7 +93,7 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
 /// The table's rows for `source` against the folder at `root`, with the
 /// folder's audio measured — the table itself opens nothing.
 fn slots(source: &[SourceTrack], files: &CategorizedFiles) -> Vec<TrackSlot> {
-    slot_table(source, files, &probe_durations(files)).rows
+    slot_table(source, files, &source_durations(files)).rows
 }
 
 fn scan(root: &Path) -> CategorizedFiles {
@@ -583,12 +583,9 @@ fn a_paired_row_carries_the_probed_length_and_the_source_s() {
                 // The synthetic FLAC declares one second of audio; the
                 // source says three minutes. The row shows both, and says
                 // they disagree — which is the whole point of showing two.
-                assert_eq!(file.probed_duration_ms, Some(1_000));
+                assert_eq!(file.duration_ms, Some(1_000));
                 assert_eq!(*source_duration_ms, Some(180_000));
-                assert!(lengths_disagree(
-                    file.probed_duration_ms,
-                    *source_duration_ms
-                ));
+                assert!(lengths_disagree(file.duration_ms, *source_duration_ms));
             }
             other => panic!("expected a Paired row, got {other:?}"),
         }
@@ -633,13 +630,9 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
     .expect("write cue");
 
     let files = scan(tmp.path());
-    let table = slot_table(&source_tracks(2), &files, &probe_durations(&files));
+    let table = slot_table(&source_tracks(2), &files, &source_durations(&files));
 
-    let lengths: Vec<Option<u64>> = table
-        .audio
-        .iter()
-        .map(|file| file.probed_duration_ms)
-        .collect();
+    let lengths: Vec<Option<u64>> = table.audio.iter().map(|file| file.duration_ms).collect();
     // 38 frames of 1/75s is ~506ms; the tail is what is left of the second.
     assert_eq!(lengths.len(), 2);
     assert_eq!(lengths[0], Some(506));
@@ -660,7 +653,7 @@ fn a_container_s_rows_read_as_one_run() {
     write_flac(&tmp.path().join("bonus.flac"));
 
     let files = scan(tmp.path());
-    let table = slot_table(&source_tracks(4), &files, &probe_durations(&files));
+    let table = slot_table(&source_tracks(4), &files, &source_durations(&files));
 
     assert_eq!(
         table.audio.iter().map(|file| file.span).collect::<Vec<_>>(),
@@ -687,7 +680,7 @@ fn the_tally_names_the_disagreement() {
         write_flac(&tmp.path().join(format!("{index:02}.flac")));
     }
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
 
     assert_eq!(
         slot_table(&source_tracks(13), &files, &durations).reconciliation,

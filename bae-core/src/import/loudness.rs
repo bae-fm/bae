@@ -682,6 +682,17 @@ mod tests {
         TrackFile::Standalone {
             db_track: crate::db::DbTrack::new_test("release-id", track_id, "Track Title", Some(1)),
             file_path: path.to_path_buf(),
+            source_audio: crate::import::folder_scanner::ScannedAudio {
+                content_type: crate::util::content_type::ContentType::Flac,
+                duration_ms: 1_000,
+                format: crate::album_detail::AudioFormat {
+                    codec: "FLAC".to_string(),
+                    sample_rate_hz: 44_100,
+                    bits_per_sample: Some(16),
+                    bitrate_kbps: None,
+                    channels: 2,
+                },
+            },
         }
     }
 

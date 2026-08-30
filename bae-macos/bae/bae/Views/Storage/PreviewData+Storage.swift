@@ -397,7 +397,7 @@
         static func storageRelease(
             id: String = "rel-store-1",
             albumId: String = "album-store-1",
-            format: String? = "FLAC",
+            format: String? = "CD",
             storageState: BridgeReleaseStorageState = .remote,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
@@ -435,7 +435,7 @@
 
         // MARK: - Whole-screen: seeded list + Library
 
-        /// Dense rows spanning the names, formats, storage states, file counts,
+        /// Dense rows spanning the names, media, storage states, file counts,
         /// and sizes the whole-screen previews must keep readable.
         static let storageRows: [BridgeStorageRow] = {
             let titles = [
@@ -456,8 +456,8 @@
                 "Ensemble Name",
                 "Unknown Artist",
             ]
-            let formats: [String?] = [
-                "FLAC", "MP3", "ALAC", "CUE+APE", "WAV", nil,
+            let media: [String?] = [
+                "CD", "12\" Vinyl", "Cassette", "MiniDisc", "Digital", nil,
             ]
 
             return (1...28)
@@ -469,7 +469,7 @@
                         title: titles[(index - 1) % titles.count],
                         artist: artists[(index - 1) % artists.count],
                         year: index % 7 == 0 ? nil : Int32(1980 + index),
-                        format: formats[(index - 1) % formats.count],
+                        format: media[(index - 1) % media.count],
                         storageState: isRemote ? .remote : .local,
                         pinned: isRemote && index % 4 == 0,
                         transfer: index == 5 ? .pin : nil,
@@ -485,7 +485,7 @@
             title: String,
             artist: String,
             year: Int32? = 2021,
-            format: String? = "FLAC",
+            format: String? = "CD",
             storageState: BridgeReleaseStorageState,
             pinned: Bool = false,
             transfer: BridgeReleaseStorageAction? = nil,
@@ -584,19 +584,20 @@
         private static func storageReleaseDetail(
             for row: BridgeStorageRow
         ) -> BridgeRelease {
+            let audioFormat = BridgeAudioFormat(
+                codec: "FLAC",
+                sampleRateHz: 44_100,
+                bitsPerSample: 16,
+                bitrateKbps: nil,
+                channels: 2
+            )
             let audioFile = BridgeFile(
                 id: "\(row.id)-audio",
                 originalFilename: "01 Track Title.flac",
                 fileSize: 34_000_000,
                 contentType: "audio/flac",
                 isImage: false,
-                audioFormat: BridgeAudioFormat(
-                    codec: "FLAC",
-                    sampleRateHz: 44_100,
-                    bitsPerSample: 16,
-                    bitrateKbps: nil,
-                    channels: 2
-                )
+                audioFormat: audioFormat
             )
             let imageFile = BridgeFile(
                 id: "\(row.id)-image",
@@ -623,6 +624,12 @@
                 tracks: [],
                 trackGroups: [],
                 files: files,
+                sourceAudio: .uniform(
+                    descriptor: BridgeSourceAudioDescriptor(
+                        layout: .file,
+                        format: audioFormat
+                    )
+                ),
                 imageFiles: [imageFile],
                 galleryItems: [],
                 totalDuration: nil,

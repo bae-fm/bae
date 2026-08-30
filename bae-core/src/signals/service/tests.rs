@@ -153,15 +153,6 @@ async fn make_service() -> (
     (handle, tx, rx, lib_tmp)
 }
 
-/// Just an ID3v2 header — enough for `is_valid_audio` to accept the file during
-/// folder categorization.
-fn minimal_mp3() -> Vec<u8> {
-    let mut v = Vec::with_capacity(32);
-    v.extend_from_slice(b"ID3");
-    v.resize(32, 0);
-    v
-}
-
 fn fixture_flac() -> Vec<u8> {
     std::fs::read(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -175,7 +166,7 @@ fn minimal_jpeg() -> Vec<u8> {
     vec![0xFF, 0xD8, 0xFF, 0xE0, 0x00]
 }
 
-/// A release folder holding one MP3 (which satisfies the audio gate) plus whatever
+/// A release folder holding one FLAC plus whatever
 /// images and documents the caller passes.
 fn build_release(
     tmp: &TempDir,
@@ -185,7 +176,7 @@ fn build_release(
 ) -> PathBuf {
     let folder = tmp.path().join(folder_name);
     fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("01 - Track.mp3"), minimal_mp3()).unwrap();
+    fs::write(folder.join("01 - Track.flac"), fixture_flac()).unwrap();
     for img in images {
         fs::write(folder.join(img), minimal_jpeg()).unwrap();
     }
@@ -217,7 +208,7 @@ async fn emits_fast_pass_then_ocr_then_settled() {
     fs::create_dir_all(&parent).unwrap();
     let folder = parent.join("1989 - Album Title [XX34b]");
     fs::create_dir_all(&folder).unwrap();
-    fs::write(folder.join("01 - Track.mp3"), minimal_mp3()).unwrap();
+    fs::write(folder.join("01 - Track.flac"), fixture_flac()).unwrap();
     fs::write(folder.join("Cover.jpg"), minimal_jpeg()).unwrap();
     fs::write(folder.join("Back.jpg"), minimal_jpeg()).unwrap();
 
@@ -356,7 +347,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                     catalogs: Vec::new(),
                     free_text: Vec::new(),
                 },
-                durations: crate::import::probe::ProbedDurations::default(),
+                durations: crate::import::probe::SourceDurations::default(),
             },
             CallPriority::Interactive,
         );

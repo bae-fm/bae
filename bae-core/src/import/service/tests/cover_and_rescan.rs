@@ -78,8 +78,20 @@ async fn explicit_bmp_cover_is_selected() {
     std::fs::write(&bmp, b"bmp bytes").unwrap();
     std::fs::write(&jpg, b"jpg bytes").unwrap();
     let discovered = vec![
-        ScannedFile::new(bmp.clone(), "cover.bmp".to_string(), 9),
-        ScannedFile::new(jpg, "front.jpg".to_string(), 9),
+        ScannedFile::new(
+            bmp.clone(),
+            "cover.bmp".to_string(),
+            9,
+            1,
+            crate::util::fs::hash_file(&bmp).unwrap(),
+        ),
+        ScannedFile::new(
+            jpg.clone(),
+            "front.jpg".to_string(),
+            9,
+            1,
+            crate::util::fs::hash_file(&jpg).unwrap(),
+        ),
     ];
 
     let candidate = service
@@ -97,7 +109,13 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
     let (service, tmp) = setup_import_service().await;
     let fallback = tmp.path().join("front.jpg");
     std::fs::write(&fallback, b"jpg bytes").unwrap();
-    let discovered = vec![ScannedFile::new(fallback, "front.jpg".to_string(), 9)];
+    let discovered = vec![ScannedFile::new(
+        fallback.clone(),
+        "front.jpg".to_string(),
+        9,
+        1,
+        crate::util::fs::hash_file(&fallback).unwrap(),
+    )];
 
     let err = service
         .pick_folder_cover(&discovered, Some("cover.bmp"))
@@ -134,14 +152,53 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         folder.join("01.flac"),
     )
     .unwrap();
-    let expected_content_hash =
-        crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-            &folder,
-            crate::import::ReleaseFileScope::Recursive,
-            &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &folder,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .unwrap();
+    let expected_content_hash = files.content_hash();
+    let watched_folder_path = folder.to_string_lossy().into_owned();
+    service
+        .library_manager
+        .add_watched_import_folder(&watched_folder_path)
+        .await
+        .unwrap();
+    let generation = service
+        .library_manager
+        .begin_folder_scan(&watched_folder_path)
+        .await
+        .unwrap();
+    service
+        .library_manager
+        .save_folder_scan_item(
+            &watched_folder_path,
+            generation,
+            &ScanItem::Valid(crate::import::folder_scanner::FolderCandidate {
+                path: folder.clone(),
+                file_root: folder.clone(),
+                name: "Candidate".to_string(),
+                files,
+                watched_folder_path: watched_folder_path.clone(),
+                scope: crate::import::ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                display_path: "Candidate".to_string(),
+                resolved_boundaries: Vec::new(),
+                combine_ancestor_key: None,
+            }),
         )
+        .await
         .unwrap()
-        .content_hash();
+        .expect("the stored scan generation is current");
+    service
+        .library_manager
+        .finish_folder_scan(&watched_folder_path, generation, None)
+        .await
+        .unwrap();
+    let audio_path = folder.join("01.flac");
+    crate::audio_codec::forget_probe_for(&audio_path);
+    let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
 
     let result = service
         .prepare_and_run_folder_import(
@@ -165,6 +222,11 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     assert!(
         matches!(&err, crate::import::ImportError::CoverArt { detail } if detail.contains("Selected cover cover.bmp not found")),
         "got: {err}"
+    );
+    assert_eq!(
+        crate::audio_codec::probe_opens_for(&audio_path),
+        opens_before,
+        "import must reuse the stored scan facts without reopening the audio probe",
     );
 }
 
@@ -228,8 +290,15 @@ async fn unreadable_selected_cover_is_an_error() {
     let (service, tmp) = setup_import_service().await;
     let cover = tmp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
+    let content_digest = crate::util::fs::hash_file(&cover).unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
-    let discovered = vec![ScannedFile::new(cover.clone(), "cover.jpg".to_string(), 9)];
+    let discovered = vec![ScannedFile::new(
+        cover.clone(),
+        "cover.jpg".to_string(),
+        9,
+        1,
+        content_digest,
+    )];
 
     let result = service.pick_folder_cover(&discovered, Some("cover.jpg"));
 
@@ -381,13 +450,16 @@ async fn rescan_non_directory_root_keeps_previous_candidates() {
 }
 
 #[test]
-fn resolve_file_content_type_uses_probe_for_new_audio_formats() {
-    let fixture = |name: &str| {
-        Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("test-fixtures")
-            .join("audio-format")
-            .join(name)
-    };
+fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
+    let fixture_root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("test-fixtures")
+        .join("audio-format");
+    let files = crate::import::folder_scanner::collect_release_candidate_files_with_scope(
+        &fixture_root,
+        crate::import::ReleaseFileScope::Recursive,
+        &crate::import::folder_scanner::StoredCandidateEdits::none(),
+    )
+    .expect("scan audio-format fixtures");
     for (name, expected) in [
         (
             "placeholder-pcm.wav",
@@ -418,8 +490,12 @@ fn resolve_file_content_type_uses_probe_for_new_audio_formats() {
             crate::util::content_type::ContentType::Dsd,
         ),
     ] {
+        let file = files
+            .release_files()
+            .find(|file| file.relative_path == name)
+            .expect("fixture is present in the scan");
         assert_eq!(
-            resolve_file_content_type(&fixture(name)).unwrap(),
+            resolve_file_content_type(file).unwrap(),
             expected,
             "{name}"
         );

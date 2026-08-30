@@ -182,7 +182,6 @@ fn content_hash_is_location_independent_and_size_sensitive() {
             audio_entry(&format!("{root}/01.flac"), "01.flac", 1000),
             audio_entry(&format!("{root}/02.flac"), "02.flac", second_size),
         ],
-        format_label: "FLAC".to_string(),
     };
 
     // The same relative structure under two different parent folders hashes
@@ -200,7 +199,13 @@ fn content_hash_is_location_independent_and_size_sensitive() {
 fn content_hash_is_independent_of_discovery_order() {
     let entry = |name: &str, size: u64, role: FileRole| CandidateFile {
         proposed_audio: matches!(role, FileRole::Audio),
-        file: ScannedFile::new(PathBuf::from(name), name.to_string(), size),
+        file: ScannedFile::new(
+            PathBuf::from(name),
+            name.to_string(),
+            size,
+            1,
+            format!("{size:064x}"),
+        ),
         role,
     };
     let forward = CategorizedFiles {
@@ -210,7 +215,6 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("notes.txt", 4, FileRole::Document),
         ],
-        format_label: "FLAC".to_string(),
     };
     let shuffled = CategorizedFiles {
         files: vec![
@@ -219,7 +223,6 @@ fn content_hash_is_independent_of_discovery_order() {
             entry("cover.jpg", 3, FileRole::Artwork),
             entry("01.flac", 1, FileRole::Audio),
         ],
-        format_label: "FLAC".to_string(),
     };
     assert_eq!(forward.content_hash(), shuffled.content_hash());
 }
@@ -360,10 +363,10 @@ fn cue_with_unprobeable_audio_is_invalid_and_siblings_still_scan() {
 /// A CUE paired with an audio file whose codec can't back single-file CUE
 /// playback (MP3, Vorbis) costs the sheet its binding — bae can't carve tracks
 /// out of that container — but the folder still imports: the audio keeps its
-/// role and becomes one track, labelled by its own format.
+/// role and becomes one track with its own source-audio descriptor.
 #[test]
 fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
-    for (folder, audio_name, fixture, codec, label) in [
+    for (folder, audio_name, fixture, codec, source_codec) in [
         (
             "MP3 Album",
             "album.mp3",
@@ -376,7 +379,7 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
             "album.ogg",
             "placeholder-vorbis.ogg",
             "Vorbis",
-            "OGG",
+            "Vorbis",
         ),
     ] {
         let temp_dir = tempfile::tempdir().unwrap();
@@ -418,27 +421,28 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
             "{folder}: the audio keeps its role",
         );
         assert_eq!(files.track_count(), 1, "{folder}: it imports as one track");
-        assert_eq!(
-            files.format_label, label,
-            "{folder}: labelled by the file's own format",
+        assert_uniform_source_audio(
+            files,
+            crate::album_detail::SourceAudioLayout::File,
+            source_codec,
         );
     }
 }
 
-/// A CUE paired with a codec that CAN back single-file CUE playback yields a
-/// valid candidate labeled `CUE+<codec>`. PCM, WavPack, and DSD are otherwise
-/// untested positive arms of the codec-label match.
+/// A CUE paired with a codec that can back single-file CUE playback yields a
+/// valid candidate with a CUE-backed descriptor. PCM, WavPack, and DSD are
+/// otherwise untested positive arms of the codec match.
 #[test]
-fn cue_with_supported_codec_yields_valid_candidate_labeled() {
-    for (folder, audio_name, fixture, label) in [
-        ("PCM Album", "album.wav", "placeholder-pcm.wav", "CUE+PCM"),
+fn cue_with_supported_codec_yields_valid_source_audio() {
+    for (folder, audio_name, fixture, codec) in [
+        ("PCM Album", "album.wav", "placeholder-pcm.wav", "PCM"),
         (
             "WavPack Album",
             "album.wv",
             "placeholder-wavpack.wv",
-            "CUE+WavPack",
+            "WavPack",
         ),
-        ("DSD Album", "album.dsf", "placeholder-dsd.dsf", "CUE+DSD"),
+        ("DSD Album", "album.dsf", "placeholder-dsd.dsf", "DSD"),
     ] {
         let temp_dir = tempfile::tempdir().unwrap();
         let root = temp_dir.path().join(folder);
@@ -452,9 +456,10 @@ fn cue_with_supported_codec_yields_valid_candidate_labeled() {
 
         let candidates = scan_valid(root);
         assert_eq!(candidates.len(), 1, "{folder}: one valid candidate");
-        assert_eq!(
-            candidates[0].files.format_label, label,
-            "{folder}: CUE+<codec> label",
+        assert_uniform_source_audio(
+            &candidates[0].files,
+            crate::album_detail::SourceAudioLayout::Cue,
+            codec,
         );
     }
 }
@@ -672,10 +677,10 @@ fn per_track_flacs_with_missing_cue_audio_still_import() {
     }
 }
 
-/// A CUE paired with an `.m4a` file produces a `CUE+ALAC` format label
-/// because FFmpeg probes the actual codec instead of trusting the extension.
+/// A CUE paired with an `.m4a` file records a CUE-backed ALAC descriptor
+/// because the scan probes the actual codec instead of trusting the extension.
 #[test]
-fn test_collect_release_candidate_files_cue_alac_format_label() {
+fn test_collect_release_candidate_files_cue_alac_source_audio() {
     let temp_dir = tempfile::tempdir().unwrap();
     let root = temp_dir.path();
 
@@ -697,7 +702,7 @@ fn test_collect_release_candidate_files_cue_alac_format_label() {
     )
     .expect("scan should succeed");
 
-    assert_eq!(files.format_label, "CUE+ALAC");
+    assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "ALAC");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     assert_eq!(bound[0].sheet.tracks.len(), 8);
@@ -855,19 +860,6 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
     assert_eq!(reopened.track_count(), 2);
 }
 
-#[test]
-fn test_cue_pair_codec_label_covers_supported_extensions() {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let label = |relative: &str| match cue_pair_codec_label(&manifest.join(relative)).unwrap() {
-        CueCodecLabel::Supported(label) => label,
-        CueCodecLabel::Unsupported(codec) => panic!("expected supported codec, got {codec}"),
-        CueCodecLabel::Unprobeable => panic!("expected supported codec, got unprobeable audio"),
-    };
-    assert_eq!(label("tests/fixtures/flac/01 Test Track 1.flac"), "FLAC");
-    assert_eq!(label("tests/fixtures/cue_ape/Test Album.ape"), "APE");
-    assert_eq!(label("test-fixtures/alac/cue-alac.m4a"), "ALAC");
-}
-
 /// A CUE+APE pair must report the parsed TRACK count from the CUE sheet,
 /// not the number of audio files on disk (which for a single-file CUE+APE
 /// release is 1).
@@ -894,7 +886,7 @@ fn test_collect_release_candidate_files_cue_ape_track_count() {
     )
     .expect("scan should succeed");
 
-    assert_eq!(files.format_label, "CUE+APE");
+    assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "APE");
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
     let track_count = bound[0].sheet.tracks.len();

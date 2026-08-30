@@ -12,10 +12,6 @@ struct ImportMappingSourceCell: View {
     /// Whether the folder and the release disagree about how long this row
     /// runs, which is what marks a sheet entry's own length.
     let lengthsDiverge: Bool
-    /// Whether this row's audio has not been read yet. Its length is the one
-    /// thing on the pane that is still being fetched, so it is the one place a
-    /// spinner belongs.
-    var isMeasuring: Bool = false
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
@@ -62,15 +58,14 @@ struct ImportMappingSourceCell: View {
                 // A squeezed column must truncate the name, never wrap the
                 // size mid-digit.
                 .fixedSize()
+            Text(file.audioFormat?.text ?? "")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()
                     .help(ImportEvidence.hoverText(badge.evidence))
-            }
-            if isMeasuring {
-                ProgressView()
-                    .controlSize(.mini)
-                    .help(String(localized: "Reading how long this runs"))
             }
             Spacer(minLength: 0)
         }
@@ -117,21 +112,18 @@ struct ImportMappingSourceCell: View {
                 .font(.system(size: 12))
                 .lineLimit(1)
                 .truncationMode(.tail)
-            if isMeasuring {
-                ProgressView()
-                    .controlSize(.mini)
-                    .help(String(localized: "Reading how long this runs"))
-            }
-            else {
-                Text(importDurationText(entry.durationMs))
-                    .font(.caption2)
-                    .monospacedDigit()
-                    .fixedSize()
-                    .foregroundStyle(
-                        lengthsDiverge
-                            ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary)
-                    )
-            }
+            Text(entry.audioFormat.text)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+            Text(importDurationText(entry.durationMs))
+                .font(.caption2)
+                .monospacedDigit()
+                .fixedSize()
+                .foregroundStyle(
+                    lengthsDiverge
+                        ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary)
+                )
             Spacer(minLength: 0)
         }
     }

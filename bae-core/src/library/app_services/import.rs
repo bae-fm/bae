@@ -40,7 +40,6 @@ impl AppServices {
     delegate_async!(import, import_set_candidate_track_edit => set_candidate_track_edit(candidate_key: &str, track: crate::import::RawTrackEdit) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_set_candidate_track_artists => set_candidate_track_artists(candidate_key: &str, track_ids: Vec<String>, assignments: crate::import::TrackArtistAssignments) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_drop_candidate_track => drop_candidate_track(candidate_key: &str, track_id: String) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_probe_candidate_durations => probe_candidate_durations(candidate_key: &str, units: Vec<crate::import::AudioFile>) -> Result<(), crate::import::ImportError>);
     delegate_sync!(identify, identify_new_run => new_run() -> crate::identify::IdentifyRunId);
     delegate_sync!(identify, identify_start => start(run: crate::identify::IdentifyRunId, key: String, priority: crate::util::rate_limiter::CallPriority) -> ());
     delegate_sync!(identify, identify_cancel => cancel(key: &str) -> ());
@@ -225,10 +224,6 @@ impl AppServices {
             let initial = initial_runtime.get(&key);
             let mut facts = initial.map(TriageRuntimeFacts::of).unwrap_or_default();
             let mut projection: Option<ImportCandidateDetailProjection> = None;
-            // The units this pane has already asked to be measured. The query
-            // cannot open a file, so a projection that shows unmeasured rows
-            // asks once and redraws when the write lands.
-            let mut probing: Vec<crate::import::AudioFile> = Vec::new();
             let deliver = |projection: &Option<ImportCandidateDetailProjection>,
                            facts: &TriageRuntimeFacts| {
                 projection
@@ -240,25 +235,6 @@ impl AppServices {
                     value = query.next() => match value {
                         Ok(value) => {
                             projection = value;
-                            if let Some(unprobed) = projection
-                                .as_ref()
-                                .map(|projection| &projection.unprobed)
-                                .filter(|unprobed| !unprobed.is_empty() && **unprobed != probing)
-                            {
-                                probing = unprobed.clone();
-                                let import = import.clone();
-                                let key = key.clone();
-                                let units = probing.clone();
-                                tokio::spawn(async move {
-                                    if let Err(error) =
-                                        import.probe_candidate_durations(&key, units).await
-                                    {
-                                        tracing::warn!(
-                                            "could not measure {key}'s audio: {error}"
-                                        );
-                                    }
-                                });
-                            }
                             if tx
                                 .send(Ok(deliver(&projection, &facts)))
                                 .is_err()

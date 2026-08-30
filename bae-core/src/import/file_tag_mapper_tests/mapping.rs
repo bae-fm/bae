@@ -39,11 +39,17 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
     let path = PathBuf::from("/source-does-not-exist/01.flac");
     let files = CategorizedFiles {
         files: vec![CandidateFile {
-            file: ScannedFile::new(path, "01.flac".to_string(), 123),
+            file: ScannedFile::new(
+                path,
+                "01.flac".to_string(),
+                123,
+                1,
+                "0".repeat(64),
+            )
+            .with_test_flac_audio(),
             role: FileRole::Audio,
             proposed_audio: true,
         }],
-        format_label: "FLAC".to_string(),
     };
     let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
         scan_generation: 7,
@@ -54,7 +60,6 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
                 size: 123,
                 modified_at_ns: 456,
             },
-            content_type: Some(ContentType::Flac),
             title: Some("Track Alpha".to_string()),
             track_artist: Some("Artist Alpha".to_string()),
             album_title: Some("Album Alpha".to_string()),
@@ -83,7 +88,7 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
 
     assert_eq!(parsed.album.title, "Album Alpha");
     assert_eq!(parsed.tracks[0].title, "Track Alpha");
-    assert_eq!(parsed.release.pressing.format.as_deref(), Some("FLAC"));
+    assert_eq!(parsed.release.pressing.format, None);
 }
 
 #[test]
@@ -117,11 +122,7 @@ fn cue_sheet_seeds_one_track_per_cue_entry_not_per_image_file() {
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("cue");
-    // Nonexistent audio path: the codec probe yields None (fine — the
-    // seed still carries every CUE track); the point is track count.
-    let audio = Path::new("/nonexistent/image.flac");
-    let parsed =
-        map_cue_sheets_to_db(&[&sheet], &[audio], Some("Folder Name"), &clock, &ids).unwrap();
+    let parsed = map_cue_sheets_to_db(&[&sheet], Some("Folder Name"), &clock, &ids).unwrap();
 
     // The single-file image is NOT collapsed to one track: one DbTrack per
     // CUE TRACK entry, in order, carrying the CUE's own titles.
@@ -190,11 +191,8 @@ fn cue_multi_sheet_assigns_side_per_disc() {
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("cue");
-    let a1 = Path::new("/nonexistent/disc1.flac");
-    let a2 = Path::new("/nonexistent/disc2.flac");
-
     let parsed =
-        map_cue_sheets_to_db(&[&disc1, &disc2], &[a1, a2], Some("Folder"), &clock, &ids).unwrap();
+        map_cue_sheets_to_db(&[&disc1, &disc2], Some("Folder"), &clock, &ids).unwrap();
 
     assert_eq!(parsed.tracks.len(), 4);
     assert_eq!(parsed.tracks[0].side, 1);
@@ -216,7 +214,7 @@ fn cue_empty_sheets_returns_error() {
             .with_timezone(&chrono::Utc),
     );
     let ids = SequentialIdProvider::new("cue");
-    let err = map_cue_sheets_to_db(&[], &[], Some("Folder"), &clock, &ids)
+    let err = map_cue_sheets_to_db(&[], Some("Folder"), &clock, &ids)
         .expect_err("expected empty sheets to error");
     assert!(
         matches!(&err, ImportError::FileTags { detail } if detail.contains("at least one sheet")),
@@ -279,8 +277,8 @@ fn copy_and_tag(
     dest
 }
 
-/// FLAC + Vorbis comments: titles, artist, album, year, track numbers
-/// land on the tracks. Format is "FLAC". No identity rows.
+/// FLAC + Vorbis comments: titles, artist, album, year, and track numbers
+/// land on the tracks. The source codec is not release media. No identity rows.
 #[test]
 fn flac_with_vorbis_comments_basic() {
     let temp = TempDir::new().unwrap();
@@ -319,7 +317,7 @@ fn flac_with_vorbis_comments_basic() {
     assert_eq!(parsed.album.title, "Album Title");
     assert_eq!(parsed.album.year, Some(1999));
     assert_eq!(parsed.release.pressing.year, Some(1999));
-    assert_eq!(parsed.release.pressing.format.as_deref(), Some("FLAC"));
+    assert_eq!(parsed.release.pressing.format, None);
     assert_eq!(
         parsed.release.metadata_provenance,
         Some(crate::import::MetadataProvenance::FileTags)

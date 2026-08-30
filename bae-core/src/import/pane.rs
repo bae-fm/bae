@@ -13,7 +13,7 @@ use crate::import::edits::{apply_track_edits, CandidateEditOverlay, CandidateTra
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{mapping_table, MappingTable, PickedTracklist, TracklistSource};
 use crate::import::payloads::ReleasePayloads;
-use crate::import::probe::ProbedDurations;
+use crate::import::probe::SourceDurations;
 use crate::import::search::ImportSearchReleaseDetail;
 use crate::import::track_slots::{slot_table, SourceTrack};
 use crate::import::types::{RawReleaseEdit, ReleaseUserEdit};
@@ -83,7 +83,7 @@ pub(crate) fn candidate_draft_from_source(pane: PanePick) -> RawReleaseEdit {
 pub(crate) fn draft_pane(
     release: Option<ImportSearchReleaseDetail>,
     files: &CategorizedFiles,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
     draft: RawReleaseEdit,
     mapping_edits: &[crate::import::edits::CandidateTrackMappingEdit],
     provenance: Option<&crate::import::MetadataProvenance>,
@@ -133,7 +133,7 @@ pub(crate) fn draft_pane(
 pub fn release_pane(
     payloads: &ReleasePayloads,
     files: &CategorizedFiles,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
     overlay: &CandidateEditOverlay,
     track_edits: &[CandidateTrackEdit],
     clock: &dyn coven::Clock,
@@ -163,7 +163,7 @@ pub(crate) fn file_tags_pane(
     files: &CategorizedFiles,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
     folder_name: Option<&str>,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
     overlay: &CandidateEditOverlay,
     track_edits: &[CandidateTrackEdit],
     clock: &dyn coven::Clock,
@@ -208,7 +208,7 @@ pub(crate) fn file_tags_pane(
 /// The form begins blank while the mapping retains only physical track slots.
 pub fn manual_pane(
     files: &CategorizedFiles,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
     overlay: &CandidateEditOverlay,
     track_edits: &[CandidateTrackEdit],
 ) -> PanePick {
@@ -244,7 +244,7 @@ pub fn manual_pane(
 
 /// The table for a folder nobody has picked a release for: every source unit
 /// the folder offers, with what it becomes left open.
-pub fn unpicked_mapping(files: &CategorizedFiles, durations: &ProbedDurations) -> MappingTable {
+pub fn unpicked_mapping(files: &CategorizedFiles, durations: &SourceDurations) -> MappingTable {
     mapping_table(files, None, durations)
 }
 
@@ -292,7 +292,7 @@ fn source_tracks_of(
 
 fn table_for(
     files: &CategorizedFiles,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
     source_tracks: &[SourceTrack],
     track_id_prefix: &str,
     source: TracklistSource,

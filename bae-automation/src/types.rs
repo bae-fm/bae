@@ -55,7 +55,7 @@ pub enum AutomationCandidate {
         #[serde(flatten)]
         common: AutomationCandidateCommon,
         track_count: u32,
-        format_label: String,
+        source_audio: Option<AutomationSourceAudioSummary>,
         content_hash: String,
         /// What the identify and import pipelines have recorded against this
         /// candidate. Every scanned folder carries one — idle until something
@@ -80,6 +80,30 @@ pub enum AutomationCandidate {
         #[serde(flatten)]
         common: AutomationCandidateCommon,
         invalid_reason: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationSourceAudioLayout {
+    File,
+    Cue,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationSourceAudioDescriptor {
+    pub layout: AutomationSourceAudioLayout,
+    pub format: AutomationAudioFormat,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationSourceAudioSummary {
+    Uniform {
+        descriptor: AutomationSourceAudioDescriptor,
+    },
+    Mixed {
+        descriptors: Vec<AutomationSourceAudioDescriptor>,
     },
 }
 

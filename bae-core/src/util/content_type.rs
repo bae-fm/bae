@@ -140,6 +140,25 @@ impl ContentType {
         ) || matches!(self, Self::Other(s) if s.starts_with("audio/"))
     }
 
+    /// Whether bae has a concrete decoder-backed audio variant for this type.
+    /// An arbitrary stored `audio/*` MIME remains audio for display and
+    /// diagnostics, but it is not an importable source.
+    pub fn is_supported_audio(&self) -> bool {
+        matches!(
+            self,
+            Self::Flac
+                | Self::Mp3
+                | Self::Ape
+                | Self::Alac
+                | Self::Aac
+                | Self::Pcm
+                | Self::Opus
+                | Self::Vorbis
+                | Self::WavPack
+                | Self::Dsd
+        )
+    }
+
     pub fn is_image(&self) -> bool {
         matches!(
             self,

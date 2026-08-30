@@ -197,7 +197,8 @@ impl AppHandle {
     }
 
     /// Filesystem path for the user's own external file behind a library file
-    /// (the DiscID re-read of a rip's LOG/CUE/audio). Returns `Ok(None)` if the
+    /// (including the DiscID re-read of a rip's LOG/CUE evidence; retained
+    /// source-audio facts supply its duration). Returns `Ok(None)` if the
     /// file has no readable local location (e.g. cloud-only and not cached).
     /// Returns `Err` on DB failures so callers can distinguish a missing file
     /// from a broken library state. NOT a substitute for a coven byte read.

@@ -78,7 +78,7 @@ pub struct Signals {
     /// mapping table reads them back instead of opening the folder again.
     ///
     /// Empty for a re-identified library release: there is no folder to walk.
-    pub durations: crate::import::probe::ProbedDurations,
+    pub durations: crate::import::probe::SourceDurations,
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

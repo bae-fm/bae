@@ -297,6 +297,71 @@ async fn find_release_detail_returns_some_for_known_id() {
 }
 
 #[tokio::test]
+async fn release_source_audio_summary_uses_every_file_without_track_formats() {
+    let (manager, _temp_dir) = setup_test_manager().await;
+    let album = create_test_album();
+    let release = create_test_release(&album.id);
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+
+    let source = |content_type, layout, codec: &str, bitrate_kbps: Option<i64>| {
+        crate::album_detail::SourceAudioFile {
+            layout: Some(layout),
+            content_type,
+            duration_ms: 90_000,
+            format: crate::album_detail::AudioFormat {
+                codec: codec.to_string(),
+                sample_rate_hz: 44_100,
+                bits_per_sample: bitrate_kbps.is_none().then_some(16),
+                bitrate_kbps,
+                channels: 2,
+            },
+        }
+    };
+    let flac = source(
+        ContentType::Flac,
+        crate::album_detail::SourceAudioLayout::Cue,
+        "FLAC",
+        None,
+    );
+    let mp3 = source(
+        ContentType::Mp3,
+        crate::album_detail::SourceAudioLayout::File,
+        "MP3",
+        Some(320),
+    );
+    for (name, facts) in [("01-disc.flac", flac.clone()), ("02-bonus.mp3", mp3.clone())] {
+        let mut file = DbFile::new(
+            &release.id,
+            name,
+            1000,
+            facts.content_type.clone(),
+            Uuid::new_v4().to_string(),
+            Utc::now(),
+            crate::util::fs::hash_bytes(name.as_bytes()),
+        );
+        file.source_audio = Some(facts);
+        manager.add_file(&file).await.unwrap();
+    }
+
+    let detail = manager
+        .find_release_detail(&release.id)
+        .await
+        .unwrap()
+        .expect("detail present");
+    assert!(detail.tracks.is_empty());
+    assert_eq!(
+        detail.source_audio,
+        Some(crate::album_detail::SourceAudioSummary::Mixed {
+            descriptors: vec![
+                flac.descriptor().unwrap(),
+                mp3.descriptor().unwrap(),
+            ],
+        })
+    );
+}
+
+#[tokio::test]
 async fn find_release_detail_surfaces_seeded_tracks() {
     let (manager, _temp_dir) = setup_test_manager().await;
     let album = create_test_album();

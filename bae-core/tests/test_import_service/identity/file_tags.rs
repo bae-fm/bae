@@ -65,7 +65,7 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
         Some(MetadataProvenance::FileTags),
     );
     assert_eq!(release.pressing.year, Some(2003));
-    assert_eq!(release.pressing.format.as_deref(), Some("FLAC"));
+    assert_eq!(release.pressing.format, None);
 
     let identities = f.db.get_release_identities(&release_id).await.unwrap();
     assert!(
@@ -112,7 +112,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
         vec![file_tag_artist_assignment("Test Artist")]
     );
     assert_eq!(preview.pressing.year, None);
-    assert_eq!(preview.pressing.format.as_deref(), Some("FLAC"));
+    assert_eq!(preview.pressing.format, None);
 
     let preview_tracks: Vec<(String, TrackArtistAssignments)> = preview
         .tracks
@@ -429,7 +429,7 @@ async fn file_tags_import_with_user_edit_overlay() {
         album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
         pressing: PressingEdit {
             year: Some(2010),
-            format: Some("FLAC".to_string()),
+            format: Some("CD".to_string()),
             label: Some("Edited Label".to_string()),
             catalog_number: Some("EDIT-1".to_string()),
             country: Some("JP".to_string()),
@@ -465,7 +465,7 @@ async fn file_tags_import_with_user_edit_overlay() {
 
     let release = f.db.find_release_by_id(&release_id).await.unwrap().unwrap();
     assert_eq!(release.pressing.year, Some(2010));
-    assert_eq!(release.pressing.format.as_deref(), Some("FLAC"));
+    assert_eq!(release.pressing.format.as_deref(), Some("CD"));
     assert_eq!(release.pressing.label.as_deref(), Some("Edited Label"));
     assert_eq!(release.pressing.catalog_number.as_deref(), Some("EDIT-1"));
     assert_eq!(release.pressing.country.as_deref(), Some("JP"));

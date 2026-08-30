@@ -87,18 +87,15 @@ pub(crate) fn replace_candidate_file_tag_snapshot(
         sql.execute(
             "INSERT INTO scan_candidate_file_tag \
                  (watched_folder_path, candidate_path, relative_path, file_size, \
-                  modified_at_ns, content_type, title, track_artist, album_title, \
+                  modified_at_ns, title, track_artist, album_title, \
                   album_artist, year, track_number, disc_number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             params![
                 watched_folder_path,
                 candidate_path,
                 fact.observation.relative_path,
                 to_i64(fact.observation.size, "a file-tag observation's size")?,
                 fact.observation.modified_at_ns,
-                fact.content_type
-                    .as_ref()
-                    .map(|content_type| content_type.as_str()),
                 fact.title,
                 fact.track_artist,
                 fact.album_title,
@@ -192,9 +189,9 @@ fn insert_candidate(
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, format_label, initial_metadata_source, \
+              scope, content_hash, file_edit_revision, initial_metadata_source, \
               combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)",
         params![
             watched_folder_path,
             path,
@@ -209,7 +206,6 @@ fn insert_candidate(
                 candidate.file_edit_revision,
                 "a candidate's file edit revision"
             )?,
-            candidate.files.format_label,
             initial_metadata_source.as_str(),
             candidate
                 .combine_ancestor_key
@@ -269,9 +265,9 @@ fn insert_invalid(
     sql.execute(
         "INSERT INTO scan_candidate \
              (watched_folder_path, path, generation, kind, name, display_path, file_root, \
-              scope, content_hash, file_edit_revision, format_label, initial_metadata_source, \
+              scope, content_hash, file_edit_revision, initial_metadata_source, \
               combine_ancestor_relative_path, invalid_reason, invalid_reason_path) \
-         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, NULL, NULL, ?, ?)",
+         VALUES (?, ?, ?, 'invalid', ?, ?, NULL, NULL, NULL, 0, NULL, NULL, ?, ?)",
         params![
             watched_folder_path,
             path,
@@ -316,9 +312,11 @@ fn insert_file(
     sql.execute(
         "INSERT INTO scan_candidate_file \
              (watched_folder_path, candidate_path, relative_path, position, absolute_path, \
-              size, file_name, dir_prefix, proposed_audio, role, sheet_binding, \
+              size, modified_at_ns, content_digest, audio_content_type, audio_duration_ms, \
+              audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
+              file_name, dir_prefix, proposed_audio, role, sheet_binding, \
               sheet_binding_file_id, sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             watched_folder_path,
             candidate_path,
@@ -326,6 +324,33 @@ fn insert_file(
             to_i64(position as u64, "a candidate file's position")?,
             file.file.path.to_string_lossy(),
             to_i64(file.file.size, "a file's size")?,
+            file.file.modified_at_ns,
+            file.file.content_digest,
+            file.file
+                .source_audio
+                .as_ref()
+                .map(|audio| audio.content_type.as_str()),
+            file.file
+                .source_audio
+                .as_ref()
+                .map(|audio| to_i64(audio.duration_ms, "an audio file's duration"))
+                .transpose()?,
+            file.file
+                .source_audio
+                .as_ref()
+                .map(|audio| audio.format.sample_rate_hz),
+            file.file
+                .source_audio
+                .as_ref()
+                .and_then(|audio| audio.format.bits_per_sample),
+            file.file
+                .source_audio
+                .as_ref()
+                .and_then(|audio| audio.format.bitrate_kbps),
+            file.file
+                .source_audio
+                .as_ref()
+                .map(|audio| audio.format.channels),
             file.file.file_name,
             file.file.dir_prefix,
             file.proposed_audio,

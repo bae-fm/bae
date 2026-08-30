@@ -158,8 +158,9 @@ impl ImportService {
         }
     }
 
-    /// Prepare and run a folder import by dispatching on its stored metadata
-    /// seed, then walk the folder and run the shared mapping and write path.
+    /// Prepare and run a folder import from its stored candidate and metadata
+    /// seed after validating that every physical file still has the scanned
+    /// identity, then run the shared mapping and write path.
     pub(super) async fn prepare_and_run_folder_import(
         &self,
         import_id: String,
@@ -194,28 +195,21 @@ impl ImportService {
             },
         );
 
-        // Re-walk the folder. Scan and commit are separated by user interaction,
-        // and the user can move, rename, or reorganize in that window — so the
-        // worker treats the disk at commit time as the source of truth. Their
-        // sheet bindings come with it: what the folder is includes what they
-        // said it is, and a commit that re-derived without them would import
-        // the shape they corrected.
-        let folder_buf = folder.clone();
-        let stored_edits = library_manager.load_stored_candidate_edits().await?;
-        let current_edit_revision = stored_edits.revision_for_hash(&expected_content_hash);
-        let categorized = tokio::task::spawn_blocking(move || {
-            crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-                &folder_buf,
-                scope,
-                &stored_edits,
-            )
-        })
-        .await
-        .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("Folder scan task failed: {e}"),
-        })??;
-        if categorized.content_hash() != expected_content_hash
-            || current_edit_revision != expected_edit_revision
+        let stored_candidate = match library_manager
+            .load_folder_scan_item(&candidate_key)
+            .await?
+        {
+            Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => candidate,
+            _ => {
+                return Err(crate::import::ImportError::Internal {
+                    detail: format!("{candidate_key} is no longer a valid stored import candidate"),
+                })
+            }
+        };
+        if stored_candidate.path != folder
+            || stored_candidate.scope != scope
+            || stored_candidate.files.content_hash() != expected_content_hash
+            || stored_candidate.file_edit_revision != expected_edit_revision
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
@@ -223,6 +217,19 @@ impl ImportService {
                 ),
             });
         }
+        let identity_files = stored_candidate
+            .files
+            .release_files()
+            .cloned()
+            .collect::<Vec<_>>();
+        tokio::task::spawn_blocking(move || {
+            super::file_identity::validate_scanned_file_identities(&identity_files)
+        })
+        .await
+        .map_err(|error| crate::import::ImportError::Internal {
+            detail: format!("file identity validation task failed: {error}"),
+        })??;
+        let categorized = stored_candidate.files;
 
         let file_tag_snapshot = match (&metadata_provenance, &expectation) {
             (
@@ -629,6 +636,35 @@ impl ImportService {
         let files_now = library_manager.now();
         let mut db_files: Vec<DbFile> = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
+        let mut source_audio_layouts = HashMap::new();
+        for track_file in tracks_to_files {
+            let (file_paths, layout): (Vec<&Path>, _) = match track_file {
+                TrackFile::Standalone { file_path, .. } => (
+                    vec![file_path.as_path()],
+                    crate::album_detail::SourceAudioLayout::File,
+                ),
+                TrackFile::CueBacked { cue_pair, .. } => (
+                    cue_pair
+                        .audio_files
+                        .iter()
+                        .map(|audio| audio.path.as_path())
+                        .collect(),
+                    crate::album_detail::SourceAudioLayout::Cue,
+                ),
+            };
+            for file_path in file_paths {
+                if let Some(existing) = source_audio_layouts.insert(file_path, layout) {
+                    if existing != layout {
+                        return Err(crate::import::ImportError::Internal {
+                            detail: format!(
+                                "{} is assigned both whole-file and CUE source layouts",
+                                file_path.display()
+                            ),
+                        });
+                    }
+                }
+            }
+        }
         let file_to_tracks: HashMap<PathBuf, Vec<String>> = {
             let mut map: HashMap<PathBuf, Vec<String>> = HashMap::new();
             for tf in tracks_to_files {
@@ -646,24 +682,29 @@ impl ImportService {
             import_id,
         );
         for (idx, file) in discovered_files.iter().enumerate() {
-            // coven verifies this blob's bytes against this hash on every
-            // cloud fetch — required so a later make-Remote + pin round trip
-            // (or another device's download) can ever read it back. See
-            // `crate::util::fs::hash_file`.
-            let content_hash = crate::util::fs::hash_file(&file.path).map_err(|e| {
-                crate::import::ImportError::UnusableFile {
-                    detail: format!("failed to hash {}: {e}", file.path.display()),
-                }
-            })?;
-            let db_file = DbFile::new(
+            // The identity validation above proved these are still the bytes
+            // the scan hashed. The same digest is the durable blob hash coven
+            // verifies on every cloud fetch.
+            let content_hash = file.content_digest.clone();
+            let mut db_file = DbFile::new(
                 &db_release.id,
                 &file.relative_path,
                 file.size as i64,
-                resolve_file_content_type(&file.path)?,
+                resolve_file_content_type(file)?,
                 library_manager.new_id(),
                 files_now,
                 content_hash,
             );
+            db_file.source_audio =
+                file.source_audio
+                    .as_ref()
+                    .map(|audio| crate::album_detail::SourceAudioFile {
+                        layout: source_audio_layouts.get(file.path.as_path()).copied(),
+                        format: audio.format.clone(),
+                        content_type: audio.content_type.clone(),
+                        duration_ms: i64::try_from(audio.duration_ms)
+                            .expect("scan audio duration fits SQLite's integer range"),
+                    });
             file_ids.insert(file.path.clone(), db_file.id.clone());
             db_files.push(db_file);
             if let Some(track_ids) = file_to_tracks.get(&file.path) {

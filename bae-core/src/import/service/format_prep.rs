@@ -1,8 +1,8 @@
-//! Probe-and-build the audio-format and content-type records for an import.
+//! Build the audio-format and content-type records for an import from scan facts.
 //!
 //! Resolves each discovered file's `ContentType`, derives per-track
 //! `DbAudioFormat` rows (CUE-backed tracks share their image's analysis;
-//! standalone files are probed), and computes CUE track byte windows.
+//! standalone files reuse their scan facts), and computes CUE track byte windows.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -18,22 +18,6 @@ use crate::util::content_type_hint::ContentTypeHint;
 
 use super::ImportService;
 
-fn admitted_audio_content_type(content_type: &ContentType) -> bool {
-    matches!(
-        content_type,
-        ContentType::Flac
-            | ContentType::Mp3
-            | ContentType::Ape
-            | ContentType::Alac
-            | ContentType::Aac
-            | ContentType::Pcm
-            | ContentType::Opus
-            | ContentType::Vorbis
-            | ContentType::WavPack
-            | ContentType::Dsd
-    )
-}
-
 fn ensure_probe_audio_format(
     path: &Path,
     probe: &crate::audio_codec::ProbeResult,
@@ -48,7 +32,7 @@ fn ensure_probe_audio_format(
             ),
         });
     }
-    if !admitted_audio_content_type(&probe.content_type) {
+    if !probe.content_type.is_supported_audio() {
         return Err(ImportError::UnusableFile {
             detail: format!(
                 "Unsupported audio codec {} in {}",
@@ -60,40 +44,32 @@ fn ensure_probe_audio_format(
     Ok(())
 }
 
-/// Probe a file's audio format and validate it's admissible, returning the
-/// probe. The typed `UnusableFile` failure names a non-UTF-8 path, an
-/// unprobeable file, or an unusable/unsupported codec.
-fn probe_and_validate_audio(path: &Path) -> Result<crate::audio_codec::ProbeResult, ImportError> {
-    let path_str = path.to_str().ok_or_else(|| ImportError::UnusableFile {
-        detail: format!("Invalid path: {}", path.display()),
-    })?;
-    let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
-        ImportError::UnusableFile {
-            detail: format!("Failed to probe audio file: {}", path.display()),
-        }
-    })?;
-    ensure_probe_audio_format(path, &probe)?;
-    Ok(probe)
-}
-
 /// The probe-verified `ContentType` for a discovered file.
 ///
-/// Audio files are probed: only the decoder knows which codec the container
-/// holds — a `.m4a` could be ALAC or AAC, and the extension can't say. Non-audio
+/// Audio files reuse the scan's probe facts: only the decoder knows which codec
+/// the container holds — a `.m4a` could be ALAC or AAC, and the extension can't say. Non-audio
 /// files take their `ContentType` from the extension hint, an honest mapping for
 /// images (an extension on image bytes does predict the codec), text, and PDF.
 /// Anything the hint can't classify becomes `OctetStream` and flows through the
 /// DB as-is — including a file with no extension at all, which a rip folder can
 /// legitimately hold (a `README`, a `.`-less checksum file) and which the
 /// release carries like any other file.
-pub(super) fn resolve_file_content_type(path: &Path) -> Result<ContentType, ImportError> {
+pub(super) fn resolve_file_content_type(
+    file: &crate::import::folder_scanner::ScannedFile,
+) -> Result<ContentType, ImportError> {
+    if let Some(audio) = &file.source_audio {
+        return Ok(audio.content_type.clone());
+    }
+    let path = &file.path;
     let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
         return Ok(ContentType::OctetStream);
     };
     let hint = ContentTypeHint::from_extension(ext);
 
     if hint.is_audio() {
-        return Ok(probe_and_validate_audio(path)?.content_type);
+        return Err(ImportError::UnusableFile {
+            detail: format!("{} has no scanned audio facts", path.display()),
+        });
     }
 
     Ok(match hint {
@@ -138,7 +114,7 @@ fn cue_file_probe<'a>(
         .find(|file| file.file_reference == file_reference)
         .map(|file| &file.probe)
         .ok_or_else(|| ImportError::Internal {
-            detail: format!("CUE references unprobed audio file: {file_reference}"),
+            detail: format!("CUE references audio without scan facts: {file_reference}"),
         })
 }
 
@@ -202,23 +178,21 @@ fn cue_backed_audio_format(
     .with_generated_pregap_samples(generated_pregap_samples))
 }
 
-/// Build an audio format for a per-track file (FLAC, MP3, APE, etc.) via FFmpeg probe.
-fn standalone_probed_audio_format(
+/// Build an audio format for a per-track file from the scan's authoritative facts.
+fn standalone_audio_format(
     db_track_id: &str,
-    file_path: &Path,
+    source_audio: &crate::import::folder_scanner::ScannedAudio,
     id: String,
     now: chrono::DateTime<chrono::Utc>,
 ) -> Result<crate::db::DbAudioFormat, ImportError> {
-    let probe = probe_and_validate_audio(file_path)?;
-
     // A per-track file is its own whole-file source; the sample window lives in
     // its `audio_format_segments` row.
     Ok(DbAudioFormat::new(
         db_track_id,
-        probe.content_type,
-        probe.sample_rate as i64,
-        probe.bits_per_sample.map(|b| b as i64),
-        probe.channels as i64,
+        source_audio.content_type.clone(),
+        source_audio.format.sample_rate_hz,
+        source_audio.format.bits_per_sample,
+        source_audio.format.channels,
         id,
         now,
     ))
@@ -402,8 +376,7 @@ impl ImportService {
         Ok(segments)
     }
 
-    /// Build audio format records for all tracks. CUE-backed tracks already hold
-    /// their shared analysis + index; standalone tracks are probed here.
+    /// Build audio format records for all tracks from the scan's stored facts.
     pub(super) fn build_audio_formats(
         tracks_to_files: &[TrackFile],
         file_ids: &HashMap<PathBuf, String>,
@@ -452,6 +425,7 @@ impl ImportService {
                 TrackFile::Standalone {
                     db_track,
                     file_path,
+                    source_audio,
                 } => {
                     let file_id = file_ids
                         .get(file_path)
@@ -459,7 +433,7 @@ impl ImportService {
                             detail: format!("No DbFile registered for track source {file_path:?}"),
                         })?;
                     let af =
-                        standalone_probed_audio_format(&db_track.id, file_path, ids.new_id(), now)?;
+                        standalone_audio_format(&db_track.id, source_audio, ids.new_id(), now)?;
                     let segment = Self::audio_segment(
                         &af.id,
                         0,
@@ -499,17 +473,41 @@ mod tests {
     use crate::import::types::{CueAnalyzedAudioFile, CueFlacAnalysis, TrackFile};
     use std::sync::Arc;
 
+    fn scanned_non_audio(path: &str) -> crate::import::folder_scanner::ScannedFile {
+        crate::import::folder_scanner::ScannedFile::new(
+            PathBuf::from(path),
+            Path::new(path)
+                .file_name()
+                .expect("test path has a file name")
+                .to_string_lossy()
+                .into_owned(),
+            1,
+            0,
+            "0".repeat(64),
+        )
+    }
+
+    fn scanned_flac() -> crate::import::folder_scanner::ScannedAudio {
+        crate::import::folder_scanner::ScannedAudio {
+            content_type: ContentType::Flac,
+            duration_ms: 1_000,
+            format: crate::album_detail::AudioFormat {
+                codec: "FLAC".to_string(),
+                sample_rate_hz: 44_100,
+                bits_per_sample: Some(16),
+                bitrate_kbps: None,
+                channels: 2,
+            },
+        }
+    }
+
     #[test]
     fn admitted_audio_content_type_gates_unlisted_codecs() {
         // Dispatch check: an admitted codec passes the gate.
-        assert!(admitted_audio_content_type(&ContentType::Flac));
+        assert!(ContentType::Flac.is_supported_audio());
         // The gate's job — reject anything not on the import allowlist.
-        assert!(!admitted_audio_content_type(&ContentType::Other(
-            "codec:AV_CODEC_ID_SPEEX".to_string()
-        )));
-        assert!(!admitted_audio_content_type(&ContentType::Other(
-            "audio/x-ms-wma".to_string()
-        )));
+        assert!(!ContentType::Other("codec:AV_CODEC_ID_SPEEX".to_string()).is_supported_audio());
+        assert!(!ContentType::Other("audio/x-ms-wma".to_string()).is_supported_audio());
     }
 
     #[test]
@@ -517,24 +515,24 @@ mod tests {
         // Non-audio files map straight from the extension hint — no probe, so
         // the paths need not exist.
         assert_eq!(
-            resolve_file_content_type(Path::new("/x/cover.jpg")).unwrap(),
+            resolve_file_content_type(&scanned_non_audio("/x/cover.jpg")).unwrap(),
             ContentType::Jpeg
         );
         assert_eq!(
-            resolve_file_content_type(Path::new("/x/back.png")).unwrap(),
+            resolve_file_content_type(&scanned_non_audio("/x/back.png")).unwrap(),
             ContentType::Png
         );
         assert_eq!(
-            resolve_file_content_type(Path::new("/x/notes.txt")).unwrap(),
+            resolve_file_content_type(&scanned_non_audio("/x/notes.txt")).unwrap(),
             ContentType::PlainText
         );
         assert_eq!(
-            resolve_file_content_type(Path::new("/x/booklet.pdf")).unwrap(),
+            resolve_file_content_type(&scanned_non_audio("/x/booklet.pdf")).unwrap(),
             ContentType::Pdf
         );
         // An extension the hint can't classify becomes opaque binary.
         assert_eq!(
-            resolve_file_content_type(Path::new("/x/data.bin")).unwrap(),
+            resolve_file_content_type(&scanned_non_audio("/x/data.bin")).unwrap(),
             ContentType::OctetStream
         );
     }
@@ -545,7 +543,7 @@ mod tests {
     #[test]
     fn resolve_file_content_type_without_an_extension_is_opaque_binary() {
         assert_eq!(
-            resolve_file_content_type(Path::new("/x/README")).unwrap(),
+            resolve_file_content_type(&scanned_non_audio("/x/README")).unwrap(),
             ContentType::OctetStream
         );
     }
@@ -603,7 +601,10 @@ FILE "Test Album.ape" WAVE
         .expect("write cue");
 
         let cue_sheet = crate::cue_flac::parse_cue_sheet(&cue_path).expect("parse cue");
-        let probe = crate::import::probe::analyze_cue_audio(&audio_path).expect("analyze ape");
+        let probe = crate::audio_codec::probe_audio_from_path(
+            audio_path.to_str().expect("fixture path is UTF-8"),
+        )
+        .expect("analyze ape");
         let cue_pair = Arc::new(CueFlacAnalysis {
             cue_sheet,
             audio_files: vec![CueAnalyzedAudioFile {
@@ -702,13 +703,12 @@ FILE "Test Album.ape" WAVE
         assert_eq!(main_segments[2].end_byte, None, "track 3 runs to EOF");
     }
 
-    /// The standalone (non-CUE) arm probes the file for its format and emits one
+    /// The standalone (non-CUE) arm reuses the scan's format and emits one
     /// whole-file `Main` segment: sample window open (`start_sample` 0,
     /// `end_sample` None) and no byte window, since a per-track file is its own
     /// source.
     #[test]
-    fn build_audio_formats_probes_standalone_track() {
-        crate::audio_codec::init();
+    fn build_audio_formats_uses_stored_standalone_facts() {
         let path = PathBuf::from(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/tests/fixtures/flac/01 Test Track 1.flac"
@@ -716,6 +716,7 @@ FILE "Test Album.ape" WAVE
         let track = TrackFile::Standalone {
             db_track: crate::db::DbTrack::new_test("release-id", "track-0", "Track Title", Some(1)),
             file_path: path.clone(),
+            source_audio: scanned_flac(),
         };
         let file_ids = HashMap::from([(path, "file-0".to_string())]);
         let ids = coven::SequentialIdProvider::new("af");

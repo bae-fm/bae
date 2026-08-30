@@ -2,7 +2,7 @@ use super::*;
 use crate::import::folder_scanner::{
     collect_release_candidate_files_with_scope, StoredCandidateEdits,
 };
-use crate::import::probe::{probe_durations, ProbedDurations};
+use crate::import::probe::{source_durations, SourceDurations};
 use crate::import::track_slots::{slot_table, SourceTrack};
 use crate::import::TrackUserEdit;
 use std::fs;
@@ -105,7 +105,7 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
     fs::write(tmp.path().join("rip.log"), b"log").expect("write log");
 
-    let table = mapping_table(&scan(tmp.path()), None, &ProbedDurations::default());
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
 
     assert!(table.reconciliation.is_none());
     assert_eq!(table.images.len(), 1);
@@ -122,7 +122,7 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     assert!(matches!(becomes(&table.rows[2])[0], MappingBecomes::Kept));
     assert_eq!(file_row(&table.rows[2]).name, "rip.log");
     // A row nothing has opened has no probed length to show.
-    assert_eq!(file_row(&table.rows[0]).probed_duration_ms, None);
+    assert_eq!(file_row(&table.rows[0]).duration_ms, None);
     assert_eq!(file_row(&table.rows[0]).role, MappingRole::Audio);
     assert_eq!(file_row(&table.rows[2]).role, MappingRole::Document);
 }
@@ -132,7 +132,7 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let mut tracks = source_tracks(1);
     tracks[0].duration_ms = None;
     let slots = slot_table(&tracks, &files, &durations);
@@ -159,7 +159,7 @@ fn a_track_awaiting_metadata_uses_its_stored_probe() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
 
     let table = mapping_table(&files, None, &durations);
 
@@ -183,7 +183,7 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
         fs::write(tmp.path().join("scans").join(name), fake_jpeg()).expect("write scan");
     }
 
-    let table = mapping_table(&scan(tmp.path()), None, &ProbedDurations::default());
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
 
     assert_eq!(table.images.len(), 5);
     assert_eq!(
@@ -225,7 +225,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     .expect("write cue");
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let slots = slot_table(&source_tracks(3), &files, &durations);
     let table = mapping_table(
         &files,
@@ -293,7 +293,7 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
     write_flac(&tmp.path().join("02.flac"));
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let slots = slot_table(&source_tracks(4), &files, &durations);
     let table = mapping_table(
         &files,
@@ -346,7 +346,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let slots = slot_table(&source_tracks(4), &files, &durations);
     let table = mapping_table(
         &files,
@@ -415,7 +415,7 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     )
     .expect("write cue");
 
-    let table = mapping_table(&scan(tmp.path()), None, &ProbedDurations::default());
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
     // The sheet is named where it sits on disk, after the loose audio that
     // sorts before it — a sheet that carves nothing occupies no run.
     let Some(MappingRow::Sheet { sheet, entries }) = table
@@ -445,7 +445,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let slots = slot_table(&source_tracks(2), &files, &durations);
     let table = mapping_table(
         &files,
@@ -484,7 +484,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let slots = slot_table(&source_tracks(3), &files, &durations);
     let table = mapping_table(
         &files,
@@ -523,7 +523,7 @@ fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
     write_flac(&tmp.path().join("02.flac"));
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let slots = slot_table(&source_tracks(2), &files, &durations);
     let table = mapping_table(
         &files,
@@ -558,7 +558,7 @@ fn projecting_the_table_opens_no_audio() {
     write_flac(&tmp.path().join("bonus.flac"));
 
     let files = scan(tmp.path());
-    let durations = probe_durations(&files);
+    let durations = source_durations(&files);
     let opens_after_probing: Vec<u64> = ["CDImage.flac", "bonus.flac"]
         .iter()
         .map(|name| crate::audio_codec::probe_opens_for(&tmp.path().join(name)))

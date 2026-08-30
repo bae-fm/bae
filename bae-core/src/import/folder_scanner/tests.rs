@@ -14,9 +14,35 @@ fn fake_flac() -> Vec<u8> {
 /// content-hash tests.
 fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
     CandidateFile {
-        file: ScannedFile::new(PathBuf::from(path), relative_path.to_string(), size),
+        file: ScannedFile::new(
+            PathBuf::from(path),
+            relative_path.to_string(),
+            size,
+            1,
+            format!("{size:064x}"),
+        )
+        .with_test_flac_audio(),
         role: FileRole::Audio,
         proposed_audio: true,
+    }
+}
+
+fn assert_uniform_source_audio(
+    files: &CategorizedFiles,
+    layout: crate::album_detail::SourceAudioLayout,
+    codec: &str,
+) {
+    let summary = files
+        .source_audio_summary()
+        .expect("candidate has source audio");
+    match summary {
+        crate::album_detail::SourceAudioSummary::Uniform { descriptor } => {
+            assert_eq!(descriptor.layout, layout);
+            assert_eq!(descriptor.format.codec, codec);
+        }
+        crate::album_detail::SourceAudioSummary::Mixed { descriptors } => {
+            panic!("expected uniform source audio, got {descriptors:?}")
+        }
     }
 }
 

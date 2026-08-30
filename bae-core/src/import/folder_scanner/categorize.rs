@@ -12,9 +12,8 @@ pub fn is_audio_file(path: &Path) -> bool {
 
 /// A track sheet's audio file, as FFmpeg probes it.
 pub(super) enum CueCodecLabel {
-    /// A codec bae can play back from a single-file CUE. Carries the
-    /// `CUE+<codec>` label component (e.g. "FLAC", "APE").
-    Supported(String),
+    /// A codec bae can play back from a single-file CUE.
+    Supported,
     /// A readable codec that can't back single-file CUE playback (e.g. MP3,
     /// Vorbis). Carries the codec's display name for the log line: the binding
     /// is refused with the codec named, and the audio imports as one track.
@@ -26,31 +25,26 @@ pub(super) enum CueCodecLabel {
     Unprobeable,
 }
 
-/// Codec identity for a track sheet's audio file, for the `CUE+<codec>` format
-/// label. The label comes from FFmpeg's probe, never from the extension, because
-/// containers such as MP4, Ogg, WAV, and AIFF don't prove the codec by filename.
+/// Whether a track sheet's audio file can back single-file CUE playback. The
+/// answer comes from FFmpeg's probe, never from the extension, because containers
+/// such as MP4, Ogg, WAV, and AIFF don't prove the codec by filename.
 ///
 /// `Err` is reserved for a non-UTF-8 path (which FFmpeg can't open at all). A
 /// readable file whose codec bae can't play (`Ok(Unsupported)`) costs the sheet
 /// its binding; one FFmpeg can't probe (`Ok(Unprobeable)`) is corrupt audio and
 /// surfaces its folder as invalid, without aborting the watched-root walk.
-pub(super) fn cue_pair_codec_label(path: &Path) -> Result<CueCodecLabel, FolderScanError> {
-    let path_str = path.to_str().ok_or_else(|| {
-        FolderScanError::Other(format!("CUE audio path is not UTF-8: {}", path.display()))
-    })?;
-    let Some(probe) = crate::audio_codec::probe_audio_from_path(path_str) else {
-        return Ok(CueCodecLabel::Unprobeable);
+pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
+    let Some(probe) = &audio.source_audio else {
+        return CueCodecLabel::Unprobeable;
     };
-    match probe.content_type {
+    match &probe.content_type {
         crate::util::content_type::ContentType::Flac
         | crate::util::content_type::ContentType::Ape
         | crate::util::content_type::ContentType::Alac
         | crate::util::content_type::ContentType::Pcm
         | crate::util::content_type::ContentType::WavPack
-        | crate::util::content_type::ContentType::Dsd => Ok(CueCodecLabel::Supported(
-            probe.content_type.display_name().to_string(),
-        )),
-        other => Ok(CueCodecLabel::Unsupported(other.display_name().to_string())),
+        | crate::util::content_type::ContentType::Dsd => CueCodecLabel::Supported,
+        other => CueCodecLabel::Unsupported(other.display_name().to_string()),
     }
 }
 
@@ -122,10 +116,8 @@ pub(super) fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, Folder
 
 /// What settling a folder's sheet bindings produced.
 pub(super) enum SettledBindings {
-    /// Every sheet settled. `cue_codec` is the probed codec of the first sheet
-    /// that stayed bound — the `CUE+<codec>` label's source, and `None` when no
-    /// sheet is bound.
-    Settled { cue_codec: Option<String> },
+    /// Every sheet settled.
+    Settled,
     /// A bound sheet names audio FFmpeg cannot read at all. That is a real
     /// defect, not a disagreement about which file the sheet meant, so the
     /// folder is an invalid candidate rather than one with an unbound sheet.
@@ -152,7 +144,7 @@ pub(super) fn settle_file_roles(files: &mut [CandidateFile], edits: &FileRoleEdi
     }
 }
 
-/// Settle every parsed sheet's binding, and report what the format label needs.
+/// Settle every parsed sheet's binding.
 ///
 /// The user's decision wins where they made one; whatever the sheet already
 /// carries — the `FILE` directive's resolution on a fresh scan — stands where
@@ -167,14 +159,13 @@ pub(super) fn settle_sheet_bindings(
     // Which relative paths are this folder's audio. A binding naming anything
     // else describes nothing, whether it came from a directive or from a stored
     // decision this build can no longer place.
-    let audio: HashMap<&str, PathBuf> = files
+    let audio: HashMap<&str, &ScannedFile> = files
         .iter()
         .filter(|entry| matches!(entry.role, FileRole::Audio))
-        .map(|entry| (entry.file.relative_path.as_str(), entry.file.path.clone()))
+        .map(|entry| (entry.file.relative_path.as_str(), &entry.file))
         .collect();
 
     let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
-    let mut cue_codec: Option<String> = None;
     for (index, entry) in files.iter().enumerate() {
         cancellation.check()?;
         let FileRole::TrackSheet { binding, .. } = &entry.role else {
@@ -200,11 +191,8 @@ pub(super) fn settle_sheet_bindings(
             continue;
         };
         let binding = match cue_pair_codec_label(audio_path) {
-            Ok(CueCodecLabel::Supported(label)) => {
-                cue_codec.get_or_insert(label);
-                binding
-            }
-            Ok(CueCodecLabel::Unsupported(codec)) => {
+            CueCodecLabel::Supported => binding,
+            CueCodecLabel::Unsupported(codec) => {
                 info!(
                     "sheet {} names {codec} audio, which bae can't play from a single-file CUE; \
                      the binding is refused and the audio imports as one track",
@@ -215,16 +203,8 @@ pub(super) fn settle_sheet_bindings(
                     codec,
                 }
             }
-            Ok(CueCodecLabel::Unprobeable) => {
+            CueCodecLabel::Unprobeable => {
                 info!("Invalid candidate: sheet audio file could not be probed: {file_id}");
-                return Ok(SettledBindings::CorruptAudio {
-                    path: file_id.clone(),
-                });
-            }
-            // FFmpeg cannot open a non-UTF-8 path, so the audio is unreadable
-            // by the only measure that decides a binding.
-            Err(e) => {
-                info!("Invalid candidate: sheet audio file could not be probed ({e})");
                 return Ok(SettledBindings::CorruptAudio {
                     path: file_id.clone(),
                 });
@@ -239,7 +219,7 @@ pub(super) fn settle_sheet_bindings(
         };
         *slot = binding;
     }
-    Ok(SettledBindings::Settled { cue_codec })
+    Ok(SettledBindings::Settled)
 }
 
 /// Settle every parsed sheet's disc assignment: the user's decision where they
@@ -266,31 +246,6 @@ pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscE
             .get(&entry.file.relative_path)
             .unwrap_or(SheetDisc::Disc { number: position });
     }
-}
-
-/// The release's format label: `CUE+<codec>` when a sheet stayed bound — the
-/// probed codec, never the extension — and otherwise the audio's own extension,
-/// which is what a file-per-track release is called. `None` only when the folder
-/// holds no audio at all.
-pub(super) fn derive_format_label(
-    files: &[CandidateFile],
-    cue_codec: Option<String>,
-) -> Option<String> {
-    if let Some(codec) = cue_codec {
-        return Some(format!("CUE+{codec}"));
-    }
-    let first_audio = files
-        .iter()
-        .find(|entry| matches!(entry.role, FileRole::Audio))?;
-    Some(
-        first_audio
-            .file
-            .path
-            .extension()
-            .and_then(|e| e.to_str())
-            .expect("Audio file must have an extension")
-            .to_uppercase(),
-    )
 }
 
 /// The directory holding a CUE sheet, where its `FILE` references resolve. A
@@ -349,16 +304,7 @@ pub(super) fn categorize_files_from_tree(
         let absolute_path = fs_root.join(&entry.path);
 
         let role = if is_audio_file(&entry.path) {
-            // Ok(false) is corruption (the candidate becomes Invalid); Err is a
-            // genuine I/O fault (file vanished, permissions, flaky network
-            // mount) — surface it rather than mis-label a system error as
-            // corruption and silently drop the whole release.
-            let valid = file_validation::is_valid_audio(&absolute_path).map_err(|e| {
-                FolderScanError::Other(format!(
-                    "Failed to validate audio file {absolute_path:?}: {e}"
-                ))
-            })?;
-            if entry.size == 0 || !valid {
+            if entry.size == 0 {
                 info!("Invalid candidate: corrupt or zero-byte audio file {relative_path}");
                 return invalid(InvalidReason::CorruptAudioFile {
                     path: relative_path.to_string(),
@@ -388,10 +334,32 @@ pub(super) fn categorize_files_from_tree(
             ProposedRole::Other
         };
 
-        proposed.push((
-            ScannedFile::new(absolute_path, relative_path, entry.size),
-            role,
-        ));
+        let content_digest = crate::util::fs::hash_file(&absolute_path)
+            .map_err(|source| FolderScanError::io(&absolute_path, source))?;
+        let mut file = ScannedFile::new(
+            absolute_path,
+            relative_path,
+            entry.size,
+            entry.modified_at_ns,
+            content_digest,
+        );
+        if role == ProposedRole::Audio {
+            let Some(source_audio) = source_audio_of(&file)? else {
+                return invalid(InvalidReason::CorruptAudioFile {
+                    path: file.relative_path,
+                });
+            };
+            file.source_audio = Some(source_audio);
+            let content_digest = crate::util::fs::hash_file(&file.path)
+                .map_err(|source| FolderScanError::io(&file.path, source))?;
+            if content_digest != file.content_digest {
+                return Err(FolderScanError::Other(format!(
+                    "{} changed while its audio facts were being read",
+                    file.path.display()
+                )));
+            }
+        }
+        proposed.push((file, role));
     }
 
     // One order for everything downstream: the release's own file order.
@@ -524,21 +492,69 @@ pub(super) fn categorize_files_from_tree(
         .cloned()
         .unwrap_or_default();
     settle_file_roles(&mut files, &stored.file_roles);
-    let cue_codec = match settle_sheet_bindings(&mut files, &stored.sheet_bindings, cancellation)? {
-        SettledBindings::Settled { cue_codec } => cue_codec,
+    match settle_sheet_bindings(&mut files, &stored.sheet_bindings, cancellation)? {
+        SettledBindings::Settled => {}
         SettledBindings::CorruptAudio { path } => {
             return invalid(InvalidReason::CorruptAudioFile { path })
         }
-    };
+    }
     settle_sheet_discs(&mut files, &stored.sheet_discs);
 
-    let Some(format_label) = derive_format_label(&files, cue_codec) else {
+    if !files
+        .iter()
+        .any(|entry| matches!(entry.role, FileRole::Audio))
+    {
         info!("Invalid candidate: no valid audio files after categorization");
         return invalid(InvalidReason::NoValidAudio);
     };
 
-    Ok(CategorizeOutcome::Valid(CategorizedFiles {
-        files,
-        format_label,
+    Ok(CategorizeOutcome::Valid(CategorizedFiles { files }))
+}
+
+fn source_audio_of(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderScanError> {
+    let metadata =
+        std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
+    let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
+    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
+        return Err(FolderScanError::Other(format!(
+            "{} changed before its audio facts could be read",
+            file.path.display()
+        )));
+    }
+    let path = file.path.to_str().ok_or_else(|| {
+        FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
+    })?;
+    let Some(probe) = crate::audio_codec::probe_audio_from_path_uncached(path) else {
+        return Ok(None);
+    };
+    if probe.sample_rate == 0 || probe.channels == 0 {
+        return Ok(None);
+    }
+    if !probe.content_type.is_supported_audio() {
+        return Ok(None);
+    }
+    let metadata =
+        std::fs::metadata(&file.path).map_err(|source| FolderScanError::io(&file.path, source))?;
+    let modified_at_ns = super::scan::file_modified_at_ns(&file.path, &metadata)?;
+    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
+        return Err(FolderScanError::Other(format!(
+            "{} changed while its audio facts were being read",
+            file.path.display()
+        )));
+    }
+    let duration_ms = probe.duration.as_millis() as u64;
+    let bits_per_sample = probe.bits_per_sample.map(i64::from);
+    let bitrate_kbps = (bits_per_sample.is_none() && duration_ms > 0)
+        .then(|| (file.size.saturating_mul(8) / duration_ms) as i64);
+    Ok(Some(ScannedAudio {
+        content_type: probe.content_type.clone(),
+        duration_ms,
+        format: crate::album_detail::AudioFormat {
+            codec: probe.content_type.display_name().to_string(),
+            sample_rate_hz: i64::from(probe.sample_rate),
+            bits_per_sample,
+            bitrate_kbps,
+            channels: i64::from(probe.channels),
+        },
     }))
 }

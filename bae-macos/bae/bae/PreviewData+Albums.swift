@@ -168,6 +168,7 @@
                 tracks: tracks,
                 trackGroups: groups,
                 files: [],
+                sourceAudio: nil,
                 imageFiles: [],
                 galleryItems: [],
                 totalDuration: groupDuration(tracks),

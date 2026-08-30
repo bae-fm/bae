@@ -1,6 +1,5 @@
 use super::*;
 
-mod duration_rows;
 mod edit_rows;
 mod failure_rows;
 mod pane_rows;
@@ -10,7 +9,6 @@ mod verdict_rows;
 mod watched_folder_removal;
 
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
-use duration_rows::{delete_durations, delete_slice_durations, insert_durations};
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
 pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
@@ -531,8 +529,6 @@ impl Database {
                         super::candidate_state_rows::save_cover(sql, &verdict.content_hash, cover)?;
                     }
                 }
-                delete_durations(sql, &verdict.content_hash)?;
-                insert_durations(sql, &verdict.content_hash, &verdict.signals.durations)?;
                 delete_signals(sql, &verdict.content_hash)?;
                 insert_signals(sql, &verdict.content_hash, &verdict.signals)?;
             }
@@ -652,14 +648,10 @@ impl Database {
                 )));
             }
             delete_matches(sql, &content_hash)?;
-            // A binding change carves a different container, so every slice
-            // measurement describes a shape that is gone; a whole file's own
-            // length is a fact about its bytes and the hash covers those, so
-            // it stays. The disc ID is recomputed for the same reason the
-            // verdict is cleared, which takes the signals with it. And the
-            // table's rows are a different set now, so the row edits addressed
-            // them by identities that no longer mean the same thing.
-            delete_slice_durations(sql, &content_hash)?;
+            // The disc ID is recomputed because the candidate's shape changed,
+            // which takes the signals with it. The table's rows are a different
+            // set now, so the row edits addressed them by identities that no
+            // longer mean the same thing.
             delete_signals(sql, &content_hash)?;
             pane_rows::delete_track_mappings(sql, &content_hash)?;
             delete_file_edits(sql, &content_hash)?;
@@ -902,15 +894,9 @@ fn settle_scanned_candidates(
         )?;
         folder_scans::insert_candidate_files(sql, &watched_folder_path, &path, settled)?;
         let changed = sql.execute(
-            "UPDATE scan_candidate SET file_edit_revision = ?, format_label = ? \
+            "UPDATE scan_candidate SET file_edit_revision = ? \
              WHERE watched_folder_path = ? AND path = ? AND file_edit_revision = ?",
-            params![
-                next_revision,
-                settled.format_label,
-                watched_folder_path,
-                path,
-                expected_revision
-            ],
+            params![next_revision, watched_folder_path, path, expected_revision],
         )?;
         if changed != 1 {
             return Err(DbError::Message(format!(

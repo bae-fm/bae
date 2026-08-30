@@ -277,7 +277,7 @@ pub struct DbStorageRow {
 pub enum StorageSortField {
     AlbumTitle,
     ArtistNames,
-    Format,
+    Media,
     FileCount,
     TotalSize,
 }

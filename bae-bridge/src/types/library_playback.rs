@@ -309,6 +309,7 @@ pub struct BridgeRelease {
     pub tracks: Vec<BridgeTrack>,
     pub track_groups: Vec<BridgeTrackGroup>,
     pub files: Vec<BridgeFile>,
+    pub source_audio: Option<BridgeSourceAudioSummary>,
     pub image_files: Vec<BridgeFile>,
     /// Cover slot first (if the release has one), then every image file the
     /// release has. Each item's bytes are read through
@@ -568,6 +569,105 @@ pub struct BridgeFile {
     /// Structured audio format; `None` for non-audio files. The UI composes the
     /// one-line descriptor from it.
     pub audio_format: Option<BridgeAudioFormat>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSourceAudioLayout {
+    File,
+    Cue,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSourceAudioDescriptor {
+    pub layout: BridgeSourceAudioLayout,
+    pub format: BridgeAudioFormat,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeSourceAudioSummary {
+    Uniform {
+        descriptor: BridgeSourceAudioDescriptor,
+    },
+    Mixed {
+        descriptors: Vec<BridgeSourceAudioDescriptor>,
+    },
+}
+
+impl BridgeSourceAudioLayout {
+    pub(crate) fn from_core(layout: bae_core::album_detail::SourceAudioLayout) -> Self {
+        match layout {
+            bae_core::album_detail::SourceAudioLayout::File => Self::File,
+            bae_core::album_detail::SourceAudioLayout::Cue => Self::Cue,
+        }
+    }
+}
+
+impl BridgeSourceAudioDescriptor {
+    pub(crate) fn from_core(descriptor: bae_core::album_detail::SourceAudioDescriptor) -> Self {
+        Self {
+            layout: BridgeSourceAudioLayout::from_core(descriptor.layout),
+            format: BridgeAudioFormat::from_core(descriptor.format),
+        }
+    }
+}
+
+impl BridgeSourceAudioSummary {
+    pub(crate) fn from_core(summary: bae_core::album_detail::SourceAudioSummary) -> Self {
+        match summary {
+            bae_core::album_detail::SourceAudioSummary::Uniform { descriptor } => Self::Uniform {
+                descriptor: BridgeSourceAudioDescriptor::from_core(descriptor),
+            },
+            bae_core::album_detail::SourceAudioSummary::Mixed { descriptors } => Self::Mixed {
+                descriptors: descriptors
+                    .into_iter()
+                    .map(BridgeSourceAudioDescriptor::from_core)
+                    .collect(),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod source_audio_bridge_tests {
+    use super::*;
+
+    #[test]
+    fn mixed_source_audio_crosses_with_every_descriptor() {
+        let format = bae_core::album_detail::AudioFormat {
+            codec: "FLAC".to_string(),
+            sample_rate_hz: 44_100,
+            bits_per_sample: Some(16),
+            bitrate_kbps: None,
+            channels: 2,
+        };
+        let summary = bae_core::album_detail::SourceAudioSummary::Mixed {
+            descriptors: vec![
+                bae_core::album_detail::SourceAudioDescriptor {
+                    layout: bae_core::album_detail::SourceAudioLayout::Cue,
+                    format: format.clone(),
+                },
+                bae_core::album_detail::SourceAudioDescriptor {
+                    layout: bae_core::album_detail::SourceAudioLayout::File,
+                    format,
+                },
+            ],
+        };
+
+        let BridgeSourceAudioSummary::Mixed { descriptors } =
+            BridgeSourceAudioSummary::from_core(summary)
+        else {
+            panic!("mixed source audio became uniform");
+        };
+        assert_eq!(descriptors.len(), 2);
+        assert!(matches!(
+            descriptors[0].layout,
+            BridgeSourceAudioLayout::Cue
+        ));
+        assert!(matches!(
+            descriptors[1].layout,
+            BridgeSourceAudioLayout::File
+        ));
+    }
 }
 
 /// Mirror of bae-core's `AudioFormat`. The UI composes "FLAC · 44.1 kHz ·

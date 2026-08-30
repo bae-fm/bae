@@ -7,15 +7,20 @@ impl BridgeFileInfo {
             path,
             relative_path,
             size,
+            modified_at_ns: _,
+            content_digest,
             dir_prefix,
             file_name,
+            source_audio,
         } = f;
         BridgeFileInfo {
             name: relative_path,
             size,
+            content_digest,
             dir_prefix,
             file_name,
             local_path: path.to_string_lossy().to_string(),
+            audio_format: source_audio.map(|audio| BridgeAudioFormat::from_core(audio.format)),
         }
     }
 }
@@ -205,17 +210,17 @@ impl BridgeCandidateFiles {
             .into_iter()
             .map(BridgeCollapsedDirectory::from_core)
             .collect();
-        let bae_core::import::folder_scanner::CategorizedFiles {
-            files,
-            format_label,
-        } = files;
+        let source_audio = files
+            .source_audio_summary()
+            .map(BridgeSourceAudioSummary::from_core);
+        let bae_core::import::folder_scanner::CategorizedFiles { files } = files;
         BridgeCandidateFiles {
             files: files
                 .into_iter()
                 .zip(becomes)
                 .map(|(entry, becomes)| BridgeCandidateFile::from_core(entry, becomes))
                 .collect(),
-            format_label,
+            source_audio,
             collapsed_directories,
         }
     }
@@ -364,7 +369,8 @@ impl BridgeMappingFile {
             name,
             size,
             path,
-            probed_duration_ms,
+            duration_ms,
+            audio_format,
             role,
             alternatives,
             role_choice,
@@ -375,7 +381,8 @@ impl BridgeMappingFile {
             file_id,
             name,
             size,
-            probed_duration_ms,
+            duration_ms,
+            audio_format: audio_format.map(BridgeAudioFormat::from_core),
             alternatives: alternatives
                 .into_iter()
                 .map(BridgeFileRoleChoice::from_core)
@@ -390,7 +397,8 @@ impl BridgeMappingFile {
             name,
             size,
             local_path,
-            probed_duration_ms,
+            duration_ms,
+            audio_format,
             role,
             alternatives,
             role_choice,
@@ -400,7 +408,14 @@ impl BridgeMappingFile {
             name,
             size,
             path: std::path::PathBuf::from(local_path),
-            probed_duration_ms,
+            duration_ms,
+            audio_format: audio_format.map(|format| bae_core::album_detail::AudioFormat {
+                codec: format.codec,
+                sample_rate_hz: format.sample_rate_hz,
+                bits_per_sample: format.bits_per_sample,
+                bitrate_kbps: format.bitrate_kbps,
+                channels: format.channels,
+            }),
             role: role.into_core(),
             alternatives: alternatives
                 .into_iter()
@@ -423,6 +438,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_path,
+            audio_format,
         } = entry;
         BridgeMappingEntry {
             sheet_id,
@@ -433,6 +449,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_local_path: container_path.to_string_lossy().to_string(),
+            audio_format: BridgeAudioFormat::from_core(audio_format),
         }
     }
 
@@ -446,6 +463,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_local_path,
+            audio_format,
         } = self;
         bae_core::import::MappingEntry {
             sheet_id,
@@ -456,6 +474,13 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_path: std::path::PathBuf::from(container_local_path),
+            audio_format: bae_core::album_detail::AudioFormat {
+                codec: audio_format.codec,
+                sample_rate_hz: audio_format.sample_rate_hz,
+                bits_per_sample: audio_format.bits_per_sample,
+                bitrate_kbps: audio_format.bitrate_kbps,
+                channels: audio_format.channels,
+            },
         }
     }
 }
@@ -554,11 +579,13 @@ impl BridgeMappingContainer {
             file_id,
             name,
             size,
+            audio_format,
         } = container;
         BridgeMappingContainer {
             file_id,
             name,
             size,
+            audio_format: BridgeAudioFormat::from_core(audio_format),
         }
     }
 
@@ -567,11 +594,19 @@ impl BridgeMappingContainer {
             file_id,
             name,
             size,
+            audio_format,
         } = self;
         bae_core::import::MappingContainer {
             file_id,
             name,
             size,
+            audio_format: bae_core::album_detail::AudioFormat {
+                codec: audio_format.codec,
+                sample_rate_hz: audio_format.sample_rate_hz,
+                bits_per_sample: audio_format.bits_per_sample,
+                bitrate_kbps: audio_format.bitrate_kbps,
+                channels: audio_format.channels,
+            },
         }
     }
 }
@@ -748,5 +783,26 @@ impl BridgeMappingTable {
             rows: rows.into_iter().map(BridgeMappingRow::into_core).collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::into_core),
         }
+    }
+}
+
+#[cfg(all(test, feature = "desktop"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn file_conversion_carries_scan_content_identity() {
+        let content_digest = "a".repeat(64);
+        let file = bae_core::import::folder_scanner::ScannedFile::new(
+            std::path::PathBuf::from("/music/01.flac"),
+            "01.flac".to_string(),
+            100,
+            1,
+            content_digest.clone(),
+        );
+
+        let bridge = BridgeFileInfo::from_core(file);
+
+        assert_eq!(bridge.content_digest, content_digest);
     }
 }

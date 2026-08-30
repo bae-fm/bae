@@ -319,7 +319,7 @@ async fn run_extraction(
                     artwork,
                     // A library release has no candidate folder to walk, so
                     // nothing is probed on this path.
-                    durations: crate::import::probe::ProbedDurations::default(),
+                    durations: crate::import::probe::SourceDurations::default(),
                 },
                 priority,
             )
@@ -357,7 +357,7 @@ struct ExtractionInputs {
     barcodes: Vec<SourcedValue>,
     pool: Pool,
     artwork: Option<ArtworkPass>,
-    durations: crate::import::probe::ProbedDurations,
+    durations: crate::import::probe::SourceDurations,
 }
 
 /// The artwork OCR pass: the images to decode, and the analyzer that decodes
@@ -529,7 +529,7 @@ fn emit_failed_ocr_signals(
     barcodes: &[SourcedValue],
     pool: &mut Pool,
     failure: LookupFailure,
-    durations: crate::import::probe::ProbedDurations,
+    durations: crate::import::probe::SourceDurations,
     priority: CallPriority,
 ) {
     let classification = pool.classify();
@@ -563,7 +563,7 @@ fn scanning_signals(
     has_artwork: bool,
     catalogs: Vec<SourcedValue>,
     free_text: Vec<String>,
-    durations: crate::import::probe::ProbedDurations,
+    durations: crate::import::probe::SourceDurations,
 ) -> Signals {
     let barcode = if has_artwork {
         BarcodeSignal::Scanning {

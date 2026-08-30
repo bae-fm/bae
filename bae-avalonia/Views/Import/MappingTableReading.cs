@@ -75,11 +75,11 @@ internal static class MappingTableReading
         _ => null,
     };
 
-    /// <summary>The playing time the folder itself offers for this row: probed
-    /// off the file, or stated by the sheet for one of its entries.</summary>
+    /// <summary>The playing time the folder itself offers for this row, from
+    /// the scan facts or the sheet timing for one of its entries.</summary>
     internal static ulong? DurationMs(this BridgeMappingSource source) => source switch
     {
-        BridgeMappingSource.File file => file.FileValue.ProbedDurationMs,
+        BridgeMappingSource.File file => file.FileValue.DurationMs,
         BridgeMappingSource.SheetEntry entry => entry.Entry.DurationMs,
         _ => null,
     };

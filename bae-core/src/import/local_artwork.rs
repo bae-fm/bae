@@ -64,6 +64,8 @@ mod tests {
             PathBuf::from("/candidate").join(relative_path),
             relative_path.to_string(),
             size,
+            1,
+            "0".repeat(64),
         )
     }
 
@@ -77,7 +79,6 @@ mod tests {
                     proposed_audio: false,
                 })
                 .collect(),
-            format_label: String::new(),
         }
     }
 

@@ -19,6 +19,14 @@ enum MappingFixtures {
         releaseId: releaseId
     )
 
+    static let audioFormat = BridgeAudioFormat(
+        codec: "FLAC",
+        sampleRateHz: 44_100,
+        bitsPerSample: 16,
+        bitrateKbps: nil,
+        channels: 2
+    )
+
     static func newArtist(_ name: String) -> BridgeArtistAssignment {
         .new(
             seed: BridgeNewArtistSeed(
@@ -38,7 +46,8 @@ enum MappingFixtures {
             name: "\(index).flac",
             size: UInt64(30_000_000 + index * 1_000_000),
             localPath: "/tmp/walkthrough/\(index).flac",
-            probedDurationMs: UInt64(200_000 + index * 1000),
+            durationMs: UInt64(200_000 + index * 1000),
+            audioFormat: audioFormat,
             role: .audio,
             alternatives: [.audio, .notATrack],
             roleChoice: .audio
@@ -98,7 +107,7 @@ enum MappingFixtures {
                                 ),
                                 sourcePosition: nil
                             ),
-                            durationMs: audioFile(13).probedDurationMs
+                            durationMs: audioFile(13).durationMs
                         )
                     )
                 ],
@@ -117,7 +126,8 @@ enum MappingFixtures {
         name: containerId,
         size: 380_000_000,
         localPath: containerPath,
-        probedDurationMs: 2_400_000,
+        durationMs: 2_400_000,
+        audioFormat: audioFormat,
         role: .audio,
         alternatives: [.audio, .notATrack],
         roleChoice: .audio
@@ -126,7 +136,8 @@ enum MappingFixtures {
     static let container = BridgeMappingContainer(
         fileId: containerId,
         name: containerId,
-        size: 380_000_000
+        size: 380_000_000,
+        audioFormat: audioFormat
     )
 
     static func sheetGroup(
@@ -217,7 +228,8 @@ enum MappingFixtures {
                     durationMs: UInt64(200_000 + index * 1000),
                     containerId: containerId,
                     containerName: containerId,
-                    containerLocalPath: containerPath
+                    containerLocalPath: containerPath,
+                    audioFormat: audioFormat
                 )
             ),
             becomes: .track(
@@ -275,7 +287,7 @@ enum MappingFixtures {
                             ),
                             sourcePosition: "\(index)"
                         ),
-                        durationMs: audioFile(index).probedDurationMs
+                        durationMs: audioFile(index).durationMs
                     )
                 )
             },
@@ -361,7 +373,7 @@ extension MappingFixtures {
 
     static let emptyFiles = BridgeCandidateFiles(
         files: [],
-        formatLabel: "FLAC",
+        sourceAudio: nil,
         collapsedDirectories: []
     )
 
@@ -428,7 +440,6 @@ extension MappingFixtures {
                     rows: [],
                     reconciliation: nil
                 ),
-            unprobed: [],
             cover: nil,
             signals: nil,
             failure: failure

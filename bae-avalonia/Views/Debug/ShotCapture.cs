@@ -354,6 +354,16 @@ internal static class ShotCapture
                 : Loc.Chrome("import.metadata.album_title_placeholder"),
             Edit = edit,
             MetaLine = "CD · 1996",
+            SourceAudioLine = BridgeDisplay.SourceAudio(
+                new BridgeSourceAudioSummary.Uniform(
+                    new BridgeSourceAudioDescriptor(
+                        BridgeSourceAudioLayout.File,
+                        new BridgeAudioFormat(
+                            "FLAC",
+                            44_100,
+                            16,
+                            null,
+                            2)))),
             ProvenanceLabel = provenanceLabel,
             ProvenanceUri = null,
             IsReading = false,

@@ -435,6 +435,7 @@ async fn storage_total_size_matches_page_total_size_sum() {
             original_filename: "a.flac".to_string(),
             file_size,
             content_type: crate::util::content_type::ContentType::Flac,
+            source_audio: None,
             cloud_path: None,
             content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),

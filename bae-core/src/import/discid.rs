@@ -1,6 +1,5 @@
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::find_matching_audio_for_cue;
-use crate::util::content_type_hint::ContentTypeHint;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tracing::{debug, trace, warn};
@@ -20,21 +19,6 @@ fn invalid_discid_data(message: impl Into<String>) -> MetadataDetectionError {
     ))
 }
 
-fn probe_duration_seconds(audio_path: &Path) -> Result<f64, MetadataDetectionError> {
-    let path_str = audio_path.to_str().ok_or_else(|| {
-        MetadataDetectionError::Io(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("Non-UTF-8 audio path: {:?}", audio_path),
-        ))
-    })?;
-    let probe = crate::audio_codec::probe_audio_from_path(path_str).ok_or_else(|| {
-        MetadataDetectionError::Io(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("Failed to probe audio file: {:?}", audio_path),
-        ))
-    })?;
-    Ok(probe.duration.as_secs_f64())
-}
 fn parse_log_toc_row(line: &str) -> Option<(i32, i32)> {
     let parts: Vec<&str> = line.split('|').collect();
     if parts.len() < 5 {
@@ -200,44 +184,9 @@ pub fn calculate_mb_discid_from_log(log_path: &Path) -> Result<String, MetadataD
         "from LOG lead-out",
     )
 }
-/// Calculate MusicBrainz DiscID from a parsed CUE sheet and its FLAC file.
-/// Track offsets come from the CUE; the lead-out is derived from probe duration.
-pub fn calculate_mb_discid_from_cue_flac(
-    sheet: &CueSheet,
-    flac_path: &Path,
-) -> Result<String, MetadataDetectionError> {
-    calculate_mb_discid_from_cue_audio(sheet, flac_path, "CUE/FLAC", "FLAC")
-}
-
-fn calculate_mb_discid_from_cue_audio(
-    sheet: &CueSheet,
-    audio_path: &Path,
-    method_label: &str,
-    duration_label: &str,
-) -> Result<String, MetadataDetectionError> {
-    debug!(
-        "Calculating MusicBrainz DiscID from {method_label}, audio: {:?}",
-        audio_path
-    );
-    let duration_seconds = probe_duration_seconds(audio_path)?;
-    trace!("{duration_label} duration: {:.2} seconds", duration_seconds);
-    calculate_mb_discid_from_cue_duration(sheet, duration_seconds, method_label)
-}
-
-/// MusicBrainz DiscID from a parsed CUE sheet and any audio file FFmpeg can
-/// probe for duration — ALAC/AAC `.m4a`, APE, MP3, WAV, OGG, whatever it
-/// recognises. Track offsets come from the CUE, the lead-out from the duration.
-pub fn calculate_mb_discid_from_cue_probe(
-    sheet: &CueSheet,
-    audio_path: &Path,
-) -> Result<String, MetadataDetectionError> {
-    calculate_mb_discid_from_cue_audio(sheet, audio_path, "CUE/probe", "Audio")
-}
-
-/// The shared DiscID calculation behind `_from_cue_flac` and `_from_cue_probe`:
-/// from a parsed CUE sheet and the container's total duration, build the offsets
-/// array (lead-out first, then track starts, every offset including the
-/// 150-sector pregap) and hand it to the `discid` crate.
+/// From a parsed CUE sheet and the scan's retained container duration, build the
+/// offsets array (lead-out first, then track starts, every offset including the
+/// 150-sector pregap) and hand it to the DiscID calculator.
 fn calculate_mb_discid_from_cue_duration(
     sheet: &CueSheet,
     duration_seconds: f64,
@@ -270,7 +219,7 @@ fn calculate_mb_discid_from_cue_duration(
 pub fn compute_discid_from_paths(
     log_paths: &[PathBuf],
     cue_paths: &[PathBuf],
-    audio_paths: &[PathBuf],
+    audio_files: &[(PathBuf, u64)],
 ) -> Option<String> {
     for log_path in log_paths {
         match calculate_mb_discid_from_log(log_path) {
@@ -279,6 +228,10 @@ pub fn compute_discid_from_paths(
         }
     }
 
+    let audio_paths = audio_files
+        .iter()
+        .map(|(path, _)| path.clone())
+        .collect::<Vec<_>>();
     for cue_path in cue_paths {
         let sheet = match crate::cue_flac::parse_cue_sheet(cue_path) {
             Ok(s) => s,
@@ -287,11 +240,15 @@ pub fn compute_discid_from_paths(
                 continue;
             }
         };
-        let Some(audio_path) = find_matching_audio_for_cue(cue_path, &sheet, audio_paths) else {
+        let Some(audio_path) = find_matching_audio_for_cue(cue_path, &sheet, &audio_paths) else {
             debug!("Skipping CUE with no matching audio file: {:?}", cue_path);
             continue;
         };
-        if let Some(id) = discid_from_cue_audio(&sheet, audio_path) {
+        let duration_ms = audio_files
+            .iter()
+            .find_map(|(path, duration_ms)| (path == audio_path).then_some(*duration_ms))
+            .expect("a matched CUE audio path came from the retained-duration list");
+        if let Some(id) = discid_from_cue_duration(&sheet, duration_ms, audio_path) {
             return Some(id);
         }
     }
@@ -299,46 +256,23 @@ pub fn compute_discid_from_paths(
     None
 }
 
-/// A MusicBrainz DiscID from an already-parsed CUE sheet and its audio file,
-/// dispatched by codec. `None` (logged at `debug`) when the extension isn't
-/// supported audio or the computation fails, so the caller moves to the next
-/// candidate. Shared by both computers, so the codec dispatch lives in one place.
-fn discid_from_cue_audio(sheet: &CueSheet, audio_path: &Path) -> Option<String> {
-    let Some(ext) = audio_path.extension().and_then(|e| e.to_str()) else {
-        debug!(
-            "Skipping CUE-paired audio with no UTF-8 extension: {:?}",
-            audio_path
-        );
-        return None;
-    };
-    let result = match ContentTypeHint::from_extension(ext) {
-        ContentTypeHint::Flac => calculate_mb_discid_from_cue_flac(sheet, audio_path),
-        ContentTypeHint::Mp3
-        | ContentTypeHint::Ape
-        | ContentTypeHint::Mp4Container
-        | ContentTypeHint::WavContainer
-        | ContentTypeHint::AiffContainer
-        | ContentTypeHint::WavPack
-        | ContentTypeHint::DsdContainer => calculate_mb_discid_from_cue_probe(sheet, audio_path),
-        other @ (ContentTypeHint::Jpeg
-        | ContentTypeHint::Png
-        | ContentTypeHint::Gif
-        | ContentTypeHint::Webp
-        | ContentTypeHint::Bmp
-        | ContentTypeHint::Svg
-        | ContentTypeHint::OggContainer
-        | ContentTypeHint::OpusContainer
-        | ContentTypeHint::PlainText
-        | ContentTypeHint::Pdf
-        | ContentTypeHint::Unknown(_)) => {
-            debug!(
-                "Skipping non-audio extension for CUE+audio DiscID: {:?} ({:?})",
-                audio_path, other
-            );
-            return None;
-        }
-    };
-    match result {
+/// A MusicBrainz DiscID from an already-parsed CUE sheet and the duration the
+/// authoritative scan retained for its physical audio file.
+fn discid_from_cue_duration(
+    sheet: &CueSheet,
+    duration_ms: u64,
+    audio_path: &Path,
+) -> Option<String> {
+    trace!(
+        "Retained audio duration for {:?}: {} ms",
+        audio_path,
+        duration_ms
+    );
+    match calculate_mb_discid_from_cue_duration(
+        sheet,
+        duration_ms as f64 / 1000.0,
+        "CUE/scanned audio",
+    ) {
         Ok(id) => Some(id),
         Err(e) => {
             debug!("DiscID from CUE+audio failed for {:?}: {}", audio_path, e);
@@ -387,7 +321,14 @@ pub fn compute_discid_from_categorized(
     // Only the sheets that carve: one the user took out of the tracklist
     // describes a disc this folder is no longer presenting.
     for bound in categorized.carving_sheets() {
-        if let Some(id) = discid_from_cue_audio(bound.sheet, &bound.audio.path) {
+        let source_audio = bound
+            .audio
+            .source_audio
+            .as_ref()
+            .expect("a categorized audio file retains its scan facts");
+        if let Some(id) =
+            discid_from_cue_duration(bound.sheet, source_audio.duration_ms, &bound.audio.path)
+        {
             return Some(ComputedDiscId {
                 disc_id: id,
                 source_file: bound.file.relative_path.clone(),
@@ -674,8 +615,16 @@ mod tests {
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )
             .unwrap();
+        let audio_path = folder.join("Test Album.ape");
+        crate::audio_codec::forget_probe_for(&audio_path);
+        let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
         let computed = compute_discid_from_categorized(&categorized)
             .expect("CUE+APE pair must compute a disc ID");
+        assert_eq!(
+            crate::audio_codec::probe_opens_for(&audio_path),
+            opens_before,
+            "DiscID must reuse the duration retained by the folder scan"
+        );
         assert_eq!(
             computed.disc_id.len(),
             28,
@@ -723,7 +672,7 @@ mod tests {
         let cue_path = folder.join("Test Album.cue");
         std::fs::write(&cue_path, cue_body).unwrap();
 
-        let disc_id = compute_discid_from_paths(&[], &[cue_path], &[mp3_path])
+        let disc_id = compute_discid_from_paths(&[], &[cue_path], &[(mp3_path, 9_000)])
             .expect("CUE+MP3 pair must compute a disc ID");
         assert_eq!(disc_id.len(), 28, "MusicBrainz disc IDs are 28 chars");
     }

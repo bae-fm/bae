@@ -106,15 +106,14 @@ fn mp3_with_id3v2_tags() {
     let parsed = map_tags(&[f1]).unwrap();
     assert_eq!(parsed.album.title, "MP3 Album");
     assert_eq!(parsed.album.year, Some(2010));
-    assert_eq!(parsed.release.pressing.format.as_deref(), Some("MP3"));
+    assert_eq!(parsed.release.pressing.format, None);
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "MP3 Track");
     assert_eq!(parsed.artists[0].name, "MP3 Artist");
     assert!(parsed.identities.is_empty());
 }
 
-/// M4A with MP4 ilst tags. Format derives from the probed codec, so
-/// ALAC-in-MP4 does not collapse to a container label.
+/// M4A with MP4 ilst tags leaves release media blank.
 #[test]
 fn m4a_with_mp4_ilst_tags() {
     let temp = TempDir::new().unwrap();
@@ -141,14 +140,14 @@ fn m4a_with_mp4_ilst_tags() {
 
     assert_eq!(parsed.album.title, "Album Title");
     assert_eq!(parsed.album.year, Some(2020));
-    assert_eq!(parsed.release.pressing.format.as_deref(), Some("ALAC"));
+    assert_eq!(parsed.release.pressing.format, None);
     assert_eq!(parsed.tracks.len(), 1);
     assert_eq!(parsed.tracks[0].title, "Track One");
     assert!(parsed.identities.is_empty());
 }
 
 #[test]
-fn aac_m4a_with_mp4_ilst_tags_uses_aac_label() {
+fn aac_m4a_with_mp4_ilst_tags_leaves_release_media_blank() {
     let temp = TempDir::new().unwrap();
     let src = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("test-fixtures")
@@ -171,7 +170,7 @@ fn aac_m4a_with_mp4_ilst_tags_uses_aac_label() {
 
     let parsed = map_tags(&[f1]).unwrap();
 
-    assert_eq!(parsed.release.pressing.format.as_deref(), Some("AAC"));
+    assert_eq!(parsed.release.pressing.format, None);
 }
 
 /// A few JPEG SOI/EOI bytes — enough to round-trip as opaque cover
@@ -421,34 +420,21 @@ fn image_content_type_maps_known_and_rejects_non_images() {
 }
 
 #[test]
-fn probe_content_type_labels_m4a_by_codec() {
-    let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
-    assert_eq!(
-        probe_content_type(&manifest.join("test-fixtures/alac/silence-alac.m4a")),
-        Some(ContentType::Alac)
-    );
-    assert_eq!(
-        probe_content_type(&manifest.join("test-fixtures/alac/silence-aac.m4a")),
-        Some(ContentType::Aac)
-    );
-}
-
-#[test]
-fn file_tag_format_labels_come_from_probed_content_type() {
+fn file_tag_import_leaves_media_blank_for_every_source_codec() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
     let fixture_dir = manifest.join("test-fixtures").join("audio-format");
-    for (name, expected) in [
-        ("placeholder-pcm.wav", "PCM"),
-        ("placeholder-pcm.aiff", "PCM"),
-        ("placeholder-opus.opus", "Opus"),
-        ("placeholder-vorbis.ogg", "Vorbis"),
-        ("placeholder-wavpack.wv", "WavPack"),
+    for name in [
+        "placeholder-pcm.wav",
+        "placeholder-pcm.aiff",
+        "placeholder-opus.opus",
+        "placeholder-vorbis.ogg",
+        "placeholder-wavpack.wv",
     ] {
         let parsed = map_tags_with_folder(&[fixture_dir.join(name)], Some("Album Title"))
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(
-            parsed.release.pressing.format.as_deref(),
-            Some(expected),
+            parsed.release.pressing.format,
+            None,
             "{name}"
         );
     }

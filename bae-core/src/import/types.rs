@@ -381,8 +381,8 @@ impl PressingEdit {
 /// The audio is named by its identity within the release
 /// ([`ScannedFile::relative_path`](crate::import::folder_scanner::ScannedFile::relative_path)),
 /// never by absolute path. A binding is decided when a release is picked and
-/// read again when the commit re-walks the folder; only the relative path
-/// survives the folder being moved or renamed in between.
+/// resolved against the persisted scan candidate at commit after its physical
+/// file identities have been validated.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AudioFile {
@@ -873,6 +873,7 @@ pub enum TrackFile {
     Standalone {
         db_track: DbTrack,
         file_path: PathBuf,
+        source_audio: crate::import::folder_scanner::ScannedAudio,
     },
     CueBacked {
         db_track: DbTrack,

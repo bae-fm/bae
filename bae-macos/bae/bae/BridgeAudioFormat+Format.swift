@@ -11,20 +11,20 @@ extension BridgeAudioFormat {
     var text: String {
         var parts = [codec]
         if bitsPerSample == nil, let kbps = bitrateKbps {
-            parts.append("\(kbps.formatted()) kbps")
+            parts.append(coreString("core.audio.bitrate_kbps", kbps))
         }
         parts.append(sampleRateText)
         if let bits = bitsPerSample {
-            parts.append("\(bits.formatted())-bit")
+            parts.append(coreString("core.audio.bit_depth", bits))
         }
         parts.append(channelsText)
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: coreString("core.audio.list_separator"))
     }
 
     private var sampleRateText: String {
         let khz = Double(sampleRateHz) / 1000.0
         let number = khz.formatted(.number.precision(.fractionLength(0...1)))
-        return "\(number) kHz"
+        return coreString("core.audio.sample_rate_khz", number)
     }
 
     private var channelsText: String {
@@ -36,6 +36,32 @@ extension BridgeAudioFormat {
                 comment: ""
             )
         }
-        return "\(channels.formatted())ch"
+        return coreString("core.audio.channels.count", channels)
+    }
+}
+
+extension BridgeSourceAudioDescriptor {
+    var text: String {
+        switch layout {
+        case .file:
+            format.text
+        case .cue:
+            [coreString("core.audio.layout.cue"), format.text]
+                .joined(
+                    separator: coreString("core.audio.list_separator")
+                )
+        }
+    }
+}
+
+extension BridgeSourceAudioSummary {
+    var text: String {
+        switch self {
+        case .uniform(let descriptor):
+            descriptor.text
+        case .mixed(let descriptors):
+            ([coreString("core.audio.mixed")] + descriptors.map(\.text))
+                .joined(separator: coreString("core.audio.list_separator"))
+        }
     }
 }

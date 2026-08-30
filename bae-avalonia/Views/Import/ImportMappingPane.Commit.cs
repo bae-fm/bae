@@ -193,7 +193,16 @@ internal sealed partial class ImportMappingPane
         banner[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
         banner[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
-        row.Children.Add(ImportPaneUi.Cell(failure.Error, secondary: true));
+        var error = new StackPanel { Spacing = 1 };
+        if (BridgeDisplay.LocalizedLine(failure.Error) is { } line)
+        {
+            error.Children.Add(ImportPaneUi.Cell(line, secondary: true));
+        }
+        if (BridgeDisplay.FaultSummary(failure.Error) is { } summary)
+        {
+            error.Children.Add(ImportPaneUi.Cell(summary, secondary: true));
+        }
+        row.Children.Add(error);
         var retry = ImportPaneUi.RowButton(Loc.Chrome("import.row.retry"));
         retry.Click += async (_, _) => await Commit();
         row.Children.Add(retry);

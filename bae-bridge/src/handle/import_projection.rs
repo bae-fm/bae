@@ -621,7 +621,6 @@ impl crate::types::BridgeImportCandidateDetail {
             metadata_revision,
             initial_metadata_source,
             mapping,
-            unprobed,
             cover,
             // Every cover the picker offers is already inside `release`, whose
             // `cover_art` is the same list.
@@ -652,10 +651,6 @@ impl crate::types::BridgeImportCandidateDetail {
                 initial_metadata_source,
             ),
             mapping: crate::types::BridgeMappingTable::from_core(mapping),
-            unprobed: unprobed
-                .into_iter()
-                .map(crate::types::BridgeAudioFile::from_core)
-                .collect(),
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             signals: signals.map(crate::types::BridgeSignals::from_core),
             failure: failure.map(crate::types::BridgeImportFailure::from_core),

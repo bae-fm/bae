@@ -17,11 +17,11 @@ use crate::import::folder_scanner::{
 };
 use crate::import::list::{window_refs, Flattened, ImportListItem, ItemRef};
 use crate::import::mapping::MappingTable;
-use crate::import::probe::ProbedDurations;
+use crate::import::probe::SourceDurations;
 use crate::import::search::{ImportSearchReleaseDetail, MetadataResult};
 use crate::import::triage::MatchedRelease;
 use crate::import::MetadataRef;
-use crate::import::{AudioFile, CoverSelection, RawReleaseEdit};
+use crate::import::{CoverSelection, RawReleaseEdit};
 use crate::library::LibraryPageWindow;
 use std::path::PathBuf;
 
@@ -249,10 +249,7 @@ pub(super) fn load_candidate_detail_on(
     let picked = current
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
-    let durations = current
-        .as_ref()
-        .map(|state| state.durations.clone())
-        .unwrap_or_default();
+    let durations = crate::import::probe::source_durations(&candidate.files);
     let signals = current.as_ref().and_then(|state| state.signals.clone());
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     let (initial_metadata_source, metadata_revision) = sql.query_row(
@@ -352,8 +349,6 @@ pub(super) fn load_candidate_detail_on(
         pane.release.as_ref(),
         embedded_cover.as_ref(),
     );
-    let unprobed = unprobed_units(&candidate.files, picked.is_some(), &durations);
-
     Ok(Some(ImportCandidateDetailProjection {
         is_added: imported_release.is_some(),
         candidate,
@@ -370,7 +365,6 @@ pub(super) fn load_candidate_detail_on(
         picked_library_status,
         metadata_draft: pane.edit,
         mapping: pane.mapping,
-        unprobed,
         cover,
         remote_covers,
         signals,
@@ -392,7 +386,7 @@ fn pane_of(
     sql: &SqlReadContext<'_>,
     candidate: &FolderCandidate,
     picked: Option<&MetadataProvenance>,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
     rows: &DbCandidatePaneRows,
 ) -> Result<PaneValue, DbError> {
     let release = match picked {
@@ -478,22 +472,6 @@ fn chosen_cover(
             })
         }
     }
-}
-
-/// The folder's audio units nothing has measured. Asked only under a pick: a
-/// table with no tracks shows no lengths and so asks for none.
-fn unprobed_units(
-    files: &CategorizedFiles,
-    picked: bool,
-    durations: &ProbedDurations,
-) -> Vec<AudioFile> {
-    if !picked {
-        return Vec::new();
-    }
-    crate::import::track_slots::audio_units(files)
-        .into_iter()
-        .filter(|unit| durations.duration_of(unit).is_none())
-        .collect()
 }
 
 /// The live library status of every release the verdict names. A release the

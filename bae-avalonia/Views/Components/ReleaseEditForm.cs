@@ -57,7 +57,7 @@ internal sealed class ReleaseEditForm
             Loc.Chrome("edit.field.album_artists"),
             _artistField));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.year"), out _yearBox));
-        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.format"), out _formatBox));
+        Panel.Children.Add(DialogUi.Field(Loc.Core("core.release.media"), out _formatBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.label"), out _labelBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.catalog_number"), out _catalogBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.country"), out _countryBox));

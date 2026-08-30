@@ -18,7 +18,7 @@
 
 use crate::db::DbTrack;
 use crate::import::folder_scanner::{BoundTrackSheet, CategorizedFiles, ScannedFile};
-use crate::import::probe::{probe_duration_ms, sheet_analysis, ProbedDurations};
+use crate::import::probe::{sheet_analysis, SourceDurations};
 use crate::import::types::{AudioFile, CueFlacAnalysis, TrackFile};
 use crate::import::{ImportError, TrackUserEdit};
 use std::collections::{HashMap, HashSet};
@@ -60,12 +60,10 @@ pub struct SlotFile {
     pub size: u64,
     /// Absolute path — what auditioning this row plays.
     pub path: std::path::PathBuf,
-    /// This row's own playing time, as [`crate::import::probe`] read it off
-    /// the disk. `None` when nothing has read this unit yet, when the file
-    /// could not be probed at all, or when a sheet gives the row no timing —
-    /// a missing number is what it is, and inventing one here is what would
-    /// make a wrong pairing look right.
-    pub probed_duration_ms: Option<u64>,
+    /// This row's own playing time from the scan facts or sheet timing. `None`
+    /// when a sheet gives the row no timing; inventing one would make a wrong
+    /// pairing look right.
+    pub duration_ms: Option<u64>,
     pub span: SlotSpan,
 }
 
@@ -90,11 +88,11 @@ pub const LENGTH_DISAGREEMENT_MS: u64 = 3_000;
 /// computed: re-pointing a row at a different file gives it two new lengths,
 /// and an answer stored at selection would still be describing the pairing it
 /// replaced.
-pub fn lengths_disagree(probed_ms: Option<u64>, source_ms: Option<u64>) -> bool {
-    let (Some(probed), Some(source)) = (probed_ms, source_ms) else {
+pub fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
+    let (Some(file), Some(release)) = (file_ms, release_ms) else {
         return false;
     };
-    probed.abs_diff(source) > LENGTH_DISAGREEMENT_MS
+    file.abs_diff(release) > LENGTH_DISAGREEMENT_MS
 }
 
 /// One track as the source names it: the editable row projected from it, plus
@@ -342,23 +340,10 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
 /// file per track has no single binding to stand in for its references, so
 /// those resolve as written, inside the sheet's own directory.
 fn sheet_audio_ids<'a>(files: &'a CategorizedFiles, bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
-    if bound.sheet.single_file().is_some() {
-        return vec![bound.audio.relative_path.as_str()];
-    }
-    let Some(cue_dir) = bound.file.path.parent() else {
-        return vec![bound.audio.relative_path.as_str()];
-    };
-    bound
-        .sheet
-        .audio_file_references()
-        .iter()
-        .filter_map(|reference| {
-            let path = cue_dir.join(reference);
-            files
-                .audio()
-                .find(|audio| audio.path == path)
-                .map(|audio| audio.relative_path.as_str())
-        })
+    files
+        .sheet_audio_files(bound)
+        .into_iter()
+        .map(|audio| audio.relative_path.as_str())
         .collect()
 }
 
@@ -429,7 +414,7 @@ pub(crate) fn map_source_rows(
 pub(crate) fn slot_table(
     source_tracks: &[SourceTrack],
     files: &CategorizedFiles,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
 ) -> SlotTable {
     let audio = slot_files(files, durations);
     let units: Vec<AudioFile> = audio.iter().map(|file| file.audio.clone()).collect();
@@ -492,7 +477,7 @@ pub(crate) fn slot_table(
 ///
 /// Same order and same entries as [`audio_units`] — this is that list with the
 /// stored measurements hung on it.
-pub(crate) fn slot_files(files: &CategorizedFiles, durations: &ProbedDurations) -> Vec<SlotFile> {
+pub(crate) fn slot_files(files: &CategorizedFiles, durations: &SourceDurations) -> Vec<SlotFile> {
     let units = audio_units(files);
     let by_path: HashMap<&str, &ScannedFile> = files
         .audio()
@@ -513,7 +498,7 @@ pub(crate) fn slot_files(files: &CategorizedFiles, durations: &ProbedDurations) 
             name: file.file_name.clone(),
             size: file.size,
             path: file.path.clone(),
-            probed_duration_ms: durations.duration_of(unit).flatten(),
+            duration_ms: durations.duration_of(unit).flatten(),
             span: span_at(&units, index),
         });
     }
@@ -571,10 +556,18 @@ pub(crate) fn resolve_track_files(
         }
         match &audio {
             AudioFile::Standalone { .. } => {
-                db_track.duration_ms = probe_duration_ms(&file.path);
+                db_track.duration_ms = file
+                    .source_audio
+                    .as_ref()
+                    .map(|audio| audio.duration_ms as i64);
                 track_files.push(TrackFile::Standalone {
                     db_track,
                     file_path: file.path.clone(),
+                    source_audio: file.source_audio.clone().ok_or_else(|| {
+                        ImportError::UnusableFile {
+                            detail: format!("{} has no scanned audio facts", file.relative_path),
+                        }
+                    })?,
                 });
             }
             AudioFile::SheetSlice {
@@ -620,19 +613,32 @@ pub(crate) fn resolve_track_files(
     Ok(track_files)
 }
 
-/// The scanned audio a binding names, as the commit's own walk of the folder
-/// found it. Audio that is no longer there is a refusal: the mapping named
-/// samples this import cannot read, and the folder changed under the choice.
+/// The persisted scanned audio a binding names. Audio that is no longer there
+/// is a refusal: the mapping named samples this import cannot read, and the
+/// folder changed under the choice.
 fn audio_file<'a>(
     files: &'a CategorizedFiles,
     audio: &AudioFile,
 ) -> Result<&'a ScannedFile, ImportError> {
-    files
+    let file = files
         .audio()
         .find(|file| file.relative_path == audio.file_id())
         .ok_or_else(|| ImportError::UnusableFile {
             detail: format!("{} is no longer in the folder", audio.file_id()),
-        })
+        })?;
+    let metadata = std::fs::metadata(&file.path).map_err(|error| ImportError::UnusableFile {
+        detail: format!("cannot read {}: {error}", file.path.display()),
+    })?;
+    let modified_at_ns = super::folder_scanner::file_modified_at_ns(&file.path, &metadata)
+        .map_err(|error| ImportError::UnusableFile {
+            detail: error.to_string(),
+        })?;
+    if metadata.len() != file.size || modified_at_ns != file.modified_at_ns {
+        return Err(ImportError::UnusableFile {
+            detail: format!("{} changed after it was scanned", file.path.display()),
+        });
+    }
+    Ok(file)
 }
 
 /// A file's name without its extension — the title an unnamed slot writes.

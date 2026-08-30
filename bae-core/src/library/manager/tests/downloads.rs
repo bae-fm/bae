@@ -11,6 +11,7 @@ async fn insert_pinnable_release(manager: &LibraryManager) -> String {
         original_filename: "a.flac".to_string(),
         file_size: 1000,
         content_type: crate::util::content_type::ContentType::Flac,
+        source_audio: None,
         cloud_path: None,
         content_hash: crate::util::fs::hash_bytes(b"fixture"),
         created_at: Utc::now(),

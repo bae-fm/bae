@@ -11,7 +11,7 @@ use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, CollapsedDirectory, FileRole, FileRoleChoice,
     ScannedFile, SheetBinding, SheetDisc,
 };
-use crate::import::probe::ProbedDurations;
+use crate::import::probe::SourceDurations;
 use crate::import::track_slots::{
     audio_layout, units_of, SlotReconciliation, SlotTable, TrackSlot, UnitContribution,
 };
@@ -137,10 +137,9 @@ pub struct MappingFile {
     pub name: String,
     pub size: u64,
     pub path: PathBuf,
-    /// Playing time as [`crate::import::probe`] read it off the disk. `None`
-    /// for anything that is not audio, for audio nothing could be read from,
-    /// and for a unit nothing has measured yet.
-    pub probed_duration_ms: Option<u64>,
+    /// Playing time from the scan's stored facts. `None` for non-audio files.
+    pub duration_ms: Option<u64>,
+    pub audio_format: Option<crate::album_detail::AudioFormat>,
     pub role: MappingRole,
     /// The roles this file can be put in, the one in force first. Empty when
     /// its role is nobody's decision to make.
@@ -166,6 +165,7 @@ pub struct MappingEntry {
     pub container_id: String,
     pub container_name: String,
     pub container_path: PathBuf,
+    pub audio_format: crate::album_detail::AudioFormat,
 }
 
 /// The right half of a row: what committing makes of the source unit.
@@ -203,7 +203,7 @@ pub struct SheetGroup {
 /// container's name and size: a header states both which audio a sheet is on and
 /// why it is on none, and carrying the binding separately would be a second way
 /// to say the first.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SheetBound {
     /// The sheet describes this audio.
     Describes(MappingContainer),
@@ -235,11 +235,12 @@ impl SheetBound {
 }
 
 /// The audio a track sheet describes.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MappingContainer {
     pub file_id: String,
     pub name: String,
     pub size: u64,
+    pub audio_format: crate::album_detail::AudioFormat,
 }
 
 /// Where the tracklist a folder is being committed as came from.
@@ -276,7 +277,7 @@ pub struct PickedTracklist<'a> {
 pub fn mapping_table(
     files: &CategorizedFiles,
     picked: Option<PickedTracklist<'_>>,
-    durations: &ProbedDurations,
+    durations: &SourceDurations,
 ) -> MappingTable {
     let layout = audio_layout(files);
     let units = units_of(&layout);
@@ -421,7 +422,7 @@ pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
 /// and how many track rows it has emitted.
 struct RowBuilder<'a> {
     picked: Option<PickedTracklist<'a>>,
-    durations: &'a ProbedDurations,
+    durations: &'a SourceDurations,
     slot_of: HashMap<AudioFile, usize>,
     next_track: usize,
 }
@@ -432,11 +433,11 @@ impl RowBuilder<'_> {
         let unit = AudioFile::Standalone {
             file_id: entry.file.relative_path.clone(),
         };
-        let probed = self.probed_duration_ms(&unit);
+        let duration_ms = self.duration_ms(&unit);
         self.unit(
             &unit,
-            MappingSource::File(mapping_file(entry, MappingRole::Audio, probed)),
-            probed,
+            MappingSource::File(mapping_file(entry, MappingRole::Audio, duration_ms)),
+            duration_ms,
         )
     }
 
@@ -452,7 +453,7 @@ impl RowBuilder<'_> {
                     sheet_id: sheet.file.relative_path.clone(),
                     index: index as u32,
                 };
-                let probed = self.probed_duration_ms(&unit);
+                let duration_ms = self.duration_ms(&unit);
                 self.unit(
                     &unit,
                     MappingSource::SheetEntry(MappingEntry {
@@ -464,8 +465,15 @@ impl RowBuilder<'_> {
                         container_id: sheet.audio.relative_path.clone(),
                         container_name: sheet.audio.file_name.clone(),
                         container_path: sheet.audio.path.clone(),
+                        audio_format: sheet
+                            .audio
+                            .source_audio
+                            .as_ref()
+                            .expect("a scanned audio file has source facts")
+                            .format
+                            .clone(),
                     }),
-                    probed,
+                    duration_ms,
                 )
             })
             .collect()
@@ -473,7 +481,7 @@ impl RowBuilder<'_> {
 
     /// This unit's playing time as the stored measurements record it. A unit
     /// nothing has read yet shows none, whether or not a release is picked.
-    fn probed_duration_ms(&self, unit: &AudioFile) -> Option<u64> {
+    fn duration_ms(&self, unit: &AudioFile) -> Option<u64> {
         self.durations.duration_of(unit).flatten()
     }
 
@@ -547,7 +555,7 @@ impl RowBuilder<'_> {
 
 /// One row for a file that is not one of the release's tracks: something the
 /// folder carries alongside them. Nothing has to be opened to know what it
-/// becomes, so it shows no probed length.
+/// becomes, so it shows no source length.
 fn carried(entry: &CandidateFile, role: MappingRole) -> MappingRow {
     MappingRow::Unit(MappingUnit {
         becomes: MappingBecomes::Kept,
@@ -588,6 +596,12 @@ fn container(audio: &ScannedFile) -> MappingContainer {
         file_id: audio.relative_path.clone(),
         name: audio.file_name.clone(),
         size: audio.size,
+        audio_format: audio
+            .source_audio
+            .as_ref()
+            .expect("a scanned audio file has source facts")
+            .format
+            .clone(),
     }
 }
 
@@ -719,17 +733,18 @@ fn remove(mut table: MappingTable, should_remove: &dyn Fn(&MappingUnit) -> bool)
 
 /// The left half of a file's row: what the folder holds, and the roles it may
 /// be put in.
-fn mapping_file(
-    entry: &CandidateFile,
-    role: MappingRole,
-    probed_duration_ms: Option<u64>,
-) -> MappingFile {
+fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
     MappingFile {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.file_name.clone(),
         size: entry.file.size,
         path: entry.file.path.clone(),
-        probed_duration_ms,
+        duration_ms,
+        audio_format: entry
+            .file
+            .source_audio
+            .as_ref()
+            .map(|audio| audio.format.clone()),
         role,
         alternatives: entry.role_alternatives().to_vec(),
         role_choice: entry.role_choice(),

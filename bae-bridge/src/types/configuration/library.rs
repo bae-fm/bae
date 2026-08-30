@@ -211,7 +211,7 @@ pub struct BridgeStoragePage {
 pub enum BridgeStorageSortField {
     AlbumTitle,
     ArtistNames,
-    Format,
+    Media,
     FileCount,
     TotalSize,
 }

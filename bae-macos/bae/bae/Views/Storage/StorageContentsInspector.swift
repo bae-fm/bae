@@ -34,7 +34,7 @@ struct StorageContentsInspector: View {
                             Text(file.originalFilename)
                                 .lineLimit(1)
                         }
-                        TableColumn("Format") { file in
+                        TableColumn(coreString("core.audio.label")) { file in
                             if let format = file.audioFormat {
                                 Text(format.text)
                                     .foregroundStyle(.secondary)

@@ -24,7 +24,7 @@ use super::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
     TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
-use super::types::{AudioFile, MetadataProvenance, RawReleaseEdit};
+use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};
@@ -330,9 +330,6 @@ pub struct ImportCandidateDetailProjection {
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
-    /// Audio units nothing has measured. Non-empty means the pane owes a probe
-    /// — the duration cells for these rows have no number to show yet.
-    pub unprobed: Vec<AudioFile>,
     /// The cover this candidate commits with: the one chosen, else the picked
     /// release's default.
     pub cover: Option<CoverChoice>,
@@ -363,7 +360,6 @@ impl ImportCandidateDetailProjection {
             picked_library_status,
             metadata_draft,
             mapping,
-            unprobed,
             cover,
             remote_covers,
             signals,
@@ -437,7 +433,6 @@ impl ImportCandidateDetailProjection {
             metadata_revision,
             initial_metadata_source,
             mapping,
-            unprobed,
             cover,
             remote_covers,
             signals,
@@ -468,7 +463,6 @@ pub struct ImportCandidateDetail {
     pub metadata_revision: u64,
     pub initial_metadata_source: crate::config::DefaultImportMetadataSource,
     pub mapping: MappingTable,
-    pub unprobed: Vec<AudioFile>,
     pub cover: Option<CoverChoice>,
     pub remote_covers: Vec<RemoteCover>,
     pub signals: Option<Signals>,

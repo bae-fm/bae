@@ -205,7 +205,7 @@ impl ImportServiceHandle {
         let metadata_provenance = state
             .as_ref()
             .and_then(|state| state.metadata_provenance.clone());
-        let durations = state.map(|state| state.durations).unwrap_or_default();
+        let durations = crate::import::probe::source_durations(&candidate.files);
         let rows = self
             .library_manager
             .load_import_candidate_pane_rows(&content_hash)

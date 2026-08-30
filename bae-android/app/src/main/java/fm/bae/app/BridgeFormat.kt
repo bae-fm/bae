@@ -2,6 +2,10 @@ package fm.bae.app
 
 import android.content.Context
 import uniffi.bae_bridge.BridgeAudioFormat
+import uniffi.bae_bridge.BridgeRelease
+import uniffi.bae_bridge.BridgeSourceAudioDescriptor
+import uniffi.bae_bridge.BridgeSourceAudioLayout
+import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSide
 import uniffi.bae_bridge.bridgeAudioChannelsKey
@@ -49,16 +53,24 @@ fun BridgeTrackGroup.sideHeaderText(context: Context): String {
  * parts and the lossy/lossless split (`bitsPerSample == null`); this is the UI's
  * locale rendering. Mirrors macOS `BridgeAudioFormat.text`.
  */
-fun BridgeAudioFormat.text(context: Context): String {
-    val nf = NumberFormat.getIntegerInstance(context.currentLocale())
+fun BridgeAudioFormat.text(context: Context): String = text(context, ::bridgeAudioChannelsKey)
+
+internal fun BridgeAudioFormat.text(
+    context: Context,
+    audioChannelsKey: (Long) -> String?,
+): String {
     val parts = mutableListOf(codec)
     if (bitsPerSample == null) {
-        bitrateKbps?.let { parts.add("${nf.format(it)} kbps") }
+        bitrateKbps?.let {
+            parts.add(context.coreString("core.audio.bitrate_kbps", mapOf("value" to it)))
+        }
     }
     parts.add(sampleRateText(context))
-    bitsPerSample?.let { parts.add("${nf.format(it)}-bit") }
-    parts.add(channelsText(context, nf))
-    return parts.joinToString(" · ")
+    bitsPerSample?.let {
+        parts.add(context.coreString("core.audio.bit_depth", mapOf("value" to it)))
+    }
+    parts.add(channelsText(context, audioChannelsKey))
+    return parts.joinToString(context.coreString("core.audio.list_separator"))
 }
 
 private fun BridgeAudioFormat.sampleRateText(context: Context): String {
@@ -68,16 +80,72 @@ private fun BridgeAudioFormat.sampleRateText(context: Context): String {
             maximumFractionDigits = 1
             minimumFractionDigits = 0
         }
-    return "${nf.format(khz)} kHz"
+    return context.coreString(
+        "core.audio.sample_rate_khz",
+        mapOf("value" to nf.format(khz)),
+    )
 }
 
 private fun BridgeAudioFormat.channelsText(
     context: Context,
-    nf: NumberFormat,
+    audioChannelsKey: (Long) -> String?,
 ): String {
     // 1 and 2 channels have a localized word (mono/stereo); any other count
     // has no special word and renders as "Nch" — this is the multichannel
     // case, not a missing catalog key.
-    val key = bridgeAudioChannelsKey(channels)
-    return if (key != null) context.coreString(key) else "${nf.format(channels)}ch"
+    val key = audioChannelsKey(channels)
+    return if (key != null) {
+        context.coreString(key)
+    } else {
+        context.coreString("core.audio.channels.count", mapOf("value" to channels))
+    }
 }
+
+fun BridgeSourceAudioDescriptor.text(context: Context): String = text(context, ::bridgeAudioChannelsKey)
+
+internal fun BridgeSourceAudioDescriptor.text(
+    context: Context,
+    audioChannelsKey: (Long) -> String?,
+): String {
+    val parts = mutableListOf<String>()
+    if (layout == BridgeSourceAudioLayout.CUE) {
+        parts.add(context.coreString("core.audio.layout.cue"))
+    }
+    parts.add(format.text(context, audioChannelsKey))
+    return parts.joinToString(context.coreString("core.audio.list_separator"))
+}
+
+fun BridgeSourceAudioSummary.text(context: Context): String = text(context, ::bridgeAudioChannelsKey)
+
+internal fun BridgeSourceAudioSummary.text(
+    context: Context,
+    audioChannelsKey: (Long) -> String?,
+): String =
+    when (this) {
+        is BridgeSourceAudioSummary.Uniform -> {
+            descriptor.text(context, audioChannelsKey)
+        }
+
+        is BridgeSourceAudioSummary.Mixed -> {
+            (
+                listOf(context.coreString("core.audio.mixed")) +
+                    descriptors.map { it.text(context, audioChannelsKey) }
+            ).joinToString(context.coreString("core.audio.list_separator"))
+        }
+    }
+
+fun BridgeRelease.compactMetadataText(context: Context): String = compactMetadataText(context, ::bridgeAudioChannelsKey)
+
+internal fun BridgeRelease.compactMetadataText(
+    context: Context,
+    audioChannelsKey: (Long) -> String?,
+): String =
+    listOfNotNull(
+        year?.toString(),
+        format,
+        label,
+        catalogNumber,
+        country,
+        sourceAudio?.text(context, audioChannelsKey),
+        context.durationUnitsText(totalDuration).ifEmpty { null },
+    ).joinToString(context.coreString("core.audio.list_separator"))

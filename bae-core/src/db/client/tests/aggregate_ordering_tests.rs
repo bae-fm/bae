@@ -353,6 +353,7 @@ async fn release_files_come_back_in_case_insensitive_natural_order() {
             original_filename: name.to_string(),
             file_size: 1,
             content_type: crate::util::content_type::ContentType::from_mime(mime),
+            source_audio: None,
             cloud_path: None,
             content_hash: crate::util::fs::hash_bytes(name.as_bytes()),
             created_at: chrono::Utc::now(),
@@ -373,4 +374,38 @@ async fn release_files_come_back_in_case_insensitive_natural_order() {
             "Track 10.flac",
         ]
     );
+}
+
+#[tokio::test]
+async fn release_file_source_audio_facts_round_trip_without_track_rows() {
+    let (db, _tmp) = release_detail_db().await;
+    let source_audio = crate::album_detail::SourceAudioFile {
+        layout: Some(crate::album_detail::SourceAudioLayout::Cue),
+        content_type: crate::util::content_type::ContentType::Flac,
+        duration_ms: 187_654,
+        format: crate::album_detail::AudioFormat {
+            codec: "FLAC".to_string(),
+            sample_rate_hz: 96_000,
+            bits_per_sample: Some(24),
+            bitrate_kbps: None,
+            channels: 2,
+        },
+    };
+    db.insert_file(&DbFile {
+        id: bae_test_support::test_uuid("source-audio-round-trip"),
+        release_id: RELEASE_A.to_string(),
+        original_filename: "album.flac".to_string(),
+        file_size: 12_345,
+        content_type: crate::util::content_type::ContentType::Flac,
+        source_audio: Some(source_audio.clone()),
+        cloud_path: None,
+        content_hash: crate::util::fs::hash_bytes(b"source audio"),
+        created_at: chrono::Utc::now(),
+    })
+    .await
+    .unwrap();
+
+    let files = db.get_files_for_release(RELEASE_A).await.unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0].source_audio, Some(source_audio));
 }

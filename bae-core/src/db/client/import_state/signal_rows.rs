@@ -242,13 +242,9 @@ fn free_text(text: &TextSignal) -> &[String] {
 }
 
 /// Every candidate's settled signals, or the one `only` names.
-///
-/// `durations` comes from the duration rows rather than this table: the total
-/// is derived from them, so storing it twice would let the two disagree.
 pub(super) fn load_signals_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-    durations: &HashMap<String, crate::import::probe::ProbedDurations>,
 ) -> Result<HashMap<String, Signals>, DbError> {
     let values = sql.query(
         &format!(
@@ -383,14 +379,13 @@ pub(super) fn load_signals_on(
             },
             other => return Err(unreadable("text_state", other)),
         };
-        let durations = durations.get(&content_hash).cloned().unwrap_or_default();
         out.insert(
             content_hash,
             Signals {
                 disc_id,
                 barcode,
                 text,
-                durations,
+                durations: Default::default(),
             },
         );
     }

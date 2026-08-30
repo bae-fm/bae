@@ -18,6 +18,7 @@ internal sealed class ImportMetadataSourceSection
     internal required string Title { get; init; }
     internal required BridgeRawReleaseEdit? Edit { get; init; }
     internal required string MetaLine { get; init; }
+    internal required string SourceAudioLine { get; init; }
     internal required string? ProvenanceLabel { get; init; }
     internal required Uri? ProvenanceUri { get; init; }
     internal required bool IsReading { get; init; }
@@ -75,6 +76,7 @@ internal sealed class ImportMetadataSourceSection
             Title,
             ArtistAssignmentDisplay.Join(Edit.AlbumArtistAssignments),
             MetaLine,
+            SourceAudioLine,
             Edit,
             ProvenanceLabel,
             DraftActions(),
@@ -138,6 +140,7 @@ internal sealed class ImportMetadataSourceSection
                 preview.AlbumTitle,
                 ArtistAssignmentDisplay.Join(preview.AlbumArtistAssignments),
                 FileTagsMetaLine,
+                SourceAudioLine,
                 edit: null,
                 provenanceLabel: null,
                 actionControl: ActionButton(
@@ -199,6 +202,7 @@ internal sealed class ImportMetadataSourceSection
         string titleText,
         string artistText,
         string metaLine,
+        string sourceAudioLine,
         BridgeRawReleaseEdit? edit,
         string? provenanceLabel,
         Control? actionControl,
@@ -236,6 +240,7 @@ internal sealed class ImportMetadataSourceSection
             facts.Children.Add(SourceChip(label, ProvenanceUri));
         }
         summary.Children.Add(facts);
+        summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));
         Grid.SetColumn(summary, 1);
         grid.Children.Add(summary);
 
@@ -447,12 +452,12 @@ internal sealed class ImportMetadataSourceSection
             ColumnSpacing = 8,
             RowSpacing = 6,
         };
-        Add(grid, 0, 0, "edit.field.year", pressing.Year, BridgeCandidateEditField.Year);
-        Add(grid, 1, 0, "edit.field.format", pressing.Format, BridgeCandidateEditField.Format);
-        Add(grid, 2, 0, "edit.field.label", pressing.Label, BridgeCandidateEditField.Label);
-        Add(grid, 0, 1, "edit.field.country", pressing.Country, BridgeCandidateEditField.Country);
-        Add(grid, 1, 1, "edit.field.catalog_number", pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber);
-        Add(grid, 2, 1, "edit.field.barcode", pressing.Barcode, BridgeCandidateEditField.Barcode);
+        Add(grid, 0, 0, Loc.Chrome("edit.field.year"), pressing.Year, BridgeCandidateEditField.Year);
+        Add(grid, 1, 0, Loc.Core("core.release.media"), pressing.Format, BridgeCandidateEditField.Format);
+        Add(grid, 2, 0, Loc.Chrome("edit.field.label"), pressing.Label, BridgeCandidateEditField.Label);
+        Add(grid, 0, 1, Loc.Chrome("edit.field.country"), pressing.Country, BridgeCandidateEditField.Country);
+        Add(grid, 1, 1, Loc.Chrome("edit.field.catalog_number"), pressing.CatalogNumber, BridgeCandidateEditField.CatalogNumber);
+        Add(grid, 2, 1, Loc.Chrome("edit.field.barcode"), pressing.Barcode, BridgeCandidateEditField.Barcode);
         column.Children.Add(grid);
         return column;
     }
@@ -461,11 +466,11 @@ internal sealed class ImportMetadataSourceSection
         Grid grid,
         int column,
         int row,
-        string labelKey,
+        string label,
         string value,
         BridgeCandidateEditField field)
     {
-        var control = DialogUi.Field(Loc.Chrome(labelKey), out var box);
+        var control = DialogUi.Field(label, out var box);
         box.FontSize = 12;
         box.Commits(value, typed => OnEditField(field, typed));
         Grid.SetColumn(control, column);

@@ -425,8 +425,12 @@ pub(super) fn insert_file_row(
     conn.execute(
         r#"
         INSERT INTO release_files (
-            id, release_id, original_filename, file_size, content_type, cloud_path, hash, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, release_id, original_filename, file_size, content_type,
+            source_audio_layout, source_audio_content_type, source_audio_duration_ms,
+            source_audio_sample_rate_hz, source_audio_bits_per_sample,
+            source_audio_bitrate_kbps, source_audio_channels,
+            cloud_path, hash, _updated_at, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         params![
             file.id,
@@ -434,6 +438,29 @@ pub(super) fn insert_file_row(
             file.original_filename,
             file.file_size,
             file.content_type.as_str(),
+            file.source_audio
+                .as_ref()
+                .and_then(|audio| audio.layout)
+                .map(|layout| match layout {
+                    crate::album_detail::SourceAudioLayout::File => "file",
+                    crate::album_detail::SourceAudioLayout::Cue => "cue",
+                }),
+            file.source_audio
+                .as_ref()
+                .map(|audio| audio.content_type.as_str()),
+            file.source_audio.as_ref().map(|audio| audio.duration_ms),
+            file.source_audio
+                .as_ref()
+                .map(|audio| audio.format.sample_rate_hz),
+            file.source_audio
+                .as_ref()
+                .and_then(|audio| audio.format.bits_per_sample),
+            file.source_audio
+                .as_ref()
+                .and_then(|audio| audio.format.bitrate_kbps),
+            file.source_audio
+                .as_ref()
+                .map(|audio| audio.format.channels),
             file.cloud_path,
             file.content_hash,
             reg,

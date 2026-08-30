@@ -21,6 +21,9 @@ impl BridgeWatchedFolder {
 pub struct BridgeFileInfo {
     pub name: String,
     pub size: u64,
+    /// SHA-256 of the scanned bytes. Part of file identity so session previews
+    /// never survive a same-path, same-size content replacement.
+    pub content_digest: String,
     /// Directory prefix for display, e.g. "Artwork/". `None` when the file
     /// sits at the candidate-folder root.
     pub dir_prefix: Option<String>,
@@ -28,6 +31,8 @@ pub struct BridgeFileInfo {
     pub file_name: String,
     /// Absolute filesystem path of the file on disk.
     pub local_path: String,
+    /// Probe-verified source audio facts. `None` for non-audio files.
+    pub audio_format: Option<BridgeAudioFormat>,
 }
 
 /// What a track sheet describes. Mirror of bae-core's `SheetBinding`; `file_id`
@@ -266,8 +271,8 @@ pub struct BridgeCandidateFiles {
     /// Every file in the folder, each exactly once, in release-relative path
     /// order.
     pub files: Vec<BridgeCandidateFile>,
-    /// e.g. "CUE+FLAC", "FLAC", "MP3" — computed by core from the probed codec.
-    pub format_label: String,
+    /// Core-derived description of the effective source layout and audio facts.
+    pub source_audio: Option<BridgeSourceAudioSummary>,
     /// The directories the roles table shows as one row. Every file whose
     /// `dir_prefix` matches one of these is stood for by its group row.
     pub collapsed_directories: Vec<BridgeCollapsedDirectory>,

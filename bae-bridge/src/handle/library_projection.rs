@@ -8,7 +8,7 @@ impl BridgeFile {
             file_size,
             is_image,
             content_type,
-            audio_format,
+            source_audio,
         } = f;
         BridgeFile {
             id,
@@ -16,7 +16,8 @@ impl BridgeFile {
             file_size,
             is_image,
             content_type,
-            audio_format: audio_format.map(crate::types::BridgeAudioFormat::from_core),
+            audio_format: source_audio
+                .map(|audio| crate::types::BridgeAudioFormat::from_core(audio.format)),
         }
     }
 }
@@ -101,6 +102,7 @@ impl BridgeRelease {
             tracks,
             track_groups,
             files,
+            source_audio,
             image_files,
             gallery_items,
         } = rel;
@@ -141,6 +143,7 @@ impl BridgeRelease {
                 .collect(),
             image_files: image_files.into_iter().map(BridgeFile::from_core).collect(),
             files: files.into_iter().map(BridgeFile::from_core).collect(),
+            source_audio: source_audio.map(crate::types::BridgeSourceAudioSummary::from_core),
             gallery_items: gallery_items
                 .into_iter()
                 .map(BridgeGalleryItem::from_core)

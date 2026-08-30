@@ -216,7 +216,6 @@ internal static partial class NativeBae
             Key = candidate.FolderPath,
             Name = candidate.SourceFolderName,
             TrackCount = checked((int)candidate.TrackCount),
-            Format = candidate.Files.FormatLabel,
             RowStatus = StoredRowStatus(detail),
             Matches = ImportMatches(detail.ResumedIdentifyState),
             Files = candidate.Files,

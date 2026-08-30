@@ -463,7 +463,7 @@ mod identify_mirrors {
             },
             // A plausible total for the ten tracks above. Not zero, which
             // would claim the audio could not be probed.
-            durations: bae_core::import::probe::ProbedDurations::totalling(2_400_000),
+            durations: bae_core::import::probe::SourceDurations::totalling(2_400_000),
         };
 
         let json = serde_json::to_value(automation_signals(signals)).unwrap();
@@ -588,10 +588,11 @@ mod import_queue {
                         PathBuf::from(format!("{root}/{name}/01.flac")),
                         "01.flac".to_string(),
                         1_000,
+                        0,
+                        "fixture-audio".to_string(),
                     ),
                     role: FileRole::Audio,
                 }],
-                format_label: "FLAC".to_string(),
             },
             watched_folder_path: root.to_string(),
             scope: ReleaseFileScope::Recursive,

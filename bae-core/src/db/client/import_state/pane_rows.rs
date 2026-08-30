@@ -1,6 +1,6 @@
 //! What the pane's own controls write, and the read that draws it: the cover,
 //! the album fields, the track rows, the failure an import left behind, and
-//! the measurements a selection took of units identification never reached.
+//! the failure the last import left behind.
 //!
 //! Each write is one row, or one column of one row, and each is addressed by
 //! the candidate's content hash. They hang off `import_candidate_state`, so a
@@ -703,20 +703,6 @@ impl Database {
     ) -> Result<DbCandidatePaneRows, DbError> {
         let content_hash = content_hash.to_string();
         self.read(move |sql| load_pane_rows_on(&sql, &content_hash))
-            .await
-    }
-
-    /// Record what some of a candidate's audio units play for, leaving the
-    /// rest of its measurements alone — the pane's own read of the units
-    /// identification never measured.
-    pub async fn save_import_candidate_durations(
-        &self,
-        content_hash: &str,
-        durations: &crate::import::probe::ProbedDurations,
-    ) -> Result<(), DbError> {
-        let content_hash = content_hash.to_string();
-        let durations = durations.clone();
-        self.call(move |sql| insert_durations(sql, &content_hash, &durations))
             .await
     }
 

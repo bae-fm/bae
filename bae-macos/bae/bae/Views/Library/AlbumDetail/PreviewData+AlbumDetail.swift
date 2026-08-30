@@ -174,6 +174,14 @@
             )
         }
 
+        private static let previewReleaseAudioFormat = BridgeAudioFormat(
+            codec: "FLAC",
+            sampleRateHz: 44_100,
+            bitsPerSample: 16,
+            bitrateKbps: nil,
+            channels: 2
+        )
+
         /// Audio + cover files for the storage sheet's file table.
         static let previewReleaseFiles: [BridgeFile] = [
             BridgeFile(
@@ -182,13 +190,7 @@
                 fileSize: 38_400_000,
                 contentType: "Audio",
                 isImage: false,
-                audioFormat: BridgeAudioFormat(
-                    codec: "FLAC",
-                    sampleRateHz: 44_100,
-                    bitsPerSample: 16,
-                    bitrateKbps: nil,
-                    channels: 2
-                )
+                audioFormat: previewReleaseAudioFormat
             ),
             BridgeFile(
                 id: "f-2",
@@ -196,13 +198,7 @@
                 fileSize: 41_100_000,
                 contentType: "Audio",
                 isImage: false,
-                audioFormat: BridgeAudioFormat(
-                    codec: "FLAC",
-                    sampleRateHz: 44_100,
-                    bitsPerSample: 16,
-                    bitrateKbps: nil,
-                    channels: 2
-                )
+                audioFormat: previewReleaseAudioFormat
             ),
             BridgeFile(
                 id: "f-cover",
@@ -241,6 +237,12 @@
                 tracks: [],
                 trackGroups: [],
                 files: files,
+                sourceAudio: .uniform(
+                    descriptor: BridgeSourceAudioDescriptor(
+                        layout: .file,
+                        format: previewReleaseAudioFormat
+                    )
+                ),
                 imageFiles: [],
                 galleryItems: [],
                 totalDuration: .minutesOnly(minutes: 39),

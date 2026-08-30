@@ -142,7 +142,7 @@ internal sealed class StorageTableView : UserControl
     }
 }
 
-// One realized storage row: the six-column grid (album / artist / format / storage
+// One realized storage row: the six-column grid (album / artist / media / storage
 // / files / size), tap-to-select, and a right-tap menu. Resolves its position
 // through IdAt then the side store, triggers LoadRange for a batch window around
 // itself, and re-renders when it lands or the subscribed page changes.
@@ -314,7 +314,7 @@ internal sealed class StorageRowControl : ContentControl
 }
 
 // The six-column storage grid shared by the sortable header and each row: album and
-// artist stretch (2:2), format / storage auto-size, files and size auto-size and
+// artist stretch (2:2), media / storage auto-size, files and size auto-size and
 // right-align in their cell.
 internal static class StorageGrid
 {

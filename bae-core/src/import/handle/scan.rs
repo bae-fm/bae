@@ -211,7 +211,7 @@ impl ImportServiceHandle {
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
         candidate: &crate::import::folder_scanner::FolderCandidate,
-        durations: &crate::import::probe::ProbedDurations,
+        durations: &crate::import::probe::SourceDurations,
     ) -> Result<crate::import::RawReleaseEdit, crate::import::ImportError> {
         let pane = crate::import::pane::release_pane(
             payloads,
@@ -238,12 +238,7 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
-        let durations = self
-            .library_manager
-            .load_import_candidate_state(&content_hash)
-            .await?
-            .map(|state| state.durations)
-            .unwrap_or_default();
+        let durations = crate::import::probe::source_durations(&candidate.files);
         match &provenance {
             crate::import::MetadataProvenance::FileTags => {
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;

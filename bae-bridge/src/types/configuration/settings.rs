@@ -726,7 +726,7 @@ impl BridgeStorageSort {
             field: match field {
                 BridgeStorageSortField::AlbumTitle => bae_core::db::StorageSortField::AlbumTitle,
                 BridgeStorageSortField::ArtistNames => bae_core::db::StorageSortField::ArtistNames,
-                BridgeStorageSortField::Format => bae_core::db::StorageSortField::Format,
+                BridgeStorageSortField::Media => bae_core::db::StorageSortField::Media,
                 BridgeStorageSortField::FileCount => bae_core::db::StorageSortField::FileCount,
                 BridgeStorageSortField::TotalSize => bae_core::db::StorageSortField::TotalSize,
             },

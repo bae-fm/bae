@@ -9,15 +9,14 @@
 //! identity claim. The release provenance is `FileTags`. Lookup signals
 //! such as OCR, DiscID, and barcode are not part of this path.
 //!
-//! Format comes from the probed codec, year from any tag carrying a date. Both
-//! stay `None` when not determinable rather than being defaulted.
+//! Year comes from any tag carrying a date. Source codecs are physical audio
+//! facts, not release media, so the pressing format stays blank.
 
 use super::assemble::{
     assemble_parsed_album, AlbumArtistScope, ArtistRef, ReleaseIr, TrackEvent, TrackIr, TrackNumber,
 };
 use super::file_tag_snapshot::{
-    extract_file_tag_snapshot, non_empty, probe_content_type, FileTagFact, FileTagSnapshot,
-    LoftyFileTagReader,
+    extract_file_tag_snapshot, non_empty, FileTagFact, FileTagSnapshot, LoftyFileTagReader,
 };
 use super::ParsedAlbum;
 use crate::cue_flac::CueSheet;
@@ -74,7 +73,42 @@ pub fn map_file_tags_to_db(
                 .ok_or_else(|| ImportError::FileTags {
                     detail: format!("audio file path {} has no filename", path.display()),
                 })?;
-            Ok(ScannedFile::new(path.clone(), relative_path, size))
+            let modified = std::fs::metadata(path)
+                .and_then(|metadata| metadata.modified())
+                .map_err(|error| ImportError::FileTags {
+                    detail: format!(
+                        "failed to read modification time of {}: {error}",
+                        path.display()
+                    ),
+                })?;
+            let modified_at_ns = i64::try_from(
+                modified
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|_| ImportError::FileTags {
+                        detail: format!(
+                            "modification time of {} is before the Unix epoch",
+                            path.display()
+                        ),
+                    })?
+                    .as_nanos(),
+            )
+            .map_err(|_| ImportError::FileTags {
+                detail: format!(
+                    "modification time of {} exceeds SQLite's integer range",
+                    path.display()
+                ),
+            })?;
+            let content_digest =
+                crate::util::fs::hash_file(path).map_err(|error| ImportError::FileTags {
+                    detail: format!("failed to hash {}: {error}", path.display()),
+                })?;
+            Ok(ScannedFile::new(
+                path.clone(),
+                relative_path,
+                size,
+                modified_at_ns,
+                content_digest,
+            ))
         })
         .collect::<Result<Vec<_>, _>>()?;
     let snapshot = extract_file_tag_snapshot(&scanned, 0, 0, &LoftyFileTagReader)?;
@@ -113,13 +147,6 @@ fn map_file_tag_facts_to_db(
         .unwrap_or_default();
 
     let year = extracted.iter().find_map(|t| t.year).map(|y| y as i32);
-
-    // The rip's actual codec, not editorial pressing info. A failed probe leaves
-    // the editable field blank rather than guessing from the extension.
-    let format = extracted[0]
-        .content_type
-        .as_ref()
-        .map(|content_type| content_type.display_name().to_string());
 
     // Side comes from DISCNUMBER, track_number from TRACKNUMBER. The positional
     // fallback (index within side, by file order) applies only on a side where NO
@@ -177,7 +204,7 @@ fn map_file_tag_facts_to_db(
         .collect();
 
     Ok(assemble_parsed_album(
-        file_tag_release_ir(album_title, &album_artist_name, year, format, tracks),
+        file_tag_release_ir(album_title, &album_artist_name, year, tracks),
         clock,
         ids,
     ))
@@ -216,7 +243,6 @@ fn file_tag_release_ir(
     album_title: String,
     album_artist_name: &str,
     year: Option<i32>,
-    format: Option<String>,
     tracks: Vec<TrackIr>,
 ) -> ReleaseIr {
     ReleaseIr {
@@ -227,7 +253,7 @@ fn file_tag_release_ir(
         is_compilation: false,
         pressing: Pressing {
             year,
-            format,
+            format: None,
             label: None,
             catalog_number: None,
             country: None,
@@ -278,14 +304,7 @@ pub(crate) fn map_file_tag_snapshot_to_db(
             .then_with(|| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path))
     });
     let sheets = carving.iter().map(|b| b.sheet).collect::<Vec<_>>();
-    let first_carving_audio = carving[0].audio.relative_path.as_str();
-    let format = snapshot
-        .files
-        .iter()
-        .find(|fact| fact.observation.relative_path == first_carving_audio)
-        .and_then(|fact| fact.content_type.as_ref())
-        .map(|content_type| content_type.display_name().to_string());
-    map_cue_sheets_with_format(&sheets, folder_name, format, clock, ids)
+    map_cue_sheets(&sheets, folder_name, clock, ids)
 }
 
 /// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the File Tags
@@ -298,22 +317,16 @@ pub(crate) fn map_file_tag_snapshot_to_db(
 /// 1-based disc index and track numbers run per sheet.
 pub fn map_cue_sheets_to_db(
     sheets: &[&CueSheet],
-    audio_files: &[&Path],
     folder_name: Option<&str>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
-    let format = audio_files
-        .first()
-        .and_then(|path| probe_content_type(path))
-        .map(|content_type| content_type.display_name().to_string());
-    map_cue_sheets_with_format(sheets, folder_name, format, clock, ids)
+    map_cue_sheets(sheets, folder_name, clock, ids)
 }
 
-fn map_cue_sheets_with_format(
+fn map_cue_sheets(
     sheets: &[&CueSheet],
     folder_name: Option<&str>,
-    format: Option<String>,
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
@@ -359,7 +372,7 @@ fn map_cue_sheets_with_format(
     }
 
     Ok(assemble_parsed_album(
-        file_tag_release_ir(album_title, &album_artist_name, year, format, tracks),
+        file_tag_release_ir(album_title, &album_artist_name, year, tracks),
         clock,
         ids,
     ))

@@ -105,7 +105,9 @@ internal sealed partial class StorageDialog
             {
                 var active = sortField == field;
                 var arrow = sortDirection == SortDirection.Ascending ? "↑" : "↓";
-                var label = Loc.Chrome(StorageListModel.ColumnLabelKey(field));
+                var label = field == StorageSortField.Media
+                    ? Loc.Core(StorageListModel.ColumnLabelKey(field))
+                    : Loc.Chrome(StorageListModel.ColumnLabelKey(field));
                 var button = new Button
                 {
                     Content = active ? $"{label} {arrow}" : label,
@@ -127,7 +129,7 @@ internal sealed partial class StorageDialog
 
             AddSortHeader(0, StorageSortField.AlbumTitle);
             AddSortHeader(1, StorageSortField.ArtistNames);
-            AddSortHeader(2, StorageSortField.Format);
+            AddSortHeader(2, StorageSortField.Media);
             var storageHeader = Secondary(Loc.Chrome(StorageListModel.StorageColumnLabelKey));
             storageHeader.Padding = new Thickness(2, 0);
             Grid.SetColumn(storageHeader, 3);
