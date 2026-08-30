@@ -33,13 +33,21 @@ struct StorageManagerView: View {
     )
     @State
     private var selection: Set<String> = []
+    @State
+    private var inspectorPresented: Bool
     /// Runs row context-menu transitions; built lazily once the services are
     /// available from the environment.
     @State
     private var runner: StorageActionRunner?
 
-    init(initialSelection: Set<String> = []) {
+    init(
+        initialSelection: Set<String> = [],
+        initialInspectorPresented: Bool = false
+    ) {
         _selection = State(initialValue: initialSelection)
+        _inspectorPresented = State(
+            initialValue: initialInspectorPresented
+        )
     }
 
     var body: some View {
@@ -79,12 +87,14 @@ struct StorageManagerView: View {
                         }
                         .frame(minWidth: 440, maxHeight: .infinity)
 
-                        if let releaseId = StorageTransferInspector.releaseId(
-                            in: selection
-                        ) {
+                        if inspectorPresented,
+                            let releaseId = StorageTransferInspector.releaseId(
+                                in: selection
+                            )
+                        {
                             StorageTransferInspector(
                                 releaseId: releaseId,
-                                selection: $selection
+                                isPresented: $inspectorPresented
                             )
                             .frame(maxHeight: .infinity)
                         }
@@ -98,6 +108,15 @@ struct StorageManagerView: View {
             }
         }
         .frame(minWidth: 700, minHeight: 400)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Toggle(isOn: $inspectorPresented) {
+                    Label("Transfers", systemImage: "sidebar.trailing")
+                }
+                .toggleStyle(.button)
+                .disabled(selection.count != 1)
+            }
+        }
         .onAppear {
             if runner == nil {
                 runner = StorageActionRunner(
@@ -131,7 +150,13 @@ struct StorageManagerView: View {
             // otherwise carry releases from the old filter into the new tab's
             // multi-select actions.
             selection = []
+            inspectorPresented = false
             updateQuery()
+        }
+        .onChange(of: selection) { _, selection in
+            if selection.count != 1 {
+                inspectorPresented = false
+            }
         }
         .onChange(of: sort) { _, _ in updateQuery() }
         .onDisappear {
@@ -155,10 +180,12 @@ struct StorageManagerView: View {
         let outboxStore: OutboxStore
 
         let initialSelection: Set<String>
+        let initialInspectorPresented: Bool
 
         init(
             rows: [BridgeStorageRow] = PreviewData.storageRows,
             selectedReleaseId: String? = nil,
+            inspectorPresented: Bool = false,
             downloadSnapshot: BridgeDownloadSnapshot =
                 PreviewData
                 .downloadSnapshot(),
@@ -167,43 +194,53 @@ struct StorageManagerView: View {
         ) {
             library = PreviewData.storageLibrary(rows: rows)
             initialSelection = selectedReleaseId.map { [$0] } ?? []
+            initialInspectorPresented = inspectorPresented
             downloadStore = PreviewData.downloadStore(downloadSnapshot)
             outputStore = PreviewData.outputStore(outputSnapshot)
             outboxStore = PreviewData.outboxStore(outboxSnapshot)
         }
 
         var body: some View {
-            StorageManagerView(initialSelection: initialSelection)
-                .environment(library)
-                .environment(
-                    StorageManagerStore(
-                        library: library,
-                        libraryStore: libraryStore,
-                        onError: { uiStore.showError($0) }
-                    )
+            StorageManagerView(
+                initialSelection: initialSelection,
+                initialInspectorPresented: initialInspectorPresented
+            )
+            .environment(library)
+            .environment(
+                StorageManagerStore(
+                    library: library,
+                    libraryStore: libraryStore,
+                    onError: { uiStore.showError($0) }
                 )
-                .environment(ImageStore.stub())
-                .environment(libraryStore)
-                .environment(ReleaseEditor.stub())
-                .environment(Sync.stub())
-                .environment(Downloads.stub())
-                .environment(Outputs.stub())
-                .environment(PreviewData.configStore())
-                .environment(uiStore)
-                .environment(downloadStore)
-                .environment(outputStore)
-                .environment(outboxStore)
+            )
+            .environment(ImageStore.stub())
+            .environment(libraryStore)
+            .environment(ReleaseEditor.stub())
+            .environment(Sync.stub())
+            .environment(Downloads.stub())
+            .environment(Outputs.stub())
+            .environment(PreviewData.configStore())
+            .environment(uiStore)
+            .environment(downloadStore)
+            .environment(outputStore)
+            .environment(outboxStore)
         }
     }
 
     #Preview("Dense — wide, inspector open") {
-        StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
-            .frame(width: 1_440, height: 900)
+        StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true
+        )
+        .frame(width: 1_440, height: 900)
     }
 
     #Preview("Dense — standard, inspector open") {
-        StorageManagerPreviewScene(selectedReleaseId: "rel-row-1")
-            .frame(width: 940, height: 760)
+        StorageManagerPreviewScene(
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true
+        )
+        .frame(width: 940, height: 760)
     }
 
     #Preview("Dense — compact") {
@@ -211,7 +248,7 @@ struct StorageManagerView: View {
             .frame(width: 700, height: 400)
     }
 
-    #Preview("Dense — compact, selected without transfer") {
+    #Preview("Dense — compact, selected") {
         StorageManagerPreviewScene(
             selectedReleaseId: "rel-row-4",
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
@@ -239,7 +276,8 @@ struct StorageManagerView: View {
     #Preview("Empty-ish — inspector open") {
         StorageManagerPreviewScene(
             rows: Array(PreviewData.storageRows.prefix(2)),
-            selectedReleaseId: "rel-row-1"
+            selectedReleaseId: "rel-row-1",
+            inspectorPresented: true
         )
         .frame(width: 940, height: 600)
     }
@@ -248,6 +286,7 @@ struct StorageManagerView: View {
         StorageManagerPreviewScene(
             rows: Array(PreviewData.storageRows.prefix(2)),
             selectedReleaseId: "rel-row-2",
+            inspectorPresented: true,
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(

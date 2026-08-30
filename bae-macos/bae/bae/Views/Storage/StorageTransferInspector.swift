@@ -87,15 +87,11 @@ struct StorageTransferInspector: View {
 
     let releaseId: String
     @Binding
-    var selection: Set<String>
+    var isPresented: Bool
 
     static func releaseId(in selection: Set<String>) -> String? {
         guard selection.count == 1 else { return nil }
         return selection.first
-    }
-
-    static func close(selection: inout Set<String>) {
-        selection.removeAll()
     }
 
     var body: some View {
@@ -134,7 +130,7 @@ struct StorageTransferInspector: View {
                 .font(.headline)
             Spacer()
             Button {
-                Self.close(selection: &selection)
+                isPresented = false
             } label: {
                 Image(systemName: "xmark")
             }

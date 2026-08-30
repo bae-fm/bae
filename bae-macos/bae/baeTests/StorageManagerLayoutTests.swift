@@ -65,6 +65,35 @@ final class StorageManagerLayoutTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
+    func testSelectingReleaseDoesNotPresentTransferInspector() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene()
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let tableScrollView = try XCTUnwrap(storageTable(in: host))
+        let outlineView = try XCTUnwrap(
+            tableScrollView.documentView as? NSOutlineView
+        )
+        let widthBeforeSelection = tableScrollView.frame.width
+
+        outlineView.selectRowIndexes(
+            IndexSet(integer: 0),
+            byExtendingSelection: false
+        )
+        try await settle(host)
+
+        XCTAssertEqual(
+            tableScrollView.frame.width,
+            widthBeforeSelection,
+            accuracy: 1
+        )
+        withExtendedLifetime(window) {}
+    }
+
     func testTableUsesIntentionalColumnSizing() async throws {
         let size = NSSize(width: 1_440, height: 900)
         let (_, host) = SnapshotTestSupport.hostInWindow(

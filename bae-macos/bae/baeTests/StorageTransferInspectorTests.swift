@@ -88,13 +88,4 @@ struct StorageTransferInspectorTests {
             ) == nil
         )
     }
-
-    @Test("closing clears inspector selection")
-    func closingClearsInspectorSelection() {
-        var selection: Set<String> = ["rel-selected"]
-
-        StorageTransferInspector.close(selection: &selection)
-
-        #expect(selection.isEmpty)
-    }
 }
