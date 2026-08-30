@@ -13,7 +13,9 @@ struct SearchSourceToggles: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Toggle("MusicBrainz", isOn: $musicBrainzSelected)
+            Toggle(isOn: $musicBrainzSelected) {
+                Text(verbatim: "MusicBrainz")
+            }
             ZStack {
                 Toggle("Discogs", isOn: availableDiscogsSelection)
                     .disabled(!discogsEnabled)
