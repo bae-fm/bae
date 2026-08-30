@@ -403,6 +403,7 @@ extension ReIdentifySheet {
             displayName: "Album Title \u{00B7} 2019 \u{00B7} CD",
             onClose: {},
         )
+        .environment(SettingsNavigation())
         .albumDetailPreviewEnvironment(store: PreviewData.seededLibraryStore())
         .candidateReaderPreviewEnvironment()
         .preferredColorScheme(.dark)

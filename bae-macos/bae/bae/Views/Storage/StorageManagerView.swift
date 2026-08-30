@@ -2,8 +2,6 @@ import BaeKit
 import SwiftUI
 
 struct StorageManagerView: View {
-    @Environment(Library.self)
-    private var library
     @Environment(StorageManagerStore.self)
     private var storageManagerStore
     @Environment(LibraryStore.self)
@@ -164,10 +162,11 @@ struct StorageManagerView: View {
 
 #if DEBUG
     @MainActor
-    struct StorageManagerPreviewScene: View {
+    struct StorageManagerPreviewFixture {
         let library: Library
-        let libraryStore = LibraryStore()
-        let uiStore = UiStore()
+        let libraryStore: LibraryStore
+        let storageManagerStore: StorageManagerStore
+        let uiStore: UiStore
         let downloadStore: DownloadStore
         let outputStore: OutputStore
         let outboxStore: OutboxStore
@@ -187,7 +186,17 @@ struct StorageManagerView: View {
             outputSnapshot: BridgeOutputSnapshot = PreviewData.outputSnapshot(),
             outboxSnapshot: BridgeOutboxSnapshot = PreviewData.outboxSnapshot()
         ) {
-            library = PreviewData.storageLibrary(rows: rows)
+            let library = PreviewData.storageLibrary(rows: rows)
+            let libraryStore = LibraryStore()
+            let uiStore = UiStore()
+            self.library = library
+            self.libraryStore = libraryStore
+            self.storageManagerStore = StorageManagerStore(
+                library: library,
+                libraryStore: libraryStore,
+                onError: { uiStore.showError($0) }
+            )
+            self.uiStore = uiStore
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
             initialInspectorTab = inspectorTab
@@ -195,58 +204,87 @@ struct StorageManagerView: View {
             outputStore = PreviewData.outputStore(outputSnapshot)
             outboxStore = PreviewData.outboxStore(outboxSnapshot)
         }
-
-        var body: some View {
-            StorageManagerView(
-                initialSelection: initialSelection,
-                initialInspectorPresented: initialInspectorPresented,
-                initialInspectorTab: initialInspectorTab
-            )
-            .environment(library)
-            .environment(
-                StorageManagerStore(
-                    library: library,
-                    libraryStore: libraryStore,
-                    onError: { uiStore.showError($0) }
-                )
-            )
-            .environment(ImageStore.stub())
-            .environment(libraryStore)
-            .environment(ReleaseEditor.stub())
-            .environment(Sync.stub())
-            .environment(Downloads.stub())
-            .environment(Outputs.stub())
-            .environment(PreviewData.configStore())
-            .environment(uiStore)
-            .environment(downloadStore)
-            .environment(outputStore)
-            .environment(outboxStore)
-        }
     }
 
+    // Keep every dependency on each #Preview root: the environment audit reads
+    // the preview closure's modifier chain rather than following fixture views.
     #Preview("Dense — wide, inspector open") {
-        StorageManagerPreviewScene(
+        let fixture = StorageManagerPreviewFixture(
             selectedReleaseId: "rel-row-1",
             inspectorPresented: true
         )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
         .frame(width: 1_440, height: 900)
     }
 
     #Preview("Dense — standard, inspector open") {
-        StorageManagerPreviewScene(
+        let fixture = StorageManagerPreviewFixture(
             selectedReleaseId: "rel-row-1",
             inspectorPresented: true
         )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
         .frame(width: 940, height: 760)
     }
 
     #Preview("Dense — compact") {
-        StorageManagerPreviewScene()
-            .frame(width: 700, height: 400)
+        let fixture = StorageManagerPreviewFixture()
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: 700, height: 400)
     }
 
     #Preview("Dense — compact, selected") {
-        StorageManagerPreviewScene(
+        let fixture = StorageManagerPreviewFixture(
             selectedReleaseId: "rel-row-4",
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
@@ -255,31 +293,103 @@ struct StorageManagerView: View {
                 deletes: []
             )
         )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
         .frame(width: 700, height: 400)
     }
 
     #Preview("Empty") {
-        StorageManagerPreviewScene(rows: [])
-            .frame(width: 940, height: 600)
+        let fixture = StorageManagerPreviewFixture(rows: [])
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
+        .frame(width: 940, height: 600)
     }
 
     #Preview("Empty-ish") {
-        StorageManagerPreviewScene(
+        let fixture = StorageManagerPreviewFixture(
             rows: Array(PreviewData.storageRows.prefix(2))
         )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
         .frame(width: 940, height: 600)
     }
 
     #Preview("Empty-ish — inspector open") {
-        StorageManagerPreviewScene(
+        let fixture = StorageManagerPreviewFixture(
             rows: Array(PreviewData.storageRows.prefix(2)),
             inspectorPresented: true
         )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
         .frame(width: 940, height: 600)
     }
 
     #Preview("One sync upload — inspector open") {
-        StorageManagerPreviewScene(
+        let fixture = StorageManagerPreviewFixture(
             rows: Array(PreviewData.storageRows.prefix(2)),
             selectedReleaseId: "rel-row-2",
             inspectorPresented: true,
@@ -291,6 +401,24 @@ struct StorageManagerView: View {
                 deletes: []
             )
         )
+        StorageManagerView(
+            initialSelection: fixture.initialSelection,
+            initialInspectorPresented: fixture.initialInspectorPresented,
+            initialInspectorTab: fixture.initialInspectorTab
+        )
+        .environment(fixture.library)
+        .environment(fixture.storageManagerStore)
+        .environment(ImageStore.stub())
+        .environment(fixture.libraryStore)
+        .environment(ReleaseEditor.stub())
+        .environment(Sync.stub())
+        .environment(Downloads.stub())
+        .environment(Outputs.stub())
+        .environment(PreviewData.configStore())
+        .environment(fixture.uiStore)
+        .environment(fixture.downloadStore)
+        .environment(fixture.outputStore)
+        .environment(fixture.outboxStore)
         .frame(width: 940, height: 600)
     }
 #endif
