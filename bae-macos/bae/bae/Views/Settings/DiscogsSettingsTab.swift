@@ -216,7 +216,10 @@ struct DiscogsSettingsContent: View {
                 prompt: Text("Paste your key here")
             )
             .focused($keyFieldIsFocused)
-            .task { keyFieldIsFocused = true }
+            .task {
+                await Task.yield()
+                keyFieldIsFocused = true
+            }
             if isValidating {
                 ProgressView().controlSize(.small)
             }
