@@ -440,12 +440,15 @@ impl ImportServiceHandle {
             })
     }
 
-    /// Queue an import command and return its import_id for progress tracking.
-    /// Returns immediately — all the work (metadata resolution, file discovery,
-    /// track mapping, DB insertion) happens in the service worker.
+    /// Test helper that stores the scanned candidate an import requires, queues
+    /// the command, and returns its import ID for progress tracking.
+    #[cfg(all(
+        any(test, feature = "test-utils"),
+        not(any(target_os = "ios", target_os = "android"))
+    ))]
     pub async fn send_command(
         &self,
-        command: ImportCommand,
+        mut command: ImportCommand,
     ) -> Result<String, crate::import::ImportError> {
         let categorized =
             crate::import::folder_scanner::collect_release_candidate_files_with_scope(
@@ -453,6 +456,64 @@ impl ImportServiceHandle {
                 command.scope,
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )?;
+        let candidate_key = crate::import::folder_registry::canonical_absolute_root(
+            &command.folder.to_string_lossy(),
+        )?;
+        let candidate_name = command
+            .folder
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!(
+                    "test import folder has no UTF-8 directory name: {}",
+                    command.folder.display()
+                ),
+            })?
+            .to_string();
+        self.library_manager
+            .add_watched_import_folder(&candidate_key)
+            .await?;
+        let generation = self
+            .library_manager
+            .begin_folder_scan(&candidate_key)
+            .await?;
+        let candidate = crate::import::folder_scanner::FolderCandidate {
+            path: command.folder.clone(),
+            file_root: command.folder.clone(),
+            name: candidate_name,
+            files: categorized.clone(),
+            watched_folder_path: candidate_key.clone(),
+            scope: command.scope,
+            file_edit_revision: 0,
+            display_path: String::new(),
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
+        };
+        if self
+            .library_manager
+            .save_folder_scan_item(
+                &candidate_key,
+                generation,
+                &crate::import::folder_scanner::ScanItem::Valid(candidate),
+            )
+            .await?
+            .is_none()
+        {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("test import scan for {candidate_key} was superseded"),
+            });
+        }
+        if self
+            .library_manager
+            .finish_folder_scan(&candidate_key, generation, None)
+            .await?
+            .is_none()
+        {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("test import scan for {candidate_key} was superseded"),
+            });
+        }
+        command.candidate_key = candidate_key;
         let content_hash = categorized.content_hash();
         let expectation = if matches!(
             command.metadata_provenance,
@@ -462,7 +523,7 @@ impl ImportServiceHandle {
             let snapshot = tokio::task::spawn_blocking(move || {
                 crate::import::file_tag_snapshot::extract_file_tag_snapshot(
                     &audio_files,
-                    0,
+                    generation,
                     0,
                     &crate::import::file_tag_snapshot::LoftyFileTagReader,
                 )
