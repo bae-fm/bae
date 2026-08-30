@@ -36,6 +36,7 @@ impl LibraryManager {
         Ok(self.database.find_artist_by_id(artist_id).await?)
     }
 
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub async fn merge_import_artist_identity_conflict(
         &self,
         content_hash: &str,

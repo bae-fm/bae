@@ -12,7 +12,6 @@ use crate::import::MetadataSource;
 /// Two exact provider identities that currently belong to different library
 /// artists. Import stops until a person confirms that the two rows represent
 /// one artist or corrects the source metadata.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("artist '{incoming_artist_name}' has source IDs belonging to different library artists")]
 pub struct ArtistIdentityConflict {
@@ -25,7 +24,6 @@ pub struct ArtistIdentityConflict {
 
 /// Whether every provider ID both artists carry agrees. An absent ID makes no
 /// claim; two present IDs for the same provider must be equal.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) fn artist_source_ids_are_compatible(
     artist: &crate::db::DbArtist,
     discogs_artist_id: Option<&str>,
@@ -38,7 +36,6 @@ pub(crate) fn artist_source_ids_are_compatible(
         )
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
     !matches!((left, right), (Some(left), Some(right)) if left != right)
 }

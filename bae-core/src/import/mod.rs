@@ -134,9 +134,7 @@ pub use edits::{
     apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
     TrackEditState,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use error::artist_source_ids_are_compatible;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use error::ArtistIdentityConflict;
 pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
