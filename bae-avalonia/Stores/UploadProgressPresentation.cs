@@ -64,18 +64,18 @@ internal static class UploadProgressPresentation
         progress.Issue is BridgeUploadIssue.SourceUnavailable
             ? Loc.Core("core.outbox.source_unavailable")
             : progress.Activity switch
-        {
-            BridgeUploadActivity.Cancelling => Loc.Core("core.outbox.cancelling", "count", progress.Cancelling),
-            BridgeUploadActivity.Publishing => Loc.Core("core.outbox.publishing", "count", progress.Publishing),
-            BridgeUploadActivity.Uploading => Loc.Core("core.queue.uploading", "count", progress.Uploading),
-            BridgeUploadActivity.Preparing => Loc.Core("core.outbox.preparing", "count", progress.Preparing),
-            BridgeUploadActivity.Retrying => Loc.Core("core.outbox.retrying", "count", progress.Retrying),
-            BridgeUploadActivity.Prepared => Loc.Core("core.outbox.prepared", "count", progress.Prepared),
-            BridgeUploadActivity.Queued => Loc.Core("core.queue.queued", "count", progress.Queued),
-            BridgeUploadActivity.Uploaded => Loc.Core("core.outbox.uploaded", "count", progress.Uploaded),
-            _ => throw new InvalidOperationException(
-                "An active cloud upload has no projected activity"),
-        };
+            {
+                BridgeUploadActivity.Cancelling => Loc.Core("core.outbox.cancelling", "count", progress.Cancelling),
+                BridgeUploadActivity.Publishing => Loc.Core("core.outbox.publishing", "count", progress.Publishing),
+                BridgeUploadActivity.Uploading => Loc.Core("core.queue.uploading", "count", progress.Uploading),
+                BridgeUploadActivity.Preparing => Loc.Core("core.outbox.preparing", "count", progress.Preparing),
+                BridgeUploadActivity.Retrying => Loc.Core("core.outbox.retrying", "count", progress.Retrying),
+                BridgeUploadActivity.Prepared => Loc.Core("core.outbox.prepared", "count", progress.Prepared),
+                BridgeUploadActivity.Queued => Loc.Core("core.queue.queued", "count", progress.Queued),
+                BridgeUploadActivity.Uploaded => Loc.Core("core.outbox.uploaded", "count", progress.Uploaded),
+                _ => throw new InvalidOperationException(
+                    "An active cloud upload has no projected activity"),
+            };
 
     public static IReadOnlyList<string> SourceUnavailablePaths(
         BridgeUploadProgress progress) =>
