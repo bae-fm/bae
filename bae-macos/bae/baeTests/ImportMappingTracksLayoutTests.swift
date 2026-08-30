@@ -105,6 +105,46 @@ struct ImportMappingTracksLayoutTests {
     }
 
     @MainActor
+    @Test("probed duration renders when metadata names no duration")
+    func probedDurationRendersWithoutMetadataDuration() async throws {
+        let columns = ImportMappingColumns.resolved(
+            tableWidth: ImportMappingColumns.idealTableWidth
+        )
+        let track = try #require(pairedUnit.track)
+        let unit = BridgeMappingUnit(
+            source: pairedUnit.source,
+            becomes: .track(
+                track: track,
+                sourcePosition: "1"
+            ),
+            durationMs: 180_000
+        )
+        let size = NSSize(
+            width: ImportMappingColumns.idealTableWidth,
+            height: 40
+        )
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportMappingTrackRow(
+                unit: unit,
+                columns: columns.tracks,
+                audioChoices: [],
+                previewingPath: nil,
+                evidence: [],
+                actions: actions(recording: MappingTrackActionRecorder())
+            )
+            .frame(width: size.width, height: size.height, alignment: .leading)
+            .environment(Library.stub()),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        #expect(unit.displayedDuration == "3:00")
+        withExtendedLifetime(window) {}
+    }
+
+    @MainActor
     @Test(
         "awaiting release keeps Source in the same leading cell",
         arguments: [
@@ -116,12 +156,14 @@ struct ImportMappingTracksLayoutTests {
         let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: tableWidth, height: 40)
+        let unit = BridgeMappingUnit(
+            source: pairedUnit.source,
+            becomes: .awaitingPick,
+            durationMs: 180_000
+        )
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingTrackRow(
-                unit: BridgeMappingUnit(
-                    source: pairedUnit.source,
-                    becomes: .awaitingPick
-                ),
+                unit: unit,
                 columns: columns.tracks,
                 audioChoices: [],
                 previewingPath: nil,
@@ -147,6 +189,7 @@ struct ImportMappingTracksLayoutTests {
         await Task.yield()
 
         #expect(recorder.previewed == [audioPath])
+        #expect(unit.displayedDuration == "3:00")
         withExtendedLifetime(window) {}
     }
 
@@ -240,9 +283,9 @@ extension ImportMappingTracksLayoutTests {
                     trackNumber: 1,
                     file: .standalone(fileId: "track.flac")
                 ),
-                sourcePosition: "1",
-                sourceDurationMs: 180_000
-            )
+                sourcePosition: "1"
+            ),
+            durationMs: 180_000
         )
     }
 

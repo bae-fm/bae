@@ -299,6 +299,62 @@ public sealed class ImportMappingTableTests
         Assert.StartsWith("01.flac", choices[0].Label, System.StringComparison.Ordinal);
     }
 
+    [AvaloniaFact]
+    public void ProbedDurationRendersWhenMetadataNamesNoDuration()
+    {
+        var source = new BridgeMappingSource.File(new BridgeMappingFile(
+            FileId: "01.flac",
+            Name: "01.flac",
+            Size: 1024,
+            LocalPath: "/folder/01.flac",
+            ProbedDurationMs: 180_000,
+            Role: BridgeMappingRole.Audio,
+            Alternatives: Array.Empty<BridgeFileRoleChoice>(),
+            RoleChoice: null));
+        var table = Build(new BridgeMappingTable(
+            Array.Empty<BridgeMappingImage>(),
+            new[]
+            {
+                Unit(
+                    source,
+                    TrackBecomes(
+                        "t0",
+                        "Track Title",
+                        Standalone("01.flac")),
+                    durationMs: 180_000),
+            },
+            Reconciliation: null));
+
+        Assert.Contains(
+            table.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "3:00");
+    }
+
+    [AvaloniaFact]
+    public void ProbedDurationRendersBeforeMetadataIsChosen()
+    {
+        var source = new BridgeMappingSource.File(new BridgeMappingFile(
+            FileId: "01.flac",
+            Name: "01.flac",
+            Size: 1024,
+            LocalPath: "/folder/01.flac",
+            ProbedDurationMs: 180_000,
+            Role: BridgeMappingRole.Audio,
+            Alternatives: Array.Empty<BridgeFileRoleChoice>(),
+            RoleChoice: null));
+        var table = Build(new BridgeMappingTable(
+            Array.Empty<BridgeMappingImage>(),
+            new[]
+            {
+                Unit(source, new BridgeMappingBecomes.AwaitingPick(), durationMs: 180_000),
+            },
+            Reconciliation: null));
+
+        Assert.Contains(
+            table.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == "3:00");
+    }
+
     // The tally's message takes a different pair of numbers per variant, so the
     // arguments ride with core's key rather than being assembled per call site.
     [Fact]
@@ -352,10 +408,14 @@ public sealed class ImportMappingTableTests
             ContainerId: "disc.flac",
             ContainerName: "disc.flac",
             ContainerLocalPath: ContainerPath)),
-        new BridgeMappingBecomes.AwaitingPick());
+        new BridgeMappingBecomes.AwaitingPick(),
+        DurationMs: null);
 
-    private static BridgeMappingRow Unit(BridgeMappingSource source, BridgeMappingBecomes becomes) =>
-        new BridgeMappingRow.Unit(new BridgeMappingUnit(source, becomes));
+    private static BridgeMappingRow Unit(
+        BridgeMappingSource source,
+        BridgeMappingBecomes becomes,
+        ulong? durationMs = null) =>
+        new BridgeMappingRow.Unit(new BridgeMappingUnit(source, becomes, durationMs));
 
     private static BridgeMappingSource FileSource(string fileId) =>
         new BridgeMappingSource.File(new BridgeMappingFile(
@@ -368,7 +428,10 @@ public sealed class ImportMappingTableTests
             Alternatives: System.Array.Empty<BridgeFileRoleChoice>(),
             RoleChoice: null));
 
-    private static BridgeMappingBecomes TrackBecomes(string id, string title, BridgeAudioFile? file) =>
+    private static BridgeMappingBecomes TrackBecomes(
+        string id,
+        string title,
+        BridgeAudioFile? file) =>
         new BridgeMappingBecomes.Track(
             new BridgeRawTrackEdit(
                 id,
@@ -377,8 +440,7 @@ public sealed class ImportMappingTableTests
                 1,
                 null,
                 file),
-            SourcePosition: null,
-            SourceDurationMs: null);
+            SourcePosition: null);
 
     private static BridgeAudioFile Standalone(string fileId) => new BridgeAudioFile.Standalone(fileId);
 

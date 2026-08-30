@@ -43,6 +43,8 @@ mod handle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod list;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) mod local_artwork;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod loudness;
 // Projects the folder's audio units against a picked tracklist — the desktop
 // import pane's one structure, and desktop-only like the slots it reads.

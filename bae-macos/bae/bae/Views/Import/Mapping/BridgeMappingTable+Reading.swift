@@ -9,20 +9,14 @@ import Foundation
 extension BridgeMappingUnit {
     /// The track this row commits, where it commits one.
     var track: BridgeRawTrackEdit? {
-        guard case .track(let track, _, _) = becomes else { return nil }
+        guard case .track(let track, _) = becomes else { return nil }
         return track
     }
 
     /// The position the picked release names for this row's track.
     var sourcePosition: String? {
-        guard case .track(_, let position, _) = becomes else { return nil }
+        guard case .track(_, let position) = becomes else { return nil }
         return position
-    }
-
-    /// How long the picked release says this row's track runs.
-    var sourceDurationMs: UInt64? {
-        guard case .track(_, _, let ms) = becomes else { return nil }
-        return ms
     }
 
     /// Whether committing writes a track for this row: the rows carrying audio
@@ -223,6 +217,13 @@ func importDurationText(_ ms: UInt64?) -> String {
     guard let ms else { return "\u{2014}" }
     let label = DurationClock.text(Int64(ms))
     return label.isEmpty ? "\u{2014}" : label
+}
+
+extension BridgeMappingUnit {
+    /// The value this row exposes in the Length column and to accessibility.
+    var displayedDuration: String {
+        importDurationText(durationMs)
+    }
 }
 
 extension BridgeMappingUnit {

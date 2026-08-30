@@ -526,7 +526,7 @@ impl Database {
                     )?;
                     pane_rows::delete_cover(sql, &verdict.content_hash)?;
                     if let Some(cover) = &verdict.metadata.cover {
-                        pane_rows::save_cover(sql, &verdict.content_hash, cover)?;
+                        super::candidate_state_rows::save_cover(sql, &verdict.content_hash, cover)?;
                     }
                 }
                 delete_durations(sql, &verdict.content_hash)?;
@@ -795,7 +795,7 @@ impl Database {
             pane_rows::replace_draft(sql, &content_hash, &draft)?;
             pane_rows::delete_cover(sql, &content_hash)?;
             if let Some(cover) = &cover {
-                pane_rows::save_cover(sql, &content_hash, cover)?;
+                super::candidate_state_rows::save_cover(sql, &content_hash, cover)?;
             }
             u64::try_from(revision)
                 .map_err(|_| DbError::Message("candidate metadata revision is negative".into()))

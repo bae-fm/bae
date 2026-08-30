@@ -9,13 +9,12 @@
 
 use super::verdict_rows::unreadable;
 use super::*;
+use crate::db::client::candidate_state_rows::{require_state_row, save_cover, COVER_COLUMNS};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CandidateTrackMappingEdit,
     CoverSelection, ExistingArtist, ImportFailure, NewArtistSeed, RawPressingEdit, RawReleaseEdit,
     RawTrackEdit, TrackArtistAssignments, TrackEditState,
 };
-
-const COVER_COLUMNS: &str = "content_hash, kind, file_id, url, source";
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, year, format, \
      label, catalog_number, country, barcode";
@@ -24,28 +23,6 @@ const TRACK_EDIT_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, side, track_number";
 const TRACK_MAPPING_COLUMNS: &str =
     "content_hash, track_id, dropped, file_kind, file_id, sheet_id, slice_index";
-
-/// The anchor row must exist before anything hangs off it.
-fn require_state_row(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    what: &str,
-) -> Result<(), DbError> {
-    let present = sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if present {
-        return Ok(());
-    }
-    Err(DbError::Message(format!(
-        "the {what} for {content_hash} has no candidate state row"
-    )))
-}
 
 fn advance_metadata_revision(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<u64, DbError> {
     let revision = sql
@@ -64,33 +41,6 @@ fn advance_metadata_revision(sql: &SqlContext<'_, '_>, content_hash: &str) -> Re
         })?;
     u64::try_from(revision)
         .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))
-}
-
-pub(super) fn save_cover(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    cover: &CoverSelection,
-) -> Result<(), DbError> {
-    require_state_row(sql, content_hash, "cover choice")?;
-    let (kind, file_id, url, source) = match cover {
-        CoverSelection::Local(file_id) => ("local", Some(file_id.as_str()), None, None),
-        CoverSelection::Embedded(source_file_id) => {
-            ("embedded", Some(source_file_id.as_str()), None, None)
-        }
-        CoverSelection::Remote(url, source) => {
-            ("remote", None, Some(url.as_str()), Some(source.as_str()))
-        }
-    };
-    sql.execute(
-        &format!(
-            "INSERT INTO import_candidate_cover ({COVER_COLUMNS}) VALUES (?, ?, ?, ?, ?) \
-             ON CONFLICT (content_hash) DO UPDATE SET \
-                 kind = excluded.kind, file_id = excluded.file_id, \
-                 url = excluded.url, source = excluded.source"
-        ),
-        params![content_hash, kind, file_id, url, source],
-    )?;
-    Ok(())
 }
 
 pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {

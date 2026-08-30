@@ -37,13 +37,13 @@ struct ImportMappingTrackRow: View {
     private var lengthsDiverge: Bool {
         bridgeLengthsDisagree(
             probedMs: unit.source.durationMs,
-            sourceMs: unit.sourceDurationMs
+            sourceMs: unit.durationMs
         )
     }
 
     /// The track this row writes, where a release has named one.
     private var track: BridgeRawTrackEdit? {
-        if case .track(let track, _, _) = unit.becomes { return track }
+        if case .track(let track, _) = unit.becomes { return track }
         return nil
     }
 
@@ -67,9 +67,13 @@ struct ImportMappingTrackRow: View {
                 )
             titleCell
             artistCell
-            Text(importDurationText(unit.sourceDurationMs))
+            Text(unit.displayedDuration)
                 .font(.system(size: 12))
                 .monospacedDigit()
+                .accessibilityLabel(
+                    coreString("ui.import.slots.column.length")
+                )
+                .accessibilityValue(unit.displayedDuration)
                 .foregroundStyle(
                     lengthsDiverge
                         ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary)
@@ -84,7 +88,7 @@ struct ImportMappingTrackRow: View {
     }
 
     private var position: String {
-        if case .track(_, let position, _) = unit.becomes {
+        if case .track(_, let position) = unit.becomes {
             return position ?? ""
         }
         return ""

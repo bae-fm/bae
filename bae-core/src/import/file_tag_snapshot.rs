@@ -300,39 +300,7 @@ pub(crate) fn default_cover(
             cover.source_relative_path.clone(),
         ));
     }
-    files
-        .artwork()
-        .min_by(|left, right| artwork_order(left, right))
-        .map(|file| super::CoverSelection::Local(file.relative_path.clone()))
-}
-
-fn artwork_order(
-    left: &super::folder_scanner::ScannedFile,
-    right: &super::folder_scanner::ScannedFile,
-) -> std::cmp::Ordering {
-    let left_name = left.relative_path.to_lowercase();
-    let right_name = right.relative_path.to_lowercase();
-    match (conventional_artwork(left), conventional_artwork(right)) {
-        (true, true) => left_name
-            .cmp(&right_name)
-            .then_with(|| left.relative_path.cmp(&right.relative_path)),
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        (false, false) => left
-            .size
-            .cmp(&right.size)
-            .then_with(|| left_name.cmp(&right_name))
-            .then_with(|| left.relative_path.cmp(&right.relative_path)),
-    }
-}
-
-fn conventional_artwork(file: &super::folder_scanner::ScannedFile) -> bool {
-    std::path::Path::new(&file.relative_path)
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .is_some_and(|stem| {
-            stem.eq_ignore_ascii_case("cover") || stem.eq_ignore_ascii_case("folder")
-        })
+    super::local_artwork::default_local_cover(files)
 }
 
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
@@ -705,34 +673,12 @@ mod tests {
     }
 
     #[test]
-    fn conventional_folder_artwork_uses_case_insensitive_name_order() {
-        let files = files_with_artwork([
-            artwork("z/Folder.png", 50),
-            artwork("A/COVER.jpg", 500),
-            artwork("front.jpg", 1),
-        ]);
+    fn missing_embedded_artwork_uses_source_neutral_folder_selection() {
+        let files = files_with_artwork([artwork("scan.jpg", 1), artwork("cover.jpg", 500)]);
 
         assert_eq!(
             default_cover(&files, &snapshot(None)),
-            Some(super::super::CoverSelection::Local(
-                "A/COVER.jpg".to_string()
-            ))
-        );
-    }
-
-    #[test]
-    fn remaining_folder_artwork_uses_size_then_name() {
-        let files = files_with_artwork([
-            artwork("large.jpg", 500),
-            artwork("b/scan.png", 20),
-            artwork("A/scan.png", 20),
-        ]);
-
-        assert_eq!(
-            default_cover(&files, &snapshot(None)),
-            Some(super::super::CoverSelection::Local(
-                "A/scan.png".to_string()
-            ))
+            Some(super::super::CoverSelection::Local("cover.jpg".to_string()))
         );
     }
 }

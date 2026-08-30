@@ -60,7 +60,8 @@ struct ImportMappingFileRowTests {
                     roleChoice: .notATrack
                 )
             ),
-            becomes: .kept
+            becomes: .kept,
+            durationMs: nil
         )
     }
 

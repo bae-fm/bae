@@ -476,6 +476,15 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         ),
         role: FileRole::Artwork,
     });
+    candidate.files.files.push(CandidateFile {
+        proposed_audio: false,
+        file: ScannedFile::new(
+            PathBuf::from(format!("{root}/Album/folder.jpg")),
+            "folder.jpg".to_string(),
+            600,
+        ),
+        role: FileRole::Artwork,
+    });
     db.save_folder_scan_item_with_initial_source(
         root,
         generation,
@@ -520,6 +529,65 @@ async fn the_list_projects_the_applied_draft_and_cover() {
             path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         })
     );
+
+    let content_hash = candidate.files.content_hash();
+    db.save_import_candidate_cover(
+        &content_hash,
+        &crate::import::CoverSelection::Local("folder.jpg".to_string()),
+    )
+    .await
+    .unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item_with_initial_source(
+        root,
+        generation,
+        &ScanItem::Valid(candidate.clone()),
+        crate::config::DefaultImportMetadataSource::None,
+    )
+    .await
+    .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection).remove(0).cover_thumbnail,
+        Some(crate::import::CoverImageSource::Local {
+            path: PathBuf::from(format!("{root}/Album/folder.jpg")),
+        }),
+        "a rescan must retain the explicit cover"
+    );
+
+    db.replace_candidate_metadata(
+        &content_hash,
+        &candidate.path.to_string_lossy(),
+        &crate::import::pane::blank_candidate_draft(&candidate.files),
+        None,
+    )
+    .await
+    .unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.save_folder_scan_item_with_initial_source(
+        root,
+        generation,
+        &ScanItem::Valid(candidate),
+        crate::config::DefaultImportMetadataSource::None,
+    )
+    .await
+    .unwrap();
+    db.finish_folder_scan(root, generation, None).await.unwrap();
+
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection).remove(0).cover_thumbnail,
+        None,
+        "a rescan must retain an explicit clear"
+    );
 }
 
 #[tokio::test]
@@ -549,13 +617,6 @@ async fn the_list_projects_a_selected_cover_without_metadata() {
     .await
     .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
-
-    db.save_import_candidate_cover(
-        &candidate.files.content_hash(),
-        &crate::import::CoverSelection::Local("cover.jpg".to_string()),
-    )
-    .await
-    .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)

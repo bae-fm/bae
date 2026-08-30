@@ -493,11 +493,9 @@ impl BridgeMappingBecomes {
             MappingBecomes::Track {
                 track,
                 source_position,
-                source_duration_ms,
             } => Self::Track {
                 track: BridgeRawTrackEdit::from_core(track),
                 source_position,
-                source_duration_ms,
             },
             MappingBecomes::Kept => Self::Kept,
             MappingBecomes::AwaitingPick => Self::AwaitingPick,
@@ -510,11 +508,9 @@ impl BridgeMappingBecomes {
             Self::Track {
                 track,
                 source_position,
-                source_duration_ms,
             } => MappingBecomes::Track {
                 track: track.into_core(),
                 source_position,
-                source_duration_ms,
             },
             Self::Kept => MappingBecomes::Kept,
             Self::AwaitingPick => MappingBecomes::AwaitingPick,
@@ -525,18 +521,28 @@ impl BridgeMappingBecomes {
 #[cfg(feature = "desktop")]
 impl BridgeMappingUnit {
     fn from_core(unit: bae_core::import::MappingUnit) -> Self {
-        let bae_core::import::MappingUnit { source, becomes } = unit;
+        let bae_core::import::MappingUnit {
+            source,
+            becomes,
+            duration_ms,
+        } = unit;
         BridgeMappingUnit {
             source: BridgeMappingSource::from_core(source),
             becomes: BridgeMappingBecomes::from_core(becomes),
+            duration_ms,
         }
     }
 
     fn into_core(self) -> bae_core::import::MappingUnit {
-        let BridgeMappingUnit { source, becomes } = self;
+        let BridgeMappingUnit {
+            source,
+            becomes,
+            duration_ms,
+        } = self;
         bae_core::import::MappingUnit {
             source: source.into_core(),
             becomes: becomes.into_core(),
+            duration_ms,
         }
     }
 }

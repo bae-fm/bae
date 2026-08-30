@@ -218,11 +218,17 @@ fn insert_candidate(
         ],
     )?;
     let content_hash = candidate.files.content_hash();
-    sql.execute(
+    let created = sql.execute(
         "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, ?) \
-         ON CONFLICT (content_hash) DO UPDATE SET folder_path = excluded.folder_path",
+         ON CONFLICT (content_hash) DO NOTHING",
         params![content_hash, candidate.display_path],
-    )?;
+    )? == 1;
+    if !created {
+        sql.execute(
+            "UPDATE import_candidate_state SET folder_path = ? WHERE content_hash = ?",
+            params![candidate.display_path, content_hash],
+        )?;
+    }
     let has_draft = sql
         .query_row(
             "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",
@@ -239,6 +245,11 @@ fn insert_candidate(
         )?;
     }
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
+    if created && initial_metadata_source == crate::config::DefaultImportMetadataSource::None {
+        if let Some(cover) = crate::import::local_artwork::default_local_cover(&candidate.files) {
+            super::super::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
+        }
+    }
     insert_resolved_boundaries(
         sql,
         watched_folder_path,

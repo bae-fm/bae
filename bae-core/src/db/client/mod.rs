@@ -35,6 +35,8 @@ pub use artist::{
 };
 mod artist;
 mod blobs;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod candidate_state_rows;
 mod coven_capabilities;
 mod identity;
 // Watched folders, folder scans and the import candidate queue. Reads

@@ -115,32 +115,6 @@ pub(super) enum ProposedRole {
     Other,
 }
 
-/// Filename stems that conventionally name a release's front cover. They rank
-/// a folder's images where the effective cover is chosen; nothing classifies a
-/// file by them.
-pub(super) const COVER_STEMS: &[&str] = &[
-    "cover",
-    "front",
-    "folder",
-    "frontcover",
-    "front cover",
-    "albumart",
-    "album art",
-];
-
-/// Whether an image's filename stem conventionally names a front cover.
-///
-/// The one filename heuristic about covers in the tree. It ranks a folder's
-/// images where the effective cover is chosen — after the stored choice and the
-/// picked release's own art — and nothing classifies a file by it.
-pub(crate) fn is_cover_name(path: &Path) -> bool {
-    let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
-        return false;
-    };
-    let stem = stem.trim().to_lowercase();
-    COVER_STEMS.iter().any(|candidate| *candidate == stem)
-}
-
 /// Shorthand for a failed-validation leaf carrying `reason`.
 pub(super) fn invalid(reason: InvalidReason) -> Result<CategorizeOutcome, FolderScanError> {
     Ok(CategorizeOutcome::Invalid(reason))

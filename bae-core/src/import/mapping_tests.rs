@@ -127,6 +127,49 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     assert_eq!(file_row(&table.rows[2]).role, MappingRole::Document);
 }
 
+#[test]
+fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    write_flac(&tmp.path().join("01.flac"));
+    let files = scan(tmp.path());
+    let durations = probe_durations(&files);
+    let mut tracks = source_tracks(1);
+    tracks[0].duration_ms = None;
+    let slots = slot_table(&tracks, &files, &durations);
+
+    let table = mapping_table(
+        &files,
+        Some(PickedTracklist {
+            slots: &slots,
+            track_id_prefix: "candidate-track",
+            source: TracklistSource::CandidateFiles,
+        }),
+        &durations,
+    );
+
+    let MappingRow::Unit(unit) = &table.rows[0] else {
+        panic!("expected a unit row")
+    };
+    assert!(matches!(unit.becomes, MappingBecomes::Track { .. }));
+    assert_eq!(unit.duration_ms, Some(1_000));
+}
+
+#[test]
+fn a_track_awaiting_metadata_uses_its_stored_probe() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    write_flac(&tmp.path().join("01.flac"));
+    let files = scan(tmp.path());
+    let durations = probe_durations(&files);
+
+    let table = mapping_table(&files, None, &durations);
+
+    let MappingRow::Unit(unit) = &table.rows[0] else {
+        panic!("expected a unit row")
+    };
+    assert_eq!(unit.becomes, MappingBecomes::AwaitingPick);
+    assert_eq!(unit.duration_ms, Some(1_000));
+}
+
 /// The folder's images are one gallery beside the table rows, with the one that
 /// leads the release marked.
 #[test]

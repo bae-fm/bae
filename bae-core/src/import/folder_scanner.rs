@@ -26,7 +26,6 @@ mod files;
 mod scan;
 pub use candidates::*;
 pub use categorize::is_audio_file;
-pub(crate) use categorize::is_cover_name;
 use categorize::*;
 pub use files::*;
 pub use scan::*;

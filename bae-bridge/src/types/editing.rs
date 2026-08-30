@@ -386,7 +386,6 @@ pub enum BridgeMappingBecomes {
         /// The source's own position string — `A1`, `1`, `1-2`, or prose —
         /// where the picked release names one for this track.
         source_position: Option<String>,
-        source_duration_ms: Option<u64>,
     },
     /// Carried with the release, not one of its tracks.
     Kept,
@@ -401,6 +400,9 @@ pub enum BridgeMappingBecomes {
 pub struct BridgeMappingUnit {
     pub source: BridgeMappingSource,
     pub becomes: BridgeMappingBecomes,
+    /// The duration to render: metadata's value where present, otherwise the
+    /// candidate's stored probe. Available before metadata is chosen.
+    pub duration_ms: Option<u64>,
 }
 
 /// The audio a track sheet describes. Mirror of bae-core's `MappingContainer`.

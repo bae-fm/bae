@@ -71,9 +71,9 @@ enum MappingFixtures {
                         title: "Track \(index)",
                         file: .standalone(fileId: "\(index).flac")
                     ),
-                    sourcePosition: "\(index)",
-                    sourceDurationMs: UInt64(200_000 + index * 1000)
-                )
+                    sourcePosition: "\(index)"
+                ),
+                durationMs: UInt64(200_000 + index * 1000)
             )
         )
     }
@@ -96,9 +96,9 @@ enum MappingFixtures {
                                     title: lastTitle,
                                     file: .standalone(fileId: "13.flac")
                                 ),
-                                sourcePosition: nil,
-                                sourceDurationMs: nil
-                            )
+                                sourcePosition: nil
+                            ),
+                            durationMs: audioFile(13).probedDurationMs
                         )
                     )
                 ],
@@ -155,9 +155,9 @@ enum MappingFixtures {
                         title: "Track \(index + 1)",
                         file: nil
                     ),
-                    sourcePosition: "\(index + 1)",
-                    sourceDurationMs: UInt64(200_000 + index * 1000)
-                )
+                    sourcePosition: "\(index + 1)"
+                ),
+                durationMs: UInt64(200_000 + index * 1000)
             )
         )
     }
@@ -178,9 +178,9 @@ enum MappingFixtures {
                             title: "Track 1",
                             file: .standalone(fileId: containerId)
                         ),
-                        sourcePosition: "1",
-                        sourceDurationMs: 201_000
-                    )
+                        sourcePosition: "1"
+                    ),
+                    durationMs: 201_000
                 )
             ),
         ] + (1..<12).map(missingRow)
@@ -230,9 +230,9 @@ enum MappingFixtures {
                         index: UInt32(index)
                     )
                 ),
-                sourcePosition: "\(index + 1)",
-                sourceDurationMs: UInt64(200_000 + index * 1000)
-            )
+                sourcePosition: "\(index + 1)"
+            ),
+            durationMs: UInt64(200_000 + index * 1000)
         )
     }
 
@@ -273,9 +273,9 @@ enum MappingFixtures {
                                 trackNumber: Int32(index),
                                 file: .standalone(fileId: "\(index).flac")
                             ),
-                            sourcePosition: "\(index)",
-                            sourceDurationMs: nil
-                        )
+                            sourcePosition: "\(index)"
+                        ),
+                        durationMs: audioFile(index).probedDurationMs
                     )
                 )
             },

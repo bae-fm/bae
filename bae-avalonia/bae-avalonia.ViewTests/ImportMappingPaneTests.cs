@@ -636,8 +636,8 @@ public sealed class ImportMappingPaneTests
                     1,
                     null,
                     new BridgeAudioFile.Standalone(fileId)),
-                SourcePosition: null,
-                SourceDurationMs: null)));
+                SourcePosition: null),
+            DurationMs: 180_000));
 
     private static BridgeArtistAssignment[] ArtistAssignments() =>
     [

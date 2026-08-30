@@ -97,6 +97,10 @@ pub struct MappingImage {
 pub struct MappingUnit {
     pub source: MappingSource,
     pub becomes: MappingBecomes,
+    /// The duration this row displays: the metadata source's value where one
+    /// exists, otherwise the candidate's stored probe. This remains available
+    /// while the row is waiting for metadata.
+    pub duration_ms: Option<u64>,
 }
 
 /// The left half of a row: what the folder offers for it.
@@ -172,7 +176,6 @@ pub enum MappingBecomes {
         track: RawTrackEdit,
         /// What the picked release names for this track, where it names one.
         source_position: Option<String>,
-        source_duration_ms: Option<u64>,
     },
     /// Written with the release like every other folder file, just not one
     /// of its tracks.
@@ -381,9 +384,11 @@ pub fn mapping_table(
     // every unit in the slot table, so they close the table.
     if let Some(picked) = picked {
         for index in units.len()..picked.slots.rows.len() {
+            let (becomes, metadata_duration_ms) = builder.track_at(index);
             rows.push(MappingRow::Unit(MappingUnit {
                 source: MappingSource::Missing,
-                becomes: builder.track_at(index),
+                becomes,
+                duration_ms: metadata_duration_ms,
             }));
         }
     }
@@ -428,10 +433,11 @@ impl RowBuilder<'_> {
             file_id: entry.file.relative_path.clone(),
         };
         let probed = self.probed_duration_ms(&unit);
-        MappingUnit {
-            becomes: self.becomes_for(&unit),
-            source: MappingSource::File(mapping_file(entry, MappingRole::Audio, probed)),
-        }
+        self.unit(
+            &unit,
+            MappingSource::File(mapping_file(entry, MappingRole::Audio, probed)),
+            probed,
+        )
     }
 
     /// One row per entry a carving sheet describes.
@@ -446,9 +452,10 @@ impl RowBuilder<'_> {
                     sheet_id: sheet.file.relative_path.clone(),
                     index: index as u32,
                 };
-                MappingUnit {
-                    becomes: self.becomes_for(&unit),
-                    source: MappingSource::SheetEntry(MappingEntry {
+                let probed = self.probed_duration_ms(&unit);
+                self.unit(
+                    &unit,
+                    MappingSource::SheetEntry(MappingEntry {
                         sheet_id: sheet.file.relative_path.clone(),
                         index: index as u32,
                         number: track.number,
@@ -458,7 +465,8 @@ impl RowBuilder<'_> {
                         container_name: sheet.audio.file_name.clone(),
                         container_path: sheet.audio.path.clone(),
                     }),
-                }
+                    probed,
+                )
             })
             .collect()
     }
@@ -471,23 +479,37 @@ impl RowBuilder<'_> {
 
     /// What the unit becomes: the track the picked tracklist puts on it, or the
     /// open question a folder with no pick leaves.
-    fn becomes_for(&mut self, unit: &AudioFile) -> MappingBecomes {
+    fn unit(
+        &mut self,
+        unit: &AudioFile,
+        source: MappingSource,
+        probed_duration_ms: Option<u64>,
+    ) -> MappingUnit {
+        let (becomes, metadata_duration_ms) = self.becomes_for(unit);
+        MappingUnit {
+            source,
+            becomes,
+            duration_ms: metadata_duration_ms.or(probed_duration_ms),
+        }
+    }
+
+    fn becomes_for(&mut self, unit: &AudioFile) -> (MappingBecomes, Option<u64>) {
         if self.picked.is_none() {
-            return MappingBecomes::AwaitingPick;
+            return (MappingBecomes::AwaitingPick, None);
         }
         let Some(&index) = self.slot_of.get(unit) else {
             // Every unit this asks about was read off the same layout the index
             // was built from, so a unit missing from it cannot be produced.
             warn!("{unit:?} is not one of this folder's audio units");
-            return MappingBecomes::AwaitingPick;
+            return (MappingBecomes::AwaitingPick, None);
         };
         self.track_at(index)
     }
 
     /// The track at slot row `index`, taking the next row identity.
-    fn track_at(&mut self, index: usize) -> MappingBecomes {
+    fn track_at(&mut self, index: usize) -> (MappingBecomes, Option<u64>) {
         let Some(picked) = self.picked else {
-            return MappingBecomes::AwaitingPick;
+            return (MappingBecomes::AwaitingPick, None);
         };
         let Some(slot) = picked.slots.rows.get(index) else {
             // Slot row `i` is audio unit `i` and the table is never shorter
@@ -496,7 +518,7 @@ impl RowBuilder<'_> {
             warn!(
                 "the picked tracklist has no row {index}; it does not describe this folder's audio"
             );
-            return MappingBecomes::AwaitingPick;
+            return (MappingBecomes::AwaitingPick, None);
         };
         let id = format!("{}-{}", picked.track_id_prefix, self.next_track);
         self.next_track += 1;
@@ -513,11 +535,13 @@ impl RowBuilder<'_> {
             } => (position.clone(), *source_duration_ms),
             TrackSlot::FileOnly { .. } => (None, None),
         };
-        MappingBecomes::Track {
-            track: RawTrackEdit::from_user_edit(slot.track().clone(), id),
-            source_position,
+        (
+            MappingBecomes::Track {
+                track: RawTrackEdit::from_user_edit(slot.track().clone(), id),
+                source_position,
+            },
             source_duration_ms,
-        }
+        )
     }
 }
 
@@ -528,6 +552,7 @@ fn carried(entry: &CandidateFile, role: MappingRole) -> MappingRow {
     MappingRow::Unit(MappingUnit {
         becomes: MappingBecomes::Kept,
         source: MappingSource::File(mapping_file(entry, role, None)),
+        duration_ms: None,
     })
 }
 

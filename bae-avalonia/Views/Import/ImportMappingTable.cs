@@ -320,7 +320,7 @@ internal sealed partial class ImportMappingTable
 
         if (unit.Becomes is BridgeMappingBecomes.Track becomes)
         {
-            AddTrackCells(grid, becomes, lengthsDiverge);
+            AddTrackCells(grid, becomes);
         }
         else
         {
@@ -329,6 +329,7 @@ internal sealed partial class ImportMappingTable
             Avalonia.Controls.Grid.SetColumn(waiting, 1);
             grid.Children.Add(waiting);
         }
+        AddDurationCell(grid, unit, lengthsDiverge);
 
         var source = SourceCell(unit.Source, lengthsDiverge, IsMeasuring(unit.Source));
         var cell = new Panel();
@@ -384,16 +385,14 @@ internal sealed partial class ImportMappingTable
     /// about how much two rips of one track may legitimately differ, and the
     /// other desktop surface has to reach the same answer.</summary>
     private static bool LengthsDiverge(BridgeMappingUnit unit) =>
-        unit.Becomes is BridgeMappingBecomes.Track track
-        && BaeBridgeMethods.BridgeLengthsDisagree(unit.Source.DurationMs(), track.SourceDurationMs);
+        unit.Becomes is BridgeMappingBecomes.Track
+        && BaeBridgeMethods.BridgeLengthsDisagree(unit.Source.DurationMs(), unit.DurationMs);
 
     // The track this row commits, edited in place: the position the release
-    // gives it, its title and artist, the release's length, and the one action
-    // the row's own disagreement leaves to take.
-    private void AddTrackCells(
-        Grid grid,
-        BridgeMappingBecomes.Track becomes,
-        bool lengthsDiverge)
+    // gives it, its title and artist. Length belongs to every audio row,
+    // including one that is still waiting for metadata, so the row owner adds
+    // it after these metadata cells.
+    private void AddTrackCells(Grid grid, BridgeMappingBecomes.Track becomes)
     {
         var track = becomes.TrackValue;
 
@@ -455,10 +454,16 @@ internal sealed partial class ImportMappingTable
             () => currentArtistAssignments));
         Avalonia.Controls.Grid.SetColumn(artistCell, 2);
         grid.Children.Add(artistCell);
+    }
 
+    private static void AddDurationCell(
+        Grid grid,
+        BridgeMappingUnit unit,
+        bool lengthsDiverge)
+    {
         var length = new TextBlock
         {
-            Text = MappingTableReading.DurationText(becomes.SourceDurationMs),
+            Text = MappingTableReading.DurationText(unit.DurationMs),
             FontSize = 12,
             FontFamily = new FontFamily("monospace"),
             HorizontalAlignment = HorizontalAlignment.Right,

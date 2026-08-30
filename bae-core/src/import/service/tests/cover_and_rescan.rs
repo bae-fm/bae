@@ -70,67 +70,6 @@ fn common_ancestor_cases() {
     );
 }
 
-/// Which folder image wins as the cover when the user picked none and the
-/// source offered no art: a conventionally named one, by the same rule the
-/// scan used to reach for. It is the whole stem, not a substring — a name that
-/// merely mentions the front is a scan of the front, not the front.
-#[test]
-fn a_conventionally_named_image_outranks_the_rest() {
-    use crate::import::folder_scanner::is_cover_name;
-    use std::path::Path;
-
-    for named in ["Cover.jpg", "front.png", "FRONT.JPG", "folder.jpeg"] {
-        assert!(is_cover_name(Path::new(named)), "{named} names the cover");
-    }
-    for other in [
-        "album-front-scan.jpg",
-        "Back.jpg",
-        "inlay.png",
-        "disc1.jpg",
-    ] {
-        assert!(!is_cover_name(Path::new(other)), "{other} does not");
-    }
-}
-
-/// A conventionally named image at the release root outranks one in a
-/// subfolder. The scan lists files by relative path, which puts
-/// `Artwork/front.jpg` ahead of `cover.jpg`, so ranking on the name alone
-/// would reach into the subfolder for a cover sitting at the top — and with
-/// nothing at the root, the nested one still leads.
-#[test]
-fn a_root_level_cover_outranks_one_in_a_subfolder() {
-    use crate::import::folder_scanner::ScannedFile;
-
-    let nested = {
-        let mut file = ScannedFile::new(
-            std::path::PathBuf::from("/album/Artwork/front.jpg"),
-            "Artwork/front.jpg".to_string(),
-            4,
-        );
-        file.dir_prefix = Some("Artwork".to_string());
-        file
-    };
-    let root = ScannedFile::new(
-        std::path::PathBuf::from("/album/cover.jpg"),
-        "cover.jpg".to_string(),
-        4,
-    );
-    let plain = ScannedFile::new(
-        std::path::PathBuf::from("/album/back.jpg"),
-        "back.jpg".to_string(),
-        4,
-    );
-
-    assert!(
-        ImportService::folder_cover_rank(&root) < ImportService::folder_cover_rank(&nested),
-        "the root's conventional name leads"
-    );
-    assert!(
-        ImportService::folder_cover_rank(&nested) < ImportService::folder_cover_rank(&plain),
-        "a nested conventional name still beats an unconventional one"
-    );
-}
-
 #[tokio::test]
 async fn explicit_bmp_cover_is_selected() {
     let (service, tmp) = setup_import_service().await;
@@ -638,6 +577,72 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
         }
     }
     panic!("the applied candidate was not announced");
+}
+
+#[tokio::test]
+async fn none_default_discovers_a_local_cover_without_reading_file_tags() {
+    let (service, tmp) = setup_import_service().await;
+    service
+        .library_manager
+        .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::None)
+        .unwrap();
+    let root = tmp.path().join("watched");
+    let album = root.join("Candidate");
+    std::fs::create_dir_all(&album).unwrap();
+    std::fs::write(album.join("01.flac"), flac()).unwrap();
+    write_test_jpeg(&album.join("folder.jpg"));
+    write_test_jpeg(&album.join("cover.jpg"));
+    let root_text = root.to_string_lossy().into_owned();
+    service
+        .library_manager
+        .add_watched_import_folder(&root_text)
+        .await
+        .unwrap();
+    let folder_registry = Arc::new(Mutex::new(
+        crate::import::folder_registry::ImportFolderRegistry::default(),
+    ));
+    folder_registry.lock().unwrap().apply_added(root_text.clone());
+    let (event_tx, _events) = tokio::sync::broadcast::channel(256);
+    let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
+
+    ImportService::rescan_and_reconcile(
+        &root,
+        &event_tx,
+        &service.library_manager,
+        &service.clock,
+        &service.ids,
+        &folder_registry,
+        &Arc::new(tokio::sync::Mutex::new(())),
+        &Arc::new(super::FolderWatcher::new(fs_tx)),
+        &crate::import::folder_scanner::ScanCancellation::new(),
+    )
+    .await
+    .expect("the candidate is read and stored");
+
+    let key = album.to_string_lossy().into_owned();
+    let detail = service
+        .library_manager
+        .load_import_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the candidate is stored");
+    assert_eq!(detail.initial_metadata_source, crate::config::DefaultImportMetadataSource::None);
+    assert_eq!(detail.metadata_provenance, None);
+    assert_eq!(
+        detail.cover.map(|cover| cover.selection),
+        Some(CoverSelection::Local("cover.jpg".to_string()))
+    );
+    assert!(
+        service
+            .library_manager
+            .load_candidate_file_tag_snapshot(&root_text, &key)
+            .await
+            .unwrap()
+            .expect("the candidate stamp is stored")
+            .snapshot
+            .is_none(),
+        "None must not read or persist file tags"
+    );
 }
 
 /// A completed pass records every directory it read and when it was last

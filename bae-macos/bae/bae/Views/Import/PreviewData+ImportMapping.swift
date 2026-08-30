@@ -47,9 +47,9 @@
                     source: .file(file: mappingAudio(index)),
                     becomes: .track(
                         track: confirmEditValues.tracks[index - 1],
-                        sourcePosition: "\(index)",
-                        sourceDurationMs: UInt64(180_000 + index * 15000)
-                    )
+                        sourcePosition: "\(index)"
+                    ),
+                    durationMs: UInt64(180_000 + index * 15000)
                 )
             )
         }
@@ -63,7 +63,8 @@
             .unit(
                 unit: BridgeMappingUnit(
                     source: .file(file: mappingFile(file, role: role)),
-                    becomes: becomes
+                    becomes: becomes,
+                    durationMs: nil
                 )
             )
         }
@@ -192,9 +193,9 @@
                                 ),
                                 becomes: .track(
                                     track: track,
-                                    sourcePosition: sourcePosition,
-                                    sourceDurationMs: sourceDurationMs
-                                )
+                                    sourcePosition: sourcePosition
+                                ),
+                                durationMs: sourceDurationMs
                             )
                         )
                     }
@@ -203,9 +204,9 @@
                             source: .missing,
                             becomes: .track(
                                 track: track,
-                                sourcePosition: sourcePosition,
-                                sourceDurationMs: sourceDurationMs
-                            )
+                                sourcePosition: sourcePosition
+                            ),
+                            durationMs: sourceDurationMs
                         )
                     )
                 },
@@ -221,7 +222,8 @@
                     BridgeMappingRow.unit(
                         unit: BridgeMappingUnit(
                             source: .file(file: mappingAudio(index)),
-                            becomes: .awaitingPick
+                            becomes: .awaitingPick,
+                            durationMs: mappingAudio(index).probedDurationMs
                         )
                     )
                 }
@@ -254,9 +256,9 @@
                 source: .sheetEntry(entry: entry),
                 becomes: .track(
                     track: confirmEditValues.tracks[index],
-                    sourcePosition: "\(index + 1)",
-                    sourceDurationMs: durationMs
-                )
+                    sourcePosition: "\(index + 1)"
+                ),
+                durationMs: durationMs
             )
         }
 
@@ -334,9 +336,9 @@
                                         fileId: "Track \(index).flac"
                                     )
                                 ),
-                                sourcePosition: "\(index)",
-                                sourceDurationMs: nil
-                            )
+                                sourcePosition: "\(index)"
+                            ),
+                            durationMs: mappingAudio(index).probedDurationMs
                         )
                     )
                 },
@@ -637,9 +639,9 @@
                             source: .file(file: mappingAudio(index + 1)),
                             becomes: .track(
                                 track: track,
-                                sourcePosition: nil,
-                                sourceDurationMs: nil
-                            )
+                                sourcePosition: nil
+                            ),
+                            durationMs: mappingAudio(index + 1).probedDurationMs
                         )
                     )
                 },
