@@ -44,7 +44,12 @@ fn conventional_artwork(file: &ScannedFile) -> bool {
         .file_stem()
         .and_then(|stem| stem.to_str())
         .is_some_and(|stem| {
-            stem.eq_ignore_ascii_case("cover") || stem.eq_ignore_ascii_case("folder")
+            let stem = stem.trim_start_matches(|character: char| {
+                character.is_ascii_digit() || matches!(character, ' ' | '-' | '_' | '.')
+            });
+            ["front", "cover", "folder"]
+                .iter()
+                .any(|name| stem.eq_ignore_ascii_case(name))
         })
 }
 
@@ -87,6 +92,16 @@ mod tests {
         assert_eq!(
             default_local_cover(&files),
             Some(CoverSelection::Local("A/COVER.jpg".to_string()))
+        );
+    }
+
+    #[test]
+    fn numbered_front_artwork_beats_the_smallest_image() {
+        let files = files_with_artwork([artwork("00Front.jpg", 500), artwork("disc.jpg", 1)]);
+
+        assert_eq!(
+            default_local_cover(&files),
+            Some(CoverSelection::Local("00Front.jpg".to_string()))
         );
     }
 
