@@ -98,16 +98,11 @@ pub fn map_file_tags_to_db(
                     path.display()
                 ),
             })?;
-            let content_digest =
-                crate::util::fs::hash_file(path).map_err(|error| ImportError::FileTags {
-                    detail: format!("failed to hash {}: {error}", path.display()),
-                })?;
             Ok(ScannedFile::new(
                 path.clone(),
                 relative_path,
                 size,
                 modified_at_ns,
-                content_digest,
             ))
         })
         .collect::<Result<Vec<_>, _>>()?;

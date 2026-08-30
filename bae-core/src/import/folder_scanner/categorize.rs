@@ -334,14 +334,11 @@ pub(super) fn categorize_files_from_tree(
             ProposedRole::Other
         };
 
-        let content_digest = crate::util::fs::hash_file(&absolute_path)
-            .map_err(|source| FolderScanError::io(&absolute_path, source))?;
         let mut file = ScannedFile::new(
             absolute_path,
             relative_path,
             entry.size,
             entry.modified_at_ns,
-            content_digest,
         );
         if role == ProposedRole::Audio {
             let Some(source_audio) = source_audio_of(&file)? else {
@@ -350,14 +347,6 @@ pub(super) fn categorize_files_from_tree(
                 });
             };
             file.source_audio = Some(source_audio);
-            let content_digest = crate::util::fs::hash_file(&file.path)
-                .map_err(|source| FolderScanError::io(&file.path, source))?;
-            if content_digest != file.content_digest {
-                return Err(FolderScanError::Other(format!(
-                    "{} changed while its audio facts were being read",
-                    file.path.display()
-                )));
-            }
         }
         proposed.push((file, role));
     }

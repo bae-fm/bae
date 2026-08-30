@@ -704,7 +704,6 @@ pub(super) fn scan_candidate(root: &str, name: &str) -> crate::import::folder_sc
                     "01.flac".to_string(),
                     1_000,
                     1,
-                    "0".repeat(64),
                 )
                 .with_test_flac_audio(),
                 role: FileRole::Audio,

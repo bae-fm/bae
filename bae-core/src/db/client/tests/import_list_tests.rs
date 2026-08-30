@@ -50,7 +50,6 @@ fn candidate(root: &str, name: &str) -> FolderCandidate {
                     "01.flac".to_string(),
                     1_000,
                     1,
-                    "0".repeat(64),
                 )
                 .with_test_flac_audio(),
                 role: FileRole::Audio,
@@ -476,7 +475,6 @@ async fn the_list_projects_the_applied_draft_and_cover() {
             "cover.jpg".to_string(),
             500,
             1,
-            "1".repeat(64),
         ),
         role: FileRole::Artwork,
     });
@@ -487,7 +485,6 @@ async fn the_list_projects_the_applied_draft_and_cover() {
             "folder.jpg".to_string(),
             600,
             1,
-            "2".repeat(64),
         ),
         role: FileRole::Artwork,
     });
@@ -612,7 +609,6 @@ async fn the_list_projects_a_selected_cover_without_metadata() {
             "cover.jpg".to_string(),
             500,
             1,
-            "1".repeat(64),
         ),
         role: FileRole::Artwork,
     });

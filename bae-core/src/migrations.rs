@@ -1,12 +1,12 @@
-//! bae's synced-schema migration ladder, registered on the coven builder.
-//! coven runs each migration whose version exceeds the db's `PRAGMA user_version`
-//! at open; the applied version becomes the wire `schema_version`.
+//! bae's synced-schema migration ladder; coven applies versions above `PRAGMA user_version` at open.
 
 const IMPORT_METADATA_SEEDS_SQL: &str = include_str!("../migrations/002_import_metadata_seeds.sql");
 const METADATA_DRAFTS_AND_PROVENANCE_SQL: &str =
     include_str!("../migrations/003_metadata_drafts_and_provenance.sql");
 const IMPORT_SOURCE_AUDIO_FACTS_SQL: &str =
     include_str!("../migrations/005_import_source_audio_facts.sql");
+const SCAN_METADATA_IDENTITY_SQL: &str =
+    include_str!("../migrations/006_scan_metadata_identity.sql");
 const VERSION_ONE_FILE_TAG_TRACK_PREFIX: &str = "unknown-track-";
 const FILE_TAG_TRACK_PREFIX: &str = "file-tag-track-";
 
@@ -37,6 +37,7 @@ pub fn all() -> Vec<coven::Migration> {
             "import_source_audio_facts",
             IMPORT_SOURCE_AUDIO_FACTS_SQL,
         ),
+        coven::Migration::sql(6, "scan_metadata_identity", SCAN_METADATA_IDENTITY_SQL),
     ]
 }
 
@@ -238,6 +239,12 @@ mod tests {
     fn version_four() -> Vec<coven::Migration> {
         let mut migrations = all();
         migrations.truncate(4);
+        migrations
+    }
+
+    fn version_five() -> Vec<coven::Migration> {
+        let mut migrations = all();
+        migrations.truncate(5);
         migrations
     }
 
@@ -664,8 +671,8 @@ mod tests {
             .expect("open version four");
         drop(handle);
 
-        let handle =
-            open(store_dir, "migration-audio-facts", all()).expect("migrate to version five");
+        let handle = open(store_dir, "migration-audio-facts", version_five())
+            .expect("migrate to version five");
         handle
             .read(|sql| {
                 let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -767,7 +774,11 @@ mod tests {
             .expect("seed version-four scan state");
         drop(handle);
 
-        let error = match open(store_dir.clone(), "migration-audio-nonempty", all()) {
+        let error = match open(
+            store_dir.clone(),
+            "migration-audio-nonempty",
+            version_five(),
+        ) {
             Ok(_) => panic!("nonempty version-four scan state must reject migration"),
             Err(error) => error,
         };
@@ -800,8 +811,8 @@ mod tests {
     async fn migration_five_enforces_complete_codec_specific_audio_facts() {
         let temp = tempfile::tempdir().expect("temp store");
         let store_dir = StoreDir::new_ephemeral(temp.path());
-        let handle =
-            open(store_dir, "migration-audio-constraints", all()).expect("open version five");
+        let handle = open(store_dir, "migration-audio-constraints", version_five())
+            .expect("open version five");
         handle
             .write(|sql| {
                 sql.execute_batch(
@@ -941,5 +952,48 @@ mod tests {
             })
             .await
             .expect("verify version-five audio constraints");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn migration_six_rebuilds_scan_cache_without_byte_digests() {
+        let temp = tempfile::tempdir().expect("temp store");
+        let store_dir = StoreDir::new_ephemeral(temp.path());
+        let handle = open(store_dir.clone(), "migration-scan-metadata", version_five())
+            .expect("open version five");
+        handle
+            .write(|sql| {
+                sql.execute_batch(
+                    "INSERT INTO watched_import_folders (path, position) VALUES ('/music', 0);
+                     INSERT INTO folder_scan_roots (watched_folder_path, generation, status)
+                         VALUES ('/music', 1, 'complete');",
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("seed version-five scan cache");
+        drop(handle);
+
+        let handle =
+            open(store_dir, "migration-scan-metadata", all()).expect("migrate to version six");
+        handle
+            .read(|sql| {
+                let counts: (i64, i64) = sql.query_row(
+                    "SELECT (SELECT COUNT(*) FROM watched_import_folders),
+                            (SELECT COUNT(*) FROM folder_scan_roots)",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )?;
+                assert_eq!(counts, (1, 0));
+                let columns: Vec<String> = sql.query(
+                    "SELECT name FROM pragma_table_info('scan_candidate_file') ORDER BY cid",
+                    [],
+                    |row| row.get(0),
+                )?;
+                assert!(!columns.iter().any(|column| column == "content_digest"));
+                Ok(())
+            })
+            .await
+            .expect("read migrated scan schema");
     }
 }

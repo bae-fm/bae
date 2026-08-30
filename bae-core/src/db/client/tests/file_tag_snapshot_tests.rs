@@ -39,7 +39,6 @@ fn candidate(root: &str) -> FolderCandidate {
                 relative_path.to_string(),
                 size,
                 1,
-                format!("{size:064x}"),
             )
             .with_test_flac_audio(),
             role: FileRole::Audio,

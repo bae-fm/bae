@@ -8,7 +8,6 @@ impl BridgeFileInfo {
             relative_path,
             size,
             modified_at_ns: _,
-            content_digest,
             dir_prefix,
             file_name,
             source_audio,
@@ -16,7 +15,6 @@ impl BridgeFileInfo {
         BridgeFileInfo {
             name: relative_path,
             size,
-            content_digest,
             dir_prefix,
             file_name,
             local_path: path.to_string_lossy().to_string(),
@@ -213,8 +211,10 @@ impl BridgeCandidateFiles {
         let source_audio = files
             .source_audio_summary()
             .map(BridgeSourceAudioSummary::from_core);
+        let file_tags_identity = files.file_tags_identity();
         let bae_core::import::folder_scanner::CategorizedFiles { files } = files;
         BridgeCandidateFiles {
+            file_tags_identity,
             files: files
                 .into_iter()
                 .zip(becomes)
@@ -783,26 +783,5 @@ impl BridgeMappingTable {
             rows: rows.into_iter().map(BridgeMappingRow::into_core).collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::into_core),
         }
-    }
-}
-
-#[cfg(all(test, feature = "desktop"))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn file_conversion_carries_scan_content_identity() {
-        let content_digest = "a".repeat(64);
-        let file = bae_core::import::folder_scanner::ScannedFile::new(
-            std::path::PathBuf::from("/music/01.flac"),
-            "01.flac".to_string(),
-            100,
-            1,
-            content_digest.clone(),
-        );
-
-        let bridge = BridgeFileInfo::from_core(file);
-
-        assert_eq!(bridge.content_digest, content_digest);
     }
 }

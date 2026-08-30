@@ -553,6 +553,7 @@ public sealed class ImportMappingPaneTests
                 SourceFolderName: "Album",
                 WatchedFolderPath: "/Music/Incoming",
                 Files: new BridgeCandidateFiles(
+                    "mapping-pane-audio",
                     Array.Empty<BridgeCandidateFile>(),
                     new BridgeSourceAudioSummary.Uniform(
                         new BridgeSourceAudioDescriptor(

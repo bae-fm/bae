@@ -75,7 +75,6 @@ mod tests {
             relative_path.to_string(),
             size,
             1,
-            "0".repeat(64),
         )
     }
 

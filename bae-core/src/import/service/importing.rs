@@ -682,10 +682,17 @@ impl ImportService {
             import_id,
         );
         for (idx, file) in discovered_files.iter().enumerate() {
-            // The identity validation above proved these are still the bytes
-            // the scan hashed. The same digest is the durable blob hash coven
-            // verifies on every cloud fetch.
-            let content_hash = file.content_digest.clone();
+            // The scan fingerprint uses metadata so discovering remote folders
+            // does not read every byte. Import computes the durable blob hash
+            // here, validating the scanned metadata before and after the read.
+            let file_to_hash = file.clone();
+            let content_hash = tokio::task::spawn_blocking(move || {
+                super::file_identity::hash_scanned_file_for_import(&file_to_hash)
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::Internal {
+                detail: format!("file hashing task failed: {error}"),
+            })??;
             let mut db_file = DbFile::new(
                 &db_release.id,
                 &file.relative_path,

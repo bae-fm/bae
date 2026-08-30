@@ -1,31 +1,4 @@
 #[test]
-fn same_size_audio_replacement_changes_the_scanned_candidate() {
-    let result = run_scenario(vec![FixtureEntry::File {
-        rel_path: "Album/01.flac".into(),
-        kind: FileKind::Flac,
-    }]);
-    let before = result.candidate("Album").clone();
-    let path = result.root.join("Album/01.flac");
-    let original_modified = std::fs::metadata(&path).unwrap().modified().unwrap();
-    let mut replacement = std::fs::read(&path).unwrap();
-    let last = replacement.last_mut().expect("fixture is not empty");
-    *last ^= 1;
-    std::fs::write(&path, replacement).unwrap();
-    std::fs::File::open(&path)
-        .unwrap()
-        .set_times(std::fs::FileTimes::new().set_modified(original_modified))
-        .unwrap();
-
-    let after = scan_valid(result.root.clone())
-        .into_iter()
-        .find(|candidate| candidate.display_path == "Album")
-        .expect("replacement remains a valid candidate");
-
-    assert_ne!(before, after);
-    assert_ne!(before.files.content_hash(), after.files.content_hash());
-}
-
-#[test]
 fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
     let result = run_scenario(vec![FixtureEntry::File {
         rel_path: "Album/01.flac".into(),

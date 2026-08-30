@@ -483,7 +483,6 @@ mod tests {
                 .into_owned(),
             1,
             0,
-            "0".repeat(64),
         )
     }
 

@@ -420,7 +420,6 @@ struct FileRow {
     absolute_path: String,
     size: i64,
     modified_at_ns: i64,
-    content_digest: String,
     audio_content_type: Option<String>,
     audio_duration_ms: Option<i64>,
     audio_sample_rate_hz: Option<i64>,
@@ -444,7 +443,7 @@ fn load_files(
     only: Option<&str>,
 ) -> Result<HashMap<String, Vec<CandidateFile>>, DbError> {
     let rows = sql.query(
-        "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, content_digest, \
+        "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, \
                 audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
                 audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, dir_prefix, \
                 proposed_audio, role, sheet_binding, sheet_binding_file_id, \
@@ -460,22 +459,21 @@ fn load_files(
                 absolute_path: row.get(2)?,
                 size: row.get(3)?,
                 modified_at_ns: row.get(4)?,
-                content_digest: row.get(5)?,
-                audio_content_type: row.get(6)?,
-                audio_duration_ms: row.get(7)?,
-                audio_sample_rate_hz: row.get(8)?,
-                audio_bits_per_sample: row.get(9)?,
-                audio_bitrate_kbps: row.get(10)?,
-                audio_channels: row.get(11)?,
-                file_name: row.get(12)?,
-                dir_prefix: row.get(13)?,
-                proposed_audio: row.get(14)?,
-                role: row.get(15)?,
-                sheet_binding: row.get(16)?,
-                sheet_binding_file_id: row.get(17)?,
-                sheet_binding_codec: row.get(18)?,
-                sheet_disc: row.get(19)?,
-                sheet_disc_number: row.get(20)?,
+                audio_content_type: row.get(5)?,
+                audio_duration_ms: row.get(6)?,
+                audio_sample_rate_hz: row.get(7)?,
+                audio_bits_per_sample: row.get(8)?,
+                audio_bitrate_kbps: row.get(9)?,
+                audio_channels: row.get(10)?,
+                file_name: row.get(11)?,
+                dir_prefix: row.get(12)?,
+                proposed_audio: row.get(13)?,
+                role: row.get(14)?,
+                sheet_binding: row.get(15)?,
+                sheet_binding_file_id: row.get(16)?,
+                sheet_binding_codec: row.get(17)?,
+                sheet_disc: row.get(18)?,
+                sheet_disc_number: row.get(19)?,
             })
         },
     )?;
@@ -524,7 +522,6 @@ fn load_files(
                     relative_path: row.relative_path,
                     size: to_u64(row.size, "a file's size")?,
                     modified_at_ns: row.modified_at_ns,
-                    content_digest: row.content_digest,
                     dir_prefix: row.dir_prefix,
                     file_name: row.file_name,
                     source_audio,

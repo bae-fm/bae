@@ -44,7 +44,6 @@ async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
                 "01.flac".to_string(),
                 1_000,
                 1,
-                "0".repeat(64),
             )
             .with_test_flac_audio(),
             role: crate::import::folder_scanner::FileRole::Audio,

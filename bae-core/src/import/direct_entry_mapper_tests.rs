@@ -6,14 +6,8 @@ fn candidate() -> CategorizedFiles {
         files: ["01-source.flac", "02-source.flac"]
             .into_iter()
             .map(|name| CandidateFile {
-                file: ScannedFile::new(
-                    name.into(),
-                    name.to_string(),
-                    100,
-                    1,
-                    crate::util::fs::hash_bytes(name.as_bytes()),
-                )
-                .with_test_flac_audio(),
+                file: ScannedFile::new(name.into(), name.to_string(), 100, 1)
+                    .with_test_flac_audio(),
                 role: FileRole::Audio,
                 proposed_audio: true,
             })

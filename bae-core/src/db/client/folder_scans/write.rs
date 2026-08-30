@@ -312,11 +312,11 @@ fn insert_file(
     sql.execute(
         "INSERT INTO scan_candidate_file \
              (watched_folder_path, candidate_path, relative_path, position, absolute_path, \
-              size, modified_at_ns, content_digest, audio_content_type, audio_duration_ms, \
+              size, modified_at_ns, audio_content_type, audio_duration_ms, \
               audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
               file_name, dir_prefix, proposed_audio, role, sheet_binding, \
               sheet_binding_file_id, sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             watched_folder_path,
             candidate_path,
@@ -325,7 +325,6 @@ fn insert_file(
             file.file.path.to_string_lossy(),
             to_i64(file.file.size, "a file's size")?,
             file.file.modified_at_ns,
-            file.file.content_digest,
             file.file
                 .source_audio
                 .as_ref()

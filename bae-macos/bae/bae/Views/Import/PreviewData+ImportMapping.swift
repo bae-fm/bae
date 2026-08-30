@@ -116,7 +116,6 @@
             file: BridgeFileInfo(
                 name: "Album Image.flac",
                 size: 221_100_000,
-                contentDigest: String(repeating: "b", count: 64),
                 dirPrefix: nil,
                 fileName: "Album Image.flac",
                 localPath: "/tmp/fake/Album Image.flac",
@@ -135,6 +134,7 @@
         )
 
         static let moreTracksCandidateFiles = BridgeCandidateFiles(
+            fileTagsIdentity: "more-tracks-audio",
             files: [moreTracksAudio],
             sourceAudio: .uniform(
                 descriptor: BridgeSourceAudioDescriptor(

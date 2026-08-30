@@ -582,7 +582,6 @@ mod tests {
             relative_path.to_string(),
             size,
             1,
-            format!("{size:064x}"),
         )
     }
 
@@ -682,13 +681,7 @@ mod tests {
             .iter()
             .enumerate()
             .map(|(index, path)| {
-                ScannedFile::new(
-                    path.clone(),
-                    format!("{:02}.flac", index + 1),
-                    5,
-                    1,
-                    crate::util::fs::hash_file(path).unwrap(),
-                )
+                ScannedFile::new(path.clone(), format!("{:02}.flac", index + 1), 5, 1)
             })
             .collect::<Vec<_>>();
         let reader = CountingReader::default();
@@ -715,7 +708,7 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("01.flac");
         std::fs::write(&path, b"changed").unwrap();
-        let file = ScannedFile::new(path, "01.flac".to_string(), 5, 1, "0".repeat(64));
+        let file = ScannedFile::new(path, "01.flac".to_string(), 5, 1);
         let reader = CountingReader::default();
 
         let error = extract_file_tag_snapshot(&[file], 1, 0, &reader).unwrap_err();

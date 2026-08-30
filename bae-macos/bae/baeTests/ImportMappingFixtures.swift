@@ -372,6 +372,7 @@ extension MappingFixtures {
     )
 
     static let emptyFiles = BridgeCandidateFiles(
+        fileTagsIdentity: "empty-audio-files",
         files: [],
         sourceAudio: nil,
         collapsedDirectories: []

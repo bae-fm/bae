@@ -271,14 +271,12 @@ mod tests {
             "Album.cue".to_string(),
             100,
             1,
-            "0".repeat(64),
         );
         let flac = ScannedFile::new(
             PathBuf::from("/rel/Album.flac"),
             "Album.flac".to_string(),
             5_000_000,
             1,
-            "1".repeat(64),
         )
         .with_test_flac_audio();
         let cover = ScannedFile::new(
@@ -286,7 +284,6 @@ mod tests {
             "Artist Name - Album.png".to_string(),
             10_000,
             1,
-            "2".repeat(64),
         );
         let categorized = CategorizedFiles {
             files: vec![

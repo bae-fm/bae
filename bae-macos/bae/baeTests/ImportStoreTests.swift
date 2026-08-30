@@ -28,17 +28,22 @@ private func makeStatus(albumId: String) -> BridgeLibraryStatus {
 /// these hand-build the minimal shapes the snapshot reducers consume.
 
 private func emptyBridgeFiles() -> BridgeCandidateFiles {
-    BridgeCandidateFiles(files: [], sourceAudio: nil, collapsedDirectories: [])
+    BridgeCandidateFiles(
+        fileTagsIdentity: "empty-audio-files",
+        files: [],
+        sourceAudio: nil,
+        collapsedDirectories: []
+    )
 }
 
-private func bridgeFiles(contentDigest: String) -> BridgeCandidateFiles {
+private func bridgeFiles(fileTagsIdentity: String) -> BridgeCandidateFiles {
     BridgeCandidateFiles(
+        fileTagsIdentity: fileTagsIdentity,
         files: [
             BridgeCandidateFile(
                 file: BridgeFileInfo(
                     name: "01.flac",
                     size: 100,
-                    contentDigest: contentDigest,
                     dirPrefix: nil,
                     fileName: "01.flac",
                     localPath: "/music/01.flac",
@@ -342,15 +347,15 @@ struct ImportStoreCandidateDetailTests {
         #expect(merged.files.files.isEmpty)
     }
 
-    @Test("changed file bytes discard the loaded File Tags preview")
-    func changedFileBytesDiscardFileTagsPreview() {
+    @Test("changed File Tags identity discards the loaded preview")
+    func changedFileTagsIdentityDiscardsPreview() {
         var existing = folderCandidate(
             folderPath: "/w1/a",
             watchedFolderPath: "/w1",
             name: "A"
         )
         existing.files = bridgeFiles(
-            contentDigest: String(repeating: "a", count: 64)
+            fileTagsIdentity: "scanned-audio-a"
         )
         existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
 
@@ -360,7 +365,7 @@ struct ImportStoreCandidateDetailTests {
             name: "A"
         )
         replacement.files = bridgeFiles(
-            contentDigest: String(repeating: "b", count: 64)
+            fileTagsIdentity: "scanned-audio-b"
         )
 
         let merged = replacement.withSessionState(from: existing)

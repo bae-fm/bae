@@ -600,7 +600,6 @@
                 file: BridgeFileInfo(
                     name: dirPrefix.map { $0 + name } ?? name,
                     size: size,
-                    contentDigest: String(repeating: "a", count: 64),
                     dirPrefix: dirPrefix,
                     fileName: name,
                     localPath: localPath ?? "/tmp/fake/\(name)",
@@ -724,6 +723,7 @@
         )
 
         static let bridgeCandidateFiles = BridgeCandidateFiles(
+            fileTagsIdentity: "cue-backed-preview-audio",
             files: [
                 backImage,
                 boundTrackSheet,
@@ -835,6 +835,7 @@
             }
 
         static let candidateFilesTracks = BridgeCandidateFiles(
+            fileTagsIdentity: "file-backed-preview-audio",
             files: trackAudioFiles
                 + [
                     coverImage,

@@ -584,13 +584,26 @@ mod import_queue {
             files: CategorizedFiles {
                 files: vec![CandidateFile {
                     proposed_audio: true,
-                    file: ScannedFile::new(
-                        PathBuf::from(format!("{root}/{name}/01.flac")),
-                        "01.flac".to_string(),
-                        1_000,
-                        0,
-                        "fixture-audio".to_string(),
-                    ),
+                    file: {
+                        let mut file = ScannedFile::new(
+                            PathBuf::from(format!("{root}/{name}/01.flac")),
+                            "01.flac".to_string(),
+                            1_000,
+                            0,
+                        );
+                        file.source_audio = Some(bae_core::import::folder_scanner::ScannedAudio {
+                            content_type: bae_core::util::content_type::ContentType::Flac,
+                            duration_ms: 1_000,
+                            format: bae_core::album_detail::AudioFormat {
+                                codec: "FLAC".to_string(),
+                                sample_rate_hz: 44_100,
+                                bits_per_sample: Some(16),
+                                bitrate_kbps: None,
+                                channels: 2,
+                            },
+                        });
+                        file
+                    },
                     role: FileRole::Audio,
                 }],
             },

@@ -41,7 +41,6 @@ fn track_files_candidate(files: &[(&str, u64)]) -> CategorizedFiles {
                     name.to_string(),
                     *size,
                     1,
-                    format!("{size:064x}"),
                 )
                 .with_test_flac_audio(),
                 role: FileRole::Audio,

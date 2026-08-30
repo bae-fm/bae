@@ -196,6 +196,29 @@ fn content_hash_is_location_independent_and_size_sensitive() {
 }
 
 #[test]
+fn content_hash_changes_with_file_modification_time() {
+    let entry = |modified_at_ns| CandidateFile {
+        proposed_audio: true,
+        file: ScannedFile::new(
+            PathBuf::from("/music/01.flac"),
+            "01.flac".to_string(),
+            1000,
+            modified_at_ns,
+        )
+        .with_test_flac_audio(),
+        role: FileRole::Audio,
+    };
+    let before = CategorizedFiles {
+        files: vec![entry(1)],
+    };
+    let after = CategorizedFiles {
+        files: vec![entry(2)],
+    };
+
+    assert_ne!(before.content_hash(), after.content_hash());
+}
+
+#[test]
 fn content_hash_is_independent_of_discovery_order() {
     let entry = |name: &str, size: u64, role: FileRole| CandidateFile {
         proposed_audio: matches!(role, FileRole::Audio),
@@ -204,7 +227,6 @@ fn content_hash_is_independent_of_discovery_order() {
             name.to_string(),
             size,
             1,
-            format!("{size:064x}"),
         ),
         role,
     };

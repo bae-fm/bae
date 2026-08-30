@@ -20,9 +20,6 @@ pub struct ScannedFile {
     /// File size in bytes
     pub size: u64,
     pub modified_at_ns: i64,
-    /// SHA-256 of the file bytes observed by the scan. Import validates this
-    /// exact identity before using the persisted facts.
-    pub content_digest: String,
     /// Directory prefix of relative_path (e.g. "Disc 1/"). `None` when the
     /// file is at the candidate-folder root.
     pub dir_prefix: Option<String>,
@@ -32,13 +29,7 @@ pub struct ScannedFile {
 }
 
 impl ScannedFile {
-    pub fn new(
-        path: PathBuf,
-        relative_path: String,
-        size: u64,
-        modified_at_ns: i64,
-        content_digest: String,
-    ) -> Self {
+    pub fn new(path: PathBuf, relative_path: String, size: u64, modified_at_ns: i64) -> Self {
         let (dir_prefix, file_name) = match relative_path.rfind('/') {
             Some(idx) => (
                 Some(relative_path[..=idx].to_string()),
@@ -51,7 +42,6 @@ impl ScannedFile {
             relative_path,
             size,
             modified_at_ns,
-            content_digest,
             dir_prefix,
             file_name,
             source_audio: None,
@@ -645,18 +635,17 @@ impl CategorizedFiles {
         self.audio().map(|file| file.path.clone()).collect()
     }
 
-    /// Stable content fingerprint of this release: a SHA-256 over the relative
-    /// path and byte digest of every file in [`Self::release_files`],
-    /// sorted so the digest is independent of discovery order. Relative (not
-    /// absolute) paths make it location-independent — the same rip hashes
-    /// identically under any parent folder. Drives "already imported?"
-    /// detection and selects the overwrite target on re-import.
+    /// Stable scan fingerprint of this release: a SHA-256 over the relative
+    /// path, size, and modification time of every file in
+    /// [`Self::release_files`], sorted so the result is independent of discovery
+    /// order. Absolute location is deliberately absent. Drives "already
+    /// imported?" detection and selects the overwrite target on re-import.
     ///
-    /// It hashes exactly what the release carries: same iterator as the
+    /// It fingerprints exactly what the release carries: same iterator as the
     /// payload, so the fingerprint cannot describe a different set of files
     /// than the one that gets stored.
     ///
-    /// It hashes **files**, never roles. A sheet's binding and a file's role
+    /// It fingerprints **files**, never roles. A sheet's binding and a file's role
     /// are user decisions stored under this hash, so a hash that moved when one
     /// of them changed would orphan the very row it addresses on every edit.
     ///
@@ -669,6 +658,12 @@ impl CategorizedFiles {
     /// therefore whether this hash moves for it. It cannot be both.
     pub fn content_hash(&self) -> String {
         content_hash_of(self.release_files())
+    }
+
+    /// Identity of the files whose tags populate the File Tags preview.
+    /// Changing file metadata or which files have the audio role changes it.
+    pub fn file_tags_identity(&self) -> String {
+        content_hash_of(self.audio())
     }
 
     /// What the sheet at `sheet_file_id` can be bound to: the folder's audio,
@@ -853,22 +848,21 @@ impl CategorizedFiles {
     }
 }
 
-/// SHA-256 over the sorted `(relative_path, content_digest)` of every file — the free
-/// function [`CategorizedFiles::content_hash`] is the method form of. Separate
-/// because the scan needs a candidate's hash while it is still assembling the
-/// candidate, to look up the bindings stored under it.
+/// SHA-256 over each file's sorted relative path, size, and modification time.
+/// This is a scan fingerprint, not a digest of the file bytes. The free function
+/// [`CategorizedFiles::content_hash`] is the method form of. Separate because the
+/// scan needs a candidate's fingerprint while it is still assembling the candidate,
+/// to look up the bindings stored under it.
 pub(super) fn content_hash_of<'a>(files: impl Iterator<Item = &'a ScannedFile>) -> String {
-    let mut entries: Vec<(&str, &str)> = files
-        .map(|file| (file.relative_path.as_str(), file.content_digest.as_str()))
-        .collect();
-    entries.sort_unstable();
+    let mut entries: Vec<&ScannedFile> = files.collect();
+    entries.sort_unstable_by(|left, right| left.relative_path.cmp(&right.relative_path));
 
     let mut hasher = Sha256::new();
-    for (path, content_digest) in entries {
-        hasher.update(path.as_bytes());
-        hasher.update([0u8]);
-        hasher.update(content_digest.as_bytes());
-        hasher.update([b'\n']);
+    for file in entries {
+        hasher.update((file.relative_path.len() as u64).to_le_bytes());
+        hasher.update(file.relative_path.as_bytes());
+        hasher.update(file.size.to_le_bytes());
+        hasher.update(file.modified_at_ns.to_le_bytes());
     }
     format!("{:x}", hasher.finalize())
 }

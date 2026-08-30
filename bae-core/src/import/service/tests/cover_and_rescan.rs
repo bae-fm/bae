@@ -83,14 +83,12 @@ async fn explicit_bmp_cover_is_selected() {
             "cover.bmp".to_string(),
             9,
             1,
-            crate::util::fs::hash_file(&bmp).unwrap(),
         ),
         ScannedFile::new(
             jpg.clone(),
             "front.jpg".to_string(),
             9,
             1,
-            crate::util::fs::hash_file(&jpg).unwrap(),
         ),
     ];
 
@@ -114,7 +112,6 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
         "front.jpg".to_string(),
         9,
         1,
-        crate::util::fs::hash_file(&fallback).unwrap(),
     )];
 
     let err = service
@@ -290,14 +287,12 @@ async fn unreadable_selected_cover_is_an_error() {
     let (service, tmp) = setup_import_service().await;
     let cover = tmp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
-    let content_digest = crate::util::fs::hash_file(&cover).unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
     let discovered = vec![ScannedFile::new(
         cover.clone(),
         "cover.jpg".to_string(),
         9,
         1,
-        content_digest,
     )];
 
     let result = service.pick_folder_cover(&discovered, Some("cover.jpg"));

@@ -100,7 +100,6 @@ fn synthetic_candidate(path: &str, size: u64) -> FolderCandidate {
                     "01.flac".to_string(),
                     size,
                     1,
-                    format!("{size:064x}"),
                 )
                 .with_test_flac_audio(),
                 role: FileRole::Audio,

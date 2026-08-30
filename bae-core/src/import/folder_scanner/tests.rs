@@ -14,14 +14,8 @@ fn fake_flac() -> Vec<u8> {
 /// content-hash tests.
 fn audio_entry(path: &str, relative_path: &str, size: u64) -> CandidateFile {
     CandidateFile {
-        file: ScannedFile::new(
-            PathBuf::from(path),
-            relative_path.to_string(),
-            size,
-            1,
-            format!("{size:064x}"),
-        )
-        .with_test_flac_audio(),
+        file: ScannedFile::new(PathBuf::from(path), relative_path.to_string(), size, 1)
+            .with_test_flac_audio(),
         role: FileRole::Audio,
         proposed_audio: true,
     }

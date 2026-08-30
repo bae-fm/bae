@@ -44,7 +44,6 @@ fn stored_file_tag_facts_project_without_opening_the_source_file() {
                 "01.flac".to_string(),
                 123,
                 1,
-                "0".repeat(64),
             )
             .with_test_flac_audio(),
             role: FileRole::Audio,

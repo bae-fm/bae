@@ -38,7 +38,6 @@ async fn picked_candidate(
                 relative_path,
                 size,
                 1,
-                crate::util::fs::hash_file(&path).unwrap(),
             )
             .with_test_flac_audio(),
             role: FileRole::Audio,
@@ -53,7 +52,6 @@ async fn picked_candidate(
             "cover.jpg".to_string(),
             5,
             1,
-            crate::util::fs::hash_file(&cover_path).unwrap(),
         ),
         role: FileRole::Artwork,
     });

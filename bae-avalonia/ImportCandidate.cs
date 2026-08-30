@@ -109,7 +109,7 @@ public sealed class ImportCandidate
     internal void PreserveSessionState(ImportCandidate existing)
     {
         MetadataPresentation = existing.MetadataPresentation;
-        if (!SameFiles(existing.Files, Files))
+        if (existing.Files?.FileTagsIdentity != Files?.FileTagsIdentity)
         {
             return;
         }
@@ -157,27 +157,6 @@ public sealed class ImportCandidate
         FileTagsPreviewStatus = ImportFileTagsPreviewStatus.Failed;
         FileTagsPreview = null;
         FileTagsPreviewError = error;
-        return true;
-    }
-
-    private static bool SameFiles(BridgeCandidateFiles? lhs, BridgeCandidateFiles? rhs)
-    {
-        if (lhs is null || rhs is null || lhs.Files.Length != rhs.Files.Length)
-        {
-            return lhs is null && rhs is null;
-        }
-        for (var index = 0; index < lhs.Files.Length; index++)
-        {
-            var left = lhs.Files[index].File;
-            var right = rhs.Files[index].File;
-            if (left.Name != right.Name
-                || left.Size != right.Size
-                || left.ContentDigest != right.ContentDigest
-                || left.LocalPath != right.LocalPath)
-            {
-                return false;
-            }
-        }
         return true;
     }
 

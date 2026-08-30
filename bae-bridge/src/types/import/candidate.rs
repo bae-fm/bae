@@ -21,9 +21,6 @@ impl BridgeWatchedFolder {
 pub struct BridgeFileInfo {
     pub name: String,
     pub size: u64,
-    /// SHA-256 of the scanned bytes. Part of file identity so session previews
-    /// never survive a same-path, same-size content replacement.
-    pub content_digest: String,
     /// Directory prefix for display, e.g. "Artwork/". `None` when the file
     /// sits at the candidate-folder root.
     pub dir_prefix: Option<String>,
@@ -268,6 +265,8 @@ pub struct BridgeCandidateFile {
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFiles {
+    /// Core-derived identity of the audio files behind a File Tags preview.
+    pub file_tags_identity: String,
     /// Every file in the folder, each exactly once, in release-relative path
     /// order.
     pub files: Vec<BridgeCandidateFile>,
