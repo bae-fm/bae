@@ -281,7 +281,7 @@ pub(crate) fn load_pane_rows_on(
         track_mappings: load_track_mappings_on(sql, Some(content_hash))?
             .remove(content_hash)
             .unwrap_or_default(),
-        failure: load_failures_on(sql, Some(content_hash))?.remove(content_hash),
+        failure: load_failure_on(sql, content_hash)?,
     })
 }
 

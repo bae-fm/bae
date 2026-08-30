@@ -1,5 +1,8 @@
 import BaeKit
 import SwiftUI
+import os.log
+
+private let importConfirmLogger = Logger.bae("ImportConfirm")
 
 // MARK: - Commit
 
@@ -16,9 +19,6 @@ extension ImportView {
         guard case .folder = candidate.source else {
             return
         }
-        // Start each attempt from a clean error state so a prior failed
-        // commit's banner doesn't linger over a now-succeeding retry.
-        importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
         let request = ImportCommitRequest(
             candidateKey: candidate.key,
             storageMode: configStore.config.importStorageMode(
@@ -26,16 +26,8 @@ extension ImportView {
             ),
             pin: storagePinned,
         )
-        Task { @MainActor in
-            do {
-                try await importer.startImport(request)
-            }
-            catch is CancellationError {}
-            catch {
-                importStore.mutateCandidate(forKey: candidate.key) {
-                    $0.error = error.displayLine
-                }
-            }
+        runCandidateMutation(candidate: candidate) {
+            try await importer.startImport(request)
         }
     }
 
@@ -46,18 +38,39 @@ extension ImportView {
         candidate: Candidate,
         keeping survivingArtistId: String
     ) {
+        runCandidateMutation(candidate: candidate) {
+            try await importer.mergeCandidateArtistIdentityConflict(
+                candidate.key,
+                keeping: survivingArtistId
+            )
+        }
+    }
+
+    private func runCandidateMutation(
+        candidate: Candidate,
+        operation: @escaping @MainActor () async throws -> Void
+    ) {
+        // Start each attempt from a clean error state so a prior failed
+        // command's banner does not linger over a succeeding retry.
         importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
-        Task { @MainActor in
+        candidateMutationTasks[candidate.key]?.cancel()
+        candidateMutationTasks[candidate.key] = Task { @MainActor in
             do {
-                try await importer.mergeCandidateArtistIdentityConflict(
-                    candidate.key,
-                    keeping: survivingArtistId
+                try await operation()
+            }
+            catch is CancellationError {
+                importConfirmLogger.debug(
+                    "candidate command cancelled for \(candidate.key)"
                 )
             }
-            catch is CancellationError {}
             catch {
-                importStore.mutateCandidate(forKey: candidate.key) {
-                    $0.error = error.displayLine ?? error.localizedDescription
+                if let line = error.displayLine {
+                    importStore.mutateCandidate(forKey: candidate.key) {
+                        $0.error = line
+                    }
+                }
+                else {
+                    uiStore.showError(error)
                 }
             }
         }

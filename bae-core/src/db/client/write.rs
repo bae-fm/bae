@@ -47,7 +47,7 @@ pub(super) fn update_artist_external_ids_row(
     musicbrainz_artist_id: Option<&str>,
     sort_name: Option<&str>,
     reg: &str,
-) -> Result<(), DbError> {
+) -> Result<usize, DbError> {
     conn.execute(
         r#"
         UPDATE artists SET
@@ -59,7 +59,6 @@ pub(super) fn update_artist_external_ids_row(
         "#,
         params![discogs_artist_id, musicbrainz_artist_id, sort_name, reg, id,],
     )
-    .map(|_| ())
     .map_err(DbError::from)
 }
 

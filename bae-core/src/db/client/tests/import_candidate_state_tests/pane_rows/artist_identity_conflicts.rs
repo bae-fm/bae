@@ -1,11 +1,25 @@
 use super::*;
 
+fn artist_identity_failure(discogs: &DbArtist, musicbrainz: &DbArtist) -> ImportFailure {
+    ImportFailure {
+        error: "the artist identities disagree".to_string(),
+        failed_at: fixed_identified_at(),
+        artist_identity_conflict: Some(crate::import::ArtistIdentityConflict {
+            incoming_artist_name: "Artist One".to_string(),
+            discogs_artist_id: "discogs-1".to_string(),
+            musicbrainz_artist_id: "mb-1".to_string(),
+            discogs_artist: discogs.clone().into(),
+            musicbrainz_artist: musicbrainz.clone().into(),
+        }),
+    }
+}
+
 #[tokio::test]
 async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: bae_test_support::test_uuid("conflict-round-trip-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -13,7 +27,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
         created_at: fixed_identified_at(),
     };
     let musicbrainz = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: bae_test_support::test_uuid("conflict-round-trip-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: Some("Artist One, The".to_string()),
         discogs_artist_id: None,
@@ -22,17 +36,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
     };
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
-    let expected = ImportFailure::ArtistIdentityConflict {
-        error: "the artist identities disagree".to_string(),
-        failed_at: fixed_identified_at(),
-        conflict: crate::import::ArtistIdentityConflict {
-            incoming_artist_name: "Artist One".to_string(),
-            discogs_artist_id: "discogs-1".to_string(),
-            musicbrainz_artist_id: "mb-1".to_string(),
-            discogs_artist: discogs.into(),
-            musicbrainz_artist: musicbrainz.into(),
-        },
-    };
+    let expected = artist_identity_failure(&discogs, &musicbrainz);
 
     db.save_import_candidate_failure(&hash, "/music/Album", 0, &expected)
         .await
@@ -52,7 +56,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let discogs = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: bae_test_support::test_uuid("conflict-merge-discogs-artist"),
         name: "Artist One".to_string(),
         sort_name: None,
         discogs_artist_id: Some("discogs-1".to_string()),
@@ -60,7 +64,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         created_at: fixed_identified_at(),
     };
     let musicbrainz = DbArtist {
-        id: Uuid::new_v4().to_string(),
+        id: bae_test_support::test_uuid("conflict-merge-musicbrainz-artist"),
         name: "Artist One".to_string(),
         sort_name: Some("Artist One, The".to_string()),
         discogs_artist_id: None,
@@ -70,7 +74,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     db.insert_artist(&discogs).await.unwrap();
     db.insert_artist(&musicbrainz).await.unwrap();
     let album = DbAlbum {
-        id: Uuid::new_v4().to_string(),
+        id: bae_test_support::test_uuid("conflict-merge-album"),
         title: "Album Title".to_string(),
         artist_id: musicbrainz.id.clone(),
         year: None,
@@ -79,9 +83,9 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         created_at: fixed_identified_at(),
     };
     db.insert_album(&album).await.unwrap();
-    let release_id = Uuid::new_v4().to_string();
-    let track_id = Uuid::new_v4().to_string();
-    let work_id = Uuid::new_v4().to_string();
+    let release_id = bae_test_support::test_uuid("conflict-merge-release");
+    let track_id = bae_test_support::test_uuid("conflict-merge-track");
+    let work_id = bae_test_support::test_uuid("conflict-merge-work");
     let pending_hash = "pending-artist-merge".to_string();
     let seed_discogs_id = discogs.id.clone();
     let seed_musicbrainz_id = musicbrainz.id.clone();
@@ -107,37 +111,47 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
              VALUES (?, 'Work Title', 'work-1', ?, '2026-01-02T03:04:05Z')",
             params![seed_work_id, reg],
         )?;
-        for artist_id in [&seed_discogs_id, &seed_musicbrainz_id] {
-            sql.execute(
-                "INSERT INTO album_artists \
-                     (id, album_id, artist_id, position, _updated_at, created_at) \
-                 VALUES (?, ?, ?, 0, ?, '2026-01-02T03:04:05Z')",
-                params![Uuid::new_v4().to_string(), seed_album_id, artist_id, reg],
-            )?;
-            sql.execute(
-                "INSERT INTO track_artists \
-                     (id, track_id, artist_id, position, _updated_at, created_at) \
-                 VALUES (?, ?, ?, 0, ?, '2026-01-02T03:04:05Z')",
-                params![Uuid::new_v4().to_string(), seed_track_id, artist_id, reg],
-            )?;
-            sql.execute(
-                "INSERT INTO work_artists \
-                     (id, work_id, artist_id, position, source, _updated_at, created_at) \
-                 VALUES (?, ?, ?, 0, 'musicbrainz', ?, '2026-01-02T03:04:05Z')",
-                params![Uuid::new_v4().to_string(), seed_work_id, artist_id, reg],
-            )?;
-            sql.execute(
-                "INSERT INTO release_artist_roles \
-                     (id, release_id, artist_id, position, source, _updated_at, created_at) \
-                 VALUES (?, ?, ?, 0, 'musicbrainz', ?, '2026-01-02T03:04:05Z')",
-                params![Uuid::new_v4().to_string(), seed_release_id, artist_id, reg],
-            )?;
-            sql.execute(
-                "INSERT INTO track_artist_roles \
-                     (id, track_id, artist_id, position, source, _updated_at, created_at) \
-                 VALUES (?, ?, ?, 0, 'musicbrainz', ?, '2026-01-02T03:04:05Z')",
-                params![Uuid::new_v4().to_string(), seed_track_id, artist_id, reg],
-            )?;
+        let reference_tables = [
+            ("album_artists", "album_id", seed_album_id.as_str(), false),
+            ("track_artists", "track_id", seed_track_id.as_str(), false),
+            ("work_artists", "work_id", seed_work_id.as_str(), true),
+            (
+                "release_artist_roles",
+                "release_id",
+                seed_release_id.as_str(),
+                true,
+            ),
+            (
+                "track_artist_roles",
+                "track_id",
+                seed_track_id.as_str(),
+                true,
+            ),
+        ];
+        for (artist_index, artist_id) in [&seed_discogs_id, &seed_musicbrainz_id]
+            .into_iter()
+            .enumerate()
+        {
+            for (table, owner_column, owner_id, has_source) in reference_tables {
+                let source_column = if has_source { ", source" } else { "" };
+                let source_value = if has_source { ", 'musicbrainz'" } else { "" };
+                sql.execute(
+                    &format!(
+                        "INSERT INTO {table} \
+                             (id, {owner_column}, artist_id, position{source_column}, \
+                              _updated_at, created_at) \
+                         VALUES (?, ?, ?, 0{source_value}, ?, '2026-01-02T03:04:05Z')"
+                    ),
+                    params![
+                        bae_test_support::test_uuid(&format!(
+                            "conflict-merge-{table}-{artist_index}"
+                        )),
+                        owner_id,
+                        artist_id,
+                        reg
+                    ],
+                )?;
+            }
         }
         sql.execute(
             "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, '/pending')",
@@ -186,17 +200,7 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     })
     .await
     .unwrap();
-    let failure = ImportFailure::ArtistIdentityConflict {
-        error: "the artist identities disagree".to_string(),
-        failed_at: fixed_identified_at(),
-        conflict: crate::import::ArtistIdentityConflict {
-            incoming_artist_name: "Artist One".to_string(),
-            discogs_artist_id: "discogs-1".to_string(),
-            musicbrainz_artist_id: "mb-1".to_string(),
-            discogs_artist: discogs.clone().into(),
-            musicbrainz_artist: musicbrainz.clone().into(),
-        },
-    };
+    let failure = artist_identity_failure(&discogs, &musicbrainz);
     db.save_import_candidate_failure(&hash, "/music/Album", 0, &failure)
         .await
         .unwrap();
@@ -291,4 +295,53 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
         .unwrap()
         .failure
         .is_none());
+}
+
+#[tokio::test]
+async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing_state() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    let discogs = DbArtist {
+        id: bae_test_support::test_uuid("three-identity-discogs-artist"),
+        name: "Artist One".to_string(),
+        sort_name: None,
+        discogs_artist_id: Some("discogs-1".to_string()),
+        musicbrainz_artist_id: Some("mb-other".to_string()),
+        created_at: fixed_identified_at(),
+    };
+    let musicbrainz = DbArtist {
+        id: bae_test_support::test_uuid("three-identity-musicbrainz-artist"),
+        name: "Artist One".to_string(),
+        sort_name: None,
+        discogs_artist_id: None,
+        musicbrainz_artist_id: Some("mb-1".to_string()),
+        created_at: fixed_identified_at(),
+    };
+    db.insert_artist(&discogs).await.unwrap();
+    db.insert_artist(&musicbrainz).await.unwrap();
+    db.save_import_candidate_failure(
+        &hash,
+        "/music/Album",
+        0,
+        &artist_identity_failure(&discogs, &musicbrainz),
+    )
+    .await
+    .unwrap();
+
+    db.merge_import_artist_identity_conflict(&hash, &discogs.id)
+        .await
+        .expect_err("a two-artist merge must not absorb an unrelated provider identity");
+
+    assert!(db.find_artist_by_id(&discogs.id).await.unwrap().is_some());
+    assert!(db
+        .find_artist_by_id(&musicbrainz.id)
+        .await
+        .unwrap()
+        .is_some());
+    assert!(db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .failure
+        .is_some());
 }

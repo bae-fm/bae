@@ -23,11 +23,7 @@ impl Database {
             .write_with_blobs(
                 move |write| {
                     if let Some(image) = deleted_image {
-                        write.delete_blob(crate::sync::image_blob_ref(
-                            crate::sync::ARTIST_IMAGES_NAMESPACE,
-                            &image.blob_id,
-                            image.cloud_path,
-                        ));
+                        write.delete_blob(image);
                     }
                     Ok(())
                 },
@@ -54,12 +50,6 @@ impl Database {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ArtistImageDeletion {
-    blob_id: String,
-    cloud_path: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 struct ArtistIdentityMergePlan {
     content_hash: String,
     surviving_artist_id: String,
@@ -68,7 +58,7 @@ struct ArtistIdentityMergePlan {
     musicbrainz_artist_id: String,
     surviving_sort_name: Option<String>,
     move_absorbed_image: bool,
-    deleted_image: Option<ArtistImageDeletion>,
+    deleted_image: Option<coven::BlobRef>,
 }
 
 fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
@@ -128,14 +118,17 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
         [&musicbrainz_library_id],
         row_to_artist,
     )?;
-    if discogs_artist.discogs_artist_id.as_deref() != Some(discogs_artist_id.as_str()) {
+    if !crate::import::artist_source_ids_are_compatible(
+        &discogs_artist,
+        Some(&discogs_artist_id),
+        Some(&musicbrainz_artist_id),
+    ) || !crate::import::artist_source_ids_are_compatible(
+        &musicbrainz_artist,
+        Some(&discogs_artist_id),
+        Some(&musicbrainz_artist_id),
+    ) {
         return Err(DbError::Message(format!(
-            "candidate {content_hash}'s Discogs-side artist changed after the conflict was recorded"
-        )));
-    }
-    if musicbrainz_artist.musicbrainz_artist_id.as_deref() != Some(musicbrainz_artist_id.as_str()) {
-        return Err(DbError::Message(format!(
-            "candidate {content_hash}'s MusicBrainz-side artist changed after the conflict was recorded"
+            "candidate {content_hash}'s library artists no longer contain only the recorded source IDs"
         )));
     }
     let surviving_sort_name = if surviving_artist_id == discogs_library_id {
@@ -148,10 +141,13 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
             "SELECT blob_id, cloud_path FROM artist_images WHERE id = ?",
             [artist_id],
             |row| {
-                Ok(ArtistImageDeletion {
-                    blob_id: row.get(0)?,
-                    cloud_path: row.get(1)?,
-                })
+                let blob_id = row.get::<_, String>(0)?;
+                let cloud_path = row.get(1)?;
+                Ok(crate::sync::image_blob_ref(
+                    crate::sync::ARTIST_IMAGES_NAMESPACE,
+                    &blob_id,
+                    cloud_path,
+                ))
             },
         )
         .optional()
@@ -161,9 +157,7 @@ fn plan_artist_identity_merge<Q: QueryOne + QueryRows>(
     let absorbed_image = image(&absorbed_artist_id)?;
     let move_absorbed_image = surviving_image.is_none() && absorbed_image.is_some();
     let deleted_image = match (surviving_image, absorbed_image) {
-        (Some(surviving), Some(absorbed)) if surviving.blob_id != absorbed.blob_id => {
-            Some(absorbed)
-        }
+        (Some(surviving), Some(absorbed)) if surviving.id != absorbed.id => Some(absorbed),
         _ => None,
     };
 
@@ -204,16 +198,15 @@ fn apply_artist_identity_merge(
                           ELSE musicbrainz_library_artist_id END)",
         params![plan.absorbed_artist_id, plan.surviving_artist_id],
     )?;
-    sql.execute(
-        "UPDATE import_candidate_artist_identity_conflict \
-         SET discogs_library_artist_id = ?1 WHERE discogs_library_artist_id = ?2",
-        params![plan.surviving_artist_id, plan.absorbed_artist_id],
-    )?;
-    sql.execute(
-        "UPDATE import_candidate_artist_identity_conflict \
-         SET musicbrainz_library_artist_id = ?1 WHERE musicbrainz_library_artist_id = ?2",
-        params![plan.surviving_artist_id, plan.absorbed_artist_id],
-    )?;
+    for column in ["discogs_library_artist_id", "musicbrainz_library_artist_id"] {
+        sql.execute(
+            &format!(
+                "UPDATE import_candidate_artist_identity_conflict \
+                 SET {column} = ?1 WHERE {column} = ?2"
+            ),
+            params![plan.surviving_artist_id, plan.absorbed_artist_id],
+        )?;
+    }
 
     if plan.move_absorbed_image {
         sql.execute(
@@ -229,74 +222,48 @@ fn apply_artist_identity_merge(
         "UPDATE albums SET artist_id = ?, _updated_at = ? WHERE artist_id = ?",
         params![plan.surviving_artist_id, reg, plan.absorbed_artist_id],
     )?;
-    merge_single_artist_membership(
-        sql,
-        "album_artists",
-        "album_id",
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-        &reg,
-    )?;
-    merge_single_artist_membership(
-        sql,
-        "track_artists",
-        "track_id",
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-        &reg,
-    )?;
-    merge_positioned_artist_membership(
-        sql,
-        "work_artists",
-        "work_id",
-        &["position"],
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-        &reg,
-    )?;
-    merge_positioned_artist_membership(
-        sql,
-        "release_artist_roles",
-        "release_id",
-        &["position", "source"],
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-        &reg,
-    )?;
-    merge_positioned_artist_membership(
-        sql,
-        "track_artist_roles",
-        "track_id",
-        &["position", "source"],
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-        &reg,
-    )?;
-    merge_candidate_artist_assignments(
-        sql,
-        "import_candidate_album_artist_assignment",
-        &["content_hash"],
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-    )?;
-    merge_candidate_artist_assignments(
-        sql,
-        "import_candidate_track_artist_assignment",
-        &["content_hash", "track_id"],
-        &plan.surviving_artist_id,
-        &plan.absorbed_artist_id,
-    )?;
+    for (table, unique_columns, carries_update_stamp) in [
+        ("album_artists", &["album_id"][..], true),
+        ("track_artists", &["track_id"][..], true),
+        ("work_artists", &["work_id", "position"][..], true),
+        (
+            "release_artist_roles",
+            &["release_id", "position", "source"][..],
+            true,
+        ),
+        (
+            "track_artist_roles",
+            &["track_id", "position", "source"][..],
+            true,
+        ),
+        (
+            "import_candidate_album_artist_assignment",
+            &["content_hash"][..],
+            false,
+        ),
+        (
+            "import_candidate_track_artist_assignment",
+            &["content_hash", "track_id"][..],
+            false,
+        ),
+    ] {
+        merge_artist_references(
+            sql,
+            table,
+            unique_columns,
+            &plan.surviving_artist_id,
+            &plan.absorbed_artist_id,
+            carries_update_stamp.then_some(reg.as_str()),
+        )?;
+    }
 
-    let changed = sql.execute(
-        "UPDATE artists SET discogs_artist_id = ?, musicbrainz_artist_id = ?, \
-             sort_name = ?, _updated_at = ? WHERE id = ?",
-        params![
-            plan.discogs_artist_id,
-            plan.musicbrainz_artist_id,
-            plan.surviving_sort_name,
-            reg,
-            plan.surviving_artist_id
-        ],
+    let changed = update_artist_external_ids_row(
+        sql,
+        &plan.surviving_artist_id,
+        Some(&plan.discogs_artist_id),
+        Some(&plan.musicbrainz_artist_id),
+        plan.surviving_sort_name.as_deref(),
+        &reg,
     )?;
     if changed != 1 {
         return Err(DbError::Message(format!(
@@ -315,40 +282,15 @@ fn apply_artist_identity_merge(
     Ok(())
 }
 
-fn merge_single_artist_membership(
+fn merge_artist_references(
     sql: &SqlContext<'_, '_>,
     table: &str,
-    parent_column: &str,
-    surviving_artist_id: &str,
-    absorbed_artist_id: &str,
-    reg: &str,
-) -> Result<(), DbError> {
-    sql.execute(
-        &format!(
-            "DELETE FROM {table} WHERE artist_id = ?1 AND EXISTS (\
-                 SELECT 1 FROM {table} survivor \
-                 WHERE survivor.{parent_column} = {table}.{parent_column} \
-                   AND survivor.artist_id = ?2)"
-        ),
-        params![absorbed_artist_id, surviving_artist_id],
-    )?;
-    sql.execute(
-        &format!("UPDATE {table} SET artist_id = ?1, _updated_at = ?2 WHERE artist_id = ?3"),
-        params![surviving_artist_id, reg, absorbed_artist_id],
-    )?;
-    Ok(())
-}
-
-fn merge_positioned_artist_membership(
-    sql: &SqlContext<'_, '_>,
-    table: &str,
-    parent_column: &str,
     unique_columns: &[&str],
     surviving_artist_id: &str,
     absorbed_artist_id: &str,
-    reg: &str,
+    reg: Option<&str>,
 ) -> Result<(), DbError> {
-    let equal_unique_columns = unique_columns
+    let same_reference = unique_columns
         .iter()
         .map(|column| format!("survivor.{column} = {table}.{column}"))
         .collect::<Vec<_>>()
@@ -357,41 +299,25 @@ fn merge_positioned_artist_membership(
         &format!(
             "DELETE FROM {table} WHERE artist_id = ?1 AND EXISTS (\
                  SELECT 1 FROM {table} survivor \
-                 WHERE survivor.{parent_column} = {table}.{parent_column} \
-                   AND {equal_unique_columns} AND survivor.artist_id = ?2)"
+                 WHERE {same_reference} AND survivor.artist_id = ?2)"
         ),
         params![absorbed_artist_id, surviving_artist_id],
     )?;
-    sql.execute(
-        &format!("UPDATE {table} SET artist_id = ?1, _updated_at = ?2 WHERE artist_id = ?3"),
-        params![surviving_artist_id, reg, absorbed_artist_id],
-    )?;
-    Ok(())
-}
-
-fn merge_candidate_artist_assignments(
-    sql: &SqlContext<'_, '_>,
-    table: &str,
-    parent_columns: &[&str],
-    surviving_artist_id: &str,
-    absorbed_artist_id: &str,
-) -> Result<(), DbError> {
-    let same_parent = parent_columns
-        .iter()
-        .map(|column| format!("survivor.{column} = {table}.{column}"))
-        .collect::<Vec<_>>()
-        .join(" AND ");
-    sql.execute(
-        &format!(
-            "DELETE FROM {table} WHERE artist_id = ?1 AND EXISTS (\
-                 SELECT 1 FROM {table} survivor \
-                 WHERE {same_parent} AND survivor.artist_id = ?2)"
-        ),
-        params![absorbed_artist_id, surviving_artist_id],
-    )?;
-    sql.execute(
-        &format!("UPDATE {table} SET artist_id = ?1 WHERE artist_id = ?2"),
-        params![surviving_artist_id, absorbed_artist_id],
-    )?;
+    match reg {
+        Some(reg) => {
+            sql.execute(
+                &format!(
+                    "UPDATE {table} SET artist_id = ?1, _updated_at = ?2 WHERE artist_id = ?3"
+                ),
+                params![surviving_artist_id, reg, absorbed_artist_id],
+            )?;
+        }
+        None => {
+            sql.execute(
+                &format!("UPDATE {table} SET artist_id = ?1 WHERE artist_id = ?2"),
+                params![surviving_artist_id, absorbed_artist_id],
+            )?;
+        }
+    }
     Ok(())
 }

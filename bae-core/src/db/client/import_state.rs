@@ -12,7 +12,7 @@ mod watched_folder_removal;
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use duration_rows::{delete_durations, delete_slice_durations, insert_durations};
 use edit_rows::{delete_file_edits, insert_file_edits};
-use failure_rows::load_failures_on;
+use failure_rows::load_failure_on;
 pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
 pub(super) use rows::{load_states_on, metadata_provenance_of};
 use signal_rows::{delete_signals, insert_signals};

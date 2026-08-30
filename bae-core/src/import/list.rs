@@ -21,8 +21,8 @@ use super::folder_scanner::{FolderCandidate, FolderReleaseDecisionKey, InvalidCa
 use super::mapping::MappingTable;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
-    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageMetadataSummary,
-    TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTabCounts,
+    import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
+    TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{AudioFile, MetadataProvenance, RawReleaseEdit};
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
@@ -376,8 +376,16 @@ impl ImportCandidateDetailProjection {
         let import_status = import_status_of(
             facts.importing,
             imported_release.as_ref(),
-            failure.as_ref().map(ImportFailure::error),
+            failure.as_ref().map(|failure| failure.error.as_str()),
         );
+        let failure = if matches!(
+            import_status.as_ref(),
+            Some(TriageImportStatus::Importing | TriageImportStatus::Complete { .. })
+        ) {
+            None
+        } else {
+            failure
+        };
         let known = match (answer.filter(|_| actionable), facts.identify_phase) {
             (Some(classification), _) => CandidateAnswer::Classified(classification),
             (None, Some(phase)) => CandidateAnswer::Unanswered(phase),

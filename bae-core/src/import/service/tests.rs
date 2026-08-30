@@ -330,19 +330,14 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 
     let failure = ImportService::terminal_failure(&error, failed_at);
 
+    assert_eq!(failure.failed_at, failed_at);
     assert!(matches!(
-        failure,
-        crate::import::ImportFailure::ArtistIdentityConflict {
-            failed_at: actual_failed_at,
-            conflict: crate::import::ArtistIdentityConflict {
-                discogs_artist: actual_discogs,
-                musicbrainz_artist: actual_musicbrainz,
-                ..
-            },
+        failure.artist_identity_conflict,
+        Some(crate::import::ArtistIdentityConflict {
+            discogs_artist: actual_discogs,
+            musicbrainz_artist: actual_musicbrainz,
             ..
-        } if actual_failed_at == failed_at
-            && actual_discogs == discogs_artist
-            && actual_musicbrainz == musicbrainz_artist
+        }) if actual_discogs == discogs_artist && actual_musicbrainz == musicbrainz_artist
     ));
 }
 

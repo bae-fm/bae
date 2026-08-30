@@ -152,40 +152,22 @@ impl CandidateTrackEdit {
 }
 
 /// The last import of this candidate that failed, as the pane still shows it
-/// after a relaunch. A recoverable identity conflict carries the two library
-/// artists the person can consolidate.
+/// after a relaunch. An artist identity conflict carries the two library rows
+/// the pane can offer to consolidate.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ImportFailure {
-    Error {
-        error: String,
-        failed_at: DateTime<Utc>,
-    },
-    ArtistIdentityConflict {
-        error: String,
-        failed_at: DateTime<Utc>,
-        conflict: crate::import::ArtistIdentityConflict,
-    },
+pub struct ImportFailure {
+    pub error: String,
+    pub failed_at: DateTime<Utc>,
+    pub artist_identity_conflict: Option<crate::import::ArtistIdentityConflict>,
 }
 
+#[cfg(test)]
 impl ImportFailure {
-    pub fn error_only(error: impl Into<String>, failed_at: DateTime<Utc>) -> Self {
-        Self::Error {
+    pub(crate) fn error_only(error: impl Into<String>, failed_at: DateTime<Utc>) -> Self {
+        Self {
             error: error.into(),
             failed_at,
-        }
-    }
-
-    pub fn error(&self) -> &str {
-        match self {
-            Self::Error { error, .. } | Self::ArtistIdentityConflict { error, .. } => error,
-        }
-    }
-
-    pub fn failed_at(&self) -> DateTime<Utc> {
-        match self {
-            Self::Error { failed_at, .. } | Self::ArtistIdentityConflict { failed_at, .. } => {
-                *failed_at
-            }
+            artist_identity_conflict: None,
         }
     }
 }

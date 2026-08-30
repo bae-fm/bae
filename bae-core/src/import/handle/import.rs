@@ -191,12 +191,7 @@ impl ImportServiceHandle {
         storage_mode: StorageMode,
         pin: bool,
     ) -> Result<String, crate::import::ImportError> {
-        let Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        }) = self.get_candidate(candidate_key).await?
-        else {
+        let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
@@ -364,12 +359,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
         surviving_artist_id: &str,
     ) -> Result<(), crate::import::ImportError> {
-        let Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        }) = self.get_candidate(candidate_key).await?
-        else {
+        let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });

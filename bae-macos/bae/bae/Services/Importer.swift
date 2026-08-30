@@ -359,11 +359,6 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
             },
-        mergeCandidateArtistIdentityConflict:
-            @escaping @Sendable (String, String) async throws -> Void = {
-                _,
-                _ in
-            },
         setAutomaticIdentification:
             @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
         setDefaultMetadataSource:
@@ -403,8 +398,9 @@ final class Importer: Sendable, Observable {
             candidateRuntime: candidateRuntime,
             candidateSignals: candidateSignals,
             startImport: startImport,
-            mergeCandidateArtistIdentityConflict:
-                mergeCandidateArtistIdentityConflict,
+            mergeCandidateArtistIdentityConflict: { _, _ in
+                throw StubError.notImplemented
+            },
             setAutomaticIdentification: setAutomaticIdentification,
             setDefaultMetadataSource: setDefaultMetadataSource
         )

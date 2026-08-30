@@ -12,7 +12,6 @@ use crate::import::{
 use crate::signals::{
     BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
 };
-use uuid::Uuid;
 
 #[path = "pane_rows/artist_identity_conflicts.rs"]
 mod artist_identity_conflicts;
@@ -409,8 +408,8 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .unwrap()
         .failure
         .expect("the failure is stored");
-    assert_eq!(failure.error(), "the folder vanished");
-    assert_eq!(failure.failed_at(), fixed_identified_at());
+    assert_eq!(failure.error, "the folder vanished");
+    assert_eq!(failure.failed_at, fixed_identified_at());
     assert!(db
         .load_import_candidate_pane_rows(&hash)
         .await
@@ -432,7 +431,7 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
             .unwrap()
             .failure
             .unwrap()
-            .error(),
+            .error,
         "the disc would not read",
         "the second failure replaces the first"
     );
@@ -444,6 +443,37 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .unwrap()
         .failure
         .is_none());
+}
+
+#[tokio::test]
+async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail() {
+    let (db, _tmp) = empty_db().await;
+    let (_, hash) = stored_pane_candidate(&db).await;
+    db.save_import_candidate_failure(
+        &hash,
+        "/music/Album",
+        0,
+        &ImportFailure::error_only("the prior attempt failed", fixed_identified_at()),
+    )
+    .await
+    .unwrap();
+
+    let key = format!("{}/Album", host_root("/music"));
+    let detail = db
+        .load_import_candidate(&key)
+        .await
+        .unwrap()
+        .expect("the stored candidate has a detail")
+        .resolve(&crate::import::TriageRuntimeFacts {
+            identify_phase: None,
+            importing: true,
+        });
+
+    assert!(matches!(
+        detail.row.import_status,
+        Some(crate::import::TriageImportStatus::Importing)
+    ));
+    assert!(detail.failure.is_none());
 }
 
 /// Both kinds of cover choice come back as they went in.

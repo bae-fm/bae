@@ -61,8 +61,8 @@ pub(crate) fn automation_candidate_from_folder(
             .failure
             .as_ref()
             .map(|failure| AutomationImportFailure {
-                error: failure.error().to_string(),
-                failed_at: failure.failed_at().to_rfc3339(),
+                error: failure.error.clone(),
+                failed_at: failure.failed_at.to_rfc3339(),
             }),
     }
 }

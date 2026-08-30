@@ -248,33 +248,21 @@ impl LibraryManager {
                 Some(existing) => {
                     let id = existing.id.clone();
                     let mut merged = existing;
-                    let pending_ids = pending_indices
+                    let pending = pending_indices
                         .iter()
-                        .map(|index| inserts[*index].id.clone())
-                        .collect::<std::collections::HashSet<_>>();
-                    for index in &pending_indices {
-                        merge_artist_metadata(&mut merged, &inserts[*index])?;
+                        .map(|index| inserts[*index].clone())
+                        .collect::<Vec<_>>();
+                    for pending in &pending {
+                        merge_artist_metadata(&mut merged, pending)?;
                     }
                     merge_artist_metadata(&mut merged, artist)?;
-                    if !pending_ids.is_empty() {
-                        inserts.retain(|pending| !pending_ids.contains(&pending.id));
-                        for resolved_id in &mut ids {
-                            if pending_ids.contains(resolved_id) {
-                                resolved_id.clone_from(&id);
-                            }
-                        }
-                    }
+                    remove_pending_artists(&mut inserts, &mut ids, &pending, &id);
                     stage_artist_update(&mut external_id_updates, id.clone(), merged);
                     id
                 }
                 None => match pending_indices.first().copied() {
                     Some(survivor_index) => {
                         let survivor_id = inserts[survivor_index].id.clone();
-                        let absorbed_ids = pending_indices
-                            .iter()
-                            .skip(1)
-                            .map(|index| inserts[*index].id.clone())
-                            .collect::<std::collections::HashSet<_>>();
                         let absorbed = pending_indices
                             .iter()
                             .skip(1)
@@ -284,14 +272,7 @@ impl LibraryManager {
                             merge_artist_metadata(&mut inserts[survivor_index], pending)?;
                         }
                         merge_artist_metadata(&mut inserts[survivor_index], artist)?;
-                        if !absorbed_ids.is_empty() {
-                            inserts.retain(|pending| !absorbed_ids.contains(&pending.id));
-                            for resolved_id in &mut ids {
-                                if absorbed_ids.contains(resolved_id) {
-                                    resolved_id.clone_from(&survivor_id);
-                                }
-                            }
-                        }
+                        remove_pending_artists(&mut inserts, &mut ids, &absorbed, &survivor_id);
                         survivor_id
                     }
                     None => {
@@ -391,22 +372,6 @@ impl LibraryManager {
         artist: &DbArtist,
         staged_updates: &[(String, DbArtist)],
     ) -> Result<Option<DbArtist>, LibraryError> {
-        // Match any known Various Artists ID across sources, so Discogs "Various"
-        // merges with MusicBrainz "Various Artists".
-        if artist.is_various_artists() {
-            let va = &crate::db::VARIOUS_ARTISTS;
-            if let Some(existing) = self.database.get_artist_by_discogs_id(va.discogs).await? {
-                return Ok(Some(
-                    staged_artist_by_id(staged_updates, &existing.id).unwrap_or(existing),
-                ));
-            }
-            if let Some(existing) = self.database.get_artist_by_mb_id(va.musicbrainz).await? {
-                return Ok(Some(
-                    staged_artist_by_id(staged_updates, &existing.id).unwrap_or(existing),
-                ));
-            }
-        }
-
         let by_discogs = match artist.discogs_artist_id.as_deref() {
             Some(id) => exact_committed_artist(
                 "Discogs",
@@ -429,15 +394,38 @@ impl LibraryManager {
             )?,
             None => None,
         };
-        matching_artist(artist, by_discogs, by_musicbrainz)
-    }
-}
+        let matched = matching_artist(artist, by_discogs, by_musicbrainz)?;
+        if matched.is_some() || !artist.is_various_artists() {
+            return Ok(matched);
+        }
 
-fn staged_artist_by_id(staged_updates: &[(String, DbArtist)], artist_id: &str) -> Option<DbArtist> {
-    staged_updates
-        .iter()
-        .find(|(id, _)| id == artist_id)
-        .map(|(_, artist)| artist.clone())
+        // The two provider IDs are one canonical cross-provider identity. An
+        // incoming exact provider match still wins; only its absence permits
+        // the other provider's canonical row to stand in for it.
+        let va = &crate::db::VARIOUS_ARTISTS;
+        match (
+            artist.discogs_artist_id.as_deref(),
+            artist.musicbrainz_artist_id.as_deref(),
+        ) {
+            (Some(_), None) => exact_committed_artist(
+                "MusicBrainz",
+                &artist.name,
+                va.musicbrainz,
+                self.database.get_artist_by_mb_id(va.musicbrainz).await?,
+                staged_updates,
+                |artist| artist.musicbrainz_artist_id.as_deref(),
+            ),
+            (None, Some(_)) => exact_committed_artist(
+                "Discogs",
+                &artist.name,
+                va.discogs,
+                self.database.get_artist_by_discogs_id(va.discogs).await?,
+                staged_updates,
+                |artist| artist.discogs_artist_id.as_deref(),
+            ),
+            (Some(_), Some(_)) | (None, None) => Ok(None),
+        }
+    }
 }
 
 fn exact_committed_artist(
@@ -499,6 +487,25 @@ fn pending_artist_indices(artists: &[DbArtist], incoming: &DbArtist) -> Vec<usiz
         .collect()
 }
 
+fn remove_pending_artists(
+    pending_artists: &mut Vec<DbArtist>,
+    resolved_ids: &mut [String],
+    absorbed: &[DbArtist],
+    survivor_id: &str,
+) {
+    let absorbed_ids = absorbed
+        .iter()
+        .map(|artist| artist.id.as_str())
+        .collect::<std::collections::HashSet<_>>();
+    pending_artists.retain(|artist| !absorbed_ids.contains(artist.id.as_str()));
+    for resolved_id in resolved_ids {
+        if absorbed_ids.contains(resolved_id.as_str()) {
+            resolved_id.clear();
+            resolved_id.push_str(survivor_id);
+        }
+    }
+}
+
 fn matching_artist(
     incoming: &DbArtist,
     by_discogs: Option<DbArtist>,
@@ -506,6 +513,14 @@ fn matching_artist(
 ) -> Result<Option<DbArtist>, LibraryError> {
     let matched = match (by_discogs, by_musicbrainz) {
         (Some(discogs), Some(musicbrainz)) if discogs.id != musicbrainz.id => {
+            if artists_have_source_id_conflict(&discogs, incoming)
+                || artists_have_source_id_conflict(&musicbrainz, incoming)
+            {
+                return Err(LibraryError::Import(format!(
+                    "artist '{}' has conflicting source IDs",
+                    incoming.name
+                )));
+            }
             let discogs_artist_id = incoming.discogs_artist_id.clone().ok_or_else(|| {
                 LibraryError::Import(format!(
                     "artist '{}' matched Discogs without a Discogs source ID",
@@ -532,13 +547,7 @@ fn matching_artist(
         (None, None) => None,
     };
     if let Some(existing) = matched.as_ref() {
-        if source_id_conflicts(
-            existing.discogs_artist_id.as_deref(),
-            incoming.discogs_artist_id.as_deref(),
-        ) || source_id_conflicts(
-            existing.musicbrainz_artist_id.as_deref(),
-            incoming.musicbrainz_artist_id.as_deref(),
-        ) {
+        if artists_have_source_id_conflict(existing, incoming) {
             return Err(LibraryError::Import(format!(
                 "artist '{}' has conflicting source IDs",
                 incoming.name
@@ -549,13 +558,7 @@ fn matching_artist(
 }
 
 fn merge_artist_metadata(target: &mut DbArtist, incoming: &DbArtist) -> Result<(), LibraryError> {
-    if source_id_conflicts(
-        target.discogs_artist_id.as_deref(),
-        incoming.discogs_artist_id.as_deref(),
-    ) || source_id_conflicts(
-        target.musicbrainz_artist_id.as_deref(),
-        incoming.musicbrainz_artist_id.as_deref(),
-    ) {
+    if artists_have_source_id_conflict(target, incoming) {
         return Err(LibraryError::Import(format!(
             "artist '{}' has conflicting source IDs",
             incoming.name
@@ -577,6 +580,10 @@ fn merge_artist_metadata(target: &mut DbArtist, incoming: &DbArtist) -> Result<(
     Ok(())
 }
 
-fn source_id_conflicts(existing: Option<&str>, incoming: Option<&str>) -> bool {
-    matches!((existing, incoming), (Some(a), Some(b)) if a != b)
+fn artists_have_source_id_conflict(existing: &DbArtist, incoming: &DbArtist) -> bool {
+    !crate::import::artist_source_ids_are_compatible(
+        existing,
+        incoming.discogs_artist_id.as_deref(),
+        incoming.musicbrainz_artist_id.as_deref(),
+    )
 }

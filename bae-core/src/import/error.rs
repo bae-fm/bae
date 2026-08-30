@@ -23,6 +23,26 @@ pub struct ArtistIdentityConflict {
     pub musicbrainz_artist: crate::import::ExistingArtist,
 }
 
+/// Whether every provider ID both artists carry agrees. An absent ID makes no
+/// claim; two present IDs for the same provider must be equal.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn artist_source_ids_are_compatible(
+    artist: &crate::db::DbArtist,
+    discogs_artist_id: Option<&str>,
+    musicbrainz_artist_id: Option<&str>,
+) -> bool {
+    source_ids_are_compatible(artist.discogs_artist_id.as_deref(), discogs_artist_id)
+        && source_ids_are_compatible(
+            artist.musicbrainz_artist_id.as_deref(),
+            musicbrainz_artist_id,
+        )
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn source_ids_are_compatible(left: Option<&str>, right: Option<&str>) -> bool {
+    !matches!((left, right), (Some(left), Some(right)) if left != right)
+}
+
 /// Why an import failed. One class per distinguishable failure the pipeline
 /// actually produces.
 #[derive(Debug, thiserror::Error)]

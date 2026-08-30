@@ -3,13 +3,27 @@
 use super::*;
 use crate::import::{ArtistIdentityConflict, ExistingArtist, ImportFailure};
 
-/// The failure the last import of `only` left, or every candidate's.
-pub(super) fn load_failures_on(
+fn existing_artist_from_row(
+    row: &Row<'_>,
+    prefix: &str,
+) -> coven::rusqlite::Result<ExistingArtist> {
+    let column = |suffix: &str| format!("{prefix}_{suffix}");
+    Ok(ExistingArtist {
+        artist_id: row.get(column("id").as_str())?,
+        name: row.get(column("name").as_str())?,
+        sort_name: row.get(column("sort_name").as_str())?,
+        musicbrainz_artist_id: row.get(column("musicbrainz_id").as_str())?,
+        discogs_artist_id: row.get(column("discogs_id").as_str())?,
+    })
+}
+
+/// The failure the last import of `content_hash` left.
+pub(super) fn load_failure_on(
     sql: &SqlReadContext<'_>,
-    only: Option<&str>,
-) -> Result<HashMap<String, ImportFailure>, DbError> {
-    let rows = sql.query(
-        "SELECT failure.content_hash, failure.error, failure.failed_at, \
+    content_hash: &str,
+) -> Result<Option<ImportFailure>, DbError> {
+    sql.query_row(
+        "SELECT failure.error, failure.failed_at, \
                 conflict.incoming_artist_name, \
                 conflict.discogs_artist_id AS incoming_discogs_artist_id, \
                 conflict.musicbrainz_artist_id AS incoming_musicbrainz_artist_id, \
@@ -26,8 +40,8 @@ pub(super) fn load_failures_on(
              ON conflict.content_hash = failure.content_hash \
          LEFT JOIN artists discogs ON discogs.id = conflict.discogs_library_artist_id \
          LEFT JOIN artists musicbrainz ON musicbrainz.id = conflict.musicbrainz_library_artist_id \
-         WHERE :only IS NULL OR failure.content_hash = :only",
-        named_params! { ":only": only },
+         WHERE failure.content_hash = ?",
+        [content_hash],
         |row| {
             let conflict = match row.get::<_, Option<String>>("incoming_artist_name")? {
                 None => None,
@@ -35,44 +49,19 @@ pub(super) fn load_failures_on(
                     incoming_artist_name,
                     discogs_artist_id: row.get("incoming_discogs_artist_id")?,
                     musicbrainz_artist_id: row.get("incoming_musicbrainz_artist_id")?,
-                    discogs_artist: ExistingArtist {
-                        artist_id: row.get("discogs_id")?,
-                        name: row.get("discogs_name")?,
-                        sort_name: row.get("discogs_sort_name")?,
-                        musicbrainz_artist_id: row.get("discogs_musicbrainz_id")?,
-                        discogs_artist_id: row.get("discogs_discogs_id")?,
-                    },
-                    musicbrainz_artist: ExistingArtist {
-                        artist_id: row.get("musicbrainz_id")?,
-                        name: row.get("musicbrainz_name")?,
-                        sort_name: row.get("musicbrainz_sort_name")?,
-                        musicbrainz_artist_id: row.get("musicbrainz_musicbrainz_id")?,
-                        discogs_artist_id: row.get("musicbrainz_discogs_id")?,
-                    },
+                    discogs_artist: existing_artist_from_row(row, "discogs")?,
+                    musicbrainz_artist: existing_artist_from_row(row, "musicbrainz")?,
                 }),
             };
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("error")?,
-                rfc3339_column(row, "failed_at")?,
-                conflict,
-            ))
+            Ok(ImportFailure {
+                error: row.get("error")?,
+                failed_at: rfc3339_column(row, "failed_at")?,
+                artist_identity_conflict: conflict,
+            })
         },
-    )?;
-    Ok(rows
-        .into_iter()
-        .map(|(content_hash, error, failed_at, conflict)| {
-            let failure = match conflict {
-                Some(conflict) => ImportFailure::ArtistIdentityConflict {
-                    error,
-                    failed_at,
-                    conflict,
-                },
-                None => ImportFailure::Error { error, failed_at },
-            };
-            (content_hash, failure)
-        })
-        .collect())
+    )
+    .optional()
+    .map_err(DbError::from)
 }
 
 impl Database {
@@ -98,8 +87,8 @@ impl Database {
             ))
         })?;
         self.call(move |sql| {
-            let error = failure.error();
-            let failed_at = failure.failed_at().to_rfc3339();
+            let error = failure.error.as_str();
+            let failed_at = failure.failed_at.to_rfc3339();
             sql.execute(
                 "INSERT INTO import_candidate_state (content_hash, folder_path, edit_revision) \
                  VALUES (?, ?, ?) ON CONFLICT (content_hash) DO NOTHING",
@@ -116,7 +105,7 @@ impl Database {
                 "DELETE FROM import_candidate_artist_identity_conflict WHERE content_hash = ?",
                 [&content_hash],
             )?;
-            if let ImportFailure::ArtistIdentityConflict { conflict, .. } = &failure {
+            if let Some(conflict) = &failure.artist_identity_conflict {
                 sql.execute(
                     "INSERT INTO import_candidate_artist_identity_conflict (\
                          content_hash, incoming_artist_name, discogs_artist_id, \

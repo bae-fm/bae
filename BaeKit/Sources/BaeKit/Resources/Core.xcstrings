@@ -28939,6 +28939,579 @@
         }
       }
     },
+    "ui.import.artist_identity_conflict.explanation": {
+      "comment": "Import artist identity conflict: explanation above the two survivor choices.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترتبط هوية المصدر هذه بفنانين في مكتبتك. اختر السجل الذي تريد الاحتفاظ به؛ سيتم دمج ألبوماته ومقاطعه واعتماداته وروابط مصادره مع السجل الآخر."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Тази самоличност от източника е свързана с двама изпълнители във вашата библиотека. Изберете кой запис да запазите; неговите албуми, песни, авторски данни и връзки към източници ще бъдат обединени с другия запис."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই উৎস পরিচয়টি আপনার লাইব্রেরির দুইজন শিল্পীর সঙ্গে যুক্ত। যে রেকর্ডটি রাখতে চান সেটি বেছে নিন; তার অ্যালবাম, ট্র্যাক, কৃতিত্ব ও উৎসের লিংক অন্য রেকর্ডটির সঙ্গে একত্র করা হবে।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tato identita ze zdroje je propojena se dvěma interprety ve vaší knihovně. Vyberte záznam, který chcete ponechat; jeho alba, skladby, údaje o účasti a odkazy na zdroje se sloučí s druhým záznamem."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Quellidentität ist mit zwei Künstlern in deiner Mediathek verknüpft. Wähle den Datensatz aus, der behalten werden soll; seine Alben, Titel, Mitwirkungsangaben und Quellverknüpfungen werden mit dem anderen Datensatz zusammengeführt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta identidad de origen está vinculada a dos artistas de tu biblioteca. Elige el registro que quieres conservar; sus álbumes, pistas, créditos y enlaces de origen se combinarán con el otro registro."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette identité de source est liée à deux artistes de votre bibliothèque. Choisissez la fiche à conserver ; ses albums, morceaux, crédits et liens de source seront regroupés avec l’autre fiche."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ સ્રોત ઓળખ તમારી લાઇબ્રેરીના બે કલાકારો સાથે જોડાયેલી છે. રાખવાનો રેકોર્ડ પસંદ કરો; તેના આલ્બમ, ટ્રૅક, શ્રેય અને સ્રોત લિંક્સ બીજા રેકોર્ડ સાથે ભેળવવામાં આવશે."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זהות מקור זו מקושרת לשני אמנים בספרייה שלך. יש לבחור איזו רשומה לשמור; האלבומים, הרצועות, הקרדיטים וקישורי המקור שלה ימוזגו עם הרשומה האחרת."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "यह स्रोत पहचान आपकी लाइब्रेरी में दो कलाकारों से जुड़ी है। रखने वाला रिकॉर्ड चुनें; उसके एल्बम, ट्रैक, श्रेय और स्रोत लिंक दूसरे रिकॉर्ड के साथ मिला दिए जाएँगे।"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ovaj identitet izvora povezan je s dvama izvođačima u vašoj fonoteci. Odaberite zapis koji želite zadržati; njegovi albumi, pjesme, zasluge i poveznice na izvore spojit će se s drugim zapisom."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Questa identità della fonte è collegata a due artisti nella tua libreria. Scegli il record da mantenere; i relativi album, brani, crediti e collegamenti alle fonti verranno uniti all’altro record."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このソースIDはライブラリ内の2人のアーティストに関連付けられています。残すレコードを選択してください。そのアルバム、トラック、クレジット、ソースリンクがもう一方のレコードと統合されます。"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಮೂಲ ಗುರುತು ನಿಮ್ಮ ಲೈಬ್ರರಿಯಲ್ಲಿರುವ ಇಬ್ಬರು ಕಲಾವಿದರಿಗೆ ಲಿಂಕ್ ಆಗಿದೆ. ಉಳಿಸಬೇಕಾದ ದಾಖಲೆಯನ್ನು ಆರಿಸಿ; ಅದರ ಆಲ್ಬಮ್‌ಗಳು, ಟ್ರ್ಯಾಕ್‌ಗಳು, ಕ್ರೆಡಿಟ್‌ಗಳು ಮತ್ತು ಮೂಲ ಲಿಂಕ್‌ಗಳನ್ನು ಇನ್ನೊಂದು ದಾಖಲೆಯೊಂದಿಗೆ ವಿಲೀನಗೊಳಿಸಲಾಗುತ್ತದೆ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 소스 식별자가 보관함의 아티스트 두 명에 연결되어 있습니다. 유지할 레코드를 선택하세요. 해당 레코드의 앨범, 트랙, 크레딧 및 소스 링크가 다른 레코드와 병합됩니다."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ഉറവിട ഐഡന്റിറ്റി നിങ്ങളുടെ ലൈബ്രറിയിലെ രണ്ട് ആർട്ടിസ്റ്റുകളുമായി ബന്ധിപ്പിച്ചിരിക്കുന്നു. നിലനിർത്തേണ്ട റെക്കോർഡ് തിരഞ്ഞെടുക്കുക; അതിന്റെ ആൽബങ്ങൾ, ട്രാക്കുകൾ, ക്രെഡിറ്റുകൾ, ഉറവിട ലിങ്കുകൾ എന്നിവ മറ്റേ റെക്കോർഡുമായി ലയിപ്പിക്കും."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ही स्रोत ओळख तुमच्या लायब्ररीतील दोन कलाकारांशी जोडलेली आहे. ठेवायची नोंद निवडा; तिचे अल्बम, ट्रॅक, श्रेय आणि स्रोत दुवे दुसऱ्या नोंदीत विलीन केले जातील."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deze bronidentiteit is gekoppeld aan twee artiesten in je bibliotheek. Kies welke vermelding je wilt behouden; de albums, nummers, credits en bronkoppelingen worden samengevoegd met de andere vermelding."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਹ ਸਰੋਤ ਪਛਾਣ ਤੁਹਾਡੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਦੋ ਕਲਾਕਾਰਾਂ ਨਾਲ ਜੁੜੀ ਹੋਈ ਹੈ। ਰੱਖਣ ਲਈ ਰਿਕਾਰਡ ਚੁਣੋ; ਇਸ ਦੀਆਂ ਐਲਬਮਾਂ, ਟਰੈਕ, ਕ੍ਰੈਡਿਟ ਅਤੇ ਸਰੋਤ ਲਿੰਕ ਦੂਜੇ ਰਿਕਾਰਡ ਨਾਲ ਮਿਲਾ ਦਿੱਤੇ ਜਾਣਗੇ।"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta tożsamość źródłowa jest powiązana z dwoma wykonawcami w bibliotece. Wybierz rekord, który chcesz zachować; jego albumy, utwory, informacje o udziale i łącza źródłowe zostaną połączone z drugim rekordem."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta identidade da fonte está vinculada a dois artistas na sua biblioteca. Escolha o registro que deseja manter; os álbuns, faixas, créditos e links de fonte dele serão combinados com o outro registro."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்த மூல அடையாளம் உங்கள் நூலகத்தில் உள்ள இரண்டு கலைஞர்களுடன் இணைக்கப்பட்டுள்ளது. வைத்திருக்க வேண்டிய பதிவைத் தேர்வுசெய்யவும்; அதன் ஆல்பங்கள், தடங்கள், பங்களிப்புகள் மற்றும் மூல இணைப்புகள் மற்ற பதிவுடன் ஒன்றிணைக்கப்படும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ మూల గుర్తింపు మీ లైబ్రరీలోని ఇద్దరు కళాకారులకు లింక్ అయి ఉంది. ఉంచాల్సిన రికార్డును ఎంచుకోండి; దాని ఆల్బమ్‌లు, ట్రాక్‌లు, క్రెడిట్‌లు మరియు మూల లింక్‌లు మరొక రికార్డుతో విలీనం చేయబడతాయి."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ข้อมูลระบุตัวตนจากแหล่งนี้เชื่อมโยงกับศิลปินสองรายในคลังของคุณ เลือกระเบียนที่จะเก็บไว้ แล้วอัลบั้ม แทร็ก เครดิต และลิงก์แหล่งข้อมูลของระเบียนนั้นจะถูกรวมกับอีกระเบียนหนึ่ง"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu kaynak kimliği arşivinizdeki iki sanatçıya bağlı. Korumak istediğiniz kaydı seçin; albümleri, parçaları, katkı bilgileri ve kaynak bağlantıları diğer kayıtla birleştirilecek."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Цей ідентифікатор джерела пов’язано з двома виконавцями у вашій медіатеці. Виберіть запис, який слід зберегти; його альбоми, композиції, авторські дані та посилання на джерела буде об’єднано з іншим записом."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "یہ ماخذ شناخت آپ کی لائبریری میں دو فنکاروں سے منسلک ہے۔ برقرار رکھنے والا ریکارڈ منتخب کریں؛ اس کے البمز، ٹریکس، کریڈٹس اور ماخذ لنکس دوسرے ریکارڈ کے ساتھ ضم کر دیے جائیں گے۔"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Danh tính nguồn này được liên kết với hai nghệ sĩ trong thư viện của bạn. Chọn bản ghi cần giữ; các album, bản nhạc, thông tin đóng góp và liên kết nguồn của bản ghi đó sẽ được hợp nhất với bản ghi còn lại."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此来源身份关联到了资料库中的两位艺术家。请选择要保留的记录；其专辑、曲目、署名和来源链接将与另一条记录合并。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此來源身分連結到資料庫中的兩位藝人。請選擇要保留的記錄；其專輯、曲目、製作名單和來源連結將與另一筆記錄合併。"
+          }
+        }
+      }
+    },
+    "ui.import.artist_identity_conflict.keep_discogs": {
+      "comment": "Import artist identity conflict: button choosing the existing Discogs-linked artist record as the survivor.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاحتفاظ بفنان Discogs"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запазване на изпълнителя от Discogs"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs শিল্পীটি রাখুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponechat interpreta z Discogs"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs-Künstler behalten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep Discogs Artist"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservar artista de Discogs"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conserver l’artiste Discogs"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs કલાકાર રાખો"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמירת האמן מ־Discogs"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs कलाकार रखें"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zadrži izvođača s Discogsa"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantieni artista Discogs"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogsのアーティストを残す"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs ಕಲಾವಿದರನ್ನು ಉಳಿಸಿ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs 아티스트 유지"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs ആർട്ടിസ്റ്റിനെ നിലനിർത്തുക"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs कलाकार ठेवा"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs-artiest behouden"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs ਕਲਾਕਾਰ ਰੱਖੋ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowaj wykonawcę z Discogs"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manter artista do Discogs"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs கலைஞரை வைத்திரு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs కళాకారుడిని ఉంచు"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เก็บศิลปินจาก Discogs"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs sanatçısını koru"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти виконавця з Discogs"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs فنکار برقرار رکھیں"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ nghệ sĩ Discogs"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留 Discogs 艺术家"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留 Discogs 藝術家"
+          }
+        }
+      }
+    },
+    "ui.import.artist_identity_conflict.keep_musicbrainz": {
+      "comment": "Import artist identity conflict: button choosing the existing MusicBrainz-linked artist record as the survivor.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "الاحتفاظ بفنان MusicBrainz"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запазване на изпълнителя от MusicBrainz"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz শিল্পীটি রাখুন"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ponechat interpreta z MusicBrainz"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz-Künstler behalten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep MusicBrainz Artist"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conservar artista de MusicBrainz"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conserver l’artiste MusicBrainz"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz કલાકાર રાખો"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "שמירת האמן מ־MusicBrainz"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz कलाकार रखें"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zadrži izvođača s MusicBrainza"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantieni artista MusicBrainz"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainzのアーティストを残す"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz ಕಲಾವಿದರನ್ನು ಉಳಿಸಿ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz 아티스트 유지"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz ആർട്ടിസ്റ്റിനെ നിലനിർത്തുക"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz कलाकार ठेवा"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz-artiest behouden"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz ਕਲਾਕਾਰ ਰੱਖੋ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zachowaj wykonawcę z MusicBrainz"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manter artista do MusicBrainz"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz கலைஞரை வைத்திரு"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz కళాకారుడిని ఉంచు"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เก็บศิลปินจาก MusicBrainz"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz sanatçısını koru"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Зберегти виконавця з MusicBrainz"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicBrainz فنکار برقرار رکھیں"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Giữ nghệ sĩ MusicBrainz"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留 MusicBrainz 艺术家"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保留 MusicBrainz 藝術家"
+          }
+        }
+      }
+    },
     "ui.import.becomes.awaiting_pick": {
       "comment": "Import mapping table, Becomes column: no release has been picked yet, so what this row's audio becomes is still the open question.",
       "localizations": {

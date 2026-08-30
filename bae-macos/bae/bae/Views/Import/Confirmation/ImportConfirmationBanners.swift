@@ -16,8 +16,8 @@ struct ImportConfirmationBanners: View {
     /// which the candidate's row carries once an import has failed.
     let error: String?
     /// The last import of this candidate that failed, as it survives a
-    /// relaunch. Shown when nothing is running for the candidate — while an
-    /// import is under way, its own status is the current answer.
+    /// relaunch. Core omits it while an import owns the candidate or after an
+    /// import has completed.
     let failure: BridgeImportFailure?
     /// Try the failed import again.
     let onRetry: () -> Void
@@ -68,35 +68,7 @@ struct ImportConfirmationBanners: View {
             }
         }
 
-        if case .error(let bridgeError) = importStatus,
-            let displayed = DisplayError(bridgeError)
-        {
-            ErrorDetailDisclosure(error: displayed)
-                .padding(10)
-                .background(Color.red.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-
-        if importStatus == nil, let failure {
-            switch failure {
-            case .error(let error, _):
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    Text(error)
-                        .font(.callout)
-                        .foregroundStyle(.red)
-                    Spacer()
-                    Button("Retry") { onRetry() }
-                        .controlSize(.small)
-                }
-                .padding(10)
-                .background(Color.red.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            case .artistIdentityConflict(_, _, let conflict):
-                artistIdentityConflict(conflict)
-            }
-        }
+        importFailureBanner
 
         if let error {
             HStack(spacing: 8) {
@@ -112,8 +84,41 @@ struct ImportConfirmationBanners: View {
         }
     }
 
+    @ViewBuilder
+    private var importFailureBanner: some View {
+        if let failure, let displayed = DisplayError(failure.error) {
+            if let conflict = failure.artistIdentityConflict {
+                artistIdentityConflict(conflict, error: displayed)
+            }
+            else {
+                persistedFailure(displayed)
+            }
+        }
+        else if case .error(let bridgeError) = importStatus,
+            let displayed = DisplayError(bridgeError)
+        {
+            ErrorDetailDisclosure(error: displayed)
+                .padding(10)
+                .background(Color.red.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+    }
+
+    private func persistedFailure(_ error: DisplayError) -> some View {
+        HStack(spacing: 8) {
+            ErrorDetailDisclosure(error: error)
+            Spacer()
+            Button("Retry") { onRetry() }
+                .controlSize(.small)
+        }
+        .padding(10)
+        .background(Color.red.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
     private func artistIdentityConflict(
-        _ conflict: BridgeArtistIdentityConflict
+        _ conflict: BridgeArtistIdentityConflict,
+        error: DisplayError
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -123,37 +128,51 @@ struct ImportConfirmationBanners: View {
                     Text(conflict.incomingArtistName)
                         .fontWeight(.semibold)
                     Text(
-                        "This source identity is linked to two artists in your library. Choose the record to keep; its albums, tracks, credits, and source links will be combined with the other record."
+                        verbatim: coreString(
+                            "ui.import.artist_identity_conflict.explanation"
+                        )
                     )
                 }
                 .font(.callout)
                 .foregroundStyle(.orange)
             }
             HStack(spacing: 8) {
-                Button {
-                    onMergeArtists(conflict.discogsArtist.artistId)
-                } label: {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Keep Discogs Artist")
-                        Text(conflict.discogsArtist.name)
-                            .font(.caption)
-                    }
-                }
-                Button {
-                    onMergeArtists(conflict.musicbrainzArtist.artistId)
-                } label: {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Keep MusicBrainz Artist")
-                        Text(conflict.musicbrainzArtist.name)
-                            .font(.caption)
-                    }
-                }
+                artistChoiceButton(
+                    titleKey:
+                        "ui.import.artist_identity_conflict.keep_discogs",
+                    artist: conflict.discogsArtist
+                )
+                artistChoiceButton(
+                    titleKey:
+                        "ui.import.artist_identity_conflict.keep_musicbrainz",
+                    artist: conflict.musicbrainzArtist
+                )
             }
             .controlSize(.small)
+            ErrorDetailDisclosure(
+                error: error,
+                tint: .orange,
+                showIcon: false
+            )
         }
         .padding(10)
         .background(Color.orange.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func artistChoiceButton(
+        titleKey: String,
+        artist: BridgeExistingArtist
+    ) -> some View {
+        Button {
+            onMergeArtists(artist.artistId)
+        } label: {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(verbatim: coreString(titleKey))
+                Text(verbatim: artist.name)
+                    .font(.caption)
+            }
+        }
     }
 }
 
@@ -170,9 +189,12 @@ struct ImportConfirmationBanners: View {
                 ),
                 importStatus: nil,
                 error: "Couldn't shape the edit: missing album title",
-                failure: BridgeImportFailure.error(
-                    error: "The folder is no longer where it was",
-                    failedAt: "2026-08-23T04:00:00Z"
+                failure: BridgeImportFailure(
+                    error: .Diagnostic(
+                        category: .import,
+                        detail: "The folder is no longer where it was"
+                    ),
+                    artistIdentityConflict: nil
                 ),
                 onRetry: {},
                 onMergeArtists: { _ in },

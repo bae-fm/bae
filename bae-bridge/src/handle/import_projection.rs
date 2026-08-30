@@ -666,28 +666,20 @@ impl crate::types::BridgeImportCandidateDetail {
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeImportFailure {
     fn from_core(failure: bae_core::import::ImportFailure) -> Self {
-        match failure {
-            bae_core::import::ImportFailure::Error { error, failed_at } => Self::Error {
-                error,
-                failed_at: failed_at.to_rfc3339(),
-            },
-            bae_core::import::ImportFailure::ArtistIdentityConflict {
-                error,
-                failed_at,
-                conflict,
-            } => Self::ArtistIdentityConflict {
-                error,
-                failed_at: failed_at.to_rfc3339(),
-                conflict: crate::types::BridgeArtistIdentityConflict {
-                    incoming_artist_name: conflict.incoming_artist_name,
-                    discogs_artist: crate::types::BridgeExistingArtist::from_core(
-                        conflict.discogs_artist,
-                    ),
-                    musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
-                        conflict.musicbrainz_artist,
-                    ),
-                },
-            },
+        let artist_identity_conflict = failure.artist_identity_conflict.map(|conflict| {
+            crate::types::BridgeArtistIdentityConflict {
+                incoming_artist_name: conflict.incoming_artist_name,
+                discogs_artist: crate::types::BridgeExistingArtist::from_core(
+                    conflict.discogs_artist,
+                ),
+                musicbrainz_artist: crate::types::BridgeExistingArtist::from_core(
+                    conflict.musicbrainz_artist,
+                ),
+            }
+        });
+        Self {
+            error: crate::types::BridgeError::import(failure.error),
+            artist_identity_conflict,
         }
     }
 }

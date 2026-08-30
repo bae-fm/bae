@@ -69,6 +69,7 @@ impl Database {
                 sort_name.as_deref(),
                 &reg,
             )
+            .map(|_| ())
         })
         .await
     }

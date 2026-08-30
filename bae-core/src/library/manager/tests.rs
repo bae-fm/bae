@@ -112,4 +112,5 @@ include!("tests/transfer_order.rs");
 include!("tests/downloads.rs");
 include!("tests/output.rs");
 include!("tests/identity.rs");
+include!("tests/artist_resolution.rs");
 include!("tests/playback_and_sync.rs");

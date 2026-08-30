@@ -28,6 +28,11 @@ struct ImportView: View {
 
     @State
     var documentContent: (name: String, text: String)?
+    /// Event-driven candidate writes keyed by candidate, so a repeated command
+    /// cancels the operation it replaces and leaving the import view cancels
+    /// every command the view started.
+    @State
+    var candidateMutationTasks: [String: Task<Void, Never>] = [:]
     /// What each of the selected candidate's track sheets may be bound to,
     /// keyed by the sheet's file id. Read from core when the selection's files
     /// change: core probes every audio file to answer, so this is not something
@@ -68,6 +73,12 @@ struct ImportView: View {
             }
             .onChange(of: uiStore.selectedFolderCandidates) { _, _ in
                 uiStore.lightbox = nil
+            }
+            .onDisappear {
+                for task in candidateMutationTasks.values {
+                    task.cancel()
+                }
+                candidateMutationTasks.removeAll()
             }
         }
     }
