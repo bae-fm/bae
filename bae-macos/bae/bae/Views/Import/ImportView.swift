@@ -7,6 +7,14 @@ import SwiftUI
 struct CandidateMetadataDetailsState: Equatable {
     private var expandedByCandidate: [String: Bool] = [:]
 
+    mutating func establishInitialState(
+        for key: String,
+        draftIsBlank: Bool
+    ) {
+        guard expandedByCandidate[key] == nil else { return }
+        expandedByCandidate[key] = draftIsBlank
+    }
+
     func isExpanded(for key: String, draftIsBlank: Bool) -> Bool {
         expandedByCandidate[key] ?? draftIsBlank
     }
@@ -97,6 +105,13 @@ struct ImportView: View {
                     for: candidate.key
                 )
             }
+        )
+    }
+
+    func establishMetadataDetailsInitialState(for candidate: Candidate) {
+        metadataDetailsState.establishInitialState(
+            for: candidate.key,
+            draftIsBlank: candidate.metadataDraftIsBlank
         )
     }
 

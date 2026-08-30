@@ -549,7 +549,8 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             )
             .frame(width: size.width)
             .padding(14)
-            .environment(Library.stub()),
+            .environment(Library.stub())
+            .environment(UiStore()),
             size: size
         )
         host.layoutSubtreeIfNeeded()
@@ -731,6 +732,19 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
+    func testBlankDraftInitialExpansionSurvivesDraftPopulation() {
+        var state = CandidateMetadataDetailsState()
+
+        state.establishInitialState(
+            for: "candidate-a",
+            draftIsBlank: true
+        )
+
+        XCTAssertTrue(
+            state.isExpanded(for: "candidate-a", draftIsBlank: false)
+        )
+    }
+
     func testDetailsDisclosureStateIsRememberedPerCandidate() {
         var state = CandidateMetadataDetailsState()
 

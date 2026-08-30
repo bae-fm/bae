@@ -30,6 +30,13 @@ extension ImportView {
         CandidateRuntimeReader(key: candidate.key) { runtime in
             mappingPane(for: candidate, runtime: runtime)
         }
+        .id(candidate.key)
+        .onAppear {
+            establishMetadataDetailsInitialState(for: candidate)
+        }
+        .onChange(of: candidate.metadataDraftIsBlank) { _, _ in
+            establishMetadataDetailsInitialState(for: candidate)
+        }
     }
 
     private func mappingPane(
