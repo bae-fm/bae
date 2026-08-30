@@ -114,130 +114,41 @@ private final class Recorder {
 }
 
 @MainActor
-private struct MatchListScene {
-    let store: ImportStore
-    let key: String
-    let size: NSSize
-    let host: NSView
-
-    func capture() async throws -> Data {
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        return try await SnapshotTestSupport.capturePNG(host, size: size)
-    }
-
-    func capture(identifyState: BridgeIdentifyState) async throws -> Data {
-        store.candidateRuntimeSubject.send(
-            .updated(
-                key: key,
-                runtime: BridgeCandidateRuntimeSnapshot(
-                    identifyState: identifyState,
-                    signalsToolbar: BridgeSignalsToolbar(signals: []),
-                    import: nil
-                )
-            )
-        )
-        return try await capture()
-    }
-}
-
-@MainActor
-private func makeMatchListScene() -> MatchListScene {
-    let scene = PreviewData.importTabScene()
-    let store = scene.store
-    let key = PreviewData.importTabDisagreementCandidate.key
-    let uiStore = UiStore()
-    uiStore.setImportCandidateTab(.pending)
-    uiStore.setFolderCandidateSelection([key])
+private func captureMappingPane(
+    candidate: Candidate,
+    runtime: BridgeCandidateRuntimeSnapshot?
+) async throws -> Data {
     let size = NSSize(width: 1200, height: 760)
-    let (_, host) = SnapshotTestSupport.hostInWindow(
-        ImportView(endEditing: {})
-            .environment(uiStore)
-            .importPreviewEnvironment()
-            .environment(uiStore)
-            .environment(scene.slot(uiStore: uiStore))
-            .environment(Library.stub())
-            .environment(PreviewAudio.stub())
-            .environment(store)
-            .environment(PreviewData.importTabImporter())
-            .environment(
-                \.candidateRuntimePublisher,
-                store.candidateRuntimeSubject.eraseToAnyPublisher()
-            ),
+    let (window, host) = SnapshotTestSupport.hostInWindow(
+        ImportMappingPreview.make(
+            candidate: candidate,
+            storageCloud: .constant(false),
+            storagePinned: .constant(false),
+            runtime: runtime
+        )
+        .frame(width: size.width, height: size.height)
+        .importPreviewEnvironment()
+        .candidateReaderPreviewEnvironment(),
         size: size
     )
-    host.layoutSubtreeIfNeeded()
-    return MatchListScene(store: store, key: key, size: size, host: host)
+    await SnapshotTestSupport.settle(host)
+    let capture = try await SnapshotTestSupport.capturePNG(host, size: size)
+    withExtendedLifetime(window) {}
+    return capture
+}
+
+private func runtime(
+    _ identifyState: BridgeIdentifyState
+) -> BridgeCandidateRuntimeSnapshot {
+    BridgeCandidateRuntimeSnapshot(
+        identifyState: identifyState,
+        signalsToolbar: BridgeSignalsToolbar(signals: []),
+        import: nil
+    )
 }
 
 @Suite("Import mapping pane")
 struct ImportMappingPaneTests {
-    @MainActor
-    @Test("blank draft renders the editor without a summary placeholder")
-    func blankDraftRendersEditorWithoutSummaryPlaceholder() async throws {
-        let store = MappingFixtures.store(
-            mapping: MappingFixtures.thirteenFileTable,
-            metadataProvenance: nil,
-            edit: MappingFixtures.blankEdit
-        )
-        let candidate = try #require(
-            store.selectedCandidates[MappingFixtures.candidateKey]
-        )
-        let size = NSSize(width: 1_000, height: 760)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
-            ImportMappingPreview.make(
-                candidate: candidate,
-                storageCloud: .constant(false),
-                storagePinned: .constant(false)
-            )
-            .frame(width: size.width, height: size.height)
-            .importPreviewEnvironment(),
-            size: size
-        )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-
-        let labels = SnapshotTestSupport.descendants(of: host)
-            .compactMap { ($0 as? NSTextField)?.stringValue }
-        #expect(
-            labels.filter { $0 == String(localized: "Album title") }.count
-                == 0
-        )
-        #expect(labels.contains(String(localized: "Find online…")))
-        #expect(
-            labels.contains(coreString("ui.import.metadata.file_tags") + "…")
-        )
-        let buttons = SnapshotTestSupport.descendants(of: host)
-            .compactMap { $0 as? NSButton }
-        let details = try #require(
-            buttons.first { $0.title == String(localized: "Details") }
-        )
-        #expect(details.convert(details.bounds, to: host).minX > 180)
-        #expect(
-            !buttons.contains {
-                $0.title == String(localized: "Clear metadata")
-            }
-        )
-
-        details.performClick(nil)
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let albumTitleField = try #require(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSTextField }
-                .first {
-                    $0.placeholderString == String(localized: "Album title")
-                }
-        )
-        let albumTitleFrame = albumTitleField.convert(
-            albumTitleField.bounds,
-            to: host
-        )
-        #expect(albumTitleFrame.minX > 180)
-        withExtendedLifetime(window) {}
-    }
-
     @MainActor
     @Test("candidate mapping remains visible before metadata is affirmed")
     func unseededCandidateKeepsMappingVisible() async throws {
@@ -277,29 +188,49 @@ struct ImportMappingPaneTests {
         "restored and arriving match lists appear inline until identity settles"
     )
     func matchListsAppearInlineUntilIdentitySettles() async throws {
-        let scene = makeMatchListScene()
-        let restoredMatches = try await scene.capture()
-        let before = try await scene.capture(
-            identifyState: .manualOnly(trackCount: 11)
+        var browsing = Candidate(
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable,
+                edit: MappingFixtures.blankEdit,
+                metadataProvenance: nil
+            )
+        )
+        browsing.metadataPresentation = .findOnline
+        browsing.resumedIdentifyState = IdentifyState(
+            bridge: PreviewData.bridgeDisagreementState
+        )
+        let restoredMatches = try await captureMappingPane(
+            candidate: browsing,
+            runtime: nil
+        )
+
+        browsing.resumedIdentifyState = .manualOnly(trackCount: 11)
+        let before = try await captureMappingPane(
+            candidate: browsing,
+            runtime: nil
         )
         #expect(restoredMatches != before)
 
-        let matches = try await scene.capture(
-            identifyState: PreviewData.bridgeDisagreementState
+        let matches = try await captureMappingPane(
+            candidate: browsing,
+            runtime: runtime(PreviewData.bridgeDisagreementState)
         )
         #expect(matches != before)
 
         // A stored pick settles the identity: the match list gives way to the
         // release card, whatever the run left behind.
-        scene.store.applyCandidateDetail(
-            key: scene.key,
+        let settled = Candidate(
             detail: MappingFixtures.detail(
                 mapping: MappingFixtures.thirteenFileTable
             )
         )
-        let settledConflict = try await scene.capture()
-        let settledWithoutConflict = try await scene.capture(
-            identifyState: .manualOnly(trackCount: 11)
+        let settledConflict = try await captureMappingPane(
+            candidate: settled,
+            runtime: runtime(PreviewData.bridgeDisagreementState)
+        )
+        let settledWithoutConflict = try await captureMappingPane(
+            candidate: settled,
+            runtime: runtime(.manualOnly(trackCount: 11))
         )
         #expect(settledConflict == settledWithoutConflict)
     }

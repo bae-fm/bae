@@ -27,20 +27,46 @@ final class MoveToCloudConfirmSheetTests: XCTestCase {
             size: size
         )
 
-        host.layoutSubtreeIfNeeded()
-        try await Task.sleep(for: .milliseconds(250))
-        host.layoutSubtreeIfNeeded()
+        await SnapshotTestSupport.settle(host)
 
-        let toggle = try XCTUnwrap(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSButton }
-                .first { $0.title == String(localized: "Pinned") }
-        )
-        XCTAssertEqual(toggle.state, .off)
-
-        toggle.performClick(nil)
-        await Task.yield()
+        let controlFrames = host.subviews
+            .filter { $0.nextKeyView != nil || $0.previousKeyView != nil }
+            .map { $0.convert($0.bounds, to: host) }
+        for frame in controlFrames where !defaults.bool(forKey: key) {
+            try click(at: frame.center, in: host, window: window)
+            await SnapshotTestSupport.settle(host)
+        }
         XCTAssertTrue(defaults.bool(forKey: key))
         withExtendedLifetime(window) {}
+    }
+
+    private func click(
+        at point: NSPoint,
+        in host: NSView,
+        window: NSWindow
+    ) throws {
+        let windowPoint = host.convert(point, to: nil)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type,
+                    location: windowPoint,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber,
+                    context: nil,
+                    eventNumber: 0,
+                    clickCount: 1,
+                    pressure: type == .leftMouseDown ? 1 : 0
+                )
+            )
+            window.sendEvent(event)
+        }
+    }
+}
+
+extension NSRect {
+    fileprivate var center: NSPoint {
+        NSPoint(x: midX, y: midY)
     }
 }

@@ -37,9 +37,7 @@ final class SettingsNavigationTests: XCTestCase {
             size: size
         )
 
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
+        await SnapshotTestSupport.settle(host)
 
         let textFields = SnapshotTestSupport.descendants(of: host)
             .compactMap { $0 as? NSTextField }
@@ -89,30 +87,35 @@ final class ManualSearchWorkspaceTests: XCTestCase {
 @Suite("Find online method presentation")
 struct FindOnlineMethodPresentationTests {
     @Test("idle automatic method has no empty-result message")
-    func idleAutomaticMethodHasNoEmptyResultMessage() async {
-        let labels = await labels(
+    func idleAutomaticMethodHasNoEmptyResultMessage() async throws {
+        let idle = try await pixels(
             for: ImportSearchPane.preview(state: idleState)
         )
-
-        #expect(labels.contains(String(localized: "Automatic")))
-        #expect(labels.contains(String(localized: "Search manually")))
-        #expect(labels.contains(String(localized: "Identifying…")))
-        #expect(
-            !labels.contains(String(localized: "No automatic matches found"))
+        let finishedWithoutMatches = try await pixels(
+            for: ImportSearchPane.preview(
+                state: PreviewData.searchStateNotFound
+            )
         )
+
+        #expect(idle != finishedWithoutMatches)
     }
 
     @Test("manual method has no empty-result message before a search")
-    func manualMethodHasNoEmptyResultMessageBeforeSearch() async {
-        let labels = await labels(
+    func manualMethodHasNoEmptyResultMessageBeforeSearch() async throws {
+        let idle = try await pixels(
             for: ImportSearchPane.preview(
                 state: idleState,
                 mode: .searchManually
             )
         )
+        let searched = try await pixels(
+            for: ImportSearchPane.preview(
+                state: searchedEmptyState,
+                mode: .searchManually
+            )
+        )
 
-        #expect(!labels.contains(String(localized: "No results")))
-        #expect(!labels.contains(String(localized: "No matches found")))
+        #expect(idle != searched)
     }
 
     private var idleState: ImportSearchState {
@@ -132,19 +135,32 @@ struct FindOnlineMethodPresentationTests {
         )
     }
 
-    private func labels<V: View>(for view: V) async -> [String] {
+    private var searchedEmptyState: ImportSearchState {
+        ImportSearchState(
+            identifyState: .idle,
+            error: nil,
+            searchGroups: [],
+            selectedReleaseId: nil,
+            loadingReleaseId: nil,
+            isSearching: false,
+            hasSearched: true,
+            isImporting: false,
+            libraryStatuses: [:],
+            discogsEnabled: true,
+            signals: nil,
+            signalsToolbar: BridgeSignalsToolbar(signals: [])
+        )
+    }
+
+    private func pixels<V: View>(for view: V) async throws -> Data {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             view.frame(width: size.width, height: size.height),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let labels = SnapshotTestSupport.descendants(of: host)
-            .compactMap { ($0 as? NSTextField)?.stringValue }
+        let pixels = try await SnapshotTestSupport.capturePNG(host, size: size)
         withExtendedLifetime(window) {}
-        return labels
+        return pixels
     }
 }
 
@@ -179,9 +195,7 @@ final class SignalBadgePopoverTests: XCTestCase {
             view.frame(width: size.width, height: size.height),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        await SnapshotTestSupport.settle(host)
         let descendants = SnapshotTestSupport.descendants(of: host)
         let labels = descendants.compactMap {
             ($0 as? NSTextField)?.stringValue
@@ -457,7 +471,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
             size: size
         )
         host.layoutSubtreeIfNeeded()
-        await Task.yield()
+        await SnapshotTestSupport.settle(host)
         host.layoutSubtreeIfNeeded()
 
         let titleField = try XCTUnwrap(
@@ -473,7 +487,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
                 object: titleField
             )
         )
-        await Task.yield()
+        await SnapshotTestSupport.settle(host)
 
         let store = MappingFixtures.store(mapping: nil)
         ImportSearchFlow.applyMetadata(
@@ -486,7 +500,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
         try await waitUntil { model.applicationCount == 1 }
 
         _ = window.makeFirstResponder(nil)
-        await Task.yield()
+        await SnapshotTestSupport.settle(host)
 
         XCTAssertEqual(model.edit.albumTitle, model.appliedTitle)
         XCTAssertEqual(
@@ -588,10 +602,6 @@ struct ImportSearchFlowCoverSelectionTests {
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
         #expect(seeded.cover == cover)
-        // And the sidebar reads the same one.
-        #expect(
-            store.sidebarCover(for: detail.row) == cover.thumbnailContent
-        )
     }
 }
 

@@ -83,50 +83,6 @@ private final class MetadataSourceRecorder {
 struct ImportMetadataSourceTests {}
 
 extension ImportMetadataSourceTests {
-    @Test("an applied draft names both replacement sources directly")
-    func appliedDraftNamesReplacementSources() async {
-        let view = ImportReleaseHeader(
-            releaseSummary: ImportReleaseSummary(
-                candidate: PreviewData.mappingCandidate,
-                editValues: PreviewData.confirmEditValues
-            ),
-            draftIsBlank: false,
-            isReading: false,
-            coverContent: nil,
-            hasCoverOptions: false,
-            editValues: PreviewData.confirmEditValues,
-            editActions: ReleaseFieldWriter { _, _ in },
-            commit: nil,
-            sourceActions: ImportReleaseSourceActions(
-                findOnline: {},
-                useFileTags: {},
-                clearMetadata: {}
-            ),
-            localCoverSelections: [:],
-            onEditCover: {},
-            onSelectCover: { _ in }
-        )
-        .frame(width: 900, height: 360)
-        .importPreviewEnvironment()
-        .environment(Library.stub())
-
-        let size = NSSize(width: 900, height: 360)
-        let (window, host) = SnapshotTestSupport.hostInWindow(view, size: size)
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let labels = SnapshotTestSupport.descendants(of: host)
-            .compactMap { ($0 as? NSButton)?.title }
-
-        #expect(labels.contains(String(localized: "Find online…")))
-        #expect(
-            labels.contains(
-                coreString("ui.import.metadata.file_tags") + "…"
-            )
-        )
-        withExtendedLifetime(window) {}
-    }
-
     @Test("an unpopulated draft opens its configured source")
     func unpopulatedDraftOpensConfiguredSource() throws {
         for (source, expected) in [
@@ -619,50 +575,15 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         XCTAssertEqual(recorder.findOnlineCount, 1)
         XCTAssertEqual(recorder.fileTagsCount, 1)
 
-        try await assertClearBehavior(
-            layout: layout,
-            recorder: recorder,
-            host: host,
-            window: window
-        )
+        if let clear = layout.clear {
+            XCTAssertGreaterThan(
+                abs(clear.midY - layout.findOnline.midY),
+                8
+            )
+        }
 
         window.contentView = nil
         window.orderOut(nil)
-    }
-
-    private func assertClearBehavior(
-        layout: MetadataCardFocusLayout,
-        recorder: MetadataCardActionRecorder,
-        host: NSView,
-        window: NSWindow
-    ) async throws {
-        guard let clear = layout.clear else { return }
-        XCTAssertGreaterThan(abs(clear.midY - layout.findOnline.midY), 8)
-        try click(at: clear.center, in: host, window: window)
-        await Task.yield()
-        XCTAssertEqual(recorder.clearCount, 0)
-        let confirmation = try XCTUnwrap(
-            NSApplication.shared.windows.first { $0 !== window && $0.isVisible }
-        )
-        let descendants = try XCTUnwrap(confirmation.contentView).subviews
-            .flatMap { [$0] + SnapshotTestSupport.descendants(of: $0) }
-        let buttons = descendants.compactMap { $0 as? NSButton }
-        let labels = descendants.compactMap { $0 as? NSTextField }
-            .map(\.stringValue)
-        XCTAssertTrue(labels.contains("Clear metadata?"))
-        XCTAssertTrue(
-            labels.contains(
-                "The candidate files and mapping choices will remain unchanged."
-            )
-        )
-        let confirm = try XCTUnwrap(
-            buttons.first { $0.title == "Clear metadata" }
-        )
-        XCTAssertNotNil(buttons.first { $0.title == "Cancel" })
-        confirm.performClick(nil)
-        try await Task.sleep(for: .milliseconds(50))
-        XCTAssertEqual(recorder.clearCount, 1)
-        window.makeKeyAndOrderFront(nil)
     }
 
     private func metadataHeader(

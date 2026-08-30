@@ -49,6 +49,17 @@ enum SnapshotTestSupport {
         return try #require(bitmap.representation(using: .png, properties: [:]))
     }
 
+    /// Let SwiftUI publish its next render before a hosted-view test inspects
+    /// or interacts with it.
+    @MainActor
+    static func settle(_ host: NSView) async {
+        for _ in 0..<3 {
+            host.layoutSubtreeIfNeeded()
+            await Task.yield()
+        }
+        host.layoutSubtreeIfNeeded()
+    }
+
     /// Every AppKit view below `view`, depth first. SwiftUI controls may be
     /// nested below private hosting containers, so interaction tests use the
     /// full hosted tree rather than assuming one framework-specific depth.
@@ -56,6 +67,7 @@ enum SnapshotTestSupport {
     static func descendants(of view: NSView) -> [NSView] {
         view.subviews.flatMap { [$0] + descendants(of: $0) }
     }
+
 }
 
 private final class SnapshotTestWindow: NSWindow {

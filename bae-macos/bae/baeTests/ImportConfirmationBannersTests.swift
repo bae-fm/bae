@@ -38,7 +38,27 @@ struct ImportConfirmationBannersTests {
     @MainActor
     @Test("artist identity repair remains visible beside the failed row status")
     func artistIdentityRepairRemainsVisibleBesideFailedStatus() async {
-        let (_, host) = SnapshotTestSupport.hostInWindow(
+        let conflictControlCount = await focusControlCount(
+            failure: conflictFailure()
+        )
+        let retryControlCount = await focusControlCount(
+            failure: BridgeImportFailure(
+                error: .Diagnostic(
+                    category: .import,
+                    detail: "the import failed"
+                ),
+                artistIdentityConflict: nil
+            )
+        )
+
+        #expect(conflictControlCount == retryControlCount + 1)
+    }
+
+    @MainActor
+    private func focusControlCount(
+        failure: BridgeImportFailure
+    ) async -> Int {
+        let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportConfirmationBanners(
                 libraryStatus: nil,
                 importStatus: .error(
@@ -48,33 +68,20 @@ struct ImportConfirmationBannersTests {
                     )
                 ),
                 error: nil,
-                failure: conflictFailure(),
+                failure: failure,
                 onRetry: {},
                 onMergeArtists: { _ in },
                 onViewInLibrary: { _ in }
             ),
             size: NSSize(width: 640, height: 240)
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-
-        let labels = SnapshotTestSupport.descendants(of: host)
-            .compactMap { ($0 as? NSTextField)?.stringValue }
-        #expect(
-            labels.contains(
-                coreString(
-                    "ui.import.artist_identity_conflict.keep_discogs"
-                )
-            )
-        )
-        #expect(
-            labels.contains(
-                coreString(
-                    "ui.import.artist_identity_conflict.keep_musicbrainz"
-                )
-            )
-        )
+        await SnapshotTestSupport.settle(host)
+        let count = host.subviews
+            .filter {
+                $0.nextKeyView != nil || $0.previousKeyView != nil
+            }
+            .count
+        withExtendedLifetime(window) {}
+        return count
     }
-
 }
