@@ -149,7 +149,7 @@ pub use folder_scanner::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
     parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
-    ImportServiceHandle, ScanEvent, SearchQuery,
+    ImportServiceHandle, ScanEvent, SearchQuery, SearchSources,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use list::{

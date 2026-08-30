@@ -72,7 +72,7 @@ internal sealed partial class ImportMappingPane : UserControl
 
     private readonly record struct ManualSearchKey(
         ManualSearchType Type,
-        int Source);
+        ManualSearchSourceSelection Sources);
 
     private sealed record ManualSearchResult(
         List<ReleaseCandidateChoice> Candidates,
@@ -86,7 +86,7 @@ internal sealed partial class ImportMappingPane : UserControl
     private string _searchAlbum = string.Empty;
     private string _searchCatalog = string.Empty;
     private string _searchBarcode = string.Empty;
-    private int _searchSource;
+    private ManualSearchSourceSelection _searchSources = new(true, true);
 
     private ImportMappingTable? _table;
 
@@ -281,7 +281,7 @@ internal sealed partial class ImportMappingPane : UserControl
         _searchAlbum = string.Empty;
         _searchCatalog = string.Empty;
         _searchBarcode = string.Empty;
-        _searchSource = 0;
+        _searchSources = new ManualSearchSourceSelection(true, true);
         _commitError = string.Empty;
     }
 

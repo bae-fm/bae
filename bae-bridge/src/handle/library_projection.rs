@@ -241,18 +241,9 @@ impl BridgeSearchResults {
 
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeCandidateSearchResults {
-    /// Echoes back the `tab` and `source` the search ran against so the caller
-    /// routes results into the matching slot even if the user changed either
-    /// during the await.
-    pub(super) fn from_core(
-        grouped: bae_core::import::GroupedSearchResults,
-        tab: crate::types::BridgeSearchQueryKind,
-        source: crate::types::BridgeMetadataSource,
-    ) -> Self {
+    pub(super) fn from_core(grouped: bae_core::import::GroupedSearchResults) -> Self {
         let bae_core::import::GroupedSearchResults { groups, statuses } = grouped;
         crate::types::BridgeCandidateSearchResults {
-            tab,
-            source,
             groups: groups
                 .into_iter()
                 .map(crate::types::BridgeReleaseGroup::from_core)

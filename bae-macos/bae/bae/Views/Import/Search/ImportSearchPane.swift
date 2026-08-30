@@ -14,7 +14,9 @@ struct ImportSearchPane: View {
     @Binding
     var activeTab: SearchTab
     @Binding
-    var activeSource: BridgeMetadataSource
+    var musicBrainzSelected: Bool
+    @Binding
+    var discogsSelected: Bool
     @Binding
     var searchArtist: String
     @Binding
@@ -229,7 +231,8 @@ struct ImportSearchPane: View {
     private var manualForm: some View {
         ImportSearchFormView(
             activeTab: $activeTab,
-            activeSource: $activeSource,
+            musicBrainzSelected: $musicBrainzSelected,
+            discogsSelected: $discogsSelected,
             searchArtist: $searchArtist,
             searchAlbum: $searchAlbum,
             searchCatalog: $searchCatalog,
@@ -290,7 +293,8 @@ struct ImportSearchPane: View {
                 state: state,
                 mode: .constant(mode),
                 activeTab: .constant(.general),
-                activeSource: .constant(.musicBrainz),
+                musicBrainzSelected: .constant(true),
+                discogsSelected: .constant(true),
                 searchArtist: .constant(searchArtist),
                 searchAlbum: .constant(searchAlbum),
                 searchCatalog: .constant(""),

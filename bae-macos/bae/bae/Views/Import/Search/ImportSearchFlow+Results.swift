@@ -8,15 +8,9 @@ extension ImportSearchFlow {
         _ response: BridgeCandidateSearchResults,
         importer: Importer,
         importStore: ImportStore,
-        key: String
+        key: String,
+        slot: CandidateSearchSlot
     ) {
-        let searchTab: SearchTab =
-            switch response.tab {
-            case .general: .general
-            case .catalogNumber: .catalogNumber
-            case .barcode: .barcode
-            }
-        let resultSource = response.source
         importStore.mutateCandidate(forKey: key) { candidate in
             var tabResults = CandidateSearchState.TabResults()
             tabResults.groups = response.groups.map(ReleaseGroup.init(bridge:))
@@ -33,11 +27,7 @@ extension ImportSearchFlow {
             )
             tabResults.hasSearched = true
             tabResults.isSearching = false
-            candidate.search.setResults(
-                tabResults,
-                forTab: searchTab,
-                source: resultSource
-            )
+            candidate.search.setResults(tabResults, for: slot)
             for status in response.statuses {
                 candidate.libraryStatuses[status.releaseId] = status
             }

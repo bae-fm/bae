@@ -631,7 +631,8 @@ struct ImportSearchFlowLibraryStatusTests {
         ImportSearchFlow.dispatchSearch(
             importer: importer,
             importStore: store,
-            key: candidate.key
+            key: candidate.key,
+            discogsAvailable: true
         )
         await waitUntil { harness.callback(releaseId: "rel-live") != nil }
 
@@ -672,12 +673,11 @@ struct ImportSearchFlowLibraryStatusTests {
         await waitUntil { harness.callbackCount(releaseId: "rel-live") == 1 }
 
         store.mutateCandidate(forKey: candidate.key) { current in
-            var empty = current.search.activeResults()
+            var empty = current.search.activeResults(discogsAvailable: true)
             empty.libraryStatusSubscriptionKeys = []
             current.search.setResults(
                 empty,
-                forTab: current.search.activeTab,
-                source: current.search.activeSource
+                for: current.search.activeSlot(discogsAvailable: true)
             )
         }
         store.refreshLibraryStatusSubscriptions(
@@ -685,12 +685,11 @@ struct ImportSearchFlowLibraryStatusTests {
             key: candidate.key
         )
         store.mutateCandidate(forKey: candidate.key) { current in
-            var restored = current.search.activeResults()
+            var restored = current.search.activeResults(discogsAvailable: true)
             restored.libraryStatusSubscriptionKeys = [statusKey]
             current.search.setResults(
                 restored,
-                forTab: current.search.activeTab,
-                source: current.search.activeSource
+                for: current.search.activeSlot(discogsAvailable: true)
             )
         }
         store.refreshLibraryStatusSubscriptions(
@@ -724,12 +723,11 @@ struct ImportSearchFlowLibraryStatusTests {
             releaseId: "rel-live",
             sourceGroupId: "group-live"
         )
-        var results = candidate.search.activeResults()
+        var results = candidate.search.activeResults(discogsAvailable: true)
         results.libraryStatusSubscriptionKeys = [statusKey]
         candidate.search.setResults(
             results,
-            forTab: candidate.search.activeTab,
-            source: candidate.search.activeSource
+            for: candidate.search.activeSlot(discogsAvailable: true)
         )
         return (candidate, statusKey)
     }
@@ -753,8 +751,6 @@ struct ImportSearchFlowLibraryStatusTests {
 
     private func searchResponse() -> BridgeCandidateSearchResults {
         BridgeCandidateSearchResults(
-            tab: .general,
-            source: .musicBrainz,
             groups: [
                 BridgeReleaseGroup(
                     id: "group-live",

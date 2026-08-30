@@ -1,23 +1,11 @@
 #[cfg(feature = "desktop")]
 use super::*;
 
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSearchQueryKind {
-    General,
-    CatalogNumber,
-    Barcode,
-}
-
-/// Returned from `search_for_candidate`. Echoes the `tab` and `source` the
-/// search ran against so the caller can route results into the matching
-/// (tab, source) slot — the user may have changed tabs or sources during
-/// the await.
+/// Returned from `search_for_candidate`. The caller retains the submitted
+/// query while awaiting this payload and routes it to the matching form slot.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateSearchResults {
-    pub tab: BridgeSearchQueryKind,
-    pub source: BridgeMetadataSource,
     /// Results grouped into release-group cards, one card per group with its
     /// pressings beneath.
     pub groups: Vec<BridgeReleaseGroup>,

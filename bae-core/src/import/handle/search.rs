@@ -4,6 +4,10 @@ use crate::util::rate_limiter::CallPriority;
 enum ProviderSearchParams {
     MusicBrainz(crate::musicbrainz::ReleaseSearchParams),
     Discogs(crate::discogs::client::DiscogsSearchParams),
+    Both {
+        musicbrainz: crate::musicbrainz::ReleaseSearchParams,
+        discogs: crate::discogs::client::DiscogsSearchParams,
+    },
 }
 
 impl SearchQuery {
@@ -12,42 +16,55 @@ impl SearchQuery {
             SearchQuery::General {
                 artist,
                 album,
-                source: MetadataSource::MusicBrainz,
-            } => ProviderSearchParams::MusicBrainz(mb_general_params(artist, album)),
-            SearchQuery::General {
-                artist,
-                album,
-                source: MetadataSource::Discogs,
-            } => ProviderSearchParams::Discogs(discogs_general_params(artist, album)),
+                sources,
+            } => provider_search_params(
+                sources,
+                mb_general_params(artist.clone(), album.clone()),
+                discogs_general_params(artist, album),
+            ),
             SearchQuery::CatalogNumber {
                 catalog_number,
-                source: MetadataSource::MusicBrainz,
-            } => ProviderSearchParams::MusicBrainz(crate::musicbrainz::ReleaseSearchParams {
-                catalog_number: Some(catalog_number),
-                ..Default::default()
-            }),
-            SearchQuery::CatalogNumber {
-                catalog_number,
-                source: MetadataSource::Discogs,
-            } => ProviderSearchParams::Discogs(crate::discogs::client::DiscogsSearchParams {
-                catno: Some(catalog_number),
-                ..Default::default()
-            }),
-            SearchQuery::Barcode {
-                barcode,
-                source: MetadataSource::MusicBrainz,
-            } => ProviderSearchParams::MusicBrainz(crate::musicbrainz::ReleaseSearchParams {
-                barcode: Some(barcode),
-                ..Default::default()
-            }),
-            SearchQuery::Barcode {
-                barcode,
-                source: MetadataSource::Discogs,
-            } => ProviderSearchParams::Discogs(crate::discogs::client::DiscogsSearchParams {
-                barcode: Some(barcode),
-                ..Default::default()
-            }),
+                sources,
+            } => provider_search_params(
+                sources,
+                crate::musicbrainz::ReleaseSearchParams {
+                    catalog_number: Some(catalog_number.clone()),
+                    ..Default::default()
+                },
+                crate::discogs::client::DiscogsSearchParams {
+                    catno: Some(catalog_number),
+                    ..Default::default()
+                },
+            ),
+            SearchQuery::Barcode { barcode, sources } => provider_search_params(
+                sources,
+                crate::musicbrainz::ReleaseSearchParams {
+                    barcode: Some(barcode.clone()),
+                    ..Default::default()
+                },
+                crate::discogs::client::DiscogsSearchParams {
+                    barcode: Some(barcode),
+                    ..Default::default()
+                },
+            ),
         }
+    }
+}
+
+fn provider_search_params(
+    sources: SearchSources,
+    musicbrainz: crate::musicbrainz::ReleaseSearchParams,
+    discogs: crate::discogs::client::DiscogsSearchParams,
+) -> ProviderSearchParams {
+    match sources {
+        SearchSources::One(MetadataSource::MusicBrainz) => {
+            ProviderSearchParams::MusicBrainz(musicbrainz)
+        }
+        SearchSources::One(MetadataSource::Discogs) => ProviderSearchParams::Discogs(discogs),
+        SearchSources::Both => ProviderSearchParams::Both {
+            musicbrainz,
+            discogs,
+        },
     }
 }
 
@@ -104,6 +121,18 @@ impl ImportServiceHandle {
                 self.library_manager
                     .search_discogs(params, CallPriority::Interactive)
                     .await?
+            }
+            ProviderSearchParams::Both {
+                musicbrainz,
+                discogs,
+            } => {
+                let (mut musicbrainz_results, discogs_results) = tokio::try_join!(
+                    crate::import::search::search_mb(musicbrainz, CallPriority::Interactive),
+                    self.library_manager
+                        .search_discogs(discogs, CallPriority::Interactive)
+                )?;
+                musicbrainz_results.extend(discogs_results);
+                musicbrainz_results
             }
         };
 
@@ -339,5 +368,32 @@ impl ImportServiceHandle {
             return Ok(None);
         }
         Ok(row.identify.map(|identify| identify.verdict))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn both_sources_builds_one_request_for_each_provider() {
+        let plan = SearchQuery::General {
+            artist: "Artist Name".to_string(),
+            album: "Album Title".to_string(),
+            sources: SearchSources::Both,
+        }
+        .into_provider_params();
+
+        let ProviderSearchParams::Both {
+            musicbrainz,
+            discogs,
+        } = plan
+        else {
+            panic!("both sources must build both provider requests");
+        };
+        assert_eq!(musicbrainz.artist.as_deref(), Some("Artist Name"));
+        assert_eq!(musicbrainz.album.as_deref(), Some("Album Title"));
+        assert_eq!(discogs.artist.as_deref(), Some("Artist Name"));
+        assert_eq!(discogs.release_title.as_deref(), Some("Album Title"));
     }
 }

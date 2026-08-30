@@ -391,21 +391,39 @@ pub struct BridgeLibraryStatus {
     pub album_id: Option<String>,
 }
 
+/// A non-empty provider selection for manual search. The UI may show an empty
+/// form selection, but it cannot send one across the bridge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSearchSources {
+    One { source: BridgeMetadataSource },
+    Both,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSearchSources {
+    pub(crate) fn into_core(self) -> bae_core::import::SearchSources {
+        match self {
+            Self::One { source } => bae_core::import::SearchSources::One(source.into_core()),
+            Self::Both => bae_core::import::SearchSources::Both,
+        }
+    }
+}
+
 /// Search query — one of the three search modes.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSearchQuery {
     General {
         artist: String,
         album: String,
-        source: BridgeMetadataSource,
+        sources: BridgeSearchSources,
     },
     CatalogNumber {
         catalog_number: String,
-        source: BridgeMetadataSource,
+        sources: BridgeSearchSources,
     },
     Barcode {
         barcode: String,
-        source: BridgeMetadataSource,
+        sources: BridgeSearchSources,
     },
 }
 

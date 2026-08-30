@@ -220,6 +220,44 @@ public sealed class ImportMappingPaneTests
     }
 
     [AvaloniaFact]
+    public void ManualSearchSourcesAreIndependentAndAtLeastOneIsRequired()
+    {
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually);
+
+        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+        FieldByLabel(pane, Loc.Chrome("import.field.artist_manual")).Text = "Artist Name";
+        Dispatcher.UIThread.RunJobs();
+
+        var musicBrainz = Assert.Single(
+            pane.GetLogicalDescendants().OfType<CheckBox>(),
+            check => Equals(check.Content, "MusicBrainz"));
+        var discogs = Assert.Single(
+            pane.GetLogicalDescendants().OfType<CheckBox>(),
+            check => Equals(check.Content, "Discogs"));
+        Assert.True(musicBrainz.IsChecked);
+        Assert.True(discogs.IsChecked);
+
+        musicBrainz.IsChecked = false;
+        discogs.IsChecked = false;
+        Dispatcher.UIThread.RunJobs();
+        Assert.False(
+            Assert.Single(
+                pane.GetLogicalDescendants().OfType<Button>(),
+                button => Equals(button.Content, Loc.Chrome("action.search")))
+            .IsEnabled);
+
+        discogs.IsChecked = true;
+        Dispatcher.UIThread.RunJobs();
+        Assert.True(
+            Assert.Single(
+                pane.GetLogicalDescendants().OfType<Button>(),
+                button => Equals(button.Content, Loc.Chrome("action.search")))
+            .IsEnabled);
+    }
+
+    [AvaloniaFact]
     public void ManualSearchDispatchesTheSelectedQueryType()
     {
         var searches = new List<BridgeSearchQuery>();
@@ -253,17 +291,17 @@ public sealed class ImportMappingPaneTests
                 new BridgeSearchQuery.General(
                     "Typed artist",
                     "Typed album",
-                    BridgeMetadataSource.Discogs),
+                    new BridgeSearchSources.Both()),
                 query),
             query => Assert.Equal(
                 new BridgeSearchQuery.CatalogNumber(
                     "CAT-1",
-                    BridgeMetadataSource.Discogs),
+                    new BridgeSearchSources.Both()),
                 query),
             query => Assert.Equal(
                 new BridgeSearchQuery.Barcode(
                     "0123456789012",
-                    BridgeMetadataSource.Discogs),
+                    new BridgeSearchSources.Both()),
                 query));
     }
 
@@ -474,6 +512,7 @@ public sealed class ImportMappingPaneTests
                 GetSettings = () => (true, new Settings
                 {
                     DefaultFindOnlineMode = defaultFindOnlineMode,
+                    DiscogsUsable = true,
                 }),
             });
         app.SettingsStore.Reload();

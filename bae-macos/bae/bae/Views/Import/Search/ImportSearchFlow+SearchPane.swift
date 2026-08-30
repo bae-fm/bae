@@ -55,7 +55,8 @@ extension ImportSearchFlow {
             ),
             mode: mode,
             activeTab: fields.activeTab,
-            activeSource: fields.activeSource,
+            musicBrainzSelected: fields.musicBrainzSelected,
+            discogsSelected: fields.discogsSelected,
             searchArtist: fields.artist,
             searchAlbum: fields.album,
             searchCatalog: fields.catalog,
@@ -64,7 +65,8 @@ extension ImportSearchFlow {
                 dispatchSearch(
                     importer: services.importer,
                     importStore: importStore,
-                    key: key
+                    key: key,
+                    discogsAvailable: services.configStore.config.discogsUsable
                 )
             },
             onOpenSettings: openSettings,
@@ -84,7 +86,8 @@ extension ImportSearchFlow {
     /// through `mutateCandidate` so edits land on the candidate in the store.
     struct SearchFieldBindings {
         let activeTab: Binding<SearchTab>
-        let activeSource: Binding<BridgeMetadataSource>
+        let musicBrainzSelected: Binding<Bool>
+        let discogsSelected: Binding<Bool>
         let artist: Binding<String>
         let album: Binding<String>
         let catalog: Binding<String>
@@ -114,10 +117,17 @@ extension ImportSearchFlow {
                 key: key,
                 candidate: candidate
             ),
-            activeSource: makeActiveSourceBinding(
+            musicBrainzSelected: makeSearchSourceBinding(
                 importStore: importStore,
                 key: key,
-                candidate: candidate
+                candidate: candidate,
+                field: \.musicBrainzSelected
+            ),
+            discogsSelected: makeSearchSourceBinding(
+                importStore: importStore,
+                key: key,
+                candidate: candidate,
+                field: \.discogsSelected
             ),
             artist: text(\.searchArtist),
             album: text(\.searchAlbum),
@@ -134,7 +144,9 @@ extension ImportSearchFlow {
         services: ImportServices,
         input: SearchPaneInput
     ) -> ImportSearchState {
-        let tabResults = candidate.search.activeResults()
+        let tabResults = candidate.search.activeResults(
+            discogsAvailable: services.configStore.config.discogsUsable
+        )
         return ImportSearchState(
             identifyState: shownIdentifyState(
                 resumed: candidate.resumedIdentifyState,

@@ -482,39 +482,29 @@ impl AppHandle {
         self.run_exported(move |this| async move {
             use bae_core::import::SearchQuery;
 
-            let (core_query, tab, bridge_source) = match query {
+            let core_query = match query {
                 crate::types::BridgeSearchQuery::General {
                     artist,
                     album,
-                    source,
-                } => (
-                    SearchQuery::General {
-                        artist,
-                        album,
-                        source: source.into_core(),
-                    },
-                    crate::types::BridgeSearchQueryKind::General,
-                    source,
-                ),
+                    sources,
+                } => SearchQuery::General {
+                    artist,
+                    album,
+                    sources: sources.into_core(),
+                },
                 crate::types::BridgeSearchQuery::CatalogNumber {
                     catalog_number,
-                    source,
-                } => (
-                    SearchQuery::CatalogNumber {
-                        catalog_number,
-                        source: source.into_core(),
-                    },
-                    crate::types::BridgeSearchQueryKind::CatalogNumber,
-                    source,
-                ),
-                crate::types::BridgeSearchQuery::Barcode { barcode, source } => (
+                    sources,
+                } => SearchQuery::CatalogNumber {
+                    catalog_number,
+                    sources: sources.into_core(),
+                },
+                crate::types::BridgeSearchQuery::Barcode { barcode, sources } => {
                     SearchQuery::Barcode {
                         barcode,
-                        source: source.into_core(),
-                    },
-                    crate::types::BridgeSearchQueryKind::Barcode,
-                    source,
-                ),
+                        sources: sources.into_core(),
+                    }
+                }
             };
 
             let grouped = this
@@ -525,8 +515,6 @@ impl AppHandle {
 
             Ok(crate::types::BridgeCandidateSearchResults::from_core(
                 grouped,
-                tab,
-                bridge_source,
             ))
         })
         .await

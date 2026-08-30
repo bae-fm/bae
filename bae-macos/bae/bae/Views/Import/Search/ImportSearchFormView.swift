@@ -1,14 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// The manual-search form: source picker, tab selector (General / Catalog # /
+/// The manual-search form: source toggles, tab selector (General / Catalog # /
 /// Barcode), and the tab's fields with autocomplete seeded from the candidate's
 /// scanned text signals. Submits through `onSearch`.
 struct ImportSearchFormView: View {
     @Binding
     var activeTab: SearchTab
     @Binding
-    var activeSource: BridgeMetadataSource
+    var musicBrainzSelected: Bool
+    @Binding
+    var discogsSelected: Bool
     @Binding
     var searchArtist: String
     @Binding
@@ -28,14 +30,24 @@ struct ImportSearchFormView: View {
     private var discogsKeyHoverTask: DispatchWorkItem?
 
     private var isSearchDisabled: Bool {
-        switch activeTab {
-        case .general:
-            searchArtist.isEmpty && searchAlbum.isEmpty
-        case .catalogNumber:
-            searchCatalog.isEmpty
-        case .barcode:
-            searchBarcode.isEmpty
-        }
+        let hasSource =
+            musicBrainzSelected
+            || (discogsEnabled && discogsSelected)
+        let hasTerms =
+            switch activeTab {
+            case .general:
+                !searchArtist.isEmpty || !searchAlbum.isEmpty
+            case .catalogNumber:
+                !searchCatalog.isEmpty
+            case .barcode:
+                !searchBarcode.isEmpty
+            }
+        return !hasSource || !hasTerms
+    }
+
+    private func submitSearch() {
+        guard !isSearchDisabled else { return }
+        onSearch()
     }
 
     /// Shared suggestion pool for Artist and Album. OCR often runs adjacent
@@ -63,7 +75,7 @@ struct ImportSearchFormView: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                sourcePicker
+                sourceToggles
                 Picker("Search by", selection: $activeTab) {
                     Text("General").tag(SearchTab.general)
                     Text("Catalog #").tag(SearchTab.catalogNumber)
@@ -81,16 +93,16 @@ struct ImportSearchFormView: View {
                         placeholder: String(localized: "Artist"),
                         suggestions: generalSuggestions,
                         isLoading: isScanning,
-                        onSubmit: { onSearch() },
+                        onSubmit: submitSearch,
                     )
                     AutocompleteTextField(
                         text: $searchAlbum,
                         placeholder: String(localized: "Album"),
                         suggestions: generalSuggestions,
                         isLoading: isScanning,
-                        onSubmit: { onSearch() },
+                        onSubmit: submitSearch,
                     )
-                    Button("Search") { onSearch() }
+                    Button("Search", action: submitSearch)
                         .disabled(isSearchDisabled)
                 }
             case .catalogNumber:
@@ -100,19 +112,19 @@ struct ImportSearchFormView: View {
                         placeholder: String(localized: "e.g. WPCR-80001"),
                         suggestions: catalogSuggestions,
                         isLoading: isScanning,
-                        onSubmit: { onSearch() },
+                        onSubmit: submitSearch,
                     )
-                    Button("Search") { onSearch() }
+                    Button("Search", action: submitSearch)
                         .disabled(isSearchDisabled)
                 }
             case .barcode:
                 HStack {
                     TextField("e.g. 4943674251780", text: $searchBarcode)
                         .textFieldStyle(.roundedBorder)
-                    Button("Search") { onSearch() }
+                    Button("Search", action: submitSearch)
                         .disabled(isSearchDisabled)
                 }
-                .onSubmit { onSearch() }
+                .onSubmit(submitSearch)
             }
 
             if let signalFailure {
@@ -129,14 +141,15 @@ struct ImportSearchFormView: View {
         .animation(nil, value: activeTab)
     }
 
-    private var sourcePicker: some View {
-        SourceSegmentedControl(
-            selection: $activeSource,
+    private var sourceToggles: some View {
+        SearchSourceToggles(
+            musicBrainzSelected: $musicBrainzSelected,
+            discogsSelected: $discogsSelected,
             discogsEnabled: discogsEnabled,
             showDiscogsInfo: $showDiscogsKeyInfo,
             hoverTask: $discogsKeyHoverTask,
         )
-        .frame(width: 200)
+        .fixedSize()
         .overlay(alignment: .bottomTrailing) {
             Color.clear
                 .frame(width: 100, height: 1)
@@ -160,7 +173,8 @@ struct ImportSearchFormView: View {
     #Preview("General search") {
         ImportSearchFormView(
             activeTab: .constant(.general),
-            activeSource: .constant(.musicBrainz),
+            musicBrainzSelected: .constant(true),
+            discogsSelected: .constant(true),
             searchArtist: .constant("Artist Name"),
             searchAlbum: .constant("Album Title"),
             searchCatalog: .constant(""),
@@ -177,7 +191,8 @@ struct ImportSearchFormView: View {
     #Preview("Catalog search") {
         ImportSearchFormView(
             activeTab: .constant(.catalogNumber),
-            activeSource: .constant(.musicBrainz),
+            musicBrainzSelected: .constant(true),
+            discogsSelected: .constant(false),
             searchArtist: .constant(""),
             searchAlbum: .constant(""),
             searchCatalog: .constant("WPCR-80001"),

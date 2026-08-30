@@ -146,11 +146,32 @@ internal sealed class ReleaseActionDialogs
             var albumField = DialogUi.Field(Loc.Chrome("search.field.album"), out var albumBox);
             artistBox.Text = seedArtist;
             albumBox.Text = seedAlbum;
-            var sourceBox = ImportPaneUi.MetadataSourcePicker();
+            var discogsAvailable = _app.SettingsStore.Current?.DiscogsConfigured == true;
+            var sourceSelection = new ManualSearchSourceSelection(true, discogsAvailable);
+            var searchButton = new Button { Content = Loc.Chrome("action.search") };
+            var sourceToggles = ImportPaneUi.MetadataSourceToggles(
+                sourceSelection,
+                discogsAvailable,
+                out var musicBrainz,
+                out var discogs);
+            void SetSourceSelection(ManualSearchSourceSelection selection)
+            {
+                sourceSelection = selection;
+                searchButton.IsEnabled = sourceSelection.QuerySources is not null;
+            }
+            musicBrainz.IsCheckedChanged += (_, _) => SetSourceSelection(
+                sourceSelection with
+                {
+                    MusicBrainz = musicBrainz.IsChecked == true,
+                });
+            discogs.IsCheckedChanged += (_, _) => SetSourceSelection(
+                sourceSelection with
+                {
+                    Discogs = discogs.IsChecked == true,
+                });
             var sourceCaption = new TextBlock { Text = Loc.Chrome("search.field.source"), FontSize = 12.5 };
             sourceCaption[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceBox } };
-            var searchButton = new Button { Content = Loc.Chrome("action.search") };
+            var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceToggles } };
 
             // The pressing the user picked, pending the confirm that commits
             // it as the release's selected external metadata provenance.
@@ -215,14 +236,18 @@ internal sealed class ReleaseActionDialogs
 
             searchButton.Click += async (_, _) =>
             {
-                var source = (BridgeMetadataSource)sourceBox.SelectedItem!;
+                var sources = sourceSelection.QuerySources;
+                if (sources is null)
+                {
+                    return;
+                }
                 searchButton.IsEnabled = false;
                 var (current, search) = await _app.Import.SearchReleases(
                     new BridgeSearchQuery.General(
                         artistBox.Text ?? string.Empty,
                         albumBox.Text ?? string.Empty,
-                        source));
-                searchButton.IsEnabled = true;
+                        sources));
+                searchButton.IsEnabled = sourceSelection.QuerySources is not null;
                 if (!current)
                 {
                     return;

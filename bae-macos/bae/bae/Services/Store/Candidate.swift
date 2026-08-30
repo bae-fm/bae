@@ -21,6 +21,25 @@ enum SearchTab: Hashable {
     case barcode
 }
 
+struct SearchSourceSelection: Hashable {
+    let musicBrainz: Bool
+    let discogs: Bool
+
+    var bridgeSources: BridgeSearchSources? {
+        switch (musicBrainz, discogs) {
+        case (true, true): .both
+        case (true, false): .one(source: .musicBrainz)
+        case (false, true): .one(source: .discogs)
+        case (false, false): nil
+        }
+    }
+}
+
+struct CandidateSearchSlot: Hashable {
+    let tab: SearchTab
+    let sources: SearchSourceSelection
+}
+
 struct ReleaseLibraryStatusSubscriptionKey: Hashable {
     let source: BridgeMetadataSource
     let releaseId: String
@@ -148,9 +167,9 @@ enum CandidateFileTagsPreviewState: Equatable {
 
 // MARK: - CandidateSearchState
 
-/// Per-tab search state plus form fields and active tab/source.
+/// Per-tab search state plus form fields and the selected providers.
 struct CandidateSearchState: Equatable {
-    /// Search results for one (tab, source) combination, grouped into
+    /// Search results for one (tab, provider selection) combination, grouped into
     /// release-group cards by core.
     struct TabResults: Equatable {
         var groups: [ReleaseGroup] = []
@@ -160,40 +179,50 @@ struct CandidateSearchState: Equatable {
         var isSearching: Bool = false
     }
 
-    /// Results keyed by tab, then source. A missing key is a combination the
+    /// Results keyed by tab, then provider selection. A missing key is a combination the
     /// user hasn't searched yet — identical to `TabResults()`'s initial state.
-    private var resultsByTabSource:
-        [SearchTab: [BridgeMetadataSource: TabResults]] = [:]
+    private var resultsByTabSources:
+        [SearchTab: [SearchSourceSelection: TabResults]] = [:]
 
     var searchArtist: String = ""
     var searchAlbum: String = ""
     var searchCatalog: String = ""
     var searchBarcode: String = ""
     var activeTab: SearchTab = .general
-    var activeSource: BridgeMetadataSource = .musicBrainz
+    var musicBrainzSelected: Bool = true
+    var discogsSelected: Bool = true
 
-    func activeResults() -> TabResults {
-        results(forTab: activeTab, source: activeSource)
+    func selectedSources(discogsAvailable: Bool) -> SearchSourceSelection {
+        SearchSourceSelection(
+            musicBrainz: musicBrainzSelected,
+            discogs: discogsAvailable && discogsSelected
+        )
     }
 
-    func results(forTab tab: SearchTab, source: BridgeMetadataSource)
-        -> TabResults
+    func activeResults(discogsAvailable: Bool) -> TabResults {
+        results(for: activeSlot(discogsAvailable: discogsAvailable))
+    }
+
+    func activeSlot(discogsAvailable: Bool) -> CandidateSearchSlot {
+        CandidateSearchSlot(
+            tab: activeTab,
+            sources: selectedSources(discogsAvailable: discogsAvailable)
+        )
+    }
+
+    func results(for slot: CandidateSearchSlot) -> TabResults {
+        resultsByTabSources[slot.tab]?[slot.sources] ?? TabResults()
+    }
+
+    mutating func setResults(_ state: TabResults, for slot: CandidateSearchSlot)
     {
-        resultsByTabSource[tab]?[source] ?? TabResults()
-    }
-
-    mutating func setResults(
-        _ state: TabResults,
-        forTab tab: SearchTab,
-        source: BridgeMetadataSource
-    ) {
-        resultsByTabSource[tab, default: [:]][source] = state
+        resultsByTabSources[slot.tab, default: [:]][slot.sources] = state
     }
 
     func libraryStatusSubscriptionKeys()
         -> Set<ReleaseLibraryStatusSubscriptionKey>
     {
-        resultsByTabSource.values
+        resultsByTabSources.values
             .flatMap { bySource in
                 bySource.values.flatMap(\.libraryStatusSubscriptionKeys)
             }

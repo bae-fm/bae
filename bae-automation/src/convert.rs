@@ -147,18 +147,18 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> SearchQuery {
         } => SearchQuery::General {
             artist,
             album,
-            source: source.into(),
+            sources: bae_core::import::SearchSources::One(source.into()),
         },
         AutomationSearchQuery::CatalogNumber {
             catalog_number,
             source,
         } => SearchQuery::CatalogNumber {
             catalog_number,
-            source: source.into(),
+            sources: bae_core::import::SearchSources::One(source.into()),
         },
         AutomationSearchQuery::Barcode { barcode, source } => SearchQuery::Barcode {
             barcode,
-            source: source.into(),
+            sources: bae_core::import::SearchSources::One(source.into()),
         },
     }
 }

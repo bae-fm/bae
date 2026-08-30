@@ -24,16 +24,17 @@ enum ImportSearchFlow {
     }
 
     @MainActor
-    static func makeActiveSourceBinding(
+    static func makeSearchSourceBinding(
         importStore: ImportStore,
         key: String,
-        candidate: Candidate
-    ) -> Binding<BridgeMetadataSource> {
+        candidate: Candidate,
+        field: WritableKeyPath<CandidateSearchState, Bool>
+    ) -> Binding<Bool> {
         Binding(
-            get: { candidate.search.activeSource },
+            get: { candidate.search[keyPath: field] },
             set: { newValue in
                 importStore.mutateCandidate(forKey: key) {
-                    $0.search.activeSource = newValue
+                    $0.search[keyPath: field] = newValue
                 }
             },
         )
@@ -62,25 +63,24 @@ enum ImportSearchFlow {
     static func dispatchSearch(
         importer: Importer,
         importStore: ImportStore,
-        key: String
+        key: String,
+        discogsAvailable: Bool
     ) {
         guard let snapshot = importStore.candidate(forKey: key) else {
             return
         }
-        let capturedTab = snapshot.search.activeTab
-        let capturedSource = snapshot.search.activeSource
-        let query = searchQuery(from: snapshot.search)
-
-        importStore.mutateCandidate(forKey: key) { candidate in
-            var tabResults = candidate.search.activeResults()
-            tabResults.isSearching = true
-            candidate.search.setResults(
-                tabResults,
-                forTab: capturedTab,
-                source: capturedSource
-            )
-            candidate.error = nil
+        let slot = snapshot.search.activeSlot(
+            discogsAvailable: discogsAvailable
+        )
+        guard let bridgeSources = slot.sources.bridgeSources else {
+            return
         }
+        let query = searchQuery(
+            from: snapshot.search,
+            sources: bridgeSources
+        )
+
+        markSearching(importStore: importStore, key: key, slot: slot)
 
         let task = Task { @MainActor in
             do {
@@ -89,7 +89,8 @@ enum ImportSearchFlow {
                     response,
                     importer: importer,
                     importStore: importStore,
-                    key: key
+                    key: key,
+                    slot: slot
                 )
             }
             catch is CancellationError {
@@ -99,8 +100,7 @@ enum ImportSearchFlow {
                 clearSearching(
                     importStore: importStore,
                     key: key,
-                    tab: capturedTab,
-                    source: capturedSource,
+                    slot: slot,
                     error: nil
                 )
             }
@@ -111,8 +111,7 @@ enum ImportSearchFlow {
                 clearSearching(
                     importStore: importStore,
                     key: key,
-                    tab: capturedTab,
-                    source: capturedSource,
+                    slot: slot,
                     error: error.displayLine.map {
                         String(localized: "Search failed: \($0)")
                     }
@@ -125,28 +124,43 @@ enum ImportSearchFlow {
         }
     }
 
+    @MainActor
+    private static func markSearching(
+        importStore: ImportStore,
+        key: String,
+        slot: CandidateSearchSlot
+    ) {
+        importStore.mutateCandidate(forKey: key) { candidate in
+            var tabResults = candidate.search.results(for: slot)
+            tabResults.isSearching = true
+            candidate.search.setResults(tabResults, for: slot)
+            candidate.error = nil
+        }
+    }
+
     /// The bridge query for the active tab: the general (artist/album),
-    /// catalog-number, or barcode field set, all scoped to the active source.
+    /// catalog-number, or barcode field set, scoped to the selected providers.
     @MainActor
     private static func searchQuery(
-        from search: CandidateSearchState
+        from search: CandidateSearchState,
+        sources: BridgeSearchSources
     ) -> BridgeSearchQuery {
         switch search.activeTab {
         case .general:
             .general(
                 artist: search.searchArtist,
                 album: search.searchAlbum,
-                source: search.activeSource
+                sources: sources
             )
         case .catalogNumber:
             .catalogNumber(
                 catalogNumber: search.searchCatalog,
-                source: search.activeSource
+                sources: sources
             )
         case .barcode:
             .barcode(
                 barcode: search.searchBarcode,
-                source: search.activeSource
+                sources: sources
             )
         }
     }
@@ -158,24 +172,16 @@ enum ImportSearchFlow {
     private static func clearSearching(
         importStore: ImportStore,
         key: String,
-        tab: SearchTab,
-        source: BridgeMetadataSource,
+        slot: CandidateSearchSlot,
         error: String?
     ) {
         importStore.mutateCandidate(forKey: key) { candidate in
             if let error {
                 candidate.error = error
             }
-            var tabResults = candidate.search.results(
-                forTab: tab,
-                source: source
-            )
+            var tabResults = candidate.search.results(for: slot)
             tabResults.isSearching = false
-            candidate.search.setResults(
-                tabResults,
-                forTab: tab,
-                source: source
-            )
+            candidate.search.setResults(tabResults, for: slot)
             if error != nil {
                 candidate.searchTask = nil
             }

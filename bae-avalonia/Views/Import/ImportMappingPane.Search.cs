@@ -123,11 +123,35 @@ internal sealed partial class ImportMappingPane
             ManualSearchType.Barcode));
         column.Children.Add(types);
 
-        var sourceBox = ImportPaneUi.MetadataSourcePicker(_searchSource);
-        sourceBox.SelectionChanged += (_, _) => _searchSource = sourceBox.SelectedIndex;
+        var availableSources = _searchSources with
+        {
+            Discogs = _searchSources.Discogs
+                && _app.SettingsStore.Current?.DiscogsConfigured == true,
+        };
+        var sourceToggles = ImportPaneUi.MetadataSourceToggles(
+            availableSources,
+            _app.SettingsStore.Current?.DiscogsConfigured == true,
+            out var musicBrainz,
+            out var discogs);
+        musicBrainz.IsCheckedChanged += (_, _) =>
+        {
+            _searchSources = _searchSources with
+            {
+                MusicBrainz = musicBrainz.IsChecked == true,
+            };
+            Render();
+        };
+        discogs.IsCheckedChanged += (_, _) =>
+        {
+            _searchSources = _searchSources with
+            {
+                Discogs = discogs.IsChecked == true,
+            };
+            Render();
+        };
         var sourceField = new StackPanel { Spacing = 4 };
         sourceField.Children.Add(DialogUi.SectionLabel(Loc.Chrome("search.field.source")));
-        sourceField.Children.Add(sourceBox);
+        sourceField.Children.Add(sourceToggles);
 
         Control fields = _manualSearchType switch
         {
@@ -148,11 +172,17 @@ internal sealed partial class ImportMappingPane
         column.Children.Add(fields);
 
         var search = ImportPaneUi.RowButton(Loc.Chrome("action.search"));
+        search.IsEnabled = availableSources.QuerySources is not null;
         search.Click += async (_, _) =>
         {
+            var querySources = availableSources.QuerySources;
+            if (querySources is null)
+            {
+                return;
+            }
             search.IsEnabled = false;
-            var key = new ManualSearchKey(_manualSearchType, _searchSource);
-            var query = ManualSearchQuery((BridgeMetadataSource)sourceBox.SelectedItem!);
+            var key = new ManualSearchKey(_manualSearchType, availableSources);
+            var query = ManualSearchQuery(querySources);
             var (current, found) = await _app.Import.SearchReleases(query);
             search.IsEnabled = true;
             if (!current)
@@ -169,7 +199,7 @@ internal sealed partial class ImportMappingPane
         actions.Children.Add(search);
         column.Children.Add(actions);
 
-        var resultKey = new ManualSearchKey(_manualSearchType, _searchSource);
+        var resultKey = new ManualSearchKey(_manualSearchType, availableSources);
         if (_manualSearchResults.TryGetValue(resultKey, out var result))
         {
             if (result.Error is { Length: > 0 } error)
@@ -246,19 +276,19 @@ internal sealed partial class ImportMappingPane
         return fields;
     }
 
-    private BridgeSearchQuery ManualSearchQuery(BridgeMetadataSource source) =>
+    private BridgeSearchQuery ManualSearchQuery(BridgeSearchSources sources) =>
         _manualSearchType switch
         {
             ManualSearchType.General => new BridgeSearchQuery.General(
                 _searchArtist,
                 _searchAlbum,
-                source),
+                sources),
             ManualSearchType.Catalog => new BridgeSearchQuery.CatalogNumber(
                 _searchCatalog,
-                source),
+                sources),
             ManualSearchType.Barcode => new BridgeSearchQuery.Barcode(
                 _searchBarcode,
-                source),
+                sources),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(_manualSearchType), _manualSearchType, "Unknown manual search type"),
         };

@@ -79,19 +79,25 @@ pub enum ImportEvent {
 }
 
 /// Search query — one of the three search modes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchSources {
+    One(MetadataSource),
+    Both,
+}
+
 pub enum SearchQuery {
     General {
         artist: String,
         album: String,
-        source: MetadataSource,
+        sources: SearchSources,
     },
     CatalogNumber {
         catalog_number: String,
-        source: MetadataSource,
+        sources: SearchSources,
     },
     Barcode {
         barcode: String,
-        source: MetadataSource,
+        sources: SearchSources,
     },
 }
 
