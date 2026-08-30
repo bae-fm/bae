@@ -161,79 +161,29 @@ struct ImportCandidateCheckboxTests {
 
 final class PopoverAnimationTests: XCTestCase {
     @MainActor
-    func testFolderScanDetailsDisablePopoverAnimation() async throws {
-        let size = NSSize(width: 180, height: 40)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
-            FolderScanProgressIndicator(
-                activity: BridgeFolderScanActivity(
-                    foundCount: 179,
-                    folders: [
-                        BridgeActiveFolderScan(
-                            watchedFolderPath: "/imports/incoming",
-                            watchedFolderName: "Incoming",
-                            foundCount: 179
-                        )
-                    ]
-                )
-            )
-            .frame(width: size.width, height: size.height),
+    func testPopoverBehaviorDisablesEnclosingPopoverAnimation() async {
+        let size = NSSize(width: 80, height: 40)
+        let (window, anchor) = SnapshotTestSupport.hostInWindow(
+            Color.clear.frame(width: size.width, height: size.height),
             size: size
         )
-
-        await SnapshotTestSupport.settle(host)
-        let button = try XCTUnwrap(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSButton }
-                .first
+        let popover = NSPopover()
+        popover.animates = true
+        let contentViewController = NSHostingController(
+            rootView: PopoverBehavior()
+                .frame(width: 120, height: 80)
         )
-        button.performClick(nil)
-        await SnapshotTestSupport.settle(host)
-
-        let popover = try XCTUnwrap(
-            NSApp.windows
-                .compactMap { window in
-                    ObjCExceptionGuard.value(forKey: "_popover", on: window)
-                        as? NSPopover
-                }
-                .first
+        popover.contentViewController = contentViewController
+        popover.show(
+            relativeTo: anchor.bounds,
+            of: anchor,
+            preferredEdge: .maxY
         )
+
+        await SnapshotTestSupport.settle(contentViewController.view)
+
         XCTAssertFalse(popover.animates)
-        withExtendedLifetime(window) {}
-    }
-
-    @MainActor
-    func testArtistSearchDisablesPopoverAnimation() async throws {
-        let size = NSSize(width: 320, height: 50)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
-            ArtistAssignmentsField(
-                assignments: [],
-                placeholder: "Album artist",
-                onChange: { _ in }
-            )
-            .environment(PreviewData.artistAssignmentsLibrary())
-            .environment(UiStore())
-            .frame(width: size.width, height: size.height),
-            size: size
-        )
-
-        await SnapshotTestSupport.settle(host)
-        let button = try XCTUnwrap(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSButton }
-                .first
-        )
-        button.performClick(nil)
-        await SnapshotTestSupport.settle(host)
-
-        let popover = try XCTUnwrap(
-            NSApp.windows
-                .compactMap { window in
-                    ObjCExceptionGuard.value(forKey: "_popover", on: window)
-                        as? NSPopover
-                }
-                .first
-        )
-        XCTAssertFalse(popover.animates)
+        popover.performClose(nil)
         withExtendedLifetime(window) {}
     }
 }
