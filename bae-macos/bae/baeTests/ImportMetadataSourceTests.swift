@@ -20,7 +20,7 @@ private final class MetadataSourceRecorder {
     var previewedKeys: [String] = []
     var identifiedKeys: [String] = []
     var errors: [String] = []
-    var previewResult = MappingFixtures.albumSeed
+    var previewResults = [MappingFixtures.albumSeed]
     var previewFailure: (any Error)?
 
     var importer: Importer {
@@ -38,8 +38,10 @@ private final class MetadataSourceRecorder {
                 return 1
             },
             applyCandidateFileTags: { [self] key in
-                await MainActor.run { fileTagApplications.append(key) }
-                return 1
+                await MainActor.run {
+                    fileTagApplications.append(key)
+                    return UInt64(fileTagApplications.count)
+                }
             },
             clearCandidateMetadata: { [self] key in
                 await MainActor.run { clearedKeys.append(key) }
@@ -49,7 +51,8 @@ private final class MetadataSourceRecorder {
                 try await MainActor.run {
                     previewedKeys.append(key)
                     if let previewFailure { throw previewFailure }
-                    return previewResult
+                    precondition(!previewResults.isEmpty)
+                    return previewResults.removeFirst()
                 }
             },
             identifyForExplicitLookup: { [self] key in
@@ -419,6 +422,92 @@ extension ImportMetadataSourceTests {
             await Task.yield()
         }
         #expect(predicate())
+    }
+}
+
+@MainActor
+final class ImportFileTagsRepeatabilityTests: XCTestCase {
+    func testFileTagsCanBeReadAndAppliedAgainWithoutClearingMetadata()
+        async throws
+    {
+        let key = MappingFixtures.candidateKey
+        let store = MappingFixtures.store(
+            mapping: MappingFixtures.thirteenFileTable
+        )
+        let recorder = MetadataSourceRecorder()
+        let services = recorder.services(store)
+        let previews = repeatablePreviews()
+        recorder.previewResults = previews
+
+        for (offset, preview) in previews.enumerated() {
+            let revision = UInt64(offset + 1)
+            let candidate = try XCTUnwrap(store.candidate(forKey: key))
+            if offset > 0 {
+                XCTAssertEqual(
+                    candidate.fileTagsPreview.edit,
+                    previews[offset - 1]
+                )
+            }
+            ImportMappingFlow.presentMetadata(
+                .fileTags,
+                for: candidate,
+                services: services
+            )
+            XCTAssertTrue(
+                try XCTUnwrap(store.candidate(forKey: key))
+                    .fileTagsPreview.isLoading
+            )
+            try await waitUntil {
+                recorder.previewedKeys.count == Int(revision)
+                    && store.candidate(forKey: key)?.fileTagsPreview.edit
+                        == preview
+            }
+
+            ImportMappingFlow.useFileTags(key: key, services: services)
+            try await waitUntil {
+                store.candidate(forKey: key)?
+                    .metadataApplicationSession?
+                    .commandRevision == revision
+            }
+            store.applyCandidateDetail(
+                key: key,
+                detail: MappingFixtures.detail(
+                    mapping: MappingFixtures.fileTagsTable,
+                    metadataProvenance: .fileTags,
+                    metadataRevision: revision
+                )
+            )
+            try await waitUntil {
+                store.candidate(forKey: key)?.metadataPresentation == .draft
+            }
+        }
+
+        XCTAssertEqual(recorder.previewedKeys, [key, key])
+        XCTAssertEqual(recorder.fileTagApplications, [key, key])
+        XCTAssertEqual(
+            store.candidate(forKey: key)?.metadataProvenance,
+            .fileTags
+        )
+    }
+
+    private func repeatablePreviews() -> [BridgeReleaseUserEdit] {
+        [
+            MappingFixtures.albumSeed,
+            BridgeReleaseUserEdit(
+                albumTitle: "Updated Album Title",
+                albumArtistAssignments: MappingFixtures.albumSeed
+                    .albumArtistAssignments,
+                pressing: MappingFixtures.albumSeed.pressing,
+                tracks: MappingFixtures.albumSeed.tracks
+            ),
+        ]
+    }
+
+    private func waitUntil(_ predicate: () -> Bool) async throws {
+        for _ in 0..<100 where !predicate() {
+            await Task.yield()
+        }
+        _ = try XCTUnwrap(predicate() ? true : nil)
     }
 }
 

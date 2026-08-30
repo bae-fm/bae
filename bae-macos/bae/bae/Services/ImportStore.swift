@@ -271,15 +271,8 @@ class ImportStore {
 
 extension ImportStore {
     func beginFileTagsPreview(key: String) -> CandidateFileTagsPreviewSession? {
-        guard let candidate = candidate(forKey: key),
-            candidate.metadataProvenance != .fileTags
-        else { return nil }
-        switch candidate.fileTagsPreview {
-        case .loading, .loaded:
-            return nil
-        case .unloaded, .failed:
-            break
-        }
+        guard let candidate = candidate(forKey: key) else { return nil }
+        guard !candidate.fileTagsPreview.isLoading else { return nil }
         let session = CandidateFileTagsPreviewSession()
         mutateCandidate(forKey: key) { candidate in
             candidate.error = nil
