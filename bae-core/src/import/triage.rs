@@ -147,18 +147,18 @@ pub fn import_status_of(
 /// the queue as projected.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageRuntimeFacts {
-    pub phase: IdentifyPhase,
+    pub identify_phase: Option<IdentifyPhase>,
     /// Whether an import owns this candidate right now. How far it has got is
     /// the runtime's, read by the leaf that draws the bar.
     pub importing: bool,
 }
 
 impl Default for TriageRuntimeFacts {
-    /// A key nothing is running for: the sweep has not reached it and no
+    /// A key nothing is running for: no identification work exists and no
     /// import has claimed it.
     fn default() -> Self {
         Self {
-            phase: IdentifyPhase::Queued,
+            identify_phase: None,
             importing: false,
         }
     }
@@ -167,10 +167,11 @@ impl Default for TriageRuntimeFacts {
 impl TriageRuntimeFacts {
     pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
         Self {
-            phase: match &runtime.identify {
-                Some(state) => IdentifyPhase::of(state),
-                None => IdentifyPhase::Queued,
-            },
+            identify_phase: runtime.identify.as_ref().map(|identify| {
+                identify
+                    .state()
+                    .map_or(IdentifyPhase::Queued, IdentifyPhase::of)
+            }),
             importing: runtime.import.is_some(),
         }
     }

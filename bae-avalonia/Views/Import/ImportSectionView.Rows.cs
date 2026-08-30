@@ -267,15 +267,14 @@ internal sealed partial class ImportSectionView
         return column;
     }
 
-    // The second line: the resolved artist, a disagreement sentence, the
-    // still-identifying phase, or an import failure — whichever `row` is
-    // actually saying.
+    // The second line: the resolved artist, a disagreement sentence, or an
+    // import failure. Identification activity belongs to its trailing
+    // indicator's tooltip.
     private string? RowSubLine(BridgeTriageRow row) => row.Placement switch
     {
         BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped =>
             RowArtist(row),
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying phase } =>
-            BridgeDisplay.LocalizedLine(phase.Phase),
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying } => null,
         BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
@@ -394,9 +393,13 @@ internal sealed partial class ImportSectionView
                 // settled without an answer worth keeping, shows the clock —
                 // the same two glyphs the macOS row uses for the same three
                 // phases.
-                return stillIdentifying.Phase == BridgeIdentifyPhase.Running
+                var indicator = stillIdentifying.Phase == BridgeIdentifyPhase.Running
                     ? new Spinner { Width = 14, Height = 14 }
                     : Icons.Glyph(Icons.Clock, 14, "BaeTextSecondaryBrush");
+                ToolTip.SetTip(
+                    indicator,
+                    BridgeDisplay.LocalizedLine(stillIdentifying.Phase));
+                return indicator;
             case BridgeNeedsYouReason.Disagreement disagreement:
                 return group switch
                 {

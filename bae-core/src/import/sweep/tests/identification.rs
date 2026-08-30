@@ -57,6 +57,40 @@ async fn a_candidate_nobody_selected_acquires_a_verdict() {
     );
 }
 
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn a_planned_candidate_is_queued_before_its_driver_reports() {
+    let fixture = Fixture::new("queued-before-driver").await;
+    let dir = fixture.disc_id_candidate("Candidate");
+    let key = dir.to_string_lossy().into_owned();
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.scan(1).await;
+    let mut changes = fixture.import.subscribe_candidate_runtime().1;
+
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+
+    let change = tokio::time::timeout(Duration::from_secs(10), changes.recv())
+        .await
+        .expect("the queue state is published before identification")
+        .expect("candidate runtime remains open");
+    let crate::import::CandidateRuntimeChange::Reset { runtimes } = change else {
+        panic!("the pass admits its queue atomically before starting drivers");
+    };
+    assert_eq!(
+        crate::import::TriageRuntimeFacts::of(&runtimes[&key]).identify_phase,
+        Some(crate::import::IdentifyPhase::Queued)
+    );
+
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(20), pass)
+        .await
+        .expect("the pass finishes after the provider resumes")
+        .unwrap();
+}
+
 // ── 2. A stored verdict is not re-fetched ───────────────────────────────────
 
 /// The second launch is instant because a candidate whose content hash already

@@ -252,6 +252,7 @@ struct ExplicitLookupInFlight {
 struct Finished {
     representative_key: String,
     identity: CandidateIdentity,
+    candidate_keys: Vec<String>,
     rehome: Vec<FolderCandidate>,
     stored: bool,
 }
@@ -268,6 +269,23 @@ impl IdentifyJob {
         self.candidates
             .first()
             .expect("an identify job always has a candidate")
+    }
+
+    fn candidate_keys(&self) -> impl Iterator<Item = String> + '_ {
+        self.candidates
+            .iter()
+            .map(|candidate| candidate.path.to_string_lossy().into_owned())
+    }
+}
+
+/// Removes every automatic queue marker when this pass exits. Driver-reported
+/// and explicit Lookup state belong to different producers and survive it.
+struct AutomaticQueueGuard(ImportServiceHandle);
+
+impl Drop for AutomaticQueueGuard {
+    fn drop(&mut self) {
+        self.0
+            .replace_automatic_identification_queue(std::iter::empty());
     }
 }
 
@@ -358,8 +376,16 @@ async fn run_pass_once(
     emit_progress(context, identified, total);
 
     if pending.is_empty() {
+        context
+            .import
+            .replace_automatic_identification_queue(std::iter::empty());
         return PassOutcome::Complete;
     }
+
+    context.import.replace_automatic_identification_queue(
+        pending.iter().flat_map(IdentifyJob::candidate_keys),
+    );
+    let _automatic_queue = AutomaticQueueGuard(context.import.clone());
 
     let mut in_flight: HashMap<String, InFlight> = HashMap::new();
     let mut finishing_members: HashMap<CandidateIdentity, Vec<FolderCandidate>> = HashMap::new();
@@ -383,6 +409,9 @@ async fn run_pass_once(
                     "sweep: every member of {:?} is identified elsewhere",
                     job.identity
                 );
+                for key in job.candidate_keys() {
+                    context.import.clear_automatic_identification(&key);
+                }
                 continue;
             };
             job.candidates.swap(0, representative_index);
@@ -466,10 +495,15 @@ async fn run_pass_once(
                             pending.retain(|job| job.identity != done.identity);
                         } else {
                             for candidate in done.rehome {
-                                enqueue_candidate(&mut pending, candidate);
+                                enqueue_automatic_candidate(context, &mut pending, candidate);
                             }
                             for candidate in deferred {
-                                enqueue_candidate(&mut pending, candidate);
+                                enqueue_automatic_candidate(context, &mut pending, candidate);
+                            }
+                        }
+                        for key in done.candidate_keys {
+                            if done.stored {
+                                context.import.clear_automatic_identification(&key);
                             }
                         }
                         let newly_answered = known_identities
@@ -517,6 +551,7 @@ async fn run_pass_once(
                         let context = context.clone();
                         let child = token.child_token();
                         finishing.spawn(async move {
+                            let candidate_keys = entry.job.candidate_keys().collect();
                             let stored = finish_candidate(&context, &entry, state, &child).await;
                             let rehome = if stored
                                 || usable_current_candidate(
@@ -543,6 +578,7 @@ async fn run_pass_once(
                             Finished {
                                 representative_key,
                                 identity,
+                                candidate_keys,
                                 rehome,
                                 stored,
                             }
@@ -566,6 +602,7 @@ async fn run_pass_once(
                 // with it every later scan. The removal is an event, so react to
                 // it rather than waiting out a clock.
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }))) => {
+                    context.import.clear_automatic_identification(&candidate_key);
                     remove_finishing_member(&mut finishing_members, &candidate_key);
                     let running_representative = in_flight.iter().find_map(|(representative, entry)| {
                         entry
@@ -683,7 +720,7 @@ async fn run_pass_once(
                     } else if let Some(members) = finishing_members.get_mut(&identity) {
                         members.push(candidate);
                     } else {
-                        enqueue_candidate(&mut pending, candidate);
+                        enqueue_automatic_candidate(context, &mut pending, candidate);
                     }
                     emit_progress(context, identified.min(total), total);
                 }
@@ -737,7 +774,7 @@ async fn run_pass_once(
                                 identified = identified.saturating_add(1).min(total);
                             }
                         } else {
-                            enqueue_candidate(&mut pending, candidate);
+                            enqueue_automatic_candidate(context, &mut pending, candidate);
                         }
                         emit_progress(context, identified.min(total), total);
                     }
@@ -770,7 +807,7 @@ async fn run_pass_once(
                     if let Some(members) = finishing_members.get_mut(&identity) {
                         members.push(candidate);
                     } else {
-                        enqueue_candidate(&mut pending, candidate);
+                        enqueue_automatic_candidate(context, &mut pending, candidate);
                     }
                     emit_progress(context, identified.min(total), total);
                 }
@@ -809,6 +846,11 @@ async fn run_pass_once(
                     );
                     for (key, entry) in in_flight.drain() {
                         context.release(&key);
+                        for candidate_key in entry.job.candidate_keys() {
+                            context
+                                .import
+                                .requeue_automatic_identification(&candidate_key);
+                        }
                         pending.push_back(entry.job);
                     }
                 }
@@ -818,6 +860,16 @@ async fn run_pass_once(
             },
         }
     }
+}
+
+fn enqueue_automatic_candidate(
+    context: &SweepContext,
+    pending: &mut VecDeque<IdentifyJob>,
+    candidate: FolderCandidate,
+) {
+    let key = candidate.path.to_string_lossy().into_owned();
+    enqueue_candidate(pending, candidate);
+    context.import.requeue_automatic_identification(&key);
 }
 
 #[cfg(test)]

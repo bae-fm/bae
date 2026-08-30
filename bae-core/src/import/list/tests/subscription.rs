@@ -35,20 +35,12 @@ async fn subscription() -> (
     // the upload-standing merge the way library shutdown does. These tests are
     // about the runtime merge and the request round trip.
     let (_outbox_tx, outbox) = tokio::sync::watch::channel(None);
-    let config = crate::config::Config::with_defaults(
-        "library-id".to_string(),
-        "device-id".to_string(),
-        tmp.path(),
-        "Test Library".to_string(),
-    );
-    let (_config_tx, config) = tokio::sync::watch::channel(config);
     let subscription = ImportListSubscription::start(
         query,
         request,
         changes,
         HashMap::new,
         outbox,
-        config,
         &tokio::runtime::Handle::current(),
     );
     (subscription, changes_tx, tmp)

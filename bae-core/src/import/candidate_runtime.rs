@@ -27,7 +27,7 @@
 //! which is why they live here rather than in a second map somebody would
 //! have to remember to clear.
 
-use super::candidates::{CandidateRuntimeSnapshot, ImportInFlight};
+use super::candidates::{CandidateIdentifyRuntime, CandidateRuntimeSnapshot, ImportInFlight};
 use super::folder_scanner::{FolderCandidate, ReleaseFileScope};
 use super::handle::{ImportEvent, ScanEvent};
 use super::types::{ImportProgress, ImportStep, PrepareStep};
@@ -51,6 +51,10 @@ pub enum CandidateRuntimeChange {
     /// settled and stored, its folder left the scan, or its files changed
     /// shape so what was recorded described a folder that no longer exists.
     Removed { key: String },
+    /// The complete runtime after an atomic multi-key queue change.
+    Reset {
+        runtimes: HashMap<String, CandidateRuntimeSnapshot>,
+    },
 }
 
 /// The file shape a candidate's runtime was recorded against. A scan that
@@ -183,6 +187,77 @@ impl CandidateRuntime {
         }
     }
 
+    /// Replace the automatic sweep's queued keys in one atomic change.
+    /// Explicit Lookup queues and driver-reported states belong to their own
+    /// producers and are preserved.
+    pub(super) fn replace_automatic_identification_queue(
+        &self,
+        queued_keys: impl IntoIterator<Item = String>,
+    ) {
+        let queued_keys: std::collections::HashSet<String> = queued_keys.into_iter().collect();
+        let reset = {
+            let mut inner = self.inner.lock().unwrap();
+            let previous = inner.runtime.clone();
+            for runtime in inner.runtime.values_mut() {
+                if runtime
+                    .identify
+                    .as_ref()
+                    .is_some_and(CandidateIdentifyRuntime::is_automatic_queue)
+                {
+                    runtime.identify = None;
+                }
+            }
+            inner
+                .runtime
+                .retain(|_, runtime| runtime.identify.is_some() || runtime.import.is_some());
+            for key in queued_keys {
+                let runtime = inner
+                    .runtime
+                    .entry(key)
+                    .or_insert(CandidateRuntimeSnapshot {
+                        identify: None,
+                        import: None,
+                    });
+                if runtime.identify.is_none() {
+                    runtime.identify = Some(CandidateIdentifyRuntime::automatic_queue());
+                }
+            }
+            (inner.runtime != previous).then(|| inner.runtime.clone())
+        };
+        if let Some(runtimes) = reset {
+            self.publish(CandidateRuntimeChange::Reset { runtimes });
+        }
+    }
+
+    /// This key has been admitted to an explicit Lookup run but its driver has
+    /// not reported a state yet.
+    pub(super) fn queue_explicit_identification(&self, candidate_key: &str) {
+        self.set(candidate_key, |runtime| {
+            runtime.identify = Some(CandidateIdentifyRuntime::explicit_queue());
+        });
+    }
+
+    /// A sweep-owned job is waiting for another attempt after a prior attempt
+    /// produced no storable answer.
+    pub(super) fn requeue_automatic_identification(&self, candidate_key: &str) {
+        self.set(candidate_key, |runtime| {
+            runtime.identify = Some(CandidateIdentifyRuntime::automatic_queue());
+        });
+    }
+
+    /// Remove this key only when it is waiting in the automatic sweep.
+    pub(super) fn clear_automatic_identification(&self, candidate_key: &str) {
+        self.set(candidate_key, |runtime| {
+            if runtime
+                .identify
+                .as_ref()
+                .is_some_and(CandidateIdentifyRuntime::is_automatic_queue)
+            {
+                runtime.identify = None;
+            }
+        });
+    }
+
     /// Record that an import owns this candidate.
     ///
     /// Written when the import command is queued, not when the worker's first
@@ -281,10 +356,7 @@ impl CandidateRuntime {
                             .is_some_and(|identify| identify.is_terminal())
                     });
                 if !torn_down {
-                    let identify = match state {
-                        crate::identify::IdentifyState::Idle => None,
-                        live => Some(live.clone()),
-                    };
+                    let identify = CandidateIdentifyRuntime::from_state(state.clone());
                     self.set(candidate_key, |runtime| runtime.identify = identify);
                 }
             }

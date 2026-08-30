@@ -197,6 +197,33 @@ fn request(view: ImportListView) -> ImportListRequest {
     }
 }
 
+fn queued_request(view: ImportListView, display_paths: &[&str]) -> ImportListRequest {
+    ImportListRequest {
+        view,
+        runtime_facts: display_paths
+            .iter()
+            .map(|display_path| {
+                (
+                    key(display_path),
+                    TriageRuntimeFacts {
+                        identify_phase: Some(IdentifyPhase::Queued),
+                        importing: false,
+                    },
+                )
+            })
+            .collect(),
+        ..ImportListRequest::default()
+    }
+}
+
+fn flattened_queued(
+    rows: &ImportQueueRows,
+    view: ImportListView,
+    display_paths: &[&str],
+) -> Flattened {
+    flatten(rows, &queued_request(view, display_paths)).expect("the queue flattens")
+}
+
 /// The item sequence, as one readable line per item.
 fn sequence(rows: &ImportQueueRows, flat: &Flattened) -> Vec<String> {
     flat.items

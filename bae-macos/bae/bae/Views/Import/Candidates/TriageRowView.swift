@@ -216,8 +216,9 @@ struct TriageRowView: View {
 /// The row's metadata and trailing column. In an extension so the view's body
 /// and the layout it composes stay readable as one piece.
 extension TriageRowView {
-    /// State that belongs below the release summary: a disagreement, the
-    /// still-identifying phase, or an import failure.
+    /// State that belongs below the release summary: a disagreement or an
+    /// import failure. Identification activity belongs to its trailing
+    /// indicator's tooltip.
     private var statusLine: String? {
         switch row.placement {
         case .pending:
@@ -228,8 +229,8 @@ extension TriageRowView {
             return nil
         case .needsYou(let group, let reason):
             switch reason {
-            case .stillIdentifying(let phase):
-                return phase.localizedText
+            case .stillIdentifying:
+                return nil
             case .disagreement(let needsYou):
                 switch group {
                 case .alreadyInLibrary:
@@ -286,10 +287,13 @@ extension TriageRowView {
         switch reason {
         case .stillIdentifying(let phase):
             if phase == .running {
-                ProgressView().controlSize(.small)
+                ProgressView()
+                    .controlSize(.small)
+                    .help(phase.localizedText)
             }
             else {
                 trailingIcon("clock", tint: .secondary)
+                    .help(phase.localizedText)
             }
         case .disagreement(let needsYou):
             switch group {

@@ -120,8 +120,8 @@ pub struct ParsedAlbum {
 pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidates::{
-    CandidateRuntimeSnapshot, FolderScanStatus, ImportCandidateSnapshot, ImportInFlight,
-    ImportedRelease, WatchedFolderScanStatus,
+    CandidateIdentifyRuntime, CandidateRuntimeSnapshot, FolderScanStatus, ImportCandidateSnapshot,
+    ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};

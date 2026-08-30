@@ -415,7 +415,11 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
     else {
         panic!("the scanned candidate is readable");
     };
-    let Some(IdentifyState::Found { matches, .. }) = &runtime.as_ref().and_then(|runtime| runtime.identify.clone()) else {
+    let Some(IdentifyState::Found { matches, .. }) = &runtime
+        .as_ref()
+        .and_then(|runtime| runtime.identify.clone())
+        .and_then(crate::import::CandidateIdentifyRuntime::into_state)
+    else {
         panic!("a terminal state survives its driver's teardown, got {runtime:?}");
     };
     assert_eq!(matches[0].release_id, "mb-teardown-1");

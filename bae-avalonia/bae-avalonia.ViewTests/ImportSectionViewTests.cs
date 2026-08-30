@@ -176,6 +176,27 @@ public sealed class ImportSectionViewTests
         Assert.Equal(CandidateKey, SelectedKey(view));
     }
 
+    [AvaloniaFact]
+    public void IdentificationPhaseLivesOnTheTrailingIndicatorTooltip()
+    {
+        var phase = BridgeIdentifyPhase.Running;
+        var label = BridgeDisplay.LocalizedLine(phase);
+        var placement = new BridgeTriagePlacement.NeedsYou(
+            BridgeNeedsYouGroup.StillIdentifying,
+            new BridgeNeedsYouReason.StillIdentifying(phase));
+        var view = BuildView(
+            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+
+        var row = CandidateRow(view);
+        Assert.DoesNotContain(
+            row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == label);
+        Assert.Contains(
+            row.GetLogicalDescendants().OfType<Control>(),
+            control => Equals(ToolTip.GetTip(control), label));
+    }
+
     // A folder group renders as a header row with its rows as siblings, so
     // there is no Expander indenting them. Collapsing therefore has to be this
     // view's own doing: the header re-renders the list without the group's

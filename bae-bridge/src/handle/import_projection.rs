@@ -131,6 +131,7 @@ impl crate::types::BridgeInvalidCandidate {
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
         let bae_core::import::CandidateRuntimeSnapshot { identify, import } = runtime;
+        let identify = identify.and_then(bae_core::import::CandidateIdentifyRuntime::into_state);
         crate::types::BridgeCandidateRuntimeSnapshot {
             signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(
                 identify
@@ -165,6 +166,7 @@ impl crate::types::BridgeCandidateRuntimeChange {
                 runtime: crate::types::BridgeCandidateRuntimeSnapshot::from_core(runtime),
             },
             bae_core::import::CandidateRuntimeChange::Removed { key } => Self::Removed { key },
+            bae_core::import::CandidateRuntimeChange::Reset { runtimes } => Self::reset(runtimes),
         }
     }
 

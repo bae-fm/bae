@@ -62,12 +62,82 @@ pub enum ImportCandidateSnapshot {
 /// field is `Some`; both `None` is the absence of an entry, not a value.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateRuntimeSnapshot {
-    /// The live driver's current state, never
-    /// [`IdentifyState::Idle`](crate::identify::IdentifyState::Idle). `None`
-    /// when no driver has reported and nothing terminal is being held.
-    pub identify: Option<crate::identify::IdentifyState>,
+    /// Identification admitted to the queue or reported by its driver. `None`
+    /// when no identification work exists for this key.
+    pub identify: Option<CandidateIdentifyRuntime>,
     /// The running import: claimed, preparing, or partway through a phase.
     pub import: Option<ImportInFlight>,
+}
+
+/// What currently exists for one candidate's identification.
+///
+/// Construction stays inside the import runtime so a reported
+/// [`IdentifyState::Idle`](crate::identify::IdentifyState::Idle) cannot be
+/// represented: idle means this value is absent.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CandidateIdentifyRuntime(CandidateIdentifyRuntimeKind);
+
+#[derive(Debug, Clone, PartialEq)]
+enum CandidateIdentifyRuntimeKind {
+    Queued(IdentifyQueueOwner),
+    Reported(crate::identify::IdentifyState),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum IdentifyQueueOwner {
+    AutomaticSweep,
+    ExplicitLookup,
+}
+
+impl CandidateIdentifyRuntime {
+    pub(crate) fn automatic_queue() -> Self {
+        Self(CandidateIdentifyRuntimeKind::Queued(
+            IdentifyQueueOwner::AutomaticSweep,
+        ))
+    }
+
+    pub(crate) fn explicit_queue() -> Self {
+        Self(CandidateIdentifyRuntimeKind::Queued(
+            IdentifyQueueOwner::ExplicitLookup,
+        ))
+    }
+
+    /// Wrap a driver's non-idle state. Idle is represented by this value being
+    /// absent from [`CandidateRuntimeSnapshot`].
+    pub fn from_state(state: crate::identify::IdentifyState) -> Option<Self> {
+        (!matches!(state, crate::identify::IdentifyState::Idle))
+            .then_some(Self(CandidateIdentifyRuntimeKind::Reported(state)))
+    }
+
+    pub(crate) fn is_automatic_queue(&self) -> bool {
+        matches!(
+            self.0,
+            CandidateIdentifyRuntimeKind::Queued(IdentifyQueueOwner::AutomaticSweep)
+        )
+    }
+
+    pub(crate) fn is_terminal(&self) -> bool {
+        match &self.0 {
+            CandidateIdentifyRuntimeKind::Queued(_) => false,
+            CandidateIdentifyRuntimeKind::Reported(state) => state.is_terminal(),
+        }
+    }
+
+    /// The state a driver reported, or `None` while the work is queued.
+    pub fn state(&self) -> Option<&crate::identify::IdentifyState> {
+        match &self.0 {
+            CandidateIdentifyRuntimeKind::Queued(_) => None,
+            CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
+        }
+    }
+
+    /// The state a driver reported, or `None` while the work is queued.
+    pub fn into_state(self) -> Option<crate::identify::IdentifyState> {
+        match self.0 {
+            CandidateIdentifyRuntimeKind::Queued(_) => None,
+            CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
+        }
+    }
 }
 
 /// How far a running import has got. It ends with the import: a finished one

@@ -48,6 +48,7 @@ pub(super) fn detach_candidate(
             .retain(|candidate| candidate.path.to_string_lossy() != candidate_key);
         !job.candidates.is_empty()
     });
+    context.import.clear_automatic_identification(candidate_key);
 }
 
 pub(super) fn remove_finishing_member(

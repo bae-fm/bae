@@ -59,7 +59,7 @@ mod triage_tests {
 
         let crossed =
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
-                identify: Some(live),
+                identify: bae_core::import::CandidateIdentifyRuntime::from_state(live),
                 import: None,
             });
         assert_eq!(crossed.signals_toolbar.signals.len(), expected);

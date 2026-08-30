@@ -87,6 +87,9 @@ impl QueueSweepHandle {
     }
 
     fn start_explicit_lookup_run(&self, candidate_key: String, candidate: FolderCandidate) {
+        self.context
+            .import
+            .queue_explicit_identification(&candidate_key);
         let run = self.context.identify.new_run();
         self.record_explicit_lookup(run, candidate_key.clone());
         self.context

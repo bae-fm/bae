@@ -110,8 +110,7 @@ pub(crate) fn flatten(
             ScanCandidateKind::Tentative => {}
             ScanCandidateKind::Valid => {
                 let facts = runtime_facts.get(&row.path).unwrap_or(&idle);
-                let triage_row =
-                    place_row(rows, row, facts, request.automatic_identification_enabled)?;
+                let triage_row = place_row(rows, row, facts)?;
                 let tab = triage_row.placement.tab();
                 counts.bump(tab);
                 let matched = triage_row.matched.as_ref();
@@ -269,7 +268,6 @@ fn place_row(
     rows: &ImportQueueRows,
     row: &ScanCandidateListRow,
     facts: &TriageRuntimeFacts,
-    automatic_identification_enabled: bool,
 ) -> Result<TriageRow, LibraryError> {
     let content_hash = row.content_hash.as_deref().ok_or_else(|| {
         LibraryError::Internal(format!(
@@ -299,10 +297,10 @@ fn place_row(
             lead_status,
         )
     });
-    let known = match answer {
-        Some(classification) => CandidateAnswer::Classified(classification),
-        None if automatic_identification_enabled => CandidateAnswer::Unanswered(facts.phase),
-        None => CandidateAnswer::Idle,
+    let known = match (answer, facts.identify_phase) {
+        (Some(classification), _) => CandidateAnswer::Classified(classification),
+        (None, Some(phase)) => CandidateAnswer::Unanswered(phase),
+        (None, None) => CandidateAnswer::Idle,
     };
     let skipped = rows.skipped.contains(&(
         row.watched_folder_path.clone(),

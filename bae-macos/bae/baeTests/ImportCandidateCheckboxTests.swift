@@ -61,6 +61,35 @@ struct ImportCandidateCheckboxTests {
     }
 
     @MainActor
+    @Test("identification phase lives on the trailing indicator tooltip")
+    func identificationPhaseLivesOnTrailingIndicatorTooltip() {
+        let size = NSSize(width: 400, height: 80)
+        let (_, host) = SnapshotTestSupport.hostInWindow(
+            TriageRowView(
+                row: PreviewData.triageRowStillIdentifying,
+                coverContent: nil,
+                uploadObservation: nil,
+                selection: nil,
+                isGroupMember: false,
+                onSkip: { _ in }
+            )
+            .environment(ImageStore.stub())
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        host.layoutSubtreeIfNeeded()
+        let label = BridgeIdentifyPhase.running.localizedText
+        let descendants = SnapshotTestSupport.descendants(of: host)
+        #expect(
+            !descendants
+                .compactMap { $0 as? NSTextField }
+                .contains { $0.stringValue == label }
+        )
+        #expect(descendants.contains { $0.toolTip == label })
+    }
+
+    @MainActor
     @Test("an unchecked candidate can be checked inside the selectable list")
     func uncheckedCandidateCanBeChecked() async throws {
         try await assertCheckboxCanBeChecked(isGroupMember: false)

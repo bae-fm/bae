@@ -229,7 +229,9 @@ fn a_finished_import_keeps_a_key_whose_run_is_still_held() {
     let recorded = runtime.get(key).expect("the held run keeps the key");
     assert!(recorded.import.is_none());
     assert!(matches!(
-        recorded.identify,
+        recorded
+            .identify
+            .and_then(CandidateIdentifyRuntime::into_state),
         Some(crate::identify::IdentifyState::ManualOnly { .. })
     ));
     assert!(matches!(
@@ -262,6 +264,37 @@ fn a_late_subscriber_reads_every_running_key() {
     assert!(matches!(
         drain(&mut changes).as_slice(),
         [CandidateRuntimeChange::Updated { key, .. }] if key == "/watch/a/rel3"
+    ));
+}
+
+#[test]
+fn the_automatic_queue_is_published_as_one_current_runtime_snapshot() {
+    let runtime = CandidateRuntime::default();
+    let mut changes = runtime.subscribe();
+    let first = "/watch/a/rel1";
+    let second = "/watch/a/rel2";
+
+    runtime.replace_automatic_identification_queue([first.to_string(), second.to_string()]);
+
+    let queued = runtime.all();
+    assert_eq!(queued.len(), 2);
+    for key in [first, second] {
+        assert_eq!(
+            crate::import::triage::TriageRuntimeFacts::of(&queued[key]).identify_phase,
+            Some(crate::import::IdentifyPhase::Queued)
+        );
+    }
+    assert!(matches!(
+        drain(&mut changes).as_slice(),
+        [CandidateRuntimeChange::Reset { runtimes }] if runtimes == &queued
+    ));
+
+    runtime.replace_automatic_identification_queue(std::iter::empty());
+
+    assert!(runtime.all().is_empty());
+    assert!(matches!(
+        drain(&mut changes).as_slice(),
+        [CandidateRuntimeChange::Reset { runtimes }] if runtimes.is_empty()
     ));
 }
 
@@ -406,7 +439,10 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
     // A driver torn down after settling broadcasts `Idle`; the answer stays.
     runtime.record_event(&identify(key, crate::identify::IdentifyState::Idle));
     assert!(matches!(
-        runtime.get(key).and_then(|runtime| runtime.identify),
+        runtime
+            .get(key)
+            .and_then(|runtime| runtime.identify)
+            .and_then(CandidateIdentifyRuntime::into_state),
         Some(crate::identify::IdentifyState::ManualOnly { .. })
     ));
     drain(&mut changes);
@@ -440,7 +476,10 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
         candidate_key: key.to_string(),
     }));
     assert!(matches!(
-        runtime.get(key).and_then(|runtime| runtime.identify),
+        runtime
+            .get(key)
+            .and_then(|runtime| runtime.identify)
+            .and_then(CandidateIdentifyRuntime::into_state),
         Some(crate::identify::IdentifyState::Triangulating { .. })
     ));
 

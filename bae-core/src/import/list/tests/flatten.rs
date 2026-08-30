@@ -241,7 +241,7 @@ fn a_stored_verdict_that_classifies_ready_makes_a_selectable_row() {
 }
 
 /// A verdict derived from a file shape the candidate has moved past is not the
-/// candidate's answer: the row is still waiting on identification.
+/// candidate's answer. Actual queued work still places it as identifying.
 #[test]
 fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
     let mut rows = queue();
@@ -252,7 +252,7 @@ fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
     rows.states
         .insert("hash-Release".to_string(), ready_state("mb-1"));
 
-    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release"]);
 
     assert!(matches!(
         row_for(&flat, "Release").placement,
@@ -311,7 +311,7 @@ fn a_claimed_import_places_the_row_as_importing() {
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            phase: IdentifyPhase::Queued,
+            identify_phase: Some(IdentifyPhase::Queued),
             importing: true,
         },
     )]);
@@ -457,7 +457,7 @@ fn retrying_a_failed_import_moves_it_through_importing_to_done() {
     let running = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            phase: IdentifyPhase::Queued,
+            identify_phase: Some(IdentifyPhase::Queued),
             importing: true,
         },
     )]);
@@ -531,7 +531,7 @@ fn a_running_import_outranks_the_release_it_has_not_finished_writing() {
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            phase: IdentifyPhase::Queued,
+            identify_phase: Some(IdentifyPhase::Queued),
             importing: true,
         },
     )]);
@@ -558,7 +558,7 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            phase: IdentifyPhase::Running,
+            identify_phase: Some(IdentifyPhase::Running),
             importing: false,
         },
     )]);
@@ -585,7 +585,7 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
 }
 
 #[test]
-fn an_unseeded_blank_candidate_remains_pending() {
+fn an_idle_candidate_is_not_queued_by_the_current_automatic_setting() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
 
@@ -593,7 +593,6 @@ fn an_unseeded_blank_candidate_remains_pending() {
         &rows,
         &ImportListRequest {
             view: view(TriageTab::Pending),
-            automatic_identification_enabled: false,
             ..ImportListRequest::default()
         },
     )
@@ -642,7 +641,7 @@ fn the_first_unidentified_row_has_its_position_in_the_current_view() {
     rows.states
         .insert("hash-Release 1".to_string(), ready_state("mb-1"));
 
-    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release 2"]);
 
     let target = flat
         .summary
@@ -661,14 +660,15 @@ fn the_first_unidentified_position_is_absent_outside_the_current_view() {
     rows.states
         .insert("hash-Release 1".to_string(), ready_state("mb-1"));
 
-    let filtered = flattened(
+    let filtered = flattened_queued(
         &rows,
-        &ImportListView {
+        ImportListView {
             filter_text: "Release 1".to_string(),
             ..view(TriageTab::Pending)
         },
+        &["Release 2"],
     );
-    let other_tab = flattened(&rows, &view(TriageTab::Done));
+    let other_tab = flattened_queued(&rows, view(TriageTab::Done), &["Release 2"]);
 
     assert_eq!(
         filtered
@@ -693,7 +693,11 @@ fn the_first_grouped_unidentified_position_follows_its_header() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Group/Release 1"), candidate("Group/Release 2")];
 
-    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let flat = flattened_queued(
+        &rows,
+        view(TriageTab::Pending),
+        &["Group/Release 1", "Group/Release 2"],
+    );
     let target = flat
         .summary
         .first_unidentified
@@ -868,8 +872,8 @@ fn a_file_tags_seed_answers_the_row() {
 }
 
 /// A seed belongs to the file shape it was chosen against. Editing the folder
-/// moves the candidate past that shape, so the seed is not its answer any more
-/// and the row goes back to waiting on identification.
+/// moves the candidate past that shape, so the seed is not its answer any more.
+/// Actual queued work places it as identifying.
 #[test]
 fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
     let mut rows = queue();
@@ -885,7 +889,7 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
         },
     );
 
-    let flat = flattened(&rows, &view(TriageTab::Pending));
+    let flat = flattened_queued(&rows, view(TriageTab::Pending), &["Release"]);
     let row = row_for(&flat, "Release");
     assert!(matches!(
         row.placement,
@@ -939,7 +943,7 @@ fn a_seed_does_not_outrank_skipped_done_or_importing() {
     let running = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            phase: IdentifyPhase::Queued,
+            identify_phase: Some(IdentifyPhase::Queued),
             importing: true,
         },
     )]);
