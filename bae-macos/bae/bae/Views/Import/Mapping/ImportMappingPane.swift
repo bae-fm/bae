@@ -25,6 +25,7 @@ struct ImportMappingPane: View {
     /// Where an album-level field's typed value goes: a row under this
     /// candidate, written as the field is left.
     let editActions: ReleaseFieldWriter
+    let endEditing: () -> Void
     @Binding
     var storageCloud: Bool
     @Binding
@@ -116,6 +117,7 @@ struct ImportMappingPane: View {
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
             editActions: editActions,
+            endEditing: endEditing,
             commit: commitControls,
             onPresent: onPresentMetadata,
             onReadFileTags: onReadFileTags,

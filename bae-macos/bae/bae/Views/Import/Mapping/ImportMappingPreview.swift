@@ -42,6 +42,7 @@
                 hasCoverOptions: true,
                 coverContent: nil,
                 editActions: ReleaseFieldWriter { _, _ in },
+                endEditing: {},
                 storageCloud: storageCloud,
                 storagePinned: storagePinned,
                 mappingActions: inertMappingActions(),

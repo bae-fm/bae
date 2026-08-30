@@ -207,11 +207,12 @@ struct ImportSearchFlowMetadataApplicationTests {
             }
         )
 
-        ImportSearchFlow.chooseReleaseFromSearchSheet(
-            result(),
+        ImportSearchFlow.applyMetadata(
             importer: importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
         await waitUntil {
@@ -255,11 +256,12 @@ struct ImportSearchFlowMetadataApplicationTests {
             }
         )
 
-        ImportSearchFlow.chooseReleaseFromSearchSheet(
-            result(),
+        ImportSearchFlow.applyMetadata(
             importer: importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
         await waitUntil {
@@ -291,11 +293,12 @@ struct ImportSearchFlowMetadataApplicationTests {
             applyCandidateExternalMetadata: { _, _, _ in 1 }
         )
 
-        ImportSearchFlow.chooseReleaseFromSearchSheet(
-            result(),
+        ImportSearchFlow.applyMetadata(
             importer: importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
         await waitUntil {
@@ -336,11 +339,12 @@ struct ImportSearchFlowMetadataApplicationTests {
             applyCandidateExternalMetadata: { _, _, _ in 2 }
         )
 
-        ImportSearchFlow.chooseReleaseFromSearchSheet(
-            result(),
+        ImportSearchFlow.applyMetadata(
             importer: importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
         await waitUntil {
@@ -367,11 +371,12 @@ struct ImportSearchFlowMetadataApplicationTests {
             }
         )
 
-        ImportSearchFlow.chooseReleaseFromSearchSheet(
-            result(),
+        ImportSearchFlow.applyMetadata(
             importer: importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance,
             onConfirmed: { uiStore.dismissModal(presentation) }
         )
         await waitUntil {
@@ -396,11 +401,12 @@ struct ImportSearchFlowMetadataApplicationTests {
             applyCandidateExternalMetadata: { _, _, _ in 1 }
         )
 
-        ImportSearchFlow.chooseReleaseFromSearchSheet(
-            result(),
+        ImportSearchFlow.applyMetadata(
             importer: importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
+            provenance: MappingFixtures.provenance,
             onConfirmed: {
                 uiStore.dismissModal(searchPresentation)
             }
@@ -432,18 +438,6 @@ struct ImportSearchFlowMetadataApplicationTests {
         return store
     }
 
-    private func result() -> BridgeMetadataResult {
-        BridgeMetadataResult(
-            source: MappingFixtures.source,
-            releaseId: MappingFixtures.releaseId,
-            year: 1996,
-            format: "CD",
-            label: "Label Name",
-            catalogNumber: "CAT-001",
-            country: "US"
-        )
-    }
-
     private func presentModal(in uiStore: UiStore) -> ModalPresentation {
         let presentation = ModalPresentation()
         uiStore.presentModal(presentation: presentation) { EmptyView() }
@@ -468,6 +462,132 @@ struct ImportSearchFlowMetadataApplicationTests {
             await Task.yield()
         }
         #expect(predicate())
+    }
+}
+
+@MainActor
+final class MetadataApplicationEditingTests: XCTestCase {
+    func testApplyingMetadataReplacesTheFocusedFieldForEverySource()
+        async throws
+    {
+        for provenance in [
+            BridgeMetadataProvenance.fileTags,
+            .externalRelease(source: .musicBrainz, releaseId: "release-mb"),
+            .externalRelease(source: .discogs, releaseId: "release-discogs"),
+        ] {
+            try await assertFocusedFieldIsReplaced(by: provenance)
+        }
+    }
+
+    private func assertFocusedFieldIsReplaced(
+        by provenance: BridgeMetadataProvenance
+    ) async throws {
+        let model = MetadataApplicationEditingModel()
+        let size = NSSize(width: 700, height: 560)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ReleaseFieldsForm(
+                values: model.edit,
+                writer: ReleaseFieldWriter(
+                    setField: { field, value in
+                        model.commit(field: field, value: value)
+                    }
+                )
+            )
+            .environment(Library.stub())
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        let titleField = try XCTUnwrap(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .first { $0.stringValue == model.originalTitle }
+        )
+        XCTAssertTrue(window.makeFirstResponder(titleField))
+        titleField.stringValue = model.staleTitle
+        titleField.delegate?.controlTextDidChange?(
+            Notification(
+                name: NSControl.textDidChangeNotification,
+                object: titleField
+            )
+        )
+        await Task.yield()
+
+        let store = MappingFixtures.store(mapping: nil)
+        ImportSearchFlow.applyMetadata(
+            importer: model.importer,
+            importStore: store,
+            endEditing: { window.makeFirstResponder(nil) },
+            key: MappingFixtures.candidateKey,
+            provenance: provenance
+        )
+        try await waitUntil { model.applicationCount == 1 }
+
+        _ = window.makeFirstResponder(nil)
+        await Task.yield()
+
+        XCTAssertEqual(model.edit.albumTitle, model.appliedTitle)
+        XCTAssertEqual(
+            model.events,
+            [.commit(model.staleTitle), .application]
+        )
+        window.contentView = nil
+        window.orderOut(nil)
+    }
+
+    private func waitUntil(_ predicate: () -> Bool) async throws {
+        for _ in 0..<100 where !predicate() {
+            await Task.yield()
+        }
+        _ = try XCTUnwrap(predicate() ? true : nil)
+    }
+}
+
+@MainActor
+private final class MetadataApplicationEditingModel {
+    enum Event: Equatable {
+        case commit(String)
+        case application
+    }
+
+    let originalTitle = "Original Album Title"
+    let staleTitle = "Typed Before Applying"
+    let appliedTitle = "Applied Album Title"
+    var edit: BridgeRawReleaseEdit
+    var events: [Event] = []
+    var applicationCount = 0
+
+    init() {
+        edit = PreviewData.confirmEditValues
+        edit.albumTitle = originalTitle
+    }
+
+    var importer: Importer {
+        Importer(
+            applyCandidateExternalMetadata: { [self] _, _, _ in
+                await apply()
+                return 1
+            },
+            applyCandidateFileTags: { [self] _ in
+                await apply()
+                return 1
+            }
+        )
+    }
+
+    func commit(field: BridgeCandidateEditField, value: String) {
+        guard field == .albumTitle else { return }
+        events.append(.commit(value))
+        edit.albumTitle = value
+    }
+
+    func apply() async {
+        events.append(.application)
+        applicationCount += 1
+        edit.albumTitle = appliedTitle
     }
 }
 

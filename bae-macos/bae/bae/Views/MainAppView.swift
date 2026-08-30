@@ -55,7 +55,7 @@ struct MainAppView: View {
                             LibraryView()
                         }
                         else {
-                            ImportView()
+                            ImportView(endEditing: endEditing)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -211,6 +211,10 @@ struct MainAppView: View {
         searchText = ""
         NSApp.keyWindow?.makeFirstResponder(nil)
         uiStore.searchResults = nil
+    }
+
+    private func endEditing() {
+        NSApp.keyWindow?.makeFirstResponder(nil)
     }
 
     // MARK: - Scan + Drop

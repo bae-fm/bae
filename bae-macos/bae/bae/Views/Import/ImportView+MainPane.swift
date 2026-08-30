@@ -45,6 +45,7 @@ extension ImportView {
             hasCoverOptions: hasCoverOptions(candidate),
             coverContent: candidate.cover?.thumbnailContent,
             editActions: editActions(for: candidate),
+            endEditing: endEditing,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             mappingActions: mappingActions(for: candidate),

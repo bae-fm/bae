@@ -12,10 +12,12 @@ extension ImportSearchFlow {
     static func applyMetadata(
         importer: Importer,
         importStore: ImportStore,
+        endEditing: () -> Void,
         key: String,
         provenance: BridgeMetadataProvenance,
         onConfirmed: (() -> Void)? = nil
     ) {
+        endEditing()
         guard
             let session = importStore.beginMetadataApplication(
                 key: key,
@@ -86,28 +88,6 @@ extension ImportSearchFlow {
                 String(localized: "Couldn't read file tags: \($0)")
             }
         }
-    }
-
-    /// Pick one search-sheet pressing and dismiss only after its command and
-    /// exact candidate-detail delivery have both succeeded.
-    @MainActor
-    static func chooseReleaseFromSearchSheet(
-        _ result: BridgeMetadataResult,
-        importer: Importer,
-        importStore: ImportStore,
-        key: String,
-        onConfirmed: @escaping () -> Void
-    ) {
-        applyMetadata(
-            importer: importer,
-            importStore: importStore,
-            key: key,
-            provenance: .externalRelease(
-                source: result.source,
-                releaseId: result.releaseId
-            ),
-            onConfirmed: onConfirmed
-        )
     }
 
     // MARK: - Import status helpers

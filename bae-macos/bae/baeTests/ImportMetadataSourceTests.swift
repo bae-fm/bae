@@ -69,6 +69,7 @@ private final class MetadataSourceRecorder {
             importer: importer,
             automaticIdentification: automaticIdentification,
             importStore: store,
+            endEditing: {},
             previewAudio: PreviewAudio.stub(),
             openDocument: { _, _ in },
             openImages: { _, _ in },
@@ -319,6 +320,7 @@ extension ImportMetadataSourceTests {
         ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
+            endEditing: {},
             key: key,
             provenance: MappingFixtures.provenance,
             onConfirmed: {
@@ -332,9 +334,7 @@ extension ImportMetadataSourceTests {
                 .metadataApplicationSession?
                 .commandRevision == 1
         }
-        #expect(
-            recorder.externalApplications.map(\.key) == [key]
-        )
+        #expect(recorder.externalApplications.map(\.key) == [key])
         #expect(
             store.candidate(forKey: key)?
                 .metadataPresentation == .findOnline

@@ -12,6 +12,7 @@ extension ImportView {
             automaticIdentification: configStore.config
                 .automaticImportIdentification,
             importStore: importStore,
+            endEditing: endEditing,
             previewAudio: previewAudio,
             openDocument: { name, path in openDocument(name: name, at: path) },
             openImages: { images, path in

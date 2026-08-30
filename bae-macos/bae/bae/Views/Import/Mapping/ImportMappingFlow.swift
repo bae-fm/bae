@@ -9,6 +9,8 @@ struct ImportMappingServices {
     /// it. Nothing about the table is held here — every edit is a row core
     /// stores, and the per-candidate read redraws from it.
     let importStore: ImportStore
+    /// End the main pane's active field edit before replacing its draft.
+    let endEditing: () -> Void
     let previewAudio: PreviewAudio
     /// Show a document (a log, a text file, a track sheet) in the viewer: its
     /// name, then its path on disk.
@@ -107,6 +109,7 @@ enum ImportMappingFlow {
         ImportSearchFlow.applyMetadata(
             importer: services.importer,
             importStore: services.importStore,
+            endEditing: services.endEditing,
             key: key,
             provenance: .fileTags,
             onConfirmed: {

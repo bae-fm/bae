@@ -4,9 +4,9 @@ import SwiftUI
 extension ImportSearchFlow {
     // MARK: - Shared search pane builder
 
-    /// The import-flow services a search pane drives: search/identify and the
-    /// pick command on `importer`, candidate state on `importStore`, and
-    /// Discogs availability on `configStore`.
+    /// The import-flow services a search pane drives: search and identify on
+    /// `importer`, candidate state on `importStore`, and Discogs availability
+    /// on `configStore`. The opening surface owns what selecting a result does.
     struct ImportServices {
         let importer: Importer
         let importStore: ImportStore
@@ -30,11 +30,9 @@ extension ImportSearchFlow {
         let liveSignals: Signals?
     }
 
-    /// `onSelect` defaults to the import flow's prefetch + docked-pane path
-    /// (picking a pressing opens the confirm pane). Re-identify overrides it
-    /// to select the pressing and commit `re_identify_release` from its own
-    /// footer, since the release is already in the library — there's no second
-    /// editable confirmation page.
+    /// `onSelect` owns what picking a pressing means for the surface that
+    /// opened the pane. Import applies it to the candidate draft; re-identify
+    /// keeps it selected until its own footer commits the library release.
     @MainActor
     @ViewBuilder
     static func buildSearchPane(
@@ -43,12 +41,10 @@ extension ImportSearchFlow {
         mode: Binding<SearchMode>,
         openSettings: @escaping () -> Void,
         onUseFileTags: (() -> Void)? = nil,
-        onSelect: ((BridgeMetadataResult) -> Void)? = nil
+        onSelect: @escaping (BridgeMetadataResult) -> Void
     ) -> some View {
         let key = input.key
         let importStore = services.importStore
-        let resolvedOnSelect =
-            onSelect ?? defaultOnSelect(services: services, input: input)
         let fields = searchFieldBindings(importStore: importStore, input: input)
 
         ImportSearchPane(
@@ -80,7 +76,7 @@ extension ImportSearchFlow {
                 services.importer.identifyForExplicitLookup(key)
             },
             onRerun: { services.importer.rerunIdentifyForCandidate(key) },
-            onSelect: resolvedOnSelect,
+            onSelect: onSelect,
         )
     }
 
@@ -162,24 +158,4 @@ extension ImportSearchFlow {
         )
     }
 
-    /// The default row-pick handler: decide the identity, which persists the
-    /// choice and comes back with what it claims. Re-identify overrides this
-    /// with its own `onSelect`.
-    @MainActor
-    private static func defaultOnSelect(
-        services: ImportServices,
-        input: SearchPaneInput
-    ) -> (BridgeMetadataResult) -> Void {
-        { result in
-            applyMetadata(
-                importer: services.importer,
-                importStore: services.importStore,
-                key: input.key,
-                provenance: .externalRelease(
-                    source: result.source,
-                    releaseId: result.releaseId
-                )
-            )
-        }
-    }
 }

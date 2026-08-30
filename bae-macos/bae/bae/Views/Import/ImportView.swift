@@ -2,6 +2,10 @@ import BaeKit
 import SwiftUI
 
 struct ImportView: View {
+    /// End the window's active field edit before a metadata source replaces
+    /// the candidate draft.
+    let endEditing: () -> Void
+
     @Environment(Importer.self)
     var importer
     @Environment(Library.self)
@@ -284,7 +288,7 @@ struct ImportView: View {
             ticked: [PreviewData.importTabCandidate.key]
         )
         let scene = PreviewData.importSmokeTestScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
@@ -295,7 +299,7 @@ struct ImportView: View {
             ticked: [PreviewData.importTabCandidate.key]
         )
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
@@ -305,7 +309,7 @@ struct ImportView: View {
             selected: PreviewData.importTabSeveralMatchesCandidate.key
         )
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
@@ -315,7 +319,7 @@ struct ImportView: View {
             selected: PreviewData.importTabDisagreementCandidate.key
         )
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
@@ -325,7 +329,7 @@ struct ImportView: View {
             selected: PreviewData.importTabTrackMismatchCandidate.key
         )
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
@@ -335,7 +339,7 @@ struct ImportView: View {
             selected: PreviewData.importTabAlreadyInLibraryCandidate.key
         )
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
@@ -345,21 +349,21 @@ struct ImportView: View {
             selected: PreviewData.importTabNoMatchCandidate.key
         )
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — completed imports") {
         let uiStore = ImportTabPreview.uiStore(tab: .done)
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 
     #Preview("Import tab — skipped and invalid folders") {
         let uiStore = ImportTabPreview.uiStore(tab: .skipped)
         let scene = PreviewData.importTabScene()
-        ImportView()
+        ImportView(endEditing: {})
             .importTabPreviewEnvironment(scene: scene, uiStore: uiStore)
     }
 #endif

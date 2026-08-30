@@ -104,6 +104,7 @@ private final class Recorder {
             importer: importer,
             automaticIdentification: true,
             importStore: store,
+            endEditing: {},
             previewAudio: previewAudio,
             openDocument: { _, _ in },
             openImages: { _, _ in },
@@ -150,7 +151,7 @@ private func makeMatchListScene() -> MatchListScene {
     uiStore.setFolderCandidateSelection([key])
     let size = NSSize(width: 1200, height: 760)
     let (_, host) = SnapshotTestSupport.hostInWindow(
-        ImportView()
+        ImportView(endEditing: {})
             .environment(uiStore)
             .importPreviewEnvironment()
             .environment(uiStore)
@@ -526,6 +527,7 @@ extension ImportMappingPaneTests {
         ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: .externalRelease(
                 source: MappingFixtures.source,
@@ -687,6 +689,7 @@ extension ImportMappingPaneTests {
         ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: .fileTags
         )
@@ -711,6 +714,7 @@ extension ImportMappingPaneTests {
         ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
             importStore: store,
+            endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance
         )

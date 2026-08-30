@@ -11,6 +11,7 @@ struct ImportMetadataSourceSection: View {
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
     let editActions: ReleaseFieldWriter
+    let endEditing: () -> Void
     let commit: ImportCommitControls?
     let onPresent: (CandidateMetadataPresentation) -> Void
     let onReadFileTags: () -> Void
@@ -28,6 +29,7 @@ struct ImportMetadataSourceSection: View {
                 ImportOnlineMetadataBrowser(
                     candidateKey: candidate.key,
                     runtime: runtime,
+                    endEditing: endEditing,
                     onBack: { onPresent(.draft) }
                 )
             case .fileTags:
@@ -136,6 +138,7 @@ struct ImportMetadataSourceSection: View {
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
+    let endEditing: () -> Void
     let onBack: () -> Void
 
     @Environment(Importer.self)
@@ -197,6 +200,7 @@ private struct ImportOnlineMetadataBrowser: View {
                             ImportSearchFlow.applyMetadata(
                                 importer: importer,
                                 importStore: importStore,
+                                endEditing: endEditing,
                                 key: candidateKey,
                                 provenance: .externalRelease(
                                     source: result.source,
