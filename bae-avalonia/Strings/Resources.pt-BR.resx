@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>Importar {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Importar mesmo assim</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Tentar novamente</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>Lendo a duração</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>buscar manualmente</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Nenhuma correspondência automática encontrada</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Sinais</value></data>

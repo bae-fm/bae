@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>Імпортувати {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Усе одно імпортувати</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Повторити</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>Зчитується тривалість</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>шукати вручну</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Автоматичних збігів не знайдено</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Сигнали</value></data>

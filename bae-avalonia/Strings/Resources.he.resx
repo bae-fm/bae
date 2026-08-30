@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>ייבא {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>ייבא בכל זאת</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>נסה שוב</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>קורא כמה זמן זה נמשך</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>חפש ידנית</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>לא נמצאו התאמות אוטומטיות</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>אותות</value></data>

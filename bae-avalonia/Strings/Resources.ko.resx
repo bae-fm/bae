@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count}개 가져오기</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>그래도 가져오기</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>다시 시도</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>재생 시간을 읽는 중</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>직접 검색</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>자동으로 찾은 결과가 없습니다</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>신호</value></data>

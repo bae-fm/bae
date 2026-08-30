@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>Nhập {count}</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Vẫn nhập</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Thử lại</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>Đang đọc thời lượng</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>tìm thủ công</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Không tìm thấy kết quả khớp tự động</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Tín hiệu</value></data>

@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} importeren</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>Toch importeren</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>Opnieuw proberen</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>Speelduur wordt gelezen</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>handmatig zoeken</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Geen automatische overeenkomsten gevonden</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Signalen</value></data>

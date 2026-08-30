@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} ਆਯਾਤ ਕਰੋ</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>ਫਿਰ ਵੀ ਆਯਾਤ ਕਰੋ</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>ਇਹ ਕਿੰਨਾ ਚਿਰ ਚੱਲਦਾ ਹੈ, ਪੜ੍ਹਿਆ ਜਾ ਰਿਹਾ ਹੈ</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>ਹੱਥੀਂ ਖੋਜੋ</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>ਕੋਈ ਆਪੇ ਮੇਲ ਨਹੀਂ ਮਿਲਿਆ</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>ਸੰਕੇਤ</value></data>

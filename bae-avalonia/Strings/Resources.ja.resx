@@ -380,7 +380,6 @@
   <data name="import.footbar.import_count" xml:space="preserve"><value>{count} 件を取り込む</value></data>
   <data name="import.row.import_anyway" xml:space="preserve"><value>このまま取り込む</value></data>
   <data name="import.row.retry" xml:space="preserve"><value>再試行</value></data>
-  <data name="import.measuring_length" xml:space="preserve"><value>再生時間を読み取り中</value></data>
   <data name="import.row.search_manually" xml:space="preserve"><value>手動で検索</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>自動一致は見つかりませんでした</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>シグナル</value></data>
