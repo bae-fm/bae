@@ -19,7 +19,6 @@ namespace Bae.Desktop;
 internal sealed class ImportStore : IDisposable
 {
     private readonly ImportService _import;
-    private readonly SettingsStore _settings;
     private readonly Action<string, string> _showError;
     private readonly IMediaControl _mediaControls;
     private readonly Action<Action> _dispatch;
@@ -119,13 +118,11 @@ internal sealed class ImportStore : IDisposable
 
     public ImportStore(
         ImportService import,
-        SettingsStore settings,
         Action<string, string> showError,
         IMediaControl mediaControls,
         Action<Action> dispatch)
     {
         _import = import;
-        _settings = settings;
         _showError = showError;
         _mediaControls = mediaControls;
         _dispatch = dispatch;
