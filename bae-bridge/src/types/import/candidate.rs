@@ -525,6 +525,10 @@ pub enum BridgeLookupFailure {
     /// An HTTP error response from the metadata provider, with its status
     /// code when one was observed.
     Provider { status: Option<u16> },
+    /// The provider refused the request because its rate limit was reached.
+    RateLimited,
+    /// The provider requires credentials, or rejected the configured ones.
+    Credentials,
     /// The request timed out before a response arrived.
     Timeout,
     /// Artwork analysis failed before barcode/text extraction finished.
@@ -541,6 +545,8 @@ impl BridgeLookupFailure {
         match f {
             LookupFailure::Network => BridgeLookupFailure::Network,
             LookupFailure::Provider { status } => BridgeLookupFailure::Provider { status },
+            LookupFailure::RateLimited => BridgeLookupFailure::RateLimited,
+            LookupFailure::Credentials => BridgeLookupFailure::Credentials,
             LookupFailure::Timeout => BridgeLookupFailure::Timeout,
             LookupFailure::ArtworkAnalysis => BridgeLookupFailure::ArtworkAnalysis,
             LookupFailure::Diagnostic { detail } => BridgeLookupFailure::Diagnostic { detail },
@@ -565,10 +571,45 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String>
             Some("core.lookup.failure.provider_unknown".to_string())
         }
         BridgeLookupFailure::Timeout => Some("core.lookup.failure.timeout".to_string()),
+        BridgeLookupFailure::RateLimited => Some("core.lookup.failure.rate_limited".to_string()),
+        BridgeLookupFailure::Credentials => Some("core.lookup.failure.credentials".to_string()),
         BridgeLookupFailure::ArtworkAnalysis => {
             Some("core.lookup.failure.artwork_analysis".to_string())
         }
         BridgeLookupFailure::Diagnostic { .. } => None,
+    }
+}
+
+/// Why a manual metadata search failed. Provider outcomes reuse the same
+/// typed reasons as automatic identification; local failures retain the
+/// ordinary bridge diagnostic and its opaque detail.
+#[derive(Debug, Clone, thiserror::Error, uniffi::Error)]
+pub enum BridgeSearchError {
+    #[error("metadata lookup failed: {failure:?}")]
+    Lookup { failure: BridgeLookupFailure },
+    #[error("search failed: {error}")]
+    Diagnostic { error: BridgeError },
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSearchError {
+    pub(crate) fn from_core(error: bae_core::import::SearchError) -> Self {
+        use bae_core::import::SearchError;
+
+        match error {
+            SearchError::Lookup { failure } => Self::Lookup {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+            SearchError::Diagnostic { error } => Self::Diagnostic {
+                error: BridgeError::from_core(error),
+            },
+        }
+    }
+}
+
+impl From<BridgeError> for BridgeSearchError {
+    fn from(error: BridgeError) -> Self {
+        Self::Diagnostic { error }
     }
 }
 

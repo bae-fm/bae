@@ -478,7 +478,7 @@ impl AppHandle {
     pub async fn search_for_candidate(
         self: std::sync::Arc<Self>,
         query: crate::types::BridgeSearchQuery,
-    ) -> Result<crate::types::BridgeCandidateSearchResults, BridgeError> {
+    ) -> Result<crate::types::BridgeCandidateSearchResults, crate::types::BridgeSearchError> {
         self.run_exported(move |this| async move {
             use bae_core::import::SearchQuery;
 
@@ -521,7 +521,7 @@ impl AppHandle {
                 .services
                 .import_search_with_status(core_query)
                 .await
-                .map_err(BridgeError::import)?;
+                .map_err(crate::types::BridgeSearchError::from_core)?;
 
             Ok(crate::types::BridgeCandidateSearchResults::from_core(
                 grouped,

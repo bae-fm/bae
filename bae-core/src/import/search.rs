@@ -248,23 +248,6 @@ pub async fn search_discogs(
         .collect())
 }
 
-/// Map a MusicBrainz wire failure to the typed `LookupFailure` the identify
-/// pipeline carries. The wire-level variants pass through structured (the HTTP
-/// status is preserved); a local/internal MB error becomes opaque `Diagnostic`
-/// detail. `NotFound` never reaches here — callers map it to "no matches"
-/// before this is called.
-fn mb_error_to_lookup_failure(e: musicbrainz::MusicBrainzError) -> LookupFailure {
-    use musicbrainz::MusicBrainzError;
-    match e {
-        MusicBrainzError::Network(_) => LookupFailure::Network,
-        MusicBrainzError::Timeout => LookupFailure::Timeout,
-        MusicBrainzError::Provider { status } => LookupFailure::Provider { status },
-        MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => LookupFailure::Diagnostic {
-            detail: e.to_string(),
-        },
-    }
-}
-
 /// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
 /// when the disc is unknown to MB — a settled lookup with no matches, which is
 /// what `NotFound` means on this endpoint too.
@@ -275,7 +258,7 @@ pub async fn lookup_by_discid(
     let releases = match musicbrainz::lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
-        Err(e) => return Err(mb_error_to_lookup_failure(e)),
+        Err(e) => return Err(LookupFailure::from_musicbrainz(e)),
     };
 
     Ok(releases

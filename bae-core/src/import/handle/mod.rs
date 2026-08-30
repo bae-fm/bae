@@ -103,6 +103,67 @@ pub struct GroupedSearchResults {
     pub statuses: Vec<crate::db::LibraryStatus>,
 }
 
+/// A manual metadata search either failed at the provider boundary or inside
+/// bae. Provider outcomes stay typed for localized, actionable UI copy;
+/// diagnostics retain their category and opaque detail.
+#[derive(Debug)]
+pub enum SearchError {
+    Lookup {
+        failure: crate::signals::LookupFailure,
+    },
+    Diagnostic {
+        error: crate::ui::UiError,
+    },
+}
+
+impl From<crate::import::ImportError> for SearchError {
+    fn from(error: crate::import::ImportError) -> Self {
+        use crate::import::ImportError;
+
+        match error {
+            ImportError::MusicBrainz(error) => {
+                Self::from_lookup_failure(crate::signals::LookupFailure::from_musicbrainz(error))
+            }
+            ImportError::Discogs(error) => {
+                Self::from_lookup_failure(crate::signals::LookupFailure::from_discogs(error))
+            }
+            ImportError::DiscogsNotConfigured => Self::Lookup {
+                failure: crate::signals::LookupFailure::Credentials,
+            },
+            ImportError::Db(error) => error.into(),
+            ImportError::Config { detail } => Self::Diagnostic {
+                error: crate::ui::UiError::diagnostic(crate::ui::UiErrorCategory::Config, detail),
+            },
+            ImportError::Internal { detail } => Self::Diagnostic {
+                error: crate::ui::UiError::internal(detail),
+            },
+            error => Self::Diagnostic {
+                error: crate::ui::UiError::import(error),
+            },
+        }
+    }
+}
+
+impl SearchError {
+    fn from_lookup_failure(failure: crate::signals::LookupFailure) -> Self {
+        match failure {
+            crate::signals::LookupFailure::Diagnostic { detail } => Self::Diagnostic {
+                error: crate::ui::UiError::internal(detail),
+            },
+            failure => Self::Lookup { failure },
+        }
+    }
+}
+
+impl From<crate::library::LibraryError> for SearchError {
+    fn from(error: crate::library::LibraryError) -> Self {
+        let category = error.category();
+        Self::Diagnostic {
+            error: crate::ui::UiError::diagnostic(category, error),
+        }
+    }
+}
+
 /// What `save_discogs_token` did with a submitted key, after validating against
 /// Discogs first.
 ///

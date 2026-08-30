@@ -89,6 +89,15 @@ internal static class BridgeDisplay
         return key is null ? null : Loc.Core(key);
     }
 
+    internal static string? LocalizedLine(BridgeSearchException exception) =>
+        exception switch
+        {
+            BridgeSearchException.Lookup lookup => LocalizedLine(lookup.failure),
+            BridgeSearchException.Diagnostic diagnostic => LocalizedLine(diagnostic.error),
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(exception), exception, "Unknown search error"),
+        };
+
     // How much of a diagnostic chain fits on one secondary line under the
     // localized headline.
     private const int FaultSummaryLength = 180;

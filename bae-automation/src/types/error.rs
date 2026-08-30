@@ -9,6 +9,7 @@ pub enum AutomationError {
     Validation(String),
     Unavailable(String),
     Timeout(String),
+    Lookup(AutomationLookupFailure),
     Internal(String),
 }
 
@@ -21,11 +22,12 @@ impl AutomationError {
             Self::Validation(_) => "validation",
             Self::Unavailable(_) => "unavailable",
             Self::Timeout(_) => "timeout",
+            Self::Lookup(_) => "lookup",
             Self::Internal(_) => "internal",
         }
     }
 
-    pub fn message(&self) -> &str {
+    pub fn message(&self) -> std::borrow::Cow<'_, str> {
         match self {
             Self::Database(message)
             | Self::Import(message)
@@ -33,7 +35,29 @@ impl AutomationError {
             | Self::Validation(message)
             | Self::Unavailable(message)
             | Self::Timeout(message)
-            | Self::Internal(message) => message,
+            | Self::Internal(message) => std::borrow::Cow::Borrowed(message),
+            Self::Lookup(failure) => std::borrow::Cow::Owned(match failure {
+                AutomationLookupFailure::Network => {
+                    "couldn't reach the metadata provider".to_string()
+                }
+                AutomationLookupFailure::Provider {
+                    status: Some(status),
+                } => format!("metadata provider returned HTTP {status}"),
+                AutomationLookupFailure::Provider { status: None } => {
+                    "metadata provider returned an error".to_string()
+                }
+                AutomationLookupFailure::RateLimited => {
+                    "metadata provider rate limit reached".to_string()
+                }
+                AutomationLookupFailure::Credentials => {
+                    "metadata provider needs valid credentials".to_string()
+                }
+                AutomationLookupFailure::Timeout => {
+                    "metadata provider request timed out".to_string()
+                }
+                AutomationLookupFailure::ArtworkAnalysis => "artwork analysis failed".to_string(),
+                AutomationLookupFailure::Diagnostic { detail } => detail.clone(),
+            }),
         }
     }
 
@@ -99,5 +123,62 @@ impl From<ImportError> for AutomationError {
     /// error's Display as the message.
     fn from(value: ImportError) -> Self {
         Self::Import(value.to_string())
+    }
+}
+
+impl From<SearchError> for AutomationError {
+    fn from(value: SearchError) -> Self {
+        match value {
+            SearchError::Lookup { failure } => {
+                Self::Lookup(crate::convert::automation_lookup_failure(failure))
+            }
+            SearchError::Diagnostic { error } => match error {
+                bae_core::ui::UiError::NotFound { entity, id } => {
+                    Self::NotFound(format!("{entity:?} '{id}' not found"))
+                }
+                bae_core::ui::UiError::Diagnostic { category, detail } => {
+                    use bae_core::ui::UiErrorCategory;
+                    match category {
+                        UiErrorCategory::Database => Self::Database(detail),
+                        UiErrorCategory::Import => Self::Import(detail),
+                        UiErrorCategory::Internal | UiErrorCategory::Config => {
+                            Self::Internal(detail)
+                        }
+                        UiErrorCategory::CloudSetup(_)
+                        | UiErrorCategory::DeviceIdentityMissing
+                        | UiErrorCategory::Credentials
+                        | UiErrorCategory::Network
+                        | UiErrorCategory::Keyring
+                        | UiErrorCategory::KeyringLocked
+                        | UiErrorCategory::Membership => Self::Unavailable(detail),
+                        UiErrorCategory::Export | UiErrorCategory::Save => {
+                            Self::Unavailable(detail)
+                        }
+                    }
+                }
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn search_lookup_error_preserves_provider_status() {
+        let error = AutomationError::from(SearchError::Lookup {
+            failure: bae_core::signals::LookupFailure::Provider { status: Some(503) },
+        });
+
+        assert_eq!(error.kind(), "lookup");
+        assert_eq!(error.message(), "metadata provider returned HTTP 503");
+        assert_eq!(
+            serde_json::to_value(error).unwrap(),
+            serde_json::json!({
+                "kind": "lookup",
+                "message": { "kind": "provider", "status": 503 }
+            })
+        );
     }
 }

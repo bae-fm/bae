@@ -137,14 +137,15 @@ impl AppHandle {
         })
     }
 
-    async fn run_exported<T, Build, Fut>(
+    async fn run_exported<T, E, Build, Fut>(
         self: std::sync::Arc<Self>,
         build: Build,
-    ) -> Result<T, BridgeError>
+    ) -> Result<T, E>
     where
         T: Send + 'static,
+        E: From<BridgeError> + Send + 'static,
         Build: FnOnce(std::sync::Arc<Self>) -> Fut + Send + 'static,
-        Fut: std::future::Future<Output = Result<T, BridgeError>> + Send + 'static,
+        Fut: std::future::Future<Output = Result<T, E>> + Send + 'static,
     {
         let runtime = self.runtime.handle().clone();
         crate::operation_runtime::run(runtime, move || build(self)).await

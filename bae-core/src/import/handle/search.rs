@@ -93,7 +93,7 @@ impl ImportServiceHandle {
     pub async fn search_with_status(
         &self,
         query: SearchQuery,
-    ) -> Result<GroupedSearchResults, crate::import::ImportError> {
+    ) -> Result<GroupedSearchResults, SearchError> {
         use crate::db::LibraryCheck;
 
         let results = match query.into_provider_params() {
@@ -125,9 +125,9 @@ impl ImportServiceHandle {
         let mut statuses = Vec::with_capacity(results.len());
         for r in &results {
             let status = status_map.get(&r.release_id).cloned().ok_or_else(|| {
-                crate::import::ImportError::Internal {
+                SearchError::from(crate::import::ImportError::Internal {
                     detail: format!("library status missing for release {}", r.release_id),
-                }
+                })
             })?;
             statuses.push(status);
         }
@@ -339,5 +339,99 @@ impl ImportServiceHandle {
             return Ok(None);
         }
         Ok(row.identify.map(|identify| identify.verdict))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn musicbrainz_provider_failure_is_a_typed_lookup_failure() {
+        let error = SearchError::from(crate::import::ImportError::MusicBrainz(
+            crate::musicbrainz::MusicBrainzError::Provider { status: Some(503) },
+        ));
+
+        assert!(matches!(
+            error,
+            SearchError::Lookup {
+                failure: crate::signals::LookupFailure::Provider { status: Some(503) }
+            }
+        ));
+    }
+
+    #[test]
+    fn provider_outcomes_keep_their_search_failure_variants() {
+        use crate::discogs::client::DiscogsError;
+        use crate::import::ImportError;
+        use crate::musicbrainz::MusicBrainzError;
+        use crate::signals::LookupFailure;
+
+        for (error, expected) in [
+            (
+                ImportError::MusicBrainz(MusicBrainzError::Network("offline".into())),
+                LookupFailure::Network,
+            ),
+            (
+                ImportError::MusicBrainz(MusicBrainzError::Timeout),
+                LookupFailure::Timeout,
+            ),
+            (
+                ImportError::MusicBrainz(MusicBrainzError::Provider { status: Some(429) }),
+                LookupFailure::RateLimited,
+            ),
+            (
+                ImportError::Discogs(DiscogsError::RateLimit),
+                LookupFailure::RateLimited,
+            ),
+            (
+                ImportError::Discogs(DiscogsError::InvalidApiKey),
+                LookupFailure::Credentials,
+            ),
+            (
+                ImportError::DiscogsNotConfigured,
+                LookupFailure::Credentials,
+            ),
+            (
+                ImportError::Discogs(DiscogsError::Provider(
+                    reqwest::StatusCode::SERVICE_UNAVAILABLE,
+                )),
+                LookupFailure::Provider { status: Some(503) },
+            ),
+        ] {
+            assert!(matches!(
+                SearchError::from(error),
+                SearchError::Lookup { failure } if failure == expected
+            ));
+        }
+    }
+
+    #[test]
+    fn local_search_failures_are_diagnostics() {
+        let malformed = SearchError::from(crate::import::ImportError::MusicBrainz(
+            crate::musicbrainz::MusicBrainzError::Other("malformed response".into()),
+        ));
+        assert!(matches!(
+            malformed,
+            SearchError::Diagnostic {
+                error: crate::ui::UiError::Diagnostic {
+                    category: crate::ui::UiErrorCategory::Internal,
+                    detail,
+                }
+            } if detail.contains("malformed response")
+        ));
+
+        let database = SearchError::from(crate::library::LibraryError::Internal(
+            "status query failed".into(),
+        ));
+        assert!(matches!(
+            database,
+            SearchError::Diagnostic {
+                error: crate::ui::UiError::Diagnostic {
+                    category: crate::ui::UiErrorCategory::Internal,
+                    detail,
+                }
+            } if detail.contains("status query failed")
+        ));
     }
 }

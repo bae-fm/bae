@@ -746,7 +746,7 @@ internal static partial class NativeBae
     internal static (List<ReleaseCandidateChoice>? Candidates, string? Error) SearchReleases(
         AppHandle handle,
         BridgeSearchQuery query) =>
-        CaptureBridgeValue(() => CandidateChoices(Await(() => handle.SearchForCandidate(query))));
+        CaptureSearchValue(() => CandidateChoices(Await(() => handle.SearchForCandidate(query))));
 
     internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeReleaseReseed choice) =>
         CaptureError(() => Await(() => handle.ReIdentifyRelease(releaseId, choice)));

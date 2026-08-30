@@ -15,7 +15,7 @@ use bae_core::import::{
     CandidateEditField, CandidateRuntimeSnapshot, CoverSelection, GroupedSearchResults,
     ImportCandidateDetail, ImportError, ImportInFlight, ImportListItem, ImportListView,
     ImportPhase, ImportStep, MetadataProvenance, MetadataRef, MetadataSource, PrepareStep,
-    PressingEdit, ReleaseReseed, ScanEvent, SearchQuery, StorageMode, TrackUserEdit,
+    PressingEdit, ReleaseReseed, ScanEvent, SearchError, SearchQuery, StorageMode, TrackUserEdit,
     TriageImportStatus, TriageTab,
 };
 use bae_core::library::{AppServices, LibraryError};

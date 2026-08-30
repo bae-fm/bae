@@ -5,6 +5,7 @@
 const IMPORT_METADATA_SEEDS_SQL: &str = include_str!("../migrations/002_import_metadata_seeds.sql");
 const METADATA_DRAFTS_AND_PROVENANCE_SQL: &str =
     include_str!("../migrations/003_metadata_drafts_and_provenance.sql");
+const LOOKUP_FAILURE_KINDS_SQL: &str = include_str!("../migrations/004_lookup_failure_kinds.sql");
 const VERSION_ONE_FILE_TAG_TRACK_PREFIX: &str = "unknown-track-";
 const FILE_TAG_TRACK_PREFIX: &str = "file-tag-track-";
 
@@ -25,6 +26,7 @@ pub fn all() -> Vec<coven::Migration> {
             "metadata_drafts_and_provenance",
             METADATA_DRAFTS_AND_PROVENANCE_SQL,
         ),
+        coven::Migration::sql(4, "lookup_failure_kinds", LOOKUP_FAILURE_KINDS_SQL),
     ]
 }
 
@@ -214,6 +216,12 @@ mod tests {
     fn version_two() -> Vec<coven::Migration> {
         let mut migrations = all();
         migrations.truncate(2);
+        migrations
+    }
+
+    fn version_three() -> Vec<coven::Migration> {
+        let mut migrations = all();
+        migrations.truncate(3);
         migrations
     }
 
@@ -541,7 +549,8 @@ mod tests {
             .expect("seed version-two state");
         drop(handle);
 
-        let handle = open(store_dir, "migration-drafts", all()).expect("migrate to version three");
+        let handle =
+            open(store_dir, "migration-drafts", version_three()).expect("migrate to version three");
         handle
             .read(|sql| {
                 let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -582,5 +591,75 @@ mod tests {
             })
             .await
             .expect("insert source-less release");
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn migration_four_preserves_signals_and_accepts_new_failure_kinds() {
+        let temp = tempfile::tempdir().expect("temp store");
+        let store_dir = StoreDir::new_ephemeral(temp.path());
+        let handle = open(
+            store_dir.clone(),
+            "migration-lookup-failures",
+            version_three(),
+        )
+        .expect("open version three");
+        handle
+            .write(|sql| {
+                sql.execute_batch(
+                    "INSERT INTO import_candidate_state (content_hash, folder_path)
+                         VALUES ('existing-signals', '/candidate/existing');
+                     INSERT INTO import_candidate_signals (
+                         content_hash, disc_id_state, track_count, disc_id_failure,
+                         barcode_state, text_state
+                     ) VALUES (
+                         'existing-signals', 'failed', 1, 'network', 'settled', 'settled'
+                     );
+                     INSERT INTO import_candidate_signal_value (
+                         content_hash, list, position, value, origin, origin_path
+                     ) VALUES (
+                         'existing-signals', 'catalog', 0, 'CAT-1', 'text_file', 'notes.txt'
+                     );",
+                )?;
+                Ok(())
+            })
+            .await
+            .expect("seed version-three signals");
+        drop(handle);
+
+        let handle = open(store_dir, "migration-lookup-failures", all())
+            .expect("migrate lookup failure kinds");
+        handle
+            .write(|sql| {
+                let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+                assert_eq!(version, 4);
+                let existing: (String, String) = sql.query_row(
+                    "SELECT signals.disc_id_failure, value.value
+                     FROM import_candidate_signals AS signals
+                     JOIN import_candidate_signal_value AS value USING (content_hash)",
+                    [],
+                    |row| Ok((row.get(0)?, row.get(1)?)),
+                )?;
+                assert_eq!(existing, ("network".to_string(), "CAT-1".to_string()));
+
+                sql.execute_batch(
+                    "INSERT INTO import_candidate_state (content_hash, folder_path)
+                         VALUES ('new-signals', '/candidate/new');
+                     INSERT INTO import_candidate_signals (
+                         content_hash, disc_id_state, track_count, disc_id_failure,
+                         barcode_state, barcode_failure, text_state, text_failure
+                     ) VALUES (
+                         'new-signals', 'failed', 1, 'rate_limited',
+                         'failed', 'credentials', 'failed', 'rate_limited'
+                     );",
+                )?;
+                let violations = sql.query("PRAGMA foreign_key_check", [], |row| {
+                    row.get::<_, String>(0)
+                })?;
+                assert!(violations.is_empty());
+                Ok(())
+            })
+            .await
+            .expect("read preserved signals and write new failure kinds");
     }
 }

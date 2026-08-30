@@ -60,6 +60,14 @@ fn failure_columns(failure: Option<&LookupFailure>) -> FailureColumns {
             status: status.map(i64::from),
             detail: None,
         },
+        Some(LookupFailure::RateLimited) => FailureColumns {
+            kind: Some("rate_limited"),
+            ..FailureColumns::NONE
+        },
+        Some(LookupFailure::Credentials) => FailureColumns {
+            kind: Some("credentials"),
+            ..FailureColumns::NONE
+        },
         Some(LookupFailure::Diagnostic { detail }) => FailureColumns {
             kind: Some("diagnostic"),
             status: None,
@@ -89,6 +97,8 @@ fn failure_of(
                 })
                 .transpose()?,
         },
+        "rate_limited" => LookupFailure::RateLimited,
+        "credentials" => LookupFailure::Credentials,
         "diagnostic" => LookupFailure::Diagnostic {
             detail: detail
                 .ok_or_else(|| DbError::Message("a stored diagnostic states no detail".into()))?,

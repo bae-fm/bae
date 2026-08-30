@@ -26,6 +26,34 @@ struct DisplayErrorTests {
         #expect(displayed.detail == "no such table: albums")
     }
 
+    @Test("a search provider failure renders the provider response")
+    func searchProviderFailureRendersStatus() throws {
+        let error = BridgeSearchError.Lookup(
+            failure: .provider(status: 503)
+        )
+
+        let displayed = try #require(DisplayError(error as any Error))
+
+        #expect(displayed.line.contains("503"))
+        #expect(displayed.line != BridgeErrorCategory.import.localizedLine)
+        #expect(displayed.detail == nil)
+    }
+
+    @Test("a search diagnostic keeps its category and detail")
+    func searchDiagnosticKeepsBridgeError() throws {
+        let error = BridgeSearchError.Diagnostic(
+            error: .Diagnostic(
+                category: .database,
+                detail: "database unavailable"
+            )
+        )
+
+        let displayed = try #require(DisplayError(error as any Error))
+
+        #expect(displayed.line == BridgeErrorCategory.database.localizedLine)
+        #expect(displayed.detail == "database unavailable")
+    }
+
     @Test("a not-found renders its entity's line and has no detail to disclose")
     func notFoundRendersEntityLine() throws {
         let error = BridgeError.NotFound(entity: .album, id: "album-1")

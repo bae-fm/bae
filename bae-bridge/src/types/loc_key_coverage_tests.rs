@@ -425,6 +425,8 @@ fn produced_keys() -> Vec<String> {
         BridgeLookupFailure::Provider { status: Some(503) },
         BridgeLookupFailure::Provider { status: None },
         BridgeLookupFailure::Timeout,
+        BridgeLookupFailure::RateLimited,
+        BridgeLookupFailure::Credentials,
         BridgeLookupFailure::ArtworkAnalysis,
     ] {
         keys.push(

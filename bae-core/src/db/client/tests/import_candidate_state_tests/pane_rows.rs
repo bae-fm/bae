@@ -300,6 +300,21 @@ async fn every_settled_signal_shape_round_trips() {
                 free_text: Vec::new(),
             },
         ),
+        (
+            "a rate limit and rejected credentials",
+            DiscIdSignal::Failed {
+                failure: LookupFailure::RateLimited,
+                track_count: 1,
+            },
+            BarcodeSignal::Failed {
+                failure: LookupFailure::Credentials,
+                codes: Vec::new(),
+            },
+            TextSignal::Settled {
+                catalogs: Vec::new(),
+                free_text: Vec::new(),
+            },
+        ),
     ];
 
     for (what, disc_id, barcode, text) in cases {

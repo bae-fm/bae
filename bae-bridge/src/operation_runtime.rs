@@ -20,14 +20,17 @@ where
 /// Run a fallible operation on its owning runtime. Dropping the returned future
 /// aborts the runtime task, which makes UniFFI cancellation own the work it
 /// started instead of detaching it.
-pub(crate) async fn run<T, Build, Fut>(runtime: Handle, build: Build) -> Result<T, BridgeError>
+pub(crate) async fn run<T, E, Build, Fut>(runtime: Handle, build: Build) -> Result<T, E>
 where
     T: Send + 'static,
+    E: From<BridgeError> + Send + 'static,
     Build: FnOnce() -> Fut + Send + 'static,
-    Fut: Future<Output = Result<T, BridgeError>> + Send + 'static,
+    Fut: Future<Output = Result<T, E>> + Send + 'static,
 {
     let mut task = AbortOnDrop::new(spawn(runtime, build));
-    (&mut task.task).await.map_err(join_error)?
+    (&mut task.task)
+        .await
+        .map_err(|error| E::from(join_error(error)))?
 }
 
 /// Run an operation whose explicit domain cancellation must finish even if the
@@ -122,7 +125,7 @@ mod tests {
             .stack_size(544 * 1024)
             .spawn(move || {
                 let caller = std::thread::current().id();
-                let result = owned.block_on(run(handle, move || {
+                let result: Result<_, BridgeError> = owned.block_on(run(handle, move || {
                     let constructed = std::thread::current().id();
                     async move {
                         let polled = std::thread::current().id();

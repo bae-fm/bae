@@ -85,6 +85,18 @@ internal static partial class NativeBae
         }
     }
 
+    private static (T? Value, string? Error) CaptureSearchValue<T>(Func<T> action) where T : class
+    {
+        try
+        {
+            return (action(), null);
+        }
+        catch (BridgeSearchException exception)
+        {
+            return (null, BridgeDisplay.LocalizedLine(exception));
+        }
+    }
+
     private static T? Capture<T>(Func<T?> action)
         where T : class
     {

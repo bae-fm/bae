@@ -492,6 +492,8 @@ pub(super) fn automation_lookup_failure(
     match failure {
         LookupFailure::Network => AutomationLookupFailure::Network,
         LookupFailure::Provider { status } => AutomationLookupFailure::Provider { status },
+        LookupFailure::RateLimited => AutomationLookupFailure::RateLimited,
+        LookupFailure::Credentials => AutomationLookupFailure::Credentials,
         LookupFailure::Timeout => AutomationLookupFailure::Timeout,
         LookupFailure::ArtworkAnalysis => AutomationLookupFailure::ArtworkAnalysis,
         LookupFailure::Diagnostic { detail } => AutomationLookupFailure::Diagnostic { detail },

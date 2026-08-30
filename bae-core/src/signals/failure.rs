@@ -18,6 +18,10 @@ pub enum LookupFailure {
     /// An HTTP error response from the metadata provider. `status` is the
     /// HTTP status code when one was observed.
     Provider { status: Option<u16> },
+    /// The provider refused the request because its rate limit was reached.
+    RateLimited,
+    /// The provider requires credentials, or rejected the configured ones.
+    Credentials,
     /// The request timed out before a response arrived.
     Timeout,
     /// Artwork analysis failed before it could finish extracting barcode/text
@@ -26,4 +30,44 @@ pub enum LookupFailure {
     /// A local error — a DB load, a "release not found", a compute task panic.
     /// `detail` is the opaque error chain: log-only, never translated.
     Diagnostic { detail: String },
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl LookupFailure {
+    pub(crate) fn from_musicbrainz(error: crate::musicbrainz::MusicBrainzError) -> Self {
+        use crate::musicbrainz::MusicBrainzError;
+
+        match error {
+            MusicBrainzError::Network(_) => Self::Network,
+            MusicBrainzError::Timeout => Self::Timeout,
+            MusicBrainzError::Provider { status: Some(429) } => Self::RateLimited,
+            MusicBrainzError::Provider { status } => Self::Provider { status },
+            MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => Self::Diagnostic {
+                detail: error.to_string(),
+            },
+        }
+    }
+
+    pub(crate) fn from_discogs(error: crate::discogs::client::DiscogsError) -> Self {
+        use crate::discogs::client::DiscogsError;
+
+        match error {
+            DiscogsError::Transport(error) if error.is_timeout() => Self::Timeout,
+            DiscogsError::Transport(error) if error.is_builder() || error.is_decode() => {
+                Self::Diagnostic {
+                    detail: DiscogsError::Transport(error).to_string(),
+                }
+            }
+            DiscogsError::Transport(_) => Self::Network,
+            DiscogsError::Provider(status) => Self::Provider {
+                status: Some(status.as_u16()),
+            },
+            DiscogsError::RateLimit => Self::RateLimited,
+            DiscogsError::InvalidApiKey => Self::Credentials,
+            DiscogsError::NotFound => Self::Provider { status: Some(404) },
+            DiscogsError::Serialization(error) => Self::Diagnostic {
+                detail: DiscogsError::Serialization(error).to_string(),
+            },
+        }
+    }
 }

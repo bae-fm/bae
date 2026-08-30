@@ -2,8 +2,18 @@ import Foundation
 
 /// Resolve a bae-core message key against the generated `Core` string table.
 /// One source of the table lookup for the error/playback lines below.
-public func localizedCoreString(_ key: String) -> String {
-    NSLocalizedString(key, tableName: "Core", bundle: .module, comment: "")
+public func localizedCoreString(
+    _ key: String,
+    _ arguments: CVarArg...
+) -> String {
+    let format = NSLocalizedString(
+        key,
+        tableName: "Core",
+        bundle: .module,
+        comment: ""
+    )
+    guard !arguments.isEmpty else { return format }
+    return String(format: format, locale: Locale.current, arguments: arguments)
 }
 
 extension BridgeErrorCategory {
@@ -33,7 +43,7 @@ extension BridgeError {
     /// happens to be blank, and it used to open the error alert with an empty
     /// message.
     public var localizedLine: String? {
-        bridgeErrorLineKey(error: self).map(localizedCoreString)
+        bridgeErrorLineKey(error: self).map { localizedCoreString($0) }
     }
 
     /// The opaque Rust error chain, for logs and a copyable disclosure. Present
@@ -58,7 +68,7 @@ extension BridgePlaybackErrorReason {
         switch self {
         case .syncDisconnected, .uploadPending:
             return bridgePlaybackErrorReasonKey(reason: self)
-                .map(localizedCoreString)
+                .map { localizedCoreString($0) }
         case .diagnostic(let error):
             return error.localizedLine
         }

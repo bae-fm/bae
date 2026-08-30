@@ -134,6 +134,8 @@ pub struct AutomationImportFailure {
 pub enum AutomationLookupFailure {
     Network,
     Provider { status: Option<u16> },
+    RateLimited,
+    Credentials,
     Timeout,
     ArtworkAnalysis,
     Diagnostic { detail: String },

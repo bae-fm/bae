@@ -17,7 +17,7 @@ impl AppServices {
     delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
     delegate_sync!(import, import_subscribe_folder_scan_events => subscribe_folder_scan_events() -> tokio::sync::mpsc::UnboundedReceiver<crate::import::ScanEvent>);
     delegate_async!(import, import_set_candidate_skipped => set_candidate_skipped(path: String, skipped: bool) -> Result<(), crate::import::ImportError>);
-    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery) -> Result<crate::import::GroupedSearchResults, crate::import::ImportError>);
+    delegate_async!(import, import_search_with_status => search_with_status(query: crate::import::SearchQuery) -> Result<crate::import::GroupedSearchResults, crate::import::SearchError>);
     delegate_async!(import, import_preview_file_tags_for_folder => preview_file_tags_for_folder(candidate_key: String) -> Result<crate::import::ReleaseUserEdit, crate::import::ImportError>);
     delegate_async!(import, import_start_import => start_import(candidate_key: &str, storage_mode: crate::import::StorageMode, pin: bool) -> Result<String, crate::import::ImportError>);
     delegate_async!(import, import_save_discogs_token => save_discogs_token(token: &str) -> Result<crate::import::DiscogsSaveOutcome, crate::import::ImportError>);

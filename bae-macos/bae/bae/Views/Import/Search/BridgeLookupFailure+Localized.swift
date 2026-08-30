@@ -13,21 +13,21 @@ extension BridgeLookupFailure {
         switch self {
         case .diagnostic:
             // No translated copy — the opaque detail is shown separately.
-            return coreString("core.lookup.failure.diagnostic")
-        case .network, .timeout, .provider, .artworkAnalysis:
+            return localizedCoreString("core.lookup.failure.diagnostic")
+        case .network, .timeout, .provider, .rateLimited, .credentials,
+            .artworkAnalysis:
             // Core owns the key for every typed variant (including the
             // status-vs-no-status split for `provider`); the UI never picks it.
             guard let key = bridgeLookupFailureKey(failure: self) else {
                 logger.warning(
                     "no catalog key for lookup failure \(String(reflecting: self))"
                 )
-                return coreString("core.lookup.failure.diagnostic")
+                return localizedCoreString("core.lookup.failure.diagnostic")
             }
-            let format = coreString(key)
             if case .provider(let status) = self, let status {
-                return String(format: format, NSNumber(value: status).intValue)
+                return localizedCoreString(key, Int(status))
             }
-            return format
+            return localizedCoreString(key)
         }
     }
 
@@ -48,5 +48,25 @@ extension BridgeLookupFailure {
             return "\(localizedDescription): \(detail)"
         }
         return localizedDescription
+    }
+}
+
+extension BridgeSearchError: LocalizedFailure {
+    public var localizedLine: String? {
+        switch self {
+        case .Lookup(let failure):
+            return failure.localizedDescription
+        case .Diagnostic(let error):
+            return error.localizedLine
+        }
+    }
+
+    public var detail: String? {
+        switch self {
+        case .Lookup(let failure):
+            return failure.diagnosticDetail
+        case .Diagnostic(let error):
+            return error.detail
+        }
     }
 }
