@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Bae.Desktop;
 using uniffi.bae_bridge;
@@ -83,6 +84,30 @@ public sealed class ImportMetadataSourceSectionTests
             },
             presentations);
         Assert.Equal(1, clears);
+    }
+
+    [AvaloniaFact]
+    public void AppliedDraftKeepsDetailsWithMetadataAndClearApartFromSources()
+    {
+        var section = Build(draftIsBlank: false);
+        var details = Assert.Single(
+            section.GetLogicalDescendants().OfType<Expander>());
+        var metadataColumn = Assert.IsType<StackPanel>(
+            details.GetLogicalParent());
+
+        Assert.Equal(1, Grid.GetColumn(metadataColumn));
+
+        var findOnline = ButtonNamed(
+            section,
+            Loc.Chrome("import.metadata.find_online_ellipsis"));
+        var fileTags = ButtonNamed(
+            section,
+            Loc.Core("ui.import.metadata.file_tags") + "…");
+        var clear = ButtonNamed(section, Loc.Chrome("import.metadata.clear"));
+
+        Assert.Same(findOnline.GetLogicalParent(), fileTags.GetLogicalParent());
+        Assert.NotSame(findOnline.GetLogicalParent(), clear.GetLogicalParent());
+        Assert.Equal(HorizontalAlignment.Right, clear.HorizontalAlignment);
     }
 
     [AvaloniaFact]
@@ -209,10 +234,13 @@ public sealed class ImportMetadataSourceSectionTests
         }.Build();
 
     private static void Click(Control section, string label) =>
+        ButtonNamed(section, label)
+            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    private static Button ButtonNamed(Control section, string label) =>
         Assert.Single(
             section.GetLogicalDescendants().OfType<Button>(),
-            button => Equals(button.Content, label))
-        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            button => Equals(button.Content, label));
 
     private static IReadOnlyList<string> Texts(Control section) =>
         section.GetLogicalDescendants().OfType<TextBlock>()

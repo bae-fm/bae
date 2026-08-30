@@ -79,7 +79,8 @@ internal sealed class ImportMetadataSourceSection
             SourceAudioLine,
             Edit,
             ProvenanceLabel,
-            DraftActions(),
+            SourceActions(),
+            ClearMetadataAction(),
             includeSelectedValues: true);
     }
 
@@ -95,7 +96,7 @@ internal sealed class ImportMetadataSourceSection
         layout.Children.Add(cover);
 
         var editor = new StackPanel { Spacing = 12 };
-        editor.Children.Add(DraftActions());
+        editor.Children.Add(SourceActions());
         editor.Children.Add(ReleaseFields(edit));
         Grid.SetColumn(editor, 1);
         layout.Children.Add(editor);
@@ -108,7 +109,7 @@ internal sealed class ImportMetadataSourceSection
         return CardBorder(body);
     }
 
-    private Control DraftActions()
+    private Control SourceActions()
     {
         var actions = new StackPanel
         {
@@ -121,13 +122,18 @@ internal sealed class ImportMetadataSourceSection
         actions.Children.Add(ActionButton(
             Loc.Core("ui.import.metadata.file_tags") + "…",
             () => OnPresent(ImportMetadataPresentation.FileTags)));
-        if (!DraftIsBlank)
-        {
-            actions.Children.Add(ActionButton(
-                Loc.Chrome("import.metadata.clear"),
-                OnClearMetadata));
-        }
         return actions;
+    }
+
+    private Control ClearMetadataAction()
+    {
+        var clear = ActionButton(
+            Loc.Chrome("import.metadata.clear"),
+            OnClearMetadata);
+        clear.HorizontalAlignment = HorizontalAlignment.Right;
+        clear[!Button.ForegroundProperty] =
+            new DynamicResourceExtension("BaeDangerBrush");
+        return clear;
     }
 
     private Control FileTagsContent()
@@ -146,6 +152,7 @@ internal sealed class ImportMetadataSourceSection
                 actionControl: ActionButton(
                     Loc.Chrome("import.metadata.apply"),
                     OnUseFileTags),
+                destructiveAction: null,
                 includeSelectedValues: false));
             return column;
         }
@@ -206,11 +213,12 @@ internal sealed class ImportMetadataSourceSection
         BridgeRawReleaseEdit? edit,
         string? provenanceLabel,
         Control? actionControl,
+        Control? destructiveAction,
         bool includeSelectedValues)
     {
         var grid = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions($"{CoverSize},*,Auto"),
+            ColumnDefinitions = new ColumnDefinitions($"{CoverSize},*"),
             ColumnSpacing = 14,
         };
 
@@ -241,20 +249,25 @@ internal sealed class ImportMetadataSourceSection
         }
         summary.Children.Add(facts);
         summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));
-        Grid.SetColumn(summary, 1);
-        grid.Children.Add(summary);
+        var summaryRow = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnSpacing = 14,
+        };
+        summaryRow.Children.Add(summary);
 
         if (actionControl is not null)
         {
             actionControl.VerticalAlignment = VerticalAlignment.Top;
-            Grid.SetColumn(actionControl, 2);
-            grid.Children.Add(actionControl);
+            Grid.SetColumn(actionControl, 1);
+            summaryRow.Children.Add(actionControl);
         }
 
-        var body = new StackPanel { Spacing = 12, Children = { grid } };
+        var metadata = new StackPanel { Spacing = 12 };
+        metadata.Children.Add(summaryRow);
         if (edit is not null)
         {
-            body.Children.Add(new Expander
+            metadata.Children.Add(new Expander
             {
                 Header = Loc.Chrome("import.pane.details"),
                 FontSize = 12,
@@ -262,6 +275,14 @@ internal sealed class ImportMetadataSourceSection
                 Content = ReleaseFields(edit),
             });
         }
+        if (destructiveAction is not null)
+        {
+            metadata.Children.Add(destructiveAction);
+        }
+        Grid.SetColumn(metadata, 1);
+        grid.Children.Add(metadata);
+
+        var body = new StackPanel { Spacing = 12, Children = { grid } };
         if (includeSelectedValues && CommitRow is not null)
         {
             body.Children.Add(CommitRow);
