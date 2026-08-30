@@ -22,6 +22,8 @@ struct ImportMappingPane: View {
     let libraryStatus: BridgeLibraryStatus?
     let hasCoverOptions: Bool
     let coverContent: ImageContent?
+    @Binding
+    var detailsExpanded: Bool
     /// Where an album-level field's typed value goes: a row under this
     /// candidate, written as the field is left.
     let editActions: ReleaseFieldWriter
@@ -108,6 +110,7 @@ struct ImportMappingPane: View {
                 || candidate.fileTagsPreview.isLoading,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
+            detailsExpanded: $detailsExpanded,
             editActions: editActions,
             editingCommands: editingCommands,
             endEditing: endEditing,

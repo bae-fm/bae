@@ -44,6 +44,7 @@ extension ImportView {
             libraryStatus: candidate.pickedLibraryStatus,
             hasCoverOptions: hasCoverOptions(candidate),
             coverContent: candidate.cover?.thumbnailContent,
+            detailsExpanded: metadataDetailsExpanded(for: candidate),
             editActions: editActions(for: candidate),
             editingCommands: editingCommands,
             endEditing: commitAndEndEditing,

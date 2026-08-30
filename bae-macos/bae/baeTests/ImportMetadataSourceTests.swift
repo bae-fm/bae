@@ -484,18 +484,41 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             .externalRelease(source: .discogs, releaseId: "release-discogs"),
         ]
         for provenance in provenances {
-            try await assertCardLayout(
-                provenance: provenance,
-                draftIsBlank: false
-            )
+            try await assertCardLayout(provenance: provenance)
         }
     }
 
-    func testBlankMetadataKeepsDetailsBesideTheCoverWithoutClear()
+    func testBlankMetadataOpensEditableDetailsBesideTheCover()
         async throws
     {
         NSApplication.shared.finishLaunching()
-        try await assertCardLayout(provenance: nil, draftIsBlank: true)
+        let recorder = MetadataCardActionRecorder()
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: nil,
+                draftIsBlank: true,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 900)
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        let editableFrames = SnapshotTestSupport.descendants(of: host)
+            .compactMap { view -> NSRect? in
+                guard let field = view as? NSTextField, field.isEditable else {
+                    return nil
+                }
+                return field.convert(field.bounds, to: host)
+            }
+        let cover = try coverFrame(in: host)
+        XCTAssertFalse(editableFrames.isEmpty)
+        XCTAssertTrue(
+            editableFrames.allSatisfy { $0.minX >= cover.maxX }
+        )
+        window.contentView = nil
+        window.orderOut(nil)
     }
 
     func testDetailsDisclosureRendersTheProductionReleaseFields() async throws {
@@ -539,15 +562,14 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     private func assertCardLayout(
-        provenance: BridgeMetadataProvenance?,
-        draftIsBlank: Bool
+        provenance: BridgeMetadataProvenance?
     ) async throws {
         let recorder = MetadataCardActionRecorder()
         let size = NSSize(width: 900, height: 420)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
                 provenance: provenance,
-                draftIsBlank: draftIsBlank,
+                draftIsBlank: false,
                 recorder: recorder
             ),
             size: size
@@ -555,7 +577,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         await Task.yield()
         host.layoutSubtreeIfNeeded()
-        let layout = try focusLayout(in: host, draftIsBlank: draftIsBlank)
+        let layout = try focusLayout(in: host)
         let cover = try coverFrame(in: host)
 
         XCTAssertGreaterThanOrEqual(layout.details.minX, cover.maxX)
@@ -611,6 +633,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
+            detailsExpanded: .constant(draftIsBlank),
             editValues: editValues,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
@@ -630,13 +653,10 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     }
 
     private func focusLayout(
-        in host: NSView,
-        draftIsBlank: Bool
+        in host: NSView
     ) throws -> MetadataCardFocusLayout {
         let frames = focusFrames(in: host)
-        let details = try XCTUnwrap(
-            frames.filter { $0.height < 20 }.max { $0.width < $1.width }
-        )
+        let details = try detailsFrame(in: host)
         let remaining =
             frames
             .filter { $0.height >= 20 }
@@ -647,12 +667,20 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         let findOnline = try XCTUnwrap(remaining.first)
         let fileTags = try XCTUnwrap(remaining.dropFirst().first)
         let clear = remaining.dropFirst(2).first
-        XCTAssertEqual(remaining.count, draftIsBlank ? 2 : 3)
+        XCTAssertEqual(remaining.count, 3)
         return MetadataCardFocusLayout(
             details: details,
             findOnline: findOnline,
             fileTags: fileTags,
             clear: clear
+        )
+    }
+
+    private func detailsFrame(in host: NSView) throws -> NSRect {
+        try XCTUnwrap(
+            focusFrames(in: host)
+                .filter { $0.height < 20 }
+                .max { $0.width < $1.width }
         )
     }
 
@@ -699,6 +727,31 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             )
             NSApplication.shared.sendEvent(event)
         }
+    }
+}
+
+extension ImportMetadataCardLayoutTests {
+    func testDetailsDisclosureStateIsRememberedPerCandidate() {
+        var state = CandidateMetadataDetailsState()
+
+        XCTAssertTrue(
+            state.isExpanded(for: "candidate-a", draftIsBlank: true)
+        )
+        state.setExpanded(false, for: "candidate-a")
+        XCTAssertFalse(
+            state.isExpanded(for: "candidate-a", draftIsBlank: true)
+        )
+
+        XCTAssertFalse(
+            state.isExpanded(for: "candidate-b", draftIsBlank: false)
+        )
+        state.setExpanded(true, for: "candidate-b")
+        XCTAssertTrue(
+            state.isExpanded(for: "candidate-b", draftIsBlank: false)
+        )
+        XCTAssertFalse(
+            state.isExpanded(for: "candidate-a", draftIsBlank: true)
+        )
     }
 }
 

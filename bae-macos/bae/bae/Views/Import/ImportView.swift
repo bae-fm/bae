@@ -1,6 +1,21 @@
 import BaeKit
 import SwiftUI
 
+/// In-memory disclosure choices for candidate metadata forms. A candidate
+/// without a choice uses the draft shape as its initial state: blank drafts
+/// open for entry, while populated drafts stay folded.
+struct CandidateMetadataDetailsState: Equatable {
+    private var expandedByCandidate: [String: Bool] = [:]
+
+    func isExpanded(for key: String, draftIsBlank: Bool) -> Bool {
+        expandedByCandidate[key] ?? draftIsBlank
+    }
+
+    mutating func setExpanded(_ expanded: Bool, for key: String) {
+        expandedByCandidate[key] = expanded
+    }
+}
+
 struct ImportView: View {
     /// End the window's active field edit before a metadata source replaces
     /// the candidate draft.
@@ -37,6 +52,10 @@ struct ImportView: View {
     /// application must wait for the draft the person was editing to commit.
     @State
     var editingCommands = EditingCommitCommands()
+    /// The metadata form's disclosure choice belongs to its candidate and
+    /// survives selecting another row and returning during this import view.
+    @State
+    var metadataDetailsState = CandidateMetadataDetailsState()
     /// What each of the selected candidate's track sheets may be bound to,
     /// keyed by the sheet's file id. Read from core when the selection's files
     /// change: core probes every audio file to answer, so this is not something
@@ -62,6 +81,23 @@ struct ImportView: View {
     func commitAndEndEditing() async {
         await editingCommands.commitActiveEdits()
         endEditing()
+    }
+
+    func metadataDetailsExpanded(for candidate: Candidate) -> Binding<Bool> {
+        Binding(
+            get: {
+                metadataDetailsState.isExpanded(
+                    for: candidate.key,
+                    draftIsBlank: candidate.metadataDraftIsBlank
+                )
+            },
+            set: { expanded in
+                metadataDetailsState.setExpanded(
+                    expanded,
+                    for: candidate.key
+                )
+            }
+        )
     }
 
     var body: some View {

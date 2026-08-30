@@ -70,6 +70,8 @@ struct ImportReleaseHeader: View {
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
+    @Binding
+    var detailsExpanded: Bool
     /// The release's own fields, folded away at the card's foot: the card
     /// states what they add up to, and this is where a wrong year or a missing
     /// catalog number gets fixed before it is written. `nil` when there is no
@@ -93,8 +95,6 @@ struct ImportReleaseHeader: View {
 
     @Environment(ConfigStore.self)
     private var configStore
-    @State
-    private var detailsExpanded = false
     @State
     private var confirmsClear = false
     @State
@@ -315,6 +315,7 @@ struct ImportReleaseHeader: View {
             isReading: false,
             coverContent: nil,
             hasCoverOptions: true,
+            detailsExpanded: .constant(false),
             editValues: PreviewData.confirmEditValues,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
