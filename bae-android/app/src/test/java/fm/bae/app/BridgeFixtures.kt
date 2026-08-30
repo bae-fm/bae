@@ -14,15 +14,14 @@ import uniffi.bae_bridge.BridgeDownloadOp
 import uniffi.bae_bridge.BridgeDownloadProgress
 import uniffi.bae_bridge.BridgeDownloadSnapshot
 import uniffi.bae_bridge.BridgeDownloadState
-import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeFile
+import uniffi.bae_bridge.BridgeGalleryItem
 import uniffi.bae_bridge.BridgeLibrary
 import uniffi.bae_bridge.BridgeMcpConfig
 import uniffi.bae_bridge.BridgeOutboxPauseState
 import uniffi.bae_bridge.BridgeOutboxSnapshot
 import uniffi.bae_bridge.BridgeRelease
 import uniffi.bae_bridge.BridgeReleaseStorageState
-import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeRendererKind
 import uniffi.bae_bridge.BridgeSaveBitDepth
 import uniffi.bae_bridge.BridgeSaveCodec
@@ -30,6 +29,7 @@ import uniffi.bae_bridge.BridgeSaveFilenameToken
 import uniffi.bae_bridge.BridgeSavePregapPlacement
 import uniffi.bae_bridge.BridgeSavePreset
 import uniffi.bae_bridge.BridgeSearchResults
+import uniffi.bae_bridge.BridgeSourceAudioSummary
 import uniffi.bae_bridge.BridgeSubsonicConfig
 import uniffi.bae_bridge.BridgeTrackGroup
 import uniffi.bae_bridge.BridgeTrackSearchResult
