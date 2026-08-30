@@ -102,7 +102,7 @@ private final class Recorder {
     func services(_ store: ImportStore) -> ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            automaticIdentification: true,
+            defaultFindOnlineMode: .automatic,
             importStore: store,
             endEditing: {},
             previewAudio: previewAudio,

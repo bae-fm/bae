@@ -1,10 +1,27 @@
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::types::BridgeOutputKind;
 use crate::types::{
-    BridgeConfig, BridgeDefaultImportMetadataSource, BridgeDiscogsTokenStatus, BridgeMcpConfig,
-    BridgeSaveBitDepth, BridgeSaveCodec, BridgeSaveFilenameToken, BridgeSavePregapPlacement,
-    BridgeSavePreset, BridgeSubsonicConfig, BridgeSyncConfig, BridgeSyncProvider,
+    BridgeConfig, BridgeDefaultFindOnlineMode, BridgeDefaultImportMetadataSource,
+    BridgeDiscogsTokenStatus, BridgeMcpConfig, BridgeSaveBitDepth, BridgeSaveCodec,
+    BridgeSaveFilenameToken, BridgeSavePregapPlacement, BridgeSavePreset, BridgeSubsonicConfig,
+    BridgeSyncConfig, BridgeSyncProvider,
 };
+
+impl BridgeDefaultFindOnlineMode {
+    pub(crate) fn from_core(mode: bae_core::config::DefaultFindOnlineMode) -> Self {
+        match mode {
+            bae_core::config::DefaultFindOnlineMode::Automatic => Self::Automatic,
+            bae_core::config::DefaultFindOnlineMode::SearchManually => Self::SearchManually,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::config::DefaultFindOnlineMode {
+        match self {
+            Self::Automatic => bae_core::config::DefaultFindOnlineMode::Automatic,
+            Self::SearchManually => bae_core::config::DefaultFindOnlineMode::SearchManually,
+        }
+    }
+}
 
 impl BridgeDefaultImportMetadataSource {
     pub(crate) fn from_core(source: bae_core::config::DefaultImportMetadataSource) -> Self {
@@ -255,7 +272,7 @@ impl BridgeConfig {
             pause_between_sides,
             max_concurrent_uploads,
             max_concurrent_downloads,
-            automatic_import_identification,
+            default_find_online_mode,
             default_import_metadata_source,
             show_remaining_time,
             library_full_width,
@@ -282,7 +299,9 @@ impl BridgeConfig {
             pause_between_sides: *pause_between_sides,
             max_concurrent_uploads: max_concurrent_uploads.get(),
             max_concurrent_downloads: max_concurrent_downloads.get(),
-            automatic_import_identification: *automatic_import_identification,
+            default_find_online_mode: BridgeDefaultFindOnlineMode::from_core(
+                *default_find_online_mode,
+            ),
             default_import_metadata_source: BridgeDefaultImportMetadataSource::from_core(
                 *default_import_metadata_source,
             ),

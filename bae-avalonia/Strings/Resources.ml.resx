@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>സ്ഥാനാർഥിയെ വീണ്ടും വായിക്കാൻ ശ്രമിക്കുക.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>പൊതുവായത്</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ഒരു സ്ഥാനാർഥി ഓൺലൈനിൽ കണ്ടെത്തുക എന്നതിൽ ആരംഭിക്കുമ്പോഴോ നിങ്ങൾ അത് സ്വയം തുറക്കുമ്പോഴോ പ്രവർത്തിക്കുന്നു.</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തലിന്റെ ഡിഫോൾട്ട് മോഡ്</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ഡിഫോൾട്ട് മെറ്റാഡാറ്റ ഉറവിടം</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ഒന്നുമില്ല</value></data>

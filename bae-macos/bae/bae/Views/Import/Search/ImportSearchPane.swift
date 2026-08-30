@@ -10,7 +10,7 @@ struct ImportSearchPane: View {
     let state: ImportSearchState
     /// Which method the stable Find online page is showing.
     @Binding
-    var mode: SearchMode
+    var mode: BridgeDefaultFindOnlineMode
     @Binding
     var activeTab: SearchTab
     @Binding
@@ -33,8 +33,9 @@ struct ImportSearchPane: View {
     /// The state the import projection delivers is re-derived from what is
     /// left checked.
     let onToggleSignal: (BridgeSignalToggle) -> Void
-    /// Start the first automatic identification run from the idle state.
-    let onIdentify: () -> Void
+    /// Enter Automatic. Core owns whether this starts, resumes, or does
+    /// nothing for an active or settled run.
+    let onEnterAutomatic: () -> Void
     /// Run signal extraction and lookup again from either online-search view.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
@@ -116,13 +117,8 @@ struct ImportSearchPane: View {
             case .automatic:
                 toolbar
                 errorLine
-                if hasAutomaticRunStarted {
-                    signalsResult
-                }
-                else {
-                    identifyAction
-                }
-            case .manual:
+                signalsResult
+            case .searchManually:
                 errorLine
                 manualForm
             }
@@ -131,9 +127,22 @@ struct ImportSearchPane: View {
     }
 
     private var methodPicker: some View {
-        Picker(selection: $mode) {
-            Text("Automatic").tag(SearchMode.automatic)
-            Text("Search manually").tag(SearchMode.manual)
+        Picker(
+            selection: Binding(
+                get: { mode },
+                set: { selected in
+                    mode = selected
+                    if selected == .automatic {
+                        onEnterAutomatic()
+                    }
+                }
+            )
+        ) {
+            Text("Automatic").tag(BridgeDefaultFindOnlineMode.automatic)
+            Text("Search manually")
+                .tag(
+                    BridgeDefaultFindOnlineMode.searchManually
+                )
         } label: {
             EmptyView()
         }
@@ -158,12 +167,6 @@ struct ImportSearchPane: View {
     }
 
     // MARK: - Signals
-
-    private var identifyAction: some View {
-        Button("Identify automatically", action: onIdentify)
-            .buttonStyle(.borderedProminent)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
 
     /// What identification made of the folder: its matches, the spinner while
     /// it is still looking, or the one line saying it has nothing — with the
@@ -193,6 +196,13 @@ struct ImportSearchPane: View {
         }
         else if hasAutomaticRunStarted {
             nothingFoundLine
+        }
+        else {
+            ContentUnavailableView(
+                "Identifying…",
+                systemImage: "antenna.radiowaves.left.and.right"
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
@@ -272,7 +282,7 @@ struct ImportSearchPane: View {
         @MainActor
         static func preview(
             state: ImportSearchState,
-            mode: SearchMode = .automatic,
+            mode: BridgeDefaultFindOnlineMode = .automatic,
             searchArtist: String = "",
             searchAlbum: String = "",
         ) -> ImportSearchPane {
@@ -289,7 +299,7 @@ struct ImportSearchPane: View {
                 onOpenSettings: {},
                 onUseFileTags: nil,
                 onToggleSignal: { _ in },
-                onIdentify: {},
+                onEnterAutomatic: {},
                 onRerun: {},
                 onSelect: { _ in },
             )
@@ -311,7 +321,7 @@ struct ImportSearchPane: View {
     #Preview("Main Pane - Manual Search") {
         ImportSearchPane.preview(
             state: PreviewData.searchStateManual,
-            mode: .manual,
+            mode: .searchManually,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
         )

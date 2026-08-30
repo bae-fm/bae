@@ -117,6 +117,14 @@ pub enum DefaultImportMetadataSource {
     None,
 }
 
+/// Which method Find online shows when it opens.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DefaultFindOnlineMode {
+    Automatic,
+    SearchManually,
+}
+
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl DefaultImportMetadataSource {
     pub(crate) fn as_str(self) -> &'static str {
@@ -295,9 +303,9 @@ pub struct ConfigYaml {
     /// shortfall), failing the import for a broken track rather than importing it
     /// and failing at play time. Rides the loudness decode, so it adds no work.
     pub verify_decode_on_import: bool,
-    /// Whether an unseeded candidate whose initial metadata surface is Lookup
-    /// runs the identification pipeline without an explicit Find action.
-    pub automatic_import_identification: bool,
+    /// Which method Find online opens with. Automatic also runs the queue-wide
+    /// identification pipeline for newly discovered Find online candidates.
+    pub default_find_online_mode: DefaultFindOnlineMode,
     /// Which source is applied when a candidate is first discovered.
     pub default_import_metadata_source: DefaultImportMetadataSource,
     /// Whether casting to a network receiver is available at all. Off unless the
@@ -337,7 +345,7 @@ impl ConfigYaml {
             show_remaining_time: self.show_remaining_time,
             library_full_width: self.library_full_width,
             verify_decode_on_import: self.verify_decode_on_import,
-            automatic_import_identification: self.automatic_import_identification,
+            default_find_online_mode: self.default_find_online_mode,
             default_import_metadata_source: self.default_import_metadata_source,
             cast_enabled: self.cast_enabled,
             mcp: self.mcp,
@@ -363,7 +371,7 @@ impl From<&Config> for ConfigYaml {
             show_remaining_time: config.show_remaining_time,
             library_full_width: config.library_full_width,
             verify_decode_on_import: config.verify_decode_on_import,
-            automatic_import_identification: config.automatic_import_identification,
+            default_find_online_mode: config.default_find_online_mode,
             default_import_metadata_source: config.default_import_metadata_source,
             cast_enabled: config.cast_enabled,
             mcp: config.mcp,
@@ -437,9 +445,9 @@ pub struct Config {
     /// Whether import verifies each track by fully decoding it, failing the import
     /// for a broken (truncated/corrupt) track. Defaults to `true`.
     pub verify_decode_on_import: bool,
-    /// Whether the Lookup surface starts identification automatically for an
-    /// unseeded candidate. Defaults to `true`.
-    pub automatic_import_identification: bool,
+    /// Which method Find online opens with. Automatic also starts queue-wide
+    /// identification for newly discovered Find online candidates.
+    pub default_find_online_mode: DefaultFindOnlineMode,
     /// Which source is applied when a candidate is first discovered.
     pub default_import_metadata_source: DefaultImportMetadataSource,
     /// Whether casting to a network receiver (Cast, UPnP, AirPlay) is available.
@@ -475,8 +483,8 @@ impl Config {
         &self.library_path
     }
 
-    pub fn automatic_import_identification_enabled(&self) -> bool {
-        self.automatic_import_identification
+    pub fn find_online_starts_automatically(&self) -> bool {
+        self.default_find_online_mode == DefaultFindOnlineMode::Automatic
     }
 
     pub fn load_registered_library(
@@ -580,7 +588,7 @@ impl Config {
             show_remaining_time: false,
             library_full_width: false,
             verify_decode_on_import: true,
-            automatic_import_identification: true,
+            default_find_online_mode: DefaultFindOnlineMode::Automatic,
             default_import_metadata_source: DefaultImportMetadataSource::FindOnline,
             cast_enabled: false,
             mcp: McpConfig::disabled_default(),

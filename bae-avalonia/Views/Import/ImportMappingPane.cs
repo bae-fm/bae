@@ -63,12 +63,6 @@ internal sealed partial class ImportMappingPane : UserControl
     // The search editor, held open across rebuilds along with what has been
     // typed into it: the pane re-renders whenever a result lands, and a query
     // that reset itself each time would be unusable.
-    private enum FindOnlineMethod
-    {
-        Automatic,
-        Manual,
-    }
-
     private enum ManualSearchType
     {
         General,
@@ -85,7 +79,7 @@ internal sealed partial class ImportMappingPane : UserControl
         string? Error);
 
     // The two methods keep their own state while the other is hidden.
-    private FindOnlineMethod _findOnlineMethod;
+    private BridgeDefaultFindOnlineMode _findOnlineMethod;
     private ManualSearchType _manualSearchType;
     private readonly Dictionary<ManualSearchKey, ManualSearchResult> _manualSearchResults = new();
     private string _searchArtist = string.Empty;
@@ -280,7 +274,7 @@ internal sealed partial class ImportMappingPane : UserControl
         _applyingProvenance = null;
         _applicationCommandRevision = null;
         _applicationDetailRevision = null;
-        _findOnlineMethod = FindOnlineMethod.Automatic;
+        _findOnlineMethod = BridgeDefaultFindOnlineMode.Automatic;
         _manualSearchType = ManualSearchType.General;
         _manualSearchResults.Clear();
         _searchArtist = string.Empty;
@@ -359,12 +353,11 @@ internal sealed partial class ImportMappingPane : UserControl
             case ImportMetadataPresentation.Draft:
                 break;
             case ImportMetadataPresentation.FindOnline:
-                _findOnlineMethod = (_app.SettingsStore.Current?
-                    .AutomaticImportIdentification ?? false)
-                    ? FindOnlineMethod.Automatic
-                    : FindOnlineMethod.Manual;
-                if (_findOnlineMethod == FindOnlineMethod.Automatic
-                    && ShownIdentifyState is BridgeIdentifyState.Idle)
+                var settings = _app.SettingsStore.Current
+                    ?? throw new InvalidOperationException(
+                        "Find online cannot open before import settings load.");
+                _findOnlineMethod = settings.DefaultFindOnlineMode;
+                if (_findOnlineMethod == BridgeDefaultFindOnlineMode.Automatic)
                 {
                     _ = _import.StartInteractiveLookup(key);
                 }

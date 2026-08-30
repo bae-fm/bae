@@ -55,7 +55,7 @@ struct ReIdentifySheet: View {
     /// Which half of the identify pane is showing. The sheet owns it, so it
     /// opens on what identification found.
     @State
-    private var searchMode: SearchMode = .automatic
+    private var searchMode: BridgeDefaultFindOnlineMode = .automatic
 
     private enum Phase: Equatable {
         case identifying

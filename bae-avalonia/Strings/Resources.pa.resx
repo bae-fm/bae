@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭੋ…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ਉਮੀਦਵਾਰ ਨੂੰ ਦੁਬਾਰਾ ਪੜ੍ਹਨ ਦੀ ਕੋਸ਼ਿਸ਼ ਕਰੋ।</value></data>
   <data name="import.search.general" xml:space="preserve"><value>ਆਮ</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>ਆਪਣੇ ਆਪ ਪਛਾਣੋ</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>ਆਪਣੇ ਆਪ ਪਛਾਣੋ</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ਜਦੋਂ ਕੋਈ ਉਮੀਦਵਾਰ ਆਨਲਾਈਨ ਲੱਭੋ ਨਾਲ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ ਜਾਂ ਤੁਸੀਂ ਇਸਨੂੰ ਖੁਦ ਖੋਲ੍ਹਦੇ ਹੋ ਤਾਂ ਚੱਲਦਾ ਹੈ।</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭਣ ਦਾ ਡਿਫੌਲਟ ਢੰਗ</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ਡਿਫੌਲਟ ਮੈਟਾਡਾਟਾ ਸਰੋਤ</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭੋ</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ਕੋਈ ਨਹੀਂ</value></data>

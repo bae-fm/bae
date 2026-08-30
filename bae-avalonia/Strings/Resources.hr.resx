@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Pronađi na internetu…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Pokušajte ponovno pročitati kandidata.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Općenito</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>Automatski prepoznaj</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Automatski prepoznaj</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Pokreće se kada kandidat započne s Pronađi na internetu ili kada ga otvorite ručno.</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Zadani način pretraživanja na internetu</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Zadani izvor metapodataka</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Pronađi na internetu</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Nijedan</value></data>

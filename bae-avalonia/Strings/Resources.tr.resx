@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Çevrimiçi bul…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Adayı yeniden okumayı deneyin.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Genel</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>Otomatik tanımla</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Otomatik tanımla</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Bir aday Çevrimiçi bul ile başladığında veya siz elle açtığınızda çalışır.</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Varsayılan Çevrimiçi bul modu</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Varsayılan meta veri kaynağı</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Çevrimiçi bul</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Yok</value></data>

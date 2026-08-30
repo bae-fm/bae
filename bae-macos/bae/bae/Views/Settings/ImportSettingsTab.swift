@@ -35,19 +35,17 @@ struct ImportSettingsTab: View {
             }
 
             Section {
-                Toggle(
-                    "Identify automatically",
-                    isOn: automaticIdentification
-                )
+                Picker(
+                    "Default Find online mode",
+                    selection: defaultFindOnlineMode
+                ) {
+                    Text("Automatic")
+                        .tag(BridgeDefaultFindOnlineMode.automatic)
+                    Text("Search manually")
+                        .tag(BridgeDefaultFindOnlineMode.searchManually)
+                }
             } header: {
                 Text("Online lookup")
-            } footer: {
-                Text(
-                    "Runs when a candidate starts with Find online or when you open it manually."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Section {
@@ -75,12 +73,12 @@ struct ImportSettingsTab: View {
         .formStyle(.grouped)
     }
 
-    private var automaticIdentification: Binding<Bool> {
+    private var defaultFindOnlineMode: Binding<BridgeDefaultFindOnlineMode> {
         Binding(
-            get: { configStore.config.automaticImportIdentification },
-            set: { enabled in
+            get: { configStore.config.defaultFindOnlineMode },
+            set: { mode in
                 do {
-                    try importer.setAutomaticIdentification(enabled)
+                    try importer.setDefaultFindOnlineMode(mode)
                 }
                 catch {
                     uiStore.showError(error)

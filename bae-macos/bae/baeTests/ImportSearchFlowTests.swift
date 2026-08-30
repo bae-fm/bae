@@ -69,7 +69,7 @@ final class ManualSearchWorkspaceTests: XCTestCase {
         )
         let size = NSSize(width: 900, height: 600)
         let (window, host) = SnapshotTestSupport.hostInWindow(
-            ImportSearchPane.preview(state: state, mode: .manual)
+            ImportSearchPane.preview(state: state, mode: .searchManually)
                 .frame(width: size.width, height: size.height),
             size: size
         )
@@ -96,7 +96,7 @@ struct FindOnlineMethodPresentationTests {
 
         #expect(labels.contains(String(localized: "Automatic")))
         #expect(labels.contains(String(localized: "Search manually")))
-        #expect(labels.contains(String(localized: "Identify automatically")))
+        #expect(labels.contains(String(localized: "Identifying…")))
         #expect(
             !labels.contains(String(localized: "No automatic matches found"))
         )
@@ -105,7 +105,10 @@ struct FindOnlineMethodPresentationTests {
     @Test("manual method has no empty-result message before a search")
     func manualMethodHasNoEmptyResultMessageBeforeSearch() async {
         let labels = await labels(
-            for: ImportSearchPane.preview(state: idleState, mode: .manual)
+            for: ImportSearchPane.preview(
+                state: idleState,
+                mode: .searchManually
+            )
         )
 
         #expect(!labels.contains(String(localized: "No results")))

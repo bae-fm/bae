@@ -24,8 +24,8 @@ public struct Config: Equatable {
     /// reads them here and writes through the bridge setters.
     public let maxConcurrentUploads: UInt32
     public let maxConcurrentDownloads: UInt32
-    /// Whether Find online identifies candidates without an explicit action.
-    public let automaticImportIdentification: Bool
+    /// Which method Find online presents when opened.
+    public let defaultFindOnlineMode: BridgeDefaultFindOnlineMode
     /// Which source a newly discovered candidate starts with.
     public let defaultImportMetadataSource: BridgeDefaultImportMetadataSource
     /// Whether the seek bar's leading label counts down the time remaining
@@ -61,7 +61,7 @@ public struct Config: Equatable {
         pauseBetweenSides = bridge.pauseBetweenSides
         maxConcurrentUploads = bridge.maxConcurrentUploads
         maxConcurrentDownloads = bridge.maxConcurrentDownloads
-        automaticImportIdentification = bridge.automaticImportIdentification
+        defaultFindOnlineMode = bridge.defaultFindOnlineMode
         defaultImportMetadataSource = bridge.defaultImportMetadataSource
         showRemainingTime = bridge.showRemainingTime
         libraryFullWidth = bridge.libraryFullWidth

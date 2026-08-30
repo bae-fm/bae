@@ -165,7 +165,7 @@ pub fn start(
                         if changed.is_err() {
                             return;
                         }
-                        if config.borrow().automatic_import_identification_enabled() {
+                        if config.borrow().find_online_starts_automatically() {
                             run_pass(&loop_context, &loop_token, &mut event_rx, &mut config).await;
                         } else {
                             loop_context.release_all();
@@ -321,7 +321,7 @@ async fn run_pass_once(
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
     config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) -> PassOutcome {
-    if !config.borrow().automatic_import_identification_enabled() {
+    if !config.borrow().find_online_starts_automatically() {
         context.release_all();
         emit_progress(context, 0, 0);
         return PassOutcome::Complete;
@@ -393,7 +393,7 @@ async fn run_pass_once(
 
     loop {
         while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
-            if !config.borrow().automatic_import_identification_enabled() {
+            if !config.borrow().find_online_starts_automatically() {
                 context.release_all();
                 finishing.shutdown().await;
                 emit_progress(context, 0, 0);
@@ -475,7 +475,7 @@ async fn run_pass_once(
                 if changed.is_err()
                     || !config
                         .borrow()
-                        .automatic_import_identification_enabled()
+                        .find_online_starts_automatically()
                 {
                     context.release_all();
                     finishing.shutdown().await;

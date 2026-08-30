@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ऑनलाइन खोजें…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>उम्मीदवार को फिर से पढ़ने की कोशिश करें।</value></data>
   <data name="import.search.general" xml:space="preserve"><value>सामान्य</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>अपने आप पहचानें</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>अपने आप पहचानें</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>जब कोई उम्मीदवार ऑनलाइन खोज से शुरू होता है या आप इसे खुद खोलते हैं, तब चलता है।</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ऑनलाइन खोज का डिफ़ॉल्ट मोड</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>डिफ़ॉल्ट मेटाडेटा स्रोत</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>कोई नहीं</value></data>

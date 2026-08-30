@@ -15,7 +15,7 @@ internal sealed partial class ImportMappingPane
     {
         var column = new StackPanel { Spacing = 8 };
         column.Children.Add(SearchMethodSelector());
-        column.Children.Add(_findOnlineMethod == FindOnlineMethod.Automatic
+        column.Children.Add(_findOnlineMethod == BridgeDefaultFindOnlineMode.Automatic
             ? AutomaticHalf()
             : ManualHalf());
         return column;
@@ -31,20 +31,25 @@ internal sealed partial class ImportMappingPane
         };
         methods.Children.Add(MethodButton(
             Loc.Chrome("import.search.auto"),
-            FindOnlineMethod.Automatic));
+            BridgeDefaultFindOnlineMode.Automatic));
         methods.Children.Add(MethodButton(
             Loc.Chrome("import.row.search_manually"),
-            FindOnlineMethod.Manual));
+            BridgeDefaultFindOnlineMode.SearchManually));
         return methods;
     }
 
-    private Button MethodButton(string label, FindOnlineMethod method)
+    private Button MethodButton(string label, BridgeDefaultFindOnlineMode method)
     {
         var button = ImportPaneUi.RowButton(label);
         button.IsEnabled = _findOnlineMethod != method;
         button.Click += (_, _) =>
         {
             _findOnlineMethod = method;
+            if (method == BridgeDefaultFindOnlineMode.Automatic
+                && _key is { } key)
+            {
+                _ = _import.StartInteractiveLookup(key);
+            }
             Render();
         };
         return button;
@@ -80,16 +85,7 @@ internal sealed partial class ImportMappingPane
         }
         else if (ShownIdentifyState is BridgeIdentifyState.Idle)
         {
-            var identify = ImportPaneUi.RowButton(
-                Loc.Chrome("import.search.identify_automatically"));
-            identify.Click += (_, _) =>
-            {
-                if (_key is { } key)
-                {
-                    _ = _import.StartInteractiveLookup(key);
-                }
-            };
-            column.Children.Add(identify);
+            column.Children.Add(new Spinner { Width = 16, Height = 16 });
         }
         else if (signals.Count == 0)
         {

@@ -588,9 +588,9 @@ internal static partial class NativeBae
     internal static string? SetPauseBetweenSides(AppHandle handle, bool enabled) =>
         CaptureError(() => handle.SetPauseBetweenSides(enabled));
 
-    internal static string? SetAutomaticImportIdentification(
-        AppHandle handle, bool enabled) =>
-        CaptureError(() => handle.SetAutomaticImportIdentification(enabled));
+    internal static string? SetDefaultFindOnlineMode(
+        AppHandle handle, BridgeDefaultFindOnlineMode mode) =>
+        CaptureError(() => handle.SetDefaultFindOnlineMode(mode));
 
     internal static string? SetDefaultImportMetadataSource(
         AppHandle handle, BridgeDefaultImportMetadataSource source) =>

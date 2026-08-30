@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Online zoeken…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Probeer de kandidaat opnieuw te lezen.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Algemeen</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>Automatisch identificeren</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>Automatisch identificeren</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>Wordt uitgevoerd wanneer een kandidaat begint met Online zoeken of wanneer je dit handmatig opent.</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Standaardmodus voor Online zoeken</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Standaardbron voor metagegevens</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Online zoeken</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Geen</value></data>

@@ -77,12 +77,12 @@ impl LibraryManager {
             .update(|c| c.library_full_width = enabled)
     }
 
-    pub fn set_automatic_import_identification(
+    pub fn set_default_find_online_mode(
         &self,
-        enabled: bool,
+        mode: crate::config::DefaultFindOnlineMode,
     ) -> Result<(), crate::config::ConfigError> {
         self.config_handle
-            .update(|config| config.automatic_import_identification = enabled)
+            .update(|config| config.default_find_online_mode = mode)
     }
 
     pub fn set_default_import_metadata_source(

@@ -263,7 +263,7 @@ object BridgeFixtures {
             pauseBetweenSides = false,
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
-            automaticImportIdentification = true,
+            defaultFindOnlineMode = BridgeDefaultFindOnlineMode.AUTOMATIC,
             defaultImportMetadataSource = BridgeDefaultImportMetadataSource.FIND_ONLINE,
             showRemainingTime = false,
             libraryFullWidth = false,

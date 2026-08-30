@@ -4,7 +4,7 @@ import Foundation
 /// The services the mapping pane's actions drive.
 struct ImportMappingServices {
     let importer: Importer
-    let automaticIdentification: Bool
+    let defaultFindOnlineMode: BridgeDefaultFindOnlineMode
     /// Where a failed command's line lands, on the candidate whose pane ran
     /// it. Nothing about the table is held here — every edit is a row core
     /// stores, and the per-candidate read redraws from it.
@@ -44,14 +44,9 @@ enum ImportMappingFlow {
         case .draft:
             break
         case .findOnline:
-            guard services.automaticIdentification else { return }
-            guard
-                case .idle = shownIdentifyState(
-                    resumed: candidate.resumedIdentifyState,
-                    runtime: services.importer.candidateRuntime(candidate.key)
-                )
-            else { return }
-            services.importer.identifyForExplicitLookup(candidate.key)
+            if services.defaultFindOnlineMode == .automatic {
+                services.importer.identifyForExplicitLookup(candidate.key)
+            }
         case .fileTags:
             loadFileTagsPreview(key: candidate.key, services: services)
         }

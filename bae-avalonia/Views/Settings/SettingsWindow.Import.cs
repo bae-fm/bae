@@ -30,31 +30,38 @@ internal sealed partial class SettingsWindow
         content.Children.Add(source);
 
         content.Children.Add(SectionLabel(Loc.Chrome("settings.import.online_lookup")));
-        var automatic = new CheckBox
+        var findOnlineMode = new ComboBox
         {
-            Content = Loc.Chrome("settings.import.automatic_identification"),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
         };
-        automatic.IsCheckedChanged += (_, _) =>
+        AddFindOnlineMode(
+            findOnlineMode,
+            Loc.Chrome("import.search.auto"),
+            BridgeDefaultFindOnlineMode.Automatic);
+        AddFindOnlineMode(
+            findOnlineMode,
+            Loc.Chrome("import.row.search_manually"),
+            BridgeDefaultFindOnlineMode.SearchManually);
+        findOnlineMode.SelectionChanged += (_, _) =>
         {
-            if (_refreshingSettings)
+            if (_refreshingSettings || findOnlineMode.SelectedItem is not ComboBoxItem
+                { Tag: BridgeDefaultFindOnlineMode selected })
             {
                 return;
             }
             WriteSetting(
-                () => _app.Settings.SetAutomaticImportIdentification(
-                    automatic.IsChecked == true),
+                () => _app.Settings.SetDefaultFindOnlineMode(selected),
                 () => RenderCurrent(renderers));
         };
-        content.Children.Add(automatic);
-        var automaticHelp = SecondaryLabel(
-            Loc.Chrome("settings.import.automatic_identification_help"));
-        content.Children.Add(automaticHelp);
+        content.Children.Add(SecondaryLabel(
+            Loc.Chrome("settings.import.default_find_online_mode")));
+        content.Children.Add(findOnlineMode);
 
         renderers.Add(fresh =>
         {
             _refreshingSettings = true;
             SelectSource(source, fresh.DefaultImportMetadataSource);
-            automatic.IsChecked = fresh.AutomaticImportIdentification;
+            SelectFindOnlineMode(findOnlineMode, fresh.DefaultFindOnlineMode);
             _refreshingSettings = false;
         });
     }
@@ -79,6 +86,28 @@ internal sealed partial class SettingsWindow
             }
         }
         throw new InvalidOperationException($"Unknown import metadata source: {selected}");
+    }
+
+    private static void AddFindOnlineMode(
+        ComboBox picker,
+        string label,
+        BridgeDefaultFindOnlineMode mode) =>
+        picker.Items.Add(new ComboBoxItem { Content = label, Tag = mode });
+
+    private static void SelectFindOnlineMode(
+        ComboBox picker,
+        BridgeDefaultFindOnlineMode selected)
+    {
+        foreach (var item in picker.Items)
+        {
+            if (item is ComboBoxItem { Tag: BridgeDefaultFindOnlineMode mode }
+                && mode == selected)
+            {
+                picker.SelectedItem = item;
+                return;
+            }
+        }
+        throw new InvalidOperationException($"Unknown Find online mode: {selected}");
     }
 
     private void WriteSetting(

@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>అభ్యర్థిని మళ్లీ చదవడానికి ప్రయత్నించండి.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>సాధారణం</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>ఆటోమేటిక్‌గా గుర్తించు</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>ఆటోమేటిక్‌గా గుర్తించు</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>అభ్యర్థి ఆన్‌లైన్‌లో కనుగొను ఎంపికతో ప్రారంభమైనప్పుడు లేదా మీరు దాన్ని మాన్యువల్‌గా తెరిచినప్పుడు నడుస్తుంది.</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ఆన్‌లైన్‌లో వెతకడానికి డిఫాల్ట్ మోడ్</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>డిఫాల్ట్ మెటాడేటా మూలం</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ఆన్‌లైన్‌లో కనుగొను</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ఏదీ లేదు</value></data>

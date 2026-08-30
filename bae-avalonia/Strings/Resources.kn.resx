@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯನ್ನು ಮತ್ತೆ ಓದಲು ಪ್ರಯತ್ನಿಸಿ.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>ಸಾಮಾನ್ಯ</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯು ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ಮೂಲಕ ಪ್ರಾರಂಭವಾದಾಗ ಅಥವಾ ನೀವು ಅದನ್ನು ಕೈಯಾರೆ ತೆರೆದಾಗ ಚಲಿಸುತ್ತದೆ.</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ಆನ್‌ಲೈನ್ ಹುಡುಕಾಟದ ಡೀಫಾಲ್ಟ್ ಮೋಡ್</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ಡೀಫಾಲ್ಟ್ ಮೆಟಾಡೇಟಾ ಮೂಲ</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ಯಾವುದೂ ಇಲ್ಲ</value></data>

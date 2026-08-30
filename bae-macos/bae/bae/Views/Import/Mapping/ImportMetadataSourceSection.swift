@@ -152,7 +152,7 @@ private struct ImportOnlineMetadataBrowser: View {
     @Environment(SettingsNavigation.self)
     private var settingsNavigation
     @State
-    private var mode: SearchMode = .automatic
+    private var mode: BridgeDefaultFindOnlineMode = .automatic
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -218,23 +218,7 @@ private struct ImportOnlineMetadataBrowser: View {
             }
         }
         .onAppear {
-            if !configStore.config.automaticImportIdentification,
-                candidateIsIdle
-            {
-                mode = .manual
-            }
+            mode = configStore.config.defaultFindOnlineMode
         }
-    }
-
-    private var candidateIsIdle: Bool {
-        guard let candidate = importStore.candidate(forKey: candidateKey)
-        else { return false }
-        if case .idle = shownIdentifyState(
-            resumed: candidate.resumedIdentifyState,
-            runtime: runtime
-        ) {
-            return true
-        }
-        return false
     }
 }

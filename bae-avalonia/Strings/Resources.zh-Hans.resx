@@ -475,9 +475,7 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在线查找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>请尝试重新读取候选项。</value></data>
   <data name="import.search.general" xml:space="preserve"><value>常规</value></data>
-  <data name="import.search.identify_automatically" xml:space="preserve"><value>自动识别</value></data>
-  <data name="settings.import.automatic_identification" xml:space="preserve"><value>自动识别</value></data>
-  <data name="settings.import.automatic_identification_help" xml:space="preserve"><value>当候选项从“在线查找”开始，或您手动打开它时运行。</value></data>
+  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>在线查找默认模式</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>默认元数据来源</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>在线查找</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>无</value></data>

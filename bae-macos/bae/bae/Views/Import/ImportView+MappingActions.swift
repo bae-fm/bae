@@ -9,8 +9,7 @@ extension ImportView {
     var mappingServices: ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            automaticIdentification: configStore.config
-                .automaticImportIdentification,
+            defaultFindOnlineMode: configStore.config.defaultFindOnlineMode,
             importStore: importStore,
             endEditing: endEditing,
             previewAudio: previewAudio,

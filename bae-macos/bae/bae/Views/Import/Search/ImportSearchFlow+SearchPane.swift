@@ -38,7 +38,7 @@ extension ImportSearchFlow {
     static func buildSearchPane(
         services: ImportServices,
         input: SearchPaneInput,
-        mode: Binding<SearchMode>,
+        mode: Binding<BridgeDefaultFindOnlineMode>,
         openSettings: @escaping () -> Void,
         onUseFileTags: (() -> Void)? = nil,
         onSelect: @escaping (BridgeMetadataResult) -> Void
@@ -72,7 +72,7 @@ extension ImportSearchFlow {
             onToggleSignal: { signal in
                 services.importer.toggleSignalForCandidate(key, signal)
             },
-            onIdentify: {
+            onEnterAutomatic: {
                 services.importer.identifyForExplicitLookup(key)
             },
             onRerun: { services.importer.rerunIdentifyForCandidate(key) },

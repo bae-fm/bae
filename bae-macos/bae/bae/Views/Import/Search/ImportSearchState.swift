@@ -1,12 +1,5 @@
 import BaeKit
 
-/// The selected Find online method. Each method keeps its own state while the
-/// other is hidden.
-enum SearchMode {
-    case automatic
-    case manual
-}
-
 /// Everything `ImportSearchPane` renders from — the identify/results state and
 /// the surrounding flags. The editable form fields (search bindings), the mode
 /// and the actions stay separate; this is the read-only display state.

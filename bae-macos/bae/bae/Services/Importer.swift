@@ -89,7 +89,8 @@ private struct ImportOperations: Sendable {
     let startImport: @Sendable (ImportCommitRequest) async throws -> Void
     let mergeCandidateArtistIdentityConflict:
         @Sendable (String, String) async throws -> Void
-    let setAutomaticIdentification: @MainActor @Sendable (Bool) throws -> Void
+    let setDefaultFindOnlineMode:
+        @MainActor @Sendable (BridgeDefaultFindOnlineMode) throws -> Void
     let setDefaultMetadataSource:
         @MainActor @Sendable (BridgeDefaultImportMetadataSource) throws -> Void
 
@@ -241,8 +242,8 @@ private struct ImportOperations: Sendable {
                     survivingArtistId: $1
                 )
             },
-            setAutomaticIdentification: {
-                try handle.setAutomaticImportIdentification(enabled: $0)
+            setDefaultFindOnlineMode: {
+                try handle.setDefaultFindOnlineMode(mode: $0)
             },
             setDefaultMetadataSource: {
                 try handle.setDefaultImportMetadataSource(source: $0)
@@ -359,8 +360,9 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (ImportCommitRequest) async throws -> Void = {
                 _ in
             },
-        setAutomaticIdentification:
-            @escaping @MainActor @Sendable (Bool) throws -> Void = { _ in },
+        setDefaultFindOnlineMode:
+            @escaping @MainActor @Sendable (BridgeDefaultFindOnlineMode) throws
+            -> Void = { _ in },
         setDefaultMetadataSource:
             @escaping @MainActor @Sendable (
                 BridgeDefaultImportMetadataSource
@@ -401,7 +403,7 @@ final class Importer: Sendable, Observable {
             mergeCandidateArtistIdentityConflict: { _, _ in
                 throw StubError.notImplemented
             },
-            setAutomaticIdentification: setAutomaticIdentification,
+            setDefaultFindOnlineMode: setDefaultFindOnlineMode,
             setDefaultMetadataSource: setDefaultMetadataSource
         )
     }
@@ -611,8 +613,8 @@ extension Importer {
     }
 
     @MainActor
-    func setAutomaticIdentification(_ enabled: Bool) throws {
-        try operations.setAutomaticIdentification(enabled)
+    func setDefaultFindOnlineMode(_ mode: BridgeDefaultFindOnlineMode) throws {
+        try operations.setDefaultFindOnlineMode(mode)
     }
 
     @MainActor

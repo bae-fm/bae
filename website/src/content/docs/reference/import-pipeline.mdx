@@ -29,7 +29,7 @@ Embedded audio tags are deliberately not Lookup evidence: they describe what a t
 
 Disc ID and barcode are looked up concurrently, the disc ID against MusicBrainz, the barcode against MusicBrainz and Discogs at once, and the results are triangulated: results that agree on a release group converge, catalog-number matches narrow the pressing list, and disagreement between signals surfaces as an explicit conflict for the user rather than a silent best guess. Every result carries its provenance (found by disc ID, by barcode, catalog match) so the UI can say why a row is being offered.
 
-The **Default metadata source** setting has three values. **None** creates a blank draft and starts no metadata work. **File tags** reads and applies the tag snapshot. **Find online** opens the online workflow; when **Identify automatically** is enabled it also queues evidence extraction, provider queries, and matching. An explicit Find online action opens the same browser for any candidate, and an explicit identify command can run the pipeline when automatic identification is off.
+The **Default metadata source** setting has three values. **None** creates a blank draft and starts no metadata work. **File tags** reads and applies the tag snapshot. **Find online** opens the online workflow. Its **Default Find online mode** can be **Automatic**, which queues evidence extraction, provider queries, and matching, or **Search manually**, which starts no identification. Opening Find online for any candidate uses that configured method; selecting Automatic starts the pipeline unless that candidate already has an active or completed run.
 
 ### File Tags
 

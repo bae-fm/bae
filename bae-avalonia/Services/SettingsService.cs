@@ -25,9 +25,9 @@ internal sealed class SettingsService
     public Func<(bool Current, BridgeConfig Config)> GetConfig { get; init; }
         = () => throw new InvalidOperationException("SettingsService stub: GetConfig not wired");
 
-    public Func<bool, (bool Current, string? Error)> SetAutomaticImportIdentification { get; init; }
+    public Func<BridgeDefaultFindOnlineMode, (bool Current, string? Error)> SetDefaultFindOnlineMode { get; init; }
         = _ => throw new InvalidOperationException(
-            "SettingsService stub: SetAutomaticImportIdentification not wired");
+            "SettingsService stub: SetDefaultFindOnlineMode not wired");
 
     public Func<BridgeDefaultImportMetadataSource, (bool Current, string? Error)> SetDefaultImportMetadataSource { get; init; }
         = _ => throw new InvalidOperationException(
@@ -38,9 +38,9 @@ internal sealed class SettingsService
     {
         GetSettings = () => session.WithCurrentHandle(NativeBae.GetSettings),
         GetConfig = () => session.WithCurrentHandle(NativeBae.GetConfig),
-        SetAutomaticImportIdentification = enabled =>
+        SetDefaultFindOnlineMode = mode =>
             session.WithCurrentHandle(handle =>
-                NativeBae.SetAutomaticImportIdentification(handle, enabled)),
+                NativeBae.SetDefaultFindOnlineMode(handle, mode)),
         SetDefaultImportMetadataSource = source =>
             session.WithCurrentHandle(handle =>
                 NativeBae.SetDefaultImportMetadataSource(handle, source)),

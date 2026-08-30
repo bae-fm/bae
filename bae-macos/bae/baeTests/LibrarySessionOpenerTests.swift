@@ -231,7 +231,7 @@ struct LibrarySessionOpenerTests {
             pauseBetweenSides: false,
             maxConcurrentUploads: 3,
             maxConcurrentDownloads: 3,
-            automaticImportIdentification: true,
+            defaultFindOnlineMode: .automatic,
             defaultImportMetadataSource: .findOnline,
             showRemainingTime: false,
             libraryFullWidth: false,

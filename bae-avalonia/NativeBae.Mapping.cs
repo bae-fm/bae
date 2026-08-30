@@ -155,7 +155,7 @@ internal static partial class NativeBae
             SyncProvider = config.Sync is null ? null : SyncProviderTag(config.Sync.Provider),
             SyncAccount = config.Sync?.CloudAccountDisplay,
             PauseBetweenSides = config.PauseBetweenSides,
-            AutomaticImportIdentification = config.AutomaticImportIdentification,
+            DefaultFindOnlineMode = config.DefaultFindOnlineMode,
             DefaultImportMetadataSource = config.DefaultImportMetadataSource,
             ShowRemainingTime = config.ShowRemainingTime,
             LibraryFullWidth = config.LibraryFullWidth,

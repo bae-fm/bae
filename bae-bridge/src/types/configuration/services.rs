@@ -11,9 +11,9 @@ pub struct BridgeConfig {
     pub max_concurrent_uploads: u32,
     /// How many blob downloads a pin fetches at once. Device-local; range 1..=8.
     pub max_concurrent_downloads: u32,
-    /// Whether unseeded Lookup candidates run signal extraction and provider
-    /// matching without an explicit user action.
-    pub automatic_import_identification: bool,
+    /// Which method Find online opens with. Automatic also runs signal
+    /// extraction and provider matching for newly discovered candidates.
+    pub default_find_online_mode: BridgeDefaultFindOnlineMode,
     /// Which source is applied when an import candidate is first discovered.
     pub default_import_metadata_source: BridgeDefaultImportMetadataSource,
     /// Whether the seek bar's leading label counts down the time remaining
@@ -56,6 +56,12 @@ pub enum BridgeDefaultImportMetadataSource {
     FindOnline,
     FileTags,
     None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDefaultFindOnlineMode {
+    Automatic,
+    SearchManually,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]

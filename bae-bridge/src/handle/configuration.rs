@@ -24,9 +24,12 @@ impl AppHandle {
             .map_err(BridgeError::config)
     }
 
-    pub fn set_automatic_import_identification(&self, enabled: bool) -> Result<(), BridgeError> {
+    pub fn set_default_find_online_mode(
+        &self,
+        mode: crate::types::BridgeDefaultFindOnlineMode,
+    ) -> Result<(), BridgeError> {
         self.services
-            .set_automatic_import_identification(enabled)
+            .set_default_find_online_mode(mode.into_core())
             .map_err(BridgeError::config)
     }
 
