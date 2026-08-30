@@ -19,7 +19,7 @@ internal sealed partial class ImportMappingPane
     // Storage: cloud against local, and the pin that rides with a cloud import.
     // Only offered when the library has a cloud home.
     private bool _storageCloud = true;
-    private bool _storagePinned = true;
+    private bool _storagePinned = StoragePinPreferenceStore.Load();
 
     // What the last commit refused with. A string and not the control that
     // shows it: the pane rebuilds its tree on every render, and a control held
@@ -61,7 +61,11 @@ internal sealed partial class ImportMappingPane
                 _storageCloud = cloud.IsChecked == true;
                 pinned.IsVisible = _storageCloud;
             };
-            pinned.IsCheckedChanged += (_, _) => _storagePinned = pinned.IsChecked == true;
+            pinned.IsCheckedChanged += (_, _) =>
+            {
+                _storagePinned = pinned.IsChecked == true;
+                StoragePinPreferenceStore.Save(_storagePinned);
+            };
             storage.Children.Add(cloud);
             storage.Children.Add(pinned);
         }

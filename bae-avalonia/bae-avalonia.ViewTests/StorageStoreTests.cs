@@ -6,6 +6,34 @@ namespace Bae.Desktop.ViewTests;
 
 public sealed class StorageStoreTests
 {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MoveToCloudUsesTheRememberedPinChoice(bool rememberedPin)
+    {
+        bool? requestedPin = null;
+        var downloads = new DownloadsService
+        {
+            MakeReleasesRemote = (_, pin) =>
+            {
+                requestedPin = pin;
+                return Task.FromResult((
+                    true,
+                    (Revision: (ulong?)2, Error: (string?)null)));
+            },
+        };
+        var store = new StorageStore(downloads, () => rememberedPin);
+        store.ApplyOutbox(EmptyOutbox(revision: 1));
+
+        var error = await store.RunStorageActionForReleases(
+            BridgeReleaseStorageAction.MakeRemote,
+            ["release-a"],
+            () => Task.FromResult<string?>(null));
+
+        Assert.Null(error);
+        Assert.Equal(rememberedPin, requestedPin);
+    }
+
     [Fact]
     public async Task MoveToCloudRemainsATransitionUntilTheOutboxSubscriptionArrives()
     {
@@ -14,7 +42,7 @@ public sealed class StorageStoreTests
             MakeReleasesRemote = (_, _) =>
                 Task.FromResult((true, (Revision: (ulong?)2, Error: (string?)null))),
         };
-        var store = new StorageStore(downloads);
+        var store = new StorageStore(downloads, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var error = await store.RunStorageActionForReleases(
@@ -43,7 +71,7 @@ public sealed class StorageStoreTests
         {
             MakeReleasesRemote = (_, _) => receipt.Task,
         };
-        var store = new StorageStore(downloads);
+        var store = new StorageStore(downloads, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var command = store.RunStorageActionForReleases(
@@ -74,7 +102,7 @@ public sealed class StorageStoreTests
                     true,
                     (Revision: (ulong?)2, Error: (string?)null)));
             },
-        });
+        }, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var error = await store.RunStorageActionForReleases(
@@ -99,7 +127,7 @@ public sealed class StorageStoreTests
             MakeReleasesRemote = (_, _) => Task.FromResult((
                 true,
                 (Revision: (ulong?)null, Error: (string?)"already active"))),
-        });
+        }, () => true);
         store.ApplyOutbox(OutboxWithRelease(revision: 1, releaseId: "release-b"));
 
         var error = await store.RunStorageActionForReleases(
@@ -132,7 +160,7 @@ public sealed class StorageStoreTests
         {
             MakeReleasesRemote = (_, _) =>
                 ++invocation == 1 ? firstReceipt.Task : secondReceipt.Task,
-        });
+        }, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var first = store.RunStorageActionForReleases(
@@ -212,7 +240,7 @@ public sealed class StorageStoreTests
                 true,
                 (Revision: (ulong?)null, Error: (string?)"provider refused"))),
         };
-        var store = new StorageStore(downloads);
+        var store = new StorageStore(downloads, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var error = await MoveToCloud(store);
@@ -230,7 +258,7 @@ public sealed class StorageStoreTests
         var store = new StorageStore(new DownloadsService
         {
             MakeReleasesRemote = (_, _) => receipt.Task,
-        });
+        }, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var command = MoveToCloud(store);
@@ -261,7 +289,7 @@ public sealed class StorageStoreTests
             MakeReleasesRemote = (_, _) => Task.FromResult((
                 true,
                 (Revision: (ulong?)revision, Error: (string?)null))),
-        });
+        }, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
         return store;
     }

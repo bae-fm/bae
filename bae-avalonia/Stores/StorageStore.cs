@@ -13,6 +13,7 @@ namespace Bae.Desktop;
 internal sealed class StorageStore
 {
     private readonly DownloadsService _downloads;
+    private readonly Func<bool> _loadPinPreference;
     private BridgeOutboxSnapshot? _outbox;
     private BridgeDownloadSnapshot? _downloadsSnapshot;
     private BridgeOutputSnapshot? _outputSnapshot;
@@ -20,9 +21,10 @@ internal sealed class StorageStore
     private readonly Dictionary<string, HashSet<CloudUploadCommand>> _cloudUploadCommands = new();
     public event Action? Changed;
 
-    public StorageStore(DownloadsService downloads)
+    public StorageStore(DownloadsService downloads, Func<bool> loadPinPreference)
     {
         _downloads = downloads;
+        _loadPinPreference = loadPinPreference;
     }
 
     public void ApplyOutbox(BridgeOutboxSnapshot snapshot)
@@ -262,7 +264,9 @@ internal sealed class StorageStore
         List<string> releaseIds)
     {
         var command = BeginCloudUploads(releaseIds);
-        var (current, result) = await _downloads.MakeReleasesRemote(releaseIds, false);
+        var (current, result) = await _downloads.MakeReleasesRemote(
+            releaseIds,
+            _loadPinPreference());
         if (!current)
         {
             EndCloudUploadBatchWithoutReceipt(command);

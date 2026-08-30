@@ -141,7 +141,7 @@ internal sealed class AppService : IDisposable
             ImportStore.HandlePreviewEvent);
         // The storage sheet's non-UI operations, shared by the storage dialog and
         // the album-detail storage band so both run transitions the same way.
-        StorageStore = new StorageStore(Downloads);
+        StorageStore = new StorageStore(Downloads, StoragePinPreferenceStore.Load);
         StorageQueryStore = new StorageQueryStore(Library, dispatcher);
         // The library browser's paginated lists. A page subscription failure routes
         // to the shell banner; a session-swap mid-fetch (an OperationCanceled) is
