@@ -27,6 +27,7 @@ struct ImportReleaseSourceActions {
 struct ImportReleaseDetails: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
+    let editingCommands: EditingCommitCommands
     @Binding
     var expanded: Bool
 
@@ -49,7 +50,11 @@ struct ImportReleaseDetails: View {
             }
             .buttonStyle(.plain)
             if expanded {
-                ReleaseFieldsForm(values: values, writer: writer)
+                ReleaseFieldsForm(
+                    values: values,
+                    writer: writer,
+                    editingCommands: editingCommands
+                )
             }
         }
     }
@@ -72,6 +77,7 @@ struct ImportReleaseHeader: View {
     let editValues: BridgeRawReleaseEdit?
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
+    let editingCommands: EditingCommitCommands
     /// The commit row at the card's foot. `nil` while there is nothing to
     /// commit.
     let commit: ImportCommitControls?
@@ -105,6 +111,7 @@ struct ImportReleaseHeader: View {
                             ImportReleaseDetails(
                                 values: editValues,
                                 writer: editActions,
+                                editingCommands: editingCommands,
                                 expanded: $detailsExpanded
                             )
                         }
@@ -127,6 +134,7 @@ struct ImportReleaseHeader: View {
                             ImportReleaseDetails(
                                 values: editValues,
                                 writer: editActions,
+                                editingCommands: editingCommands,
                                 expanded: $detailsExpanded
                             )
                         }
@@ -309,6 +317,7 @@ struct ImportReleaseHeader: View {
             hasCoverOptions: true,
             editValues: PreviewData.confirmEditValues,
             editActions: ReleaseFieldWriter { _, _ in },
+            editingCommands: EditingCommitCommands(),
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
                 findOnline: {},

@@ -12,12 +12,11 @@ extension ImportSearchFlow {
     static func applyMetadata(
         importer: Importer,
         importStore: ImportStore,
-        endEditing: () -> Void,
+        endEditing: @escaping @MainActor () async -> Void,
         key: String,
         provenance: BridgeMetadataProvenance,
         onConfirmed: (() -> Void)? = nil
     ) {
-        endEditing()
         guard
             let session = importStore.beginMetadataApplication(
                 key: key,
@@ -30,6 +29,7 @@ extension ImportSearchFlow {
         }
 
         let task = Task { @MainActor [weak session] in
+            await endEditing()
             do {
                 let revision =
                     switch provenance {

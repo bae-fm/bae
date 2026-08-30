@@ -495,7 +495,7 @@ extension ImportMappingPaneTests {
             }
         }
 
-        writer.setField(.year, "2011")
+        await writer.setField(.year, "2011")
         try await Task.sleep(for: .milliseconds(50))
 
         #expect(recorder.editFields.count == 1)

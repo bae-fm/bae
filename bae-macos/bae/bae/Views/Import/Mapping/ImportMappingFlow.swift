@@ -10,7 +10,7 @@ struct ImportMappingServices {
     /// stores, and the per-candidate read redraws from it.
     let importStore: ImportStore
     /// End the main pane's active field edit before replacing its draft.
-    let endEditing: () -> Void
+    let endEditing: @MainActor () async -> Void
     let previewAudio: PreviewAudio
     /// Show a document (a log, a text file, a track sheet) in the viewer: its
     /// name, then its path on disk.

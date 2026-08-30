@@ -11,7 +11,7 @@ extension ImportView {
             importer: importer,
             defaultFindOnlineMode: configStore.config.defaultFindOnlineMode,
             importStore: importStore,
-            endEditing: endEditing,
+            endEditing: commitAndEndEditing,
             previewAudio: previewAudio,
             openDocument: { name, path in openDocument(name: name, at: path) },
             openImages: { images, path in

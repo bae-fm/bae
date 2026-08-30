@@ -521,6 +521,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             ImportReleaseDetails(
                 values: PreviewData.confirmEditValues,
                 writer: ReleaseFieldWriter { _, _ in },
+                editingCommands: EditingCommitCommands(),
                 expanded: .constant(expanded)
             )
             .frame(width: size.width)
@@ -612,6 +613,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             hasCoverOptions: false,
             editValues: editValues,
             editActions: ReleaseFieldWriter { _, _ in },
+            editingCommands: EditingCommitCommands(),
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
                 findOnline: { recorder.findOnlineCount += 1 },

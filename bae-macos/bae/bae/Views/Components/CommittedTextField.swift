@@ -1,5 +1,38 @@
 import BaeKit
+import Combine
 import SwiftUI
+
+/// One request to finish every field edit currently active in a view tree.
+/// Subscribers add the write represented by their focused draft; the sender
+/// waits for those writes before it replaces the values underneath them.
+@MainActor
+final class EditingCommitRequest {
+    private var writes: [@MainActor () async -> Void] = []
+
+    func append(_ write: @escaping @MainActor () async -> Void) {
+        writes.append(write)
+    }
+
+    func perform() async {
+        for write in writes {
+            await write()
+        }
+    }
+}
+
+/// Publishes the one-shot command that commits and unfocuses active fields.
+/// The request carries acknowledgements, so replacing metadata waits for the
+/// field writes rather than relying on SwiftUI's focus-change delivery order.
+@MainActor
+final class EditingCommitCommands {
+    fileprivate let requests = PassthroughSubject<EditingCommitRequest, Never>()
+
+    func commitActiveEdits() async {
+        let request = EditingCommitRequest()
+        requests.send(request)
+        await request.perform()
+    }
+}
 
 /// A text field whose value lives somewhere else — a row in the database —
 /// and which decides when to send what was typed there.
@@ -19,8 +52,11 @@ struct CommittedTextField: View {
     let value: String
     var monospaced: Bool = false
     var boxed: Bool = true
+    /// Present on surfaces that can replace the stored value while this field
+    /// is focused. Other editors commit through focus, Return, and pause only.
+    var editingCommands: EditingCommitCommands?
     /// Send the typed value to wherever it lives.
-    let onCommit: (String) -> Void
+    let onCommit: @MainActor (String) async -> Void
 
     /// How long a pause counts as "done typing".
     static let commitDelay: Duration = .milliseconds(400)
@@ -31,8 +67,30 @@ struct CommittedTextField: View {
     private var pending: Task<Void, Never>?
     @FocusState
     private var focused: Bool
+    @State
+    private var suppressNextBlurCommit = false
 
+    @ViewBuilder
     var body: some View {
+        if let editingCommands {
+            configuredField
+                .onReceive(editingCommands.requests) { request in
+                    guard focused else { return }
+                    let text = draft
+                    pending?.cancel()
+                    pending = nil
+                    suppressNextBlurCommit = true
+                    focused = false
+                    guard text != value else { return }
+                    request.append { await onCommit(text) }
+                }
+        }
+        else {
+            configuredField
+        }
+    }
+
+    private var configuredField: some View {
         field
             .modifier(FieldChrome(focused: focused, boxed: boxed))
             .onAppear { draft = value }
@@ -47,12 +105,16 @@ struct CommittedTextField: View {
                 pending = Task {
                     try? await Task.sleep(for: Self.commitDelay)
                     guard !Task.isCancelled else { return }
-                    commit(next)
+                    await commit(next)
                 }
             }
             .onChange(of: focused) { _, isFocused in
                 guard !isFocused else { return }
-                commit(draft)
+                if suppressNextBlurCommit {
+                    suppressNextBlurCommit = false
+                    return
+                }
+                startCommit(draft)
             }
     }
 
@@ -62,7 +124,7 @@ struct CommittedTextField: View {
             .textFieldStyle(.plain)
             .font(.system(size: 13))
             .focused($focused)
-            .onSubmit { commit(draft) }
+            .onSubmit { startCommit(draft) }
         if monospaced {
             base.monospacedDigit()
         }
@@ -73,11 +135,14 @@ struct CommittedTextField: View {
 
     /// Send `text` unless it is already what is stored — a focus change over
     /// an untouched field is not an edit.
-    func commit(_ text: String) {
+    private func startCommit(_ text: String) {
         pending?.cancel()
-        pending = nil
+        pending = Task { await commit(text) }
+    }
+
+    func commit(_ text: String) async {
         guard text != value else { return }
-        onCommit(text)
+        await onCommit(text)
     }
 }
 

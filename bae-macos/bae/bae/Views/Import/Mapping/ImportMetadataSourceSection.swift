@@ -11,7 +11,8 @@ struct ImportMetadataSourceSection: View {
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
     let editActions: ReleaseFieldWriter
-    let endEditing: () -> Void
+    let editingCommands: EditingCommitCommands
+    let endEditing: @MainActor () async -> Void
     let commit: ImportCommitControls?
     let onPresent: (CandidateMetadataPresentation) -> Void
     let onReadFileTags: () -> Void
@@ -52,6 +53,7 @@ struct ImportMetadataSourceSection: View {
                 hasCoverOptions: hasCoverOptions,
                 editValues: edit,
                 editActions: editActions,
+                editingCommands: editingCommands,
                 commit: commit,
                 sourceActions: ImportReleaseSourceActions(
                     findOnline: { onPresent(.findOnline) },
@@ -138,7 +140,7 @@ struct ImportMetadataSourceSection: View {
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
-    let endEditing: () -> Void
+    let endEditing: @MainActor () async -> Void
     let onBack: () -> Void
 
     @Environment(Importer.self)

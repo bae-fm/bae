@@ -9,7 +9,7 @@ struct FieldRow {
     /// The stored value the row shows.
     let text: String
     /// Send what was typed to wherever the value lives.
-    let onCommit: (String) -> Void
+    let onCommit: @MainActor (String) async -> Void
     let width: FieldWidth
     var monospaced: Bool = false
 }

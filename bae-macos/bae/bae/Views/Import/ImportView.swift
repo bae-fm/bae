@@ -33,6 +33,10 @@ struct ImportView: View {
     /// every command the view started.
     @State
     var candidateMutationTasks: [String: Task<Void, Never>] = [:]
+    /// Coordinates active field writes with metadata replacement. A source
+    /// application must wait for the draft the person was editing to commit.
+    @State
+    var editingCommands = EditingCommitCommands()
     /// What each of the selected candidate's track sheets may be bound to,
     /// keyed by the sheet's file id. Read from core when the selection's files
     /// change: core probes every audio file to answer, so this is not something
@@ -53,6 +57,11 @@ struct ImportView: View {
             return nil
         }
         return importStore.selectedCandidates[key]
+    }
+
+    func commitAndEndEditing() async {
+        await editingCommands.commitActiveEdits()
+        endEditing()
     }
 
     var body: some View {

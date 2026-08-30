@@ -45,7 +45,8 @@ extension ImportView {
             hasCoverOptions: hasCoverOptions(candidate),
             coverContent: candidate.cover?.thumbnailContent,
             editActions: editActions(for: candidate),
-            endEditing: endEditing,
+            editingCommands: editingCommands,
+            endEditing: commitAndEndEditing,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
             mappingActions: mappingActions(for: candidate),
@@ -103,12 +104,12 @@ extension ImportView {
         let key = candidate.key
         return ReleaseFieldWriter(
             setField: { field, value in
-                saveCandidateEdit {
+                await saveCandidateEdit {
                     try await importer.setCandidateEditField(key, field, value)
                 }
             },
             setAlbumArtists: { assignments in
-                saveCandidateEdit {
+                await saveCandidateEdit {
                     try await importer.setCandidateAlbumArtists(
                         key,
                         assignments
@@ -120,18 +121,16 @@ extension ImportView {
 
     private func saveCandidateEdit(
         _ save: @escaping @MainActor () async throws -> Void
-    ) {
-        Task { @MainActor in
-            do {
-                try await save()
-            }
-            catch is CancellationError {}
-            catch {
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        String(localized: "Couldn't save that change: \(line)")
-                    )
-                }
+    ) async {
+        do {
+            try await save()
+        }
+        catch is CancellationError {}
+        catch {
+            if let line = error.displayLine {
+                uiStore.showError(
+                    String(localized: "Couldn't save that change: \(line)")
+                )
             }
         }
     }

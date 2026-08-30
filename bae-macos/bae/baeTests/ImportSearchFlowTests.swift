@@ -456,6 +456,7 @@ final class MetadataApplicationEditingTests: XCTestCase {
         by provenance: BridgeMetadataProvenance
     ) async throws {
         let model = MetadataApplicationEditingModel()
+        let editingCommands = EditingCommitCommands()
         let size = NSSize(width: 700, height: 560)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ReleaseFieldsForm(
@@ -464,7 +465,8 @@ final class MetadataApplicationEditingTests: XCTestCase {
                     setField: { field, value in
                         model.commit(field: field, value: value)
                     }
-                )
+                ),
+                editingCommands: editingCommands
             )
             .environment(Library.stub())
             .frame(width: size.width, height: size.height),
@@ -493,7 +495,10 @@ final class MetadataApplicationEditingTests: XCTestCase {
         ImportSearchFlow.applyMetadata(
             importer: model.importer,
             importStore: store,
-            endEditing: { window.makeFirstResponder(nil) },
+            endEditing: {
+                await editingCommands.commitActiveEdits()
+                window.makeFirstResponder(nil)
+            },
             key: MappingFixtures.candidateKey,
             provenance: provenance
         )

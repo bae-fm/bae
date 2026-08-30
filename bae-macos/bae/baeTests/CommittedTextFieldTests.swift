@@ -19,7 +19,7 @@ struct CommittedTextFieldTests {
 
     @MainActor
     @Test("a field that never changed sends nothing when it is left")
-    func anUntouchedFieldSendsNothing() {
+    func anUntouchedFieldSendsNothing() async {
         var sent: [String] = []
         let field = CommittedTextField(
             placeholder: "Album title",
@@ -28,16 +28,16 @@ struct CommittedTextFieldTests {
         )
 
         // Leaving the field with what it was handed is not an edit.
-        field.commit("Album Title")
+        await field.commit("Album Title")
         #expect(sent.isEmpty)
 
-        field.commit("Album Title Two")
+        await field.commit("Album Title Two")
         #expect(sent == ["Album Title Two"])
     }
 
     @MainActor
     @Test("clearing a field is an edit, not an absence")
-    func clearingAFieldIsAnEdit() {
+    func clearingAFieldIsAnEdit() async {
         var sent: [String] = []
         let field = CommittedTextField(
             placeholder: "Catalog number",
@@ -45,7 +45,7 @@ struct CommittedTextFieldTests {
             onCommit: { sent.append($0) },
         )
 
-        field.commit("")
+        await field.commit("")
         #expect(sent == [""])
     }
 }

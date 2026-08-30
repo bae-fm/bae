@@ -8,12 +8,18 @@ import SwiftUI
 /// field is a row under the candidate, and typing in one writes that row. Both
 /// hand this the same eight fields.
 struct ReleaseFieldWriter {
-    let setField: (BridgeCandidateEditField, String) -> Void
-    let setAlbumArtists: ([BridgeArtistAssignment]) -> Void
+    let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
+    let setAlbumArtists: @MainActor ([BridgeArtistAssignment]) async -> Void
 
     init(
-        setField: @escaping (BridgeCandidateEditField, String) -> Void,
-        setAlbumArtists: @escaping ([BridgeArtistAssignment]) -> Void = { _ in }
+        setField:
+            @escaping @MainActor (
+                BridgeCandidateEditField, String
+            ) async -> Void,
+        setAlbumArtists:
+            @escaping @MainActor (
+                [BridgeArtistAssignment]
+            ) async -> Void = { _ in }
     ) {
         self.setField = setField
         self.setAlbumArtists = setAlbumArtists
@@ -47,16 +53,23 @@ struct ReleaseFieldWriter {
 struct ReleaseFieldsForm: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
+    var editingCommands: EditingCommitCommands?
 
-    init(values: BridgeRawReleaseEdit, writer: ReleaseFieldWriter) {
+    init(
+        values: BridgeRawReleaseEdit,
+        writer: ReleaseFieldWriter,
+        editingCommands: EditingCommitCommands? = nil
+    ) {
         self.values = values
         self.writer = writer
+        self.editingCommands = editingCommands
     }
 
     /// A form over a value held in memory — the library's release editor.
     init(form: Binding<BridgeRawReleaseEdit>) {
         values = form.wrappedValue
         writer = .binding(form)
+        editingCommands = nil
     }
 
     var body: some View {
@@ -80,7 +93,7 @@ struct ReleaseFieldsForm: View {
             hint: hint,
             placeholder: placeholder,
             text: text,
-            onCommit: { writer.setField(field, $0) },
+            onCommit: { await writer.setField(field, $0) },
             width: width,
             monospaced: monospaced,
         )
@@ -116,7 +129,9 @@ struct ReleaseFieldsForm: View {
             ArtistAssignmentsField(
                 assignments: values.albumArtistAssignments,
                 placeholder: String(localized: "Album artist"),
-                onChange: writer.setAlbumArtists,
+                onChange: { assignments in
+                    Task { await writer.setAlbumArtists(assignments) }
+                },
             )
             .frame(maxWidth: FieldWidth.long.maxWidth)
             Spacer(minLength: 0)
@@ -214,6 +229,7 @@ struct ReleaseFieldsForm: View {
                 placeholder: row.placeholder,
                 value: row.text,
                 monospaced: row.monospaced,
+                editingCommands: editingCommands,
                 onCommit: row.onCommit,
             )
             .frame(maxWidth: row.width.maxWidth)
