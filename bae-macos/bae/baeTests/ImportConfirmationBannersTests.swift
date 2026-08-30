@@ -3,6 +3,8 @@ import BaeKit
 import SwiftUI
 import Testing
 
+@testable import bae
+
 @Suite("Import confirmation banners")
 struct ImportConfirmationBannersTests {
     private func conflictFailure() -> BridgeImportFailure {
