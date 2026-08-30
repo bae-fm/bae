@@ -433,32 +433,6 @@
             )
         )
 
-        /// An audio file row (carries a format descriptor) and an image file row
-        /// (no descriptor) — the two file-content shapes.
-        static let storageAudioFile = BridgeFile(
-            id: "file-audio-1",
-            originalFilename: "01 Track Title.flac",
-            fileSize: 34_000_000,
-            contentType: "audio/flac",
-            isImage: false,
-            audioFormat: BridgeAudioFormat(
-                codec: "FLAC",
-                sampleRateHz: 44_100,
-                bitsPerSample: 16,
-                bitrateKbps: nil,
-                channels: 2
-            )
-        )
-
-        static let storageImageFile = BridgeFile(
-            id: "file-image-1",
-            originalFilename: "cover.jpg",
-            fileSize: 2_400_000,
-            contentType: "image/jpeg",
-            isImage: true,
-            audioFormat: nil
-        )
-
         // MARK: - Whole-screen: seeded list + Library
 
         /// Dense rows spanning the names, formats, storage states, file counts,

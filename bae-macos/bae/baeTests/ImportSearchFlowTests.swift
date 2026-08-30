@@ -195,11 +195,10 @@ final class SignalBadgePopoverTests: XCTestCase {
 @MainActor
 @Suite("ImportSearchFlow metadata application")
 struct ImportSearchFlowMetadataApplicationTests {
-    @Test("command return keeps the sheet open until detail delivery")
-    func commandReturnWaitsForDetailDelivery() async throws {
+    @Test("command return does not confirm until detail delivery")
+    func commandReturnDoesNotConfirmBeforeDetailDelivery() async throws {
         let store = unsettledStore()
-        let uiStore = UiStore()
-        let presentation = presentModal(in: uiStore)
+        let confirmation = ConfirmationRecorder()
         let recorder = PickRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, source, releaseId in
@@ -216,7 +215,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance,
-            onConfirmed: { uiStore.dismissModal(presentation) }
+            onConfirmed: confirmation.record
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
@@ -225,7 +224,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         }
 
         #expect(recorder.provenances == [MappingFixtures.provenance])
-        #expect(uiStore.modalPresentation === presentation)
+        #expect(confirmation.count == 0)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .loadingReleaseId == MappingFixtures.releaseId
@@ -239,14 +238,13 @@ struct ImportSearchFlowMetadataApplicationTests {
         #expect(delivered.error == nil)
         #expect(delivered.pickedRelease?.releaseId == MappingFixtures.releaseId)
         #expect(delivered.provenanceInFlight == nil)
-        #expect(uiStore.modalBuilder == nil)
+        #expect(confirmation.count == 1)
     }
 
     @Test("detail delivery before command return still waits for both")
     func detailDeliveryBeforeCommandReturnWaitsForBoth() async throws {
         let store = unsettledStore()
-        let uiStore = UiStore()
-        let presentation = presentModal(in: uiStore)
+        let confirmation = ConfirmationRecorder()
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
@@ -265,7 +263,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance,
-            onConfirmed: { uiStore.dismissModal(presentation) }
+            onConfirmed: confirmation.record
         )
         await waitUntil {
             recorder.provenances == [MappingFixtures.provenance]
@@ -273,14 +271,14 @@ struct ImportSearchFlowMetadataApplicationTests {
 
         deliverPickedDetail(to: store)
 
-        #expect(uiStore.modalPresentation === presentation)
+        #expect(confirmation.count == 0)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .provenanceInFlight == MappingFixtures.provenance
         )
 
         releaseGate.finish()
-        await waitUntil { uiStore.modalBuilder == nil }
+        await waitUntil { confirmation.count == 1 }
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .provenanceInFlight == nil
@@ -290,8 +288,7 @@ struct ImportSearchFlowMetadataApplicationTests {
     @Test("a different detail cannot confirm the chosen pressing")
     func mismatchedDetailCannotConfirmTheChoice() async throws {
         let store = unsettledStore()
-        let uiStore = UiStore()
-        let presentation = presentModal(in: uiStore)
+        let confirmation = ConfirmationRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _, _ in 1 }
         )
@@ -302,7 +299,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance,
-            onConfirmed: { uiStore.dismissModal(presentation) }
+            onConfirmed: confirmation.record
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
@@ -321,14 +318,14 @@ struct ImportSearchFlowMetadataApplicationTests {
             )
         )
 
-        #expect(uiStore.modalPresentation === presentation)
+        #expect(confirmation.count == 0)
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .provenanceInFlight == MappingFixtures.provenance
         )
 
         deliverPickedDetail(to: store)
-        #expect(uiStore.modalBuilder == nil)
+        #expect(confirmation.count == 1)
     }
 
     @Test(
@@ -336,8 +333,7 @@ struct ImportSearchFlowMetadataApplicationTests {
     )
     func olderSameReleaseRevisionCannotConfirm() async throws {
         let store = unsettledStore()
-        let uiStore = UiStore()
-        let presentation = presentModal(in: uiStore)
+        let confirmation = ConfirmationRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _, _ in 2 }
         )
@@ -348,7 +344,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance,
-            onConfirmed: { uiStore.dismissModal(presentation) }
+            onConfirmed: confirmation.record
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?
@@ -357,17 +353,16 @@ struct ImportSearchFlowMetadataApplicationTests {
         }
 
         deliverPickedDetail(to: store, revision: 1)
-        #expect(uiStore.modalPresentation === presentation)
+        #expect(confirmation.count == 0)
 
         deliverPickedDetail(to: store, revision: 2)
-        #expect(uiStore.modalBuilder == nil)
+        #expect(confirmation.count == 1)
     }
 
-    @Test("a failed choice leaves its sheet open and shows the error")
-    func failedChoiceLeavesSheetOpenAndShowsError() async throws {
+    @Test("a failed choice does not confirm and shows the error")
+    func failedChoiceDoesNotConfirmAndShowsError() async throws {
         let store = unsettledStore()
-        let uiStore = UiStore()
-        let presentation = presentModal(in: uiStore)
+        let confirmation = ConfirmationRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _, _ in
                 throw StubError.notImplemented
@@ -380,7 +375,7 @@ struct ImportSearchFlowMetadataApplicationTests {
             endEditing: {},
             key: MappingFixtures.candidateKey,
             provenance: MappingFixtures.provenance,
-            onConfirmed: { uiStore.dismissModal(presentation) }
+            onConfirmed: confirmation.record
         )
         await waitUntil {
             store.candidate(forKey: MappingFixtures.candidateKey)?.error != nil
@@ -392,40 +387,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         #expect(after.error != nil)
         #expect(after.provenanceInFlight == nil)
         #expect(after.pickedRelease == nil)
-        #expect(uiStore.modalPresentation === presentation)
-    }
-
-    @Test("a late choice cannot dismiss a newer modal")
-    func lateChoiceCannotDismissNewerModal() async {
-        let store = unsettledStore()
-        let uiStore = UiStore()
-        let searchPresentation = presentModal(in: uiStore)
-        let importer = Importer(
-            applyCandidateExternalMetadata: { _, _, _ in 1 }
-        )
-
-        ImportSearchFlow.applyMetadata(
-            importer: importer,
-            importStore: store,
-            endEditing: {},
-            key: MappingFixtures.candidateKey,
-            provenance: MappingFixtures.provenance,
-            onConfirmed: {
-                uiStore.dismissModal(searchPresentation)
-            }
-        )
-        await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataApplicationSession?
-                .commandRevision == 1
-        }
-        uiStore.dismissModal(searchPresentation)
-        let newerPresentation = presentModal(in: uiStore)
-
-        deliverPickedDetail(to: store)
-
-        #expect(uiStore.modalPresentation === newerPresentation)
-        #expect(uiStore.modalBuilder != nil)
+        #expect(confirmation.count == 0)
     }
 
     private func unsettledStore() -> ImportStore {
@@ -439,12 +401,6 @@ struct ImportSearchFlowMetadataApplicationTests {
             )
         )
         return store
-    }
-
-    private func presentModal(in uiStore: UiStore) -> ModalPresentation {
-        let presentation = ModalPresentation()
-        uiStore.presentModal(presentation: presentation) { EmptyView() }
-        return presentation
     }
 
     private func deliverPickedDetail(
@@ -600,6 +556,15 @@ private final class PickRecorder {
 
     func record(_ provenance: BridgeMetadataProvenance) {
         provenances.append(provenance)
+    }
+}
+
+@MainActor
+private final class ConfirmationRecorder {
+    private(set) var count = 0
+
+    func record() {
+        count += 1
     }
 }
 

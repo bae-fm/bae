@@ -19,14 +19,9 @@ final class Outputs: Sendable, Observable {
         @Sendable (
             _ releaseId: String, _ targetDir: String, _ presetId: String
         ) async throws -> Void
-    /// Pause or resume the export queue. The in-flight export finishes; the
-    /// queue stops starting new ones until resumed.
-    let setOutputsPaused: @Sendable (_ paused: Bool) -> Void
     /// Cancel a release's export — drops a queued/failed entry or aborts the
     /// in-flight one (a partial copy never lands its destination file).
     let cancelOutput: @Sendable (_ releaseId: String) -> Void
-    /// Retry every failed export now (flips them back to queued).
-    let retryOutputs: @Sendable () -> Void
     /// Replace configured export presets.
     let setSavePresets: @Sendable (_ presets: [BridgeSavePreset]) throws -> Void
     let setDefaultTrackSavePreset: @Sendable (_ presetId: String) throws -> Void
@@ -44,9 +39,7 @@ final class Outputs: Sendable, Observable {
             async throws -> Void =
             { _, _, _ in
             },
-        setOutputsPaused: @escaping @Sendable (Bool) -> Void = { _ in },
         cancelOutput: @escaping @Sendable (String) -> Void = { _ in },
-        retryOutputs: @escaping @Sendable () -> Void = {},
         setSavePresets:
             @escaping @Sendable ([BridgeSavePreset]) throws -> Void = { _ in
             },
@@ -59,9 +52,7 @@ final class Outputs: Sendable, Observable {
     ) {
         self.enqueueExport = enqueueExport
         self.enqueueReleaseSave = enqueueReleaseSave
-        self.setOutputsPaused = setOutputsPaused
         self.cancelOutput = cancelOutput
-        self.retryOutputs = retryOutputs
         self.setSavePresets = setSavePresets
         self.setDefaultTrackSavePreset = setDefaultTrackSavePreset
         self.setDefaultReleaseSavePreset = setDefaultReleaseSavePreset
@@ -79,9 +70,7 @@ final class Outputs: Sendable, Observable {
                     presetId: $2
                 )
             },
-            setOutputsPaused: { handle.setOutputsPaused(paused: $0) },
             cancelOutput: { handle.cancelOutput(releaseId: $0) },
-            retryOutputs: { handle.retryOutputs() },
             setSavePresets: { try handle.setSavePresets(presets: $0) },
             setDefaultTrackSavePreset: {
                 try handle.setDefaultTrackSavePreset(presetId: $0)

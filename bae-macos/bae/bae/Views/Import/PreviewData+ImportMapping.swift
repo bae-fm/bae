@@ -213,30 +213,6 @@
             reconciliation: .moreTracks(files: 1, tracks: 10)
         )
 
-        /// The same folder while its metadata draft is blank: what each file
-        /// is, with what its audio becomes left open.
-        static let awaitingPickTable = BridgeMappingTable(
-            images: mappingImages,
-            rows: (1...9)
-                .map { index in
-                    BridgeMappingRow.unit(
-                        unit: BridgeMappingUnit(
-                            source: .file(file: mappingAudio(index)),
-                            becomes: .awaitingPick,
-                            durationMs: mappingAudio(index).probedDurationMs
-                        )
-                    )
-                }
-                + [
-                    carriedRow(
-                        infoLog,
-                        role: .document,
-                        becomes: .kept
-                    )
-                ],
-            reconciliation: nil
-        )
-
         /// One entry the folder's sheet carves out of its single container.
         private static func sheetEntryUnit(
             _ index: Int

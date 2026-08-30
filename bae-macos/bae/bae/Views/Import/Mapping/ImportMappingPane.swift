@@ -45,15 +45,6 @@ struct ImportMappingPane: View {
         candidate.mapping
     }
 
-    /// The run in flight while there is one, else the state the stored verdict
-    /// stands back up as.
-    private var identifyState: IdentifyState {
-        shownIdentifyState(
-            resumed: candidate.resumedIdentifyState,
-            runtime: runtime
-        )
-    }
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
