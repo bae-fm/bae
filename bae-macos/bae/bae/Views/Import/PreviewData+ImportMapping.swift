@@ -434,6 +434,31 @@
             cover: releaseDetailBridge.defaultCover,
         )
 
+        private static let discogsReleaseDetail: BridgeReleaseDetail = {
+            var release = releaseDetailBridge
+            release.source = .discogs
+            release.releaseId = "preview-discogs-release"
+            return release
+        }()
+
+        /// The same applied card with Discogs provenance, so both online
+        /// sources keep their controls and disclosure in the same geometry.
+        @MainActor
+        static let discogsMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            ),
+            metadataProvenance: .externalRelease(
+                source: discogsReleaseDetail.source,
+                releaseId: discogsReleaseDetail.releaseId
+            ),
+            release: discogsReleaseDetail,
+            edit: confirmEditValues,
+            mapping: mappingTable,
+            cover: discogsReleaseDetail.defaultCover,
+        )
+
         /// Nothing selected yet: the metadata card offers to find the release,
         /// the table says what each file is with its BECOMES half open, and
         /// there is nothing to commit.

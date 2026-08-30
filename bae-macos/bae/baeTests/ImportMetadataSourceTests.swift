@@ -2,6 +2,7 @@ import AppKit
 import BaeKit
 import SwiftUI
 import Testing
+import XCTest
 
 @testable import bae
 
@@ -419,4 +420,288 @@ extension ImportMetadataSourceTests {
         }
         #expect(predicate())
     }
+}
+
+@MainActor
+final class ImportMetadataCardLayoutTests: XCTestCase {
+    func testAppliedMetadataKeepsDetailsWithTextAndClearApartFromSources()
+        async throws
+    {
+        NSApplication.shared.finishLaunching()
+        let provenances: [BridgeMetadataProvenance?] = [
+            nil,
+            .fileTags,
+            .externalRelease(source: .musicBrainz, releaseId: "release-mb"),
+            .externalRelease(source: .discogs, releaseId: "release-discogs"),
+        ]
+        for provenance in provenances {
+            try await assertCardLayout(
+                provenance: provenance,
+                draftIsBlank: false
+            )
+        }
+    }
+
+    func testBlankMetadataKeepsDetailsBesideTheCoverWithoutClear()
+        async throws
+    {
+        NSApplication.shared.finishLaunching()
+        try await assertCardLayout(provenance: nil, draftIsBlank: true)
+    }
+
+    func testDetailsDisclosureRendersTheProductionReleaseFields() async throws {
+        NSApplication.shared.finishLaunching()
+        let size = NSSize(width: 700, height: 900)
+        let collapsed = await detailsControlCount(
+            expanded: false,
+            size: size
+        )
+        let expanded = await detailsControlCount(
+            expanded: true,
+            size: size
+        )
+
+        XCTAssertGreaterThan(expanded, collapsed)
+    }
+
+    private func detailsControlCount(
+        expanded: Bool,
+        size: NSSize
+    ) async -> Int {
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportReleaseDetails(
+                values: PreviewData.confirmEditValues,
+                writer: ReleaseFieldWriter { _, _ in },
+                expanded: .constant(expanded)
+            )
+            .frame(width: size.width)
+            .padding(14)
+            .environment(Library.stub()),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let count = focusViews(in: host).count
+        window.contentView = nil
+        window.orderOut(nil)
+        return count
+    }
+
+    private func assertCardLayout(
+        provenance: BridgeMetadataProvenance?,
+        draftIsBlank: Bool
+    ) async throws {
+        let recorder = MetadataCardActionRecorder()
+        let size = NSSize(width: 900, height: 420)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: provenance,
+                draftIsBlank: draftIsBlank,
+                recorder: recorder
+            ),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        let layout = try focusLayout(in: host, draftIsBlank: draftIsBlank)
+        let cover = try coverFrame(in: host)
+
+        XCTAssertGreaterThanOrEqual(layout.details.minX, cover.maxX)
+        XCTAssertLessThan(layout.details.minX, layout.findOnline.minX)
+        XCTAssertGreaterThanOrEqual(
+            layout.details.maxX,
+            layout.fileTags.maxX
+        )
+        XCTAssertLessThan(
+            abs(
+                layout.findOnline.midY
+                    - layout.fileTags.midY
+            ),
+            2
+        )
+        try click(at: layout.findOnline.center, in: host, window: window)
+        try click(at: layout.fileTags.center, in: host, window: window)
+        XCTAssertEqual(recorder.findOnlineCount, 1)
+        XCTAssertEqual(recorder.fileTagsCount, 1)
+
+        try await assertClearBehavior(
+            layout: layout,
+            recorder: recorder,
+            host: host,
+            window: window
+        )
+
+        window.contentView = nil
+        window.orderOut(nil)
+    }
+
+    private func assertClearBehavior(
+        layout: MetadataCardFocusLayout,
+        recorder: MetadataCardActionRecorder,
+        host: NSView,
+        window: NSWindow
+    ) async throws {
+        guard let clear = layout.clear else { return }
+        XCTAssertGreaterThan(abs(clear.midY - layout.findOnline.midY), 8)
+        try click(at: clear.center, in: host, window: window)
+        await Task.yield()
+        XCTAssertEqual(recorder.clearCount, 0)
+        let confirmation = try XCTUnwrap(
+            NSApplication.shared.windows.first { $0 !== window && $0.isVisible }
+        )
+        let descendants = try XCTUnwrap(confirmation.contentView).subviews
+            .flatMap { [$0] + SnapshotTestSupport.descendants(of: $0) }
+        let buttons = descendants.compactMap { $0 as? NSButton }
+        let labels = descendants.compactMap { $0 as? NSTextField }
+            .map(\.stringValue)
+        XCTAssertTrue(labels.contains("Clear metadata?"))
+        XCTAssertTrue(
+            labels.contains(
+                "The candidate files and mapping choices will remain unchanged."
+            )
+        )
+        let confirm = try XCTUnwrap(
+            buttons.first { $0.title == "Clear metadata" }
+        )
+        XCTAssertNotNil(buttons.first { $0.title == "Cancel" })
+        confirm.performClick(nil)
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertEqual(recorder.clearCount, 1)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func metadataHeader(
+        provenance: BridgeMetadataProvenance?,
+        draftIsBlank: Bool,
+        recorder: MetadataCardActionRecorder
+    ) -> some View {
+        let editValues =
+            draftIsBlank
+            ? MappingFixtures.blankEdit : PreviewData.confirmEditValues
+        let candidate = Candidate(
+            detail: MappingFixtures.detail(
+                mapping: MappingFixtures.thirteenFileTable,
+                edit: editValues,
+                metadataProvenance: provenance
+            )
+        )
+        return ImportReleaseHeader(
+            releaseSummary: ImportReleaseSummary(
+                candidate: candidate,
+                editValues: editValues
+            ),
+            draftIsBlank: draftIsBlank,
+            isReading: false,
+            coverContent: nil,
+            hasCoverOptions: false,
+            editValues: editValues,
+            editActions: ReleaseFieldWriter { _, _ in },
+            commit: nil,
+            sourceActions: ImportReleaseSourceActions(
+                findOnline: { recorder.findOnlineCount += 1 },
+                useFileTags: { recorder.fileTagsCount += 1 },
+                clearMetadata: { recorder.clearCount += 1 }
+            ),
+            localCoverSelections: [:],
+            onEditCover: {},
+            onSelectCover: { _ in }
+        )
+        .frame(width: 900, height: 420)
+        .importPreviewEnvironment()
+        .environment(Library.stub())
+    }
+
+    private func focusLayout(
+        in host: NSView,
+        draftIsBlank: Bool
+    ) throws -> MetadataCardFocusLayout {
+        let frames = focusFrames(in: host)
+        let details = try XCTUnwrap(
+            frames.filter { $0.height < 20 }.max { $0.width < $1.width }
+        )
+        let remaining =
+            frames
+            .filter { $0.height >= 20 }
+            .sorted {
+                if abs($0.midY - $1.midY) < 2 { return $0.minX < $1.minX }
+                return $0.midY < $1.midY
+            }
+        let findOnline = try XCTUnwrap(remaining.first)
+        let fileTags = try XCTUnwrap(remaining.dropFirst().first)
+        let clear = remaining.dropFirst(2).first
+        XCTAssertEqual(remaining.count, draftIsBlank ? 2 : 3)
+        return MetadataCardFocusLayout(
+            details: details,
+            findOnline: findOnline,
+            fileTags: fileTags,
+            clear: clear
+        )
+    }
+
+    private func focusFrames(in host: NSView) -> [NSRect] {
+        focusViews(in: host)
+            .map { $0.convert($0.bounds, to: host) }
+    }
+
+    private func coverFrame(in host: NSView) throws -> NSRect {
+        let side = ImportReleaseHeader.coverSize
+        let frames = SnapshotTestSupport.descendants(of: host)
+            .filter { $0.bounds.width == side && $0.bounds.height == side }
+            .map { $0.convert($0.bounds, to: host) }
+        let frame = try XCTUnwrap(frames.first)
+        XCTAssertTrue(frames.allSatisfy { $0 == frame })
+        return frame
+    }
+
+    private func focusViews(in host: NSView) -> [NSView] {
+        host.subviews.filter {
+            $0.nextKeyView != nil || $0.previousKeyView != nil
+        }
+    }
+
+    private func click(
+        at point: NSPoint,
+        in host: NSView,
+        window: NSWindow
+    ) throws {
+        let windowPoint = host.convert(point, to: nil)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = try XCTUnwrap(
+                NSEvent.mouseEvent(
+                    with: type,
+                    location: windowPoint,
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: window.windowNumber,
+                    context: nil,
+                    eventNumber: 0,
+                    clickCount: 1,
+                    pressure: type == .leftMouseDown ? 1 : 0
+                )
+            )
+            NSApplication.shared.sendEvent(event)
+        }
+    }
+}
+
+@MainActor
+private final class MetadataCardActionRecorder {
+    var findOnlineCount = 0
+    var fileTagsCount = 0
+    var clearCount = 0
+}
+
+extension NSRect {
+    fileprivate var center: NSPoint {
+        NSPoint(x: midX, y: midY)
+    }
+}
+
+private struct MetadataCardFocusLayout {
+    let details: NSRect
+    let findOnline: NSRect
+    let fileTags: NSRect
+    let clear: NSRect?
 }

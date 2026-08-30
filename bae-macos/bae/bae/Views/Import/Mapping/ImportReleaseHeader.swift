@@ -22,6 +22,39 @@ struct ImportReleaseSourceActions {
     let clearMetadata: () -> Void
 }
 
+/// The disclosure that keeps the editable release fields attached to the
+/// metadata text column.
+struct ImportReleaseDetails: View {
+    let values: BridgeRawReleaseEdit
+    let writer: ReleaseFieldWriter
+    @Binding
+    var expanded: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                expanded = !expanded
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text("Details")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if expanded {
+                ReleaseFieldsForm(values: values, writer: writer)
+            }
+        }
+    }
+}
+
 /// The editable metadata draft card: cover, release fields, source provenance,
 /// replacement actions, and commit controls.
 struct ImportReleaseHeader: View {
@@ -50,7 +83,7 @@ struct ImportReleaseHeader: View {
     /// The cover the card leads with. Big enough to read the artwork as
     /// artwork — at a thumbnail's size it was an icon beside the title, and
     /// the cover is the thing being confirmed.
-    private static let coverSize: CGFloat = 160
+    static let coverSize: CGFloat = 160
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -67,11 +100,12 @@ struct ImportReleaseHeader: View {
                 HStack(alignment: .top, spacing: 16) {
                     cover
                     VStack(alignment: .leading, spacing: 12) {
-                        actionControl
+                        sourceActionControl
                         if let editValues {
-                            ReleaseFieldsForm(
+                            ImportReleaseDetails(
                                 values: editValues,
-                                writer: editActions
+                                writer: editActions,
+                                expanded: $detailsExpanded
                             )
                         }
                     }
@@ -81,14 +115,24 @@ struct ImportReleaseHeader: View {
             else {
                 HStack(alignment: .top, spacing: 16) {
                     cover
-                    ImportReleaseSummaryView(
-                        summary: releaseSummary,
-                        style: .card
-                    )
-                    actionControl
-                }
-                if let editValues {
-                    details(editValues)
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .top, spacing: 12) {
+                            ImportReleaseSummaryView(
+                                summary: releaseSummary,
+                                style: .card
+                            )
+                            sourceActionControl
+                        }
+                        if let editValues {
+                            ImportReleaseDetails(
+                                values: editValues,
+                                writer: editActions,
+                                expanded: $detailsExpanded
+                            )
+                        }
+                        clearMetadataControl
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             if let commit {
@@ -110,32 +154,6 @@ struct ImportReleaseHeader: View {
             Text(
                 "The candidate files and mapping choices will remain unchanged."
             )
-        }
-    }
-
-    private func details(
-        _ values: BridgeRawReleaseEdit
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Button {
-                detailsExpanded.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(detailsExpanded ? 90 : 0))
-                    Text("Details")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            if detailsExpanded {
-                ReleaseFieldsForm(values: values, writer: editActions)
-            }
         }
     }
 
@@ -187,8 +205,9 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// Source replacement and clearing stay visible on the card they affect.
-    private var actionControl: some View {
+    /// Metadata sources stay together: both replace the same draft by choosing
+    /// where its metadata comes from.
+    private var sourceActionControl: some View {
         HStack(spacing: 8) {
             ProgressView()
                 .controlSize(.small)
@@ -208,12 +227,18 @@ struct ImportReleaseHeader: View {
                 )
             }
             .buttonStyle(.bordered)
-            if !draftIsBlank {
-                Button("Clear metadata", role: .destructive) {
-                    confirmsClear = true
-                }
-                .buttonStyle(.bordered)
+        }
+        .disabled(isReading)
+    }
+
+    /// Clearing is a destructive reset, not another metadata source.
+    private var clearMetadataControl: some View {
+        HStack {
+            Spacer(minLength: 0)
+            Button("Clear metadata", role: .destructive) {
+                confirmsClear = true
             }
+            .buttonStyle(.bordered)
         }
         .disabled(isReading)
     }

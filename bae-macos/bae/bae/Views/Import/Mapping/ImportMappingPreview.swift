@@ -98,6 +98,22 @@
         .importPreviewEnvironment()
     }
 
+    #Preview("Mapping pane — Discogs applied") {
+        @Previewable
+        @State
+        var storageCloud = true
+        @Previewable
+        @State
+        var storagePinned = true
+        ImportMappingPreview.make(
+            candidate: PreviewData.discogsMappingCandidate,
+            storageCloud: $storageCloud,
+            storagePinned: $storagePinned
+        )
+        .frame(width: 1212, height: 900)
+        .importPreviewEnvironment()
+    }
+
     #Preview("Mapping pane — Lookup, no search") {
         @Previewable
         @State

@@ -201,12 +201,27 @@ struct ImportMappingPaneTests {
             .compactMap { ($0 as? NSTextField)?.stringValue }
         #expect(
             labels.filter { $0 == String(localized: "Album title") }.count
-                == 1
+                == 0
         )
         #expect(labels.contains(String(localized: "Find online…")))
         #expect(
             labels.contains(coreString("ui.import.metadata.file_tags") + "…")
         )
+        let buttons = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSButton }
+        let details = try #require(
+            buttons.first { $0.title == String(localized: "Details") }
+        )
+        #expect(details.convert(details.bounds, to: host).minX > 180)
+        #expect(
+            !buttons.contains {
+                $0.title == String(localized: "Clear metadata")
+            }
+        )
+
+        details.performClick(nil)
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
         let albumTitleField = try #require(
             SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSTextField }
