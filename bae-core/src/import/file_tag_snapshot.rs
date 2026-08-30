@@ -331,9 +331,9 @@ pub(crate) fn extract_file_tag_snapshot(
 }
 
 /// The cover File Tags applies with its draft. Embedded artwork is part of the
-/// same snapshot and therefore leads. Without one, conventional `cover.*` and
-/// `folder.*` images lead by case-insensitive path order; every other image is
-/// ordered by file size and then by path.
+/// same snapshot and therefore leads. Without one, conventional cover, folder,
+/// and front image names lead by normalized filename order; every other image
+/// is ordered by file size and then by path.
 pub(crate) fn default_cover(
     files: &super::folder_scanner::CategorizedFiles,
     snapshot: &FileTagSnapshot,
