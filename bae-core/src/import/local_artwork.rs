@@ -25,13 +25,17 @@ pub(crate) fn default_local_cover_file<'a>(
 fn artwork_order(left: &ScannedFile, right: &ScannedFile) -> std::cmp::Ordering {
     let left_name = left.relative_path.to_lowercase();
     let right_name = right.relative_path.to_lowercase();
-    match (conventional_artwork(left), conventional_artwork(right)) {
-        (true, true) => left_name
-            .cmp(&right_name)
+    match (
+        conventional_artwork_name(left),
+        conventional_artwork_name(right),
+    ) {
+        (Some(left_artwork), Some(right_artwork)) => left_artwork
+            .cmp(&right_artwork)
+            .then_with(|| left.size.cmp(&right.size))
             .then_with(|| left.relative_path.cmp(&right.relative_path)),
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        (false, false) => left
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => left
             .size
             .cmp(&right.size)
             .then_with(|| left_name.cmp(&right_name))
@@ -39,18 +43,24 @@ fn artwork_order(left: &ScannedFile, right: &ScannedFile) -> std::cmp::Ordering 
     }
 }
 
-fn conventional_artwork(file: &ScannedFile) -> bool {
-    std::path::Path::new(&file.relative_path)
+fn conventional_artwork_name(file: &ScannedFile) -> Option<String> {
+    let stem = std::path::Path::new(&file.relative_path)
         .file_stem()
         .and_then(|stem| stem.to_str())
-        .is_some_and(|stem| {
-            let stem = stem.trim_start_matches(|character: char| {
-                character.is_ascii_digit() || matches!(character, ' ' | '-' | '_' | '.')
-            });
-            ["front", "cover", "folder"]
-                .iter()
-                .any(|name| stem.eq_ignore_ascii_case(name))
-        })
+        .map(|stem| {
+            stem.trim_start_matches(|character: char| {
+                character.is_ascii_digit() || !character.is_alphanumeric()
+            })
+            .to_lowercase()
+        })?;
+    let mut words = stem
+        .split(|character: char| !character.is_alphanumeric())
+        .filter(|word| !word.is_empty());
+    let first = words.next()?;
+    let names_front_artwork = ["cover", "folder", "front"].contains(&first);
+    let names_non_front_artwork = words
+        .any(|word| ["back", "rear", "disc", "cd", "booklet", "inlay", "inside"].contains(&word));
+    (names_front_artwork && !names_non_front_artwork).then_some(stem)
 }
 
 #[cfg(test)]
@@ -103,6 +113,38 @@ mod tests {
         assert_eq!(
             default_local_cover(&files),
             Some(CoverSelection::Local("00Front.jpg".to_string()))
+        );
+    }
+
+    #[test]
+    fn conventional_artwork_order_ignores_numbering_prefixes() {
+        let files = files_with_artwork([artwork("00Front.jpg", 1), artwork("99 - cover.jpg", 500)]);
+
+        assert_eq!(
+            default_local_cover(&files),
+            Some(CoverSelection::Local("99 - cover.jpg".to_string()))
+        );
+    }
+
+    #[test]
+    fn descriptive_front_artwork_beats_the_smallest_image() {
+        let files =
+            files_with_artwork([artwork("01 - Front scan.jpg", 500), artwork("disc.jpg", 1)]);
+
+        assert_eq!(
+            default_local_cover(&files),
+            Some(CoverSelection::Local("01 - Front scan.jpg".to_string()))
+        );
+    }
+
+    #[test]
+    fn back_artwork_does_not_rank_as_a_conventional_cover() {
+        let files =
+            files_with_artwork([artwork("cover-back.jpg", 1), artwork("front scan.jpg", 500)]);
+
+        assert_eq!(
+            default_local_cover(&files),
+            Some(CoverSelection::Local("front scan.jpg".to_string()))
         );
     }
 
