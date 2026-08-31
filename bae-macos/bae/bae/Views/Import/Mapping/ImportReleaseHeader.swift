@@ -138,7 +138,6 @@ struct ImportReleaseHeader: View {
                                 expanded: $detailsExpanded
                             )
                         }
-                        clearMetadataControl
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -216,43 +215,41 @@ struct ImportReleaseHeader: View {
     /// Metadata sources stay together: both replace the same draft by choosing
     /// where its metadata comes from.
     private var sourceActionControl: some View {
-        HStack(spacing: 8) {
-            ProgressView()
-                .controlSize(.small)
-                .opacity(isReading ? 1 : 0)
-            if draftIsBlank {
-                findOnlineButton.buttonStyle(.borderedProminent)
+        VStack(alignment: .leading, spacing: 5) {
+            FormEyebrow(text: Text("Metadata"))
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.small)
+                    .opacity(isReading ? 1 : 0)
+                if draftIsBlank {
+                    findOnlineButton.buttonStyle(.borderedProminent)
+                }
+                else {
+                    findOnlineButton.buttonStyle(.bordered)
+                }
+                Button("Use file metadata") {
+                    sourceActions.useFileTags()
+                }
+                .buttonStyle(.bordered)
+                if !draftIsBlank {
+                    Menu {
+                        Button("Clear metadata", role: .destructive) {
+                            confirmsClear = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .accessibilityLabel(Text("Clear metadata"))
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
             }
-            else {
-                findOnlineButton.buttonStyle(.bordered)
-            }
-            Button {
-                sourceActions.useFileTags()
-            } label: {
-                Text(
-                    verbatim: coreString("ui.import.metadata.file_tags")
-                        + "…"
-                )
-            }
-            .buttonStyle(.bordered)
-        }
-        .disabled(isReading)
-    }
-
-    /// Clearing is a destructive reset, not another metadata source.
-    private var clearMetadataControl: some View {
-        HStack {
-            Spacer(minLength: 0)
-            Button("Clear metadata", role: .destructive) {
-                confirmsClear = true
-            }
-            .buttonStyle(.bordered)
         }
         .disabled(isReading)
     }
 
     private var findOnlineButton: some View {
-        Button("Find online…") {
+        Button("Match release…") {
             sourceActions.findOnline()
         }
     }

@@ -1338,193 +1338,193 @@
         }
       }
     },
-    "Find online…" : {
-      "comment" : "Import metadata: open the online release browser",
+    "Match release…" : {
+      "comment" : "Import metadata: match the candidate to a catalog release",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "البحث عبر الإنترنت…"
+            "value" : "مطابقة الإصدار…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Търсене онлайн…"
+            "value" : "Съпоставяне на издание…"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "অনলাইনে খুঁজুন…"
+            "value" : "রিলিজ মেলান…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Najít online…"
+            "value" : "Přiřadit vydání…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Online suchen…"
+            "value" : "Veröffentlichung abgleichen…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Find online…"
+            "value" : "Match release…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar en línea…"
+            "value" : "Buscar una edición coincidente…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rechercher en ligne…"
+            "value" : "Associer une parution…"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ઓનલાઇન શોધો…"
+            "value" : "રિલીઝ મેળવો…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "חיפוש באינטרנט…"
+            "value" : "התאמת מהדורה…"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑनलाइन खोजें…"
+            "value" : "रिलीज़ मिलाएँ…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pronađi na internetu…"
+            "value" : "Uskladi izdanje…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trova online…"
+            "value" : "Abbina pubblicazione…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "オンラインで検索…"
+            "value" : "リリースを照合…"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ…"
+            "value" : "ಬಿಡುಗಡೆಯನ್ನು ಹೊಂದಿಸಿ…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "온라인에서 찾기…"
+            "value" : "릴리스 일치시키기…"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഓൺലൈനിൽ കണ്ടെത്തുക…"
+            "value" : "റിലീസ് പൊരുത്തപ്പെടുത്തുക…"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑनलाइन शोधा…"
+            "value" : "प्रकाशन जुळवा…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Online zoeken…"
+            "value" : "Uitgave koppelen…"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਆਨਲਾਈਨ ਲੱਭੋ…"
+            "value" : "ਰਿਲੀਜ਼ ਮਿਲਾਓ…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Znajdź online…"
+            "value" : "Dopasuj wydanie…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar online…"
+            "value" : "Associar lançamento…"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இணையத்தில் தேடு…"
+            "value" : "வெளியீட்டை பொருத்து…"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఆన్‌లైన్‌లో కనుగొను…"
+            "value" : "విడుదలను సరిపోల్చు…"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ค้นหาออนไลน์…"
+            "value" : "จับคู่รุ่นวางจำหน่าย…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Çevrimiçi bul…"
+            "value" : "Sürümü eşleştir…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Знайти онлайн…"
+            "value" : "Зіставити видання…"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "آن لائن تلاش کریں…"
+            "value" : "ریلیز ملائیں…"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tìm trên mạng…"
+            "value" : "Khớp bản phát hành…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线查找…"
+            "value" : "匹配发行版本…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在線上尋找…"
+            "value" : "比對發行版本…"
           }
         }
       }
@@ -107494,6 +107494,197 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "中繼資料"
+          }
+        }
+      }
+    },
+    "Use file metadata" : {
+      "comment" : "Import metadata: replace the draft with metadata read from the candidate files",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استخدام بيانات الملفات الوصفية"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Използване на метаданните от файловете"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ফাইলের মেটাডেটা ব্যবহার করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Použít metadata souborů"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dateimetadaten verwenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use file metadata"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar metadatos de archivos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser les métadonnées des fichiers"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ફાઇલ મેટાડેટાનો ઉપયોગ કરો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שימוש במטא־נתוני הקבצים"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फ़ाइल मेटाडेटा इस्तेमाल करें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upotrijebi metapodatke datoteka"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa metadati dei file"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイルのメタデータを使用"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಫೈಲ್ ಮೆಟಾಡೇಟಾ ಬಳಸಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파일 메타데이터 사용"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഫയൽ മെറ്റാഡാറ്റ ഉപയോഗിക്കുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फाइल मेटाडेटा वापरा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bestandsmetadata gebruiken"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਫ਼ਾਈਲ ਮੈਟਾਡਾਟਾ ਵਰਤੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Użyj metadanych plików"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar metadados dos arquivos"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "கோப்பு மெட்டாடேட்டாவைப் பயன்படுத்து"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఫైల్ మెటాడేటాను ఉపయోగించు"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใช้ข้อมูลเมตาของไฟล์"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosya meta verilerini kullan"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Використати метадані файлів"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فائل میٹا ڈیٹا استعمال کریں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng siêu dữ liệu của tệp"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用文件元数据"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用檔案中繼資料"
           }
         }
       }
