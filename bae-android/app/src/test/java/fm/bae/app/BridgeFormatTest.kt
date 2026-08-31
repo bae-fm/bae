@@ -72,7 +72,7 @@ class BridgeFormatTest {
             )
 
         assertEquals(
-            "Mixed audio · FLAC · 44.1 kHz · 16-bit · stereo · " +
+            "Various · FLAC · 44.1 kHz · 16-bit · stereo · " +
                 "MP3 · 320 kbps · 48 kHz · stereo",
             summary.text(context, stereoKey),
         )

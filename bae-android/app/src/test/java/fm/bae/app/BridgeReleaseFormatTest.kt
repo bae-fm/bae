@@ -62,7 +62,7 @@ class BridgeReleaseFormatTest {
             )
 
         assertEquals(
-            "Mixed audio · FLAC · 44.1 kHz · 16-bit · stereo · " +
+            "Various · FLAC · 44.1 kHz · 16-bit · stereo · " +
                 "MP3 · 320 kbps · 48 kHz · stereo",
             release.compactMetadataText(context, stereoKey),
         )

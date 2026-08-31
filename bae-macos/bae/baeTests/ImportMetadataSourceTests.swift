@@ -473,15 +473,13 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
 
 @MainActor
 final class ImportMetadataCardLayoutTests: XCTestCase {
-    func testAppliedMetadataKeepsDetailsWithTextAndClearApartFromSources()
+    func testUnmatchedMetadataKeepsDetailsWithTextBesideSourceActions()
         async throws
     {
         NSApplication.shared.finishLaunching()
         let provenances: [BridgeMetadataProvenance?] = [
             nil,
             .fileTags,
-            .externalRelease(source: .musicBrainz, releaseId: "release-mb"),
-            .externalRelease(source: .discogs, releaseId: "release-discogs"),
         ]
         for provenance in provenances {
             try await assertCardLayout(provenance: provenance)
@@ -599,13 +597,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         XCTAssertEqual(recorder.findOnlineCount, 1)
         XCTAssertEqual(recorder.fileTagsCount, 1)
 
-        if let clear = layout.clear {
-            XCTAssertGreaterThan(
-                abs(clear.midY - layout.findOnline.midY),
-                8
-            )
-        }
-
         window.contentView = nil
         window.orderOut(nil)
     }
@@ -667,13 +658,11 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             }
         let findOnline = try XCTUnwrap(remaining.first)
         let fileTags = try XCTUnwrap(remaining.dropFirst().first)
-        let clear = remaining.dropFirst(2).first
-        XCTAssertEqual(remaining.count, 3)
+        XCTAssertEqual(remaining.count, 2)
         return MetadataCardFocusLayout(
             details: details,
             findOnline: findOnline,
-            fileTags: fileTags,
-            clear: clear
+            fileTags: fileTags
         )
     }
 
@@ -732,16 +721,96 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
+    func testMatchedReleaseKeepsOnlyItsChangeActionOutsideCollapsedDetails()
+        async
+    {
+        let recorder = MetadataCardActionRecorder()
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: .externalRelease(
+                    source: .musicBrainz,
+                    releaseId: "release-mb"
+                ),
+                draftIsBlank: false,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 420)
+        )
+        await SnapshotTestSupport.settle(host)
+
+        let sourceControls = focusFrames(in: host).filter { $0.height >= 20 }
+        XCTAssertEqual(sourceControls.count, 1)
+        window.contentView = nil
+        window.orderOut(nil)
+    }
+
+    func testSeveralSourceAudioProfilesReadAsVarious() {
+        let summary = BridgeSourceAudioSummary.mixed(descriptors: [
+            BridgeSourceAudioDescriptor(
+                layout: .file,
+                format: MappingFixtures.audioFormat
+            ),
+            BridgeSourceAudioDescriptor(
+                layout: .cue,
+                format: MappingFixtures.audioFormat
+            ),
+        ])
+
+        XCTAssertEqual(summary.text, "Various")
+    }
+
     func testBlankDraftInitialExpansionSurvivesDraftPopulation() {
         var state = CandidateMetadataDetailsState()
 
         state.establishInitialState(
             for: "candidate-a",
-            draftIsBlank: true
+            draftIsBlank: true,
+            hasMatchedRelease: false
         )
 
         XCTAssertTrue(
-            state.isExpanded(for: "candidate-a", draftIsBlank: false)
+            state.isExpanded(
+                for: "candidate-a",
+                draftIsBlank: false,
+                hasMatchedRelease: false
+            )
+        )
+    }
+
+    func testApplyingAnExternalReleaseCollapsesDetails() {
+        var state = CandidateMetadataDetailsState()
+        state.establishInitialState(
+            for: "candidate-a",
+            draftIsBlank: true,
+            hasMatchedRelease: false
+        )
+
+        state.externalReleaseApplied(for: "candidate-a")
+
+        XCTAssertFalse(
+            state.isExpanded(
+                for: "candidate-a",
+                draftIsBlank: false,
+                hasMatchedRelease: true
+            )
+        )
+    }
+
+    func testInitiallyMatchedReleaseStartsCollapsed() {
+        var state = CandidateMetadataDetailsState()
+
+        state.establishInitialState(
+            for: "candidate-a",
+            draftIsBlank: true,
+            hasMatchedRelease: true
+        )
+
+        XCTAssertFalse(
+            state.isExpanded(
+                for: "candidate-a",
+                draftIsBlank: true,
+                hasMatchedRelease: true
+            )
         )
     }
 
@@ -749,22 +818,42 @@ extension ImportMetadataCardLayoutTests {
         var state = CandidateMetadataDetailsState()
 
         XCTAssertTrue(
-            state.isExpanded(for: "candidate-a", draftIsBlank: true)
+            state.isExpanded(
+                for: "candidate-a",
+                draftIsBlank: true,
+                hasMatchedRelease: false
+            )
         )
         state.setExpanded(false, for: "candidate-a")
         XCTAssertFalse(
-            state.isExpanded(for: "candidate-a", draftIsBlank: true)
+            state.isExpanded(
+                for: "candidate-a",
+                draftIsBlank: true,
+                hasMatchedRelease: false
+            )
         )
 
         XCTAssertFalse(
-            state.isExpanded(for: "candidate-b", draftIsBlank: false)
+            state.isExpanded(
+                for: "candidate-b",
+                draftIsBlank: false,
+                hasMatchedRelease: false
+            )
         )
         state.setExpanded(true, for: "candidate-b")
         XCTAssertTrue(
-            state.isExpanded(for: "candidate-b", draftIsBlank: false)
+            state.isExpanded(
+                for: "candidate-b",
+                draftIsBlank: false,
+                hasMatchedRelease: false
+            )
         )
         XCTAssertFalse(
-            state.isExpanded(for: "candidate-a", draftIsBlank: true)
+            state.isExpanded(
+                for: "candidate-a",
+                draftIsBlank: true,
+                hasMatchedRelease: false
+            )
         )
     }
 }
@@ -786,5 +875,4 @@ private struct MetadataCardFocusLayout {
     let details: NSRect
     let findOnline: NSRect
     let fileTags: NSRect
-    let clear: NSRect?
 }

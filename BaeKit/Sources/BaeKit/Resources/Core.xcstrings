@@ -2294,192 +2294,192 @@
       }
     },
     "core.audio.mixed": {
-      "comment": "Source-audio summary containing more than one distinct descriptor.",
+      "comment": "Source-audio summary label for more than one distinct descriptor.",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "صوت مختلط"
+            "value": "متنوع"
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Смесено аудио"
+            "value": "Различни"
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "মিশ্র অডিও"
+            "value": "বিভিন্ন"
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Smíšený zvuk"
+            "value": "Různé"
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gemischtes Audio"
+            "value": "Verschiedene"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mixed audio"
+            "value": "Various"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Audio mixto"
+            "value": "Varios"
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Audio mixte"
+            "value": "Divers"
           }
         },
         "gu": {
           "stringUnit": {
             "state": "translated",
-            "value": "મિશ્ર ઑડિયો"
+            "value": "વિવિધ"
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "שמע מעורב"
+            "value": "מגוון"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "मिश्रित ऑडियो"
+            "value": "विविध"
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Mješoviti zvuk"
+            "value": "Razno"
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Audio misto"
+            "value": "Vari"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "混在オーディオ"
+            "value": "各種"
           }
         },
         "kn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ಮಿಶ್ರ ಆಡಿಯೊ"
+            "value": "ವಿವಿಧ"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "혼합 오디오"
+            "value": "다양함"
           }
         },
         "ml": {
           "stringUnit": {
             "state": "translated",
-            "value": "മിശ്ര ഓഡിയോ"
+            "value": "വിവിധ"
           }
         },
         "mr": {
           "stringUnit": {
             "state": "translated",
-            "value": "मिश्रित ऑडिओ"
+            "value": "विविध"
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Gemengde audio"
+            "value": "Diverse"
           }
         },
         "pa": {
           "stringUnit": {
             "state": "translated",
-            "value": "ਮਿਸ਼ਰਤ ਆਡੀਓ"
+            "value": "ਵੱਖ-ਵੱਖ"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Dźwięk mieszany"
+            "value": "Różne"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Áudio misto"
+            "value": "Diversos"
           }
         },
         "ta": {
           "stringUnit": {
             "state": "translated",
-            "value": "கலப்பு ஒலி"
+            "value": "பல்வேறு"
           }
         },
         "te": {
           "stringUnit": {
             "state": "translated",
-            "value": "మిశ్రమ ఆడియో"
+            "value": "వివిధ"
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "เสียงแบบผสม"
+            "value": "หลากหลาย"
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Karma ses"
+            "value": "Çeşitli"
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Змішане аудіо"
+            "value": "Різні"
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "مخلوط آڈیو"
+            "value": "مختلف"
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Âm thanh hỗn hợp"
+            "value": "Nhiều loại"
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "混合音频"
+            "value": "多种"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "混合音訊"
+            "value": "多種"
           }
         }
       }

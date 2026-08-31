@@ -107,14 +107,7 @@ struct ImportReleaseHeader: View {
                     cover
                     VStack(alignment: .leading, spacing: 12) {
                         sourceActionControl
-                        if let editValues {
-                            ImportReleaseDetails(
-                                values: editValues,
-                                writer: editActions,
-                                editingCommands: editingCommands,
-                                expanded: $detailsExpanded
-                            )
-                        }
+                        detailsSection
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -130,14 +123,7 @@ struct ImportReleaseHeader: View {
                             )
                             sourceActionControl
                         }
-                        if let editValues {
-                            ImportReleaseDetails(
-                                values: editValues,
-                                writer: editActions,
-                                editingCommands: editingCommands,
-                                expanded: $detailsExpanded
-                            )
-                        }
+                        detailsSection
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -221,27 +207,20 @@ struct ImportReleaseHeader: View {
                 ProgressView()
                     .controlSize(.small)
                     .opacity(isReading ? 1 : 0)
-                if draftIsBlank {
+                if draftIsBlank, !releaseSummary.hasMatchedRelease {
                     findOnlineButton.buttonStyle(.borderedProminent)
                 }
                 else {
                     findOnlineButton.buttonStyle(.bordered)
                 }
-                Button("Use file metadata") {
-                    sourceActions.useFileTags()
-                }
-                .buttonStyle(.bordered)
-                if !draftIsBlank {
-                    Menu {
-                        Button("Clear metadata", role: .destructive) {
-                            confirmsClear = true
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .accessibilityLabel(Text("Clear metadata"))
+                if !releaseSummary.hasMatchedRelease {
+                    Button("Use file metadata") {
+                        sourceActions.useFileTags()
                     }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
+                    .buttonStyle(.bordered)
+                    if !draftIsBlank {
+                        clearMetadataMenu
+                    }
                 }
             }
         }
@@ -249,9 +228,55 @@ struct ImportReleaseHeader: View {
     }
 
     private var findOnlineButton: some View {
-        Button("Match release…") {
+        Button {
             sourceActions.findOnline()
+        } label: {
+            if releaseSummary.hasMatchedRelease {
+                Text("Change release…")
+            }
+            else {
+                Text("Match release…")
+            }
         }
+    }
+
+    @ViewBuilder
+    private var detailsSection: some View {
+        if let editValues {
+            ImportReleaseDetails(
+                values: editValues,
+                writer: editActions,
+                editingCommands: editingCommands,
+                expanded: $detailsExpanded
+            )
+        }
+        if releaseSummary.hasMatchedRelease, detailsExpanded {
+            matchedReleaseSecondaryActions
+        }
+    }
+
+    private var matchedReleaseSecondaryActions: some View {
+        HStack(spacing: 8) {
+            Button("Use file metadata") {
+                sourceActions.useFileTags()
+            }
+            .buttonStyle(.bordered)
+            clearMetadataMenu
+        }
+        .disabled(isReading)
+    }
+
+    private var clearMetadataMenu: some View {
+        Menu {
+            Button("Clear metadata", role: .destructive) {
+                confirmsClear = true
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .accessibilityLabel(Text("Clear metadata"))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
     }
 
     private var cover: some View {

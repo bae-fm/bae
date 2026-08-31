@@ -37,6 +37,13 @@ extension ImportView {
         .onChange(of: candidate.metadataDraftIsBlank) { _, _ in
             establishMetadataDetailsInitialState(for: candidate)
         }
+        .onChange(of: candidate.metadataProvenance) { _, provenance in
+            if case .externalRelease = provenance {
+                metadataDetailsState.externalReleaseApplied(
+                    for: candidate.key
+                )
+            }
+        }
     }
 
     private func mappingPane(

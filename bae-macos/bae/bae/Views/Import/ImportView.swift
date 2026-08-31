@@ -2,25 +2,34 @@ import BaeKit
 import SwiftUI
 
 /// In-memory disclosure choices for candidate metadata forms. A candidate
-/// without a choice uses the draft shape as its initial state: blank drafts
-/// open for entry, while populated drafts stay folded.
+/// without a choice uses the draft shape as its initial state: blank unmatched
+/// drafts open for entry, while populated or matched drafts stay folded.
 struct CandidateMetadataDetailsState: Equatable {
     private var expandedByCandidate: [String: Bool] = [:]
 
     mutating func establishInitialState(
         for key: String,
-        draftIsBlank: Bool
+        draftIsBlank: Bool,
+        hasMatchedRelease: Bool
     ) {
         guard expandedByCandidate[key] == nil else { return }
-        expandedByCandidate[key] = draftIsBlank
+        expandedByCandidate[key] = draftIsBlank && !hasMatchedRelease
     }
 
-    func isExpanded(for key: String, draftIsBlank: Bool) -> Bool {
-        expandedByCandidate[key] ?? draftIsBlank
+    func isExpanded(
+        for key: String,
+        draftIsBlank: Bool,
+        hasMatchedRelease: Bool
+    ) -> Bool {
+        expandedByCandidate[key] ?? (draftIsBlank && !hasMatchedRelease)
     }
 
     mutating func setExpanded(_ expanded: Bool, for key: String) {
         expandedByCandidate[key] = expanded
+    }
+
+    mutating func externalReleaseApplied(for key: String) {
+        expandedByCandidate[key] = false
     }
 }
 
@@ -96,7 +105,8 @@ struct ImportView: View {
             get: {
                 metadataDetailsState.isExpanded(
                     for: candidate.key,
-                    draftIsBlank: candidate.metadataDraftIsBlank
+                    draftIsBlank: candidate.metadataDraftIsBlank,
+                    hasMatchedRelease: candidate.pickedRelease != nil
                 )
             },
             set: { expanded in
@@ -111,7 +121,8 @@ struct ImportView: View {
     func establishMetadataDetailsInitialState(for candidate: Candidate) {
         metadataDetailsState.establishInitialState(
             for: candidate.key,
-            draftIsBlank: candidate.metadataDraftIsBlank
+            draftIsBlank: candidate.metadataDraftIsBlank,
+            hasMatchedRelease: candidate.pickedRelease != nil
         )
     }
 
