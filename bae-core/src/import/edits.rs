@@ -16,7 +16,8 @@ use chrono::{DateTime, Utc};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CandidateEditField {
     AlbumTitle,
-    Year,
+    AlbumYear,
+    PressingYear,
     Format,
     Label,
     CatalogNumber,
@@ -29,7 +30,8 @@ impl CandidateEditField {
     pub(crate) fn column(self) -> &'static str {
         match self {
             Self::AlbumTitle => "album_title",
-            Self::Year => "year",
+            Self::AlbumYear => "album_year",
+            Self::PressingYear => "year",
             Self::Format => "format",
             Self::Label => "label",
             Self::CatalogNumber => "catalog_number",
@@ -49,7 +51,8 @@ impl CandidateEditField {
 pub struct CandidateEditOverlay {
     pub album_title: Option<String>,
     pub album_artist_assignments: Option<Vec<ArtistAssignment>>,
-    pub year: Option<String>,
+    pub album_year: Option<String>,
+    pub pressing_year: Option<String>,
     pub format: Option<String>,
     pub label: Option<String>,
     pub catalog_number: Option<String>,
@@ -73,7 +76,8 @@ impl CandidateEditOverlay {
         if let Some(assignments) = &self.album_artist_assignments {
             seed.album_artist_assignments.clone_from(assignments);
         }
-        overwrite(&mut seed.pressing.year, &self.year);
+        overwrite(&mut seed.album_year, &self.album_year);
+        overwrite(&mut seed.pressing.year, &self.pressing_year);
         overwrite(&mut seed.pressing.format, &self.format);
         overwrite(&mut seed.pressing.label, &self.label);
         overwrite(&mut seed.pressing.catalog_number, &self.catalog_number);

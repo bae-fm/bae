@@ -427,6 +427,7 @@ async fn file_tags_import_with_user_edit_overlay() {
     let edit = ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![ArtistAssignment::new("Artist Edited")],
+        album_year: Some(1998),
         pressing: PressingEdit {
             year: Some(2010),
             format: Some("CD".to_string()),

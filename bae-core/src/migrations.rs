@@ -43,6 +43,11 @@ pub fn all() -> Vec<coven::Migration> {
             "identify_failures",
             include_str!("../migrations/007_identify_failures.sql"),
         ),
+        coven::Migration::sql(
+            8,
+            "import_candidate_album_year",
+            include_str!("../migrations/008_import_candidate_album_year.sql"),
+        ),
     ]
 }
 

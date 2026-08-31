@@ -394,6 +394,7 @@ impl LibraryManager {
         let edit = crate::import::ReleaseUserEdit {
             album_title: album.title,
             album_artist_assignments,
+            album_year: album.year,
             pressing: crate::import::PressingEdit {
                 year: release.pressing.year,
                 format: release.pressing.format,
@@ -502,6 +503,7 @@ impl LibraryManager {
         let updated_album = DbAlbum {
             title: edit.album_title.clone(),
             artist_id: primary_album_artist_id.clone(),
+            year: edit.album_year,
             ..album.clone()
         };
 

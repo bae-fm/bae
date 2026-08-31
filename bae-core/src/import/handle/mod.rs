@@ -742,6 +742,7 @@ pub fn parsed_album_to_user_edit(parsed: &super::ParsedAlbum) -> crate::import::
     crate::import::ReleaseUserEdit {
         album_title: parsed.album.title.clone(),
         album_artist_assignments,
+        album_year: parsed.album.year,
         pressing: crate::import::PressingEdit {
             year: parsed.release.pressing.year,
             format: parsed.release.pressing.format.clone(),

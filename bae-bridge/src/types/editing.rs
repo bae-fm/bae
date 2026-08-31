@@ -101,6 +101,7 @@ pub fn bridge_file_evidence_key(evidence: &BridgeFileEvidence) -> String {
 pub struct BridgeReleaseUserEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<BridgeArtistAssignment>,
+    pub album_year: Option<i32>,
     pub pressing: BridgePressingEdit,
     pub tracks: Vec<BridgeTrackUserEdit>,
 }
@@ -514,7 +515,8 @@ pub fn bridge_mapping_tracks(table: BridgeMappingTable) -> Vec<BridgeRawTrackEdi
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeCandidateEditField {
     AlbumTitle,
-    Year,
+    AlbumYear,
+    PressingYear,
     Format,
     Label,
     CatalogNumber,
@@ -528,7 +530,8 @@ impl BridgeCandidateEditField {
         use bae_core::import::CandidateEditField as Field;
         match self {
             Self::AlbumTitle => Field::AlbumTitle,
-            Self::Year => Field::Year,
+            Self::AlbumYear => Field::AlbumYear,
+            Self::PressingYear => Field::PressingYear,
             Self::Format => Field::Format,
             Self::Label => Field::Label,
             Self::CatalogNumber => Field::CatalogNumber,
@@ -546,6 +549,7 @@ impl BridgeCandidateEditField {
 pub struct BridgeRawReleaseEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<BridgeArtistAssignment>,
+    pub album_year: String,
     pub pressing: BridgeRawPressingEdit,
     pub tracks: Vec<BridgeRawTrackEdit>,
 }

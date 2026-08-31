@@ -103,6 +103,7 @@ fn wire_edit(album_title: &str, album_artist_seed_names: &[&str]) -> ReleaseUser
             .iter()
             .map(|name| ArtistAssignment::new(*name))
             .collect(),
+        album_year: None,
         pressing: PressingEdit::blank(),
         tracks: vec![TrackUserEdit {
             title: "Original Track".to_string(),

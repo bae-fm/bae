@@ -479,8 +479,8 @@ extension ImportMappingPaneTests {
     // 4c. Typing in a release field writes that one field, once, as the field
     //     is left. Nothing else about the form moves.
     @MainActor
-    @Test("leaving a release field writes that field")
-    func leavingAReleaseFieldWritesThatField() async throws {
+    @Test("leaving release fields writes each distinct year")
+    func leavingReleaseFieldsWritesEachDistinctYear() async throws {
         let store = MappingFixtures.store(
             mapping: MappingFixtures.thirteenFileTable
         )
@@ -495,12 +495,21 @@ extension ImportMappingPaneTests {
             }
         }
 
-        await writer.setField(.year, "2011")
+        await writer.setField(.albumYear, "1987")
+        await writer.setField(.pressingYear, "2011")
         try await Task.sleep(for: .milliseconds(50))
 
-        #expect(recorder.editFields.count == 1)
-        #expect(recorder.editFields.first?.field == .year)
-        #expect(recorder.editFields.first?.value == "2011")
+        #expect(recorder.editFields.count == 2)
+        #expect(
+            recorder.editFields.contains {
+                $0.field == .albumYear && $0.value == "1987"
+            }
+        )
+        #expect(
+            recorder.editFields.contains {
+                $0.field == .pressingYear && $0.value == "2011"
+            }
+        )
         // The store holds no copy of the form: it still reads what core last
         // answered with.
         #expect(

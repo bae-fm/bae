@@ -21,6 +21,7 @@ async fn direct_entry_import_stores_no_metadata_provenance_or_external_identity(
             user_edit: Some(ReleaseUserEdit {
                 album_title: "Album Title".to_string(),
                 album_artist_assignments: vec![ArtistAssignment::new("Artist Name")],
+                album_year: None,
                 pressing: PressingEdit::blank(),
                 tracks: vec![TrackUserEdit {
                     title: "Track Title".to_string(),

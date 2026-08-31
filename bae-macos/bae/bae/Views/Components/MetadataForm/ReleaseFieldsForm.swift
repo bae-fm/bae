@@ -6,7 +6,7 @@ import SwiftUI
 /// The library's release editor holds its form in memory and saves it whole,
 /// so its fields write into a binding. The import pane holds nothing: each
 /// field is a row under the candidate, and typing in one writes that row. Both
-/// hand this the same eight fields.
+/// hand this the same album and pressing fields.
 struct ReleaseFieldWriter {
     let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
     let setAlbumArtists: @MainActor ([BridgeArtistAssignment]) async -> Void
@@ -31,7 +31,8 @@ struct ReleaseFieldWriter {
             setField: { field, value in
                 switch field {
                 case .albumTitle: form.wrappedValue.albumTitle = value
-                case .year: form.wrappedValue.pressing.year = value
+                case .albumYear: form.wrappedValue.albumYear = value
+                case .pressingYear: form.wrappedValue.pressing.year = value
                 case .format: form.wrappedValue.pressing.format = value
                 case .label: form.wrappedValue.pressing.label = value
                 case .catalogNumber:
@@ -51,17 +52,25 @@ struct ReleaseFieldWriter {
 ///
 /// It reads values and reports edits; where those values live is the caller's.
 struct ReleaseFieldsForm: View {
+    enum Section: Hashable {
+        case album
+        case pressing
+    }
+
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
+    let sections: Set<Section>
     var editingCommands: EditingCommitCommands?
 
     init(
         values: BridgeRawReleaseEdit,
         writer: ReleaseFieldWriter,
+        sections: Set<Section> = [.album, .pressing],
         editingCommands: EditingCommitCommands? = nil
     ) {
         self.values = values
         self.writer = writer
+        self.sections = sections
         self.editingCommands = editingCommands
     }
 
@@ -69,13 +78,18 @@ struct ReleaseFieldsForm: View {
     init(form: Binding<BridgeRawReleaseEdit>) {
         values = form.wrappedValue
         writer = .binding(form)
+        sections = [.album, .pressing]
         editingCommands = nil
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            albumGroup
-            pressingGroup
+            if sections.contains(.album) {
+                albumGroup
+            }
+            if sections.contains(.pressing) {
+                pressingGroup
+            }
         }
     }
 
@@ -116,6 +130,19 @@ struct ReleaseFieldsForm: View {
                     .fill(.white.opacity(0.07))
                     .frame(height: 1)
                 albumArtistsRow
+                Rectangle()
+                    .fill(.white.opacity(0.07))
+                    .frame(height: 1)
+                fieldRow(
+                    row(
+                        .albumYear,
+                        label: String(localized: "Year"),
+                        placeholder: String(localized: "Year"),
+                        text: values.albumYear,
+                        width: .short,
+                        monospaced: true,
+                    )
+                )
             }
             .formGroupCard()
         }
@@ -145,7 +172,7 @@ struct ReleaseFieldsForm: View {
             title: String(localized: "Release pressing"),
             rows: [
                 row(
-                    .year,
+                    .pressingYear,
                     label: String(localized: "Year"),
                     placeholder: String(localized: "Year"),
                     text: values.pressing.year,

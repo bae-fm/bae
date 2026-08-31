@@ -16,7 +16,7 @@ use crate::import::{
     TrackArtistAssignments, TrackEditState,
 };
 
-const EDIT_COLUMNS: &str = "content_hash, album_title, year, format, \
+const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
      label, catalog_number, country, barcode";
 
 const TRACK_EDIT_COLUMNS: &str = "content_hash, track_id, position, title, \
@@ -90,11 +90,12 @@ pub(crate) fn insert_draft(
 ) -> Result<(), DbError> {
     sql.execute(
         "INSERT INTO import_candidate_edit \
-             (content_hash, album_title, year, format, label, catalog_number, country, barcode) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+             (content_hash, album_title, album_year, year, format, label, catalog_number, country, barcode) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             draft.album_title,
+            draft.album_year,
             draft.pressing.year,
             draft.pressing.format,
             draft.pressing.label,
@@ -386,6 +387,7 @@ pub(crate) fn load_drafts_on(
             Ok((
                 row.get::<_, String>("content_hash")?,
                 row.get::<_, String>("album_title")?,
+                row.get::<_, String>("album_year")?,
                 row.get::<_, String>("year")?,
                 row.get::<_, String>("format")?,
                 row.get::<_, String>("label")?,
@@ -396,7 +398,18 @@ pub(crate) fn load_drafts_on(
         },
     )?;
     let mut out = HashMap::with_capacity(rows.len());
-    for (content_hash, album_title, year, format, label, catalog_number, country, barcode) in rows {
+    for (
+        content_hash,
+        album_title,
+        album_year,
+        year,
+        format,
+        label,
+        catalog_number,
+        country,
+        barcode,
+    ) in rows
+    {
         out.insert(
             content_hash.clone(),
             RawReleaseEdit {
@@ -405,6 +418,7 @@ pub(crate) fn load_drafts_on(
                     .get(&content_hash)
                     .cloned()
                     .unwrap_or_default(),
+                album_year,
                 pressing: RawPressingEdit {
                     year,
                     format,

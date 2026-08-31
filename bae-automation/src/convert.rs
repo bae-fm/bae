@@ -189,7 +189,8 @@ pub(super) fn metadata_provenance(provenance: AutomationMetadataProvenance) -> M
 pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> CandidateEditField {
     match field {
         AutomationCandidateEditField::AlbumTitle => CandidateEditField::AlbumTitle,
-        AutomationCandidateEditField::Year => CandidateEditField::Year,
+        AutomationCandidateEditField::AlbumYear => CandidateEditField::AlbumYear,
+        AutomationCandidateEditField::PressingYear => CandidateEditField::PressingYear,
         AutomationCandidateEditField::Format => CandidateEditField::Format,
         AutomationCandidateEditField::Label => CandidateEditField::Label,
         AutomationCandidateEditField::CatalogNumber => CandidateEditField::CatalogNumber,
@@ -329,6 +330,7 @@ pub(super) fn automation_release_user_edit(
             .into_iter()
             .map(automation_artist_assignment)
             .collect(),
+        album_year: edit.album_year,
         pressing: AutomationPressingEdit {
             year: edit.pressing.year,
             format: edit.pressing.format,
@@ -360,6 +362,7 @@ pub(super) fn release_user_edit(
             .into_iter()
             .map(artist_assignment)
             .collect(),
+        album_year: edit.album_year,
         pressing: PressingEdit {
             year: edit.pressing.year,
             format: edit.pressing.format,

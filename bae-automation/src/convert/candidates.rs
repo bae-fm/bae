@@ -116,6 +116,7 @@ fn shaped_edit(
         .unwrap_or_else(|_| bae_core::import::ReleaseUserEdit {
             album_title: raw.album_title.clone(),
             album_artist_assignments: Vec::new(),
+            album_year: None,
             pressing: bae_core::import::PressingEdit::blank(),
             tracks: Vec::new(),
         })

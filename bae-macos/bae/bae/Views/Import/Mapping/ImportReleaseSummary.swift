@@ -8,6 +8,7 @@ struct ImportReleaseSummary {
     let titleIsPlaceholder: Bool
     let artist: String?
     let factsLine: String
+    let contextLine: String?
     let sourceAudio: BridgeCandidateSourceAudio?
     let provenance: BridgeMetadataProvenance?
     let hasMatchedRelease: Bool
@@ -28,6 +29,7 @@ struct ImportReleaseSummary {
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         let count = candidate.mapping.willWriteCount
         let trackText = String(localized: "\(count) tracks")
+        contextLine = trackText
         switch provenance {
         case .externalRelease:
             factsLine = Self.factsLine([
@@ -62,6 +64,7 @@ struct ImportReleaseSummary {
             coreString("ui.import.metadata.from_file_tags"),
             String(localized: "\(values.tracks.count) tracks"),
         ])
+        contextLine = String(localized: "\(values.tracks.count) tracks")
         provenance = .fileTags
         sourceAudio = candidate.files.sourceAudio
         hasMatchedRelease = false
@@ -77,6 +80,7 @@ struct ImportReleaseSummary {
                 artistNames.isEmpty
                 ? nil : ListFormatter.localizedString(byJoining: artistNames)
             factsLine = ""
+            contextLine = nil
             provenance = nil
             sourceAudio = nil
             hasMatchedRelease = false
@@ -97,9 +101,11 @@ struct ImportReleaseSummary {
                 },
                 trackText,
             ])
+            contextLine = trackText
         }
         else {
             factsLine = ""
+            contextLine = nil
         }
         provenance = nil
         sourceAudio = nil
@@ -145,7 +151,7 @@ struct ImportReleaseSummaryView: View {
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                 if let provenance = summary.provenance {
-                    sourceChip(provenance)
+                    ImportMetadataProvenanceChip(provenance: provenance)
                 }
             }
             .padding(.top, style.factsTopPadding)
@@ -158,24 +164,54 @@ struct ImportReleaseSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func sourceChip(
-        _ provenance: BridgeMetadataProvenance
-    ) -> some View {
+}
+
+/// The non-editable context that remains beside the album fields: how many
+/// tracks the draft maps, which metadata source supplied it, and the source
+/// audio observed by the scan. Pressing values live under Details instead.
+struct ImportReleaseContextView: View {
+    let summary: ImportReleaseSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if summary.contextLine != nil || summary.provenance != nil {
+                HStack(spacing: 6) {
+                    if let contextLine = summary.contextLine {
+                        Text(contextLine)
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(.tertiary)
+                    }
+                    if let provenance = summary.provenance {
+                        ImportMetadataProvenanceChip(provenance: provenance)
+                    }
+                }
+            }
+            if let sourceAudio = summary.sourceAudio {
+                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+            }
+        }
+    }
+}
+
+private struct ImportMetadataProvenanceChip: View {
+    let provenance: BridgeMetadataProvenance
+
+    var body: some View {
         Group {
             if let url = provenance.externalReleaseURL {
                 Link(destination: url) {
-                    chipLabel(provenance.label)
+                    label
                 }
                 .buttonStyle(.plain)
             }
             else {
-                chipLabel(provenance.label)
+                label
             }
         }
     }
 
-    private func chipLabel(_ label: String) -> some View {
-        Text(verbatim: label)
+    private var label: some View {
+        Text(verbatim: provenance.label)
             .font(.system(size: 10.5, weight: .medium))
             .padding(.horizontal, 5)
             .padding(.vertical, 1)

@@ -136,6 +136,7 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
         } else {
             vec![new_artist(artist)]
         },
+        album_year: String::new(),
         pressing: RawPressingEdit {
             year: String::new(),
             format: String::new(),
@@ -484,7 +485,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
         db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
             .await
             .expect_err("a cover with nothing picked"),
-        db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
+        db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
             .await
             .expect_err("a field with nothing picked"),
         db.save_import_candidate_track_edit(
@@ -503,7 +504,7 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
 
 /// Field writes update the one complete draft and leave its other values intact.
 #[tokio::test]
-async fn draft_field_writes_change_only_the_named_fields() {
+async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let seed = metadata_draft("Seeded Title", "Artist Name");
@@ -516,7 +517,10 @@ async fn draft_field_writes_change_only_the_named_fields() {
     .await
     .unwrap();
 
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
+    db.save_import_candidate_edit_field(&hash, CandidateEditField::AlbumYear, "1987")
+        .await
+        .unwrap();
+    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::AlbumTitle, "Album Title")
@@ -529,6 +533,7 @@ async fn draft_field_writes_change_only_the_named_fields() {
         .unwrap()
         .metadata_draft;
     assert_eq!(stored.album_title, "Album Title");
+    assert_eq!(stored.album_year, "1987");
     assert_eq!(stored.pressing.year, "1991");
     assert_eq!(
         stored.album_artist_assignments,
@@ -663,7 +668,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
+    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
     db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
@@ -824,7 +829,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
         1
     );
     assert_eq!(
-        db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
+        db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
             .await
             .unwrap(),
         2
@@ -866,7 +871,7 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
+    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
 

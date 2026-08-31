@@ -316,6 +316,7 @@ mod conversion_roundtrip {
                 bae_core::import::ArtistAssignment::existing(existing_artist()),
                 bae_core::import::ArtistAssignment::new("Artist Beta"),
             ],
+            album_year: Some(1987),
             pressing: bae_core::import::PressingEdit {
                 year: Some(1990),
                 format: Some("CD".to_string()),
@@ -353,6 +354,7 @@ mod conversion_roundtrip {
                 bae_core::import::ArtistAssignment::new("Artist Name"),
                 bae_core::import::ArtistAssignment::new("Artist Beta"),
             ],
+            album_year: "1987".to_string(),
             pressing: bae_core::import::RawPressingEdit {
                 year: "1990".to_string(),
                 format: "CD".to_string(),
@@ -389,6 +391,7 @@ mod conversion_roundtrip {
         let edit = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![bae_core::import::ArtistAssignment::new("Artist Name")],
+            album_year: String::new(),
             pressing: bae_core::import::RawPressingEdit {
                 year: String::new(),
                 format: String::new(),

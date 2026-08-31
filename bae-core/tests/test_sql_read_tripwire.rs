@@ -102,6 +102,7 @@ async fn pure_reads_use_the_read_connection() {
                 edit: bae_core::import::RawReleaseEdit {
                     album_title: "Unwritten candidate".to_string(),
                     album_artist_assignments: Vec::new(),
+                    album_year: String::new(),
                     pressing: bae_core::import::RawPressingEdit {
                         year: String::new(),
                         format: String::new(),

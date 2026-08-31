@@ -340,6 +340,7 @@ pub enum TrackArtistAssignments {
 pub struct ReleaseUserEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<ArtistAssignment>,
+    pub album_year: Option<i32>,
     pub pressing: PressingEdit,
     pub tracks: Vec<TrackUserEdit>,
 }
@@ -440,6 +441,7 @@ pub struct TrackUserEdit {
 pub struct RawReleaseEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<ArtistAssignment>,
+    pub album_year: String,
     pub pressing: RawPressingEdit,
     pub tracks: Vec<RawTrackEdit>,
 }
@@ -451,6 +453,7 @@ impl RawReleaseEdit {
     pub fn is_blank(&self) -> bool {
         self.album_title.trim().is_empty()
             && self.album_artist_assignments.is_empty()
+            && self.album_year.trim().is_empty()
             && self.pressing.year.trim().is_empty()
             && self.pressing.format.trim().is_empty()
             && self.pressing.label.trim().is_empty()
@@ -536,6 +539,16 @@ fn trim_to_option(raw: &str) -> Option<String> {
 /// becomes empty, `Some(v)` becomes `v`.
 fn option_to_raw(value: &Option<String>) -> String {
     value.clone().unwrap_or_default()
+}
+
+fn parse_optional_year(raw: &str) -> Result<Option<i32>, EditValidationError> {
+    match raw.trim() {
+        "" => Ok(None),
+        text => text
+            .parse::<i32>()
+            .map(Some)
+            .map_err(|_| EditValidationError::InvalidYear),
+    }
 }
 
 impl ReleaseUserEdit {
@@ -663,6 +676,7 @@ impl RawReleaseEdit {
         let edit = ReleaseUserEdit {
             album_title: self.album_title.clone(),
             album_artist_assignments: self.album_artist_assignments.clone(),
+            album_year: parse_optional_year(&self.album_year)?,
             pressing: self.pressing.shape()?,
             tracks: self
                 .tracks
@@ -697,6 +711,10 @@ impl RawReleaseEdit {
         Self {
             album_title: edit.album_title,
             album_artist_assignments: edit.album_artist_assignments,
+            album_year: edit
+                .album_year
+                .map(|year| year.to_string())
+                .unwrap_or_default(),
             pressing: RawPressingEdit::from_pressing(&edit.pressing),
             tracks,
         }
@@ -722,15 +740,8 @@ impl RawPressingEdit {
     /// Parse and normalize raw pressing text into a wire [`PressingEdit`]:
     /// empty fields become `None`; the year parses as an integer.
     fn shape(&self) -> Result<PressingEdit, EditValidationError> {
-        let year = match self.year.trim() {
-            "" => None,
-            text => Some(
-                text.parse::<i32>()
-                    .map_err(|_| EditValidationError::InvalidYear)?,
-            ),
-        };
         Ok(PressingEdit {
-            year,
+            year: parse_optional_year(&self.year)?,
             format: trim_to_option(&self.format),
             label: trim_to_option(&self.label),
             catalog_number: trim_to_option(&self.catalog_number),

@@ -41,6 +41,7 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> RawReleaseEdit 
         ReleaseUserEdit {
             album_title: String::new(),
             album_artist_assignments: Vec::new(),
+            album_year: None,
             pressing: crate::import::PressingEdit::blank(),
             tracks: crate::import::track_slots::direct_entry_track_rows(files),
         },
@@ -233,6 +234,7 @@ pub fn manual_pane(
     let seed = ReleaseUserEdit {
         album_title: String::new(),
         album_artist_assignments: Vec::new(),
+        album_year: None,
         pressing: crate::import::PressingEdit::blank(),
         tracks,
     };

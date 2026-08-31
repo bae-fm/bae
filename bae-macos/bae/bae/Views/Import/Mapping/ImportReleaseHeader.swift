@@ -53,6 +53,7 @@ struct ImportReleaseDetails: View {
                 ReleaseFieldsForm(
                     values: values,
                     writer: writer,
+                    sections: [.pressing],
                     editingCommands: editingCommands
                 )
             }
@@ -72,10 +73,8 @@ struct ImportReleaseHeader: View {
     let hasCoverOptions: Bool
     @Binding
     var detailsExpanded: Bool
-    /// The release's own fields, folded away at the card's foot: the card
-    /// states what they add up to, and this is where a wrong year or a missing
-    /// catalog number gets fixed before it is written. `nil` when there is no
-    /// release to edit.
+    /// The album fields stay visible; pressing fields fold under Details.
+    /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
     /// Where a typed field's value goes.
     let editActions: ReleaseFieldWriter
@@ -102,31 +101,22 @@ struct ImportReleaseHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if draftIsBlank {
-                HStack(alignment: .top, spacing: 16) {
-                    cover
-                    VStack(alignment: .leading, spacing: 12) {
-                        sourceActionControl
-                        detailsSection
+            HStack(alignment: .top, spacing: 16) {
+                cover
+                VStack(alignment: .leading, spacing: 12) {
+                    sourceActionControl
+                    if let editValues {
+                        ReleaseFieldsForm(
+                            values: editValues,
+                            writer: editActions,
+                            sections: [.album],
+                            editingCommands: editingCommands
+                        )
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    ImportReleaseContextView(summary: releaseSummary)
+                    detailsSection
                 }
-            }
-            else {
-                HStack(alignment: .top, spacing: 16) {
-                    cover
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(alignment: .top, spacing: 12) {
-                            ImportReleaseSummaryView(
-                                summary: releaseSummary,
-                                style: .card
-                            )
-                            sourceActionControl
-                        }
-                        detailsSection
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             if let commit {
                 commitRow(commit)

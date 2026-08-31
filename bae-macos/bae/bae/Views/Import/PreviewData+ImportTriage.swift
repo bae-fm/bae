@@ -803,6 +803,7 @@
             return BridgeReleaseUserEdit(
                 albumTitle: "Album Title One",
                 albumArtistAssignments: [newArtist("Artist Name")],
+                albumYear: 1983,
                 pressing: BridgePressingEdit(
                     year: 1996,
                     format: "CD",

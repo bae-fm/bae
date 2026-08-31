@@ -105,6 +105,7 @@ impl BridgeReleaseUserEdit {
         let bae_core::import::ReleaseUserEdit {
             album_title,
             album_artist_assignments,
+            album_year,
             pressing,
             tracks,
         } = e;
@@ -114,6 +115,7 @@ impl BridgeReleaseUserEdit {
                 .into_iter()
                 .map(BridgeArtistAssignment::from_core)
                 .collect(),
+            album_year,
             pressing: BridgePressingEdit::from_core(pressing),
             tracks: tracks
                 .into_iter()
@@ -126,6 +128,7 @@ impl BridgeReleaseUserEdit {
         let BridgeReleaseUserEdit {
             album_title,
             album_artist_assignments,
+            album_year,
             pressing,
             tracks,
         } = self;
@@ -135,6 +138,7 @@ impl BridgeReleaseUserEdit {
                 .into_iter()
                 .map(BridgeArtistAssignment::into_core)
                 .collect(),
+            album_year,
             pressing: pressing.into_core(),
             tracks: tracks
                 .into_iter()
@@ -232,6 +236,7 @@ impl BridgeRawReleaseEdit {
         let bae_core::import::RawReleaseEdit {
             album_title,
             album_artist_assignments,
+            album_year,
             pressing,
             tracks,
         } = e;
@@ -241,6 +246,7 @@ impl BridgeRawReleaseEdit {
                 .into_iter()
                 .map(BridgeArtistAssignment::from_core)
                 .collect(),
+            album_year,
             pressing: BridgeRawPressingEdit::from_core(pressing),
             tracks: tracks
                 .into_iter()
@@ -253,6 +259,7 @@ impl BridgeRawReleaseEdit {
         let BridgeRawReleaseEdit {
             album_title,
             album_artist_assignments,
+            album_year,
             pressing,
             tracks,
         } = self;
@@ -262,6 +269,7 @@ impl BridgeRawReleaseEdit {
                 .into_iter()
                 .map(BridgeArtistAssignment::into_core)
                 .collect(),
+            album_year,
             pressing: pressing.into_core(),
             tracks: tracks
                 .into_iter()

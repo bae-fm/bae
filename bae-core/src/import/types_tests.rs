@@ -38,6 +38,7 @@ mod edit_shaping_tests {
         RawReleaseEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![ArtistAssignment::new("Artist One")],
+            album_year: "1987".to_string(),
             pressing: RawPressingEdit {
                 year: "1999".to_string(),
                 format: "2×LP".to_string(),
@@ -62,13 +63,14 @@ mod edit_shaping_tests {
     }
 
     #[test]
-    fn shapes_a_valid_form_into_a_wire_edit() {
+    fn shapes_distinct_album_and_pressing_years() {
         let shaped = valid_form().shape().expect("valid form shapes");
         assert_eq!(shaped.album_title, "Album Title");
         assert_eq!(
             shaped.album_artist_assignments,
             vec![ArtistAssignment::new("Artist One")]
         );
+        assert_eq!(shaped.album_year, Some(1987));
         assert_eq!(shaped.pressing.year, Some(1999));
         assert_eq!(shaped.pressing.format.as_deref(), Some("2×LP"));
         assert_eq!(shaped.tracks.len(), 1);
@@ -185,6 +187,7 @@ mod edit_shaping_tests {
                 ArtistAssignment::existing(existing_artist()),
                 ArtistAssignment::new("Artist Two"),
             ],
+            album_year: Some(1987),
             pressing: PressingEdit {
                 year: Some(1999),
                 format: Some("2×LP".to_string()),
@@ -231,6 +234,7 @@ mod edit_shaping_tests {
             TrackArtistAssignments::AlbumArtists
         );
         assert_eq!(raw.pressing.year, "1999");
+        assert_eq!(raw.album_year, "1987");
         assert_eq!(raw.pressing.label, "");
 
         assert_eq!(raw.shape().expect("re-shapes"), original);

@@ -4,6 +4,7 @@ use super::*;
 pub struct AutomationReleaseUserEdit {
     pub album_title: String,
     pub album_artist_assignments: Vec<AutomationArtistAssignment>,
+    pub album_year: Option<i32>,
     pub pressing: AutomationPressingEdit,
     pub tracks: Vec<AutomationTrackUserEdit>,
 }

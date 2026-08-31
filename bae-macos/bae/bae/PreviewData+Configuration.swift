@@ -74,6 +74,7 @@
                     existingArtist("Artist Name", artistId: "artist-1"),
                     newArtist("New Artist Name"),
                 ],
+                albumYear: "1983",
                 pressing: BridgeRawPressingEdit(
                     year: "1997",
                     format: "CD",

@@ -810,13 +810,14 @@ pub struct CandidateMetadataProvenanceInput {
     pub provenance: AutomationMetadataProvenance,
 }
 
-/// One album-level field of a candidate's metadata form. `year` is text
-/// because the form is text; the commit parses it.
+/// One field of a candidate's metadata form. Years are text because the form
+/// is text; the commit parses them.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AutomationCandidateEditField {
     AlbumTitle,
-    Year,
+    AlbumYear,
+    PressingYear,
     Format,
     Label,
     CatalogNumber,

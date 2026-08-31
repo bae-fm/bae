@@ -73,7 +73,7 @@ fn make_seed_album_release_track() -> (
 }
 
 #[test]
-fn user_edit_overrides_seeded_pressing_fields() {
+fn user_edit_overrides_album_year_and_pressing_fields() {
     let (mut album, mut release, track, seed_artist) = make_seed_album_release_track();
     let mut tracks = vec![track];
     let mut artists = vec![seed_artist];
@@ -83,6 +83,7 @@ fn user_edit_overrides_seeded_pressing_fields() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: "Edited Title".to_string(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::new("Edited Artist")],
+        album_year: Some(1981),
         pressing: crate::import::PressingEdit {
             year: Some(1995),
             format: Some("Vinyl".to_string()),
@@ -115,6 +116,7 @@ fn user_edit_overrides_seeded_pressing_fields() {
     .unwrap();
 
     assert_eq!(album.title, "Edited Title");
+    assert_eq!(album.year, Some(1981));
     assert_eq!(release.pressing.year, Some(1995));
     assert_eq!(release.pressing.format.as_deref(), Some("Vinyl"));
     assert_eq!(release.pressing.label.as_deref(), Some("Edited Label"));
@@ -153,6 +155,7 @@ fn user_edit_can_fill_country_for_approximate_seed() {
         album_artist_assignments: vec![crate::import::ArtistAssignment::new(
             artists[0].name.clone(),
         )],
+        album_year: album.year,
         pressing: crate::import::PressingEdit {
             country: Some("JP".to_string()),
             ..crate::import::PressingEdit::blank()
@@ -196,6 +199,7 @@ fn user_edit_track_count_mismatch_is_an_error() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: "T".to_string(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::new("A")],
+        album_year: None,
         pressing: crate::import::PressingEdit::blank(),
         // Two edits but seed has one track.
         tracks: vec![
@@ -320,6 +324,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         album_artist_assignments: vec![crate::import::ArtistAssignment::existing(
             seed_artist.clone().into(),
         )],
+        album_year: album.year,
         pressing: crate::import::PressingEdit {
             year: Some(1995),
             ..crate::import::PressingEdit::blank()
@@ -383,6 +388,7 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
     let edit = crate::import::ReleaseUserEdit {
         album_title: album.title.clone(),
         album_artist_assignments: vec![crate::import::ArtistAssignment::new("Different Artist")],
+        album_year: album.year,
         pressing: crate::import::PressingEdit::blank(),
         tracks: vec![crate::import::TrackUserEdit {
             title: tracks[0].title.clone(),

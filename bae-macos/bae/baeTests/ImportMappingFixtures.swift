@@ -301,6 +301,7 @@ extension MappingFixtures {
     static let albumSeed = BridgeReleaseUserEdit(
         albumTitle: "Album Title",
         albumArtistAssignments: [newArtist("Artist Name")],
+        albumYear: 1987,
         pressing: BridgePressingEdit(
             year: 1996,
             format: "CD",
@@ -315,6 +316,7 @@ extension MappingFixtures {
     static let albumEdit = BridgeRawReleaseEdit(
         albumTitle: "Album Title",
         albumArtistAssignments: [newArtist("Artist Name")],
+        albumYear: "1987",
         pressing: BridgeRawPressingEdit(
             year: "1996",
             format: "CD",
@@ -329,6 +331,7 @@ extension MappingFixtures {
     static let blankEdit = BridgeRawReleaseEdit(
         albumTitle: "",
         albumArtistAssignments: [],
+        albumYear: "",
         pressing: BridgeRawPressingEdit(
             year: "",
             format: "",

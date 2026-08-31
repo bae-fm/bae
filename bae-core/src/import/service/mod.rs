@@ -685,7 +685,7 @@ fn settle_track_rows(
 
 /// Apply the editor's overlay onto the seeded album/release/tracks.
 ///
-/// Overwrites the album title, the release's pressing fields, and each track's
+/// Overwrites the album title and original year, the release's pressing fields, and each track's
 /// title/side/track_number.
 ///
 /// Artist credits (`album_artists`, `track_artists`) are rebuilt only when the
@@ -733,6 +733,7 @@ fn apply_user_edit_to_seed(
     let mut existing_artist_ids = HashSet::new();
 
     db_album.title = edit.album_title.clone();
+    db_album.year = edit.album_year;
     db_album.artist_id = materialize_artist_assignment(
         &edit.album_artist_assignments[0],
         artists,

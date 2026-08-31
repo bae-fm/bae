@@ -457,6 +457,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
                 albumTitle: "Updated Album Title",
                 albumArtistAssignments: MappingFixtures.albumSeed
                     .albumArtistAssignments,
+                albumYear: MappingFixtures.albumSeed.albumYear,
                 pressing: MappingFixtures.albumSeed.pressing,
                 tracks: MappingFixtures.albumSeed.tracks
             ),
@@ -554,7 +555,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         await Task.yield()
         host.layoutSubtreeIfNeeded()
-        let count = focusViews(in: host).count
+        let count = editableTextValues(in: host).count
         window.contentView = nil
         window.orderOut(nil)
         return count
@@ -604,6 +605,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     private func metadataHeader(
         provenance: BridgeMetadataProvenance?,
         draftIsBlank: Bool,
+        detailsExpanded: Bool? = nil,
         recorder: MetadataCardActionRecorder
     ) -> some View {
         let editValues =
@@ -625,7 +627,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
-            detailsExpanded: .constant(draftIsBlank),
+            detailsExpanded: .constant(detailsExpanded ?? draftIsBlank),
             editValues: editValues,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
@@ -679,6 +681,16 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             .map { $0.convert($0.bounds, to: host) }
     }
 
+    private func editableTextValues(in host: NSView) -> [String] {
+        SnapshotTestSupport.descendants(of: host)
+            .compactMap { view in
+                guard let field = view as? NSTextField, field.isEditable else {
+                    return nil
+                }
+                return field.stringValue
+            }
+    }
+
     private func coverFrame(in host: NSView) throws -> NSRect {
         let side = ImportReleaseHeader.coverSize
         let frames = SnapshotTestSupport.descendants(of: host)
@@ -721,6 +733,33 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
+    func testAlbumIdentityFieldsStayVisibleWhenPressingDetailsAreCollapsed()
+        async throws
+    {
+        NSApplication.shared.finishLaunching()
+        let recorder = MetadataCardActionRecorder()
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: nil,
+                draftIsBlank: false,
+                detailsExpanded: false,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 620)
+        )
+        await SnapshotTestSupport.settle(host)
+
+        let text = editableTextValues(in: host)
+        XCTAssertTrue(text.contains(PreviewData.confirmEditValues.albumTitle))
+        XCTAssertTrue(text.contains(PreviewData.confirmEditValues.albumYear))
+        XCTAssertFalse(
+            text.contains(PreviewData.confirmEditValues.pressing.year)
+        )
+
+        window.contentView = nil
+        window.orderOut(nil)
+    }
+
     func testMatchedReleaseKeepsOnlyItsChangeActionOutsideCollapsedDetails()
         async
     {

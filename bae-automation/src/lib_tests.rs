@@ -95,6 +95,7 @@ mod release_metadata_update_input {
                     },
                 })
                 .collect(),
+            album_year: None,
             pressing: AutomationPressingEdit {
                 year: None,
                 format: None,

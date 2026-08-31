@@ -613,6 +613,7 @@
         private static let blankDraftValues = BridgeRawReleaseEdit(
             albumTitle: "",
             albumArtistAssignments: [],
+            albumYear: "",
             pressing: BridgeRawPressingEdit(
                 year: "",
                 format: "",

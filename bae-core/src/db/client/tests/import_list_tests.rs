@@ -513,9 +513,13 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_edit_field(&hash, crate::import::CandidateEditField::Year, "1991")
-        .await
-        .unwrap();
+    db.save_import_candidate_edit_field(
+        &hash,
+        crate::import::CandidateEditField::PressingYear,
+        "1991",
+    )
+    .await
+    .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)

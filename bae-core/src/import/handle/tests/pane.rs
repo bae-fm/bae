@@ -646,7 +646,11 @@ async fn an_edit_with_no_metadata_source_updates_the_draft() {
         .unwrap();
 
     handle
-        .set_candidate_edit_field(&key, crate::import::CandidateEditField::Year, "1991".into())
+        .set_candidate_edit_field(
+            &key,
+            crate::import::CandidateEditField::PressingYear,
+            "1991".into(),
+        )
         .await
         .unwrap();
     assert_eq!(pane(&handle, &key).await.metadata_draft.pressing.year, "1991");
