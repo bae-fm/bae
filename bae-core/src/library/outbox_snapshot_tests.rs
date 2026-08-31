@@ -644,16 +644,17 @@ fn queue_eta_is_hidden_until_every_provider_denominator_is_known() {
     let mut queue = two_queued_uploads();
     queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
     queue.uploads[1].provider_bytes_total = Some(1016);
+    let key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
     let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        key.clone(),
         TransientUploadState::Uploading {
             bytes_done: 250,
             bytes_total: 1016,
         },
     )]);
     let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
-    throughput.begin();
-    throughput.record(250);
+    throughput.begin_upload(key.clone());
+    throughput.record_upload(&key, 250);
 
     let snapshot = build_outbox_snapshot(queue, &transient, &throughput, false);
 
@@ -667,22 +668,73 @@ fn queue_eta_uses_every_exact_provider_denominator_when_they_are_known() {
     queue.uploads[0].provider_bytes_total = Some(116);
     queue.uploads[1].phase = coven::QueuedUploadPhase::Prepared;
     queue.uploads[1].provider_bytes_total = Some(1016);
+    let key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
     let transient = HashMap::from([(
-        UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE),
+        key.clone(),
         TransientUploadState::Uploading {
             bytes_done: 250,
             bytes_total: 1016,
         },
     )]);
     let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
-    throughput.begin();
-    throughput.record(250);
+    throughput.begin_upload(key.clone());
+    throughput.record_upload(&key, 250);
 
     let snapshot = build_outbox_snapshot(queue, &transient, &throughput, false);
 
     assert_eq!(snapshot.total.upload_bytes_done, 250);
     assert_eq!(snapshot.total.upload_bytes_total, 1132);
     assert!(snapshot.eta_seconds.is_some());
+}
+
+#[test]
+fn each_release_group_carries_only_its_own_upload_rate() {
+    let first_key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, LARGE_FILE);
+    let second_key = UploadBlobKey::new(crate::sync::RELEASE_FILES_NAMESPACE, OTHER_FILE);
+    let first = queued_upload(LARGE_FILE, "01 Track Title.flac", 1000);
+    let mut second = queued_upload(OTHER_FILE, "02 Track Title.flac", 2000);
+    second.release_id = OTHER_RELEASE.to_string();
+    second.phase = coven::QueuedUploadPhase::Prepared;
+    second.provider_bytes_total = Some(2016);
+    let transient = HashMap::from([
+        (
+            first_key.clone(),
+            TransientUploadState::Preparing {
+                bytes_done: 500,
+                bytes_total: 1000,
+            },
+        ),
+        (
+            second_key.clone(),
+            TransientUploadState::Uploading {
+                bytes_done: 200,
+                bytes_total: 2016,
+            },
+        ),
+    ]);
+    let throughput = UploadThroughput::with_window(std::time::Duration::from_secs(10));
+    let started = std::time::Instant::now();
+    throughput.begin_preparation_at(first_key.clone(), started);
+    throughput.begin_upload_at(second_key.clone(), started);
+    let measured = started + std::time::Duration::from_secs(10);
+    throughput.record_preparation_at(&first_key, 10_000_000, measured);
+    throughput.record_upload_at(&second_key, 20_000_000, measured);
+
+    let snapshot = build_outbox_snapshot_at(
+        DbOutboxQueue {
+            uploads: vec![first, second],
+            deletes: Vec::new(),
+            make_remotes: Vec::new(),
+        },
+        &transient,
+        &throughput,
+        false,
+        measured,
+    );
+
+    assert_eq!(snapshot.upload_groups[0].throughput_bps, 1_000_000);
+    assert_eq!(snapshot.upload_groups[1].throughput_bps, 2_000_000);
+    assert_eq!(snapshot.throughput_bps, 3_000_000);
 }
 
 #[test]

@@ -1,21 +1,36 @@
 //! Rolling-window throughput tracker for the cloud-upload pipeline. The
-//! `ReleaseUploadObserver` feeds it from `on_blob_upload_progress`, recording the
-//! byte delta since the file's previous report. Coven sends the exact final
-//! provider count through that callback before completion, so the same path
-//! accounts for the whole upload. The snapshot builder reads the rate at emit
-//! time. Samples age out of the window so an idle queue drops the displayed rate
-//! back to zero.
+//! `ReleaseUploadObserver` feeds it as coven first consumes plaintext into its
+//! durable spool and then sends the encrypted spool to the provider. Each blob
+//! has one current phase measurement, reset at the phase boundary so preparation
+//! bytes cannot distort provider-upload speed or ETA. Samples age out of the
+//! window so an idle queue drops the displayed rate back to zero.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 const DEFAULT_WINDOW: Duration = Duration::from_secs(10);
 
-struct ThroughputState {
+#[derive(Default)]
+struct MeasurementState {
     samples: VecDeque<(Instant, u64)>,
-    active_uploads: u32,
     measurement_started: Option<Instant>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TransferPhase {
+    Preparing,
+    Uploading,
+}
+
+struct ActiveMeasurement {
+    phase: TransferPhase,
+    measurement: MeasurementState,
+}
+
+#[derive(Default)]
+struct ThroughputState {
+    uploads: HashMap<crate::library::outbox_snapshot::UploadBlobKey, ActiveMeasurement>,
 }
 
 /// Rolling-window byte counter. Each sample is `(when, bytes)`; while the first
@@ -27,6 +42,29 @@ pub struct UploadThroughput {
     window: Duration,
 }
 
+/// One same-instant reading of the aggregate rate and each active blob's rate.
+/// Snapshot construction sums blob rates by release without relabeling the
+/// queue-wide measurement as every release's speed.
+#[derive(Default)]
+pub(crate) struct UploadRates {
+    pub(crate) aggregate_bps: u64,
+    pub(crate) provider_bps: u64,
+    by_upload: HashMap<crate::library::outbox_snapshot::UploadBlobKey, u64>,
+}
+
+impl UploadRates {
+    pub(crate) fn for_uploads<'a>(
+        &self,
+        uploads: impl IntoIterator<Item = &'a crate::library::outbox_snapshot::UploadBlobKey>,
+    ) -> u64 {
+        uploads
+            .into_iter()
+            .filter_map(|upload| self.by_upload.get(upload))
+            .try_fold(0u64, |total, rate| total.checked_add(*rate))
+            .expect("per-release throughput cannot overflow")
+    }
+}
+
 impl UploadThroughput {
     pub fn new() -> Self {
         Self::with_window(DEFAULT_WINDOW)
@@ -34,17 +72,12 @@ impl UploadThroughput {
 
     pub fn with_window(window: Duration) -> Self {
         Self {
-            state: Mutex::new(ThroughputState {
-                samples: VecDeque::new(),
-                active_uploads: 0,
-                measurement_started: None,
-            }),
+            state: Mutex::new(ThroughputState::default()),
             window,
         }
     }
 
-    /// Start one provider transfer. Concurrent transfers share one aggregate
-    /// measurement; the first transfer after an idle interval resets it.
+    /// Start consuming one blob's plaintext into coven's durable spool.
     ///
     /// Every public entry point captures its timestamp AFTER acquiring the
     /// state lock. Captured before, two threads can interleave so that an
@@ -54,79 +87,235 @@ impl UploadThroughput {
     /// the whole sync stack down with it. Under the lock, mutex ordering plus
     /// `Instant`'s monotonicity make out-of-order timestamps unrepresentable;
     /// the `_at` variants exist for tests, which own their ordering.
-    pub fn begin(&self) {
+    pub(crate) fn begin_preparation(&self, upload: crate::library::outbox_snapshot::UploadBlobKey) {
         let mut state = self.state.lock().unwrap();
         let now = Instant::now();
-        Self::begin_locked(&mut state, now);
+        Self::begin_preparation_locked(&mut state, upload, now);
     }
 
     #[cfg(test)]
-    fn begin_at(&self, now: Instant) {
+    pub(crate) fn begin_preparation_at(
+        &self,
+        upload: crate::library::outbox_snapshot::UploadBlobKey,
+        now: Instant,
+    ) {
         let mut state = self.state.lock().unwrap();
-        Self::begin_locked(&mut state, now);
+        Self::begin_preparation_locked(&mut state, upload, now);
     }
 
-    fn begin_locked(state: &mut ThroughputState, now: Instant) {
-        if state.active_uploads == 0 {
-            state.samples.clear();
-            state.measurement_started = Some(now);
-        }
-        state.active_uploads = state
-            .active_uploads
-            .checked_add(1)
-            .expect("active upload count overflow");
-    }
-
-    /// Finish one provider transfer, whether it completed or failed.
-    pub fn end(&self) {
-        let mut state = self.state.lock().unwrap();
-        state.active_uploads = state
-            .active_uploads
-            .checked_sub(1)
-            .expect("provider transfer ended without a matching start");
-    }
-
-    /// Record the provider-byte delta from one coalesced upload-progress report.
-    pub fn record(&self, bytes: u64) {
-        let mut state = self.state.lock().unwrap();
-        let now = Instant::now();
-        self.record_locked(&mut state, bytes, now);
-    }
-
-    #[cfg(test)]
-    fn record_at(&self, bytes: u64, now: Instant) {
-        let mut state = self.state.lock().unwrap();
-        self.record_locked(&mut state, bytes, now);
-    }
-
-    fn record_locked(&self, state: &mut ThroughputState, bytes: u64, now: Instant) {
+    fn begin_preparation_locked(
+        state: &mut ThroughputState,
+        upload: crate::library::outbox_snapshot::UploadBlobKey,
+        now: Instant,
+    ) {
         assert!(
-            state.active_uploads > 0,
-            "provider bytes arrived without an active transfer"
+            !state.uploads.contains_key(&upload),
+            "one blob cannot start preparation twice"
         );
-        prune(&mut state.samples, now, self.window);
-        state.samples.push_back((now, bytes));
+        state.uploads.insert(
+            upload,
+            ActiveMeasurement {
+                phase: TransferPhase::Preparing,
+                measurement: MeasurementState {
+                    samples: VecDeque::new(),
+                    measurement_started: Some(now),
+                },
+            },
+        );
+    }
+
+    /// Start the provider phase. A process may resume directly from coven's
+    /// durable prepared journal, so this also accepts a blob with no local
+    /// preparation measurement.
+    pub(crate) fn begin_upload(&self, upload: crate::library::outbox_snapshot::UploadBlobKey) {
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        Self::begin_upload_locked(&mut state, upload, now);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn begin_upload_at(
+        &self,
+        upload: crate::library::outbox_snapshot::UploadBlobKey,
+        now: Instant,
+    ) {
+        let mut state = self.state.lock().unwrap();
+        Self::begin_upload_locked(&mut state, upload, now);
+    }
+
+    fn begin_upload_locked(
+        state: &mut ThroughputState,
+        upload: crate::library::outbox_snapshot::UploadBlobKey,
+        now: Instant,
+    ) {
+        if let Some(active) = state.uploads.get(&upload) {
+            assert!(
+                active.phase == TransferPhase::Preparing,
+                "one blob cannot start two provider transfers"
+            );
+        }
+        state.uploads.insert(
+            upload,
+            ActiveMeasurement {
+                phase: TransferPhase::Uploading,
+                measurement: MeasurementState {
+                    samples: VecDeque::new(),
+                    measurement_started: Some(now),
+                },
+            },
+        );
+    }
+
+    /// Finish whichever byte-moving phase is active, whether the attempt
+    /// completed or failed.
+    pub(crate) fn end(&self, upload: &crate::library::outbox_snapshot::UploadBlobKey) {
+        let mut state = self.state.lock().unwrap();
+        assert!(
+            state.uploads.remove(upload).is_some(),
+            "transfer ended without a matching blob start"
+        );
+    }
+
+    /// Record the plaintext-byte delta from one coalesced preparation report.
+    pub(crate) fn record_preparation(
+        &self,
+        upload: &crate::library::outbox_snapshot::UploadBlobKey,
+        bytes: u64,
+    ) {
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        Self::record_phase_locked(
+            &mut state,
+            upload,
+            TransferPhase::Preparing,
+            bytes,
+            now,
+            self.window,
+        );
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record_preparation_at(
+        &self,
+        upload: &crate::library::outbox_snapshot::UploadBlobKey,
+        bytes: u64,
+        now: Instant,
+    ) {
+        let mut state = self.state.lock().unwrap();
+        Self::record_phase_locked(
+            &mut state,
+            upload,
+            TransferPhase::Preparing,
+            bytes,
+            now,
+            self.window,
+        );
+    }
+
+    /// Record the provider-byte delta from one coalesced upload report.
+    pub(crate) fn record_upload(
+        &self,
+        upload: &crate::library::outbox_snapshot::UploadBlobKey,
+        bytes: u64,
+    ) {
+        let mut state = self.state.lock().unwrap();
+        let now = Instant::now();
+        Self::record_phase_locked(
+            &mut state,
+            upload,
+            TransferPhase::Uploading,
+            bytes,
+            now,
+            self.window,
+        );
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record_upload_at(
+        &self,
+        upload: &crate::library::outbox_snapshot::UploadBlobKey,
+        bytes: u64,
+        now: Instant,
+    ) {
+        let mut state = self.state.lock().unwrap();
+        Self::record_phase_locked(
+            &mut state,
+            upload,
+            TransferPhase::Uploading,
+            bytes,
+            now,
+            self.window,
+        );
+    }
+
+    fn record_phase_locked(
+        state: &mut ThroughputState,
+        upload: &crate::library::outbox_snapshot::UploadBlobKey,
+        expected_phase: TransferPhase,
+        bytes: u64,
+        now: Instant,
+        window: Duration,
+    ) {
+        let active = state
+            .uploads
+            .get_mut(upload)
+            .expect("bytes require a matching blob measurement");
+        assert!(
+            active.phase == expected_phase,
+            "bytes arrived for the wrong transfer phase"
+        );
+        prune(&mut active.measurement.samples, now, window);
+        active.measurement.samples.push_back((now, bytes));
     }
 
     /// Bytes per second over the rolling window. Zero when no samples have
     /// landed in the window.
     pub fn bytes_per_sec(&self) -> u64 {
+        self.rates().aggregate_bps
+    }
+
+    pub(crate) fn rates(&self) -> UploadRates {
         let mut state = self.state.lock().unwrap();
         let now = Instant::now();
-        self.bytes_per_sec_locked(&mut state, now)
+        Self::rates_locked(&mut state, now, self.window)
     }
 
     #[cfg(test)]
     fn bytes_per_sec_at(&self, now: Instant) -> u64 {
-        let mut state = self.state.lock().unwrap();
-        self.bytes_per_sec_locked(&mut state, now)
+        self.rates_at(now).aggregate_bps
     }
 
-    fn bytes_per_sec_locked(&self, state: &mut ThroughputState, now: Instant) -> u64 {
-        if state.active_uploads == 0 {
-            return 0;
+    #[cfg(test)]
+    pub(crate) fn rates_at(&self, now: Instant) -> UploadRates {
+        let mut state = self.state.lock().unwrap();
+        Self::rates_locked(&mut state, now, self.window)
+    }
+
+    fn rates_locked(state: &mut ThroughputState, now: Instant, window: Duration) -> UploadRates {
+        let mut aggregate_bps = 0u64;
+        let mut provider_bps = 0u64;
+        let mut by_upload = HashMap::with_capacity(state.uploads.len());
+        for (upload, active) in &mut state.uploads {
+            let rate = Self::bytes_per_sec_locked(&mut active.measurement, now, window);
+            aggregate_bps = aggregate_bps
+                .checked_add(rate)
+                .expect("aggregate throughput cannot overflow");
+            if active.phase == TransferPhase::Uploading {
+                provider_bps = provider_bps
+                    .checked_add(rate)
+                    .expect("provider throughput cannot overflow");
+            }
+            by_upload.insert(upload.clone(), rate);
         }
-        prune(&mut state.samples, now, self.window);
+        UploadRates {
+            aggregate_bps,
+            provider_bps,
+            by_upload,
+        }
+    }
+
+    fn bytes_per_sec_locked(state: &mut MeasurementState, now: Instant, window: Duration) -> u64 {
+        prune(&mut state.samples, now, window);
         let total = state
             .samples
             .iter()
@@ -138,7 +327,7 @@ impl UploadThroughput {
         let elapsed = now
             .checked_duration_since(started)
             .expect("throughput clock regressed before measurement start")
-            .min(self.window);
+            .min(window);
         if elapsed.is_zero() {
             return 0;
         }
@@ -170,6 +359,10 @@ fn prune(samples: &mut VecDeque<(Instant, u64)>, now: Instant, window: Duration)
 mod tests {
     use super::*;
 
+    fn upload(id: impl Into<String>) -> crate::library::outbox_snapshot::UploadBlobKey {
+        crate::library::outbox_snapshot::UploadBlobKey::new("files", id)
+    }
+
     #[test]
     fn empty_tracker_reports_zero() {
         let t = UploadThroughput::with_window(Duration::from_secs(10));
@@ -180,9 +373,10 @@ mod tests {
     fn samples_in_window_sum_and_divide_by_window() {
         let t = UploadThroughput::with_window(Duration::from_secs(10));
         let now = Instant::now();
-        t.begin_at(now - Duration::from_secs(10));
-        t.record_at(5_000_000, now);
-        t.record_at(5_000_000, now);
+        let upload = upload("window");
+        t.begin_upload_at(upload.clone(), now - Duration::from_secs(10));
+        t.record_upload_at(&upload, 5_000_000, now);
+        t.record_upload_at(&upload, 5_000_000, now);
         // 10 MB over 10s = 1 MB/s.
         assert_eq!(t.bytes_per_sec_at(now), 1_000_000);
     }
@@ -191,19 +385,65 @@ mod tests {
     fn a_new_transfer_uses_its_elapsed_time_until_the_window_fills() {
         let t = UploadThroughput::with_window(Duration::from_secs(10));
         let started = Instant::now();
-        t.begin_at(started);
+        let upload = upload("new-transfer");
+        t.begin_upload_at(upload.clone(), started);
         let first_tick = started + Duration::from_millis(500);
-        t.record_at(500_000, first_tick);
+        t.record_upload_at(&upload, 500_000, first_tick);
 
         assert_eq!(t.bytes_per_sec_at(first_tick), 1_000_000);
+    }
+
+    #[test]
+    fn concurrent_upload_rates_remain_attributed_to_their_blob() {
+        let tracker = UploadThroughput::with_window(Duration::from_secs(10));
+        let first = upload("first");
+        let second = upload("second");
+        let started = Instant::now();
+        tracker.begin_upload_at(first.clone(), started);
+        tracker.begin_upload_at(second.clone(), started);
+        let measured = started + Duration::from_secs(10);
+        tracker.record_upload_at(&first, 10_000_000, measured);
+        tracker.record_upload_at(&second, 20_000_000, measured);
+
+        let rates = tracker.rates_at(measured);
+        assert_eq!(rates.for_uploads([&first]), 1_000_000);
+        assert_eq!(rates.for_uploads([&second]), 2_000_000);
+        assert_eq!(rates.for_uploads([&first, &second]), 3_000_000);
+        assert_eq!(rates.aggregate_bps, 3_000_000);
+    }
+
+    #[test]
+    fn preparation_rate_is_displayed_but_provider_rate_starts_at_upload() {
+        let tracker = UploadThroughput::with_window(Duration::from_secs(10));
+        let upload = upload("phase-change");
+        let started = Instant::now();
+        tracker.begin_preparation_at(upload.clone(), started);
+        let prepared = started + Duration::from_secs(10);
+        tracker.record_preparation_at(&upload, 10_000_000, prepared);
+
+        let preparation_rates = tracker.rates_at(prepared);
+        assert_eq!(preparation_rates.for_uploads([&upload]), 1_000_000);
+        assert_eq!(preparation_rates.aggregate_bps, 1_000_000);
+        assert_eq!(preparation_rates.provider_bps, 0);
+
+        tracker.begin_upload_at(upload.clone(), prepared);
+        assert_eq!(tracker.rates_at(prepared).aggregate_bps, 0);
+        let uploading = prepared + Duration::from_secs(5);
+        tracker.record_upload_at(&upload, 10_000_000, uploading);
+
+        let upload_rates = tracker.rates_at(uploading);
+        assert_eq!(upload_rates.for_uploads([&upload]), 2_000_000);
+        assert_eq!(upload_rates.aggregate_bps, 2_000_000);
+        assert_eq!(upload_rates.provider_bps, 2_000_000);
     }
 
     #[test]
     fn samples_older_than_window_are_dropped() {
         let t = UploadThroughput::with_window(Duration::from_secs(10));
         let start = Instant::now();
-        t.begin_at(start);
-        t.record_at(10_000_000, start);
+        let upload = upload("aging");
+        t.begin_upload_at(upload.clone(), start);
+        t.record_upload_at(&upload, 10_000_000, start);
         let later = start + Duration::from_secs(11);
         // Sample aged out: rate is back to zero.
         assert_eq!(t.bytes_per_sec_at(later), 0);
@@ -213,25 +453,27 @@ mod tests {
     fn ending_the_last_transfer_hides_the_rate_and_a_new_batch_starts_fresh() {
         let t = UploadThroughput::with_window(Duration::from_secs(10));
         let first_start = Instant::now();
-        t.begin_at(first_start);
+        let first = upload("first-batch");
+        t.begin_upload_at(first.clone(), first_start);
         let first_tick = first_start + Duration::from_secs(1);
-        t.record_at(1_000_000, first_tick);
+        t.record_upload_at(&first, 1_000_000, first_tick);
         assert_eq!(t.bytes_per_sec_at(first_tick), 1_000_000);
 
-        t.end();
+        t.end(&first);
         assert_eq!(t.bytes_per_sec_at(first_tick), 0);
 
         let second_start = first_start + Duration::from_secs(20);
-        t.begin_at(second_start);
+        let second = upload("second-batch");
+        t.begin_upload_at(second.clone(), second_start);
         let second_tick = second_start + Duration::from_secs(1);
-        t.record_at(2_000_000, second_tick);
+        t.record_upload_at(&second, 2_000_000, second_tick);
         assert_eq!(t.bytes_per_sec_at(second_tick), 2_000_000);
     }
 
     #[test]
-    #[should_panic(expected = "provider bytes arrived without an active transfer")]
+    #[should_panic(expected = "bytes require a matching blob measurement")]
     fn provider_bytes_require_an_active_transfer() {
-        UploadThroughput::with_window(Duration::from_secs(10)).record(1);
+        UploadThroughput::with_window(Duration::from_secs(10)).record_upload(&upload("idle"), 1);
     }
 
     #[test]
@@ -239,9 +481,10 @@ mod tests {
     fn aggregate_samples_cannot_wrap_their_byte_counter() {
         let tracker = UploadThroughput::with_window(Duration::from_secs(10));
         let now = Instant::now();
-        tracker.begin_at(now - Duration::from_secs(1));
-        tracker.record_at(u64::MAX, now);
-        tracker.record_at(1, now);
+        let upload = upload("overflow");
+        tracker.begin_upload_at(upload.clone(), now - Duration::from_secs(1));
+        tracker.record_upload_at(&upload, u64::MAX, now);
+        tracker.record_upload_at(&upload, 1, now);
 
         tracker.bytes_per_sec_at(now);
     }
@@ -254,14 +497,15 @@ mod tests {
     fn concurrent_use_never_regresses_the_clock() {
         let tracker = std::sync::Arc::new(UploadThroughput::with_window(Duration::from_millis(50)));
         let mut workers = Vec::new();
-        for _ in 0..4 {
+        for worker_index in 0..4 {
             let tracker = std::sync::Arc::clone(&tracker);
             workers.push(std::thread::spawn(move || {
-                for _ in 0..5_000 {
-                    tracker.begin();
-                    tracker.record(1);
+                for upload_index in 0..5_000 {
+                    let upload = upload(format!("{worker_index}-{upload_index}"));
+                    tracker.begin_upload(upload.clone());
+                    tracker.record_upload(&upload, 1);
                     tracker.bytes_per_sec();
-                    tracker.end();
+                    tracker.end(&upload);
                 }
             }));
         }
@@ -275,7 +519,7 @@ mod tests {
     fn measurement_clock_cannot_regress() {
         let tracker = UploadThroughput::with_window(Duration::from_secs(10));
         let started = Instant::now();
-        tracker.begin_at(started);
+        tracker.begin_upload_at(upload("regressed-measurement"), started);
 
         tracker.bytes_per_sec_at(started - Duration::from_millis(1));
     }
@@ -285,8 +529,9 @@ mod tests {
     fn sample_clock_cannot_regress() {
         let tracker = UploadThroughput::with_window(Duration::from_secs(10));
         let started = Instant::now();
-        tracker.begin_at(started);
-        tracker.record_at(1, started + Duration::from_millis(1));
+        let upload = upload("regressed-sample");
+        tracker.begin_upload_at(upload.clone(), started);
+        tracker.record_upload_at(&upload, 1, started + Duration::from_millis(1));
 
         tracker.bytes_per_sec_at(started);
     }

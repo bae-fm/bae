@@ -20,9 +20,7 @@ internal sealed partial class StorageDialog
             snapshot.SummaryParts);
 
     private static string OutboxThroughputLabel(BridgeOutboxSnapshot snapshot) =>
-        snapshot.ThroughputBps > 0
-            ? Loc.Core("core.outbox.throughput", "rate", Loc.Bytes(checked((long)snapshot.ThroughputBps)))
-            : string.Empty;
+        UploadProgressPresentation.ThroughputLabel(snapshot.ThroughputBps);
 
     private static string OutboxEtaLabel(BridgeOutboxSnapshot snapshot) =>
         snapshot.EtaSeconds is { } seconds

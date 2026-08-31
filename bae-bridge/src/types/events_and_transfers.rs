@@ -541,6 +541,16 @@ pub struct BridgeUploadReleaseGroup {
     pub display_title: String,
     pub files: Vec<BridgeUploadFileOp>,
     pub progress: BridgeUploadProgress,
+    /// Rolling-window preparation or provider-upload rate for this release's
+    /// active blobs.
+    pub throughput_bps: u64,
+}
+
+/// One storage row's progress paired with the transfer rate for that release.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseUploadProgress {
+    pub progress: BridgeUploadProgress,
+    pub throughput_bps: u64,
 }
 
 /// Whether the upload queue is running or suspended.
@@ -565,7 +575,7 @@ pub struct BridgeOutboxSnapshot {
     pub deletes: Vec<BridgeDeleteOp>,
     /// Per-release aggregate derived from `upload_groups`, keyed by release id.
     /// Releases with no unfinished make-Remote transition are absent.
-    pub per_release: std::collections::HashMap<String, BridgeUploadProgress>,
+    pub per_release: std::collections::HashMap<String, BridgeReleaseUploadProgress>,
     /// Sum across all uploads: the queue counts and the queue-wide progress
     /// bar.
     pub total: BridgeUploadProgress,
@@ -576,7 +586,7 @@ pub struct BridgeOutboxSnapshot {
     /// key and joins.
     pub summary_parts: Vec<BridgeCountLabel>,
     pub pause_state: BridgeOutboxPauseState,
-    /// Rolling-window upload throughput in bytes per second. The UI formats it.
+    /// Rolling-window transfer throughput in bytes per second. The UI formats it.
     pub throughput_bps: u64,
     /// Estimated seconds remaining at the current rate. The UI formats it.
     pub eta_seconds: Option<u64>,

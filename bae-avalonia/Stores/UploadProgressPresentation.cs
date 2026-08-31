@@ -29,7 +29,7 @@ internal static class UploadProgressPresentation
             return null;
         }
         return snapshot?.PerRelease.TryGetValue(complete.ReleaseId, out var progress) == true
-            ? new ImportUploadObservation.Active(progress)
+            ? new ImportUploadObservation.Active(progress.Progress)
             : new ImportUploadObservation.Finished();
     }
 
@@ -59,6 +59,14 @@ internal static class UploadProgressPresentation
         string.Join(
             " · ",
             parts.Select(part => Loc.Core(part.Key, "count", part.Count)));
+
+    public static string ThroughputLabel(ulong bytesPerSecond) =>
+        bytesPerSecond > 0
+            ? Loc.Core(
+                "core.outbox.throughput",
+                "rate",
+                Loc.Bytes(checked((long)bytesPerSecond)))
+            : string.Empty;
 
     public static string ActivityLabel(BridgeUploadProgress progress) =>
         progress.Issue is BridgeUploadIssue.SourceUnavailable

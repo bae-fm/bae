@@ -39,10 +39,11 @@ internal sealed partial class StorageDialog
         // The releases whose rows are selected; a right-click acts on the selection
         // (or just the tapped row when it isn't part of it).
         var selected = new HashSet<string>();
-        // Per-release outbox progress the Storage cell reads for its upload badge —
+        // Per-release outbox progress the Storage cell reads for its transfer bar —
         // bounded to releases with active outbox activity, refreshed by
-        // LoadStorageRows and read without another database call by StorageCellText.
-        var outboxProgress = new Dictionary<string, BridgeUploadProgress>();
+        // LoadStorageRows and read without another database call by
+        // StorageCellContent.
+        var outboxProgress = new Dictionary<string, BridgeReleaseUploadProgress>();
         var query = _app.StorageQueryStore;
 
         // The filter tab resets to All each open (macOS parity); the sort persists.
@@ -56,8 +57,8 @@ internal sealed partial class StorageDialog
 
         // The storage cell's precedence mirrors macOS: an in-flight transfer verb
         // from the row wins over the outbox
-        // upload badge, which wins over the resting state.
-        string StorageCellText(BridgeStorageRow row)
+        // upload progress, which wins over the resting state.
+        Control StorageCellContent(BridgeStorageRow row)
         {
             var releaseId = row.Release.Id;
             var token = row.Release.TransferAction is { } action
@@ -65,15 +66,15 @@ internal sealed partial class StorageDialog
                 : null;
             if (token is not null && BridgeDisplay.TransferVerbKey(token) is { } verbKey)
             {
-                return Loc.Core(verbKey);
+                return Primary(Loc.Core(verbKey));
             }
             if (outboxProgress.TryGetValue(releaseId, out var progress))
             {
-                return UploadBadgeLabel(progress);
+                return new StorageUploadCell(progress);
             }
             if (_app.StorageStore.UploadHandoff(releaseId) is { } handoff)
             {
-                return handoff switch
+                return Primary(handoff switch
                 {
                     CloudUploadHandoff.Queueing => Loc.Core(
                         BridgeDisplay.TransferVerbKey("manage")
@@ -83,17 +84,17 @@ internal sealed partial class StorageDialog
                         Loc.Core("core.queue.queued", "count", 1),
                     _ => throw new ArgumentOutOfRangeException(
                         nameof(handoff), handoff, "Unknown cloud upload handoff"),
-                };
+                });
             }
-            return DialogPrimitives.RestingStorageLabel(
-                row.Release.StorageState == BridgeReleaseStorageState.Remote, row.Release.Pinned);
+            return Primary(DialogPrimitives.RestingStorageLabel(
+                row.Release.StorageState == BridgeReleaseStorageState.Remote, row.Release.Pinned));
         }
 
         var table = new StorageTableView(
             () => query.List,
             query.Row,
             selected,
-            StorageCellText);
+            StorageCellContent);
 
         // ── Sortable column header ────────────────────────────────────────────────
         var headerHost = new Panel();
@@ -175,7 +176,7 @@ internal sealed partial class StorageDialog
         // replace the subscribed query with one carrying the new parameters.
         async Task LoadStorageRows()
         {
-            // The per-release outbox progress drives the Storage cell's upload badge;
+            // The per-release outbox progress drives the Storage cell's transfer bar;
             // load it before the rows realize so the badge is right on first render.
             // A failed read leaves the rows without the badge rather than failing the
             // whole list.

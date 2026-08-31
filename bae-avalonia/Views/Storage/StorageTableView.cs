@@ -29,7 +29,7 @@ internal sealed class StorageTableView : UserControl
     private readonly Func<PaginatedList<BridgeStorageRow, string>> _list;
     private readonly Func<string, BridgeStorageRow?> _lookup;
     private readonly HashSet<string> _selected;
-    private readonly Func<BridgeStorageRow, string> _cellText;
+    private readonly Func<BridgeStorageRow, Control> _cellContent;
     private readonly RowSlotFacade _facade;
     private readonly ItemsControl _rows;
     private readonly HashSet<StorageRowControl> _realized = new();
@@ -45,12 +45,12 @@ internal sealed class StorageTableView : UserControl
         Func<PaginatedList<BridgeStorageRow, string>> list,
         Func<string, BridgeStorageRow?> lookup,
         HashSet<string> selected,
-        Func<BridgeStorageRow, string> cellText)
+        Func<BridgeStorageRow, Control> cellContent)
     {
         _list = list;
         _lookup = lookup;
         _selected = selected;
-        _cellText = cellText;
+        _cellContent = cellContent;
         _bound = list();
 
         _facade = new RowSlotFacade(() => _list().TotalCount);
@@ -104,7 +104,7 @@ internal sealed class StorageTableView : UserControl
 
     internal BridgeStorageRow? Lookup(string id) => _lookup(id);
 
-    internal string CellText(BridgeStorageRow row) => _cellText(row);
+    internal Control CellContent(BridgeStorageRow row) => _cellContent(row);
 
     internal bool IsSelected(string id) => _selected.Contains(id);
 
@@ -153,7 +153,7 @@ internal sealed class StorageRowControl : ContentControl
 
     private PaginatedList<BridgeStorageRow, string>? _subscribed;
     private CancellationTokenSource? _loadCts;
-    private TextBlock? _storageCell;
+    private ContentControl? _storageCell;
     private string? _releaseId;
     private int _index = -1;
 
@@ -261,7 +261,12 @@ internal sealed class StorageRowControl : ContentControl
         StorageGrid.AddCell(grid, 0, row.Album.Title);
         StorageGrid.AddCell(grid, 1, row.Album.ArtistNames);
         StorageGrid.AddCell(grid, 2, row.Release.Format ?? string.Empty);
-        _storageCell = StorageGrid.AddCell(grid, 3, _table.CellText(row));
+        _storageCell = new ContentControl
+        {
+            Content = _table.CellContent(row),
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        StorageGrid.AddControl(grid, 3, _storageCell);
         StorageGrid.AddCell(grid, 4, Loc.Number(row.Release.FileCount), rightAligned: true);
         StorageGrid.AddCell(grid, 5, Loc.Bytes(row.Release.TotalSize), rightAligned: true);
         _rowBorder.Child = grid;
@@ -275,7 +280,7 @@ internal sealed class StorageRowControl : ContentControl
         {
             return;
         }
-        _storageCell.Text = _table.CellText(row);
+        _storageCell.Content = _table.CellContent(row);
     }
 
     public void RefreshTint()
@@ -313,6 +318,49 @@ internal sealed class StorageRowControl : ContentControl
     }
 }
 
+// A release whose cloud transition is active: the phase bar and that release's
+// current preparation or provider-write rate. Core supplies both values; this
+// control only renders and locale-formats them.
+internal sealed class StorageUploadCell : UserControl
+{
+    public StorageUploadCell(BridgeReleaseUploadProgress upload)
+    {
+        var fraction = UploadProgressPresentation.BarFraction(upload.Progress.Bar);
+        var bar = new ProgressBar
+        {
+            Minimum = 0,
+            Maximum = 1,
+            Value = fraction ?? 0,
+            IsIndeterminate = fraction is null,
+            Width = 72,
+            Height = 4,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { bar },
+        };
+        var throughput = UploadProgressPresentation.ThroughputLabel(
+            upload.ThroughputBps);
+        if (!string.IsNullOrEmpty(throughput))
+        {
+            var label = new TextBlock
+            {
+                Text = throughput,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextWrapping = TextWrapping.NoWrap,
+            };
+            label[!TextBlock.ForegroundProperty] =
+                new DynamicResourceExtension("BaeTextSecondaryBrush");
+            content.Children.Add(label);
+        }
+        Content = content;
+    }
+}
+
 // The six-column storage grid shared by the sortable header and each row: album and
 // artist stretch (2:2), media / storage auto-size, files and size auto-size and
 // right-align in their cell.
@@ -337,5 +385,11 @@ internal static class StorageGrid
         Grid.SetColumn(block, column);
         grid.Children.Add(block);
         return block;
+    }
+
+    internal static void AddControl(Grid grid, int column, Control control)
+    {
+        Grid.SetColumn(control, column);
+        grid.Children.Add(control);
     }
 }

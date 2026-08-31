@@ -16,7 +16,7 @@ public final class CloudUploadCommand: Sendable {
 
 /// Mirror of core's cloud outbox processing snapshot, rendered by the Storage
 /// Manager's queue panel and used by every storage row to read its
-/// per-release upload count (no cached `pendingUploads` field on
+/// per-release upload progress and rate (no cached `pendingUploads` field on
 /// `ReleaseSummary`). The retained outbox subscription lands the whole
 /// `BridgeOutboxSnapshot`; views read it at the leaf. The snapshot is swapped
 /// wholesale (no per-item interning) because core exposes it in full.
@@ -61,7 +61,7 @@ public class OutboxStore {
     /// storage actions while uploads are in flight.
     public func progress(forRelease releaseId: String) -> BridgeUploadProgress?
     {
-        snapshot.perRelease[releaseId]
+        snapshot.perRelease[releaseId]?.progress
     }
 
     /// Whether the release has upload work queued or in flight. Drives the
@@ -163,8 +163,11 @@ public class OutboxStore {
     public func storageUploadObservation(forRelease releaseId: String)
         -> StorageUploadObservation?
     {
-        if let progress = snapshot.perRelease[releaseId] {
-            return .active(progress)
+        if let releaseProgress = snapshot.perRelease[releaseId] {
+            return .active(
+                progress: releaseProgress.progress,
+                throughputBps: releaseProgress.throughputBps
+            )
         }
         return switch cloudUploadHandoffs[releaseId] {
         case .queueing: .queueing
@@ -179,7 +182,10 @@ public class OutboxStore {
     public func persistedUploadObservation(forRelease releaseId: String)
         -> UploadObservation?
     {
-        snapshot.perRelease[releaseId].map(UploadObservation.active)
+        snapshot.perRelease[releaseId]
+            .map {
+                UploadObservation.active($0.progress)
+            }
     }
 
     /// Whether any cloud writes are still queued or in flight — uploads or
@@ -263,7 +269,7 @@ public enum UploadObservation: Equatable {
 public enum StorageUploadObservation: Equatable {
     case queueing
     case awaiting
-    case active(BridgeUploadProgress)
+    case active(progress: BridgeUploadProgress, throughputBps: UInt64)
 
     /// Cancellation only targets work coven has durably admitted. The command
     /// handoff has nothing to cancel yet. Core owns whether an admitted phase
@@ -272,7 +278,7 @@ public enum StorageUploadObservation: Equatable {
         switch self {
         case .queueing, .awaiting:
             false
-        case .active(let progress):
+        case .active(let progress, _):
             progress.canCancel
         }
     }
@@ -288,7 +294,7 @@ public enum StorageUploadObservation: Equatable {
             )
         case .awaiting:
             return UploadObservation.awaiting.statusText
-        case .active(let progress):
+        case .active(let progress, _):
             return UploadObservation.active(progress).statusText
         }
     }
@@ -297,10 +303,19 @@ public enum StorageUploadObservation: Equatable {
         switch self {
         case .queueing, .awaiting:
             return .indeterminate
-        case .active(let progress):
+        case .active(let progress, _):
             return progress.bar.map { .determinate($0.fraction) }
                 ?? .indeterminate
         }
+    }
+
+    /// The release's current preparation or provider-write rate. A zero reading
+    /// stays absent instead of presenting a stalled speed.
+    public var throughputText: String? {
+        guard case .active(_, let throughputBps) = self,
+            throughputBps > 0
+        else { return nil }
+        return QueueSummary.throughputText(bytesPerSecond: throughputBps)
     }
 }
 

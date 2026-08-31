@@ -249,7 +249,8 @@
             displayTitle:
                 "Album Title with an Intentionally Long Descriptive Subtitle",
             files: uploadFileOps,
-            progress: uploadProgress(activity: .uploading)
+            progress: uploadProgress(activity: .uploading),
+            throughputBps: 3_200_000
         )
 
         /// A second group whose blobs landed and whose release is publishing.
@@ -283,7 +284,8 @@
                 activity: .publishing,
                 canCancel: false,
                 issue: nil
-            )
+            ),
+            throughputBps: 0
         )
 
         static let uploadGroupSourceUnavailable = BridgeUploadReleaseGroup(
@@ -314,7 +316,8 @@
                 issue: .sourceUnavailable(paths: [
                     "/Volumes/Music/Album Title C/01 Track Title.flac"
                 ])
-            )
+            ),
+            throughputBps: 0
         )
 
         static let deleteOps: [BridgeDeleteOp] = [
@@ -339,7 +342,13 @@
         ) -> BridgeOutboxSnapshot {
             let perRelease = Dictionary(
                 uniqueKeysWithValues: uploadGroups.map { group in
-                    (group.releaseId, group.progress)
+                    (
+                        group.releaseId,
+                        BridgeReleaseUploadProgress(
+                            progress: group.progress,
+                            throughputBps: group.throughputBps
+                        )
+                    )
                 }
             )
             return BridgeOutboxSnapshot(

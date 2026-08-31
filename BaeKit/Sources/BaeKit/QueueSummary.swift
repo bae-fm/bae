@@ -30,10 +30,25 @@ public enum QueueSummary {
             .map { countLabel($0.key, $0.count) }
             .joined(separator: " \u{00B7} ")
     }
+
+    /// Locale-aware transfer byte rate using the Core catalog's `/s` format.
+    public static func throughputText(bytesPerSecond: UInt64) -> String {
+        precondition(
+            bytesPerSecond <= UInt64(Int64.max),
+            "transfer throughput exceeds the platform byte formatter"
+        )
+        let rate = Int64(bytesPerSecond).formatted(.byteCount(style: .file))
+        return String(format: message("core.outbox.throughput"), rate)
+    }
 }
 
 extension BridgeOutboxSnapshot {
     public var summaryText: String { QueueSummary.line(summaryParts) }
+
+    public var throughputText: String? {
+        guard throughputBps > 0 else { return nil }
+        return QueueSummary.throughputText(bytesPerSecond: throughputBps)
+    }
 
     /// The user's pause target. `Pausing` still counts as requested even though
     /// the provider write already in progress has not finished yet.

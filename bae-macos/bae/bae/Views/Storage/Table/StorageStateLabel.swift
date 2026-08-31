@@ -18,8 +18,23 @@ struct StorageStateLabel: View {
             forRelease: release.id
         ) {
             switch observation {
-            case .active(let progress):
-                UploadActivityLabel(progress: progress)
+            case .active:
+                HStack(spacing: 8) {
+                    ProgressTrackBar(
+                        progress: observation.progressBar.fraction,
+                        trackHeight: 4
+                    )
+                    .frame(minWidth: 72)
+                    if let throughputText = observation.throughputText {
+                        Text(throughputText)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(observation.transitionStatusText)
+                .accessibilityValue(observation.throughputText ?? "")
             case .queueing, .awaiting:
                 Label(
                     observation.transitionStatusText,

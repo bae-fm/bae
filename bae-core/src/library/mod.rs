@@ -5,6 +5,7 @@ pub mod download_snapshot;
 mod local_lifecycle;
 pub mod manager;
 pub mod outbox_snapshot;
+mod outbox_snapshot_summary;
 pub mod output_snapshot;
 pub mod release_queue;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

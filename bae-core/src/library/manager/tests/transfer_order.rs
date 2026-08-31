@@ -48,6 +48,7 @@ fn transitioning_release_ids_preserve_upload_group_order() {
         display_title: "Album Title".to_string(),
         files: Vec::new(),
         progress: crate::library::UploadProgress::default(),
+        throughput_bps: 0,
     };
     let snapshot = crate::library::OutboxSnapshot {
         upload_groups: vec![group("z-first"), group("a-second")],

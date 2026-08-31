@@ -51,8 +51,8 @@ enum StorageTableColumn: String, CaseIterable {
         case .storage:
             Spec(
                 title: String(localized: "Storage"),
-                width: 140,
-                minWidth: 100,
+                width: 190,
+                minWidth: 150,
                 sortField: nil
             )
         case .files:

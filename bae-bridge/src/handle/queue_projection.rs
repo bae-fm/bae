@@ -31,6 +31,7 @@ impl crate::types::BridgeUploadReleaseGroup {
             display_title,
             files,
             progress,
+            throughput_bps,
         } = g;
         Self {
             release_id,
@@ -40,6 +41,7 @@ impl crate::types::BridgeUploadReleaseGroup {
                 .map(crate::types::BridgeUploadFileOp::from_core)
                 .collect(),
             progress: crate::types::BridgeUploadProgress::from_core(progress),
+            throughput_bps,
         }
     }
 }
@@ -137,10 +139,15 @@ impl crate::types::BridgeOutboxSnapshot {
         let per_release = snapshot
             .per_release_progress()
             .into_iter()
-            .map(|(release_id, progress)| {
+            .map(|(release_id, release_progress)| {
                 (
                     release_id,
-                    crate::types::BridgeUploadProgress::from_core(progress),
+                    crate::types::BridgeReleaseUploadProgress {
+                        progress: crate::types::BridgeUploadProgress::from_core(
+                            release_progress.progress,
+                        ),
+                        throughput_bps: release_progress.throughput_bps,
+                    },
                 )
             })
             .collect();

@@ -69,7 +69,7 @@ struct StorageStatusBand: View {
         HStack(spacing: 6) {
             if let observation = uploadObservation {
                 switch observation {
-                case .active(let progress):
+                case .active(let progress, _):
                     UploadActivityLabel(progress: progress)
                 case .queueing, .awaiting:
                     Label(

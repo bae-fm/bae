@@ -316,7 +316,7 @@ async fn outbox_snapshot_tracks_queued_active_failed_and_cancel() {
     assert_eq!(snap.total.preparation_bytes_done, 400);
     assert_eq!(snap.total.upload_bytes_done, 0);
     assert_eq!(snap.total.preparation_bytes_total, 1000);
-    manager.sync.clear_transient_upload_for_test(&file_id);
+    manager.sync.clear_upload_observation_for_test(&file_id);
 
     // A real failure: the user's file is gone, so the drain cannot seal it. The
     // entry stays queued with coven's own attempt count and error on it.

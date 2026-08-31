@@ -318,9 +318,9 @@ public sealed class StorageStoreTests
             revision,
             [],
             [],
-            new Dictionary<string, BridgeUploadProgress>
+            new Dictionary<string, BridgeReleaseUploadProgress>
             {
-                [releaseId] = progress,
+                [releaseId] = new BridgeReleaseUploadProgress(progress, 0),
             },
             progress,
             0,
@@ -334,7 +334,7 @@ public sealed class StorageStoreTests
         revision,
         [],
         [],
-        new Dictionary<string, BridgeUploadProgress>(),
+        new Dictionary<string, BridgeReleaseUploadProgress>(),
         new BridgeUploadProgress(
             0, 0, 0, 0, 0, 0, 0, 0, null, null, false, null),
         0,

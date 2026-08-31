@@ -28,6 +28,33 @@ final class StorageManagerLayoutTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(tableScrollView.frame.height, 220)
     }
 
+    func testStorageManagerShowsReleaseAndTotalUploadRates() async throws {
+        let size = NSSize(width: 940, height: 600)
+        let (_, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene()
+                .frame(width: size.width, height: size.height),
+            size: size
+        )
+
+        try await settle(host)
+        let observation = try XCTUnwrap(
+            PreviewData.outboxStore()
+                .storageUploadObservation(
+                    forRelease: PreviewData.uploadGroup.releaseId
+                )
+        )
+        XCTAssertEqual(
+            observation.throughputText,
+            QueueSummary.throughputText(bytesPerSecond: 3_200_000)
+        )
+        XCTAssertEqual(
+            PreviewData.outboxSnapshot().throughputText,
+            QueueSummary.throughputText(bytesPerSecond: 6_800_000)
+        )
+        let descendants = SnapshotTestSupport.descendants(of: host)
+        XCTAssertTrue(descendants.contains { $0 is ProgressTrackNSView })
+    }
+
     func testSelectingReleaseWithoutTransferKeepsAvailableHeight() async throws
     {
         let size = NSSize(width: 700, height: 400)

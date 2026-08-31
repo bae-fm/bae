@@ -14,7 +14,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use crate::db::DbOutboxQueue;
-use crate::library::upload_throughput::UploadThroughput;
+use crate::library::upload_throughput::{UploadRates, UploadThroughput};
 
 /// One immutable cloud blob identity. A row can be repointed at a replacement
 /// blob, so upload progress and completion follow the namespace and blob id,
@@ -592,6 +592,17 @@ pub struct UploadReleaseGroup {
     pub display_title: String,
     pub files: Vec<UploadFileOp>,
     pub progress: UploadProgress,
+    /// Rolling-window preparation or provider-upload rate for this release's
+    /// active blobs.
+    pub throughput_bps: u64,
+}
+
+/// One release's progress bar/count state paired with the transfer rate for
+/// only that release's active blobs.
+#[derive(Debug, Clone)]
+pub struct ReleaseUploadProgress {
+    pub progress: UploadProgress,
+    pub throughput_bps: u64,
 }
 
 /// Complete snapshot of the cloud outbox. One source of truth for everything
@@ -643,63 +654,12 @@ pub enum OutboxPauseState {
     Paused,
 }
 
-impl OutboxSnapshot {
-    pub fn transitioning_release_ids(&self) -> Vec<String> {
-        self.upload_groups
-            .iter()
-            .map(|group| group.release_id.clone())
-            .collect()
-    }
-
-    pub fn per_release_progress(&self) -> HashMap<String, UploadProgress> {
-        self.upload_groups
-            .iter()
-            .map(|group| (group.release_id.clone(), group.progress.clone()))
-            .collect()
-    }
-
-    pub fn pending_delete_count(&self) -> u32 {
-        u32::try_from(self.deletes.len()).expect("pending delete count exceeds u32")
-    }
-
-    /// The summary line's phase counts in dominance order, followed by pending
-    /// deletes. Each zero count drops out; platforms only localize and join.
-    pub fn summary_parts(&self) -> Vec<crate::library::release_queue::CountLabel> {
-        use crate::library::release_queue::CountLabel;
-        let mut parts = Vec::new();
-        for (key, count) in [
-            ("core.outbox.cancelling", self.total.cancelling),
-            ("core.outbox.publishing", self.total.publishing),
-            ("core.queue.uploading", self.total.uploading),
-            ("core.outbox.preparing", self.total.preparing),
-            ("core.outbox.retrying", self.total.retrying),
-            ("core.outbox.prepared", self.total.prepared),
-            ("core.queue.queued", self.total.queued),
-            ("core.outbox.uploaded", self.total.uploaded),
-        ] {
-            if count > 0 {
-                parts.push(CountLabel {
-                    key: key.to_string(),
-                    count,
-                });
-            }
-        }
-        let pending_deletes = self.pending_delete_count();
-        if pending_deletes > 0 {
-            parts.push(CountLabel {
-                key: "core.outbox.pending_deletes".to_string(),
-                count: pending_deletes,
-            });
-        }
-        parts
-    }
-}
-
 struct GroupBuilder {
     release_id: String,
     display_title: String,
     files: Vec<UploadFileOp>,
     progress: UploadProgress,
+    blob_keys: Vec<UploadBlobKey>,
 }
 
 impl GroupBuilder {
@@ -709,15 +669,22 @@ impl GroupBuilder {
             display_title,
             files: Vec::new(),
             progress: UploadProgress::default(),
+            blob_keys: Vec::new(),
         }
     }
 
-    fn push(&mut self, file: UploadFileOp, source_unavailable_path: Option<PathBuf>) {
+    fn push(
+        &mut self,
+        blob_key: UploadBlobKey,
+        file: UploadFileOp,
+        source_unavailable_path: Option<PathBuf>,
+    ) {
         self.progress
             .add_upload(&file.state, file.source_bytes_total);
         if let Some(path) = source_unavailable_path {
             self.progress.add_source_unavailable(path);
         }
+        self.blob_keys.push(blob_key);
         self.files.push(file);
     }
 
@@ -748,6 +715,28 @@ pub(crate) fn build_outbox_snapshot(
     queue: DbOutboxQueue,
     transient: &HashMap<UploadBlobKey, TransientUploadState>,
     throughput: &UploadThroughput,
+    pause_requested: bool,
+) -> OutboxSnapshot {
+    let rates = throughput.rates();
+    build_outbox_snapshot_from_rates(queue, transient, &rates, pause_requested)
+}
+
+#[cfg(test)]
+pub(crate) fn build_outbox_snapshot_at(
+    queue: DbOutboxQueue,
+    transient: &HashMap<UploadBlobKey, TransientUploadState>,
+    throughput: &UploadThroughput,
+    pause_requested: bool,
+    measured_at: std::time::Instant,
+) -> OutboxSnapshot {
+    let rates = throughput.rates_at(measured_at);
+    build_outbox_snapshot_from_rates(queue, transient, &rates, pause_requested)
+}
+
+fn build_outbox_snapshot_from_rates(
+    queue: DbOutboxQueue,
+    transient: &HashMap<UploadBlobKey, TransientUploadState>,
+    rates: &UploadRates,
     pause_requested: bool,
 ) -> OutboxSnapshot {
     if queue.uploads.is_empty() && queue.deletes.is_empty() && queue.make_remotes.is_empty() {
@@ -804,9 +793,11 @@ pub(crate) fn build_outbox_snapshot(
             group.display_title, upload.album_title,
             "one release cannot have conflicting queued album titles"
         );
+        let file_id = blob_key.stable_id();
         group.push(
+            blob_key,
             UploadFileOp {
-                file_id: blob_key.stable_id(),
+                file_id,
                 label: upload.label,
                 source_bytes_total: bytes_total,
                 state,
@@ -838,11 +829,17 @@ pub(crate) fn build_outbox_snapshot(
         .map(|group| {
             let mut files = group.files;
             files.sort_by(|left, right| left.label.display_order(&right.label));
+            let throughput_bps = if pause_requested {
+                0
+            } else {
+                rates.for_uploads(&group.blob_keys)
+            };
             UploadReleaseGroup {
                 release_id: group.release_id,
                 display_title: group.display_title,
                 files,
                 progress: group.progress,
+                throughput_bps,
             }
         })
         .collect();
@@ -864,7 +861,7 @@ pub(crate) fn build_outbox_snapshot(
     let throughput_bps = if pause_requested {
         0
     } else {
-        throughput.bytes_per_sec()
+        rates.aggregate_bps
     };
     let bytes_remaining = total
         .upload_bytes_total
@@ -873,12 +870,12 @@ pub(crate) fn build_outbox_snapshot(
     let eta_seconds = if pause_requested
         || !total.upload_bytes_total_complete
         || total.uploading == 0
-        || throughput_bps == 0
+        || rates.provider_bps == 0
         || bytes_remaining == 0
     {
         None
     } else {
-        Some(upload_eta_seconds(bytes_remaining, throughput_bps))
+        Some(upload_eta_seconds(bytes_remaining, rates.provider_bps))
     };
 
     OutboxSnapshot {

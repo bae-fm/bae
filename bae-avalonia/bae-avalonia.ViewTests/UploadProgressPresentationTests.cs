@@ -1,4 +1,8 @@
 using System.Collections.Generic;
+using Avalonia.Controls;
+using Avalonia.Headless.XUnit;
+using Avalonia.LogicalTree;
+using Bae.Desktop;
 using uniffi.bae_bridge;
 using Xunit;
 
@@ -6,6 +10,33 @@ namespace Bae.Desktop.ViewTests;
 
 public sealed class UploadProgressPresentationTests
 {
+    [AvaloniaFact]
+    public void StorageUploadCellShowsProgressAndRateInsteadOfActivityCount()
+    {
+        var progress = Progress(
+            queued: 0,
+            activity: BridgeUploadActivity.Preparing,
+            bar: new BridgeUploadBar(
+                BridgeUploadPhase.Preparing,
+                25,
+                100));
+        var cell = new StorageUploadCell(
+            new BridgeReleaseUploadProgress(progress, 3_200_000));
+
+        var bar = Assert.Single(
+            cell.GetLogicalDescendants().OfType<ProgressBar>());
+        Assert.False(bar.IsIndeterminate);
+        Assert.Equal(0.25, bar.Value);
+        Assert.Contains(
+            cell.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text
+                == UploadProgressPresentation.ThroughputLabel(3_200_000));
+        Assert.DoesNotContain(
+            cell.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text
+                == UploadProgressPresentation.ActivityLabel(progress));
+    }
+
     [Fact]
     public void RunningQueueWithoutWorkHasNoPauseOrQueueSummary()
     {
@@ -137,10 +168,10 @@ public sealed class UploadProgressPresentationTests
             [],
             [],
             progress is null
-                ? new Dictionary<string, BridgeUploadProgress>()
-                : new Dictionary<string, BridgeUploadProgress>
+                ? new Dictionary<string, BridgeReleaseUploadProgress>()
+                : new Dictionary<string, BridgeReleaseUploadProgress>
                 {
-                    ["release-a"] = progress,
+                    ["release-a"] = new BridgeReleaseUploadProgress(progress, 0),
                 },
             Progress(),
             0,

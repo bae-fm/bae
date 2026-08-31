@@ -101,13 +101,20 @@ impl SyncController {
     }
 
     #[cfg(test)]
-    pub(crate) fn clear_transient_upload_for_test(&self, file_id: &str) {
-        self.transient_uploads.lock().unwrap().remove(
-            &crate::library::outbox_snapshot::UploadBlobKey::new(
-                crate::sync::RELEASE_FILES_NAMESPACE,
-                file_id,
-            ),
+    pub(crate) fn clear_upload_observation_for_test(&self, file_id: &str) {
+        let key = crate::library::outbox_snapshot::UploadBlobKey::new(
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            file_id,
         );
+        assert!(
+            self.transient_uploads
+                .lock()
+                .unwrap()
+                .remove(&key)
+                .is_some(),
+            "the test upload observation must exist before it is cleared"
+        );
+        self.upload_throughput.end(&key);
     }
 
     /// Pause or resume the cloud-upload pipeline. New enqueues still land in

@@ -585,10 +585,10 @@ public sealed class ImportSectionViewTests
         [],
         [],
         progress is null
-            ? new Dictionary<string, BridgeUploadProgress>()
-            : new Dictionary<string, BridgeUploadProgress>
+            ? new Dictionary<string, BridgeReleaseUploadProgress>()
+            : new Dictionary<string, BridgeReleaseUploadProgress>
             {
-                ["release-a"] = progress,
+                ["release-a"] = new BridgeReleaseUploadProgress(progress, 0),
             },
         new BridgeUploadProgress(
             0, 0, 0, 0, 0, 0, 0, 0, null, null, false, null),

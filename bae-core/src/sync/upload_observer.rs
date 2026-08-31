@@ -53,7 +53,8 @@ impl UploadObserverEvents {
 /// `transient` maps each exact blob to preparation or provider-transfer bytes,
 /// shared with the `LibraryManager` so its outbox snapshot reports the active
 /// state and drives the per-file bar.
-/// `throughput` records byte deltas while provider transfers are active.
+/// `throughput` records byte deltas while preparation or provider transfer is
+/// active, resetting the blob's measurement at their boundary.
 /// Database-backed projection work is sent to the sync controller rather than
 /// retaining or exposing its database.
 pub struct ReleaseUploadObserver {
@@ -131,13 +132,28 @@ async fn wait_for_upload_pause_state(pause_state: &tokio::sync::watch::Sender<bo
 #[async_trait::async_trait]
 impl coven::BlobTransitionObserver for ReleaseUploadObserver {
     async fn on_blob_preparation_started(&self, upload: &coven::RowBlobRef) {
-        self.transient.lock().unwrap().insert(
-            upload_blob_key(upload),
-            crate::library::outbox_snapshot::TransientUploadState::Preparing {
-                bytes_done: 0,
-                bytes_total: upload.plaintext_size(),
-            },
-        );
+        let blob_key = upload_blob_key(upload);
+        {
+            use std::collections::hash_map::Entry;
+            let mut transient = self.transient.lock().unwrap();
+            match transient.entry(blob_key.clone()) {
+                Entry::Vacant(entry) => {
+                    entry.insert(
+                        crate::library::outbox_snapshot::TransientUploadState::Preparing {
+                            bytes_done: 0,
+                            bytes_total: upload.plaintext_size(),
+                        },
+                    );
+                }
+                Entry::Occupied(entry) => panic!(
+                    "preparation started while the same blob already had transient state for {}:{}; state: {:?}",
+                    upload.table(),
+                    upload.row_id(),
+                    entry.get()
+                ),
+            }
+        }
+        self.throughput.begin_preparation(blob_key);
         self.report().await;
     }
 
@@ -148,7 +164,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         bytes_total: u64,
     ) {
         let blob_key = upload_blob_key(upload);
-        {
+        let delta = {
             let mut transient = self.transient.lock().unwrap();
             match transient.get_mut(&blob_key) {
                 Some(crate::library::outbox_snapshot::TransientUploadState::Preparing {
@@ -173,7 +189,9 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                             *previous
                         );
                     }
+                    let delta = bytes_done - *previous;
                     *previous = bytes_done;
+                    delta
                 }
                 state => panic!(
                     "preparation progress arrived without a preparation-start state for {}:{}; \
@@ -182,6 +200,9 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                     upload.row_id()
                 ),
             }
+        };
+        if delta > 0 {
+            self.throughput.record_preparation(&blob_key, delta);
         }
         self.report().await;
     }
@@ -192,7 +213,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         {
             use std::collections::hash_map::Entry;
             let mut transient = self.transient.lock().unwrap();
-            match transient.entry(blob_key) {
+            match transient.entry(blob_key.clone()) {
                 Entry::Vacant(entry) => {
                     // A restart can resume directly from coven's durable
                     // Prepared state, so no preparation callback is required in
@@ -214,7 +235,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
                 },
             }
         }
-        self.throughput.begin();
+        self.throughput.begin_upload(blob_key);
         self.report().await;
     }
 
@@ -281,7 +302,7 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
             }
         };
         if delta > 0 {
-            self.throughput.record(delta);
+            self.throughput.record_upload(&blob_key, delta);
         }
         self.report().await;
     }
@@ -291,12 +312,8 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         // total before completion. Requiring that report keeps provider bytes
         // distinct from plaintext source bytes; substituting the source size
         // here would make both the file row and throughput false.
-        match self
-            .transient
-            .lock()
-            .unwrap()
-            .remove(&upload_blob_key(upload))
-        {
+        let blob_key = upload_blob_key(upload);
+        match self.transient.lock().unwrap().remove(&blob_key) {
             Some(crate::library::outbox_snapshot::TransientUploadState::Uploading {
                 bytes_done,
                 bytes_total,
@@ -311,24 +328,15 @@ impl coven::BlobTransitionObserver for ReleaseUploadObserver {
         // Coven committed this exact row journal as Created before calling us;
         // the durable outbox now owns its Uploaded state. Keep no transient
         // terminal copy that could survive or disagree with that commit.
-        self.throughput.end();
+        self.throughput.end(&blob_key);
         self.report().await;
     }
 
     async fn on_blob_upload_failed(&self, upload: &coven::RowBlobRef, _error: &str) {
-        let removed = self
-            .transient
-            .lock()
-            .unwrap()
-            .remove(&upload_blob_key(upload));
-        if matches!(
-            removed,
-            Some(
-                crate::library::outbox_snapshot::TransientUploadState::UploadStarted
-                    | crate::library::outbox_snapshot::TransientUploadState::Uploading { .. }
-            )
-        ) {
-            self.throughput.end();
+        let blob_key = upload_blob_key(upload);
+        let removed = self.transient.lock().unwrap().remove(&blob_key);
+        if removed.is_some() {
+            self.throughput.end(&blob_key);
         }
         // coven's drain records the attempt count and the error on its own
         // queue entry; the snapshot we emit here reads them back.
@@ -591,7 +599,7 @@ mod tests {
 
     #[tokio::test]
     async fn completed_preparation_can_enter_provider_upload() {
-        let (observer, events, transient, _) = observer();
+        let (observer, events, transient, throughput) = observer();
         let event_task = tokio::spawn(events.run(|| async {}));
         let blob = test_blob();
         let key = upload_blob_key(&blob);
@@ -600,12 +608,38 @@ mod tests {
         observer
             .on_blob_preparation_progress(&blob, 1000, 1000)
             .await;
+        assert!(throughput.bytes_per_sec() > 0);
+        assert_eq!(throughput.rates().provider_bps, 0);
         observer.on_blob_upload_started(&blob).await;
 
         assert_eq!(
             transient.lock().unwrap().get(&key).copied(),
             Some(crate::library::outbox_snapshot::TransientUploadState::UploadStarted)
         );
+        assert_eq!(throughput.bytes_per_sec(), 0);
+
+        drop(observer);
+        event_task.await.expect("observer event task");
+    }
+
+    #[tokio::test]
+    async fn failed_preparation_ends_its_throughput_measurement() {
+        let (observer, events, transient, throughput) = observer();
+        let event_task = tokio::spawn(events.run(|| async {}));
+        let blob = test_blob();
+        let key = upload_blob_key(&blob);
+
+        observer.on_blob_preparation_started(&blob).await;
+        observer
+            .on_blob_preparation_progress(&blob, 500, 1000)
+            .await;
+        assert!(throughput.bytes_per_sec() > 0);
+
+        observer
+            .on_blob_upload_failed(&blob, "preparation failed")
+            .await;
+        assert_eq!(transient.lock().unwrap().get(&key).copied(), None);
+        assert_eq!(throughput.bytes_per_sec(), 0);
 
         drop(observer);
         event_task.await.expect("observer event task");
