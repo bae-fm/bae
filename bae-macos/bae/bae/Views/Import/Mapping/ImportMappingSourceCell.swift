@@ -9,9 +9,6 @@ struct ImportMappingSourceCell: View {
 
     let source: BridgeMappingSource
     let previewingPath: String?
-    /// Whether the folder and the release disagree about how long this row
-    /// runs, which is what marks a sheet entry's own length.
-    let lengthsDiverge: Bool
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
@@ -58,10 +55,6 @@ struct ImportMappingSourceCell: View {
                 // A squeezed column must truncate the name, never wrap the
                 // size mid-digit.
                 .fixedSize()
-            Text(file.audioFormat?.text ?? "")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()
@@ -98,9 +91,8 @@ struct ImportMappingSourceCell: View {
         return { actions.openDocument(file.name, file.localPath) }
     }
 
-    /// One entry of a track sheet: the number it prints, the title it gives,
-    /// and how long it says the entry runs. The audio is the container's, which
-    /// is the only file on disk there is to audition.
+    /// One entry of a track sheet: the number and title it prints. The audio is
+    /// the container's, which is the only file on disk there is to audition.
     private func entryCell(_ entry: BridgeMappingEntry) -> some View {
         HStack(spacing: 6) {
             auditionButton(path: entry.containerLocalPath)
@@ -112,18 +104,6 @@ struct ImportMappingSourceCell: View {
                 .font(.system(size: 12))
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Text(entry.audioFormat.text)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-            Text(importDurationText(entry.durationMs))
-                .font(.caption2)
-                .monospacedDigit()
-                .fixedSize()
-                .foregroundStyle(
-                    lengthsDiverge
-                        ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary)
-                )
             Spacer(minLength: 0)
         }
     }

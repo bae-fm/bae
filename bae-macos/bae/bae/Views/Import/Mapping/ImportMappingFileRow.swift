@@ -22,7 +22,6 @@ struct ImportMappingFileRow: View {
             ImportMappingSourceCell(
                 source: unit.source,
                 previewingPath: previewingPath,
-                lengthsDiverge: false,
                 evidence: evidence,
                 actions: actions,
             )

@@ -40,6 +40,31 @@ fn assert_uniform_source_audio(
     }
 }
 
+#[test]
+fn source_audio_keeps_every_physical_file_in_release_order() {
+    let files = CategorizedFiles {
+        files: vec![
+            audio_entry("/music/02.flac", "02.flac", 20),
+            audio_entry("/music/03.flac", "03.flac", 30),
+        ],
+    };
+
+    let source_audio = files.source_audio().expect("candidate has source audio");
+
+    assert_eq!(
+        source_audio
+            .files
+            .iter()
+            .map(|file| file.relative_path.as_str())
+            .collect::<Vec<_>>(),
+        ["02.flac", "03.flac"]
+    );
+    assert!(matches!(
+        source_audio.summary,
+        crate::album_detail::SourceAudioSummary::Uniform { .. }
+    ));
+}
+
 /// The final projected scan items for `root`. The callback is an update stream:
 /// a later item with the same key can add a proven combine action or replace
 /// provisional candidates with an unresolved boundary.

@@ -8,7 +8,7 @@ struct ImportReleaseSummary {
     let titleIsPlaceholder: Bool
     let artist: String?
     let factsLine: String
-    let sourceAudioLine: String?
+    let sourceAudio: BridgeCandidateSourceAudio?
     let provenance: BridgeMetadataProvenance?
 
     init(candidate: Candidate, editValues values: BridgeRawReleaseEdit) {
@@ -44,7 +44,7 @@ struct ImportReleaseSummary {
             factsLine = trackText
         }
         self.provenance = provenance
-        sourceAudioLine = candidate.files.sourceAudio?.text
+        sourceAudio = candidate.files.sourceAudio
     }
 
     init(candidate: Candidate, fileTags values: BridgeReleaseUserEdit) {
@@ -61,7 +61,7 @@ struct ImportReleaseSummary {
             String(localized: "\(values.tracks.count) tracks"),
         ])
         provenance = .fileTags
-        sourceAudioLine = candidate.files.sourceAudio?.text
+        sourceAudio = candidate.files.sourceAudio
     }
 
     init?(row: BridgeTriageRow) {
@@ -75,7 +75,7 @@ struct ImportReleaseSummary {
                 ? nil : ListFormatter.localizedString(byJoining: artistNames)
             factsLine = ""
             provenance = nil
-            sourceAudioLine = nil
+            sourceAudio = nil
             return
         }
         guard let matched = row.matched else { return nil }
@@ -98,7 +98,7 @@ struct ImportReleaseSummary {
             factsLine = ""
         }
         provenance = nil
-        sourceAudioLine = nil
+        sourceAudio = nil
     }
 
     private static func factsLine(_ facts: [String?]) -> String {
@@ -146,14 +146,9 @@ struct ImportReleaseSummaryView: View {
             .padding(.top, style.factsTopPadding)
             .frame(height: style.factsHeight)
             .opacity(style.showsFacts ? 1 : 0)
-            Text(summary.sourceAudioLine ?? "")
-                .font(.system(size: 11.5))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .frame(height: style.sourceAudioHeight)
-                .opacity(
-                    style.showsFacts && summary.sourceAudioLine != nil ? 1 : 0
-                )
+            if style.showsFacts, let sourceAudio = summary.sourceAudio {
+                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -251,17 +246,74 @@ extension ImportReleaseSummaryView.Style {
         }
     }
 
-    fileprivate var sourceAudioHeight: CGFloat? {
-        switch self {
-        case .sidebar: 0
-        case .card: nil
-        }
-    }
-
     fileprivate var titleTruncation: Text.TruncationMode {
         switch self {
         case .sidebar: .middle
         case .card: .tail
         }
+    }
+}
+
+/// The candidate's aggregate source-audio line and its physical files. The
+/// summary stays compact until the user asks which files produced it.
+private struct ImportSourceAudioSummaryView: View {
+    let sourceAudio: BridgeCandidateSourceAudio
+
+    @State
+    private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                expanded = !expanded
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .semibold))
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text(sourceAudio.summary.text)
+                        .lineLimit(1)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .font(.system(size: 11.5))
+            .foregroundStyle(.tertiary)
+            .accessibilityLabel(coreString("core.audio.label"))
+            .accessibilityValue(sourceAudio.summary.text)
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(sourceAudio.files, id: \.name) { file in
+                        HStack(spacing: 6) {
+                            Text(file.name)
+                                .font(.system(size: 11, design: .monospaced))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .layoutPriority(1)
+                            Text(
+                                Int64(file.size)
+                                    .formatted(.byteCount(style: .file))
+                            )
+                            .fixedSize()
+                            Text(sourceFormat(file).text)
+                                .lineLimit(1)
+                        }
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 14)
+                    }
+                }
+            }
+        }
+    }
+
+    private func sourceFormat(_ file: BridgeFileInfo) -> BridgeAudioFormat {
+        guard let format = file.audioFormat else {
+            preconditionFailure(
+                "candidate source audio file has no probe facts"
+            )
+        }
+        return format
     }
 }

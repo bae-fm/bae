@@ -2,23 +2,29 @@ use super::super::*;
 
 #[cfg(feature = "desktop")]
 impl BridgeFileInfo {
-    fn from_core(f: bae_core::import::folder_scanner::ScannedFile) -> Self {
-        let bae_core::import::folder_scanner::ScannedFile {
-            path,
-            relative_path,
-            size,
-            modified_at_ns: _,
-            dir_prefix,
-            file_name,
-            source_audio,
-        } = f;
+    fn from_core(f: &bae_core::import::folder_scanner::ScannedFile) -> Self {
         BridgeFileInfo {
-            name: relative_path,
-            size,
-            dir_prefix,
-            file_name,
-            local_path: path.to_string_lossy().to_string(),
-            audio_format: source_audio.map(|audio| BridgeAudioFormat::from_core(audio.format)),
+            name: f.relative_path.clone(),
+            size: f.size,
+            dir_prefix: f.dir_prefix.clone(),
+            file_name: f.file_name.clone(),
+            local_path: f.path.to_string_lossy().to_string(),
+            audio_format: f
+                .source_audio
+                .as_ref()
+                .map(|audio| BridgeAudioFormat::from_core(audio.format.clone())),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeCandidateSourceAudio {
+    fn from_core(source_audio: bae_core::import::folder_scanner::CandidateSourceAudio<'_>) -> Self {
+        let bae_core::import::folder_scanner::CandidateSourceAudio { summary, files } =
+            source_audio;
+        Self {
+            summary: BridgeSourceAudioSummary::from_core(summary),
+            files: files.into_iter().map(BridgeFileInfo::from_core).collect(),
         }
     }
 }
@@ -45,7 +51,7 @@ impl BridgeCandidateFile {
         } = entry;
         // Read the file id (relative path) and disk path back off `BridgeFileInfo`
         // so the exhaustive `ScannedFile` destructure lives only in its `from_core`.
-        let file = BridgeFileInfo::from_core(file);
+        let file = BridgeFileInfo::from_core(&file);
         let image_choice = || BridgeCoverChoice {
             selection: BridgeCoverSelection::ReleaseImage {
                 file_id: file.name.clone(),
@@ -210,8 +216,8 @@ impl BridgeCandidateFiles {
             .map(BridgeCollapsedDirectory::from_core)
             .collect();
         let source_audio = files
-            .source_audio_summary()
-            .map(BridgeSourceAudioSummary::from_core);
+            .source_audio()
+            .map(BridgeCandidateSourceAudio::from_core);
         let file_tags_identity = files.file_tags_identity();
         let bae_core::import::folder_scanner::CategorizedFiles { files } = files;
         BridgeCandidateFiles {

@@ -735,11 +735,14 @@
                 supplementalVideo,
             ]
                 + previewLogDocuments,
-            sourceAudio: .uniform(
-                descriptor: BridgeSourceAudioDescriptor(
-                    layout: .cue,
-                    format: previewSourceAudioFormat
-                )
+            sourceAudio: BridgeCandidateSourceAudio(
+                summary: .uniform(
+                    descriptor: BridgeSourceAudioDescriptor(
+                        layout: .cue,
+                        format: previewSourceAudioFormat
+                    )
+                ),
+                files: [mappedAudioContainer.file]
             ),
             collapsedDirectories: [previewLogsDirectory]
         )
@@ -851,11 +854,14 @@
                         )
                     ),
                 ],
-            sourceAudio: .uniform(
-                descriptor: BridgeSourceAudioDescriptor(
-                    layout: .file,
-                    format: previewSourceAudioFormat
-                )
+            sourceAudio: BridgeCandidateSourceAudio(
+                summary: .uniform(
+                    descriptor: BridgeSourceAudioDescriptor(
+                        layout: .file,
+                        format: previewSourceAudioFormat
+                    )
+                ),
+                files: trackAudioFiles.map(\.file)
             ),
             collapsedDirectories: []
         )

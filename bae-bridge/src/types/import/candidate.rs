@@ -268,14 +268,23 @@ pub struct BridgeCandidateFile {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeCandidateSourceAudio {
+    /// Aggregate source-audio facts for the collapsed release line.
+    pub summary: BridgeSourceAudioSummary,
+    /// Every physical audio file contributing to the summary, in
+    /// release-relative path order.
+    pub files: Vec<BridgeFileInfo>,
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeCandidateFiles {
     /// Core-derived identity of the audio files behind a File Tags preview.
     pub file_tags_identity: String,
     /// Every file in the folder, each exactly once, in release-relative path
     /// order.
     pub files: Vec<BridgeCandidateFile>,
-    /// Core-derived description of the effective source layout and audio facts.
-    pub source_audio: Option<BridgeSourceAudioSummary>,
+    /// Core-derived aggregate and physical files for the effective source audio.
+    pub source_audio: Option<BridgeCandidateSourceAudio>,
     /// The directories the roles table shows as one row. Every file whose
     /// `dir_prefix` matches one of these is stood for by its group row.
     pub collapsed_directories: Vec<BridgeCollapsedDirectory>,

@@ -146,6 +146,18 @@ struct ImportMappingTracksLayoutTests {
         withExtendedLifetime(window) {}
     }
 
+    @Test("Length shows source and metadata when they disagree")
+    func lengthShowsSourceAndMetadataWhenTheyDisagree() throws {
+        let track = try #require(pairedUnit.track)
+        let unit = BridgeMappingUnit(
+            source: pairedUnit.source,
+            becomes: .track(track: track, sourcePosition: "1"),
+            durationMs: 210_000
+        )
+
+        #expect(unit.displayedDuration == "3:00 → 3:30")
+    }
+
     @MainActor
     @Test(
         "awaiting release keeps Source in the same leading cell",
@@ -362,7 +374,6 @@ extension ImportMappingTracksLayoutTests {
             rootView: ImportMappingSourceCell(
                 source: source,
                 previewingPath: previewing,
-                lengthsDiverge: false,
                 evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder())
             )

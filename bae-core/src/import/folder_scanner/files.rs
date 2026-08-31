@@ -492,6 +492,18 @@ pub struct CategorizedFiles {
     pub files: Vec<CandidateFile>,
 }
 
+/// The effective source audio of one candidate: its aggregate descriptor and
+/// every physical file contributing to it, in release-relative path order.
+///
+/// The files stay as references to the scan's canonical [`ScannedFile`] values;
+/// this projection adds the relationship between that set and its summary
+/// without copying file identity or probe facts into another type.
+#[derive(Debug)]
+pub struct CandidateSourceAudio<'a> {
+    pub summary: crate::album_detail::SourceAudioSummary,
+    pub files: Vec<&'a ScannedFile>,
+}
+
 impl CategorizedFiles {
     /// The release's audio files, in `relative_path` order.
     pub fn audio(&self) -> impl Iterator<Item = &ScannedFile> {
@@ -501,7 +513,7 @@ impl CategorizedFiles {
             .map(|entry| &entry.file)
     }
 
-    pub fn source_audio_summary(&self) -> Option<crate::album_detail::SourceAudioSummary> {
+    pub fn source_audio(&self) -> Option<CandidateSourceAudio<'_>> {
         use crate::album_detail::{SourceAudioDescriptor, SourceAudioLayout, SourceAudioSummary};
         let carved_audio: std::collections::HashSet<&str> = self
             .carving_sheets()
@@ -509,18 +521,40 @@ impl CategorizedFiles {
             .flat_map(|sheet| self.sheet_audio_files(&sheet))
             .map(|file| file.relative_path.as_str())
             .collect();
-        SourceAudioSummary::from_descriptors(self.audio().filter_map(|file| {
-            file.source_audio
-                .as_ref()
-                .map(|audio| SourceAudioDescriptor {
-                    layout: if carved_audio.contains(file.relative_path.as_str()) {
-                        SourceAudioLayout::Cue
-                    } else {
-                        SourceAudioLayout::File
-                    },
-                    format: audio.format.clone(),
+        let files_and_descriptors: Vec<_> = self
+            .audio()
+            .filter_map(|file| {
+                file.source_audio.as_ref().map(|audio| {
+                    (
+                        file,
+                        SourceAudioDescriptor {
+                            layout: if carved_audio.contains(file.relative_path.as_str()) {
+                                SourceAudioLayout::Cue
+                            } else {
+                                SourceAudioLayout::File
+                            },
+                            format: audio.format.clone(),
+                        },
+                    )
                 })
-        }))
+            })
+            .collect();
+        let summary = SourceAudioSummary::from_descriptors(
+            files_and_descriptors
+                .iter()
+                .map(|(_, descriptor)| descriptor.clone()),
+        )?;
+        Some(CandidateSourceAudio {
+            summary,
+            files: files_and_descriptors
+                .into_iter()
+                .map(|(file, _)| file)
+                .collect(),
+        })
+    }
+
+    pub fn source_audio_summary(&self) -> Option<crate::album_detail::SourceAudioSummary> {
+        self.source_audio().map(|source_audio| source_audio.summary)
     }
 
     /// The release's images — the proposed cover and everything else.

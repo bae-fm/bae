@@ -59,9 +59,8 @@ extension BridgeSourceAudioSummary {
         switch self {
         case .uniform(let descriptor):
             descriptor.text
-        case .mixed(let descriptors):
-            ([coreString("core.audio.mixed")] + descriptors.map(\.text))
-                .joined(separator: coreString("core.audio.list_separator"))
+        case .mixed:
+            coreString("core.audio.mixed")
         }
     }
 }

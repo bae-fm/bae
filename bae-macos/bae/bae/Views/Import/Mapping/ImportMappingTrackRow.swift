@@ -5,10 +5,9 @@ import SwiftUI
 /// called, who it is by, and how long it runs.
 ///
 /// The title and artist are edited in place — this is the release being
-/// written, not a report of it. The control that re-points the row at another
-/// file is not a column: it appears over the Source cell when the pointer is
-/// on the row, and stays put on a row that has no file, which is the one row
-/// that has to be answered.
+/// written, not a report of it. A row without audio shows its file picker in
+/// Source. Re-pairing a settled row remains available from its context menu
+/// without occupying the table.
 struct ImportMappingTrackRow: View {
     let unit: BridgeMappingUnit
     /// The widths the table resolved for this pane, so the row's cells land
@@ -33,10 +32,7 @@ struct ImportMappingTrackRow: View {
     /// how much two rips of one track may legitimately differ, and the other
     /// desktop surface has to reach the same answer.
     private var lengthsDiverge: Bool {
-        bridgeLengthsDisagree(
-            fileMs: unit.source.durationMs,
-            releaseMs: unit.durationMs
-        )
+        unit.durationsDiverge
     }
 
     /// The track this row writes, where a release has named one.
@@ -83,6 +79,11 @@ struct ImportMappingTrackRow: View {
                 )
         }
         .onHover { hovering = $0 }
+        .contextMenu {
+            if let track, !audioChoices.isEmpty {
+                chooseFileButtons(track)
+            }
+        }
     }
 
     private var position: String {
@@ -160,16 +161,17 @@ struct ImportMappingTrackRow: View {
         ImportMappingSourceCell(
             source: unit.source,
             previewingPath: previewingPath,
-            lengthsDiverge: lengthsDiverge,
             evidence: evidence,
             actions: actions,
         )
         .frame(width: columns.source, alignment: .leading)
         .overlay(alignment: .trailing) {
-            if hovering || needsAnswer, let track {
+            if let track {
                 rowActions(track)
                     .padding(.leading, 8)
                     .background(Theme.surfaceElevated.opacity(0.94))
+                    .opacity(hovering || needsAnswer ? 1 : 0)
+                    .allowsHitTesting(hovering || needsAnswer)
             }
         }
     }
@@ -186,7 +188,9 @@ struct ImportMappingTrackRow: View {
     @ViewBuilder
     private func rowActions(_ track: BridgeRawTrackEdit) -> some View {
         HStack(spacing: 8) {
-            chooseFileMenu(track)
+            if needsAnswer {
+                chooseFileMenu(track)
+            }
             if unit.sourcePosition == nil, case .file(let file) = unit.source {
                 Button(coreString("ui.import.slots.exclude")) {
                     actions.exclude(file.fileId)
@@ -209,13 +213,7 @@ struct ImportMappingTrackRow: View {
     private func chooseFileMenu(_ track: BridgeRawTrackEdit) -> some View {
         if !audioChoices.isEmpty {
             Menu {
-                ForEach(audioChoices) { choice in
-                    Button {
-                        actions.chooseFile(track.id, choice.audio)
-                    } label: {
-                        Text(verbatim: choice.label)
-                    }
-                }
+                chooseFileButtons(track)
             } label: {
                 Text(coreString("ui.import.slots.choose_file"))
                     .font(.system(size: 11.5))
@@ -223,6 +221,17 @@ struct ImportMappingTrackRow: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func chooseFileButtons(_ track: BridgeRawTrackEdit) -> some View {
+        ForEach(audioChoices) { choice in
+            Button {
+                actions.chooseFile(track.id, choice.audio)
+            } label: {
+                Text(verbatim: choice.label)
+            }
         }
     }
 

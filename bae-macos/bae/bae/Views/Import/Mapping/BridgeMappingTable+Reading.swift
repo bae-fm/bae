@@ -203,9 +203,29 @@ func importDurationText(_ ms: UInt64?) -> String {
 }
 
 extension BridgeMappingUnit {
-    /// The value this row exposes in the Length column and to accessibility.
+    /// Whether the source probe and selected metadata disagree by more than
+    /// core's tolerance.
+    var durationsDiverge: Bool {
+        bridgeLengthsDisagree(
+            fileMs: source.durationMs,
+            releaseMs: durationMs
+        )
+    }
+
+    /// The value this row exposes in the Length column and to accessibility:
+    /// one duration when the facts agree, source → metadata when they do not.
     var displayedDuration: String {
-        importDurationText(durationMs)
+        switch (source.durationMs, durationMs) {
+        case (let sourceMs?, let metadataMs?) where durationsDiverge:
+            return
+                "\(importDurationText(sourceMs)) → \(importDurationText(metadataMs))"
+        case (_, let metadataMs?):
+            return importDurationText(metadataMs)
+        case (let sourceMs?, nil):
+            return importDurationText(sourceMs)
+        case (nil, nil):
+            return importDurationText(nil)
+        }
     }
 }
 
