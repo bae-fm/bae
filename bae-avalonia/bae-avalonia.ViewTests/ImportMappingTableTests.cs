@@ -53,10 +53,13 @@ public sealed class ImportMappingTableTests
     {
         var table = Build(new BridgeMappingTable(
             Array.Empty<BridgeMappingImage>(),
-            new[]
+            new BridgeMappingTrackGroup[]
             {
                 Unit(FileSource("01.flac"), TrackBecomes("t1", "Track One", Standalone("01.flac"))),
-                Unit(FileSource("rip.log"), new BridgeMappingBecomes.Kept()),
+            },
+            new BridgeMappingFileRow[]
+            {
+                new BridgeMappingFileRow.File(MappingFile("rip.log")),
             },
             Reconciliation: null));
 
@@ -73,6 +76,29 @@ public sealed class ImportMappingTableTests
         Assert.Contains(
             table.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == Loc.Core("ui.import.mapping.files_title"));
+    }
+
+    [AvaloniaFact]
+    public void TrackAndFileHeadersNameTheirOwnMeasurements()
+    {
+        var table = Build(new BridgeMappingTable(
+            Array.Empty<BridgeMappingImage>(),
+            new[]
+            {
+                Unit(FileSource("01.flac"), TrackBecomes("t1", "Track One", Standalone("01.flac"))),
+            },
+            new BridgeMappingFileRow[]
+            {
+                new BridgeMappingFileRow.File(MappingFile("notes.txt")),
+            },
+            Reconciliation: null));
+
+        Assert.Contains(
+            Rows(table)[0].GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Core("ui.import.slots.column.length"));
+        Assert.Contains(
+            FileRows(table)[0].GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == Loc.Chrome("storage.column.size"));
     }
 
     // The sheet a disc ID was computed from wears the chip on its own row, and
@@ -272,12 +298,13 @@ public sealed class ImportMappingTableTests
     {
         var table = new BridgeMappingTable(
             Array.Empty<BridgeMappingImage>(),
-            new BridgeMappingRow[]
+            new BridgeMappingTrackGroup[]
             {
                 Unit(FileSource("01.flac"), TrackBecomes("t0", "Track Title 1", Standalone("01.flac"))),
                 Unit(FileSource("02.flac"), TrackBecomes("t1", "   ", Standalone("02.flac"))),
                 Unit(new BridgeMappingSource.Missing(), TrackBecomes("t2", "Track Title 3", file: null)),
             },
+            Array.Empty<BridgeMappingFileRow>(),
             new BridgeSlotReconciliation.MoreTracks(2, 3));
 
         Assert.Equal(2, table.WillWriteCount());
@@ -291,11 +318,12 @@ public sealed class ImportMappingTableTests
     {
         var table = new BridgeMappingTable(
             Array.Empty<BridgeMappingImage>(),
-            new BridgeMappingRow[]
+            new BridgeMappingTrackGroup[]
             {
                 Unit(FileSource("01.flac"), TrackBecomes("t0", "Track Title 1", Standalone("01.flac"))),
                 Unit(new BridgeMappingSource.Missing(), TrackBecomes("t1", "Track Title 2", file: null)),
             },
+            Array.Empty<BridgeMappingFileRow>(),
             new BridgeSlotReconciliation.MoreTracks(1, 2));
 
         var choices = table.AudioChoices();
@@ -330,6 +358,7 @@ public sealed class ImportMappingTableTests
                         Standalone("01.flac")),
                     durationMs: 180_000),
             },
+            Array.Empty<BridgeMappingFileRow>(),
             Reconciliation: null));
 
         Assert.Contains(
@@ -356,6 +385,7 @@ public sealed class ImportMappingTableTests
             {
                 Unit(source, new BridgeMappingBecomes.AwaitingPick(), durationMs: 180_000),
             },
+            Array.Empty<BridgeMappingFileRow>(),
             Reconciliation: null));
 
         Assert.Contains(
@@ -390,18 +420,20 @@ public sealed class ImportMappingTableTests
     // it prints. Nothing is picked, so both entries await one.
     private static BridgeMappingTable SheetTable(BridgeSheetDisc assignment) => new(
         Array.Empty<BridgeMappingImage>(),
-        new BridgeMappingRow[]
+        new BridgeMappingTrackGroup[]
         {
-            new BridgeMappingRow.Sheet(
+            new BridgeMappingTrackGroup.Sheet(
                 new BridgeSheetGroup(
                     SheetId: SheetId,
                     Name: SheetId,
+                    Size: 2048,
                     LocalPath: "/folder/disc.cue",
                     Bound: new BridgeSheetBound.Unresolved(new[] { "disc.wav" }),
                     Assignment: assignment,
                     DiscOptions: new uint[] { 1, 2 }),
                 new[] { Entry(0), Entry(1) }),
         },
+        Array.Empty<BridgeMappingFileRow>(),
         Reconciliation: null);
 
     private static BridgeSheetDisc Disc(uint number) => new BridgeSheetDisc.Disc(number);
@@ -420,14 +452,16 @@ public sealed class ImportMappingTableTests
         new BridgeMappingBecomes.AwaitingPick(),
         DurationMs: null);
 
-    private static BridgeMappingRow Unit(
+    private static BridgeMappingTrackGroup Unit(
         BridgeMappingSource source,
         BridgeMappingBecomes becomes,
         ulong? durationMs = null) =>
-        new BridgeMappingRow.Unit(new BridgeMappingUnit(source, becomes, durationMs));
+        new BridgeMappingTrackGroup.Unit(new BridgeMappingUnit(source, becomes, durationMs));
 
     private static BridgeMappingSource FileSource(string fileId) =>
-        new BridgeMappingSource.File(new BridgeMappingFile(
+        new BridgeMappingSource.File(MappingFile(fileId));
+
+    private static BridgeMappingFile MappingFile(string fileId) => new(
             FileId: fileId,
             Name: fileId,
             Size: 1024,
@@ -438,7 +472,7 @@ public sealed class ImportMappingTableTests
                 : null,
             Role: BridgeMappingRole.Audio,
             Alternatives: System.Array.Empty<BridgeFileRoleChoice>(),
-            RoleChoice: null));
+            RoleChoice: null);
 
     private static BridgeMappingBecomes TrackBecomes(
         string id,

@@ -378,8 +378,6 @@ pub enum BridgeMappingBecomes {
         /// where the picked release names one for this track.
         source_position: Option<String>,
     },
-    /// Carried with the release, not one of its tracks.
-    Kept,
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,
 }
@@ -415,6 +413,7 @@ pub struct BridgeSheetGroup {
     /// `AppHandle::set_sheet_disc` take.
     pub sheet_id: String,
     pub name: String,
+    pub size: u64,
     /// Absolute path — what opening the sheet to read it reaches.
     pub local_path: String,
     pub bound: BridgeSheetBound,
@@ -462,10 +461,10 @@ pub struct BridgeMappingImage {
     pub local_path: String,
 }
 
-/// One row of the mapping table. Mirror of bae-core's `MappingRow`.
+/// One group in the track section. Mirror of bae-core's `MappingTrackGroup`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMappingRow {
+pub enum BridgeMappingTrackGroup {
     /// One source unit and what it becomes.
     Unit { unit: BridgeMappingUnit },
     /// A track sheet and the entries it carves, which are its child rows.
@@ -473,8 +472,22 @@ pub enum BridgeMappingRow {
         sheet: BridgeSheetGroup,
         entries: Vec<BridgeMappingUnit>,
     },
-    /// A directory whose files all do the same job, shown as one row.
-    Directory { directory: BridgeCollapsedDirectory },
+}
+
+/// One row in the files section. Mirror of bae-core's `MappingFileRow`.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMappingFileRow {
+    File {
+        file: BridgeMappingFile,
+    },
+    /// A sheet that currently carves no track rows and can be assigned audio.
+    Sheet {
+        sheet: BridgeSheetGroup,
+    },
+    Directory {
+        directory: BridgeCollapsedDirectory,
+    },
 }
 
 /// The mapping table: every source unit the folder offers, alongside the track
@@ -488,7 +501,8 @@ pub enum BridgeMappingRow {
 pub struct BridgeMappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<BridgeMappingImage>,
-    pub rows: Vec<BridgeMappingRow>,
+    pub track_groups: Vec<BridgeMappingTrackGroup>,
+    pub files: Vec<BridgeMappingFileRow>,
     /// The tally over the rows that become tracks. `None` when there is nothing
     /// to reconcile the folder against — no release is picked, or the tracklist
     /// was read off the folder's own files and so cannot disagree with it.

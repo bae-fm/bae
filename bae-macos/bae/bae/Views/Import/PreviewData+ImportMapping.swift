@@ -51,7 +51,9 @@
         }
 
         /// One audio file and the track the release puts on it.
-        private static func mappingTrackRow(_ index: Int) -> BridgeMappingRow {
+        private static func mappingTrackRow(
+            _ index: Int
+        ) -> BridgeMappingTrackGroup {
             .unit(
                 unit: BridgeMappingUnit(
                     source: .file(file: mappingAudio(index)),
@@ -67,16 +69,9 @@
         /// One of the folder's files that is not one of the release's tracks.
         private static func carriedRow(
             _ file: BridgeCandidateFile,
-            role: BridgeMappingRole,
-            becomes: BridgeMappingBecomes
-        ) -> BridgeMappingRow {
-            .unit(
-                unit: BridgeMappingUnit(
-                    source: .file(file: mappingFile(file, role: role)),
-                    becomes: becomes,
-                    durationMs: nil
-                )
-            )
+            role: BridgeMappingRole
+        ) -> BridgeMappingFileRow {
+            .file(file: mappingFile(file, role: role))
         }
 
         /// The folder's images, as the gallery shows them.
@@ -102,13 +97,8 @@
         /// carried alongside them.
         static let mappingTable = BridgeMappingTable(
             images: mappingImages,
-            rows: (1...9).map(mappingTrackRow) + [
-                carriedRow(
-                    infoLog,
-                    role: .document,
-                    becomes: .kept
-                )
-            ],
+            trackGroups: (1...9).map(mappingTrackRow),
+            files: [carriedRow(infoLog, role: .document)],
             reconciliation: .agrees(count: 9)
         )
 
@@ -194,7 +184,7 @@
         /// release track the folder has nothing for.
         static let moreTracksMappingTable = BridgeMappingTable(
             images: [],
-            rows: moreTracksEditValues.tracks.enumerated()
+            trackGroups: moreTracksEditValues.tracks.enumerated()
                 .map {
                     index,
                     track in
@@ -238,6 +228,7 @@
                         )
                     )
                 },
+            files: [],
             reconciliation: .moreTracks(files: 1, tracks: 10)
         )
 
@@ -270,6 +261,7 @@
         private static let previewSheetGroup = BridgeSheetGroup(
             sheetId: boundTrackSheet.file.name,
             name: boundTrackSheet.file.fileName,
+            size: boundTrackSheet.file.size,
             localPath: boundTrackSheet.file.localPath,
             bound: .describes(
                 container: BridgeMappingContainer(
@@ -287,13 +279,13 @@
         /// the folder's images and a collapsed logs directory alongside it.
         static let sheetMappingTable = BridgeMappingTable(
             images: mappingImages,
-            rows: [
+            trackGroups: [
                 .sheet(
                     sheet: previewSheetGroup,
                     entries: (0..<9).map(sheetEntryUnit)
-                ),
-                .directory(directory: previewLogsDirectory),
+                )
             ],
+            files: [.directory(directory: previewLogsDirectory)],
             reconciliation: .agrees(count: 9)
         )
 
@@ -305,19 +297,17 @@
         /// in the canvas without hunting for the fixture that has it.
         static let everyRowKindMappingTable = BridgeMappingTable(
             images: mappingImages,
-            rows: [
+            trackGroups: [
                 .sheet(
                     sheet: previewSheetGroup,
                     entries: (0..<9).map(sheetEntryUnit)
-                ),
-                carriedRow(infoLog, role: .document, becomes: .kept),
+                )
+            ],
+            files: [
+                carriedRow(infoLog, role: .document),
                 .directory(directory: previewLogsDirectory),
-                carriedRow(notesDocument, role: .document, becomes: .kept),
-                carriedRow(
-                    supplementalVideo,
-                    role: .other,
-                    becomes: .kept
-                ),
+                carriedRow(notesDocument, role: .document),
+                carriedRow(supplementalVideo, role: .other),
             ],
             reconciliation: .agrees(count: 9)
         )
@@ -326,9 +316,9 @@
         /// tally them against.
         static let fileTagsMappingTable = BridgeMappingTable(
             images: [],
-            rows: (1...9)
+            trackGroups: (1...9)
                 .map { index in
-                    BridgeMappingRow.unit(
+                    BridgeMappingTrackGroup.unit(
                         unit: BridgeMappingUnit(
                             source: .file(file: mappingAudio(index)),
                             becomes: .track(
@@ -348,6 +338,7 @@
                         )
                     )
                 },
+            files: [],
             reconciliation: nil
         )
 
@@ -637,9 +628,9 @@
 
         private static let blankDraftMappingTable = BridgeMappingTable(
             images: mappingImages,
-            rows: blankDraftValues.tracks.enumerated()
+            trackGroups: blankDraftValues.tracks.enumerated()
                 .map { index, track in
-                    BridgeMappingRow.unit(
+                    BridgeMappingTrackGroup.unit(
                         unit: BridgeMappingUnit(
                             source: .file(file: mappingAudio(index + 1)),
                             becomes: .track(
@@ -650,6 +641,7 @@
                         )
                     )
                 },
+            files: [],
             reconciliation: nil
         )
 

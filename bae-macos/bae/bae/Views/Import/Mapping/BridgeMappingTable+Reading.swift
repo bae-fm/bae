@@ -55,13 +55,12 @@ extension BridgeMappingSource {
 
 }
 
-extension BridgeMappingRow {
-    /// The units this row carries: itself, or the entries a sheet carves.
+extension BridgeMappingTrackGroup {
+    /// The units this group carries: itself, or the entries a sheet carves.
     var units: [BridgeMappingUnit] {
         switch self {
         case .unit(let unit): [unit]
         case .sheet(_, let entries): entries
-        case .directory: []
         }
     }
 }
@@ -69,20 +68,7 @@ extension BridgeMappingRow {
 extension BridgeMappingTable {
     /// Every unit the table carries, top-level rows and sheet entries alike, in
     /// the order the table lays them out.
-    var units: [BridgeMappingUnit] { rows.flatMap(\.units) }
-
-    /// The track sheets in table order. Their source-level controls sit above
-    /// the playable rows rather than masquerading as tracks inside them.
-    var sheets: [BridgeSheetGroup] {
-        rows.compactMap { row in
-            guard case .sheet(let sheet, _) = row else { return nil }
-            return sheet
-        }
-    }
-
-    /// Every playable row, including slices a track sheet carves, in the same
-    /// order core supplied them.
-    var trackUnits: [BridgeMappingUnit] { units.filter(\.isTrack) }
+    var units: [BridgeMappingUnit] { trackGroups.flatMap(\.units) }
 
     /// Rows that will write a track.
     var willWriteCount: Int { units.count(where: \.writesTrack) }
@@ -238,34 +224,6 @@ extension BridgeMappingUnit {
             return importDurationText(sourceMs)
         case (nil, nil):
             return importDurationText(nil)
-        }
-    }
-}
-
-extension BridgeMappingUnit {
-    /// Whether this unit is one of the release's tracks — settled as one, or
-    /// audio waiting for a release to name it. Both belong in the Tracks
-    /// section: the table is the same table before and after a pick, and a
-    /// folder's audio does not move sections when one lands.
-    var isTrack: Bool {
-        switch becomes {
-        case .track, .awaitingPick: return true
-        case .kept: return false
-        }
-    }
-}
-
-extension BridgeMappingTable {
-    /// The rows carried with the release that are not its tracks: the files
-    /// with a role and nothing to become, and the directories that collapse to
-    /// one row. What the Files section lists.
-    var keptRows: [BridgeMappingRow] {
-        rows.filter { row in
-            switch row {
-            case .unit(let unit): return !unit.isTrack
-            case .directory: return true
-            case .sheet: return false
-            }
         }
     }
 }

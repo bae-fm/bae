@@ -9,7 +9,7 @@ import SwiftUI
 /// the sentence. An excluded audio file also keeps the action that puts it back
 /// in the track list.
 struct ImportMappingFileRow: View {
-    let unit: BridgeMappingUnit
+    let file: BridgeMappingFile
     let columns: ImportMappingColumns.Files
     let previewingPath: String?
     /// Identifying signals extracted from this file — the rip log a disc ID
@@ -21,7 +21,7 @@ struct ImportMappingFileRow: View {
         HStack(spacing: ImportMappingColumns.spacing) {
             HStack(spacing: ImportMappingColumns.spacing) {
                 ImportMappingSourceCell(
-                    source: unit.source,
+                    source: .file(file: file),
                     previewingPath: previewingPath,
                     evidence: evidence,
                     showsFileSize: false,
@@ -41,9 +41,7 @@ struct ImportMappingFileRow: View {
 
     @ViewBuilder
     private var roleControl: some View {
-        if case .file(let file) = unit.source,
-            !file.alternatives.isEmpty
-        {
+        if !file.alternatives.isEmpty {
             ImportRoleChoiceControl(
                 alternatives: file.alternatives,
                 inForce: file.roleChoice,
@@ -53,7 +51,6 @@ struct ImportMappingFileRow: View {
     }
 
     private var sizeText: String {
-        guard case .file(let file) = unit.source else { return "" }
         return file.sizeText
     }
 }

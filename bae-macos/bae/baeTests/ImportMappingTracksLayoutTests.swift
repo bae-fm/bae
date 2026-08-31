@@ -267,17 +267,23 @@ extension ImportMappingTracksLayoutTests {
     func trackSheetSourceIsPartitionedFromPlayableRows() {
         let table = BridgeMappingTable(
             images: [],
-            rows: [
+            trackGroups: [
                 .sheet(
                     sheet: sheet(associated: true),
                     entries: [sheetEntryUnit(number: 1, title: "Source Title")]
                 )
             ],
+            files: [],
             reconciliation: .agrees(count: 1)
         )
 
-        #expect(table.sheets.map(\.sheetId) == ["descriptor.cue"])
-        #expect(table.trackUnits.map(\.rowId) == ["entry:descriptor.cue:0"])
+        guard case .sheet(let sheet, let entries) = table.trackGroups[0]
+        else {
+            Issue.record("expected a sheet group")
+            return
+        }
+        #expect(sheet.sheetId == "descriptor.cue")
+        #expect(entries.map(\.rowId) == ["entry:descriptor.cue:0"])
     }
 
     @MainActor
@@ -360,6 +366,7 @@ extension ImportMappingTracksLayoutTests {
             sheetId: "descriptor.cue",
             name:
                 "A long descriptor filename that must remain inside Source.cue",
+            size: 2_048,
             localPath: "/tmp/source/descriptor.cue",
             bound: associated
                 ? .describes(

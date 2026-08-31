@@ -278,9 +278,9 @@ struct ImportMappingPaneTests {
             )
         )
         let after = MappingFixtures.mapping(of: store)
-        #expect(after.rows.count == 1)
-        guard case .sheet(let sheet, let entries) = after.rows[0] else {
-            Issue.record("expected a sheet row, got \(after.rows[0])")
+        #expect(after.trackGroups.count == 1)
+        guard case .sheet(let sheet, let entries) = after.trackGroups[0] else {
+            Issue.record("expected a sheet group, got \(after.trackGroups[0])")
             return
         }
         #expect(sheet.bound.containerId == MappingFixtures.containerId)
@@ -574,7 +574,7 @@ extension ImportMappingPaneTests {
         )
         guard
             case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
-                .rows[0]
+                .trackGroups[0]
         else {
             Issue.record("expected a sheet row")
             return
@@ -607,12 +607,11 @@ extension ImportMappingPaneTests {
             )
         )
         let mapping = MappingFixtures.mapping(of: store)
-        guard case .sheet(let sheet, let entries) = mapping.rows[0] else {
-            Issue.record("expected a sheet row")
+        guard case .sheet(let sheet) = mapping.files[0] else {
+            Issue.record("expected an unassociated sheet file")
             return
         }
         #expect(sheet.assignment == .ignored)
-        #expect(entries.isEmpty)
         #expect(mapping.willWriteCount == 1)
     }
 
@@ -647,7 +646,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == .fileTags)
-        #expect(candidate.mapping.rows.count == 2)
+        #expect(candidate.mapping.trackGroups.count == 2)
         #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)
 
@@ -674,7 +673,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
-        #expect(candidate.mapping.rows.count == 13)
+        #expect(candidate.mapping.trackGroups.count == 13)
         #expect(candidate.mapping.willWriteCount == 13)
         #expect(
             candidate.pickedRelease?.releaseId == MappingFixtures.releaseId

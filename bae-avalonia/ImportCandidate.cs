@@ -53,7 +53,7 @@ public sealed class ImportCandidate
     /// <summary>Every source unit the folder offers with the track committing
     /// makes of it. An empty table until the first read answers.</summary>
     internal BridgeMappingTable Mapping =>
-        Detail?.Mapping ?? new BridgeMappingTable([], [], Reconciliation: null);
+        Detail?.Mapping ?? new BridgeMappingTable([], [], [], Reconciliation: null);
 
     /// <summary>The cover this candidate commits with.</summary>
     internal BridgeCoverChoice? Cover => Detail?.Cover;

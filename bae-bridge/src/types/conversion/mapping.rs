@@ -529,7 +529,6 @@ impl BridgeMappingBecomes {
                 track: BridgeRawTrackEdit::from_core(track),
                 source_position,
             },
-            MappingBecomes::Kept => Self::Kept,
             MappingBecomes::AwaitingPick => Self::AwaitingPick,
         }
     }
@@ -544,7 +543,6 @@ impl BridgeMappingBecomes {
                 track: track.into_core(),
                 source_position,
             },
-            Self::Kept => MappingBecomes::Kept,
             Self::AwaitingPick => MappingBecomes::AwaitingPick,
         }
     }
@@ -624,6 +622,7 @@ impl BridgeSheetGroup {
         let bae_core::import::SheetGroup {
             sheet_id,
             name,
+            size,
             path,
             bound,
             assignment,
@@ -632,6 +631,7 @@ impl BridgeSheetGroup {
         BridgeSheetGroup {
             sheet_id,
             name,
+            size,
             local_path: path.to_string_lossy().into_owned(),
             bound: BridgeSheetBound::from_core(bound),
             assignment: BridgeSheetDisc::from_core(assignment),
@@ -643,6 +643,7 @@ impl BridgeSheetGroup {
         let BridgeSheetGroup {
             sheet_id,
             name,
+            size,
             local_path,
             bound,
             assignment,
@@ -651,6 +652,7 @@ impl BridgeSheetGroup {
         bae_core::import::SheetGroup {
             sheet_id,
             name,
+            size,
             path: std::path::PathBuf::from(local_path),
             bound: bound.into_core(),
             assignment: assignment.into_core(),
@@ -722,38 +724,61 @@ impl BridgeMappingImage {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeMappingRow {
-    fn from_core(row: bae_core::import::MappingRow) -> Self {
-        use bae_core::import::MappingRow;
-        match row {
-            MappingRow::Unit(unit) => Self::Unit {
+impl BridgeMappingTrackGroup {
+    fn from_core(group: bae_core::import::MappingTrackGroup) -> Self {
+        use bae_core::import::MappingTrackGroup;
+        match group {
+            MappingTrackGroup::Unit(unit) => Self::Unit {
                 unit: BridgeMappingUnit::from_core(unit),
             },
-            MappingRow::Sheet { sheet, entries } => Self::Sheet {
+            MappingTrackGroup::Sheet { sheet, entries } => Self::Sheet {
                 sheet: BridgeSheetGroup::from_core(sheet),
                 entries: entries
                     .into_iter()
                     .map(BridgeMappingUnit::from_core)
                     .collect(),
             },
-            MappingRow::Directory(directory) => Self::Directory {
-                directory: BridgeCollapsedDirectory::from_core(directory),
-            },
         }
     }
 
-    fn into_core(self) -> bae_core::import::MappingRow {
-        use bae_core::import::MappingRow;
+    fn into_core(self) -> bae_core::import::MappingTrackGroup {
+        use bae_core::import::MappingTrackGroup;
         match self {
-            Self::Unit { unit } => MappingRow::Unit(unit.into_core()),
-            Self::Sheet { sheet, entries } => MappingRow::Sheet {
+            Self::Unit { unit } => MappingTrackGroup::Unit(unit.into_core()),
+            Self::Sheet { sheet, entries } => MappingTrackGroup::Sheet {
                 sheet: sheet.into_core(),
                 entries: entries
                     .into_iter()
                     .map(BridgeMappingUnit::into_core)
                     .collect(),
             },
-            Self::Directory { directory } => MappingRow::Directory(directory.into_core()),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingFileRow {
+    fn from_core(row: bae_core::import::MappingFileRow) -> Self {
+        use bae_core::import::MappingFileRow;
+        match row {
+            MappingFileRow::File(file) => Self::File {
+                file: BridgeMappingFile::from_core(file),
+            },
+            MappingFileRow::Sheet(sheet) => Self::Sheet {
+                sheet: BridgeSheetGroup::from_core(sheet),
+            },
+            MappingFileRow::Directory(directory) => Self::Directory {
+                directory: BridgeCollapsedDirectory::from_core(directory),
+            },
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingFileRow {
+        use bae_core::import::MappingFileRow;
+        match self {
+            Self::File { file } => MappingFileRow::File(file.into_core()),
+            Self::Sheet { sheet } => MappingFileRow::Sheet(sheet.into_core()),
+            Self::Directory { directory } => MappingFileRow::Directory(directory.into_core()),
         }
     }
 }
@@ -763,7 +788,8 @@ impl BridgeMappingTable {
     pub(crate) fn from_core(table: bae_core::import::MappingTable) -> Self {
         let bae_core::import::MappingTable {
             images,
-            rows,
+            track_groups,
+            files,
             reconciliation,
         } = table;
         BridgeMappingTable {
@@ -771,7 +797,14 @@ impl BridgeMappingTable {
                 .into_iter()
                 .map(BridgeMappingImage::from_core)
                 .collect(),
-            rows: rows.into_iter().map(BridgeMappingRow::from_core).collect(),
+            track_groups: track_groups
+                .into_iter()
+                .map(BridgeMappingTrackGroup::from_core)
+                .collect(),
+            files: files
+                .into_iter()
+                .map(BridgeMappingFileRow::from_core)
+                .collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::from_core),
         }
     }
@@ -779,7 +812,8 @@ impl BridgeMappingTable {
     pub(crate) fn into_core(self) -> bae_core::import::MappingTable {
         let BridgeMappingTable {
             images,
-            rows,
+            track_groups,
+            files,
             reconciliation,
         } = self;
         bae_core::import::MappingTable {
@@ -787,7 +821,14 @@ impl BridgeMappingTable {
                 .into_iter()
                 .map(BridgeMappingImage::into_core)
                 .collect(),
-            rows: rows.into_iter().map(BridgeMappingRow::into_core).collect(),
+            track_groups: track_groups
+                .into_iter()
+                .map(BridgeMappingTrackGroup::into_core)
+                .collect(),
+            files: files
+                .into_iter()
+                .map(BridgeMappingFileRow::into_core)
+                .collect(),
             reconciliation: reconciliation.map(BridgeSlotReconciliation::into_core),
         }
     }

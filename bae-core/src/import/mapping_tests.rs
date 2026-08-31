@@ -76,17 +76,18 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
         .collect()
 }
 
-fn becomes(row: &MappingRow) -> Vec<&MappingBecomes> {
-    match row {
-        MappingRow::Unit(unit) => vec![&unit.becomes],
-        MappingRow::Sheet { entries, .. } => entries.iter().map(|e| &e.becomes).collect(),
-        MappingRow::Directory(_) => Vec::new(),
+fn becomes(group: &MappingTrackGroup) -> Vec<&MappingBecomes> {
+    match group {
+        MappingTrackGroup::Unit(unit) => vec![&unit.becomes],
+        MappingTrackGroup::Sheet { entries, .. } => {
+            entries.iter().map(|entry| &entry.becomes).collect()
+        }
     }
 }
 
-fn file_row(row: &MappingRow) -> &MappingFile {
-    match row {
-        MappingRow::Unit(MappingUnit {
+fn track_file(group: &MappingTrackGroup) -> &MappingFile {
+    match group {
+        MappingTrackGroup::Unit(MappingUnit {
             source: MappingSource::File(file),
             ..
         }) => file,
@@ -110,21 +111,23 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     assert!(table.reconciliation.is_none());
     assert_eq!(table.images.len(), 1);
     assert!(matches!(
-        becomes(&table.rows[0])[0],
+        becomes(&table.track_groups[0])[0],
         MappingBecomes::AwaitingPick
     ));
-    assert_eq!(file_row(&table.rows[0]).name, "01.flac");
+    assert_eq!(track_file(&table.track_groups[0]).name, "01.flac");
     assert!(matches!(
-        becomes(&table.rows[1])[0],
+        becomes(&table.track_groups[1])[0],
         MappingBecomes::AwaitingPick
     ));
-    assert_eq!(file_row(&table.rows[1]).name, "02.flac");
-    assert!(matches!(becomes(&table.rows[2])[0], MappingBecomes::Kept));
-    assert_eq!(file_row(&table.rows[2]).name, "rip.log");
+    assert_eq!(track_file(&table.track_groups[1]).name, "02.flac");
+    let MappingFileRow::File(file) = &table.files[0] else {
+        panic!("expected a carried file, got {:?}", table.files[0]);
+    };
+    assert_eq!(file.name, "rip.log");
     // A row nothing has opened has no probed length to show.
-    assert_eq!(file_row(&table.rows[0]).duration_ms, None);
-    assert_eq!(file_row(&table.rows[0]).role, MappingRole::Audio);
-    assert_eq!(file_row(&table.rows[2]).role, MappingRole::Document);
+    assert_eq!(track_file(&table.track_groups[0]).duration_ms, None);
+    assert_eq!(track_file(&table.track_groups[0]).role, MappingRole::Audio);
+    assert_eq!(file.role, MappingRole::Document);
 }
 
 #[test]
@@ -147,7 +150,7 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
         &durations,
     );
 
-    let MappingRow::Unit(unit) = &table.rows[0] else {
+    let MappingTrackGroup::Unit(unit) = &table.track_groups[0] else {
         panic!("expected a unit row")
     };
     assert!(matches!(unit.becomes, MappingBecomes::Track { .. }));
@@ -163,7 +166,7 @@ fn a_track_awaiting_metadata_uses_its_stored_probe() {
 
     let table = mapping_table(&files, None, &durations);
 
-    let MappingRow::Unit(unit) = &table.rows[0] else {
+    let MappingTrackGroup::Unit(unit) = &table.track_groups[0] else {
         panic!("expected a unit row")
     };
     assert_eq!(unit.becomes, MappingBecomes::AwaitingPick);
@@ -207,8 +210,8 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
         .images
         .iter()
         .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
-    assert_eq!(table.rows.len(), 1);
-    assert_eq!(file_row(&table.rows[0]).name, "01.flac");
+    assert_eq!(table.track_groups.len(), 1);
+    assert_eq!(track_file(&table.track_groups[0]).name, "01.flac");
 }
 
 /// A bound sheet is one group row over its entries: the entries carry the
@@ -237,9 +240,13 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
         &durations,
     );
 
-    assert_eq!(table.rows.len(), 1, "the sheet is the folder's only row");
-    let MappingRow::Sheet { sheet, entries } = &table.rows[0] else {
-        panic!("expected a sheet row, got {:?}", table.rows[0]);
+    assert_eq!(
+        table.track_groups.len(),
+        1,
+        "the sheet is the folder's only group"
+    );
+    let MappingTrackGroup::Sheet { sheet, entries } = &table.track_groups[0] else {
+        panic!("expected a sheet group, got {:?}", table.track_groups[0]);
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
@@ -306,20 +313,20 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
         &durations,
     );
 
-    assert_eq!(table.rows.len(), 4);
+    assert_eq!(table.track_groups.len(), 4);
     assert!(matches!(
-        table.rows[2],
-        MappingRow::Unit(MappingUnit {
+        table.track_groups[2],
+        MappingTrackGroup::Unit(MappingUnit {
             source: MappingSource::Missing,
             ..
         }),
     ));
-    let MappingRow::Unit(MappingUnit {
+    let MappingTrackGroup::Unit(MappingUnit {
         becomes: MappingBecomes::Track { track, .. },
         ..
-    }) = &table.rows[3]
+    }) = &table.track_groups[3]
     else {
-        panic!("expected a track row, got {:?}", table.rows[3]);
+        panic!("expected a track row, got {:?}", table.track_groups[3]);
     };
     assert_eq!(track.title, "Track Title 4");
     assert_eq!(track.file, None, "nothing on disk backs it");
@@ -419,12 +426,12 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
     let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
     // The sheet is named where it sits on disk, after the loose audio that
     // sorts before it — a sheet that carves nothing occupies no run.
-    let Some(MappingRow::Sheet { sheet, entries }) = table
-        .rows
+    let Some(MappingFileRow::Sheet(sheet)) = table
+        .files
         .iter()
-        .find(|row| matches!(row, MappingRow::Sheet { .. }))
+        .find(|row| matches!(row, MappingFileRow::Sheet(_)))
     else {
-        panic!("expected a sheet row among {:?}", table.rows);
+        panic!("expected a sheet row among {:?}", table.files);
     };
     assert_eq!(
         sheet.bound,
@@ -433,7 +440,34 @@ fn a_sheet_that_describes_nothing_says_what_it_asked_for() {
         },
     );
     assert_eq!(sheet.path, tmp.path().join("CDImage.cue"));
-    assert!(entries.is_empty(), "it carves nothing");
+}
+
+/// The projection keeps the two meanings of a sheet separate: one that carves
+/// audio heads those track rows, while one that carves nothing remains a file
+/// the user can resolve from the files section.
+#[test]
+fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    write_flac(&tmp.path().join("disc.flac"));
+    fs::write(tmp.path().join("disc.cue"), cue_sheet_text("disc.flac", 2))
+        .expect("write associated cue");
+    fs::write(
+        tmp.path().join("unresolved.cue"),
+        cue_sheet_text("absent.wav", 2),
+    )
+    .expect("write unassociated cue");
+
+    let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
+
+    assert!(matches!(
+        table.track_groups.as_slice(),
+        [MappingTrackGroup::Sheet { sheet, entries }]
+            if sheet.sheet_id == "disc.cue" && entries.len() == 2
+    ));
+    assert!(matches!(
+        table.files.as_slice(),
+        [MappingFileRow::Sheet(sheet)] if sheet.sheet_id == "unresolved.cue"
+    ));
 }
 
 /// Editing a row writes the track back onto the row that commits it, found
@@ -506,7 +540,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
 
     let table = mapping_without_track(table, "import-track-2");
 
-    assert_eq!(table.rows.len(), 2);
+    assert_eq!(table.track_groups.len(), 2);
     assert_eq!(mapping_tracks(&table).len(), 2);
     assert_eq!(table.images[0].file_id, "cover.jpg");
     assert_eq!(

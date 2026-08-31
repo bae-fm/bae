@@ -15,7 +15,7 @@ struct ImportMappingFileRowTests {
         let size = NSSize(width: tableWidth, height: 60)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingFileRow(
-                unit: excludedAudioUnit,
+                file: excludedAudioFile,
                 columns:
                     ImportMappingColumns.resolved(
                         tableWidth: tableWidth
@@ -46,23 +46,17 @@ struct ImportMappingFileRowTests {
         withExtendedLifetime(window) {}
     }
 
-    private var excludedAudioUnit: BridgeMappingUnit {
-        BridgeMappingUnit(
-            source: .file(
-                file: BridgeMappingFile(
-                    fileId: "excluded.flac",
-                    name: "excluded.flac",
-                    size: 24_000_000,
-                    localPath: "/tmp/excluded.flac",
-                    durationMs: 180_000,
-                    audioFormat: MappingFixtures.audioFormat,
-                    role: .other,
-                    alternatives: [.audio, .notATrack],
-                    roleChoice: .notATrack
-                )
-            ),
-            becomes: .kept,
-            durationMs: nil
+    private var excludedAudioFile: BridgeMappingFile {
+        BridgeMappingFile(
+            fileId: "excluded.flac",
+            name: "excluded.flac",
+            size: 24_000_000,
+            localPath: "/tmp/excluded.flac",
+            durationMs: 180_000,
+            audioFormat: MappingFixtures.audioFormat,
+            role: .other,
+            alternatives: [.audio, .notATrack],
+            roleChoice: .notATrack
         )
     }
 

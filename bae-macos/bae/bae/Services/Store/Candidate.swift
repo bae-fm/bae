@@ -388,7 +388,12 @@ struct Candidate: Equatable, Identifiable {
     /// does not change for it.
     var mapping: BridgeMappingTable {
         detail?.mapping
-            ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
+            ?? BridgeMappingTable(
+                images: [],
+                trackGroups: [],
+                files: [],
+                reconciliation: nil
+            )
     }
 
     /// The cover this candidate commits with.

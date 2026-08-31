@@ -197,9 +197,9 @@ pub(crate) fn apply_track_mapping_edits(
             return mapping_without_track(table, &edit.track_id);
         }
         let track = table
-            .rows
+            .track_groups
             .iter()
-            .flat_map(|row| row.units())
+            .flat_map(|group| group.units())
             .find_map(|unit| match &unit.becomes {
                 crate::import::mapping::MappingBecomes::Track { track, .. }
                     if track.id == edit.track_id =>

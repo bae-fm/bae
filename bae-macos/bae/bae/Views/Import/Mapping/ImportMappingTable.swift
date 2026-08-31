@@ -7,9 +7,8 @@ import SwiftUI
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
 /// where the pairing is visible. A track sheet describes how playable rows are
-/// carved, so its source controls sit above the track table rather than inside
-/// it. A collapsed directory is one row, because the roles of fourteen rip
-/// logs are one fact.
+/// carved, so its source controls head the exact rows it owns. A collapsed
+/// directory is one row, because the roles of fourteen rip logs are one fact.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// What each track sheet may be bound to, by the sheet's file id. Core
@@ -47,10 +46,10 @@ struct ImportMappingTable: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             tracksSection
-            if !table.keptRows.isEmpty {
+            if !table.files.isEmpty {
                 section(title: coreString("ui.import.mapping.files_title")) {
                     fileHeaderRow
-                    ForEach(table.keptRows, id: \.rowId) { row in
+                    ForEach(table.files, id: \.rowId) { row in
                         fileBody(of: row)
                     }
                 }
@@ -113,24 +112,13 @@ struct ImportMappingTable: View {
                     .flatMap(bridgeSlotReconciliationText)
             )
             ScrollView(.horizontal) {
-                VStack(alignment: .leading, spacing: 8) {
-                    if !table.sheets.isEmpty {
-                        rowStack {
-                            ForEach(
-                                table.sheets,
-                                id: \.sheetId,
-                                content: sheetRow
-                            )
-                        }
-                    }
-                    artistFillRows {
-                        trackHeaderRow
-                        ForEach(
-                            table.trackUnits,
-                            id: \.rowId,
-                            content: trackRow
-                        )
-                    }
+                artistFillRows {
+                    trackHeaderRow
+                    ForEach(
+                        table.trackGroups,
+                        id: \.rowId,
+                        content: trackGroup
+                    )
                 }
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -142,6 +130,17 @@ struct ImportMappingTable: View {
         }
     }
 
+    @ViewBuilder
+    private func trackGroup(_ group: BridgeMappingTrackGroup) -> some View {
+        switch group {
+        case .unit(let unit):
+            trackRow(unit)
+        case .sheet(let sheet, let entries):
+            sheetRow(sheet)
+            ForEach(entries, id: \.rowId, content: trackRow)
+        }
+    }
+
     private func sheetRow(_ sheet: BridgeSheetGroup) -> some View {
         ImportMappingSheetRow(
             sheet: sheet,
@@ -149,7 +148,7 @@ struct ImportMappingTable: View {
             evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
             actions: actions,
         )
-        .rowChrome()
+        .sheetGroupHeaderChrome()
     }
 
     private func trackRow(_ unit: BridgeMappingUnit) -> some View {
@@ -193,15 +192,24 @@ struct ImportMappingTable: View {
     /// here with a role is the whole statement — there is no sentence saying
     /// they are kept, because the section they are in says it.
     @ViewBuilder
-    private func fileBody(of row: BridgeMappingRow) -> some View {
+    private func fileBody(of row: BridgeMappingFileRow) -> some View {
         switch row {
-        case .unit(let unit):
+        case .file(let file):
             ImportMappingFileRow(
-                unit: unit,
+                file: file,
                 columns: columns.files,
                 previewingPath: previewingPath,
-                evidence: evidenceFor(unit),
+                evidence: ImportEvidence.of(file.fileId, in: evidence),
                 actions: actions,
+            )
+            .rowChrome()
+        case .sheet(let sheet):
+            ImportMappingSheetRow(
+                sheet: sheet,
+                options: bindingOptions[sheet.sheetId],
+                evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
+                actions: actions,
+                fileColumns: columns.files,
             )
             .rowChrome()
         case .directory(let directory):
@@ -210,8 +218,6 @@ struct ImportMappingTable: View {
                 columns: columns.files
             )
             .rowChrome()
-        case .sheet:
-            EmptyView()
         }
     }
 
@@ -265,6 +271,20 @@ extension View {
                 Rectangle()
                     .fill(.white.opacity(0.07))
                     .frame(height: 1)
+            }
+    }
+
+    /// A sheet is the heading for the track rows immediately below it.
+    fileprivate func sheetGroupHeaderChrome() -> some View {
+        padding(.horizontal, ImportMappingColumns.rowPadding)
+            .padding(.vertical, 8)
+            .frame(minHeight: 44)
+            .background(Theme.surfaceElevated)
+            .overlay(alignment: .leading) {
+                Rectangle().fill(Theme.accent).frame(width: 3)
+            }
+            .overlay(alignment: .top) {
+                Rectangle().fill(.white.opacity(0.13)).frame(height: 1)
             }
     }
 }
@@ -386,14 +406,23 @@ struct ImportMappingDirectoryRow: View {
     }
 }
 
-extension BridgeMappingRow {
-    /// This row's identity in the table. A file and a sheet are named by what
+extension BridgeMappingTrackGroup {
+    /// This group's identity in the table. A file and a sheet are named by what
     /// they are; a row the release names with nothing behind it is named by the
     /// track it commits, which core makes unique across the table.
     var rowId: String {
         switch self {
         case .unit(let unit): unit.rowId
         case .sheet(let sheet, _): "sheet:\(sheet.sheetId)"
+        }
+    }
+}
+
+extension BridgeMappingFileRow {
+    var rowId: String {
+        switch self {
+        case .file(let file): "file:\(file.fileId)"
+        case .sheet(let sheet): "sheet:\(sheet.sheetId)"
         case .directory(let directory): "dir:\(directory.dirPrefix)"
         }
     }

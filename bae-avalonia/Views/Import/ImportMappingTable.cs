@@ -106,16 +106,16 @@ internal sealed partial class ImportMappingTable
     private List<Control> TrackRows()
     {
         var rows = new List<Control>();
-        foreach (var row in _table.Rows)
+        foreach (var group in _table.TrackGroups)
         {
-            switch (row)
+            switch (group)
             {
-                case BridgeMappingRow.Unit unit when IsTrack(unit.UnitValue):
+                case BridgeMappingTrackGroup.Unit unit:
                     rows.Add(TrackRow(unit.UnitValue));
                     break;
-                case BridgeMappingRow.Sheet sheet:
-                    rows.Add(SheetRow(sheet.SheetValue));
-                    foreach (var entry in sheet.Entries.Where(IsTrack))
+                case BridgeMappingTrackGroup.Sheet sheet:
+                    rows.Add(SheetRow(sheet.SheetValue, headsTracks: true));
+                    foreach (var entry in sheet.Entries)
                     {
                         rows.Add(TrackRow(entry));
                     }
@@ -132,27 +132,23 @@ internal sealed partial class ImportMappingTable
     private List<Control> FileRows()
     {
         var rows = new List<Control>();
-        foreach (var row in _table.Rows)
+        foreach (var row in _table.Files)
         {
             switch (row)
             {
-                case BridgeMappingRow.Unit unit when !IsTrack(unit.UnitValue):
-                    rows.Add(FileRow(unit.UnitValue));
+                case BridgeMappingFileRow.File file:
+                    rows.Add(FileRow(file.FileValue));
                     break;
-                case BridgeMappingRow.Directory directory:
+                case BridgeMappingFileRow.Sheet sheet:
+                    rows.Add(SheetRow(sheet.SheetValue, headsTracks: false));
+                    break;
+                case BridgeMappingFileRow.Directory directory:
                     rows.Add(DirectoryRow(directory.DirectoryValue));
                     break;
             }
         }
         return rows;
     }
-
-    /// <summary>Whether this unit is one of the release's tracks — settled as
-    /// one, or audio waiting for a release to name it. Both belong in the
-    /// Tracks section: the table is the same table before and after a pick, and
-    /// a folder's audio does not move sections when one lands.</summary>
-    private static bool IsTrack(BridgeMappingUnit unit) =>
-        unit.Becomes is BridgeMappingBecomes.Track or BridgeMappingBecomes.AwaitingPick;
 
     /// <summary>One titled card of rows. A pane too narrow for the columns
     /// scrolls sideways rather than squeezing a column past the point it says
@@ -276,7 +272,7 @@ internal sealed partial class ImportMappingTable
         var name = ImportPaneUi.ColumnHeader(Loc.Core("ui.import.mapping.column.name"), 0);
         Avalonia.Controls.Grid.SetColumnSpan(name, 3);
         grid.Children.Add(name);
-        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.slots.column.length"), 3));
+        grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Chrome("storage.column.size"), 3));
         grid.Children.Add(ImportPaneUi.ColumnHeader(Loc.Core("ui.import.roles.column.role"), 4));
         grid.Margin = new Thickness(0, 0, 0, 4);
         return grid;
@@ -359,19 +355,21 @@ internal sealed partial class ImportMappingTable
     // name, how big it is, and the job it has. Nothing says it is kept — it is
     // listed under a heading that says Files, which is the same statement
     // without the sentence.
-    private Control FileRow(BridgeMappingUnit unit)
+    private Control FileRow(BridgeMappingFile file)
     {
         var grid = Grid();
-        var source = SourceCell(unit.Source, lengthsDiverge: false);
+        var source = FileCell(file, showsSize: false);
         Avalonia.Controls.Grid.SetColumn(source, 0);
         Avalonia.Controls.Grid.SetColumnSpan(source, 3);
         grid.Children.Add(source);
-        if (RoleCell(unit.Source) is { } role)
-        {
-            Avalonia.Controls.Grid.SetColumn(role, 4);
-            grid.Children.Add(role);
-        }
-        return HostOf(grid, unit.Source.AudioPath());
+        var size = ImportPaneUi.Cell(Loc.Bytes(checked((long)file.Size)), secondary: true);
+        size.HorizontalAlignment = HorizontalAlignment.Right;
+        Avalonia.Controls.Grid.SetColumn(size, 3);
+        grid.Children.Add(size);
+        var role = RoleControl(file) ?? RoleChip(file.Role.FileRole());
+        Avalonia.Controls.Grid.SetColumn(role, 4);
+        grid.Children.Add(role);
+        return HostOf(grid, file.LocalPath);
     }
 
     /// <summary>Whether the folder and the release disagree about how long this
@@ -536,7 +534,7 @@ internal sealed partial class ImportMappingTable
     private Control SourceCell(
         BridgeMappingSource source, bool lengthsDiverge) => source switch
         {
-            BridgeMappingSource.File file => FileCell(file.FileValue),
+            BridgeMappingSource.File file => FileCell(file.FileValue, showsSize: true),
             BridgeMappingSource.SheetEntry entry => EntryCell(entry.Entry, lengthsDiverge),
             BridgeMappingSource.Missing => ImportPaneUi.Cell(
                 $"╌ {Loc.Core("ui.import.slots.no_file")}", secondary: true),
@@ -546,7 +544,7 @@ internal sealed partial class ImportMappingTable
     // One of the folder's files, whole: its name in mono with its size after it,
     // the audition control where it is audio, and — where there is something to
     // open — opening it.
-    private Control FileCell(BridgeMappingFile file)
+    private Control FileCell(BridgeMappingFile file, bool showsSize)
     {
         var line = new StackPanel
         {
@@ -559,7 +557,11 @@ internal sealed partial class ImportMappingTable
         {
             line.Children.Add(AuditionButton(file.LocalPath));
         }
-        var name = ImportPaneUi.FileName(null, file.Name, checked((long)file.Size));
+        var name = ImportPaneUi.FileName(
+            null,
+            file.Name,
+            checked((long)file.Size),
+            showsSize);
         if (OpenAction(file, role) is { } open)
         {
             var button = new Button
@@ -728,7 +730,7 @@ internal sealed partial class ImportMappingTable
     // re-encoded under another name has no answer but the user's. Which disc it
     // is is the other: cue filenames are arbitrary, CD1.cue may hold disc two, so
     // the assignment is the truth and no name is read for it.
-    private Control SheetRow(BridgeSheetGroup sheet)
+    private Control SheetRow(BridgeSheetGroup sheet, bool headsTracks)
     {
         var grid = Grid();
 
@@ -777,12 +779,27 @@ internal sealed partial class ImportMappingTable
         Avalonia.Controls.Grid.SetColumnSpan(line, 3);
         grid.Children.Add(line);
 
+        if (!headsTracks)
+        {
+            var size = ImportPaneUi.Cell(
+                Loc.Bytes(checked((long)sheet.Size)), secondary: true);
+            size.HorizontalAlignment = HorizontalAlignment.Right;
+            Avalonia.Controls.Grid.SetColumn(size, 3);
+            grid.Children.Add(size);
+        }
+
         // The slices below fill the length; the header only holds the column
         // open so the group and its rows line up.
         var disc = DiscControl(sheet);
         Avalonia.Controls.Grid.SetColumn(disc, 4);
         grid.Children.Add(disc);
-        return HostOf(grid, audioPath: null);
+        var host = HostOf(grid, audioPath: null);
+        if (headsTracks)
+        {
+            host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
+            host.Padding = new Thickness(0, 8);
+        }
+        return host;
     }
 
     /// <summary>Which of the release's discs a sheet's entries are, or that it
@@ -911,10 +928,18 @@ internal sealed partial class ImportMappingTable
     {
         var grid = Grid();
         var name = ImportPaneUi.FileName(
-            null, directory.DirPrefix, checked((long)directory.TotalSize));
+            null,
+            directory.DirPrefix,
+            checked((long)directory.TotalSize),
+            showsSize: false);
         Avalonia.Controls.Grid.SetColumn(name, 0);
         Avalonia.Controls.Grid.SetColumnSpan(name, 3);
         grid.Children.Add(name);
+        var size = ImportPaneUi.Cell(
+            Loc.Bytes(checked((long)directory.TotalSize)), secondary: true);
+        size.HorizontalAlignment = HorizontalAlignment.Right;
+        Avalonia.Controls.Grid.SetColumn(size, 3);
+        grid.Children.Add(size);
         var kind = ImportPaneUi.Cell(
             Loc.Core(
                 BaeBridgeMethods.BridgeFileRowKindKey(directory.Kind),

@@ -19,18 +19,32 @@ struct ImportMappingSheetRow: View {
     /// computed from. Empty otherwise.
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
+    var fileColumns: ImportMappingColumns.Files?
 
+    @ViewBuilder
     var body: some View {
-        HStack(spacing: ImportMappingColumns.spacing) {
-            sourceCell
-            ImportSheetDiscMenu(
-                sheet: sheet,
-                onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
-            )
+        if let fileColumns {
+            HStack(spacing: ImportMappingColumns.spacing) {
+                HStack(spacing: 8) {
+                    sourceCell(showsSize: false)
+                    discMenu
+                }
+                .frame(width: fileColumns.name, alignment: .leading)
+                Text(Int64(sheet.size).formatted(.byteCount(style: .file)))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: fileColumns.size, alignment: .trailing)
+            }
+        }
+        else {
+            HStack(spacing: ImportMappingColumns.spacing) {
+                sourceCell(showsSize: true)
+                discMenu
+            }
         }
     }
 
-    private var sourceCell: some View {
+    private func sourceCell(showsSize: Bool) -> some View {
         HStack(spacing: 6) {
             Image(systemName: "list.bullet.rectangle")
                 .font(.system(size: 11))
@@ -60,7 +74,7 @@ struct ImportMappingSheetRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            if let size = sheet.bound.containerSizeText {
+            if showsSize, let size = sheet.bound.containerSizeText {
                 Text(size)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
@@ -74,6 +88,13 @@ struct ImportMappingSheetRow: View {
             }
             Spacer(minLength: 0)
         }
+    }
+
+    private var discMenu: some View {
+        ImportSheetDiscMenu(
+            sheet: sheet,
+            onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
+        )
     }
 }
 

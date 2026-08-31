@@ -37,7 +37,9 @@ enum MappingFixtures {
             )
         )
     }
+}
 
+extension MappingFixtures {
     // MARK: - Thirteen files, twelve tracks
 
     static func audioFile(_ index: Int) -> BridgeMappingFile {
@@ -70,7 +72,7 @@ enum MappingFixtures {
     }
 
     /// One loose audio file and the track the release puts on it.
-    static func pairedRow(_ index: Int) -> BridgeMappingRow {
+    static func pairedRow(_ index: Int) -> BridgeMappingTrackGroup {
         .unit(
             unit: BridgeMappingUnit(
                 source: .file(file: audioFile(index)),
@@ -94,7 +96,7 @@ enum MappingFixtures {
     static func thirteenFileTable(lastTitle: String) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
-            rows: (1...12).map(pairedRow)
+            trackGroups: (1...12).map(pairedRow)
                 + [
                     .unit(
                         unit: BridgeMappingUnit(
@@ -111,6 +113,7 @@ enum MappingFixtures {
                         )
                     )
                 ],
+            files: [],
             reconciliation: .moreFiles(files: 13, tracks: 12)
         )
     }
@@ -147,6 +150,7 @@ enum MappingFixtures {
         BridgeSheetGroup(
             sheetId: sheetId,
             name: sheetId,
+            size: 2_048,
             localPath: "/tmp/walkthrough/\(sheetId)",
             bound: container.map { .describes(container: $0) }
                 ?? .unresolved(requested: [containerId]),
@@ -156,7 +160,7 @@ enum MappingFixtures {
     }
 
     /// A track the release names that the folder has nothing for.
-    static func missingRow(_ index: Int) -> BridgeMappingRow {
+    static func missingRow(_ index: Int) -> BridgeMappingTrackGroup {
         .unit(
             unit: BridgeMappingUnit(
                 source: .missing,
@@ -175,11 +179,8 @@ enum MappingFixtures {
 
     /// The container as one loose audio file taking the release's first track,
     /// with the other eleven left with nothing behind them.
-    private static func looseContainerRows(
-        sheet: BridgeSheetGroup
-    ) -> [BridgeMappingRow] {
+    private static var looseContainerTrackGroups: [BridgeMappingTrackGroup] {
         [
-            .sheet(sheet: sheet, entries: []),
             .unit(
                 unit: BridgeMappingUnit(
                     source: .file(file: containerFile),
@@ -193,16 +194,22 @@ enum MappingFixtures {
                     ),
                     durationMs: 201_000
                 )
-            ),
+            )
         ] + (1..<12).map(missingRow)
     }
 
     /// The sheet describes nothing, so it carves nothing.
     static let unboundSheetTable = BridgeMappingTable(
         images: [],
-        rows: looseContainerRows(
-            sheet: sheetGroup(container: nil, assignment: .disc(number: 1))
-        ),
+        trackGroups: looseContainerTrackGroups,
+        files: [
+            .sheet(
+                sheet: sheetGroup(
+                    container: nil,
+                    assignment: .disc(number: 1)
+                )
+            )
+        ],
         reconciliation: .moreTracks(files: 1, tracks: 12)
     )
 
@@ -210,9 +217,12 @@ enum MappingFixtures {
     /// audio again.
     static let ignoredSheetTable = BridgeMappingTable(
         images: [],
-        rows: looseContainerRows(
-            sheet: sheetGroup(container: container, assignment: .ignored)
-        ),
+        trackGroups: looseContainerTrackGroups,
+        files: [
+            .sheet(
+                sheet: sheetGroup(container: container, assignment: .ignored)
+            )
+        ],
         reconciliation: .moreTracks(files: 1, tracks: 12)
     )
 
@@ -254,7 +264,7 @@ enum MappingFixtures {
     ) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
-            rows: [
+            trackGroups: [
                 .sheet(
                     sheet: sheetGroup(
                         container: container,
@@ -263,6 +273,7 @@ enum MappingFixtures {
                     entries: (0..<12).map(entry)
                 )
             ],
+            files: [],
             reconciliation: .agrees(count: 12)
         )
     }
@@ -271,9 +282,9 @@ enum MappingFixtures {
     /// them, so the table carries no tally.
     static let fileTagsTable = BridgeMappingTable(
         images: [],
-        rows: (1...2)
+        trackGroups: (1...2)
             .map { index in
-                BridgeMappingRow.unit(
+                BridgeMappingTrackGroup.unit(
                     unit: BridgeMappingUnit(
                         source: .file(file: audioFile(index)),
                         becomes: .track(
@@ -291,6 +302,7 @@ enum MappingFixtures {
                     )
                 )
             },
+        files: [],
         reconciliation: nil
     )
 }
@@ -441,7 +453,8 @@ extension MappingFixtures {
             mapping: mapping
                 ?? BridgeMappingTable(
                     images: [],
-                    rows: [],
+                    trackGroups: [],
+                    files: [],
                     reconciliation: nil
                 ),
             cover: nil,
@@ -476,7 +489,12 @@ extension MappingFixtures {
     @MainActor
     static func mapping(of store: ImportStore) -> BridgeMappingTable {
         store.selectedCandidates[candidateKey]?.mapping
-            ?? BridgeMappingTable(images: [], rows: [], reconciliation: nil)
+            ?? BridgeMappingTable(
+                images: [],
+                trackGroups: [],
+                files: [],
+                reconciliation: nil
+            )
     }
 
     /// Whether bae-core can shape what the pane would commit into a savable

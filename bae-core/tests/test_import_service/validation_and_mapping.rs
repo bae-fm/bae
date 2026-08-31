@@ -384,9 +384,9 @@ fn mapping_rows(
     pane: &bae_core::import::ImportCandidateDetail,
 ) -> Vec<(bae_core::import::RawTrackEdit, Option<String>)> {
     pane.mapping
-        .rows
+        .track_groups
         .iter()
-        .flat_map(bae_core::import::MappingRow::units)
+        .flat_map(bae_core::import::MappingTrackGroup::units)
         .filter_map(|unit| match &unit.becomes {
             bae_core::import::MappingBecomes::Track {
                 track,

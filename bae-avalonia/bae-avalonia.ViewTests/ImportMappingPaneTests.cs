@@ -624,6 +624,7 @@ public sealed class ImportMappingPaneTests
             Mapping: new BridgeMappingTable(
                 Array.Empty<BridgeMappingImage>(),
                 new[] { TrackRow("01.flac", "Track One"), TrackRow("02.flac", "Track Two") },
+                Array.Empty<BridgeMappingFileRow>(),
                 Reconciliation: null),
             Cover: new BridgeCoverChoice(
                 new BridgeCoverSelection.ReleaseImage("cover.jpg"),
@@ -662,8 +663,8 @@ public sealed class ImportMappingPaneTests
             string.Empty),
         Array.Empty<BridgeRawTrackEdit>());
 
-    private static BridgeMappingRow TrackRow(string fileId, string title) =>
-        new BridgeMappingRow.Unit(new BridgeMappingUnit(
+    private static BridgeMappingTrackGroup TrackRow(string fileId, string title) =>
+        new BridgeMappingTrackGroup.Unit(new BridgeMappingUnit(
             new BridgeMappingSource.File(new BridgeMappingFile(
                 FileId: fileId,
                 Name: fileId,

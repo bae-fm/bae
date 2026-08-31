@@ -13,20 +13,21 @@ namespace Bae.Desktop;
 /// </summary>
 internal static class MappingTableReading
 {
-    /// <summary>The units a row carries: itself, or the entries a track sheet
-    /// carves. A collapsed directory carries none.</summary>
-    internal static IReadOnlyList<BridgeMappingUnit> Units(this BridgeMappingRow row) => row switch
+    /// <summary>The units a track group carries: itself, or the entries a track
+    /// sheet carves.</summary>
+    internal static IReadOnlyList<BridgeMappingUnit> Units(
+        this BridgeMappingTrackGroup group) => group switch
     {
-        BridgeMappingRow.Unit unit => new[] { unit.UnitValue },
-        BridgeMappingRow.Sheet sheet => sheet.Entries,
-        BridgeMappingRow.Directory => Array.Empty<BridgeMappingUnit>(),
-        _ => throw new ArgumentOutOfRangeException(nameof(row), row, "Unknown mapping row"),
+        BridgeMappingTrackGroup.Unit unit => new[] { unit.UnitValue },
+        BridgeMappingTrackGroup.Sheet sheet => sheet.Entries,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(group), group, "Unknown mapping track group"),
     };
 
     /// <summary>Every unit the table carries, top-level rows and sheet entries
     /// alike, in the order the table lays them out.</summary>
     internal static IEnumerable<BridgeMappingUnit> Units(this BridgeMappingTable table) =>
-        table.Rows.SelectMany(Units);
+        table.TrackGroups.SelectMany(Units);
 
     /// <summary>The track this row commits, where it commits one.</summary>
     internal static BridgeRawTrackEdit? Track(this BridgeMappingUnit unit) =>

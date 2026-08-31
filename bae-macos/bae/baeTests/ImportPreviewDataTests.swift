@@ -94,8 +94,8 @@ struct ImportPreviewDataTests {
         let candidateFileIDs = Set(candidate.files.files.map(\.file.name))
         var representedFileIDs = Set(mapping.images.map(\.fileId))
 
-        for row in mapping.rows {
-            switch row {
+        for group in mapping.trackGroups {
+            switch group {
             case .unit(let unit):
                 if case .file(let file) = unit.source {
                     representedFileIDs.insert(file.fileId)
@@ -107,6 +107,14 @@ struct ImportPreviewDataTests {
                         representedFileIDs.insert(source.containerId)
                     }
                 }
+            }
+        }
+        for row in mapping.files {
+            switch row {
+            case .file(let file):
+                representedFileIDs.insert(file.fileId)
+            case .sheet(let sheet):
+                representedFileIDs.insert(sheet.sheetId)
             case .directory(let directory):
                 representedFileIDs.formUnion(
                     candidate.files.files.compactMap { file in

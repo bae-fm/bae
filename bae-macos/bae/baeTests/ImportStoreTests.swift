@@ -264,7 +264,8 @@ private func detail(
         initialMetadataSource: .none,
         mapping: BridgeMappingTable(
             images: [],
-            rows: [],
+            trackGroups: [],
+            files: [],
             reconciliation: nil
         ),
         cover: cover,

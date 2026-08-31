@@ -81,8 +81,13 @@ internal static class ImportPaneUi
     }
 
     /// <summary>A file, the way both tables show one: its directory prefix
-    /// dimmed ahead of its name in a mono face, with the size after it.</summary>
-    internal static Control FileName(string? dirPrefix, string fileName, long sizeBytes)
+    /// dimmed ahead of its name in a mono face. Track sources carry their size
+    /// inline; the Files table gives it a column.</summary>
+    internal static Control FileName(
+        string? dirPrefix,
+        string fileName,
+        long sizeBytes,
+        bool showsSize = true)
     {
         var line = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         if (!string.IsNullOrEmpty(dirPrefix))
@@ -108,15 +113,18 @@ internal static class ImportPaneUi
         name[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
         line.Children.Add(name);
 
-        var size = new TextBlock
+        if (showsSize)
         {
-            Text = Loc.Bytes(sizeBytes),
-            FontSize = 11.5,
-            Margin = new Thickness(8, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        size[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        line.Children.Add(size);
+            var size = new TextBlock
+            {
+                Text = Loc.Bytes(sizeBytes),
+                FontSize = 11.5,
+                Margin = new Thickness(8, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            size[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+            line.Children.Add(size);
+        }
         return line;
     }
 
