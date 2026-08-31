@@ -102,10 +102,7 @@
         static func artImageStore() -> ImageStore {
             ImageStore(
                 fetchRemoteImage: { url in
-                    RemoteImageBytes(
-                        bytes: try Data(contentsOf: URL(fileURLWithPath: url)),
-                        validator: url
-                    )
+                    try Data(contentsOf: URL(fileURLWithPath: url))
                 }
             )
         }

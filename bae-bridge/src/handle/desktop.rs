@@ -742,9 +742,7 @@ impl AppHandle {
     /// Bytes of provider art at `url` — art from Cover Art Archive or Discogs
     /// that isn't in the library yet, so there is no image ref to read it by.
     /// Core owns the network: this is the only image fetch that leaves the
-    /// device, and its byte cache is core's. The returned validator identifies
-    /// the content, so a UI holding a decoded copy replaces it only when the
-    /// bytes at the URL actually change.
+    /// device, and its byte cache is core's.
     ///
     /// `None` when the source serves no image at that address: cover addresses
     /// are derived from a release's ids, so an offered one can turn out to hold
@@ -752,12 +750,12 @@ impl AppHandle {
     pub async fn fetch_remote_image_bytes(
         self: std::sync::Arc<Self>,
         url: String,
-    ) -> Result<Option<crate::types::BridgeRemoteImage>, BridgeError> {
+    ) -> Result<Option<Vec<u8>>, BridgeError> {
         self.run_exported(move |this| async move {
             this.services
                 .import_fetch_remote_image_bytes(url)
                 .await
-                .map(|image| image.map(crate::types::BridgeRemoteImage::from_core))
+                .map(|image| image.map(|image| image.bytes))
                 .map_err(BridgeError::import)
         })
         .await

@@ -236,14 +236,11 @@ fn image_download_client() -> Result<reqwest::Client, ImportError> {
         .map_err(|detail| ImportError::CoverArt { detail })
 }
 
-/// One remote image's bytes and the token identifying this exact content: the
-/// response's `ETag`, or a hash of the bytes when it carries none. A UI keys its
-/// decoded copy on the validator, so it re-decodes only when the bytes moved.
+/// One remote image's bytes and their declared content type.
 #[derive(Debug, Clone)]
 pub struct RemoteImage {
     pub bytes: Vec<u8>,
     pub content_type: ContentType,
-    pub validator: String,
 }
 
 /// The freshness terms of one image response: how long it may be served without
@@ -315,8 +312,6 @@ fn max_age_from_cache_control(headers: &HeaderMap) -> Option<Duration> {
 struct CachedImage {
     bytes: Vec<u8>,
     content_type: ContentType,
-    /// SHA-256 of `bytes`, the validator when the response carries no `ETag`.
-    content_hash: String,
     fetched_at: DateTime<Utc>,
     freshness: Freshness,
 }
@@ -329,7 +324,6 @@ impl CachedImage {
         freshness: Freshness,
     ) -> Self {
         Self {
-            content_hash: crate::util::fs::hash_bytes(&bytes),
             bytes,
             content_type,
             fetched_at,
@@ -345,10 +339,6 @@ impl CachedImage {
         RemoteImage {
             bytes: self.bytes.clone(),
             content_type: self.content_type.clone(),
-            validator: match &self.freshness.etag {
-                Some(etag) => etag.clone(),
-                None => self.content_hash.clone(),
-            },
         }
     }
 }
@@ -356,10 +346,10 @@ impl CachedImage {
 /// The downloaded provider art this device keeps.
 ///
 /// One file per address, named by the SHA-256 of the URL and holding a JSON
-/// header line — the content type, the bytes' hash, when they were fetched, and
-/// the freshness terms a conditional GET revalidates them with — followed by
-/// the bytes. Each is written to a temp file and renamed, so a torn write is
-/// never read back as an entry.
+/// header line — the content type, when the bytes were fetched, and the
+/// freshness terms a conditional GET revalidates them with — followed by the
+/// bytes. Each is written to a temp file and renamed, so a torn write is never
+/// read back as an entry.
 ///
 /// Bounded by total bytes: a write that pushes the directory past the budget
 /// drops least-recently-read entries until it is back under. A read stamps its
@@ -392,7 +382,6 @@ struct DiskImageCacheState {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct DiskEntryHeader {
     content_type: String,
-    content_hash: String,
     fetched_at: DateTime<Utc>,
     max_age_secs: Option<u64>,
     etag: Option<String>,
@@ -459,7 +448,6 @@ impl DiskImageCache {
         Some(CachedImage {
             bytes: raw[split + 1..].to_vec(),
             content_type: ContentType::from_mime(&header.content_type),
-            content_hash: header.content_hash,
             fetched_at: header.fetched_at,
             freshness: Freshness {
                 max_age: header.max_age_secs.map(Duration::from_secs),
@@ -483,7 +471,6 @@ impl DiskImageCache {
         std::fs::create_dir_all(&self.dir)?;
         let header = serde_json::to_vec(&DiskEntryHeader {
             content_type: entry.content_type.as_str().to_string(),
-            content_hash: entry.content_hash.clone(),
             fetched_at: entry.fetched_at,
             max_age_secs: entry.freshness.max_age.map(|age| age.as_secs()),
             etag: entry.freshness.etag.clone(),

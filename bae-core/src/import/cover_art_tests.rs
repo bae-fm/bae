@@ -268,7 +268,6 @@ async fn fresh_entry_serves_without_a_request() {
 
     let first = cache.fetch_required(&url).await.unwrap();
     assert_eq!(first.bytes, body);
-    assert_eq!(first.validator, "\"v1\"");
 
     // Still inside the declared 600s lifetime: served from memory.
     clock.advance(599);
@@ -323,7 +322,6 @@ async fn stale_entry_revalidates_and_not_modified_refreshes_the_clock() {
     clock.advance(11);
     let revalidated = cache.fetch_required(&url).await.unwrap();
     assert_eq!(revalidated.bytes, body);
-    assert_eq!(revalidated.validator, "\"v1\"");
     assert_eq!(host.hits(), 2);
     assert_eq!(host.conditional_hits(), 1);
 
@@ -355,39 +353,18 @@ async fn revalidation_with_new_bytes_replaces_the_entry() {
     let dir = tempfile::TempDir::new().expect("a temp image-cache dir");
     let cache = cache_in(dir.path(), clock.clone());
 
-    let first = cache.fetch_required(&url).await.unwrap();
-    assert_eq!(first.validator, "\"v1\"");
+    cache.fetch_required(&url).await.unwrap();
 
     host.serve_version(1);
     clock.advance(11);
     let second = cache.fetch_required(&url).await.unwrap();
     assert_eq!(second.bytes, second_body);
-    assert_eq!(
-        second.validator, "\"v2\"",
-        "a 200 replaces the stored bytes and their validator"
-    );
 
     // The replacement is what the next fresh read serves.
     clock.advance(1);
     let third = cache.fetch_required(&url).await.unwrap();
     assert_eq!(third.bytes, second_body);
     assert_eq!(host.hits(), 2);
-}
-
-#[tokio::test]
-async fn validator_is_the_content_hash_when_no_etag() {
-    let body = vec![0x7Eu8; 256];
-    let (_host, url) = start_image_host(vec![ImageVersion {
-        body: body.clone(),
-        etag: None,
-        cache_control: Some("max-age=10".to_string()),
-    }])
-    .await;
-    let dir = tempfile::TempDir::new().expect("a temp image-cache dir");
-    let cache = cache_in(dir.path(), TestClock::at(1_700_000_000));
-
-    let image = cache.fetch_required(&url).await.unwrap();
-    assert_eq!(image.validator, crate::util::fs::hash_bytes(&body));
 }
 
 /// The point of keeping bytes on disk: the next launch draws the cover it
@@ -417,7 +394,6 @@ async fn a_cached_image_survives_a_new_cache_over_the_same_directory() {
         .await
         .unwrap();
     assert_eq!(relaunched.bytes, body);
-    assert_eq!(relaunched.validator, "\"v1\"");
     assert_eq!(
         host.hits(),
         1,
@@ -504,7 +480,6 @@ fn a_cached_entry_reads_back_with_its_freshness_terms() {
         .expect("the entry reads back");
     assert_eq!(read.bytes, written.bytes);
     assert_eq!(read.content_type, ContentType::Png);
-    assert_eq!(read.content_hash, written.content_hash);
     assert_eq!(read.fetched_at, written.fetched_at);
     assert_eq!(read.freshness.max_age, Some(Duration::from_secs(90)));
     assert_eq!(read.freshness.etag.as_deref(), Some("\"v7\""));

@@ -61,22 +61,6 @@ public enum ImageContent: Equatable, Hashable, Sendable {
     }
 }
 
-/// Provider-art bytes plus the token identifying this exact content: the
-/// response's `ETag`, or a hash of the bytes when it carries none.
-///
-/// Mirrors the bridge's `BridgeRemoteImage`, which only the desktop bindings
-/// export — the fetch behind it is desktop-only, and this store compiles for
-/// both platforms. The conversion lives in the desktop `init(handle:)`.
-public struct RemoteImageBytes: Equatable, Sendable {
-    public let bytes: Data
-    public let validator: String
-
-    public init(bytes: Data, validator: String) {
-        self.bytes = bytes
-        self.validator = validator
-    }
-}
-
 /// Per-kind byte budgets for the decoded cache. Eviction never crosses buckets,
 /// so a native-size release image cannot evict the album grid's covers.
 public struct ImageStoreBudgets: Equatable, Sendable {
@@ -123,12 +107,9 @@ public struct ImageStoreBudgets: Equatable, Sendable {
 /// library, read from the SwiftUI environment; views hold no fetch, cache, or
 /// decode logic of their own.
 ///
-/// What a cached decode is pinned to — its token — is the content's identity,
-/// so no entry can outlive the bytes it came from: a curated image keys on its
-/// `_updated_at` version, a release file on its file id (immutable — an import
-/// mints a fresh id per file, and a re-import mints new ones rather than
-/// repointing an existing row), provider art on its URL plus the validator core
-/// returns with the bytes, and a local file on its path and modification date.
+/// A decode is keyed by the content reference the caller supplied and its pixel
+/// size. Content at one reference is stable for the lifetime of an image in bae;
+/// a workflow that replaces it supplies a new reference.
 public final class ImageStore: Sendable, Observable {
     /// Bytes of a curated library image, or nil when no such image exists.
     private let fetchLibraryImageBytes:
@@ -138,15 +119,15 @@ public final class ImageStore: Sendable, Observable {
     private let fetchReleaseImageBytes:
         @Sendable (_ releaseId: String, _ source: BridgeGallerySource)
             async throws -> Data
-    /// Bytes of provider art at a URL, with the validator identifying them, or
-    /// nil when the source serves no image there — cover addresses are derived
-    /// from a release's ids, so an offered one can hold nothing.
+    /// Bytes of provider art at a URL, or nil when the source serves no image
+    /// there — cover addresses are derived from a release's ids, so an offered
+    /// one can hold nothing.
     /// Desktop-only; iOS has no import flow and leaves it unwired.
     private let fetchRemoteImage:
-        @Sendable (_ url: String) async throws -> RemoteImageBytes?
+        @Sendable (_ url: String) async throws -> Data?
 
     private let buckets: Buckets
-    private let remoteValidators = RemoteValidators()
+    private let inFlightLoads = InFlightImageLoads()
 
     public init(
         fetchLibraryImageBytes:
@@ -157,7 +138,7 @@ public final class ImageStore: Sendable, Observable {
             @escaping @Sendable (String, BridgeGallerySource) async throws ->
             Data = { _, _ in throw ImageStoreUnavailable() },
         fetchRemoteImage:
-            @escaping @Sendable (String) async throws -> RemoteImageBytes? = {
+            @escaping @Sendable (String) async throws -> Data? = {
                 _ in throw ImageStoreUnavailable()
             },
         budgets: ImageStoreBudgets = .default
@@ -182,16 +163,13 @@ public final class ImageStore: Sendable, Observable {
                 },
                 fetchRemoteImage: {
                     guard
-                        let image = try await handle.fetchRemoteImageBytes(
+                        let bytes = try await handle.fetchRemoteImageBytes(
                             url: $0
                         )
                     else {
                         return nil
                     }
-                    return RemoteImageBytes(
-                        bytes: image.bytes,
-                        validator: image.validator
-                    )
+                    return Data(bytes)
                 }
             )
         }
@@ -227,8 +205,7 @@ public final class ImageStore: Sendable, Observable {
     /// inserts the image leaf with no prior position, which snaps it to its
     /// final place while everything around it is still animating.
     ///
-    /// The only I/O is the `stat` a local file's modification date needs; every
-    /// other kind is a pure cache lookup, and `.bytes` is never cached.
+    /// This is a memory-only lookup; `.bytes` is never cached.
     public func cachedImage(
         _ content: ImageContent,
         pointSize: CGFloat,
@@ -256,14 +233,56 @@ public final class ImageStore: Sendable, Observable {
         pointSize: CGFloat,
         displayScale: CGFloat
     ) async throws -> PlatformImage? {
-        let key = cacheKey(
-            content,
-            pointSize: pointSize,
-            displayScale: displayScale
-        )
-        if let key, let cached = buckets[content.bucket].image(for: key) {
+        guard
+            let key = cacheKey(
+                content,
+                pointSize: pointSize,
+                displayScale: displayScale
+            )
+        else {
+            return try await loadImage(
+                content,
+                cacheKey: nil,
+                pointSize: pointSize,
+                displayScale: displayScale
+            )
+        }
+        if let cached = buckets[content.bucket].image(for: key) {
             return cached
         }
+
+        let loadKey = InFlightImageLoadKey(
+            bucket: content.bucket,
+            cacheKey: key
+        )
+        let load = inFlightLoads.load(for: loadKey) { [self] in
+            if let cached = buckets[content.bucket].image(for: key) {
+                return cached
+            }
+            return try await loadImage(
+                content,
+                cacheKey: key,
+                pointSize: pointSize,
+                displayScale: displayScale
+            )
+        }
+        do {
+            let image = try await load.task.value
+            inFlightLoads.finish(load, for: loadKey)
+            return image
+        }
+        catch {
+            inFlightLoads.finish(load, for: loadKey)
+            throw error
+        }
+    }
+
+    private func loadImage(
+        _ content: ImageContent,
+        cacheKey: String?,
+        pointSize: CGFloat,
+        displayScale: CGFloat
+    ) async throws -> PlatformImage? {
         guard let source = try await decodeSource(for: content) else {
             return nil
         }
@@ -272,13 +291,8 @@ public final class ImageStore: Sendable, Observable {
             size: .fitTo(points: pointSize),
             displayScale: displayScale
         )
-        // A key is absent only for `.bytes`, whose identity the caller holds —
-        // there is nothing to pin a cache entry to.
-        if let key {
-            buckets[content.bucket].store(image, for: key)
-            if case .remote(let url) = content {
-                remoteValidators.record(key: key, for: url)
-            }
+        if let cacheKey {
+            buckets[content.bucket].store(image, for: cacheKey)
         }
         return image
     }
@@ -347,31 +361,15 @@ public final class ImageStore: Sendable, Observable {
         case .releaseImage(let releaseId, let source):
             return .data(try await fetchReleaseImageBytes(releaseId, source))
         case .remote(let url):
-            guard let fetched = try await fetchRemoteImage(url) else {
+            guard let bytes = try await fetchRemoteImage(url) else {
                 logger.debug("No provider art is served at \(url)")
                 return nil
             }
-            dropDecodesPredating(validator: fetched.validator, of: url)
-            return .data(fetched.bytes)
+            return .data(bytes)
         case .localFile(let path):
             return .local(path: path)
         case .bytes(let bytes):
             return .data(bytes)
-        }
-    }
-
-    /// Evict every decode of `url` made from an older validator. Core's byte
-    /// cache decides when a URL's bytes are re-read; when they come back
-    /// different, the decodes taken from the old ones are stale at *every*
-    /// pixel size, not just the one being loaded.
-    ///
-    /// This runs on a fetch, which is the only moment the store learns the
-    /// bytes moved — a size it has already decoded is served from the cache and
-    /// asks core nothing.
-    private func dropDecodesPredating(validator: String, of url: String) {
-        let stale = remoteValidators.adopt(validator: validator, for: url)
-        for key in stale {
-            buckets[.remote].removeImage(for: key)
         }
     }
 
@@ -391,9 +389,8 @@ public final class ImageStore: Sendable, Observable {
         return "\(token)#\(pixelSize)"
     }
 
-    /// What pins a cached decode to the exact bytes it came from. Nil for
-    /// `.bytes` (no identity to pin to) and for a local file whose modification
-    /// date can't be read.
+    /// The content reference the caller supplied. Nil for `.bytes`, whose
+    /// identity remains with its caller.
     private func token(for content: ImageContent) -> String? {
         switch content {
         case .libraryImage(let image):
@@ -413,10 +410,7 @@ public final class ImageStore: Sendable, Observable {
         case .remote(let url):
             return "remote:\(url)"
         case .localFile(let path):
-            guard let modified = Self.modificationDate(ofFileAt: path) else {
-                return nil
-            }
-            return "path:\(path)#\(modified.timeIntervalSince1970)"
+            return "path:\(path)"
         case .bytes:
             return nil
         }
@@ -426,26 +420,6 @@ public final class ImageStore: Sendable, Observable {
         "library:\(image.imageType):\(image.id):\(image.version)"
     }
 
-    /// When the file at `path` last changed, or nil when it can't be read — a
-    /// candidate the user moved or deleted. Nothing is cached under a date we
-    /// don't have; the load path surfaces the read failure itself.
-    private static func modificationDate(ofFileAt path: String) -> Date? {
-        let attributes: [FileAttributeKey: Any]
-        do {
-            attributes = try FileManager.default.attributesOfItem(atPath: path)
-        }
-        catch {
-            logger.debug(
-                "No modification date for \(path): \(error.localizedDescription)"
-            )
-            return nil
-        }
-        guard let modified = attributes[.modificationDate] as? Date else {
-            logger.warning("File \(path) reports no modification date")
-            return nil
-        }
-        return modified
-    }
 }
 
 /// A capability this `ImageStore` isn't wired for — the preview stub, or the
@@ -472,7 +446,7 @@ extension ImageContent {
 }
 
 /// The decoded cache's four independent budgets, one per content kind.
-enum DecodedImageBucket: CaseIterable {
+enum DecodedImageBucket: CaseIterable, Hashable, Sendable {
     case libraryImage
     case releaseImage
     case remote
@@ -504,40 +478,48 @@ private struct Buckets: Sendable {
     }
 }
 
-/// The validator each remote URL's cached decodes were made from, and the keys
-/// they live under. `NSCache` can't enumerate its keys, so the store tracks
-/// what it wrote in order to drop a URL's decodes when its bytes change.
-private final class RemoteValidators: @unchecked Sendable {
-    private struct Entry {
-        var validator: String?
-        var keys: Set<String>
-    }
+private struct InFlightImageLoadKey: Hashable, Sendable {
+    let bucket: DecodedImageBucket
+    let cacheKey: String
+}
 
+private final class InFlightImageLoad: @unchecked Sendable {
+    let task: Task<PlatformImage?, Error>
+
+    init(
+        operation: @escaping @Sendable () async throws -> PlatformImage?
+    ) {
+        task = Task { try await operation() }
+    }
+}
+
+/// Requests for one decoded cache entry share the same fetch and decode. The
+/// first waiter that observes completion removes the task; reference equality
+/// prevents an older completion from removing a replacement.
+private final class InFlightImageLoads: @unchecked Sendable {
     private let lock = NSLock()
-    private var entries: [String: Entry] = [:]
+    private var loads: [InFlightImageLoadKey: InFlightImageLoad] = [:]
 
-    /// Note that `url`'s decode at this size lives under `key`.
-    func record(key: String, for url: String) {
+    func load(
+        for key: InFlightImageLoadKey,
+        operation: @escaping @Sendable () async throws -> PlatformImage?
+    ) -> InFlightImageLoad {
         lock.lock()
         defer { lock.unlock() }
-        entries[url, default: Entry(validator: nil, keys: [])].keys.insert(key)
+        if let load = loads[key] {
+            return load
+        }
+        let load = InFlightImageLoad(operation: operation)
+        loads[key] = load
+        return load
     }
 
-    /// Adopt the validator a fetch just returned for `url`, and hand back the
-    /// keys holding decodes of the previous one. Empty when the validator is
-    /// unchanged, or when this is the first fetch for the URL.
-    func adopt(validator: String, for url: String) -> Set<String> {
+    func finish(_ load: InFlightImageLoad, for key: InFlightImageLoadKey) {
         lock.lock()
         defer { lock.unlock() }
-        var entry = entries[url] ?? Entry(validator: nil, keys: [])
-        guard let previous = entry.validator, previous != validator else {
-            entry.validator = validator
-            entries[url] = entry
-            return []
+        if loads[key] === load {
+            loads.removeValue(forKey: key)
         }
-        let stale = entry.keys
-        entries[url] = Entry(validator: validator, keys: [])
-        return stale
     }
 }
 
@@ -568,10 +550,6 @@ final class DecodedImageCache: @unchecked Sendable {
             forKey: key as NSString,
             cost: Self.decodedByteCost(of: image)
         )
-    }
-
-    func removeImage(for key: String) {
-        cache.removeObject(forKey: key as NSString)
     }
 
     static func decodedByteCost(of image: PlatformImage) -> Int {

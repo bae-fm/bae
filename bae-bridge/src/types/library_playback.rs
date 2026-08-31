@@ -810,30 +810,6 @@ pub struct BridgeRemoteCover {
     pub label: String,
 }
 
-/// Bytes of provider art fetched from a URL, plus the token that identifies this
-/// exact content: the response's `ETag`, or a hash of the bytes when it carries
-/// none. A UI stores the validator alongside its decoded copy and replaces that
-/// copy when a later fetch answers with a different one.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeRemoteImage {
-    pub bytes: Vec<u8>,
-    pub validator: String,
-}
-
-impl BridgeRemoteImage {
-    #[cfg(feature = "desktop")]
-    pub(crate) fn from_core(image: bae_core::import::cover_art::RemoteImage) -> Self {
-        let bae_core::import::cover_art::RemoteImage {
-            bytes,
-            validator,
-            // Describes the download, not what the UI renders: every platform
-            // decoder sniffs the bytes themselves.
-            content_type: _,
-        } = image;
-        Self { bytes, validator }
-    }
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeRemoteCoverSelection {
     pub url: String,

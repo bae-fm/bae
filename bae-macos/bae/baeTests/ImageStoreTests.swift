@@ -52,21 +52,15 @@ private func coverRef(version: String) -> BridgeImageRef {
     BridgeImageRef(id: "rel-1", version: version, imageType: .cover)
 }
 
-/// What the remote fetch closure answers with, swapped mid-test to stand in for
-/// core re-reading a URL whose bytes changed.
-private actor RemoteSource {
-    private var image: RemoteImageBytes
+private actor FetchCount {
+    private var value = 0
 
-    init(image: RemoteImageBytes) {
-        self.image = image
+    func increment() {
+        value += 1
     }
 
-    func serve(_ image: RemoteImageBytes) {
-        self.image = image
-    }
-
-    func fetch() -> RemoteImageBytes {
-        image
+    func read() -> Int {
+        value
     }
 }
 
@@ -135,6 +129,33 @@ struct ImageStoreCacheTests {
                 == nil
         )
     }
+
+    @Test("concurrent requests share one fetch and decode")
+    func concurrentRequestsShareLoad() async throws {
+        let bytes = try makePngBytes(width: 8, height: 8)
+        let fetchCount = FetchCount()
+        let store = ImageStore(fetchLibraryImageBytes: { _ in
+            await fetchCount.increment()
+            try await Task.sleep(for: .milliseconds(100))
+            return bytes
+        })
+        let content = ImageContent.libraryImage(coverRef(version: "1"))
+
+        async let first = store.image(
+            content,
+            pointSize: 56,
+            displayScale: 2
+        )
+        async let second = store.image(
+            content,
+            pointSize: 56,
+            displayScale: 2
+        )
+
+        let images = try await [first, second]
+        #expect(images[0] === images[1])
+        #expect(await fetchCount.read() == 1)
+    }
 }
 
 @Suite("ImageStore bucket isolation")
@@ -182,8 +203,8 @@ struct ImageStoreBucketTests {
     }
 }
 
-@Suite("ImageStore token staleness")
-struct ImageStoreStalenessTests {
+@Suite("ImageStore content identity")
+struct ImageStoreContentIdentityTests {
     @Test("a new content version misses the previous version's decode")
     func versionBumpMisses() async throws {
         let bytes = try makePngBytes(width: 8, height: 8)
@@ -229,8 +250,8 @@ struct ImageStoreStalenessTests {
         )
     }
 
-    @Test("a modified local file misses the decode of its previous contents")
-    func localFileMtimeBumpMisses() async throws {
+    @Test("a local cache hit does not read the source file again")
+    func localCacheHitDoesNotReadSource() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(
@@ -248,84 +269,11 @@ struct ImageStoreStalenessTests {
             store.cachedImage(content, pointSize: 56, displayScale: 2) != nil
         )
 
-        // The user replaced the candidate file. Filesystem timestamps are
-        // coarse, so the new date is set explicitly rather than by writing fast.
-        try makePngBytes(width: 16, height: 16).write(to: file)
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date().addingTimeInterval(60)],
-            ofItemAtPath: file.path
-        )
+        try FileManager.default.removeItem(at: file)
 
         #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) == nil,
-            "the decode was pinned to the contents that produced it"
-        )
-    }
-
-    @Test("a changed remote validator replaces the decodes at every size")
-    func remoteValidatorChangeReplacesDecodes() async throws {
-        let first = try makePngBytes(width: 8, height: 8)
-        let second = try makePngBytes(width: 16, height: 16)
-        let remote = RemoteSource(
-            image: RemoteImageBytes(bytes: first, validator: "v1")
-        )
-        let store = ImageStore(fetchRemoteImage: { _ in await remote.fetch() })
-        let content = ImageContent.remote(url: "https://art.example/cover.jpg")
-
-        _ = try await store.image(content, pointSize: 56, displayScale: 2)
-        _ = try await store.image(content, pointSize: 120, displayScale: 2)
-        #expect(
-            store.cachedImage(content, pointSize: 120, displayScale: 2) != nil
-        )
-
-        // Core re-read the URL and the bytes came back different. A size the
-        // store already holds is served from the cache and asks core nothing, so
-        // the fetch that learns this is a size it hasn't decoded yet.
-        await remote.serve(
-            RemoteImageBytes(bytes: second, validator: "v2")
-        )
-        let reloaded = try await store.image(
-            content,
-            pointSize: 200,
-            displayScale: 2
-        )
-
-        #expect(reloaded != nil)
-        #expect(
-            store.cachedImage(content, pointSize: 200, displayScale: 2) != nil,
-            "the decode of the new bytes stays"
-        )
-        for stalePointSize in [56.0, 120.0] {
-            #expect(
-                store.cachedImage(
-                    content,
-                    pointSize: stalePointSize,
-                    displayScale: 2
-                ) == nil,
-                "decodes of the old bytes are stale at every size, not just the one reloaded"
-            )
-        }
-    }
-
-    @Test("an unchanged remote validator keeps the decodes it already made")
-    func remoteValidatorUnchangedKeepsDecodes() async throws {
-        let bytes = try makePngBytes(width: 8, height: 8)
-        let remote = RemoteSource(
-            image: RemoteImageBytes(bytes: bytes, validator: "v1")
-        )
-        let store = ImageStore(fetchRemoteImage: { _ in await remote.fetch() })
-        let content = ImageContent.remote(url: "https://art.example/cover.jpg")
-
-        _ = try await store.image(content, pointSize: 56, displayScale: 2)
-        _ = try await store.image(content, pointSize: 120, displayScale: 2)
-        // A third size fetches again and gets the same validator back.
-        _ = try await store.image(content, pointSize: 200, displayScale: 2)
-
-        #expect(
-            store.cachedImage(content, pointSize: 120, displayScale: 2) != nil
-        )
-        #expect(
-            store.cachedImage(content, pointSize: 56, displayScale: 2) != nil
+            store.cachedImage(content, pointSize: 56, displayScale: 2) != nil,
+            "the content address remains the cache identity"
         )
     }
 }
@@ -345,10 +293,6 @@ struct DecodedImageCacheTests {
         cache.store(secondImage, for: "cover-b")
 
         #expect(cache.image(for: "cover-a") === firstImage)
-        #expect(cache.image(for: "cover-b") === secondImage)
-
-        cache.removeImage(for: "cover-a")
-        #expect(cache.image(for: "cover-a") == nil)
         #expect(cache.image(for: "cover-b") === secondImage)
     }
 }

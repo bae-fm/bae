@@ -138,7 +138,6 @@ fn downloaded_cover(
     let crate::import::cover_art::RemoteImage {
         bytes,
         content_type,
-        validator: _,
     } = image;
     if matches!(
         content_type,
