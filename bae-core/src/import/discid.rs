@@ -616,7 +616,6 @@ mod tests {
             )
             .unwrap();
         let audio_path = folder.join("Test Album.ape");
-        crate::audio_codec::forget_probe_for(&audio_path);
         let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
         let computed = compute_discid_from_categorized(&categorized)
             .expect("CUE+APE pair must compute a disc ID");

@@ -194,7 +194,6 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .await
         .unwrap();
     let audio_path = folder.join("01.flac");
-    crate::audio_codec::forget_probe_for(&audio_path);
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
 
     let result = service

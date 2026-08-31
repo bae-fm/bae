@@ -513,7 +513,7 @@ fn source_audio_of(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderSca
     let path = file.path.to_str().ok_or_else(|| {
         FolderScanError::Other(format!("audio path is not UTF-8: {}", file.path.display()))
     })?;
-    let Some(probe) = crate::audio_codec::probe_audio_from_path_uncached(path) else {
+    let Some(probe) = crate::audio_codec::probe_audio_from_path(path) else {
         return Ok(None);
     };
     if probe.sample_rate == 0 || probe.channels == 0 {
