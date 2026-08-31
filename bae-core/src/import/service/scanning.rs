@@ -9,6 +9,16 @@ impl ImportService {
         ids: &coven::IdRef,
     ) -> Result<u64, crate::import::ImportError> {
         let candidate = candidate.clone();
+        let content_hash = candidate.files.content_hash();
+        let state = library_manager
+            .load_import_candidate_state(&content_hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{} has no stored candidate state", candidate.path.display()),
+            })?;
+        if state.metadata_revision != 0 || state.metadata_provenance.is_some() {
+            return Ok(state.metadata_revision);
+        }
         let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
         let file_edit_revision = candidate.file_edit_revision;
         let snapshot = tokio::task::spawn_blocking(move || {
@@ -33,15 +43,18 @@ impl ImportService {
             clock.as_ref(),
             ids.as_ref(),
         )?;
-        let draft = crate::import::pane::candidate_draft_from_source(pane);
+        let source_draft = crate::import::pane::candidate_draft_from_source(pane);
         let cover = crate::import::file_tag_snapshot::default_cover(&candidate.files, &snapshot);
         Ok(library_manager
             .replace_candidate_file_tags_metadata(
                 &candidate.watched_folder_path,
                 &candidate.path.to_string_lossy(),
-                &candidate.files.content_hash(),
+                &content_hash,
+                file_edit_revision,
+                state.metadata_revision,
                 &snapshot,
-                &draft,
+                &source_draft.edit,
+                &source_draft.track_mappings,
                 cover.as_ref(),
             )
             .await?)

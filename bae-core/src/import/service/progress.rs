@@ -10,12 +10,13 @@ use super::ImportService;
 
 impl ImportService {
     /// Emit a running-phase progress event for the candidate row. `id` is the
-    /// release id; `percent` fills the candidate's determinate bar for that phase.
+    /// release id; `percent` fills the candidate's determinate bar when the
+    /// phase can report a measured fraction.
     pub(super) fn emit_phase_progress(
         &self,
         candidate_key: &str,
         id: &str,
-        percent: u8,
+        percent: Option<u8>,
         phase: ImportPhase,
         import_id: &str,
     ) {
@@ -26,7 +27,7 @@ impl ImportService {
         event_tx: &tokio::sync::broadcast::Sender<crate::import::handle::ImportEvent>,
         candidate_key: &str,
         id: &str,
-        percent: u8,
+        percent: Option<u8>,
         phase: ImportPhase,
         import_id: &str,
     ) {

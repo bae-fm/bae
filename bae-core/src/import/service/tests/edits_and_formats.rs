@@ -422,6 +422,181 @@ fn user_edit_renaming_album_artist_rebuilds_credits() {
     assert_eq!(album.artist_id, new_artist.id);
 }
 
+#[test]
+fn dropping_a_track_removes_its_disconnected_work_graph() {
+    let now = test_clock().0;
+    let (album, release, first_track, artist) = make_seed_album_release_track();
+    let second_track = crate::db::DbTrack {
+        id: "track-2".to_string(),
+        release_id: release.id.clone(),
+        title: "Second Track".to_string(),
+        side: 1,
+        track_number: Some(2),
+        duration_ms: None,
+        discogs_position: None,
+        created_at: now,
+    };
+    let work = |id: &str| crate::db::DbWork {
+        id: id.to_string(),
+        title: format!("Work {id}"),
+        disambiguation: None,
+        work_type: None,
+        musicbrainz_work_id: format!("mb-{id}"),
+        created_at: now,
+    };
+    let mut parsed = crate::import::ParsedAlbum {
+        album,
+        release,
+        tracks: vec![first_track, second_track],
+        artists: vec![
+            artist,
+            crate::db::DbArtist {
+                id: "artist-kept-work".into(),
+                name: "Kept Work Artist".into(),
+                sort_name: None,
+                discogs_artist_id: Some("discogs-kept-work".into()),
+                musicbrainz_artist_id: None,
+                created_at: now,
+            },
+            crate::db::DbArtist {
+                id: "artist-dropped-work".into(),
+                name: "Dropped Work Artist".into(),
+                sort_name: None,
+                discogs_artist_id: Some("discogs-dropped-work".into()),
+                musicbrainz_artist_id: None,
+                created_at: now,
+            },
+        ],
+        album_artists: Vec::new(),
+        track_artists: Vec::new(),
+        work_graph: crate::import::ParsedWorkGraph {
+            works: vec![work("kept"), work("kept-child"), work("dropped"), work("dropped-child")],
+            work_artists: vec![
+                crate::db::DbWorkArtist::new(
+                    "kept-child",
+                    "artist-kept-work",
+                    0,
+                    crate::import::MetadataSource::MusicBrainz,
+                    "kept-work-artist".into(),
+                    now,
+                ),
+                crate::db::DbWorkArtist::new(
+                    "dropped-child",
+                    "artist-dropped-work",
+                    0,
+                    crate::import::MetadataSource::MusicBrainz,
+                    "dropped-work-artist".into(),
+                    now,
+                ),
+            ],
+            work_parts: vec![
+                crate::db::DbWorkPart::new(
+                    "kept",
+                    "kept-child",
+                    0,
+                    crate::import::MetadataSource::MusicBrainz,
+                    "kept-part".into(),
+                    now,
+                ),
+                crate::db::DbWorkPart::new(
+                    "dropped",
+                    "dropped-child",
+                    0,
+                    crate::import::MetadataSource::MusicBrainz,
+                    "dropped-part".into(),
+                    now,
+                ),
+            ],
+            track_works: vec![
+                crate::db::DbTrackWork::new(
+                    "track-1",
+                    "kept",
+                    0,
+                    crate::import::MetadataSource::MusicBrainz,
+                    "kept-track-work".into(),
+                    now,
+                ),
+                crate::db::DbTrackWork::new(
+                    "track-2",
+                    "dropped",
+                    0,
+                    crate::import::MetadataSource::MusicBrainz,
+                    "dropped-track-work".into(),
+                    now,
+                ),
+            ],
+        },
+        release_artist_roles: Vec::new(),
+        track_artist_roles: Vec::new(),
+        identities: Vec::new(),
+    };
+    let mut edit = Some(crate::import::ReleaseUserEdit {
+        album_title: "Album Title".into(),
+        album_artist_assignments: vec![crate::import::ArtistAssignment::new("Artist Name")],
+        album_year: None,
+        pressing: crate::import::PressingEdit::blank(),
+        tracks: vec![
+            crate::import::TrackUserEdit {
+                title: "First Track".into(),
+                side: 1,
+                track_number: Some(1),
+                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                file: Some(crate::import::AudioFile::Standalone {
+                    file_id: "audio-1".into(),
+                }),
+            },
+            crate::import::TrackUserEdit {
+                title: "Second Track".into(),
+                side: 1,
+                track_number: Some(2),
+                artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
+                file: None,
+            },
+        ],
+    });
+
+    let mut prepared_projection = parsed.clone();
+    let mapped = crate::import::RawReleaseEdit::from_user_edit(
+        edit.clone().expect("the mapped edit is present"),
+        crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
+    );
+    crate::import::pane::retain_mapped_source_track_metadata(
+        &mut prepared_projection,
+        &mapped.tracks,
+        crate::import::pane::CANDIDATE_TRACK_ID_PREFIX,
+    );
+    assert_eq!(
+        crate::import::pane::source_discogs_artist_ids(&prepared_projection),
+        std::collections::BTreeSet::from(["discogs-kept-work".to_string()]),
+        "a source track without audio cannot require an artist asset"
+    );
+
+    settle_track_rows(
+        &mut parsed,
+        &mut edit,
+        &crate::import::folder_scanner::CategorizedFiles { files: Vec::new() },
+        &SequentialIdProvider::new("track"),
+        now,
+    );
+
+    assert_eq!(
+        parsed
+            .work_graph
+            .works
+            .iter()
+            .map(|work| work.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["kept", "kept-child"]
+    );
+    assert_eq!(parsed.work_graph.work_artists.len(), 1);
+    assert_eq!(parsed.work_graph.work_parts.len(), 1);
+    assert_eq!(parsed.work_graph.track_works.len(), 1);
+    assert_eq!(
+        crate::import::pane::source_discogs_artist_ids(&parsed),
+        std::collections::BTreeSet::from(["discogs-kept-work".to_string()])
+    );
+}
+
 // ── build_audio_formats: CUE track byte windows ────────────────────
 
 /// Build the `TrackFile::CueBacked` list for a single-file CUE album, reusing

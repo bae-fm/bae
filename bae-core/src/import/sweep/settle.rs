@@ -8,39 +8,44 @@ enum SettledLead {
     },
 }
 
-fn metadata_for_settled_lead(
+async fn metadata_for_settled_lead(
     context: &SweepContext,
     candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
 ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
     match settled_lead {
-        SettledLead::NoExternalRelease => Ok(crate::import::CandidateMetadataDraft {
-            edit: crate::import::pane::blank_candidate_draft(&candidate.files),
-            provenance: None,
-            cover: None,
-        }),
+        SettledLead::NoExternalRelease => {
+            let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+            Ok(crate::import::CandidateMetadataDraft {
+                edit: source_draft.edit,
+                track_mappings: source_draft.track_mappings,
+                source_discogs_artist_ids: Default::default(),
+                provenance: None,
+                cover: None,
+                assets: crate::import::CandidatePreparedAssets::default(),
+            })
+        }
         SettledLead::ExternalRelease {
             provenance,
             payloads,
-        } => Ok(crate::import::CandidateMetadataDraft {
-            edit: context
+        } => {
+            context
                 .import
-                .external_candidate_draft(&payloads, candidate, durations)?,
-            provenance: Some(provenance),
-            cover: None,
-        }),
+                .external_candidate_metadata(&payloads, candidate, durations, provenance, None)
+                .await
+        }
     }
 }
 
-fn metadata_or_failed_verdict(
+async fn metadata_or_failed_verdict(
     context: &SweepContext,
     candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
     verdict: &mut TerminalVerdict,
 ) -> crate::import::CandidateMetadataDraft {
-    match metadata_for_settled_lead(context, candidate, durations, settled_lead) {
+    match metadata_for_settled_lead(context, candidate, durations, settled_lead).await {
         Ok(metadata) => metadata,
         Err(error) => {
             warn!(
@@ -61,10 +66,14 @@ fn metadata_or_failed_verdict(
                 )],
                 track_count,
             };
+            let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
             crate::import::CandidateMetadataDraft {
-                edit: crate::import::pane::blank_candidate_draft(&candidate.files),
+                edit: source_draft.edit,
+                track_mappings: source_draft.track_mappings,
+                source_discogs_artist_ids: Default::default(),
                 provenance: None,
                 cover: None,
+                assets: crate::import::CandidatePreparedAssets::default(),
             }
         }
     }
@@ -98,13 +107,22 @@ pub(super) async fn finish_candidate(
         return false;
     };
 
-    let metadata = metadata_or_failed_verdict(
+    let mut metadata = metadata_or_failed_verdict(
         context,
         candidate,
         &signals.durations,
         settled_lead,
         &mut verdict,
-    );
+    )
+    .await;
+    if let Err(error) = preserve_current_mapping_decisions(context, candidate, &mut metadata).await
+    {
+        warn!(
+            "sweep: could not preserve the current mappings for {} ({error}); writing no row",
+            candidate.path.display()
+        );
+        return false;
+    }
     save(
         context,
         token,
@@ -118,6 +136,28 @@ pub(super) async fn finish_candidate(
         metadata,
     )
     .await
+}
+
+async fn preserve_current_mapping_decisions(
+    context: &SweepContext,
+    candidate: &FolderCandidate,
+    metadata: &mut crate::import::CandidateMetadataDraft,
+) -> Result<(), crate::library::LibraryError> {
+    let current = context
+        .library_manager
+        .load_import_candidate_preparation(&candidate.files.content_hash())
+        .await?
+        .ok_or_else(|| {
+            crate::library::LibraryError::Internal(format!(
+                "{} has no stored import preparation",
+                candidate.path.display()
+            ))
+        })?;
+    metadata.track_mappings = crate::import::edits::preserve_track_mapping_decisions(
+        std::mem::take(&mut metadata.track_mappings),
+        &current.track_mappings,
+    );
+    Ok(())
 }
 
 /// Write one row. Cancellation is re-checked immediately before the write, not
@@ -395,13 +435,23 @@ pub(super) async fn record_explicit_lookup_verdict(
                 else {
                     continue;
                 };
-                let metadata = metadata_or_failed_verdict(
+                let mut metadata = metadata_or_failed_verdict(
                     context,
                     &entry.candidate,
                     &signals.durations,
                     settled_lead,
                     &mut verdict,
-                );
+                )
+                .await;
+                if let Err(error) =
+                    preserve_current_mapping_decisions(context, &entry.candidate, &mut metadata)
+                        .await
+                {
+                    warn!(
+                        "sweep: could not preserve the current mappings for {candidate_key} ({error}); writing no verdict"
+                    );
+                    continue;
+                }
                 if save(
                     context,
                     token,

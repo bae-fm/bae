@@ -547,12 +547,16 @@ async fn a_disc_assignment_survives_a_relaunch() {
     settled
         .apply_candidate_file_edits(&candidate_edits)
         .unwrap();
+    let hash = scanned.content_hash();
+    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     db.save_import_candidate_file_edits(
-        &scanned.content_hash(),
+        &hash,
         &folder.path().to_string_lossy(),
         0,
+        metadata_revision,
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],
+        &mapping_preparation,
     )
     .await
     .unwrap();

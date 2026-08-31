@@ -15,7 +15,7 @@ use bae_core::import::{
 use bae_core::library::LibraryManager;
 use bae_core::musicbrainz::{
     MbArtistCredit, MbArtistRef, MbMedium, MbRecording, MbRelation, MbReleaseGroupRef,
-    MbReleaseResponse, MbTrack, MbWork,
+    MbReleaseResponse, MbTrack, MbUrlResource, MbWork,
 };
 use bae_core::sync::CloudCipher;
 use coven::EncryptionService;
@@ -129,7 +129,7 @@ async fn import_folder(
             user_edit: None,
         })
         .await
-        .unwrap();
+        .map_err(|error| error.to_string())?;
     let mut progress_rx = f.handle.subscribe_import(import_id);
     support::try_wait_for_import_complete(&mut progress_rx).await
 }

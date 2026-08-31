@@ -9,6 +9,35 @@ use super::{apply_user_edit_to_seed, ImportService, PreparedMetadata};
 use crate::import::handle::remap_links;
 use crate::import::ParsedWorkGraph;
 
+fn retain_referenced_artists(
+    artists: &mut Vec<crate::db::DbArtist>,
+    new_album: Option<(&crate::db::DbAlbum, &[crate::db::DbAlbumArtist])>,
+    track_artists: &[crate::db::DbTrackArtist],
+    release_artist_roles: &[crate::db::DbReleaseArtistRole],
+    track_artist_roles: &[crate::db::DbTrackArtistRole],
+    work_artists: &[crate::db::DbWorkArtist],
+) {
+    let album_artists = new_album.into_iter().flat_map(|(album, links)| {
+        std::iter::once(album.artist_id.as_str())
+            .chain(links.iter().map(|link| link.artist_id.as_str()))
+    });
+    let referenced: std::collections::HashSet<&str> = album_artists
+        .chain(track_artists.iter().map(|link| link.artist_id.as_str()))
+        .chain(
+            release_artist_roles
+                .iter()
+                .map(|role| role.artist_id.as_str()),
+        )
+        .chain(
+            track_artist_roles
+                .iter()
+                .map(|role| role.artist_id.as_str()),
+        )
+        .chain(work_artists.iter().map(|link| link.artist_id.as_str()))
+        .collect();
+    artists.retain(|artist| referenced.contains(artist.id.as_str()));
+}
+
 impl ImportService {
     /// Reconcile the prepared release against existing library state, record the
     /// import, and remap parsed artist IDs to their real DB IDs. Pure DB work and
@@ -31,6 +60,7 @@ impl ImportService {
         parsed: crate::import::ParsedAlbum,
         user_edit: Option<crate::import::ReleaseUserEdit>,
         replacement_release_ids: &[String],
+        prepared_artist_images: &[crate::import::PreparedArtistImage],
     ) -> Result<PreparedMetadata, crate::import::ImportError> {
         let library_manager = &self.library_manager;
 
@@ -69,12 +99,6 @@ impl ImportService {
         };
 
         let album_title = db_album.title.clone();
-        let artist_name = artists
-            .iter()
-            .find(|a| a.id == db_album.artist_id)
-            .expect("primary artist must be in artists vec")
-            .name
-            .clone();
 
         let existing_album_id = library_manager
             .find_existing_album_for_import_excluding(&identities, replacement_release_ids)
@@ -82,6 +106,17 @@ impl ImportService {
         if let Some(album_id) = &existing_album_id {
             db_release.album_id = album_id.clone();
         }
+
+        retain_referenced_artists(
+            &mut artists,
+            existing_album_id
+                .is_none()
+                .then_some((&db_album, album_artists.as_slice())),
+            &track_artists,
+            &release_artist_roles,
+            &track_artist_roles,
+            &work_graph.work_artists,
+        );
 
         let resolved = library_manager
             .resolve_artists_for_import_with_existing(&artists, &explicit_existing_artist_ids)
@@ -93,16 +128,17 @@ impl ImportService {
             .map(|(a, id)| (a.id.clone(), id.clone()))
             .collect();
 
-        let remapped_primary_artist_id = artist_id_map
-            .get(&db_album.artist_id)
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!(
-                    "Primary artist ID {} not found in artist map",
-                    db_album.artist_id
-                ),
-            })?
-            .clone();
-        db_album.artist_id = remapped_primary_artist_id;
+        if existing_album_id.is_none() {
+            db_album.artist_id = artist_id_map
+                .get(&db_album.artist_id)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!(
+                        "Primary artist ID {} not found in artist map",
+                        db_album.artist_id
+                    ),
+                })?
+                .clone();
+        }
 
         let remapped_track_artists = remap_links(
             &track_artists,
@@ -189,8 +225,8 @@ impl ImportService {
         )?;
 
         let artist_images = library_manager
-            .fetch_discogs_artist_images(&artists, &artist_id_map)
-            .await;
+            .materialize_prepared_artist_images(&resolved.inserts, prepared_artist_images)
+            .await?;
 
         let artist_inserts = resolved.inserts;
         let artist_external_id_updates = resolved.external_id_updates;
@@ -216,7 +252,71 @@ impl ImportService {
             artist_images,
             identities,
             album_title,
-            artist_name,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn artists_replaced_by_edits_are_not_reconciled() {
+        let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let mut artists = vec![
+            crate::db::DbArtist {
+                id: "artist-referenced".into(),
+                name: "Artist Name".into(),
+                sort_name: None,
+                discogs_artist_id: None,
+                musicbrainz_artist_id: None,
+                created_at: now,
+            },
+            crate::db::DbArtist {
+                id: "artist-replaced".into(),
+                name: "Replaced Artist".into(),
+                sort_name: None,
+                discogs_artist_id: Some("discogs-replaced".into()),
+                musicbrainz_artist_id: None,
+                created_at: now,
+            },
+        ];
+        let album = crate::db::DbAlbum {
+            id: "album-1".into(),
+            title: "Album Title".into(),
+            artist_id: "artist-referenced".into(),
+            year: None,
+            primary_release_id: None,
+            is_compilation: false,
+            created_at: now,
+        };
+
+        retain_referenced_artists(&mut artists, Some((&album, &[])), &[], &[], &[], &[]);
+
+        assert_eq!(artists.len(), 1);
+        assert_eq!(artists[0].id, "artist-referenced");
+    }
+
+    #[test]
+    fn existing_album_does_not_retain_its_transient_album_artist() {
+        let now = chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc);
+        let mut artists = vec![crate::db::DbArtist {
+            id: "artist-album-only".into(),
+            name: "Album Artist".into(),
+            sort_name: None,
+            discogs_artist_id: Some("discogs-album-only".into()),
+            musicbrainz_artist_id: None,
+            created_at: now,
+        }];
+        retain_referenced_artists(&mut artists, None, &[], &[], &[], &[]);
+
+        assert!(
+            artists.is_empty(),
+            "an existing album discards the parsed album and its artist credits"
+        );
     }
 }

@@ -2,16 +2,13 @@
 // canonical v4 UUID (`RowIdentity::IndependentUuid`), which is what bae's
 // real ids are, so these fixtures carry UUIDs too. Each constant is named
 // for the moniker it replaced, so assertions still read by name.
-const ARTIST_ACTUAL_1: &str = "f83b9e90-bd64-470f-82e6-cf28db1996a3"; // was "artist-actual-1"
 const REL_1: &str = "cccb6034-5922-40d2-8d0b-d94619230882"; // was "e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e"
 const TRACK_1: &str = "f2f77437-aa03-4583-8b1c-d12bcf984967"; // was "track-1"
 
 use super::*;
 use crate::db::{Database, DbArtist};
 use crate::library::LibraryError;
-use crate::test_logs::capture_warn_logs_async;
 use chrono::Utc;
-use serial_test::serial;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use uuid::Uuid;

@@ -12522,388 +12522,6 @@
         }
       }
     },
-    "core.import.prepare.discovering_files": {
-      "comment": "Import progress: preparing — discovering files.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جارٍ اكتشاف الملفات..."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Откриване на файлове..."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ফাইল খোঁজা হচ্ছে..."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vyhledávání souborů..."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dateien werden gesucht..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Discovering files..."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Descubriendo archivos..."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recherche des fichiers..."
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ફાઇલો શોધાઈ રહી છે..."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "מאתר קבצים..."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "फाइलें खोजी जा रही हैं..."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pronalaženje datoteka..."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rilevamento file..."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ファイルを検出中…"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಫೈಲ್‌ಗಳನ್ನು ಹುಡುಕಲಾಗುತ್ತಿದೆ..."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "파일 찾는 중..."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ഫയലുകൾ കണ്ടെത്തുന്നു..."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "फायली शोधत आहे..."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bestanden zoeken..."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਫਾਈਲਾਂ ਲੱਭੀਆਂ ਜਾ ਰਹੀਆਂ ਹਨ..."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wyszukiwanie plików..."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Localizando arquivos..."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "கோப்புகள் கண்டறியப்படுகின்றன..."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ఫైల్‌లు కనుగొంటోంది..."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "กำลังค้นหาไฟล์..."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dosyalar bulunuyor..."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пошук файлів..."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "مسلیں دریافت ہو رہی ہیں..."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đang phát hiện tệp..."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在查找文件…"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在尋找檔案..."
-          }
-        }
-      }
-    },
-    "core.import.prepare.parsing_metadata": {
-      "comment": "Import progress: preparing — parsing metadata.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جارٍ تحليل البيانات الوصفية..."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Анализиране на метаданните..."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "মেটাডেটা বিশ্লেষণ করা হচ্ছে..."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zpracování metadat..."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Metadaten werden analysiert..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parsing metadata..."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analizando metadatos..."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analyse des métadonnées..."
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "મેટાડેટા પાર્સ થઈ રહ્યું છે..."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "מנתח מטא-נתונים..."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मेटाडेटा पार्स किया जा रहा है..."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Obrada metapodataka..."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parsing Metadati..."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "メタデータを解析中…"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಮೆಟಾಡೇಟಾವನ್ನು ಪಾರ್ಸ್ ಮಾಡಲಾಗುತ್ತಿದೆ..."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "메타데이터 분석 중..."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "മെറ്റാഡാറ്റ പാഴ്സ് ചെയ്യുന്നു..."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मेटाडेटा वाचला जात आहे..."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parsing Metadata..."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਮੈਟਾਡਾਟਾ ਪੜ੍ਹਿਆ ਜਾ ਰਿਹਾ ਹੈ..."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analizowanie metadanych..."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Analisando metadados..."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "மெட்டாடேட்டாவைப் பகுப்பாய்வு செய்கிறது..."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "మెటాడేటాను విశ్లేషిస్తోంది..."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "กำลังวิเคราะห์เมทาดาทา..."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parsing Üst veri..."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Розбір метаданих..."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "میٹا ڈیٹا پارس کیا جا رہا ہے..."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parsing Siêu dữ liệu..."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在解析元数据…"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在解析中繼資料..."
-          }
-        }
-      }
-    },
     "core.import.prepare.queued": {
       "comment": "Import progress: waiting for the import worker.",
       "localizations": {
@@ -13095,575 +12713,193 @@
         }
       }
     },
-    "core.import.prepare.reading_folder": {
-      "comment": "Import progress: reading the source folder before import.",
+    "core.import.prepare.validating_source_files": {
+      "comment": "Import progress: validating that source files still match the scan.",
       "localizations": {
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "جارٍ قراءة المجلد..."
+            "value": "جارٍ التحقق من الملفات المصدر..."
           }
         },
         "bg": {
           "stringUnit": {
             "state": "translated",
-            "value": "Прочитане на папката..."
+            "value": "Проверка на изходните файлове..."
           }
         },
         "bn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ফোল্ডার পড়া হচ্ছে..."
+            "value": "উৎস ফাইল যাচাই করা হচ্ছে..."
           }
         },
         "cs": {
           "stringUnit": {
             "state": "translated",
-            "value": "Načítání složky..."
+            "value": "Ověřování zdrojových souborů..."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ordner wird gelesen..."
+            "value": "Quelldateien werden überprüft..."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Reading folder..."
+            "value": "Validating source files..."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Leyendo la carpeta..."
+            "value": "Validando archivos de origen..."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lecture du dossier..."
+            "value": "Validation des fichiers sources..."
           }
         },
         "gu": {
           "stringUnit": {
             "state": "translated",
-            "value": "ફોલ્ડર વાંચવામાં આવી રહ્યું છે..."
+            "value": "સ્રોત ફાઇલોની ચકાસણી થઈ રહી છે..."
           }
         },
         "he": {
           "stringUnit": {
             "state": "translated",
-            "value": "קורא את התיקייה..."
+            "value": "מאמת קובצי מקור..."
           }
         },
         "hi": {
           "stringUnit": {
             "state": "translated",
-            "value": "फ़ोल्डर पढ़ा जा रहा है..."
+            "value": "स्रोत फ़ाइलों की पुष्टि की जा रही है..."
           }
         },
         "hr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Čitanje mape..."
+            "value": "Provjera izvornih datoteka..."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lettura della cartella..."
+            "value": "Convalida dei file sorgente..."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フォルダを読み込み中…"
+            "value": "ソースファイルを検証中…"
           }
         },
         "kn": {
           "stringUnit": {
             "state": "translated",
-            "value": "ಫೋಲ್ಡರ್ ಓದಲಾಗುತ್ತಿದೆ..."
+            "value": "ಮೂಲ ಫೈಲ್‌ಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ..."
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "폴더 읽는 중..."
+            "value": "원본 파일 확인 중..."
           }
         },
         "ml": {
           "stringUnit": {
             "state": "translated",
-            "value": "ഫോൾഡർ വായിക്കുന്നു..."
+            "value": "ഉറവിട ഫയലുകൾ പരിശോധിക്കുന്നു..."
           }
         },
         "mr": {
           "stringUnit": {
             "state": "translated",
-            "value": "फोल्डर वाचत आहे..."
+            "value": "स्रोत फायली तपासल्या जात आहेत..."
           }
         },
         "nl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Map lezen..."
+            "value": "Bronbestanden valideren..."
           }
         },
         "pa": {
           "stringUnit": {
             "state": "translated",
-            "value": "ਫੋਲਡਰ ਪੜ੍ਹਿਆ ਜਾ ਰਿਹਾ ਹੈ..."
+            "value": "ਸਰੋਤ ਫ਼ਾਈਲਾਂ ਦੀ ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ..."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Odczytywanie folderu..."
+            "value": "Sprawdzanie plików źródłowych..."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Lendo a pasta..."
+            "value": "Validando arquivos de origem..."
           }
         },
         "ta": {
           "stringUnit": {
             "state": "translated",
-            "value": "கோப்புறை படிக்கப்படுகிறது..."
+            "value": "மூலக் கோப்புகள் சரிபார்க்கப்படுகின்றன..."
           }
         },
         "te": {
           "stringUnit": {
             "state": "translated",
-            "value": "ఫోల్డర్ చదువుతోంది..."
+            "value": "మూల ఫైల్‌లను ధృవీకరిస్తోంది..."
           }
         },
         "th": {
           "stringUnit": {
             "state": "translated",
-            "value": "กำลังอ่านโฟลเดอร์..."
+            "value": "กำลังตรวจสอบไฟล์ต้นฉบับ..."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Klasör okunuyor..."
+            "value": "Kaynak dosyalar doğrulanıyor..."
           }
         },
         "uk": {
           "stringUnit": {
             "state": "translated",
-            "value": "Читання папки..."
+            "value": "Перевірка вихідних файлів..."
           }
         },
         "ur": {
           "stringUnit": {
             "state": "translated",
-            "value": "فولڈر پڑھا جا رہا ہے..."
+            "value": "ماخذ فائلوں کی توثیق ہو رہی ہے..."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "Đang đọc thư mục..."
+            "value": "Đang xác thực tệp nguồn..."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在读取文件夹…"
+            "value": "正在验证源文件…"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "正在讀取資料夾…"
-          }
-        }
-      }
-    },
-    "core.import.prepare.validating_tracks": {
-      "comment": "Import progress: preparing — validating tracks.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جارٍ التحقق من المقاطع..."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Проверка на записите..."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ট্র্যাক যাচাই করা হচ্ছে..."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ověřování skladeb..."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titel werden validiert..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Validating tracks..."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Validando pistas..."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Validation des pistes..."
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ટ્રૅક્સ માન્ય થઈ રહ્યા છે..."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "מאמת רצועות..."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ट्रैक सत्यापित हो रहे हैं..."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Provjera pjesama..."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Convalida brani..."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "トラックを検証中…"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಹಾಡುಗಳನ್ನು ಮಾನ್ಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ..."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "트랙 검증 중..."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ട്രാക്കുകൾ സാധൂകരിക്കുന്നു..."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "गाणी वैध करत आहे..."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nummers valideren..."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਟ੍ਰੈਕ ਪਰਖੇ ਜਾ ਰਹੇ ਹਨ..."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sprawdzanie ścieżek..."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Validando faixas..."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "பாடல்கள் சரிபார்க்கப்படுகின்றன..."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ట్రాక్‌లు ధృవీకరిస్తోంది..."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "กำลังตรวจสอบแทร็ก..."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parçalar doğrulanıyor..."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Перевірка доріжок..."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "نغموں کی توثیق ہو رہی ہے..."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đang xác thực bản nhạc..."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在验证曲目…"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在驗證曲目..."
-          }
-        }
-      }
-    },
-    "core.import.prepare.writing_cover_art": {
-      "comment": "Import progress: preparing — writing cover art.",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "جارٍ كتابة صورة الغلاف..."
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Записване на обложката..."
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "কভার আর্ট লেখা হচ্ছে..."
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zápis obalu..."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cover wird geschrieben..."
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Writing cover art..."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escribiendo la portada..."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Écriture de la pochette..."
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "આવરણ ચિત્ર લખાઈ રહ્યું છે..."
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "כותב את עטיפת האלבום..."
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "कवर चित्र लिखा जा रहा है..."
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zapisivanje omota..."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Scrittura copertina..."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "カバーアートを書き込み中…"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಕವರ್ ಚಿತ್ರ ಬರೆಯಲಾಗುತ್ತಿದೆ..."
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "커버 아트 쓰는 중..."
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "കവർ ആർട്ട് എഴുതുന്നു..."
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "मुखपृष्ठ कला लिहित आहे..."
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hoes wegschrijven..."
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਕਵਰ ਆਰਟ ਲਿਖੀ ਜਾ ਰਹੀ ਹੈ..."
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zapisywanie okładki..."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gravando a capa..."
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "அட்டை கலை எழுதப்படுகிறது..."
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "కవర్ ఆర్ట్ రాస్తోంది..."
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "กำลังเขียนภาพปก..."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Kapak görseli yazılıyor..."
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Запис обкладинки..."
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "سرورق تصویر لکھی جا رہی ہے..."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đang ghi ảnh bìa..."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在写入封面…"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "正在寫入封面圖..."
+            "value": "正在驗證來源檔案…"
           }
         }
       }

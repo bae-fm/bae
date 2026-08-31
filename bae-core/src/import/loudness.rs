@@ -68,6 +68,21 @@ impl LoudnessProgress {
         }
     }
 
+    fn report_initial(&self, total_frames: Option<u64>) {
+        send_event(
+            &self.event_tx,
+            crate::import::handle::ImportEvent::ImportProgress {
+                candidate_key: self.candidate_key.clone(),
+                progress: crate::import::types::ImportProgress::Progress {
+                    id: self.release_id.clone(),
+                    percent: total_frames.is_some_and(|total| total > 0).then_some(0),
+                    phase: crate::import::types::ImportPhase::MeasuringLoudness,
+                    import_id: self.import_id.clone(),
+                },
+            },
+        );
+    }
+
     /// Report the pass at `fraction` of its frames. `fraction` is `None` when
     /// some track provides no frame denominator; there is then no percent to
     /// advance and the row's bar stands where it was.
@@ -89,7 +104,7 @@ impl LoudnessProgress {
                 candidate_key: self.candidate_key.clone(),
                 progress: crate::import::types::ImportProgress::Progress {
                     id: self.release_id.clone(),
-                    percent,
+                    percent: Some(percent),
                     phase: crate::import::types::ImportPhase::MeasuringLoudness,
                     import_id: self.import_id.clone(),
                 },
@@ -274,34 +289,34 @@ pub(super) async fn measure_loudness(
     audio_formats: &mut [crate::db::DbAudioFormat],
     audio_segments: &[crate::db::DbAudioSegment],
     file_ids: &HashMap<PathBuf, String>,
+    source_file_sizes: &HashMap<PathBuf, u64>,
     tracks_to_files: &[TrackFile],
     candidate_key: &str,
     release_id: &str,
     import_id: &str,
-) -> LoudnessResult {
+) -> Result<LoudnessResult, crate::import::ImportError> {
     use ebur128::EbuR128;
 
     // Stream once per file and share across its tracks (every CUE track of one
     // image reads the same sparse buffer; the fill evicts what the decodes have
-    // passed, so only a window of compressed bytes stays resident). A file that
-    // can't be stat'd (or has a non-UTF-8 path the reader can't carry) yields
-    // `None`, so its tracks are skipped rather than measured against missing
-    // bytes; a read failure mid-stream cancels the buffer and surfaces as that
-    // track's decode failure.
+    // passed, so only a window of compressed bytes stays resident). Sizes come
+    // from the scan facts the import already validated. A non-UTF-8 path the
+    // reader can't carry yields `None`, so its tracks stay unmeasured; a read
+    // failure mid-stream cancels the buffer and surfaces as that track's decode
+    // failure.
     let path_by_file_id: HashMap<String, PathBuf> = file_ids
         .iter()
         .map(|(path, id)| (id.clone(), path.clone()))
         .collect();
     let mut file_buffers: HashMap<String, Option<SharedSparseBuffer>> = HashMap::new();
     for (file_id, path) in &path_by_file_id {
+        let size =
+            *source_file_sizes
+                .get(path)
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!("validated source size is missing for {}", path.display()),
+                })?;
         file_buffers.entry(file_id.clone()).or_insert_with(|| {
-            let size = match std::fs::metadata(path) {
-                Ok(metadata) => metadata.len(),
-                Err(e) => {
-                    warn!("loudness: cannot stat {path:?} to measure: {e}; its tracks stay unmeasured");
-                    return None;
-                }
-            };
             let Some(path_str) = path.to_str() else {
                 warn!("loudness: non-UTF-8 path {path:?}; its tracks stay unmeasured");
                 return None;
@@ -354,7 +369,7 @@ pub(super) async fn measure_loudness(
         });
     let mut frames_done_before = 0u64;
 
-    progress.report(progress_fraction(0, scan_total_frames));
+    progress.report_initial(scan_total_frames);
 
     // Decode + measure ONE track at a time: each decode runs on a blocking thread
     // but is awaited before the next starts, so the machine never runs N
@@ -504,11 +519,11 @@ pub(super) async fn measure_loudness(
 
     let album_loudness = crate::loudness::album_loudness(&meters);
     let album_peak = crate::loudness::album_peak(&track_peaks);
-    LoudnessResult {
+    Ok(LoudnessResult {
         album_loudness_lufs: album_loudness,
         album_peak_linear: album_peak,
         broken: broken_tracks,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -565,7 +580,7 @@ mod tests {
                     ..
                 } => {
                     assert_eq!(phase, crate::import::types::ImportPhase::MeasuringLoudness);
-                    percents.push(percent);
+                    percents.extend(percent);
                 }
                 other => panic!("unexpected event: {other:?}"),
             }
@@ -745,7 +760,7 @@ mod tests {
             } = event
             {
                 assert_eq!(phase, crate::import::types::ImportPhase::MeasuringLoudness);
-                percents.push(percent);
+                percents.extend(percent);
             }
         }
         percents
@@ -759,8 +774,8 @@ mod tests {
         .join(name)
     }
 
-    /// A track whose source file can't be read stays unmeasured and never fails
-    /// the import.
+    /// A source that disappears after validation is reported as broken by the
+    /// reader rather than hidden behind another metadata check.
     #[tokio::test]
     async fn measure_loudness_skips_unreadable_source() {
         let (event_tx, mut rx) = broadcast::channel(16);
@@ -768,6 +783,7 @@ mod tests {
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
         let file_ids = HashMap::from([(missing.clone(), "file-0".to_string())]);
+        let source_file_sizes = HashMap::from([(missing.clone(), 1)]);
         let tracks = vec![standalone_track("track-0", &missing)];
 
         let result = measure_loudness(
@@ -775,19 +791,18 @@ mod tests {
             &mut audio_formats,
             &audio_segments,
             &file_ids,
+            &source_file_sizes,
             &tracks,
             "cand",
             "release-1",
             "import-1",
         )
-        .await;
+        .await
+        .unwrap();
 
         assert!(result.album_loudness_lufs.is_none());
         assert!(result.album_peak_linear.is_none());
-        assert!(
-            result.broken.is_empty(),
-            "an unreadable source is not broken"
-        );
+        assert_eq!(result.broken.len(), 1);
         assert!(audio_formats[0].track_loudness_lufs.is_none());
         assert!(audio_formats[0].track_peak_linear.is_none());
 
@@ -808,6 +823,7 @@ mod tests {
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments: Vec<crate::db::DbAudioSegment> = Vec::new();
         let file_ids = HashMap::new();
+        let source_file_sizes = HashMap::new();
         let tracks = vec![standalone_track("track-0", &PathBuf::from("/unused.flac"))];
 
         let result = measure_loudness(
@@ -815,12 +831,14 @@ mod tests {
             &mut audio_formats,
             &audio_segments,
             &file_ids,
+            &source_file_sizes,
             &tracks,
             "cand",
             "release-1",
             "import-1",
         )
-        .await;
+        .await
+        .unwrap();
 
         assert!(result.album_loudness_lufs.is_none());
         assert!(audio_formats[0].track_loudness_lufs.is_none());
@@ -836,6 +854,8 @@ mod tests {
         let mut audio_formats = vec![audio_format("track-0", "af-0")];
         let audio_segments = vec![whole_file_main_segment("af-0", "file-0")];
         let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
+        let source_file_sizes =
+            HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
         let tracks = vec![standalone_track("track-0", &path)];
 
         let result = measure_loudness(
@@ -843,12 +863,14 @@ mod tests {
             &mut audio_formats,
             &audio_segments,
             &file_ids,
+            &source_file_sizes,
             &tracks,
             "cand",
             "release-1",
             "import-1",
         )
-        .await;
+        .await
+        .unwrap();
 
         assert!(
             audio_formats[0].track_loudness_lufs.is_some(),
@@ -877,6 +899,8 @@ mod tests {
         long.end_sample = Some(6_615);
         let audio_segments = vec![short, long];
         let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
+        let source_file_sizes =
+            HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
         let tracks = vec![
             standalone_track("track-0", &path),
             standalone_track("track-1", &path),
@@ -887,12 +911,14 @@ mod tests {
             &mut audio_formats,
             &audio_segments,
             &file_ids,
+            &source_file_sizes,
             &tracks,
             "cand",
             "release-1",
             "import-1",
         )
-        .await;
+        .await
+        .unwrap();
 
         // The first track holds 2,205 of the 8,820 measured frames, so the pass
         // stands at 25% when it finishes — a quarter, not the half an
@@ -921,6 +947,8 @@ mod tests {
         segment.end_sample = Some(2_205);
         let audio_segments = vec![segment];
         let file_ids = HashMap::from([(path.clone(), "file-0".to_string())]);
+        let source_file_sizes =
+            HashMap::from([(path.clone(), std::fs::metadata(&path).unwrap().len())]);
         let tracks = vec![standalone_track("track-0", &path)];
 
         let result = measure_loudness(
@@ -928,12 +956,14 @@ mod tests {
             &mut audio_formats,
             &audio_segments,
             &file_ids,
+            &source_file_sizes,
             &tracks,
             "cand",
             "release-1",
             "import-1",
         )
-        .await;
+        .await
+        .unwrap();
 
         assert!(
             audio_formats[0].track_loudness_lufs.is_none(),

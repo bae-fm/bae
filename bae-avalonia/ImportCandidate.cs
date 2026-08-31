@@ -219,7 +219,7 @@ public sealed class ImportCandidateRowStatus
 {
     public string Kind { get; set; } = string.Empty;
     public int Count { get; set; }
-    public int ProgressPercent { get; set; }
+    public int? ProgressPercent { get; set; }
     public ImportStep? Step { get; set; }
     internal BridgeException? Error { get; set; }
 
@@ -250,7 +250,13 @@ public sealed class ImportCandidateRowStatus
         get
         {
             var stepLabel = Step?.LocalizedLabel;
-            var importing = Loc.Chrome("import.progress.percent", "percent", ProgressPercent);
+            if (ProgressPercent is null)
+            {
+                return string.IsNullOrEmpty(stepLabel)
+                    ? Loc.Chrome("import.progress.identifying")
+                    : stepLabel;
+            }
+            var importing = Loc.Chrome("import.progress.percent", "percent", ProgressPercent.Value);
             return string.IsNullOrEmpty(stepLabel) ? importing : $"{importing} — {stepLabel}";
         }
     }

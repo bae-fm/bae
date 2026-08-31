@@ -172,7 +172,7 @@ pub(crate) fn automation_import_status(
 ) -> Option<AutomationImportStatus> {
     Some(match status? {
         TriageImportStatus::Importing => AutomationImportStatus::Importing {
-            progress_percent: in_flight.map_or(0, |in_flight| in_flight.progress_percent),
+            progress_percent: in_flight.and_then(|in_flight| in_flight.progress_percent),
             step: in_flight
                 .and_then(|in_flight| in_flight.step)
                 .map(automation_import_step),

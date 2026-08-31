@@ -2,7 +2,6 @@ use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
 use crate::import::folder_registry::host_root;
-use crate::import::MetadataSource;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
 use std::time::Duration;
@@ -57,6 +56,43 @@ async fn setup_import_service() -> (ImportService, TempDir) {
         },
         temp_dir,
     )
+}
+
+async fn prepare_named_candidate(
+    service: &ImportService,
+    content_hash: &str,
+    watched_folder_path: &str,
+    candidate_path: &str,
+    album_title: &str,
+) -> u64 {
+    let preparation = service
+        .library_manager
+        .load_import_candidate_preparation(content_hash)
+        .await
+        .unwrap()
+        .expect("the scanned candidate has its initial preparation");
+    let mut edit = preparation.metadata_draft;
+    edit.album_title = album_title.to_string();
+    edit.album_artist_assignments = vec![crate::import::ArtistAssignment::new("Artist Name")];
+    service
+        .library_manager
+        .replace_candidate_metadata_prepared(
+            watched_folder_path,
+            content_hash,
+            candidate_path,
+            preparation.file_edit_revision,
+            preparation.metadata_revision,
+            &crate::import::CandidateMetadataDraft {
+                edit,
+                track_mappings: preparation.track_mappings,
+                source_discogs_artist_ids: preparation.source_discogs_artist_ids,
+                provenance: preparation.metadata_provenance,
+                cover: preparation.cover,
+                assets: preparation.assets,
+            },
+        )
+        .await
+        .unwrap()
 }
 
 #[derive(Clone)]

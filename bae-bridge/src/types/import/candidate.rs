@@ -295,22 +295,14 @@ pub struct BridgeCandidateFiles {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgePrepareStep {
     Queued,
-    ReadingFolder,
-    ParsingMetadata,
-    WritingCoverArt,
-    DiscoveringFiles,
-    ValidatingTracks,
+    ValidatingSourceFiles,
 }
 
 impl BridgePrepareStep {
     pub(crate) fn loc_key(self) -> &'static str {
         match self {
             Self::Queued => "core.import.prepare.queued",
-            Self::ReadingFolder => "core.import.prepare.reading_folder",
-            Self::ParsingMetadata => "core.import.prepare.parsing_metadata",
-            Self::WritingCoverArt => "core.import.prepare.writing_cover_art",
-            Self::DiscoveringFiles => "core.import.prepare.discovering_files",
-            Self::ValidatingTracks => "core.import.prepare.validating_tracks",
+            Self::ValidatingSourceFiles => "core.import.prepare.validating_source_files",
         }
     }
 }
@@ -349,11 +341,7 @@ impl BridgeImportStep {
             ImportStep::Preparing(p) => BridgeImportStep::Preparing {
                 step: match p {
                     PrepareStep::Queued => BridgePrepareStep::Queued,
-                    PrepareStep::ReadingFolder => BridgePrepareStep::ReadingFolder,
-                    PrepareStep::ParsingMetadata => BridgePrepareStep::ParsingMetadata,
-                    PrepareStep::WritingCoverArt => BridgePrepareStep::WritingCoverArt,
-                    PrepareStep::DiscoveringFiles => BridgePrepareStep::DiscoveringFiles,
-                    PrepareStep::ValidatingTracks => BridgePrepareStep::ValidatingTracks,
+                    PrepareStep::ValidatingSourceFiles => BridgePrepareStep::ValidatingSourceFiles,
                 },
             },
             ImportStep::Running(phase) => BridgeImportStep::Running {

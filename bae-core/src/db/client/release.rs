@@ -1,8 +1,13 @@
 use super::*;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod import_guard;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use import_guard::require_import_commit_guard;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod fail_import;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use fail_import::*;
+
 impl Database {
     pub async fn insert_release(&self, release: &DbRelease) -> Result<(), DbError> {
         let release = release.clone();
@@ -549,6 +554,7 @@ impl Database {
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
+        guard: ImportCommitGuard,
         // `None` when the album is an existing one, already in the DB.
         album: Option<&DbAlbum>,
         release: &DbRelease,
@@ -632,6 +638,7 @@ impl Database {
                 },
                 move |sql| {
                     let tx = &sql;
+                    require_import_commit_guard(tx, &guard)?;
                     // Every synced row this transaction inserts shares one HLC stamp
                     // for `_updated_at`; wall-clock `now` stays for `created_at`.
                     let reg = sql.stamp();

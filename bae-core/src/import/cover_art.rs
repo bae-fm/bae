@@ -219,8 +219,8 @@ fn image_download_client() -> Result<reqwest::Client, ImportError> {
         .map_err(|detail| ImportError::CoverArt { detail })
 }
 
-/// One remote image's bytes and their declared content type.
-#[derive(Debug, Clone)]
+/// One decoded provider image's original bytes and detected content type.
+#[derive(Debug, Clone, PartialEq)]
 pub struct RemoteImage {
     pub bytes: Vec<u8>,
     pub content_type: ContentType,
@@ -488,7 +488,7 @@ pub struct RemoteImageCache {
 impl RemoteImageCache {
     pub fn new(library_path: &std::path::Path) -> Self {
         Self::in_dir(
-            library_path.join("cache").join("remote-images"),
+            library_path.join("cache").join("remote-images-v2"),
             REMOTE_IMAGE_DISK_BUDGET,
             RETRY_BASE_DELAY,
         )
@@ -623,24 +623,6 @@ async fn write_disk(
         })
 }
 
-/// Download an image with no caching in front — the artist-image path, whose
-/// bytes are stored in the library on first fetch and never re-read from the URL.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) async fn download_image_bytes(
-    image_url: &str,
-    operation: &str,
-) -> Result<(Vec<u8>, ContentType), ImportError> {
-    match send_image_request(image_url, operation, RETRY_BASE_DELAY).await? {
-        ImageResponse::Body {
-            bytes,
-            content_type,
-        } => Ok((bytes, content_type)),
-        ImageResponse::Nothing => Err(ImportError::CoverArt {
-            detail: format!("no image is served at {image_url}"),
-        }),
-    }
-}
-
 /// What one image request returned. A 404 is an ordinary answer because cover
 /// addresses are derived without knowing whether their host has bytes there.
 enum ImageResponse {
@@ -709,11 +691,8 @@ fn is_permanent_request_error(error: &reqwest::Error) -> bool {
 /// Read bytes and content type from a successful image response.
 async fn read_image_response(
     response: reqwest::Response,
-    image_url: &str,
+    _image_url: &str,
 ) -> Result<ImageResponse, ImportError> {
-    let content_type =
-        super::image_response::image_content_type_from_response(response.headers(), image_url);
-
     let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
         .map_err(|error| ImportError::CoverArt {
@@ -724,6 +703,25 @@ async fn read_image_response(
             detail: "Downloaded file too small to be a valid image".to_string(),
         });
     }
+
+    let format = image::guess_format(&bytes).map_err(|error| ImportError::CoverArt {
+        detail: format!("Downloaded file is not a valid image: {error}"),
+    })?;
+    image::load_from_memory_with_format(&bytes, format).map_err(|error| ImportError::CoverArt {
+        detail: format!("Downloaded file is not a valid image: {error}"),
+    })?;
+    let content_type = match format {
+        image::ImageFormat::Jpeg => ContentType::Jpeg,
+        image::ImageFormat::Png => ContentType::Png,
+        image::ImageFormat::Gif => ContentType::Gif,
+        image::ImageFormat::WebP => ContentType::Webp,
+        image::ImageFormat::Bmp => ContentType::Bmp,
+        other => {
+            return Err(ImportError::CoverArt {
+                detail: format!("Downloaded image format {other:?} is not supported"),
+            })
+        }
+    };
 
     debug!("Downloaded cover art ({} bytes)", bytes.len());
     Ok(ImageResponse::Body {

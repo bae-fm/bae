@@ -4,11 +4,8 @@
 //! or one container plus a CUE sheet, and whether the metadata came from
 //! MusicBrainz, Discogs, the files' own tags, or direct entry:
 //!
-//! 1. **Preparation** ([`PrepareStep`]) — resolve the release's metadata, walk
-//!    the folder, and map each logical track onto the audio file holding its
-//!    samples. A one-file-per-track release emits one `TrackFile::Standalone`
-//!    per track; a CUE-backed release emits a `TrackFile::CueBacked` per track,
-//!    all sharing the container's parsed CUE sheet and probe.
+//! 1. **Preparation** ([`PrepareStep`]) — validate that the stored candidate's
+//!    source files still have the identities recorded by the scan.
 //! 2. **Running** ([`ImportPhase`]) — read and hash each file where it already
 //!    sits (no bytes move, no transcode), measure per-track loudness by decoding,
 //!    and write every row in one transaction.
@@ -22,6 +19,8 @@ use crate::cue_flac::CueSheet;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::DbTrack;
 use serde::{Deserialize, Serialize};
+mod progress;
+pub use progress::*;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::Path, path::PathBuf, sync::Arc};
 
@@ -207,11 +206,65 @@ pub enum MetadataProvenance {
 /// populated it. The selected cover belongs to the draft; candidate files and
 /// mapping decisions do not.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CandidateMetadataDraft {
     pub edit: RawReleaseEdit,
+    /// Complete physical bindings for `edit`: one row for every candidate
+    /// track, including rows deliberately dropped or left without audio.
+    pub track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
+    /// Provider artists present in the selected release payload, including
+    /// role and work credits that are not editable album/track assignments.
+    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub provenance: Option<MetadataProvenance>,
     pub cover: Option<CoverSelection>,
+    pub assets: CandidatePreparedAssets,
+}
+
+/// The portion of a prepared candidate that changes when file roles or sheet
+/// bindings reshape its physical track slots.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct CandidateMappingPreparation {
+    pub track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
+    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
+    pub artist_images: Vec<PreparedArtistImage>,
+}
+
+/// Provider image answers owned by the candidate metadata revision that
+/// fetched them. Import reads these bytes; it never asks a provider again.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CandidatePreparedAssets {
+    pub remote_cover: Option<crate::import::cover_art::RemoteImage>,
+    pub artist_images: Vec<PreparedArtistImage>,
+}
+
+/// Discogs' complete image answer for one artist currently referenced by the
+/// candidate draft. `Nothing` is a real answer and prevents a later import
+/// from treating absence as unfinished preparation.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq)]
+pub enum PreparedArtistImage {
+    Image {
+        discogs_artist_id: String,
+        source_url: String,
+        image: crate::import::cover_art::RemoteImage,
+    },
+    Nothing {
+        discogs_artist_id: String,
+    },
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+impl PreparedArtistImage {
+    pub fn discogs_artist_id(&self) -> &str {
+        match self {
+            Self::Image {
+                discogs_artist_id, ..
+            }
+            | Self::Nothing { discogs_artist_id } => discogs_artist_id,
+        }
+    }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -467,6 +520,28 @@ impl RawReleaseEdit {
                         TrackArtistAssignments::AlbumArtists
                     )
             })
+    }
+
+    /// Discogs identities on new album artists and on track artists whose rows
+    /// have audio bound. Existing-library assignments need no prepared image
+    /// because import does not insert those artists; fileless rows do not
+    /// become tracks.
+    pub(crate) fn new_discogs_artist_ids_for_bound_tracks(
+        &self,
+    ) -> std::collections::BTreeSet<String> {
+        self.album_artist_assignments
+            .iter()
+            .chain(self.tracks.iter().flat_map(|track| {
+                match (&track.artist_assignments, track.file.is_some()) {
+                    (TrackArtistAssignments::Explicit(assignments), true) => assignments.as_slice(),
+                    _ => &[],
+                }
+            }))
+            .filter_map(|assignment| match assignment {
+                ArtistAssignment::Existing { .. } => None,
+                ArtistAssignment::New { seed } => seed.discogs_artist_id.clone(),
+            })
+            .collect()
     }
 }
 
@@ -763,112 +838,6 @@ impl RawPressingEdit {
     }
 }
 
-/// The storage state the user picks for an import. Every import FIRST lands
-/// `Local` (files in place, playable immediately); a `Remote` import then
-/// transitions to the cloud in the background.
-///
-/// Pinned-ness is NOT part of this state — it's coven cache state, never a bae
-/// property. The user's pin choice rides the remote transition as a transient
-/// argument (`pin` on the import command) telling coven whether to populate
-/// `storage/pinned/`; it is never persisted.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StorageMode {
-    /// Files stay in place on this device; never uploaded.
-    Local,
-    /// Uploaded to the cloud home; `releases.remote` flips true once the upload
-    /// lands.
-    Remote,
-}
-
-/// User's cover art selection for an import.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CoverSelection {
-    /// Remote cover to download (URL + source for attribution)
-    Remote(String, MetadataSource),
-    /// Local file in the album folder (relative path from album root)
-    Local(String),
-    /// Artwork embedded in one audio file, identified by that file's relative
-    /// path in the File Tags snapshot.
-    Embedded(String),
-}
-
-/// Progress updates during import
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone)]
-pub enum ImportProgress {
-    /// A preparation step, before the running phases begin.
-    Preparing {
-        import_id: String,
-        step: PrepareStep,
-        album_title: String,
-        artist_name: String,
-    },
-    Progress {
-        id: String,
-        percent: u8,
-        /// Which running phase this progress belongs to. The phases run in order:
-        /// read and register the files in place, measure loudness, finalize.
-        phase: ImportPhase,
-        import_id: String,
-    },
-    Complete {
-        id: String,
-        import_id: String,
-        album_id: String,
-    },
-    RemoteUploadQueued {
-        id: String,
-        import_id: String,
-        album_id: String,
-        outbox_revision: u64,
-    },
-    Failed {
-        error: String,
-        import_id: String,
-    },
-}
-
-/// The running phase of an import, after phase-0 preparation. Emitted as each
-/// transition begins so the UI can name the work in progress. Every import is
-/// local-in-place: the source files are read and hashed where they sit, then
-/// each track is decoded to measure loudness, then the rows are written.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImportPhase {
-    /// Reading and hashing each source file before it is registered. Per-file
-    /// progress fills the percent.
-    ReadingFiles,
-    /// Decoding each track to measure its loudness and true peak. Frames
-    /// measured fill the percent, on whole-percent moves.
-    MeasuringLoudness,
-    /// Writing the album/release/track rows and committing the import.
-    Finalizing,
-}
-
-/// Preparation steps, emitted by the import worker before the running phases
-/// ([`ImportPhase`]) begin.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PrepareStep {
-    Queued,
-    ReadingFolder,
-    ParsingMetadata,
-    WritingCoverArt,
-    DiscoveringFiles,
-    ValidatingTracks,
-}
-
-/// Which step of an import is in progress, for the candidate progress UI. The
-/// UI localizes each step; bae-core no longer renders display text for it.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ImportStep {
-    Preparing(PrepareStep),
-    Running(ImportPhase),
-}
-
 /// Maps a logical track to the audio file that contains its samples.
 ///
 /// Each variant owns its `DbTrack` by value — a `TrackFile` IS the track's
@@ -928,18 +897,10 @@ pub struct CueAnalyzedAudioFile {
 
 /// Import command sent to the service worker.
 ///
-/// Carries only identifiers, never payloads. For
-/// `MetadataProvenance::ExternalRelease`, the worker calls `prepare_release` at
-/// commit time, reading
-/// through the session-wide MB/Discogs LRU caches — normally a hit, since the
-/// UI's prefetch warmed them; a miss costs one round-trip. Cover bytes come
-/// through the same caching in the remote-image cache. File Tags consumes the
-/// candidate's stored tag snapshot. A command with no provenance uses its
-/// draft over the candidate's physical track slots.
+/// Carries only identifiers, never provider payloads. The worker consumes the
+/// candidate's stored metadata draft, track mappings, and prepared image
+/// assets. It performs no metadata-provider work.
 ///
-/// `user_edit` is an optional overlay from the confirmation-page editor; when
-/// present its fields override the seeded metadata after the choice
-/// transformation.
 #[derive(Debug)]
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct ImportCommand {
@@ -947,6 +908,7 @@ pub struct ImportCommand {
     pub candidate_key: String,
     pub folder: PathBuf,
     pub scope: crate::import::folder_scanner::ReleaseFileScope,
+    #[cfg(any(test, feature = "test-utils"))]
     pub selected_cover: Option<CoverSelection>,
     pub storage_mode: StorageMode,
     /// The transient pin choice for a `Remote` import: whether coven keeps
@@ -954,7 +916,9 @@ pub struct ImportCommand {
     /// cache. Ignored for `Local`. Never persisted — it rides the upload
     /// as the retain-pinned intent.
     pub pin: bool,
+    #[cfg(any(test, feature = "test-utils"))]
     pub metadata_provenance: Option<MetadataProvenance>,
+    #[cfg(any(test, feature = "test-utils"))]
     pub user_edit: Option<ReleaseUserEdit>,
 }
 

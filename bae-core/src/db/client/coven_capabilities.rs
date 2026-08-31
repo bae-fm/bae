@@ -1,31 +1,6 @@
 use super::*;
 
 impl Database {
-    #[cfg(test)]
-    pub(crate) async fn rename_artist_images_table_for_test(&self) -> Result<(), coven::DbError> {
-        self.call(|sql| {
-            sql.execute(
-                "ALTER TABLE artist_images RENAME TO artist_images_renamed",
-                [],
-            )?;
-            Ok(())
-        })
-        .await
-    }
-
-    #[cfg(test)]
-    pub(crate) async fn artist_and_image_counts_for_test(
-        &self,
-    ) -> Result<(i64, i64), coven::DbError> {
-        self.read(|sql| {
-            let artists = sql.query_row("SELECT COUNT(*) FROM artists", [], |row| row.get(0))?;
-            let images =
-                sql.query_row("SELECT COUNT(*) FROM artist_images", [], |row| row.get(0))?;
-            Ok((artists, images))
-        })
-        .await
-    }
-
     pub(crate) fn subscribe_sync_status(
         &self,
     ) -> tokio::sync::watch::Receiver<coven::SyncLoopStatus> {

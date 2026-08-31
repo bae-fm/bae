@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Globalization;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml.MarkupExtensions;
@@ -37,39 +36,29 @@ internal static class ImportProgressLine
         {
             // A candidate placed as importing whose run has not reported yet is
             // at the start with no step named.
-            var percent = runtime?.Import?.ProgressPercent ?? 0;
+            var percent = runtime?.Import?.ProgressPercent;
             var step = runtime?.Import?.Step;
-            text.Text = string.Join(
-                " · ",
-                new[]
-                {
-                    step is { } named
-                        ? BridgeDisplay.LocalizedLine(named)
-                        : Loc.Chrome("import.progress.identifying"),
-                    (percent / 100.0).ToString("P0", CultureInfo.CurrentCulture),
-                }.Where(part => part.Length > 0));
-            barHost.Child = Bar(percent / 100.0);
+            var phase = step is { } named
+                ? BridgeDisplay.LocalizedLine(named)
+                : Loc.Chrome("import.progress.identifying");
+            text.Text = percent is { } value
+                ? $"{phase} · {(value / 100.0).ToString("P0", CultureInfo.CurrentCulture)}"
+                : phase;
+            barHost.Child = Bar(percent is { } progress ? progress / 100.0 : null);
         });
         return column;
     }
 
     /// <summary>The bar itself: a filled run over a track, three points tall.</summary>
-    internal static Control Bar(double fraction)
+    internal static ProgressBar Bar(double? fraction)
     {
-        var clamped = Math.Clamp(fraction, 0, 1);
-        var fill = new ColumnDefinition { Width = new GridLength(clamped, GridUnitType.Star) };
-        var rest = new ColumnDefinition { Width = new GridLength(1 - clamped, GridUnitType.Star) };
-        var fillBar = new Border { CornerRadius = new CornerRadius(1.5) };
-        fillBar[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
-        var track = new Grid { ColumnDefinitions = new ColumnDefinitions { fill, rest } };
-        Grid.SetColumn(fillBar, 0);
-        track.Children.Add(fillBar);
-        return new Border
+        return new ProgressBar
         {
             Height = 3,
-            CornerRadius = new CornerRadius(1.5),
-            Child = track,
-            ClipToBounds = true,
+            Minimum = 0,
+            Maximum = 1,
+            Value = Math.Clamp(fraction ?? 0, 0, 1),
+            IsIndeterminate = fraction is null,
         };
     }
 }

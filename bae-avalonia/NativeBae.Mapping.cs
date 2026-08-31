@@ -273,7 +273,9 @@ internal static partial class NativeBae
             return new ImportCandidateRowStatus
             {
                 Kind = "importing",
-                ProgressPercent = checked((int)running.ProgressPercent),
+                ProgressPercent = running.ProgressPercent is { } percent
+                    ? checked((int)percent)
+                    : null,
                 Step = running.Step is null ? null : ImportStep(running.Step),
             };
         }
@@ -418,11 +420,7 @@ internal static partial class NativeBae
         step switch
         {
             BridgePrepareStep.Queued => "queued",
-            BridgePrepareStep.ReadingFolder => "reading_folder",
-            BridgePrepareStep.ParsingMetadata => "parsing_metadata",
-            BridgePrepareStep.WritingCoverArt => "writing_cover_art",
-            BridgePrepareStep.DiscoveringFiles => "discovering_files",
-            BridgePrepareStep.ValidatingTracks => "validating_tracks",
+            BridgePrepareStep.ValidatingSourceFiles => "validating_source_files",
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown prepare step"),
         };
 

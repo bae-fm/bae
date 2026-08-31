@@ -14,7 +14,7 @@ async fn start_import_for(fixture: &Fixture, candidate: &Path) {
             candidate_key,
             progress: crate::import::ImportProgress::Preparing {
                 import_id: "import-running".to_string(),
-                step: crate::import::PrepareStep::ReadingFolder,
+                step: crate::import::PrepareStep::ValidatingSourceFiles,
                 album_title: String::new(),
                 artist_name: String::new(),
             },
@@ -44,7 +44,7 @@ async fn claiming_an_import_publishes_queued_status_immediately() {
             if key == candidate.to_string_lossy()
                 && runtime.import
                     == Some(crate::import::ImportInFlight {
-                        progress_percent: 0,
+                        progress_percent: None,
                         step: Some(crate::import::ImportStep::Preparing(
                             crate::import::PrepareStep::Queued
                         )),
@@ -371,24 +371,50 @@ fn drain_events(events: &mut tokio::sync::broadcast::Receiver<ImportEvent>) -> V
 #[serial(musicbrainz)]
 async fn a_candidate_removed_mid_flight_does_not_wedge_the_sweep() {
     let fixture = Fixture::new("removed-mid-flight").await;
-    fixture.extraction.register_analyzer(Arc::new(SlowAnalyzer {
-        delay: Duration::from_millis(400),
+    let analyzer_started = Arc::new(Barrier::new(2));
+    let analyzer_release = Arc::new(Barrier::new(2));
+    fixture.extraction.register_analyzer(Arc::new(GatedAnalyzer {
+        started: analyzer_started.clone(),
+        release: analyzer_release.clone(),
     }));
     let dir = fixture.barcode_candidate("Vanishing");
     let hash = fixture.content_hash(&dir);
     fixture.scan(1).await;
 
-    // Start the pass and let extraction get as far as its (slow) OCR pass, so
-    // the candidate is genuinely mid-flight when the folder goes.
+    // Start the pass and hold extraction inside OCR, so the candidate is
+    // genuinely mid-flight when the folder goes.
     let context = fixture.context();
     let token = CancellationToken::new();
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
-    tokio::time::sleep(Duration::from_millis(150)).await;
+    tokio::task::spawn_blocking(move || {
+        analyzer_started.wait();
+    })
+    .await
+    .unwrap();
+    let mut events = fixture.import.subscribe_events();
     std::fs::remove_dir_all(&dir).unwrap();
     // What the folder watcher does when a candidate's directory goes: re-scan
     // the root and reconcile, which emits `CandidateRemoved` for the one that
     // is no longer there.
     fixture.import.scan_watched_folders().unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }))
+                    if candidate_key == dir.to_string_lossy()
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the rescan reports the removed candidate");
+    tokio::task::spawn_blocking(move || {
+        analyzer_release.wait();
+    })
+    .await
+    .unwrap();
 
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await

@@ -389,14 +389,19 @@ public sealed class ImportSectionViewTests
             CandidateRow(view).GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text is { } line
                 && line.Contains("40", StringComparison.Ordinal));
+        var runningBar = CandidateRow(view).GetLogicalDescendants().OfType<ProgressBar>().Single();
+        Assert.False(runningBar.IsIndeterminate);
+        Assert.Equal(0.4, runningBar.Value);
 
         app.ImportStore.ApplyCandidateRuntime(
             new BridgeCandidateRuntimeChange.Reset([]));
 
-        Assert.Contains(
-            CandidateRow(view).GetLogicalDescendants().OfType<TextBlock>(),
+        var resetRow = CandidateRow(view);
+        Assert.DoesNotContain(
+            resetRow.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text is { } line
                 && line.Contains("0", StringComparison.Ordinal));
+        Assert.True(resetRow.GetLogicalDescendants().OfType<ProgressBar>().Single().IsIndeterminate);
     }
 
     private static ImportSectionView BuildView(

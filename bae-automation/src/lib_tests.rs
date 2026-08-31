@@ -239,15 +239,32 @@ fn a_local_release_serializes_its_state_and_absent_transfer() {
 
 #[test]
 fn import_step_and_phase_serialize_snake_case() {
-    let preparing = automation_import_step(ImportStep::Preparing(PrepareStep::ReadingFolder));
+    let preparing =
+        automation_import_step(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles));
     let json = serde_json::to_value(preparing).unwrap();
     assert_eq!(json["kind"], "preparing");
-    assert_eq!(json["step"], "reading_folder");
+    assert_eq!(json["step"], "validating_source_files");
 
     let running = automation_import_step(ImportStep::Running(ImportPhase::ReadingFiles));
     let json = serde_json::to_value(running).unwrap();
     assert_eq!(json["kind"], "running");
     assert_eq!(json["phase"], "reading_files");
+}
+
+#[test]
+fn indeterminate_import_progress_serializes_without_a_fraction() {
+    let status = automation_import_status(
+        Some(&TriageImportStatus::Importing),
+        Some(&ImportInFlight {
+            progress_percent: None,
+            step: Some(ImportStep::Preparing(PrepareStep::ValidatingSourceFiles)),
+        }),
+    )
+    .expect("the importing row has a status");
+
+    let json = serde_json::to_value(status).unwrap();
+    assert_eq!(json["progress_percent"], serde_json::Value::Null);
+    assert_eq!(json["step"]["step"], "validating_source_files");
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -661,7 +678,7 @@ mod import_queue {
             candidate_key: key.to_string(),
             progress: ImportProgress::Progress {
                 id: "release-1".to_string(),
-                percent,
+                percent: Some(percent),
                 phase: bae_core::import::ImportPhase::MeasuringLoudness,
                 import_id: "import-1".to_string(),
             },

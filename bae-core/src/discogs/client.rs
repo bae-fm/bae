@@ -15,6 +15,7 @@ const DISCOGS_RETRY_ATTEMPTS: u32 = 3;
 
 type ReleaseCacheValue = (DiscogsRelease, String);
 type MasterCacheValue = (Option<u32>, String);
+type ArtistImageCacheValue = Option<String>;
 
 /// In-memory cache for `releases/{id}` lookups: the parsed release plus its raw JSON
 /// for archival, keyed by release ID. A module-level static, so it survives across
@@ -25,6 +26,15 @@ static RELEASE_CACHE: SessionCache<ReleaseCacheValue> =
 /// The same, for `masters/{id}`.
 static MASTER_CACHE: SessionCache<MasterCacheValue> =
     SessionCache::new("Discogs master cache", PROVIDER_LOOKUP_CAPACITY);
+
+/// The same, for the selected image URL from `artists/{id}`.
+static ARTIST_IMAGE_CACHE: SessionCache<ArtistImageCacheValue> =
+    SessionCache::new("Discogs artist image cache", PROVIDER_LOOKUP_CAPACITY);
+
+#[cfg(any(test, feature = "test-utils"))]
+static ARTIST_IMAGE_RESPONSES_FOR_TEST: std::sync::OnceLock<
+    std::sync::Mutex<std::collections::HashMap<String, ArtistImageCacheValue>>,
+> = std::sync::OnceLock::new();
 
 static RATE_LIMITER: RateLimiter = RateLimiter::new(DISCOGS_REQUEST_INTERVAL);
 
@@ -41,6 +51,16 @@ pub fn seed_release_cache(id: &str, value: (DiscogsRelease, String)) {
 #[cfg(any(test, feature = "test-utils"))]
 pub fn seed_master_cache(master_id: &str, year: Option<u32>, raw_json: String) {
     MASTER_CACHE.put(master_id, (year, raw_json));
+}
+
+/// Supply the artist-image answer returned by a synthetic provider response.
+#[cfg(any(test, feature = "test-utils"))]
+pub fn seed_artist_image_response(artist_id: &str, image_url: Option<String>) {
+    ARTIST_IMAGE_RESPONSES_FOR_TEST
+        .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+        .lock()
+        .expect("Discogs test artist response mutex poisoned")
+        .insert(artist_id.to_string(), image_url);
 }
 #[derive(Error, Debug)]
 pub enum DiscogsError {
@@ -637,6 +657,22 @@ impl DiscogsClient {
         artist_id: &str,
         priority: CallPriority,
     ) -> Result<Option<String>, DiscogsError> {
+        #[cfg(any(test, feature = "test-utils"))]
+        if let Some(answer) = ARTIST_IMAGE_RESPONSES_FOR_TEST
+            .get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+            .lock()
+            .expect("Discogs test artist response mutex poisoned")
+            .get(artist_id)
+            .cloned()
+        {
+            return Ok(answer);
+        }
+
+        if let Some(hit) = ARTIST_IMAGE_CACHE.get_cloned(artist_id) {
+            debug!(discogs_artist_id = %artist_id, "Discogs artist image cache hit");
+            return Ok(hit);
+        }
+
         let url = format!("{}/artists/{}", self.base_url, artist_id);
         let Some(json) = retry_with_backoff_if(
             DISCOGS_RETRY_ATTEMPTS,
@@ -662,6 +698,7 @@ impl DiscogsClient {
         )
         .await?
         else {
+            ARTIST_IMAGE_CACHE.put(artist_id, None);
             return Ok(None);
         };
         let image_url = json
@@ -681,6 +718,7 @@ impl DiscogsClient {
             .and_then(|img| img.get("uri").and_then(|u| u.as_str()))
             .map(|s| s.to_string());
 
+        ARTIST_IMAGE_CACHE.put(artist_id, image_url.clone());
         Ok(image_url)
     }
 }

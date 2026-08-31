@@ -490,11 +490,9 @@ async fn file_tags_import_with_user_edit_overlay() {
     assert_eq!(tracks[0].title, "Edited Track Title");
 }
 
-/// File Tags commit of a rip with no usable album-level tags seeds the
-/// album title from the containing folder name rather than failing —
-/// the permissive file-tag projection never hard-fails on a missing
-/// ALBUM tag (the editable confirmation form gates a blank title before
-/// save). The artist falls back to empty for the user to fill.
+/// File Tags preparation of a rip with no usable album-level tags seeds the
+/// album title from the containing folder name. The artist stays empty until
+/// the user fills it, and the completed preparation is what import commits.
 #[tokio::test]
 async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
     support::tracing_init();
@@ -506,19 +504,41 @@ async fn file_tags_import_with_no_tags_seeds_title_from_folder_name() {
     // for the projection to read, so the folder name is the album title.
     generate_album_files(&album_dir, &["01.flac", "02.flac"]);
 
-    let import_id = uuid::Uuid::new_v4().to_string();
+    let candidate_key = album_dir.to_string_lossy().into_owned();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::FileTags),
-            user_edit: None,
-        })
+        .add_watched_folder(candidate_key.clone())
+        .await
+        .unwrap();
+    f.handle
+        .refresh_watched_folder(candidate_key.clone())
+        .await
+        .unwrap();
+    f.handle
+        .select_candidate_metadata_provenance(
+            candidate_key.clone(),
+            MetadataProvenance::FileTags,
+        )
+        .await
+        .unwrap();
+    let pane = f
+        .handle
+        .candidate_pane(&candidate_key)
+        .await
+        .unwrap()
+        .expect("the prepared File Tags candidate reads back");
+    assert_eq!(pane.metadata_draft.album_title, "Mystery Rip");
+    assert!(pane.metadata_draft.album_artist_assignments.is_empty());
+
+    f.handle
+        .set_candidate_album_artists(
+            &candidate_key,
+            vec![file_tag_artist_assignment("Artist Name")],
+        )
+        .await
+        .unwrap();
+    let import_id = f
+        .handle
+        .start_import(&candidate_key, StorageMode::Local, false)
         .await
         .unwrap();
 

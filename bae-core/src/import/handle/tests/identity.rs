@@ -49,6 +49,34 @@ async fn one_import_reuses_an_artist_already_waiting_to_be_inserted() {
 }
 
 #[tokio::test]
+async fn one_import_reuses_an_idless_artist_name_already_waiting_to_be_inserted() {
+    let (manager, _tmp) = setup_test_manager().await;
+    let album_credit = make_artist("Artist Name", None, None);
+    let track_credit = make_artist("Artist Name", None, None);
+
+    let resolved = manager
+        .find_or_create_artists(&[album_credit.clone(), track_credit.clone()])
+        .await
+        .unwrap();
+
+    assert_eq!(resolved, vec![album_credit.id.clone(), album_credit.id.clone()]);
+    assert!(
+        manager
+            .get_artist_by_id(&album_credit.id)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        manager
+            .get_artist_by_id(&track_credit.id)
+            .await
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[tokio::test]
 async fn one_import_combines_two_pending_artists_when_a_later_credit_links_them() {
     let (manager, _tmp) = setup_test_manager().await;
     let discogs_credit = make_artist("Artist One", Some("d123"), None);
@@ -200,37 +228,6 @@ async fn test_same_name_without_ids_creates_a_distinct_artist() {
 
     assert_eq!(resolved[0], incoming.id);
     assert_ne!(resolved[0], existing.id);
-}
-
-#[tokio::test]
-#[serial(discogs_rate_limiter)]
-async fn fetch_artist_images_warns_and_skips_when_existing_image_check_fails() {
-    let (manager, _tmp) = setup_test_manager().await;
-    manager
-        .set_discogs_key("test-token", crate::config::DiscogsValidation::Valid)
-        .unwrap();
-    // Renamed rather than dropped: `artist_images` carries a blob, so coven
-    // owns a cleanup-guard trigger on it and refuses host SQL that would take
-    // the trigger with the table. The rename leaves the lookup with no
-    // `artist_images` to read, which is the failure this exercises.
-    manager.rename_artist_images_table_for_test().await.unwrap();
-
-    let parsed_artist = make_artist("Artist Name", Some("discogs-artist-1"), None);
-    let actual_artist_id = ARTIST_ACTUAL_1.to_string();
-    let artist_id_map = HashMap::from([(parsed_artist.id.clone(), actual_artist_id.clone())]);
-    let logs = capture_warn_logs_async(|| async {
-        manager
-            .fetch_discogs_artist_images(std::slice::from_ref(&parsed_artist), &artist_id_map)
-            .await;
-    })
-    .await;
-
-    assert!(
-        logs.contains("failed to check existing artist image")
-            && logs.contains(&actual_artist_id)
-            && logs.contains("artist_images"),
-        "expected existing artist image check warning, got {logs:?}",
-    );
 }
 
 #[tokio::test]

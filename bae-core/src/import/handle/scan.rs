@@ -217,7 +217,7 @@ impl ImportServiceHandle {
         payloads: &crate::import::payloads::ReleasePayloads,
         candidate: &crate::import::folder_scanner::FolderCandidate,
         durations: &crate::import::probe::SourceDurations,
-    ) -> Result<crate::import::RawReleaseEdit, crate::import::ImportError> {
+    ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
         let pane = crate::import::pane::release_pane(
             payloads,
             &candidate.files,
@@ -228,6 +228,54 @@ impl ImportServiceHandle {
             self.ids.as_ref(),
         )?;
         Ok(crate::import::pane::candidate_draft_from_source(pane))
+    }
+
+    /// Project one external release and prepare every provider image its
+    /// candidate revision owns before the revision is written.
+    pub(crate) async fn external_candidate_metadata(
+        &self,
+        payloads: &crate::import::payloads::ReleasePayloads,
+        candidate: &crate::import::folder_scanner::FolderCandidate,
+        durations: &crate::import::probe::SourceDurations,
+        provenance: crate::import::MetadataProvenance,
+        fallback_cover: Option<&crate::import::CoverSelection>,
+    ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
+        let source_draft = self.external_candidate_draft(payloads, candidate, durations)?;
+        let edit = source_draft.edit;
+        let track_mappings = source_draft.track_mappings;
+        let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
+        let required_artist_ids = source_discogs_artist_ids
+            .union(&source_draft.mapped_new_discogs_artist_ids)
+            .cloned()
+            .collect();
+        let artist_images = self
+            .library_manager
+            .prepare_discogs_artist_images(required_artist_ids)
+            .await?;
+        let (cover, remote_cover) = match payloads.default_cover()? {
+            Some(remote) => match self.library_manager.fetch_remote_image(&remote.url).await? {
+                Some(image) => (
+                    Some(crate::import::CoverSelection::Remote(
+                        remote.url,
+                        remote.source,
+                    )),
+                    Some(image),
+                ),
+                None => (local_or_embedded_cover(fallback_cover), None),
+            },
+            None => (local_or_embedded_cover(fallback_cover), None),
+        };
+        Ok(crate::import::CandidateMetadataDraft {
+            edit,
+            track_mappings,
+            source_discogs_artist_ids,
+            provenance: Some(provenance),
+            cover,
+            assets: crate::import::CandidatePreparedAssets {
+                remote_cover,
+                artist_images,
+            },
+        })
     }
 
     pub(crate) async fn set_candidate_metadata_provenance(
@@ -243,6 +291,14 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
+        let current = self
+            .library_manager
+            .load_import_candidate_preparation(&content_hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            })?;
+        let expected_metadata_revision = current.metadata_revision;
         let durations = crate::import::probe::source_durations(&candidate.files)?;
         match &provenance {
             crate::import::MetadataProvenance::FileTags => {
@@ -257,7 +313,11 @@ impl ImportServiceHandle {
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                let draft = crate::import::pane::candidate_draft_from_source(pane);
+                let source_draft = crate::import::pane::candidate_draft_from_source(pane);
+                let track_mappings = crate::import::edits::preserve_track_mapping_decisions(
+                    source_draft.track_mappings,
+                    &current.track_mappings,
+                );
                 let cover = crate::import::file_tag_snapshot::default_cover(
                     &snapshot_candidate.files,
                     &snapshot,
@@ -267,9 +327,12 @@ impl ImportServiceHandle {
                     .replace_candidate_file_tags_metadata(
                         &snapshot_candidate.watched_folder_path,
                         &candidate_key,
-                        &snapshot_candidate.files.content_hash(),
+                        &content_hash,
+                        current.file_edit_revision,
+                        expected_metadata_revision,
                         &snapshot,
-                        &draft,
+                        &source_draft.edit,
+                        &track_mappings,
                         cover.as_ref(),
                     )
                     .await?);
@@ -281,14 +344,28 @@ impl ImportServiceHandle {
                         &crate::import::MetadataRef::new(release_id.clone(), *source),
                     )
                     .await?;
-                let draft = self.external_candidate_draft(&payloads, &candidate, &durations)?;
+                let mut metadata = self
+                    .external_candidate_metadata(
+                        &payloads,
+                        &candidate,
+                        &durations,
+                        provenance.clone(),
+                        current.cover.as_ref(),
+                    )
+                    .await?;
+                metadata.track_mappings = crate::import::edits::preserve_track_mapping_decisions(
+                    metadata.track_mappings,
+                    &current.track_mappings,
+                );
                 return Ok(self
                     .library_manager
-                    .replace_candidate_metadata(
+                    .replace_candidate_metadata_prepared(
+                        &candidate.watched_folder_path,
                         &content_hash,
                         &candidate_key,
-                        &draft,
-                        Some(&provenance),
+                        candidate.file_edit_revision,
+                        expected_metadata_revision,
+                        &metadata,
                     )
                     .await?);
             }
@@ -308,13 +385,35 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
+        let content_hash = candidate.files.content_hash();
+        let current = self
+            .library_manager
+            .load_import_candidate_preparation(&content_hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            })?;
+        let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+        let track_mappings = crate::import::edits::preserve_track_mapping_decisions(
+            source_draft.track_mappings,
+            &current.track_mappings,
+        );
         Ok(self
             .library_manager
-            .replace_candidate_metadata(
-                &candidate.files.content_hash(),
+            .replace_candidate_metadata_prepared(
+                &candidate.watched_folder_path,
+                &content_hash,
                 &candidate_key,
-                &crate::import::pane::blank_candidate_draft(&candidate.files),
-                None,
+                candidate.file_edit_revision,
+                current.metadata_revision,
+                &crate::import::CandidateMetadataDraft {
+                    edit: source_draft.edit,
+                    track_mappings,
+                    source_discogs_artist_ids: Default::default(),
+                    provenance: None,
+                    cover: None,
+                    assets: crate::import::CandidatePreparedAssets::default(),
+                },
             )
             .await?)
     }
@@ -417,6 +516,16 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} file decisions changed before the write"),
             });
         }
+        let preparation = self
+            .library_manager
+            .load_import_candidate_preparation(&content_hash)
+            .await?
+            .filter(|preparation| preparation.file_edit_revision == expected_revision)
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key} has no complete preparation for file revision {expected_revision}"
+                ),
+            })?;
         let mut edits = self
             .library_manager
             .load_candidate_file_edits(&content_hash)
@@ -448,6 +557,49 @@ impl ImportServiceHandle {
             detail: format!("candidate file edit task failed: {e}"),
         })??;
 
+        let settled_files = settled
+            .iter()
+            .find(|(key, _)| key == candidate_key)
+            .map(|(_, files)| files)
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("file decision produced no settled candidate for {candidate_key}"),
+            })?;
+        let proposed_mappings = crate::import::pane::automatic_mappings_for_draft(
+            settled_files,
+            &crate::import::probe::SourceDurations::default(),
+            preparation.metadata_draft.clone(),
+            &preparation.track_mappings,
+            preparation.metadata_provenance.as_ref(),
+        )?;
+        let available_files = crate::import::track_slots::units_of(
+            &crate::import::track_slots::audio_layout(settled_files),
+        )
+        .into_iter()
+        .collect();
+        let track_mappings = crate::import::edits::reconcile_track_mapping_decisions(
+            proposed_mappings,
+            &preparation.track_mappings,
+            &available_files,
+        );
+        let active = crate::import::edits::apply_track_mappings_to_draft(
+            preparation.metadata_draft,
+            &track_mappings,
+        )?;
+        let (source_discogs_artist_ids, artist_images) = self
+            .prepared_artist_images_for_active(
+                candidate_key,
+                settled_files,
+                preparation.metadata_provenance.as_ref(),
+                &active,
+                preparation.assets.artist_images,
+            )
+            .await?;
+        let mapping_preparation = crate::import::CandidateMappingPreparation {
+            track_mappings,
+            source_discogs_artist_ids,
+            artist_images,
+        };
+
         // Durable first, and atomically: the decision and the verdict it
         // invalidates move together, so nothing can observe a folder whose
         // stored answer describes the shape it just stopped having.
@@ -457,8 +609,10 @@ impl ImportServiceHandle {
                 &content_hash,
                 candidate_key,
                 expected_revision,
+                preparation.metadata_revision,
                 &edits,
                 &settled,
+                &mapping_preparation,
             )
             .await?;
         for candidate in candidates {
@@ -536,5 +690,39 @@ impl ImportServiceHandle {
             }
         });
         out_rx
+    }
+}
+
+fn local_or_embedded_cover(
+    cover: Option<&crate::import::CoverSelection>,
+) -> Option<crate::import::CoverSelection> {
+    match cover {
+        Some(
+            cover @ (crate::import::CoverSelection::Local(_)
+            | crate::import::CoverSelection::Embedded(_)),
+        ) => Some(cover.clone()),
+        Some(crate::import::CoverSelection::Remote(_, _)) | None => None,
+    }
+}
+
+#[cfg(test)]
+mod cover_fallback_tests {
+    use super::*;
+
+    #[test]
+    fn a_source_without_a_remote_cover_keeps_the_local_selection() {
+        let selected = crate::import::CoverSelection::Local("cover.jpg".to_string());
+
+        assert_eq!(local_or_embedded_cover(Some(&selected)), Some(selected));
+    }
+
+    #[test]
+    fn a_source_without_a_remote_cover_does_not_reuse_an_old_remote_selection() {
+        let selected = crate::import::CoverSelection::Remote(
+            "https://example.invalid/old".to_string(),
+            crate::import::MetadataSource::Discogs,
+        );
+
+        assert_eq!(local_or_embedded_cover(Some(&selected)), None);
     }
 }

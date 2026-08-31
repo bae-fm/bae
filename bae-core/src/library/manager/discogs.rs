@@ -230,97 +230,90 @@ impl LibraryManager {
             .await
     }
 
-    /// Fetch image rows for newly resolved artists. Existing-image checks and
-    /// provider/download failures are per-artist skips; each is logged where it
-    /// occurs so the import can still commit its metadata.
+    /// Resolve every Discogs artist image answer referenced by a candidate
+    /// draft before that draft is committed. Provider and download failures
+    /// fail the caller, leaving the prior candidate revision intact.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn fetch_discogs_artist_images(
+    pub(crate) async fn prepare_discogs_artist_images(
         &self,
-        parsed_artists: &[DbArtist],
-        artist_id_map: &HashMap<String, String>,
-    ) -> Vec<(DbLibraryImage, Vec<u8>)> {
-        let session = match DiscogsSession::open(&self.config_handle, &self.database) {
-            Ok(session) => session,
-            Err(error) => {
-                warn!("Discogs artist images unavailable: {error}");
-                return Vec::new();
-            }
-        };
-        if session.client.is_none() {
-            return Vec::new();
+        ids: std::collections::BTreeSet<String>,
+    ) -> Result<Vec<crate::import::PreparedArtistImage>, crate::import::ImportError> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
         }
+        let session = DiscogsSession::open(&self.config_handle, &self.database)?;
+        let mut answers = Vec::with_capacity(ids.len());
+        for discogs_artist_id in ids {
+            let Some(source_url) = session.artist_image_url(&discogs_artist_id).await? else {
+                answers.push(crate::import::PreparedArtistImage::Nothing { discogs_artist_id });
+                continue;
+            };
+            let Some(image) = self.fetch_remote_image(&source_url).await? else {
+                answers.push(crate::import::PreparedArtistImage::Nothing { discogs_artist_id });
+                continue;
+            };
+            answers.push(crate::import::PreparedArtistImage::Image {
+                discogs_artist_id,
+                source_url,
+                image,
+            });
+        }
+        Ok(answers)
+    }
 
+    /// Turn candidate-owned image bytes into library image rows after artist
+    /// identities have been resolved. Existing library images win; this does
+    /// database reads and row construction only.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn materialize_prepared_artist_images(
+        &self,
+        inserted_artists: &[DbArtist],
+        prepared: &[crate::import::PreparedArtistImage],
+    ) -> Result<Vec<(DbLibraryImage, Vec<u8>)>, crate::import::ImportError> {
+        let by_discogs_id: HashMap<_, _> = prepared
+            .iter()
+            .map(|answer| (answer.discogs_artist_id(), answer))
+            .collect();
+        if by_discogs_id.len() != prepared.len() {
+            return Err(crate::import::ImportError::Internal {
+                detail: "prepared artist images contain a duplicate Discogs artist ID".into(),
+            });
+        }
         let mut images = Vec::new();
-        for parsed_artist in parsed_artists {
-            let Some(actual_id) = artist_id_map.get(&parsed_artist.id) else {
+        for artist in inserted_artists {
+            let Some(discogs_artist_id) = artist.discogs_artist_id.as_deref() else {
                 continue;
             };
-            let Some(discogs_artist_id) = parsed_artist.discogs_artist_id.as_deref() else {
+            let answer = by_discogs_id.get(discogs_artist_id).ok_or_else(|| {
+                crate::import::ImportError::Internal {
+                    detail: format!(
+                        "new Discogs artist {discogs_artist_id} has no prepared image answer"
+                    ),
+                }
+            })?;
+            let crate::import::PreparedArtistImage::Image {
+                source_url, image, ..
+            } = answer
+            else {
                 continue;
             };
-
-            match self
-                .get_library_image(actual_id, &LibraryImageType::Artist)
-                .await
-            {
-                Ok(Some(_)) => continue,
-                Ok(None) => {}
-                Err(error) => {
-                    warn!("failed to check existing artist image for artist {actual_id}: {error}");
-                    continue;
-                }
-            }
-
-            let image_url = match session.artist_image_url(discogs_artist_id).await {
-                Ok(Some(url)) => url,
-                Ok(None) => {
-                    debug!("No image found for Discogs artist {discogs_artist_id}");
-                    continue;
-                }
-                Err(error) => {
-                    warn!(
-                        "Failed to fetch artist image URL from Discogs for artist {actual_id} (Discogs {discogs_artist_id}): {error}"
-                    );
-                    continue;
-                }
-            };
-
-            let (bytes, content_type) = match crate::import::cover_art::download_image_bytes(
-                &image_url,
-                "Artist image download",
-            )
-            .await
-            {
-                Ok(download) => download,
-                Err(error) => {
-                    warn!(
-                            "Failed to download artist image for artist {actual_id} (Discogs {discogs_artist_id}) from {image_url}: {error}"
-                        );
-                    continue;
-                }
-            };
-
-            let image = DbLibraryImage {
-                id: actual_id.clone(),
+            let row = DbLibraryImage {
+                id: artist.id.clone(),
                 blob_id: self.new_id(),
                 image_type: LibraryImageType::Artist,
-                content_type,
-                file_size: bytes.len() as i64,
+                content_type: image.content_type.clone(),
+                file_size: image.bytes.len() as i64,
                 width: None,
                 height: None,
                 source: crate::import::MetadataSource::Discogs.as_str().to_string(),
-                source_url: Some(image_url),
+                source_url: Some(source_url.clone()),
                 cloud_path: None,
-                content_hash: crate::util::fs::hash_bytes(&bytes),
+                content_hash: crate::util::fs::hash_bytes(&image.bytes),
                 created_at: self.now(),
             };
-            debug!(
-                "Fetched artist image ({} bytes) for artist {actual_id}",
-                bytes.len()
-            );
-            images.push((image, bytes));
+            images.push((row, image.bytes.clone()));
         }
-        images
+        Ok(images)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

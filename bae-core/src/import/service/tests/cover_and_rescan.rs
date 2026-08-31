@@ -163,6 +163,27 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .finish_folder_scan(&watched_folder_path, generation, None)
         .await
         .unwrap();
+    let metadata_revision = prepare_named_candidate(
+        &service,
+        &expected_content_hash,
+        &watched_folder_path,
+        &folder.to_string_lossy(),
+        "Candidate",
+    )
+    .await;
+    service
+        .library_manager
+        .save_import_candidate_prepared_cover(
+            &watched_folder_path,
+            &folder.to_string_lossy(),
+            &expected_content_hash,
+            0,
+            metadata_revision,
+            &CoverSelection::Local("cover.bmp".to_string()),
+            None,
+        )
+        .await
+        .unwrap();
     let audio_path = folder.join("01.flac");
     let opens_before = crate::audio_codec::probe_opens_for(&audio_path);
 
@@ -172,15 +193,14 @@ async fn selected_local_cover_path_must_match_discovered_file() {
             folder.to_string_lossy().into_owned(),
             folder,
             crate::import::folder_scanner::ReleaseFileScope::Recursive,
-            super::ImportExpectation::Candidate {
+            super::ImportExpectation {
                 content_hash: expected_content_hash,
                 edit_revision: 0,
+                metadata_revision: metadata_revision + 1,
+                file_tag_snapshot: None,
             },
-            Some(CoverSelection::Local("cover.bmp".to_string())),
             StorageMode::Local,
             false,
-            None,
-            None,
         )
         .await;
 
@@ -194,58 +214,6 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         opens_before,
         "import must reuse the stored scan facts without reopening the audio probe",
     );
-}
-
-#[tokio::test]
-async fn failed_import_before_finalize_leaves_only_import_audit_row() {
-    let (service, tmp) = setup_import_service().await;
-    let folder = tmp.path().join("release");
-    std::fs::create_dir(&folder).unwrap();
-    std::fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/flac/01 Test Track 1.flac"),
-        folder.join("01.flac"),
-    )
-    .unwrap();
-
-    let import_id = "import-1".to_string();
-    let expectation = super::ImportExpectation::Candidate {
-        content_hash: crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-            &folder,
-            crate::import::ReleaseFileScope::Recursive,
-            &crate::import::folder_scanner::StoredCandidateEdits::none(),
-        )
-        .unwrap()
-        .content_hash(),
-        edit_revision: 0,
-    };
-    service
-        .do_import(
-            ImportCommand {
-                import_id: import_id.clone(),
-                candidate_key: folder.to_string_lossy().into_owned(),
-                folder,
-                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
-                selected_cover: Some(CoverSelection::Remote(
-                    "http://127.0.0.1:9/missing.jpg".to_string(),
-                    MetadataSource::MusicBrainz,
-                )),
-                storage_mode: StorageMode::Local,
-                pin: false,
-                metadata_provenance: None,
-                user_edit: None,
-            },
-            expectation,
-        )
-        .await;
-
-    let (artist_count, artist_image_count) = service
-        .library_manager
-        .artist_and_image_counts_for_test()
-        .await
-        .unwrap();
-
-    assert_eq!(artist_count, 0);
-    assert_eq!(artist_image_count, 0);
 }
 
 #[cfg(unix)]
@@ -464,24 +432,6 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
             "{name}"
         );
     }
-}
-
-#[test]
-fn import_trace_line_escapes_json_strings() {
-    let line = import_trace_line(
-        "2024-01-01T00:00:00+00:00".to_string(),
-        "import-1",
-        "Album \\ Title\nA",
-        "Artist \"Name\"",
-        Duration::from_millis(42),
-        &[("resolve_metadata", Duration::from_millis(7))],
-    );
-
-    let parsed: serde_json::Value =
-        serde_json::from_str(&line).expect("trace line must be valid JSON");
-    assert_eq!(parsed["album"], "Album \\ Title\nA");
-    assert_eq!(parsed["artist"], "Artist \"Name\"");
-    assert_eq!(parsed["steps"]["resolve_metadata"], 7);
 }
 
 /// Re-reading a folder nothing has touched is a scan that finds what it found

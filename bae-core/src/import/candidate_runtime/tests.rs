@@ -36,7 +36,7 @@ fn progress(key: &str, percent: u8) -> ImportEvent {
         candidate_key: key.to_string(),
         progress: ImportProgress::Progress {
             id: "rel1".to_string(),
-            percent,
+            percent: Some(percent),
             phase: ImportPhase::MeasuringLoudness,
             import_id: "imp-1".to_string(),
         },
@@ -107,7 +107,7 @@ fn import_progress_is_recorded_per_key_and_published_for_that_key_only() {
     assert_eq!(
         in_flight,
         ImportInFlight {
-            progress_percent: 42,
+            progress_percent: Some(42),
             step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
         }
     );
@@ -136,7 +136,7 @@ fn a_claim_is_the_queued_step_until_the_worker_reports() {
     assert_eq!(
         runtime.get(key).and_then(|runtime| runtime.import),
         Some(ImportInFlight {
-            progress_percent: 0,
+            progress_percent: None,
             step: Some(ImportStep::Preparing(PrepareStep::Queued)),
         })
     );
@@ -251,7 +251,7 @@ fn a_late_subscriber_reads_every_running_key() {
     assert_eq!(
         running["/watch/a/rel1"].import,
         Some(ImportInFlight {
-            progress_percent: 10,
+            progress_percent: Some(10),
             step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
         })
     );
@@ -262,6 +262,31 @@ fn a_late_subscriber_reads_every_running_key() {
         drain(&mut changes).as_slice(),
         [CandidateRuntimeChange::Updated { key, .. }] if key == "/watch/a/rel3"
     ));
+}
+
+#[test]
+fn a_preparing_step_has_no_progress_fraction() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+
+    runtime.record_event(&ImportEvent::ImportProgress {
+        candidate_key: key.to_string(),
+        progress: ImportProgress::Preparing {
+            import_id: "imp-1".to_string(),
+            step: PrepareStep::ValidatingSourceFiles,
+            album_title: String::new(),
+            artist_name: String::new(),
+        },
+    });
+
+    assert_eq!(
+        runtime
+            .get(key)
+            .and_then(|runtime| runtime.import)
+            .expect("preparation is in flight")
+            .progress_percent,
+        None
+    );
 }
 
 #[test]

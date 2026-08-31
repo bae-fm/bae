@@ -69,13 +69,16 @@ mod triage_tests {
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
                 identify: None,
                 import: Some(bae_core::import::ImportInFlight {
-                    progress_percent: 40,
+                    progress_percent: Some(40),
                     step: None,
                 }),
             });
         assert!(matches!(idle.identify_state, BridgeIdentifyState::Idle));
         assert!(idle.signals_toolbar.signals.is_empty());
-        assert_eq!(idle.import.map(|import| import.progress_percent), Some(40));
+        assert_eq!(
+            idle.import.map(|import| import.progress_percent),
+            Some(Some(40))
+        );
     }
 
     /// A placement's tab is the one core's own projection gives it, for every

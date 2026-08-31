@@ -107,7 +107,7 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
     let claimed = CandidateRuntimeSnapshot {
         identify: None,
         import: Some(ImportInFlight {
-            progress_percent: 0,
+            progress_percent: None,
             step: None,
         }),
     };
@@ -133,7 +133,7 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
                 runtime: CandidateRuntimeSnapshot {
                     identify: None,
                     import: Some(ImportInFlight {
-                        progress_percent: percent,
+                        progress_percent: Some(percent),
                         step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
                     }),
                 },

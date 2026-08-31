@@ -24,7 +24,7 @@ use serial_test::serial;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Barrier, Mutex};
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -279,8 +279,13 @@ impl ArtworkAnalyzer for BarcodeAnalyzer {
     }
 }
 
-/// An OCR stub that takes its time, so a test can act while a candidate is
-/// genuinely mid-extraction.
+/// An OCR stub held between entry and completion, so a test can act while a
+/// candidate is genuinely mid-extraction without depending on scheduling.
+struct GatedAnalyzer {
+    started: Arc<Barrier>,
+    release: Arc<Barrier>,
+}
+
 struct SlowAnalyzer {
     delay: Duration,
 }
@@ -292,6 +297,17 @@ struct CountingAnalyzer {
 impl ArtworkAnalyzer for CountingAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         self.calls.fetch_add(1, Ordering::Relaxed);
+        ArtworkAnalysis {
+            barcodes: Vec::new(),
+            text_lines: Vec::new(),
+        }
+    }
+}
+
+impl ArtworkAnalyzer for GatedAnalyzer {
+    fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
+        self.started.wait();
+        self.release.wait();
         ArtworkAnalysis {
             barcodes: Vec::new(),
             text_lines: Vec::new(),
@@ -374,6 +390,7 @@ impl Fixture {
 
         let provider = FakeProvider::start().await;
         crate::musicbrainz::set_base_url_for_test(Some(provider.base_url.clone()));
+        crate::import::cover_art::set_base_url_for_test(Some(provider.base_url.clone()));
         crate::musicbrainz::reset_rate_limiter_for_test();
 
         let root = temp.path().join("watched");
@@ -634,7 +651,8 @@ impl Fixture {
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is sweepable");
-        let mut edit = crate::import::pane::blank_candidate_draft(&candidate.files);
+        let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+        let mut edit = source_draft.edit;
         edit.album_title = "Album".to_string();
         edit.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
             seed: crate::import::NewArtistSeed {
@@ -698,11 +716,14 @@ impl Fixture {
                     expected_metadata_revision: 0,
                     metadata: crate::import::CandidateMetadataDraft {
                         edit,
+                        track_mappings: source_draft.track_mappings,
+                        source_discogs_artist_ids: Default::default(),
                         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
                             source: crate::import::MetadataSource::MusicBrainz,
                             release_id: release_id.to_string(),
                         }),
                         cover: None,
+                        assets: crate::import::CandidatePreparedAssets::default(),
                     },
                 },
             )
@@ -746,6 +767,7 @@ impl Drop for Fixture {
         // The base URL is process-wide; leaving it pointed at a dead port would
         // make the next test's live-service assumption silently wrong.
         crate::musicbrainz::set_base_url_for_test(None);
+        crate::import::cover_art::set_base_url_for_test(None);
         self.sweep.stop();
         self.import.stop_and_join();
     }

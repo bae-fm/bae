@@ -69,6 +69,118 @@ fn version_seven() -> Vec<coven::Migration> {
     migrations
 }
 
+fn version_eight() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(8);
+    migrations
+}
+
+#[tokio::test]
+#[serial]
+async fn migration_eight_preserves_pressing_year_and_adds_blank_album_year() {
+    let temp = tempfile::tempdir().expect("temp store");
+    let store_dir = StoreDir::new_ephemeral(temp.path());
+    let handle = open(store_dir.clone(), "migration-album-year", version_seven())
+        .expect("open version seven");
+    handle
+        .write(|sql| {
+            sql.execute_batch(
+                "INSERT INTO import_candidate_state (content_hash, folder_path)
+                     VALUES ('candidate-hash', '/music/release');
+                 INSERT INTO import_candidate_edit (
+                     content_hash, album_title, year, format, label,
+                     catalog_number, country, barcode
+                 ) VALUES (
+                     'candidate-hash', 'Album Title', '2004', '', '', '', '', ''
+                 );",
+            )?;
+            Ok(())
+        })
+        .await
+        .expect("seed version-seven draft");
+    drop(handle);
+
+    let handle = open(store_dir, "migration-album-year", all()).expect("migrate to version eight");
+    handle
+        .read(|sql| {
+            let values: (String, String) = sql.query_row(
+                "SELECT album_year, year FROM import_candidate_edit WHERE content_hash = 'candidate-hash'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
+            assert_eq!(values, (String::new(), "2004".to_string()));
+            Ok(())
+        })
+        .await
+        .expect("read migrated draft");
+}
+
+#[tokio::test]
+#[serial]
+async fn migration_nine_preserves_a_remote_cover_as_explicitly_unprepared() {
+    let temp = tempfile::tempdir().expect("temp store");
+    let store_dir = StoreDir::new_ephemeral(temp.path());
+    let handle = open(
+        store_dir.clone(),
+        "migration-prepared-assets",
+        version_eight(),
+    )
+    .expect("open version eight");
+    handle
+        .write(|sql| {
+            sql.execute_batch(
+                "INSERT INTO import_candidate_state (content_hash, folder_path) \
+                     VALUES ('candidate-hash', '/candidate'); \
+                 INSERT INTO import_candidate_cover \
+                     (content_hash, kind, file_id, url, source) \
+                     VALUES ('candidate-hash', 'remote', NULL, \
+                             'https://example.invalid/cover', 'discogs');",
+            )?;
+            Ok(())
+        })
+        .await
+        .expect("seed version-eight remote cover");
+    drop(handle);
+
+    let handle =
+        open(store_dir, "migration-prepared-assets", all()).expect("migrate prepared assets");
+    handle
+        .read(|sql| {
+            let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+            assert_eq!(version, 9);
+            let cover: (String, String) = sql.query_row(
+                "SELECT url, source FROM import_candidate_cover \
+                 WHERE content_hash = 'candidate-hash'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )?;
+            assert_eq!(
+                cover,
+                (
+                    "https://example.invalid/cover".to_string(),
+                    "discogs".to_string()
+                )
+            );
+            let prepared: i64 = sql.query_row(
+                "SELECT COUNT(*) FROM import_candidate_remote_cover_asset \
+                 WHERE content_hash = 'candidate-hash'",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(prepared, 0);
+            let preparation: i64 = sql.query_row(
+                "SELECT COUNT(*) FROM import_candidate_asset_preparation \
+                 WHERE content_hash = 'candidate-hash'",
+                [],
+                |row| row.get(0),
+            )?;
+            assert_eq!(preparation, 0);
+            Ok(())
+        })
+        .await
+        .expect("verify version-nine prepared assets");
+}
+
 #[tokio::test]
 #[serial]
 async fn migration_two_preserves_candidate_graph_and_normalizes_artist_edits() {
@@ -815,44 +927,4 @@ async fn migration_six_rebuilds_scan_cache_without_byte_digests() {
         })
         .await
         .expect("read migrated scan schema");
-}
-
-#[tokio::test]
-#[serial]
-async fn migration_eight_preserves_pressing_year_and_adds_blank_album_year() {
-    let temp = tempfile::tempdir().expect("temp store");
-    let store_dir = StoreDir::new_ephemeral(temp.path());
-    let handle = open(store_dir.clone(), "migration-album-year", version_seven())
-        .expect("open version seven");
-    handle
-        .write(|sql| {
-            sql.execute_batch(
-                "INSERT INTO import_candidate_state (content_hash, folder_path)
-                     VALUES ('candidate-hash', '/music/release');
-                 INSERT INTO import_candidate_edit (
-                     content_hash, album_title, year, format, label,
-                     catalog_number, country, barcode
-                 ) VALUES (
-                     'candidate-hash', 'Album Title', '2004', '', '', '', '', ''
-                 );",
-            )?;
-            Ok(())
-        })
-        .await
-        .expect("seed version-seven draft");
-    drop(handle);
-
-    let handle = open(store_dir, "migration-album-year", all()).expect("migrate to version eight");
-    handle
-        .read(|sql| {
-            let values: (String, String) = sql.query_row(
-                "SELECT album_year, year FROM import_candidate_edit WHERE content_hash = 'candidate-hash'",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            assert_eq!(values, (String::new(), "2004".to_string()));
-            Ok(())
-        })
-        .await
-        .expect("read migrated draft");
 }

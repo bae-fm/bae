@@ -272,6 +272,7 @@ impl LibraryManager {
     #[allow(clippy::too_many_arguments)]
     pub(crate) async fn finalize_import_atomic(
         &self,
+        guard: crate::db::ImportCommitGuard,
         album: Option<&DbAlbum>,
         release: &DbRelease,
         tracks_to_files: &[crate::import::TrackFile],
@@ -304,6 +305,7 @@ impl LibraryManager {
             .collect();
         self.database
             .finalize_import_atomic(
+                guard,
                 album,
                 release,
                 tracks_to_files,
@@ -358,13 +360,15 @@ impl LibraryManager {
     /// [`crate::db::Database::save_import_candidate_file_edits`] for why those
     /// are one operation.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_import_candidate_file_edits(
+    pub(crate) async fn save_import_candidate_file_edits(
         &self,
         content_hash: &str,
         folder_path: &str,
         expected_revision: u64,
+        expected_metadata_revision: u64,
         edits: &crate::import::folder_scanner::CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
+        mapping_preparation: &crate::import::CandidateMappingPreparation,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
         Ok(self
             .database
@@ -372,8 +376,10 @@ impl LibraryManager {
                 content_hash,
                 folder_path,
                 expected_revision,
+                expected_metadata_revision,
                 edits,
                 settled_candidates,
+                mapping_preparation,
             )
             .await?)
     }
@@ -400,6 +406,7 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn replace_candidate_metadata(
         &self,
         content_hash: &str,
@@ -414,13 +421,39 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn replace_candidate_metadata_prepared(
+        &self,
+        watched_folder_path: &str,
+        content_hash: &str,
+        folder_path: &str,
+        expected_file_edit_revision: u64,
+        expected_revision: u64,
+        metadata: &crate::import::CandidateMetadataDraft,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .replace_candidate_metadata_prepared(
+                watched_folder_path,
+                content_hash,
+                folder_path,
+                expected_file_edit_revision,
+                expected_revision,
+                metadata,
+            )
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn replace_candidate_file_tags_metadata(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
         content_hash: &str,
+        expected_file_edit_revision: u64,
+        expected_metadata_revision: u64,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::import::RawReleaseEdit,
+        track_mappings: &[crate::import::CandidateTrackMappingEdit],
         cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, LibraryError> {
         Ok(self
@@ -429,8 +462,11 @@ impl LibraryManager {
                 watched_folder_path,
                 candidate_path,
                 content_hash,
+                expected_file_edit_revision,
+                expected_metadata_revision,
                 snapshot,
                 draft,
+                track_mappings,
                 cover,
             )
             .await?)
@@ -445,6 +481,28 @@ impl LibraryManager {
         Ok(self
             .database
             .load_import_candidate_pane_rows(content_hash)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_import_candidate_preparation(
+        &self,
+        content_hash: &str,
+    ) -> Result<Option<crate::db::DbCandidateImportPreparation>, LibraryError> {
+        Ok(self
+            .database
+            .load_import_candidate_preparation(content_hash)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_import_candidate_prepared_assets(
+        &self,
+        content_hash: &str,
+    ) -> Result<crate::import::CandidatePreparedAssets, LibraryError> {
+        Ok(self
+            .database
+            .load_import_candidate_prepared_assets(content_hash)
             .await?)
     }
 
@@ -476,6 +534,7 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn save_import_candidate_cover(
         &self,
         content_hash: &str,
@@ -488,6 +547,32 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_prepared_cover(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        expected_file_edit_revision: u64,
+        expected_revision: u64,
+        cover: &crate::import::CoverSelection,
+        remote_image: Option<&crate::import::cover_art::RemoteImage>,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_prepared_cover(
+                watched_folder_path,
+                candidate_path,
+                content_hash,
+                expected_file_edit_revision,
+                expected_revision,
+                cover,
+                remote_image,
+            )
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn save_import_candidate_edit_field(
         &self,
         content_hash: &str,
@@ -501,6 +586,30 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_edit_field_prepared(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        expected_file_edit_revision: u64,
+        field: crate::import::CandidateEditField,
+        value: &str,
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_edit_field_prepared(
+                watched_folder_path,
+                candidate_path,
+                content_hash,
+                expected_file_edit_revision,
+                field,
+                value,
+            )
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn replace_import_candidate_album_artists(
         &self,
         content_hash: &str,
@@ -513,6 +622,34 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn replace_import_candidate_album_artists_prepared(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        expected_file_edit_revision: u64,
+        expected_revision: u64,
+        assignments: &[crate::import::ArtistAssignment],
+        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
+        assets: &[crate::import::PreparedArtistImage],
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .replace_import_candidate_album_artists_prepared(
+                watched_folder_path,
+                candidate_path,
+                content_hash,
+                expected_file_edit_revision,
+                expected_revision,
+                assignments,
+                source_discogs_artist_ids,
+                assets,
+            )
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn save_import_candidate_track_edit(
         &self,
         content_hash: &str,
@@ -525,6 +662,34 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn save_import_candidate_track_edit_prepared(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        expected_file_edit_revision: u64,
+        expected_revision: u64,
+        edit: &crate::import::CandidateTrackEdit,
+        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
+        assets: &[crate::import::PreparedArtistImage],
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_track_edit_prepared(
+                watched_folder_path,
+                candidate_path,
+                content_hash,
+                expected_file_edit_revision,
+                expected_revision,
+                edit,
+                source_discogs_artist_ids,
+                assets,
+            )
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn replace_import_candidate_track_artists(
         &self,
         content_hash: &str,
@@ -534,6 +699,35 @@ impl LibraryManager {
         Ok(self
             .database
             .replace_import_candidate_track_artists(content_hash, track_ids, assignments)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn replace_import_candidate_track_artists_prepared(
+        &self,
+        watched_folder_path: &str,
+        candidate_path: &str,
+        content_hash: &str,
+        expected_file_edit_revision: u64,
+        expected_revision: u64,
+        track_ids: &[String],
+        assignments: &crate::import::TrackArtistAssignments,
+        source_discogs_artist_ids: &std::collections::BTreeSet<String>,
+        assets: &[crate::import::PreparedArtistImage],
+    ) -> Result<u64, LibraryError> {
+        Ok(self
+            .database
+            .replace_import_candidate_track_artists_prepared(
+                watched_folder_path,
+                candidate_path,
+                content_hash,
+                expected_file_edit_revision,
+                expected_revision,
+                track_ids,
+                assignments,
+                source_discogs_artist_ids,
+                assets,
+            )
             .await?)
     }
 

@@ -6,14 +6,14 @@
 //! mapping table, and the source tracks behind it — and both are pure over the
 //! measurements and the stored edits they are handed.
 //!
-//! Two callers run them: the per-candidate query, so a selection draws
-//! complete, and the commit, so what it writes is what the pane showed.
+//! Candidate preparation runs them once and stores their output. The pane reads
+//! that candidate revision, and import commits it without projecting again.
 
 use crate::import::edits::{apply_track_edits, CandidateEditOverlay, CandidateTrackEdit};
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{
-    mapping_table, mapping_with_track, MappingBecomes, MappingTable, MappingTrackGroup,
-    PickedTracklist, TracklistSource,
+    mapping_table, MappingBecomes, MappingTable, MappingTrackGroup, PickedTracklist,
+    TracklistSource,
 };
 use crate::import::payloads::ReleasePayloads;
 use crate::import::probe::SourceDurations;
@@ -39,8 +39,13 @@ pub const CANDIDATE_TRACK_ID_PREFIX: &str = "candidate-track";
 /// The source-less editable draft created with a discovered candidate.
 /// Candidate files determine only how many physical slots exist; their names
 /// and tags do not become metadata until a source is explicitly applied.
+#[cfg(test)]
 pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> RawReleaseEdit {
-    let mut draft = RawReleaseEdit::from_user_edit(
+    blank_candidate_source(files).edit
+}
+
+pub(crate) fn blank_candidate_source(files: &CategorizedFiles) -> CandidateSourceDraft {
+    let draft = RawReleaseEdit::from_user_edit(
         ReleaseUserEdit {
             album_title: String::new(),
             album_artist_assignments: Vec::new(),
@@ -50,10 +55,7 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> RawReleaseEdit 
         },
         CANDIDATE_TRACK_ID_PREFIX,
     );
-    for track in &mut draft.tracks {
-        track.file = None;
-    }
-    draft
+    candidate_draft_from_edit(draft)
 }
 
 /// What a pick produces for the pane: the release as its documents describe
@@ -64,140 +66,169 @@ pub struct PanePick {
     pub release: Option<ImportSearchReleaseDetail>,
     pub edit: RawReleaseEdit,
     pub mapping: MappingTable,
+    pub(crate) source_discogs_artist_ids: std::collections::BTreeSet<String>,
+}
+
+pub(crate) struct CandidateSourceDraft {
+    pub edit: RawReleaseEdit,
+    pub track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
+    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
+    pub mapped_new_discogs_artist_ids: std::collections::BTreeSet<String>,
 }
 
 /// Normalize a source projection into the one candidate draft. Physical file
 /// bindings remain in the mapping table and are stored independently.
-pub(crate) fn candidate_draft_from_source(pane: PanePick) -> RawReleaseEdit {
+pub(crate) fn candidate_draft_from_source(pane: PanePick) -> CandidateSourceDraft {
     let mut draft = pane.edit;
     draft
         .album_artist_assignments
         .retain(|assignment| !assignment.is_blank());
-    draft.tracks = crate::import::mapping_tracks(&pane.mapping);
-    for (position, track) in draft.tracks.iter_mut().enumerate() {
+    let track_rows = pane
+        .mapping
+        .track_groups
+        .iter()
+        .flat_map(MappingTrackGroup::units)
+        .filter_map(|unit| match &unit.becomes {
+            MappingBecomes::Track {
+                track,
+                source_position,
+            } => Some((track.clone(), source_position.clone())),
+            MappingBecomes::AwaitingPick => None,
+        })
+        .collect::<Vec<_>>();
+    let (tracks, source_positions) = track_rows.into_iter().unzip();
+    draft.tracks = tracks;
+    detach_candidate_mappings(draft, pane.source_discogs_artist_ids, source_positions)
+}
+
+pub(crate) fn candidate_draft_from_edit(draft: RawReleaseEdit) -> CandidateSourceDraft {
+    let source_positions = vec![None; draft.tracks.len()];
+    detach_candidate_mappings(draft, std::collections::BTreeSet::new(), source_positions)
+}
+
+fn detach_candidate_mappings(
+    mut draft: RawReleaseEdit,
+    source_discogs_artist_ids: std::collections::BTreeSet<String>,
+    source_positions: Vec<Option<String>>,
+) -> CandidateSourceDraft {
+    assert_eq!(
+        draft.tracks.len(),
+        source_positions.len(),
+        "every candidate draft track has one source-position answer"
+    );
+    let mapped_new_discogs_artist_ids = draft.new_discogs_artist_ids_for_bound_tracks();
+    let mut track_mappings = Vec::with_capacity(draft.tracks.len());
+    for (position, (track, source_position)) in
+        draft.tracks.iter_mut().zip(source_positions).enumerate()
+    {
         track.id = format!("{CANDIDATE_TRACK_ID_PREFIX}-{position}");
-        track.file = None;
+        track_mappings.push(crate::import::CandidateTrackMappingEdit {
+            track_id: track.id.clone(),
+            source_position,
+            dropped: false,
+            file: crate::import::CandidateTrackFileBinding::Automatic(track.file.take()),
+        });
     }
-    draft
+    CandidateSourceDraft {
+        edit: draft,
+        track_mappings,
+        source_discogs_artist_ids,
+        mapped_new_discogs_artist_ids,
+    }
 }
 
 /// Project the stored draft onto the candidate's physical units. Metadata is
-/// already authoritative; an archived release supplies the source positions
-/// and durations independently of the editable rows it originally produced.
+/// already authoritative; provenance supplies only the exact external release
+/// card and whether source/file durations are independent evidence.
 pub(crate) fn draft_pane(
     release: Option<ImportSearchReleaseDetail>,
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: RawReleaseEdit,
     mapping_edits: &[crate::import::edits::CandidateTrackMappingEdit],
+    provenance: Option<&crate::import::MetadataProvenance>,
 ) -> Result<PanePick, ImportError> {
-    let (source_tracks, source) = match release.as_ref() {
-        Some(release) => (
-            external_draft_source_tracks(&draft, release)?,
-            TracklistSource::ExternalRelease,
-        ),
-        None => (
-            draft
-                .tracks
-                .iter()
-                .map(|track| SourceTrack {
-                    edit: track_user_edit(track),
-                    position: track.track_number.map(|number| number.to_string()),
-                    duration_ms: None,
-                })
-                .collect(),
-            TracklistSource::CandidateFiles,
-        ),
-    };
-    let table = restore_draft_tracks(
-        table_for(
-            files,
-            durations,
-            &source_tracks,
-            CANDIDATE_TRACK_ID_PREFIX,
-            source,
-            &[],
-        ),
-        &draft.tracks,
-    )?;
+    let table = draft_table(files, durations, &draft, mapping_edits, provenance)?;
     Ok(PanePick {
         release,
         edit: draft,
         mapping: crate::import::edits::apply_track_mapping_edits(table, mapping_edits),
+        source_discogs_artist_ids: std::collections::BTreeSet::new(),
     })
 }
 
-fn external_draft_source_tracks(
+/// Recalculate automatic file bindings for the current draft against a changed
+/// candidate file shape. Stored mappings supply source positions only; their
+/// user decisions are carried onto this result by the caller.
+pub(crate) fn automatic_mappings_for_draft(
+    files: &CategorizedFiles,
+    durations: &SourceDurations,
+    draft: RawReleaseEdit,
+    stored_mappings: &[crate::import::edits::CandidateTrackMappingEdit],
+    provenance: Option<&crate::import::MetadataProvenance>,
+) -> Result<Vec<crate::import::CandidateTrackMappingEdit>, ImportError> {
+    let table = draft_table(files, durations, &draft, stored_mappings, provenance)?;
+    Ok(candidate_draft_from_source(PanePick {
+        release: None,
+        edit: draft,
+        mapping: table,
+        source_discogs_artist_ids: std::collections::BTreeSet::new(),
+    })
+    .track_mappings)
+}
+
+fn draft_table(
+    files: &CategorizedFiles,
+    durations: &SourceDurations,
     draft: &RawReleaseEdit,
-    release: &ImportSearchReleaseDetail,
-) -> Result<Vec<SourceTrack>, ImportError> {
-    if draft.tracks.len() < release.tracks.len() {
-        return Err(ImportError::Internal {
-            detail: format!(
-                "stored candidate has {} editable tracks for a release with {} source tracks",
-                draft.tracks.len(),
-                release.tracks.len()
-            ),
-        });
-    }
-    Ok(release
+    mapping_edits: &[crate::import::edits::CandidateTrackMappingEdit],
+    provenance: Option<&crate::import::MetadataProvenance>,
+) -> Result<MappingTable, ImportError> {
+    let source_tracks: Vec<SourceTrack> = draft
         .tracks
         .iter()
-        .zip(&draft.tracks)
-        .map(|(source, track)| SourceTrack {
-            edit: track_user_edit(track),
-            position: Some(source.position.clone()),
-            duration_ms: source.duration_ms,
-        })
-        .collect())
-}
-
-fn track_user_edit(track: &crate::import::RawTrackEdit) -> crate::import::TrackUserEdit {
-    crate::import::TrackUserEdit {
-        title: track.title.clone(),
-        artist_assignments: track.artist_assignments.clone(),
-        side: track.side,
-        track_number: track.track_number,
-        file: None,
-    }
-}
-
-/// Restore the stored metadata while retaining the fresh projection's physical
-/// binding and source position for each stable candidate row.
-fn restore_draft_tracks(
-    mut table: MappingTable,
-    tracks: &[crate::import::RawTrackEdit],
-) -> Result<MappingTable, ImportError> {
-    for stored in tracks {
-        let file = table
-            .track_groups
-            .iter()
-            .flat_map(MappingTrackGroup::units)
-            .find_map(|unit| match &unit.becomes {
-                MappingBecomes::Track { track, .. } if track.id == stored.id => {
-                    Some(track.file.clone())
-                }
-                MappingBecomes::Track { .. } | MappingBecomes::AwaitingPick => None,
+        .map(|track| {
+            let position = mapping_edits
+                .iter()
+                .find(|mapping| mapping.track_id == track.id)
+                .ok_or_else(|| ImportError::Internal {
+                    detail: format!("candidate track {} has no stored source row", track.id),
+                })?
+                .source_position
+                .clone();
+            Ok(SourceTrack {
+                edit: crate::import::TrackUserEdit {
+                    title: track.title.clone(),
+                    artist_assignments: track.artist_assignments.clone(),
+                    side: track.side,
+                    track_number: track.track_number,
+                    file: None,
+                },
+                position,
+                duration_ms: None,
             })
-            .ok_or_else(|| ImportError::Internal {
-                detail: format!(
-                    "stored candidate track {} is not in its projected mapping",
-                    stored.id
-                ),
-            })?;
-        let mut restored = stored.clone();
-        restored.file = file;
-        table = mapping_with_track(table, restored);
-    }
-    Ok(table)
+        })
+        .collect::<Result<_, ImportError>>()?;
+    let source = match provenance {
+        Some(crate::import::MetadataProvenance::ExternalRelease { .. }) => {
+            TracklistSource::ExternalRelease
+        }
+        Some(crate::import::MetadataProvenance::FileTags) | None => TracklistSource::CandidateFiles,
+    };
+    Ok(table_for(
+        files,
+        durations,
+        &source_tracks,
+        CANDIDATE_TRACK_ID_PREFIX,
+        source,
+        &[],
+    ))
 }
 
 /// The pane for a release pick, from the documents already archived for it.
 ///
-/// The seed is the commit worker's own projection — `prepare_release` mapped
-/// into the editor's shape — so the form shows every album artist the release
-/// credits, and an untouched artist list compares equal at commit instead of
-/// reading as a deletion.
+/// The seed is the candidate preparation projection, so the form shows every
+/// album artist the release credits and an untouched artist list remains intact.
 pub fn release_pane(
     payloads: &ReleasePayloads,
     files: &CategorizedFiles,
@@ -209,7 +240,7 @@ pub fn release_pane(
 ) -> Result<PanePick, ImportError> {
     let audio_durations = crate::import::track_slots::audio_durations(files, durations)?;
     let detail = payloads.detail_for_audio(&audio_durations)?;
-    let parsed = payloads.parsed_for_audio(&audio_durations, clock, ids)?;
+    let mut parsed = payloads.parsed_for_audio(&audio_durations, clock, ids)?;
     let seed = parsed_album_to_user_edit(&parsed);
     let source_tracks = source_tracks_of(&seed, &detail);
     let mapping = table_for(
@@ -220,11 +251,64 @@ pub fn release_pane(
         TracklistSource::ExternalRelease,
         track_edits,
     );
+    let mapped_tracks = crate::import::mapping_tracks(&mapping);
+    retain_mapped_source_track_metadata(&mut parsed, &mapped_tracks, IMPORT_TRACK_ID_PREFIX);
+    let source_discogs_artist_ids = source_discogs_artist_ids(&parsed);
     Ok(PanePick {
         release: Some(detail),
         edit: edit_form(seed, IMPORT_TRACK_ID_PREFIX, overlay),
         mapping,
+        source_discogs_artist_ids,
     })
+}
+
+pub(crate) fn retain_mapped_source_track_metadata(
+    parsed: &mut crate::import::ParsedAlbum,
+    mapped_tracks: &[crate::import::RawTrackEdit],
+    track_id_prefix: &str,
+) {
+    let retained_track_ids = parsed
+        .tracks
+        .iter()
+        .enumerate()
+        .filter(|(position, _)| {
+            let expected_id = format!("{track_id_prefix}-{position}");
+            mapped_tracks
+                .iter()
+                .any(|track| track.id == expected_id && track.file.is_some())
+        })
+        .map(|(_, track)| track.id.clone())
+        .collect();
+    crate::import::service::retain_track_metadata(parsed, &retained_track_ids);
+}
+
+pub(crate) fn source_discogs_artist_ids(
+    parsed: &crate::import::ParsedAlbum,
+) -> std::collections::BTreeSet<String> {
+    let credited_artist_ids: std::collections::HashSet<&str> = parsed
+        .release_artist_roles
+        .iter()
+        .map(|role| role.artist_id.as_str())
+        .chain(
+            parsed
+                .track_artist_roles
+                .iter()
+                .map(|role| role.artist_id.as_str()),
+        )
+        .chain(
+            parsed
+                .work_graph
+                .work_artists
+                .iter()
+                .map(|credit| credit.artist_id.as_str()),
+        )
+        .collect();
+    parsed
+        .artists
+        .iter()
+        .filter(|artist| credited_artist_ids.contains(artist.id.as_str()))
+        .filter_map(|artist| artist.discogs_artist_id.clone())
+        .collect()
 }
 
 /// The pane for a folder committed as its stored file-tag snapshot describes it.
@@ -270,6 +354,7 @@ pub(crate) fn file_tags_pane(
         release: None,
         edit: edit_form(seed, FILE_TAG_TRACK_ID_PREFIX, overlay),
         mapping,
+        source_discogs_artist_ids: std::collections::BTreeSet::new(),
     })
 }
 
@@ -309,6 +394,7 @@ pub fn manual_pane(
         release: None,
         edit: edit_form(seed, MANUAL_TRACK_ID_PREFIX, overlay),
         mapping,
+        source_discogs_artist_ids: std::collections::BTreeSet::new(),
     }
 }
 

@@ -28,7 +28,6 @@ mod file_validation;
 pub mod folder_registry;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod folder_scanner;
-mod image_response;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod volume;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -128,12 +127,12 @@ pub use candidates::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) use edits::CandidateTrackMappingEdit;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use edits::{
     apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
     TrackEditState,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use edits::{CandidateTrackFileBinding, CandidateTrackMappingEdit};
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ArtistIdentityConflict;
 pub use error::ImportError;
@@ -180,6 +179,8 @@ pub use triage::{
     TriagePlacement, TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use types::CandidateMappingPreparation;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::ImportCommand;
 pub use types::{
     ArtistAssignment, AudioFile, EditValidationError, ExistingArtist, MetadataProvenance,
@@ -188,6 +189,7 @@ pub use types::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::{
-    CandidateMetadataDraft, CoverSelection, ImportPhase, ImportProgress, ImportStep, MetadataRef,
-    PayloadSource, PrepareStep, ReleaseReseed, SourcePayload, StorageMode, TrackFile,
+    CandidateMetadataDraft, CandidatePreparedAssets, CoverSelection, ImportPhase, ImportProgress,
+    ImportStep, MetadataRef, PayloadSource, PrepareStep, PreparedArtistImage, ReleaseReseed,
+    SourcePayload, StorageMode, TrackFile,
 };

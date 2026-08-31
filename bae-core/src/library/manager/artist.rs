@@ -215,10 +215,12 @@ impl LibraryManager {
     /// to map parsed IDs to DB IDs.
     ///
     /// Every exact Discogs and MusicBrainz match is considered across both the
-    /// committed library and rows this import is waiting to insert. Pending
-    /// rows are folded into one committed match when there is one, or into the
-    /// first pending row otherwise. Two different committed matches are the
-    /// recoverable identity conflict surfaced to the import pane.
+    /// committed library and rows this import is waiting to insert. Two
+    /// unidentified pending credits with the same name also describe one new
+    /// artist within this import. Pending rows are folded into one committed
+    /// match when there is one, or into the first pending row otherwise. Two
+    /// different committed matches are the recoverable identity conflict
+    /// surfaced to the import pane.
     pub(crate) async fn resolve_artists_for_import(
         &self,
         artists: &[DbArtist],
@@ -483,7 +485,12 @@ fn pending_artist_indices(artists: &[DbArtist], incoming: &DbArtist) -> Vec<usiz
                 && incoming.discogs_artist_id == artist.discogs_artist_id;
             let musicbrainz_matches = incoming.musicbrainz_artist_id.is_some()
                 && incoming.musicbrainz_artist_id == artist.musicbrainz_artist_id;
-            (discogs_matches || musicbrainz_matches).then_some(index)
+            let unidentified_name_matches = incoming.discogs_artist_id.is_none()
+                && incoming.musicbrainz_artist_id.is_none()
+                && artist.discogs_artist_id.is_none()
+                && artist.musicbrainz_artist_id.is_none()
+                && incoming.name.eq_ignore_ascii_case(&artist.name);
+            (discogs_matches || musicbrainz_matches || unidentified_name_matches).then_some(index)
         })
         .collect()
 }

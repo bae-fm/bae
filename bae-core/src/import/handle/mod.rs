@@ -272,8 +272,8 @@ impl ImportServiceHandle {
 
     /// Accumulate every candidate's runtime from the bus. Lock-free by
     /// design: the only runtime a durable write gates on is the import claim,
-    /// which [`Self::claim_candidate_for_import`] records directly under the
-    /// commit lock rather than through an event.
+    /// which import admission records directly under the commit lock rather
+    /// than through an event.
     fn start_runtime_recorder(&self) {
         let mut events = self.event_tx.subscribe();
         let runtime = self.runtime.clone();
@@ -579,6 +579,7 @@ impl ImportServiceHandle {
     /// already landed or it has yet to read the candidate and will find it
     /// claimed — there is no interval in which a verdict is stored for a
     /// candidate whose import has been committed to.
+    #[cfg(any(test, feature = "test-utils"))]
     pub(crate) async fn claim_candidate_for_import(&self, candidate_key: &str) {
         let _commit = self.folder_state_commit.lock().await;
         self.runtime.claim_for_import(candidate_key);

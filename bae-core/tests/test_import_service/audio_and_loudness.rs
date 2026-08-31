@@ -81,6 +81,7 @@ async fn import_progress_names_every_operation_before_loudness() {
     let mut events = f.handle.subscribe_events();
 
     let album_dir = f.temp_path().join("album");
+    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
         &album_dir,
@@ -93,7 +94,6 @@ async fn import_progress_names_every_operation_before_loudness() {
             track_number: 1,
         }],
     );
-    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
 
     let import_id = f.ids.new_id();
     f.handle
@@ -151,10 +151,7 @@ async fn import_progress_names_every_operation_before_loudness() {
     assert_eq!(
         steps,
         vec![
-            ImportStep::Preparing(PrepareStep::ReadingFolder),
-            ImportStep::Preparing(PrepareStep::ParsingMetadata),
-            ImportStep::Preparing(PrepareStep::DiscoveringFiles),
-            ImportStep::Preparing(PrepareStep::ValidatingTracks),
+            ImportStep::Preparing(PrepareStep::ValidatingSourceFiles),
             ImportStep::Running(ImportPhase::ReadingFiles),
             ImportStep::Running(ImportPhase::MeasuringLoudness),
             ImportStep::Running(ImportPhase::Finalizing),
@@ -297,6 +294,7 @@ async fn loudness_pass_emits_within_track_progress() {
     let mut event_rx = f.handle.subscribe_events();
 
     let album_dir = f.temp_path().join("album");
+    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
         &album_dir,
@@ -306,7 +304,6 @@ async fn loudness_pass_emits_within_track_progress() {
             "03 Track Three.flac",
         ],
     );
-    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -339,8 +336,10 @@ async fn loudness_pass_emits_within_track_progress() {
             progress: ImportProgress::Progress { percent, phase, .. },
         } = event
         {
-            if candidate_key == expected_candidate_key && phase == ImportPhase::MeasuringLoudness {
-                percents.push(percent);
+            if candidate_key == expected_candidate_key
+                && phase == ImportPhase::MeasuringLoudness
+            {
+                percents.extend(percent);
             }
         }
     }
@@ -595,6 +594,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     let mut event_rx = f.handle.subscribe_events();
 
     let album_dir = f.temp_path().join("album");
+    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
     fs::create_dir_all(&album_dir).unwrap();
     generate_album_files(
         &album_dir,
@@ -604,7 +604,6 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
             "03 Track Three.flac",
         ],
     );
-    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -657,12 +656,12 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
     );
     assert_eq!(
         percents.first().copied(),
-        Some(0),
-        "the phase opens at zero"
+        Some(Some(0)),
+        "a known frame denominator opens at zero"
     );
     assert_eq!(
         percents.last().copied(),
-        Some(100),
+        Some(Some(100)),
         "the bar reaches the end of the phase"
     );
 }

@@ -234,10 +234,18 @@ fn insert_candidate(
         .optional()?
         .is_some();
     if !has_draft {
-        super::super::import_state::insert_draft(
+        let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+        super::super::import_state::insert_draft(sql, &content_hash, &source_draft.edit)?;
+        super::super::import_state::replace_track_mappings(
             sql,
             &content_hash,
-            &crate::import::pane::blank_candidate_draft(&candidate.files),
+            &source_draft.track_mappings,
+        )?;
+    }
+    if created {
+        sql.execute(
+            "INSERT INTO import_candidate_asset_preparation (content_hash) VALUES (?)",
+            [&content_hash],
         )?;
     }
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;

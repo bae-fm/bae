@@ -852,11 +852,8 @@ pub struct LibraryManager {
     /// its lifetime and read only by named test operations, so it carries the
     /// leading underscore.
     _upload_observer: Arc<crate::sync::upload_observer::ReleaseUploadObserver>,
-    /// Bytes of provider art (Cover Art Archive, Discogs) that isn't in the
-    /// library, cached under HTTP freshness rules. It lives here because all
-    /// three readers — the cover picker, the import commit worker, and
-    /// `change_cover` — reach it through a manager clone, so picking a remote
-    /// cover and then importing it downloads once.
+    /// Session cache of provider image responses, keyed by URL. Candidate
+    /// preparation and library images own their bytes independently.
     remote_images: crate::import::cover_art::RemoteImageCache,
 }
 

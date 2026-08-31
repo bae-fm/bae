@@ -383,19 +383,13 @@ fn produced_keys() -> Vec<String> {
     // bridge_prepare_step_key — every variant carries a key.
     for step in [
         BridgePrepareStep::Queued,
-        BridgePrepareStep::ReadingFolder,
-        BridgePrepareStep::ParsingMetadata,
-        BridgePrepareStep::WritingCoverArt,
-        BridgePrepareStep::DiscoveringFiles,
-        BridgePrepareStep::ValidatingTracks,
+        BridgePrepareStep::ValidatingSourceFiles,
     ] {
         let expected = match step {
             BridgePrepareStep::Queued => "core.import.prepare.queued",
-            BridgePrepareStep::ReadingFolder => "core.import.prepare.reading_folder",
-            BridgePrepareStep::ParsingMetadata => "core.import.prepare.parsing_metadata",
-            BridgePrepareStep::WritingCoverArt => "core.import.prepare.writing_cover_art",
-            BridgePrepareStep::DiscoveringFiles => "core.import.prepare.discovering_files",
-            BridgePrepareStep::ValidatingTracks => "core.import.prepare.validating_tracks",
+            BridgePrepareStep::ValidatingSourceFiles => {
+                "core.import.prepare.validating_source_files"
+            }
         };
         assert_eq!(bridge_prepare_step_key(step), expected);
         keys.push(expected.to_string());

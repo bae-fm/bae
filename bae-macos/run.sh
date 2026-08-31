@@ -105,5 +105,5 @@ fi
 xcodebuild "${XCODEBUILD_ARGUMENTS[@]}" build
 
 if [[ "$OPEN" == true ]]; then
-    open "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app" --env BAE_IMPORT_TRACE=1
+    open "$DERIVED_DATA/Build/Products/$CONFIG/$PRODUCT_NAME.app"
 fi

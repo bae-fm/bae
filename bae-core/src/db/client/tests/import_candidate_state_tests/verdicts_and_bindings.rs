@@ -105,8 +105,11 @@ fn new_candidate_row(
         expected_metadata_revision: 0,
         metadata: crate::import::CandidateMetadataDraft {
             edit: metadata_draft("", ""),
+            track_mappings: Default::default(),
+            source_discogs_artist_ids: Default::default(),
             provenance: None,
             cover: None,
+            assets: crate::import::CandidatePreparedAssets::default(),
         },
     }
 }
@@ -203,23 +206,16 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     ];
 
     for (content_hash, folder_path, provenance) in &cases {
-        db.save_import_candidate_failure(
-            content_hash,
-            folder_path,
-            0,
-            &crate::import::ImportFailure::error_only("test anchor", fixed_identified_at()),
-        )
-            .await
-            .unwrap();
+        let row = new_candidate_row(content_hash, folder_path, &sample_verdict(), 1_000);
+        db.save_import_candidate_verdict(&row).await.unwrap();
         db.replace_candidate_metadata(
             content_hash,
             folder_path,
             &metadata_draft("Album", "Artist"),
             Some(provenance),
         )
-            .await
-            .unwrap();
-        db.clear_import_candidate_failure(content_hash).await.unwrap();
+        .await
+        .unwrap();
     }
     drop(db);
 
@@ -354,7 +350,16 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
     settled.metadata.provenance = Some(release_pick("mb-rel-derived"));
     db.save_import_candidate_verdict(&settled).await.unwrap();
-    db.save_import_candidate_file_edits(&hash, "/music/Album", 0, &edits, &[])
+    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    db.save_import_candidate_file_edits(
+        &hash,
+        "/music/Album",
+        0,
+        metadata_revision,
+        &edits,
+        &[],
+        &mapping_preparation,
+    )
         .await
         .unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -373,7 +378,16 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     )
         .await
         .unwrap();
-    db.save_import_candidate_file_edits(&hash, "/music/Album", 1, &edits, &[])
+    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
+    db.save_import_candidate_file_edits(
+        &hash,
+        "/music/Album",
+        1,
+        metadata_revision,
+        &edits,
+        &[],
+        &mapping_preparation,
+    )
         .await
         .unwrap();
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -540,12 +554,16 @@ async fn a_cleared_binding_survives_a_relaunch() {
     settled
         .apply_candidate_file_edits(&candidate_edits)
         .unwrap();
+    let hash = scanned.content_hash();
+    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     db.save_import_candidate_file_edits(
-        &scanned.content_hash(),
+        &hash,
         &folder.path().to_string_lossy(),
         0,
+        metadata_revision,
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],
+        &mapping_preparation,
     )
     .await
     .unwrap();
@@ -638,15 +656,18 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
 
     let mut edits = SheetBindingEdits::default();
     edits.set("cd.cue".to_string(), UserSheetBinding::Cleared);
+    let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     db.save_import_candidate_file_edits(
         &hash,
         &folder.path().to_string_lossy(),
         0,
+        metadata_revision,
         &CandidateFileEdits {
             sheet_bindings: edits,
             ..Default::default()
         },
         &[],
+        &mapping_preparation,
     )
     .await
     .unwrap();

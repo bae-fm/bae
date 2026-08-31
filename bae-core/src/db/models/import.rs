@@ -115,6 +115,37 @@ pub struct DbCandidatePaneRows {
     pub failure: Option<crate::import::ImportFailure>,
 }
 
+/// One atomic read of the existing candidate rows the import worker consumes.
+/// The revision is checked against the queued expectation before any source
+/// file is read.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DbCandidateImportPreparation {
+    pub file_edit_revision: u64,
+    pub metadata_revision: u64,
+    pub metadata_provenance: Option<crate::import::MetadataProvenance>,
+    pub cover: Option<crate::import::CoverSelection>,
+    pub metadata_draft: crate::import::RawReleaseEdit,
+    pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
+    pub(crate) track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
+    pub assets: crate::import::CandidatePreparedAssets,
+}
+
+/// The exact candidate state a library import transaction is allowed to
+/// consume. The final write checks this inside the transaction before writing
+/// any library row.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone)]
+pub(crate) enum ImportCommitGuard {
+    Candidate {
+        candidate_key: String,
+        folder: std::path::PathBuf,
+        scope: crate::import::folder_scanner::ReleaseFileScope,
+        expectation: crate::import::service::ImportExpectation,
+    },
+    #[cfg(test)]
+    UncheckedTestSetup,
+}
+
 /// Every watched root with its status and every stored entry under it.
 /// Only tests read whole snapshots; production reads entries by key.
 #[cfg(test)]

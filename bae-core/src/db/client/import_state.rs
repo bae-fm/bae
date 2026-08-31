@@ -2,7 +2,9 @@ use super::*;
 
 mod edit_rows;
 mod failure_rows;
+mod metadata_rows;
 mod pane_rows;
+mod prepared_asset_rows;
 mod rows;
 mod signal_rows;
 mod verdict_rows;
@@ -11,7 +13,12 @@ mod watched_folder_removal;
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
-pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
+pub(super) use pane_rows::{
+    insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on, replace_track_mappings,
+};
+#[cfg(any(test, feature = "test-utils"))]
+use prepared_asset_rows::invalidate_prepared_assets;
+use prepared_asset_rows::replace_prepared_assets;
 pub(super) use rows::{load_states_on, metadata_provenance_of};
 use signal_rows::{delete_signals, insert_signals};
 
@@ -25,6 +32,86 @@ use verdict_rows::{
     delete_identify_failure, delete_matches, insert_identify_failure, insert_matches,
     verdict_columns,
 };
+
+fn require_current_candidate(
+    sql: &SqlContext<'_, '_>,
+    watched_folder_path: &str,
+    candidate_path: &str,
+    content_hash: &str,
+    expected_file_edit_revision: u64,
+) -> Result<u64, DbError> {
+    let current: Option<(String, i64, i64)> = sql
+        .query_row(
+            "SELECT content_hash, generation, file_edit_revision \
+             FROM scan_candidate WHERE watched_folder_path = ? AND path = ? AND kind = 'valid'",
+            params![watched_folder_path, candidate_path],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .optional()?;
+    let expected_file_edit_revision = i64::try_from(expected_file_edit_revision)
+        .map_err(|_| DbError::Message("candidate file revision exceeds SQLite range".into()))?;
+    let Some((current_hash, generation, current_file_edit_revision)) = current else {
+        return Err(DbError::Message(format!(
+            "candidate changed before metadata was stored: {candidate_path} is no longer valid"
+        )));
+    };
+    if current_hash != content_hash || current_file_edit_revision != expected_file_edit_revision {
+        return Err(DbError::Message(format!(
+            "candidate changed before metadata was stored: {candidate_path} no longer names the prepared files"
+        )));
+    }
+    u64::try_from(generation)
+        .map_err(|_| DbError::Message("candidate scan generation is negative".into()))
+}
+
+fn replace_candidate_metadata_on(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    folder_path: &str,
+    expected_revision: u64,
+    metadata: &crate::import::CandidateMetadataDraft,
+) -> Result<u64, DbError> {
+    pane_rows::require_metadata_revision(sql, content_hash, expected_revision)?;
+    let columns = metadata.provenance.as_ref().map(seed_columns);
+    let revision = sql
+        .query_row(
+            "UPDATE import_candidate_state SET folder_path = ?, \
+             provenance_kind = ?, provenance_source = ?, provenance_release_id = ?, \
+             provenance_author = ?, metadata_revision = metadata_revision + 1 \
+         WHERE content_hash = ? RETURNING metadata_revision",
+            params![
+                folder_path,
+                columns.as_ref().map(|columns| columns.kind),
+                columns.as_ref().and_then(|columns| columns.source),
+                columns.as_ref().and_then(|columns| columns.release_id),
+                metadata
+                    .provenance
+                    .as_ref()
+                    .map(|_| MetadataProvenanceAuthor::User.as_str()),
+                content_hash,
+            ],
+            |row| row.get::<_, i64>(0),
+        )
+        .optional()?
+        .ok_or_else(|| {
+            DbError::Message("metadata replacement has no candidate state row".to_string())
+        })?;
+    pane_rows::replace_draft(sql, content_hash, &metadata.edit)?;
+    pane_rows::replace_track_mappings(sql, content_hash, &metadata.track_mappings)?;
+    pane_rows::delete_cover(sql, content_hash)?;
+    if let Some(cover) = &metadata.cover {
+        super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
+    }
+    replace_prepared_assets(
+        sql,
+        content_hash,
+        metadata.cover.as_ref(),
+        &metadata.source_discogs_artist_ids,
+        &metadata.assets,
+    )?;
+    u64::try_from(revision)
+        .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))
+}
 
 /// The next scan generation. One upsert rather than a read of a seeded row
 /// and a write back: the counter's row is created by the first allocation,
@@ -537,10 +624,22 @@ impl Database {
                         &verdict.content_hash,
                         &verdict.metadata.edit,
                     )?;
+                    pane_rows::replace_track_mappings(
+                        sql,
+                        &verdict.content_hash,
+                        &verdict.metadata.track_mappings,
+                    )?;
                     pane_rows::delete_cover(sql, &verdict.content_hash)?;
                     if let Some(cover) = &verdict.metadata.cover {
                         super::candidate_state_rows::save_cover(sql, &verdict.content_hash, cover)?;
                     }
+                    replace_prepared_assets(
+                        sql,
+                        &verdict.content_hash,
+                        verdict.metadata.cover.as_ref(),
+                        &verdict.metadata.source_discogs_artist_ids,
+                        &verdict.metadata.assets,
+                    )?;
                 }
                 delete_signals(sql, &verdict.content_hash)?;
                 insert_signals(sql, &verdict.content_hash, &verdict.signals)?;
@@ -568,18 +667,21 @@ impl Database {
     /// the same row the verdict lived in rather than orphaning it — and the
     /// scanned candidates that share the hash have their file rows rewritten
     /// to the settled shape in the same transaction.
-    pub async fn save_import_candidate_file_edits(
+    pub(crate) async fn save_import_candidate_file_edits(
         &self,
         content_hash: &str,
         folder_path: &str,
         expected_revision: u64,
+        expected_metadata_revision: u64,
         edits: &CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
+        mapping_preparation: &crate::import::CandidateMappingPreparation,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), DbError> {
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
         let edits = edits.clone();
         let settled_candidates = settled_candidates.to_vec();
+        let mapping_preparation = mapping_preparation.clone();
         let next_revision = expected_revision.checked_add(1).ok_or_else(|| {
             DbError::Message("candidate edit revision exhausted the u64 range".to_string())
         })?;
@@ -600,16 +702,18 @@ impl Database {
                     "candidate file decision received duplicate scan entry keys".to_string(),
                 ));
             }
-            let current: Option<i64> = sql
+            let current: Option<(i64, i64, Option<String>)> = sql
                 .query_row(
-                    "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
+                    "SELECT edit_revision, metadata_revision, provenance_author \
+                     FROM import_candidate_state WHERE content_hash = ?",
                     [&content_hash],
-                    |row| row.get(0),
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
                 )
                 .optional()?;
             let current_revision = current
-                .map(|value| {
-                    u64::try_from(value).map_err(|_| {
+                .as_ref()
+                .map(|(value, _, _)| {
+                    u64::try_from(*value).map_err(|_| {
                         DbError::Message(format!(
                             "candidate row {content_hash} has negative edit_revision"
                         ))
@@ -623,6 +727,25 @@ impl Database {
                     "candidate file decisions changed at revision {expected_revision}"
                 )));
             }
+            let current_metadata_revision = current
+                .as_ref()
+                .map(|(_, value, _)| {
+                    u64::try_from(*value).map_err(|_| {
+                        DbError::Message(format!(
+                            "candidate row {content_hash} has negative metadata_revision"
+                        ))
+                    })
+                })
+                .transpose()?;
+            if current_metadata_revision != Some(expected_metadata_revision) {
+                return Err(DbError::Message(format!(
+                    "candidate metadata changed from revision {expected_metadata_revision}"
+                )));
+            }
+            let preserve_source_artists = current
+                .as_ref()
+                .and_then(|(_, _, author)| author.as_deref())
+                == Some(MetadataProvenanceAuthor::User.as_str());
             let changed = if current_revision.is_some() {
                 sql.execute(
                     "UPDATE import_candidate_state SET \
@@ -667,7 +790,17 @@ impl Database {
             // set now, so the row edits addressed them by identities that no
             // longer mean the same thing.
             delete_signals(sql, &content_hash)?;
-            pane_rows::delete_track_mappings(sql, &content_hash)?;
+            pane_rows::replace_track_mappings(
+                sql,
+                &content_hash,
+                &mapping_preparation.track_mappings,
+            )?;
+            prepared_asset_rows::replace_artist_assets_after_file_edit(
+                sql,
+                &content_hash,
+                preserve_source_artists.then_some(&mapping_preparation.source_discogs_artist_ids),
+                &mapping_preparation.artist_images,
+            )?;
             delete_file_edits(sql, &content_hash)?;
             insert_file_edits(sql, &content_hash, &edits)?;
             let updated_candidates = settle_scanned_candidates(
@@ -686,6 +819,10 @@ impl Database {
     /// shape a folder scan takes so the roles it reports are the ones the user
     /// settled, not only the ones its filenames propose.
     ///
+    /// One candidate's file decisions. Progressive scans call this after they
+    /// compute a candidate content hash so each emitted row performs one indexed
+    /// lookup instead of rereading the whole candidate-state table.
+    ///
     /// Projected from the one stored-row read rather than a query of its own:
     /// the sweep and the scan want different halves of the same few hundred
     /// rows, and two queries over one table is two things to keep in step.
@@ -697,118 +834,6 @@ impl Database {
                 .map(|(hash, state)| (hash, state.file_edits))
                 .collect(),
         ))
-    }
-
-    /// Replace the candidate's editable metadata and its provenance as one
-    /// transaction. File decisions and physical track mappings live in other
-    /// tables and are deliberately untouched.
-    pub async fn replace_candidate_metadata(
-        &self,
-        content_hash: &str,
-        folder_path: &str,
-        draft: &crate::import::RawReleaseEdit,
-        provenance: Option<&crate::import::MetadataProvenance>,
-    ) -> Result<u64, DbError> {
-        let content_hash = content_hash.to_string();
-        let folder_path = folder_path.to_string();
-        let draft = draft.clone();
-        let provenance = provenance.cloned();
-        self.call(move |sql| {
-            let columns = provenance.as_ref().map(seed_columns);
-            let revision = sql
-                .query_row(
-                    "UPDATE import_candidate_state SET folder_path = ?, \
-                     provenance_kind = ?, provenance_source = ?, provenance_release_id = ?, \
-                     provenance_author = ?, metadata_revision = metadata_revision + 1 \
-                 WHERE content_hash = ? RETURNING metadata_revision",
-                    params![
-                        folder_path,
-                        columns.as_ref().map(|columns| columns.kind),
-                        columns.as_ref().and_then(|columns| columns.source),
-                        columns.as_ref().and_then(|columns| columns.release_id),
-                        provenance
-                            .as_ref()
-                            .map(|_| MetadataProvenanceAuthor::User.as_str()),
-                        content_hash,
-                    ],
-                    |row| row.get::<_, i64>(0),
-                )
-                .optional()?
-                .ok_or_else(|| {
-                    DbError::Message("metadata replacement has no candidate state row".to_string())
-                })?;
-            pane_rows::replace_draft(sql, &content_hash, &draft)?;
-            pane_rows::delete_cover(sql, &content_hash)?;
-            u64::try_from(revision).map_err(|_| {
-                DbError::Message("candidate metadata revision is negative".to_string())
-            })
-        })
-        .await
-    }
-
-    /// Store the exact File Tags reading and replace the candidate metadata it
-    /// projects in one transaction. The scan stamp is checked inside that
-    /// transaction, so no draft can be committed from facts about an older
-    /// candidate shape.
-    pub(crate) async fn replace_candidate_file_tags_metadata(
-        &self,
-        watched_folder_path: &str,
-        candidate_path: &str,
-        content_hash: &str,
-        snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
-        draft: &crate::import::RawReleaseEdit,
-        cover: Option<&crate::import::CoverSelection>,
-    ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
-        let snapshot = snapshot.clone();
-        let draft = draft.clone();
-        let cover = cover.cloned();
-        self.call(move |sql| {
-            let current: Option<(String, i64, i64)> = sql
-                .query_row(
-                    "SELECT content_hash, generation, file_edit_revision \
-                     FROM scan_candidate WHERE watched_folder_path = ? AND path = ? \
-                       AND kind = 'valid'",
-                    params![watched_folder_path, candidate_path],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                )
-                .optional()?;
-            let expected_generation = i64::try_from(snapshot.scan_generation)
-                .map_err(|_| DbError::Message("file-tag generation exceeds SQLite range".into()))?;
-            let expected_revision = i64::try_from(snapshot.file_edit_revision).map_err(|_| {
-                DbError::Message("file-tag edit revision exceeds SQLite range".into())
-            })?;
-            if current != Some((content_hash.clone(), expected_generation, expected_revision)) {
-                return Err(DbError::Message(format!(
-                    "candidate {candidate_path} changed while its file tags were being read"
-                )));
-            }
-            super::folder_scans::write::replace_candidate_file_tag_snapshot(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &snapshot,
-            )?;
-            let revision = sql.query_row(
-                "UPDATE import_candidate_state SET folder_path = ?, \
-                     provenance_kind = 'file_tags', provenance_source = NULL, \
-                     provenance_release_id = NULL, provenance_author = 'user', \
-                     metadata_revision = metadata_revision + 1 \
-                 WHERE content_hash = ? RETURNING metadata_revision",
-                params![candidate_path, content_hash],
-                |row| row.get::<_, i64>(0),
-            )?;
-            pane_rows::replace_draft(sql, &content_hash, &draft)?;
-            pane_rows::delete_cover(sql, &content_hash)?;
-            if let Some(cover) = &cover {
-                super::candidate_state_rows::save_cover(sql, &content_hash, cover)?;
-            }
-            u64::try_from(revision)
-                .map_err(|_| DbError::Message("candidate metadata revision is negative".into()))
-        })
-        .await
     }
 
     /// One candidate's file decisions. Progressive scans call this after they

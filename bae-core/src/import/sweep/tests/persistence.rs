@@ -140,10 +140,14 @@ fn blank_metadata_for_dir(dir: &Path) -> crate::import::CandidateMetadataDraft {
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("the candidate folder is readable");
+    let source_draft = crate::import::pane::blank_candidate_source(&files);
     crate::import::CandidateMetadataDraft {
-        edit: crate::import::pane::blank_candidate_draft(&files),
+        edit: source_draft.edit,
+        track_mappings: source_draft.track_mappings,
+        source_discogs_artist_ids: Default::default(),
         provenance: None,
         cover: None,
+        assets: crate::import::CandidatePreparedAssets::default(),
     }
 }
 
@@ -523,6 +527,9 @@ async fn restating_a_file_decision_changes_nothing() {
     }
     fixture.scan(1).await;
     fixture
+        .archive("mb-noop-1", "rg-noop-1", &[500, 500])
+        .await;
+    fixture
         .store_settled_verdict(&dir, "mb-noop-1", "rg-noop-1", 1_000)
         .await;
     let key = dir.to_string_lossy().into_owned();
@@ -697,7 +704,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
     // The picked release is one identification never fetched, which is what a
     // manual search result is: its documents are archived by the pick itself.
     fixture.provider.route(
-        "/release/mb-picked-1",
+        "/release/mb-picked-1?",
         200,
         titled_release_json(
             "mb-picked-1",

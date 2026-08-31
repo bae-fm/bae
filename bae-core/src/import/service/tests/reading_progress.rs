@@ -56,6 +56,14 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         .finish_folder_scan(&candidate_key, generation, None)
         .await
         .unwrap();
+    let metadata_revision = prepare_named_candidate(
+        &service,
+        &expected_content_hash,
+        &candidate_key,
+        &folder.to_string_lossy(),
+        "Reading Progress Candidate",
+    )
+    .await;
 
     let mut events = service.event_tx.subscribe();
     service
@@ -64,15 +72,14 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
             candidate_key.clone(),
             folder,
             crate::import::ReleaseFileScope::Recursive,
-            super::ImportExpectation::Candidate {
+            super::ImportExpectation {
                 content_hash: expected_content_hash,
                 edit_revision: 0,
+                metadata_revision,
+                file_tag_snapshot: None,
             },
-            None,
             StorageMode::Local,
             false,
-            None,
-            None,
         )
         .await
         .unwrap();
@@ -83,7 +90,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
             Ok(crate::import::handle::ImportEvent::ImportProgress {
                 progress:
                     ImportProgress::Progress {
-                        percent,
+                        percent: Some(percent),
                         phase: ImportPhase::ReadingFiles,
                         ..
                     },

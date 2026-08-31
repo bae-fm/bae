@@ -182,39 +182,40 @@ impl ImportServiceHandle {
     /// rows under this candidate's content hash, so the commit reads the very
     /// values the pane drew. The caller says only where the files should live.
     ///
-    /// The worker sources the release itself — `prepare_release` for an external
-    /// release, reading the documents the seed archived; the stored snapshot
-    /// for File Tags.
+    /// The worker sources the release itself from the persisted provider
+    /// documents for an external release, or the stored snapshot for File Tags.
     pub async fn start_import(
         &self,
         candidate_key: &str,
         storage_mode: StorageMode,
         pin: bool,
     ) -> Result<String, crate::import::ImportError> {
+        let commit = self.folder_state_commit.lock().await;
         let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
         let content_hash = candidate.files.content_hash();
-        let state = self
+        let preparation = self
             .library_manager
-            .load_import_candidate_state(&content_hash)
+            .load_import_candidate_preparation(&content_hash)
             .await?
-            .filter(|state| state.file_edits.revision == candidate.file_edit_revision);
-        let metadata_provenance = state
-            .as_ref()
-            .and_then(|state| state.metadata_provenance.clone());
-        let durations = crate::import::probe::source_durations(&candidate.files)?;
-        let rows = self
-            .library_manager
-            .load_import_candidate_pane_rows(&content_hash)
-            .await?;
-
-        let file_tag_snapshot = if matches!(
+            .filter(|preparation| preparation.file_edit_revision == candidate.file_edit_revision)
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key} has no complete preparation for its current files"
+                ),
+            })?;
+        let metadata_provenance = preparation.metadata_provenance.clone();
+        let needs_file_tag_snapshot = matches!(
             metadata_provenance,
             Some(crate::import::MetadataProvenance::FileTags)
-        ) {
+        ) || matches!(
+            preparation.cover,
+            Some(crate::import::CoverSelection::Embedded(_))
+        );
+        let file_tag_snapshot = if needs_file_tag_snapshot {
             let Some(stored) = self
                 .library_manager
                 .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
@@ -245,109 +246,47 @@ impl ImportServiceHandle {
                     ),
                 });
             };
-            let audio_files = snapshot_candidate
-                .files
-                .audio()
-                .cloned()
-                .collect::<Vec<_>>();
-            let observations = tokio::task::spawn_blocking(move || {
-                crate::import::file_tag_snapshot::observe_audio_files(&audio_files)
-            })
-            .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("file-tag validation task failed: {error}"),
-            })??;
-            match file_tag_snapshot_match(
-                &snapshot,
-                scan_generation,
-                snapshot_candidate.file_edit_revision,
-                &observations,
-            ) {
-                FileTagSnapshotMatch::Current => {}
-                FileTagSnapshotMatch::CandidateChanged => {
-                    return Err(crate::import::ImportError::FileTags {
-                        detail: format!(
-                            "{candidate_key} changed after its file tags were read; open it again"
-                        ),
-                    });
-                }
-                FileTagSnapshotMatch::AudioChanged => {
-                    return Err(crate::import::ImportError::FileTags {
-                        detail: format!(
-                            "{candidate_key}'s audio changed after its file tags were read; open File Tags again"
-                        ),
-                    });
-                }
+            if snapshot.scan_generation != scan_generation
+                || snapshot.file_edit_revision != snapshot_candidate.file_edit_revision
+            {
+                return Err(crate::import::ImportError::FileTags {
+                    detail: format!(
+                        "{candidate_key} changed after its file tags were read; open it again"
+                    ),
+                });
             }
             Some(snapshot)
         } else {
             None
         };
-
-        let files = candidate.files.clone();
-        let audio_durations = crate::import::track_slots::audio_durations(&files, &durations)?;
-        let release = match &metadata_provenance {
-            Some(crate::import::MetadataProvenance::ExternalRelease {
-                source, release_id, ..
-            }) => Some(
-                self.payloads_for_provenance(
-                    candidate_key,
-                    &crate::import::MetadataRef::new(release_id.clone(), *source),
-                )
-                .await?
-                .detail_for_audio(&audio_durations)?,
-            ),
-            Some(crate::import::MetadataProvenance::FileTags) | None => None,
-        };
-        let pane = tokio::task::spawn_blocking(move || {
-            crate::import::pane::draft_pane(
-                release,
-                &files,
-                &durations,
-                rows.metadata_draft,
-                &rows.track_mappings,
-            )
-        })
-        .await
-        .map_err(|e| crate::import::ImportError::Internal {
-            detail: format!("commit projection task failed: {e}"),
-        })??;
-
-        let mut raw = pane.edit;
-        raw.tracks = crate::import::mapping_tracks(&pane.mapping);
-        let user_edit = raw.shape()?;
-        let selected_cover = rows.cover.clone().or_else(|| {
-            pane.release
-                .as_ref()
-                .and_then(|release| release.default_cover())
-                .map(|cover| crate::import::CoverSelection::Remote(cover.url.clone(), cover.source))
-        });
-
         let import_id = self.library_manager.new_id();
-        let expectation = match file_tag_snapshot {
-            Some(snapshot) => crate::import::service::ImportExpectation::FileTags {
-                content_hash: content_hash.clone(),
-                snapshot,
-            },
-            None => crate::import::service::ImportExpectation::Candidate {
-                content_hash: content_hash.clone(),
-                edit_revision: candidate.file_edit_revision,
-            },
+        let expectation = crate::import::service::ImportExpectation {
+            content_hash: content_hash.clone(),
+            edit_revision: candidate.file_edit_revision,
+            metadata_revision: preparation.metadata_revision,
+            file_tag_snapshot,
         };
         let command = ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
             folder: candidate.file_root,
             scope: candidate.scope,
-            selected_cover,
+            #[cfg(any(test, feature = "test-utils"))]
+            selected_cover: None,
             storage_mode,
             pin,
-            metadata_provenance,
-            user_edit: Some(user_edit),
+            #[cfg(any(test, feature = "test-utils"))]
+            metadata_provenance: None,
+            #[cfg(any(test, feature = "test-utils"))]
+            user_edit: None,
         };
 
-        self.send_command_with_expectation(command, expectation)
+        self.library_manager
+            .clear_import_candidate_failure(expectation.content_hash())
             .await?;
+        self.runtime.claim_for_import(candidate_key);
+        drop(commit);
+        self.send_claimed_command(command, expectation).await?;
         Ok(import_id)
     }
 
@@ -493,7 +432,7 @@ impl ImportServiceHandle {
             .save_folder_scan_item(
                 &candidate_key,
                 generation,
-                &crate::import::folder_scanner::ScanItem::Valid(candidate),
+                &crate::import::folder_scanner::ScanItem::Valid(candidate.clone()),
             )
             .await?
             .is_none()
@@ -514,32 +453,89 @@ impl ImportServiceHandle {
         }
         command.candidate_key = candidate_key;
         let content_hash = categorized.content_hash();
-        let expectation = if matches!(
+        if let Some(provenance) = command.metadata_provenance.clone() {
+            self.set_candidate_metadata_provenance(command.candidate_key.clone(), provenance)
+                .await?;
+        }
+        if let Some(edit) = command.user_edit.clone() {
+            let rows = self
+                .library_manager
+                .load_import_candidate_pane_rows(&content_hash)
+                .await?;
+            let mut assets = self
+                .library_manager
+                .load_import_candidate_prepared_assets(&content_hash)
+                .await?;
+            let source_draft = crate::import::pane::candidate_draft_from_edit(
+                crate::import::RawReleaseEdit::from_user_edit(edit, "test-import-track"),
+            );
+            assets.artist_images = self
+                .library_manager
+                .prepare_discogs_artist_images(source_draft.mapped_new_discogs_artist_ids.clone())
+                .await?;
+            self.library_manager
+                .replace_candidate_metadata_prepared(
+                    &candidate.watched_folder_path,
+                    &content_hash,
+                    &command.candidate_key,
+                    candidate.file_edit_revision,
+                    self.library_manager
+                        .load_import_candidate_state(&content_hash)
+                        .await?
+                        .ok_or_else(|| crate::import::ImportError::Internal {
+                            detail: "test import has no candidate state".into(),
+                        })?
+                        .metadata_revision,
+                    &crate::import::CandidateMetadataDraft {
+                        edit: source_draft.edit,
+                        track_mappings: source_draft.track_mappings,
+                        source_discogs_artist_ids: Default::default(),
+                        provenance: command.metadata_provenance.clone(),
+                        cover: rows.cover,
+                        assets,
+                    },
+                )
+                .await?;
+        }
+        if let Some(cover) = command.selected_cover.clone() {
+            self.set_candidate_cover(&command.candidate_key, cover)
+                .await?;
+        }
+        let metadata_revision = self
+            .library_manager
+            .load_import_candidate_state(&content_hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: "test import has no candidate state".into(),
+            })?
+            .metadata_revision;
+        let file_tag_snapshot = if matches!(
             command.metadata_provenance,
             Some(crate::import::MetadataProvenance::FileTags)
+        ) || matches!(
+            command.selected_cover,
+            Some(crate::import::CoverSelection::Embedded(_))
         ) {
-            let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
-            let snapshot = tokio::task::spawn_blocking(move || {
-                crate::import::file_tag_snapshot::extract_file_tag_snapshot(
-                    &audio_files,
-                    generation,
-                    0,
-                    &crate::import::file_tag_snapshot::LoftyFileTagReader,
+            let snapshot = self
+                .library_manager
+                .load_candidate_file_tag_snapshot(
+                    &candidate.watched_folder_path,
+                    &command.candidate_key,
                 )
-            })
-            .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("file-tag snapshot task failed: {error}"),
-            })??;
-            crate::import::service::ImportExpectation::FileTags {
-                content_hash: categorized.content_hash(),
-                snapshot,
-            }
+                .await?
+                .and_then(|stored| stored.snapshot)
+                .ok_or_else(|| crate::import::ImportError::FileTags {
+                    detail: "test import has no prepared File Tags snapshot".into(),
+                })?;
+            Some(snapshot)
         } else {
-            crate::import::service::ImportExpectation::Candidate {
-                content_hash,
-                edit_revision: 0,
-            }
+            None
+        };
+        let expectation = crate::import::service::ImportExpectation {
+            content_hash,
+            edit_revision: candidate.file_edit_revision,
+            metadata_revision,
+            file_tag_snapshot,
         };
         self.send_command_with_expectation(command, expectation)
             .await
@@ -554,6 +550,7 @@ impl ImportServiceHandle {
     /// refused. A command that never reaches the worker releases the claim
     /// again rather than leaving a candidate owned by an import that does not
     /// exist.
+    #[cfg(any(test, feature = "test-utils"))]
     async fn send_command_with_expectation(
         &self,
         command: ImportCommand,
@@ -561,12 +558,24 @@ impl ImportServiceHandle {
     ) -> Result<String, crate::import::ImportError> {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
+        let commit = self.folder_state_commit.lock().await;
         // Whatever the last attempt left is about to be answered by this one,
         // so the pane stops offering Retry the moment the work is queued.
         self.library_manager
             .clear_import_candidate_failure(expectation.content_hash())
             .await?;
-        self.claim_candidate_for_import(&candidate_key).await;
+        self.runtime.claim_for_import(&candidate_key);
+        drop(commit);
+        self.send_claimed_command(command, expectation).await?;
+        Ok(import_id)
+    }
+
+    async fn send_claimed_command(
+        &self,
+        command: ImportCommand,
+        expectation: crate::import::service::ImportExpectation,
+    ) -> Result<(), crate::import::ImportError> {
+        let candidate_key = command.candidate_key.clone();
         if self
             .requests_tx
             .send(crate::import::service::ImportWorkerMessage::Import {
@@ -580,7 +589,7 @@ impl ImportServiceHandle {
                 detail: "Failed to queue import command".to_string(),
             });
         }
-        Ok(import_id)
+        Ok(())
     }
 
     /// Test helper: yield every `ImportProgress` whose `import_id` matches, for a

@@ -189,6 +189,44 @@ pub fn discogs_fixture_id(fixture_id: &str) -> String {
     (hasher.finish() % (1 << 53)).to_string()
 }
 
+fn discogs_fixture_artist_ids(
+    release: &bae_core::discogs::DiscogsRelease,
+) -> std::collections::BTreeSet<String> {
+    fn collect_track(
+        track: &bae_core::discogs::DiscogsTrack,
+        ids: &mut std::collections::BTreeSet<String>,
+    ) {
+        ids.extend(track.artists.iter().map(|artist| artist.id.clone()));
+        ids.extend(
+            track
+                .extraartists
+                .iter()
+                .flatten()
+                .filter_map(|artist| artist.id.clone()),
+        );
+        for sub_track in &track.sub_tracks {
+            collect_track(sub_track, ids);
+        }
+    }
+
+    let mut ids = release
+        .artists
+        .iter()
+        .map(|artist| artist.id.clone())
+        .chain(
+            release
+                .extraartists
+                .iter()
+                .flatten()
+                .filter_map(|artist| artist.id.clone()),
+        )
+        .collect();
+    for track in &release.tracklist {
+        collect_track(track, &mut ids);
+    }
+    ids
+}
+
 /// Pre-populate the Discogs release cache, master cache (if the release carries
 /// a `master_id`), and the MB URL-lookup cache for a synthetic test release, and
 /// return the release id the import should pick. The worker's
@@ -220,6 +258,13 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
         })
     };
     let master_id = release.master_id.as_deref().map(numeric);
+
+    for artist_id in discogs_fixture_artist_ids(&release) {
+        bae_core::discogs::client::seed_artist_image_response(
+            &numeric(&artist_id).to_string(),
+            None,
+        );
+    }
 
     if let Some(master_id) = master_id {
         // Keyed by the rendered id, which is the one the parsed release names
@@ -375,11 +420,12 @@ pub fn cover_png() -> Vec<u8> {
 /// localhost. An address no test registered answers 404 — the archive holding
 /// nothing there, which is both what an unregistered release means and what
 /// keeps the rest of the suite from reaching the real service.
-pub struct CoverArtArchive {
+pub struct RemoteImageHost {
     routes: std::sync::Mutex<std::collections::HashMap<String, (u16, Vec<u8>)>>,
+    base_url: std::sync::OnceLock<String>,
 }
 
-impl CoverArtArchive {
+impl RemoteImageHost {
     /// Serve `bytes` as a MusicBrainz release's front image, at both the full
     /// and the thumbnail address.
     pub fn serve_front(&self, release_id: &str, bytes: Vec<u8>) {
@@ -390,6 +436,20 @@ impl CoverArtArchive {
     /// download's failure path.
     pub fn fail_front(&self, release_id: &str, status: u16) {
         self.answer_front(release_id, status, Vec::new());
+    }
+
+    /// Serve image bytes at an arbitrary provider URL path and return its URL.
+    pub fn serve_image(&self, path: &str, bytes: Vec<u8>) -> String {
+        assert!(path.starts_with('/'), "test image path must be absolute");
+        self.routes
+            .lock()
+            .expect("image host routes mutex poisoned")
+            .insert(path.to_string(), (200, bytes));
+        format!(
+            "{}{}",
+            self.base_url.get().expect("test image host has started"),
+            path
+        )
     }
 
     fn answer_front(&self, release_id: &str, status: u16, bytes: Vec<u8>) {
@@ -404,21 +464,22 @@ impl CoverArtArchive {
 }
 
 /// The binary's stand-in archive, started and pointed at on first use.
-pub fn cover_art_archive() -> &'static CoverArtArchive {
-    static ARCHIVE: std::sync::OnceLock<&'static CoverArtArchive> = std::sync::OnceLock::new();
+pub fn cover_art_archive() -> &'static RemoteImageHost {
+    static ARCHIVE: std::sync::OnceLock<&'static RemoteImageHost> = std::sync::OnceLock::new();
     ARCHIVE.get_or_init(start_cover_art_archive)
 }
 
-fn start_cover_art_archive() -> &'static CoverArtArchive {
+fn start_cover_art_archive() -> &'static RemoteImageHost {
     use axum::extract::{Request, State};
     use axum::http::StatusCode;
 
-    let archive: &'static CoverArtArchive = Box::leak(Box::new(CoverArtArchive {
+    let archive: &'static RemoteImageHost = Box::leak(Box::new(RemoteImageHost {
         routes: std::sync::Mutex::new(std::collections::HashMap::new()),
+        base_url: std::sync::OnceLock::new(),
     }));
 
     async fn handler(
-        State(archive): State<&'static CoverArtArchive>,
+        State(archive): State<&'static RemoteImageHost>,
         request: Request,
     ) -> (
         StatusCode,
@@ -464,7 +525,12 @@ fn start_cover_art_archive() -> &'static CoverArtArchive {
     });
 
     let address = address_rx.recv().expect("the stub archive starts");
-    bae_core::import::cover_art::set_base_url_for_test(Some(format!("http://{address}")));
+    let base_url = format!("http://{address}");
+    archive
+        .base_url
+        .set(base_url.clone())
+        .expect("the test image host URL is set once");
+    bae_core::import::cover_art::set_base_url_for_test(Some(base_url));
     archive
 }
 

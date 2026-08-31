@@ -697,20 +697,19 @@ async fn explicit_lookup_stores_a_metadata_projection_failure() {
     ));
 }
 
-/// The receipt for "so ready it is offline": picking a candidate whose lead is
-/// settled reaches the wire for nothing and its pane draws whole — the
-/// hermetic client would panic on a live lookup, and the provider would answer
-/// 404. The release id is this test's own, so no session cache holds it either.
+/// Picking a candidate whose lead is settled reads its release document from
+/// the archive, then resolves the offered cover before storing the prepared
+/// candidate. The metadata provider is not consulted again.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_settled_candidate_opens_with_the_provider_gone() {
+async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
     let fixture = Fixture::new("offline-open").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture.scan(1).await;
 
-    // Nothing is routed and nothing is seeded: the archived documents are the
-    // only place this release exists.
+    // Nothing is routed: the archived document is the only place this release
+    // exists, while the cover endpoint answers that no image is available.
     fixture
         .archive("mb-offline-1", "rg-offline-1", &[probed, 0])
         .await;
@@ -754,10 +753,9 @@ async fn a_settled_candidate_opens_with_the_provider_gone() {
          only option — and it is read off the stored document, not asked for"
     );
     assert_eq!(
-        fixture.provider.requests().len(),
-        before,
-        "opening it reached the wire for nothing: {:?}",
-        fixture.provider.requests()
+        &fixture.provider.requests()[before..],
+        &["/release-group/rg-offline-1/front".to_string()],
+        "selection resolves the offered cover without re-fetching metadata"
     );
 }
 

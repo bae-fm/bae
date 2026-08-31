@@ -1,5 +1,13 @@
 use super::*;
 
+fn test_png() -> Vec<u8> {
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::new_rgb8(16, 16)
+        .write_to(&mut bytes, image::ImageFormat::Png)
+        .expect("test image encodes");
+    bytes.into_inner()
+}
+
 #[test]
 fn cover_art_archive_addresses_are_derived_from_the_entity_id() {
     let base = archive_base();
@@ -148,7 +156,7 @@ async fn start_declared_length_response(content_length: usize) -> String {
 
 #[tokio::test]
 async fn a_second_read_uses_the_stored_image() {
-    let body = vec![0xABu8; 256];
+    let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
     let cache = RemoteImageCache::for_test();
 
@@ -162,7 +170,7 @@ async fn a_second_read_uses_the_stored_image() {
 
 #[tokio::test]
 async fn a_downloaded_image_survives_a_new_cache_over_the_same_directory() {
-    let body = vec![0x3Cu8; 512];
+    let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
     let directory = tempfile::TempDir::new().expect("a temp image-cache directory");
 
@@ -227,7 +235,7 @@ fn disk_cache_evicts_the_oldest_entry_when_over_budget() {
 
 #[tokio::test]
 async fn concurrent_reads_of_one_url_share_the_download() {
-    let body = vec![0xABu8; 256];
+    let body = test_png();
     let (host, url) = start_counting_host(200, body.clone()).await;
     let cache = RemoteImageCache::for_test();
 
@@ -244,6 +252,16 @@ async fn download_rejects_too_small_response() {
     let error = RemoteImageCache::for_test().fetch(&url).await.unwrap_err();
     assert!(
         matches!(&error, ImportError::CoverArt { detail } if detail.contains("too small")),
+        "got: {error}"
+    );
+}
+
+#[tokio::test]
+async fn download_rejects_bytes_that_are_not_an_image() {
+    let url = start_mock(vec![(200, vec![b'x'; 256])]).await;
+    let error = RemoteImageCache::for_test().fetch(&url).await.unwrap_err();
+    assert!(
+        matches!(&error, ImportError::CoverArt { detail } if detail.contains("valid image")),
         "got: {error}"
     );
 }
@@ -267,7 +285,7 @@ async fn download_rejects_declared_over_cap_response() {
 
 #[tokio::test]
 async fn download_retries_transient_then_succeeds() {
-    let body = vec![0xCDu8; 256];
+    let body = test_png();
     let url = start_mock(vec![(503, vec![]), (200, body.clone())]).await;
     let image = RemoteImageCache::for_test()
         .fetch_required(&url)

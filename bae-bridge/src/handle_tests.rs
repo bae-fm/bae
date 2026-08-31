@@ -886,7 +886,7 @@ mod candidate_runtime {
             bae_core::import::CandidateRuntimeSnapshot {
                 identify: None,
                 import: Some(bae_core::import::ImportInFlight {
-                    progress_percent: 0,
+                    progress_percent: None,
                     step: None,
                 }),
             },
@@ -933,7 +933,7 @@ mod candidate_runtime {
             .import
             .clone()
             .expect("a claimed candidate has an import in flight");
-        assert_eq!(import.progress_percent, 0);
+        assert_eq!(import.progress_percent, None);
         assert!(
             matches!(
                 import.step,

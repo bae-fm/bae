@@ -119,8 +119,11 @@ async fn pure_reads_use_the_read_connection() {
                     },
                     tracks: Vec::new(),
                 },
+                track_mappings: Vec::new(),
+                source_discogs_artist_ids: Default::default(),
                 provenance: None,
                 cover: None,
+                assets: bae_core::import::CandidatePreparedAssets::default(),
             },
         })
         .await

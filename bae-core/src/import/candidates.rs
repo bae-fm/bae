@@ -145,7 +145,7 @@ impl CandidateIdentifyRuntime {
 /// failure row it wrote.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportInFlight {
-    pub progress_percent: u32,
+    pub progress_percent: Option<u32>,
     pub step: Option<ImportStep>,
 }
 

@@ -193,6 +193,7 @@ async fn a_user_edit_overlays_the_picked_release() {
 /// numerically as the endpoint numbers its ids.
 fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> String {
     let rendered_master = support::discogs_fixture_id(master_id);
+    bae_core::discogs::client::seed_artist_image_response("1", None);
     bae_core::discogs::client::seed_master_cache(
         &rendered_master,
         Some(1996),
@@ -266,7 +267,14 @@ fn seed_mb_with_discogs_xref(
                 artist_credit: vec![],
             }],
         }],
-        relations: vec![],
+        relations: vec![MbRelation {
+            url: Some(MbUrlResource {
+                resource: Some(format!(
+                    "https://www.discogs.com/release/{discogs_release_id}"
+                )),
+            }),
+            ..MbRelation::default()
+        }],
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
             front: false,
             darkened: false,
@@ -294,8 +302,8 @@ async fn cross_source_writes_both_release_ids() {
     let discogs_id = seed_discogs_for_xref("90000001", "xref-d-master-exact", "Album Title");
     // MB needs to know about the Discogs URL → release id mapping for
     // the `fetch_mb_xref` path; this test goes the other direction
-    // (MB → Discogs via url-rels), but seeding both directions costs
-    // nothing and keeps the cache from racing on a stale `None`.
+    // (MB → Discogs via url-rels); the reverse cache must not contain a stale
+    // answer from another test.
     bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, None);
     let mb_id = seed_mb_with_discogs_xref(
         "xref-mb-rel-exact",

@@ -64,6 +64,10 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         created_at: now,
     }];
     let file_ids = HashMap::from([(temp.path().to_path_buf(), "file-id".to_string())]);
+    let source_file_sizes = HashMap::from([(
+        temp.path().to_path_buf(),
+        std::fs::metadata(temp.path()).unwrap().len(),
+    )]);
     let (event_tx, _rx) = broadcast::channel(16);
 
     let result = measure_loudness(
@@ -71,12 +75,14 @@ async fn measure_loudness_accepts_complete_audio_with_an_invalid_terminal_packet
         &mut formats,
         &segments,
         &file_ids,
+        &source_file_sizes,
         &[track],
         "candidate",
         "release-id",
         "import-id",
     )
-    .await;
+    .await
+    .unwrap();
 
     assert!(result.broken.is_empty());
 }

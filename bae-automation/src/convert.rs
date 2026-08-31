@@ -803,11 +803,7 @@ pub(super) fn automation_identify_state(
 pub(super) fn automation_prepare_step(step: PrepareStep) -> AutomationPrepareStep {
     match step {
         PrepareStep::Queued => AutomationPrepareStep::Queued,
-        PrepareStep::ReadingFolder => AutomationPrepareStep::ReadingFolder,
-        PrepareStep::ParsingMetadata => AutomationPrepareStep::ParsingMetadata,
-        PrepareStep::WritingCoverArt => AutomationPrepareStep::WritingCoverArt,
-        PrepareStep::DiscoveringFiles => AutomationPrepareStep::DiscoveringFiles,
-        PrepareStep::ValidatingTracks => AutomationPrepareStep::ValidatingTracks,
+        PrepareStep::ValidatingSourceFiles => AutomationPrepareStep::ValidatingSourceFiles,
     }
 }
 

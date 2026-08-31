@@ -1,9 +1,19 @@
+mod metadata_edits;
 // The pane's own controls, from the handle down to the next read.
 //
 // Every one of these writes a row and returns; nothing is handed back to the
 // caller. So what each test asserts is what the pane would draw next — the
 // `candidate_pane` read — because that is the only path the UI has to what it
 // just wrote.
+
+fn cover_jpeg() -> Vec<u8> {
+    let image = image::RgbImage::from_pixel(16, 16, image::Rgb([90, 30, 160]));
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(image)
+        .write_to(&mut bytes, image::ImageFormat::Jpeg)
+        .expect("encode cover jpeg");
+    bytes.into_inner()
+}
 
 /// A watched root holding one folder of real audio and one image, scanned into
 /// the tables and picked as its own tags.
@@ -30,28 +40,29 @@ async fn picked_candidate(
         let relative_path = format!("{:02} Track.flac", index + 1);
         let path = folder.join(&relative_path);
         std::fs::copy(fixtures.join(name), &path).unwrap();
-        let size = std::fs::metadata(&path).unwrap().len();
+        let metadata = std::fs::metadata(&path).unwrap();
+        let size = metadata.len();
+        let modified_at_ns =
+            crate::import::folder_scanner::file_modified_at_ns(&path, &metadata).unwrap();
         files.push(CandidateFile {
             proposed_audio: true,
-            file: ScannedFile::new(
-                path.clone(),
-                relative_path,
-                size,
-                1,
-            )
-            .with_test_flac_audio(),
+            file: ScannedFile::new(path.clone(), relative_path, size, modified_at_ns)
+                .with_test_flac_audio(),
             role: FileRole::Audio,
         });
     }
     let cover_path = folder.join("cover.jpg");
-    std::fs::write(&cover_path, [0xFF, 0xD8, 0xFF, 0xE0, 0x00]).unwrap();
+    std::fs::write(&cover_path, cover_jpeg()).unwrap();
+    let cover_metadata = std::fs::metadata(&cover_path).unwrap();
+    let cover_modified_at_ns =
+        crate::import::folder_scanner::file_modified_at_ns(&cover_path, &cover_metadata).unwrap();
     files.push(CandidateFile {
         proposed_audio: false,
         file: ScannedFile::new(
             cover_path.clone(),
             "cover.jpg".to_string(),
-            5,
-            1,
+            cover_metadata.len(),
+            cover_modified_at_ns,
         ),
         role: FileRole::Artwork,
     });
@@ -464,6 +475,89 @@ async fn changed_candidate_stamps_replace_the_complete_tag_snapshot() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
+    let (handle, tmp, key, hash) = pane_fixture().await;
+    let stale = handle
+        .library_manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .expect("the candidate starts prepared");
+    handle
+        .set_file_role(
+            key.clone(),
+            "01 Track.flac".to_string(),
+            crate::import::folder_scanner::FileRoleChoice::NotATrack,
+        )
+        .await
+        .unwrap();
+    let (_, snapshot) = handle
+        .file_tag_snapshot_with_reader(
+            &key,
+            std::sync::Arc::new(CountingFileTagReader::immediate()),
+        )
+        .await
+        .unwrap();
+    let root = tmp.path().join("watched").to_string_lossy().into_owned();
+
+    let error = handle
+        .library_manager
+        .replace_candidate_file_tags_metadata(
+            &root,
+            &key,
+            &hash,
+            stale.file_edit_revision,
+            stale.metadata_revision,
+            &snapshot,
+            &stale.metadata_draft,
+            &stale.track_mappings,
+            stale.cover.as_ref(),
+        )
+        .await
+        .expect_err("the new file snapshot cannot carry mappings from the old file revision");
+
+    assert!(error.to_string().contains("candidate changed"), "{error}");
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn file_role_changes_leave_complete_physical_mappings_for_the_settled_shape() {
+    let (handle, _tmp, key, hash) = pane_fixture().await;
+
+    handle
+        .set_file_role(
+            key.clone(),
+            "02 Track.flac".to_string(),
+            crate::import::folder_scanner::FileRoleChoice::NotATrack,
+        )
+        .await
+        .unwrap();
+    handle
+        .set_file_role(
+            key,
+            "02 Track.flac".to_string(),
+            crate::import::folder_scanner::FileRoleChoice::Audio,
+        )
+        .await
+        .unwrap();
+
+    let preparation = handle
+        .library_manager
+        .load_import_candidate_preparation(&hash)
+        .await
+        .unwrap()
+        .expect("the candidate remains prepared");
+    let active = crate::import::edits::apply_track_mappings_to_draft(
+        preparation.metadata_draft,
+        &preparation.track_mappings,
+    )
+    .expect("the settled candidate has one mapping per track");
+    assert!(active.tracks.iter().all(|track| track.file.is_some()));
+
+    shut_down(handle).await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
     let (handle, tmp, key, _hash) = pane_fixture().await;
     let root = tmp.path().join("watched").to_string_lossy().into_owned();
@@ -489,9 +583,28 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         )
         .unwrap();
 
-    let result = handle
+    let mut events = handle.subscribe_events();
+    let import_id = handle
         .start_import(&key, crate::import::StorageMode::Local, false)
-        .await;
+        .await
+        .expect("the prepared candidate enters source validation");
+    let error = loop {
+        let event = tokio::time::timeout(std::time::Duration::from_secs(10), events.recv())
+            .await
+            .expect("the import reports its result")
+            .expect("the import event stream remains open");
+        match event {
+            crate::import::handle::ImportEvent::ImportProgress {
+                progress:
+                    crate::import::ImportProgress::Failed {
+                        error,
+                        import_id: failed_import_id,
+                    },
+                ..
+            } if failed_import_id == import_id => break error,
+            _ => {}
+        }
+    };
     let after = handle
         .library_manager
         .load_candidate_file_tag_snapshot(&root, &key)
@@ -506,12 +619,9 @@ async fn import_refuses_audio_changed_after_the_file_tags_pane_was_read() {
         after, before,
         "refusing import must not replace the snapshot the pane displayed"
     );
-    let error = result.expect_err("import must not reread changed tags behind the pane");
     assert!(
-        error
-            .to_string()
-            .contains("audio changed after its file tags were read"),
-        "the refusal names the stale File Tags reading: {error}"
+        error.contains("changed after its import candidate was scanned"),
+        "source validation names the stale scan: {error}"
     );
 }
 
@@ -581,274 +691,4 @@ fn track_rows(table: &crate::import::MappingTable) -> Vec<crate::import::RawTrac
             _ => None,
         })
         .collect()
-}
-
-/// A typed field replaces that one field of the form and leaves the rest to
-/// the pick. Committing it empty is the person clearing the field, not undoing
-/// their edit: the blank is stored and the form comes back blank.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_typed_field_lands_in_the_next_form_empty_included() {
-    let (handle, _tmp, key, hash) = pane_fixture().await;
-    let seeded = pane(&handle, &key).await;
-    let seeded_artists = seeded
-        .metadata_draft
-        .album_artist_assignments;
-
-    handle
-        .set_candidate_edit_field(
-            &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            "Typed Title".to_string(),
-        )
-        .await
-        .unwrap();
-
-    let edited = pane(&handle, &key).await.metadata_draft;
-    assert_eq!(edited.album_title, "Typed Title");
-    assert_eq!(
-        edited.album_artist_assignments, seeded_artists,
-        "nothing else moved with it"
-    );
-
-    handle
-        .set_candidate_edit_field(
-            &key,
-            crate::import::CandidateEditField::AlbumTitle,
-            String::new(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(pane(&handle, &key).await.metadata_draft.album_title, "");
-    let stored = handle
-        .library_manager
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap();
-    assert_eq!(
-        stored.metadata_draft.album_title,
-        String::new(),
-        "a cleared field is a value the person set, not an absent edit"
-    );
-
-    shut_down(handle).await;
-}
-
-/// A source-less candidate owns a draft immediately, so direct entry needs no
-/// source selection before it can persist edits.
-#[tokio::test(flavor = "multi_thread")]
-async fn an_edit_with_no_metadata_source_updates_the_draft() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
-
-    handle
-        .set_candidate_edit_field(
-            &key,
-            crate::import::CandidateEditField::PressingYear,
-            "1991".into(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(pane(&handle, &key).await.metadata_draft.pressing.year, "1991");
-
-    shut_down(handle).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let existing = make_artist("Existing Artist", Some("discogs-existing"), None);
-    handle
-        .library_manager
-        .insert_artist(&existing)
-        .await
-        .unwrap();
-    let assignments = vec![
-        crate::import::ArtistAssignment::existing(existing.clone().into()),
-        crate::import::ArtistAssignment::new("New Artist"),
-    ];
-
-    handle
-        .set_candidate_album_artists(&key, assignments.clone())
-        .await
-        .unwrap();
-
-    assert_eq!(
-        pane(&handle, &key)
-            .await
-            .metadata_draft
-            .album_artist_assignments,
-        assignments
-    );
-    shut_down(handle).await;
-}
-
-/// An edited row comes back edited and its neighbours come back untouched.
-#[tokio::test(flavor = "multi_thread")]
-async fn an_edited_track_row_redraws_alone() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
-    let first = before.first().expect("the folder names tracks").clone();
-    let untouched = before[1].title.clone();
-
-    handle
-        .set_candidate_track_edit(
-            &key,
-            crate::import::RawTrackEdit {
-                title: "Renamed".to_string(),
-                artist_assignments: crate::import::TrackArtistAssignments::Explicit(vec![
-                    crate::import::ArtistAssignment::new("Someone"),
-                ]),
-                ..first.clone()
-            },
-        )
-        .await
-        .unwrap();
-
-    let after = track_rows(&pane(&handle, &key).await.mapping);
-    assert_eq!(after.len(), before.len());
-    assert_eq!(after[0].title, "Renamed");
-    assert_eq!(
-        after[0].artist_assignments,
-        crate::import::TrackArtistAssignments::Explicit(vec![
-            crate::import::ArtistAssignment::new("Someone")
-        ])
-    );
-    assert_eq!(
-        after[0].file, first.file,
-        "the audio the row was bound to rides through the edit"
-    );
-    assert_eq!(after[1].title, untouched);
-
-    shut_down(handle).await;
-}
-
-/// One spreadsheet fill writes the same artist choice onto every named row
-/// while preserving each row's title and audio mapping.
-#[tokio::test(flavor = "multi_thread")]
-async fn track_artist_assignments_fill_across_named_rows() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
-    let target_ids = before.iter().map(|track| track.id.clone()).collect();
-    let assignments = crate::import::TrackArtistAssignments::Explicit(vec![
-        crate::import::ArtistAssignment::new("Filled Artist"),
-    ]);
-
-    handle
-        .set_candidate_track_artists(&key, target_ids, assignments.clone())
-        .await
-        .unwrap();
-
-    let after = track_rows(&pane(&handle, &key).await.mapping);
-    assert_eq!(after.len(), before.len());
-    for (before, after) in before.iter().zip(after.iter()) {
-        assert_eq!(after.artist_assignments, assignments);
-        assert_eq!(after.title, before.title);
-        assert_eq!(after.file, before.file);
-    }
-
-    shut_down(handle).await;
-}
-
-/// A dropped row leaves the table: the release commits without that track.
-#[tokio::test(flavor = "multi_thread")]
-async fn a_dropped_track_leaves_the_table() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let before = track_rows(&pane(&handle, &key).await.mapping);
-    let dropped = before[0].id.clone();
-    let kept = before[1].id.clone();
-
-    handle
-        .drop_candidate_track(&key, dropped.clone())
-        .await
-        .unwrap();
-
-    let after = track_rows(&pane(&handle, &key).await.mapping);
-    assert!(
-        !after.iter().any(|track| track.id == dropped),
-        "the dropped row is gone"
-    );
-    assert!(after.iter().any(|track| track.id == kept));
-
-    shut_down(handle).await;
-}
-
-/// Applying File Tags persists the default cover, so the pane and queue keep
-/// drawing it without relying on selection state.
-#[tokio::test(flavor = "multi_thread")]
-async fn file_tags_persists_the_conventional_folder_cover() {
-    let (handle, _tmp, key, _hash) = pane_fixture().await;
-    let cover = pane(&handle, &key)
-        .await
-        .cover
-        .expect("File Tags applies its deterministic default cover");
-    assert_eq!(
-        cover.selection,
-        crate::import::CoverSelection::Local("cover.jpg".to_string())
-    );
-    let crate::import::cover_art::CoverImageSource::Local { path } = cover.preview else {
-        panic!("a folder image is drawn from disk, not fetched");
-    };
-    assert!(path.ends_with("cover.jpg"));
-
-    shut_down(handle).await;
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn file_tags_persists_embedded_artwork_ahead_of_the_folder_cover() {
-    let (manager, tmp) = setup_test_manager().await;
-    let (_candidate, key, _hash) = picked_candidate(&manager, &tmp).await;
-    let handle = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
-    let bytes = vec![1, 2, 3, 4];
-    handle
-        .file_tag_snapshot_with_reader(
-            &key,
-            std::sync::Arc::new(CountingFileTagReader::with_embedded_cover(bytes.clone())),
-        )
-        .await
-        .unwrap();
-    handle
-        .select_candidate_metadata_provenance(
-            key.clone(),
-            crate::import::MetadataProvenance::FileTags,
-        )
-        .await
-        .unwrap();
-
-    let cover = pane(&handle, &key)
-        .await
-        .cover
-        .expect("the embedded default is projected");
-    assert_eq!(
-        cover.selection,
-        crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
-    );
-    assert_eq!(
-        cover.preview,
-        crate::import::cover_art::CoverImageSource::Bytes {
-            data: bytes.clone()
-        }
-    );
-    shut_down(handle).await;
-
-    let reopened = manager
-        .start_import_service(tokio::runtime::Handle::current())
-        .await
-        .unwrap();
-    assert_eq!(
-        pane(&reopened, &key)
-            .await
-            .cover
-            .expect("the persisted embedded default survives a relaunch")
-            .selection,
-        crate::import::CoverSelection::Embedded("01 Track.flac".to_string())
-    );
-    shut_down(reopened).await;
 }

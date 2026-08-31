@@ -550,11 +550,7 @@ pub struct AutomationImportStarted {
 #[serde(rename_all = "snake_case")]
 pub enum AutomationPrepareStep {
     Queued,
-    ReadingFolder,
-    ParsingMetadata,
-    WritingCoverArt,
-    DiscoveringFiles,
-    ValidatingTracks,
+    ValidatingSourceFiles,
 }
 
 /// Mirrors bae-core's `import::ImportPhase`.
@@ -572,7 +568,7 @@ pub enum AutomationImportPhase {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationImportStatus {
     Importing {
-        progress_percent: u32,
+        progress_percent: Option<u32>,
         step: Option<AutomationImportStep>,
     },
     Complete {

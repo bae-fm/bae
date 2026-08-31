@@ -118,6 +118,41 @@ mod edit_shaping_tests {
     }
 
     #[test]
+    fn fileless_tracks_do_not_require_new_artist_images() {
+        let assignment = |name: &str, discogs_artist_id: &str| ArtistAssignment::New {
+            seed: NewArtistSeed {
+                name: name.to_string(),
+                sort_name: None,
+                musicbrainz_artist_id: None,
+                discogs_artist_id: Some(discogs_artist_id.to_string()),
+            },
+        };
+        let mut form = valid_form();
+        form.album_artist_assignments = vec![assignment("Album Artist", "album-artist")];
+        form.tracks[0].artist_assignments =
+            TrackArtistAssignments::Explicit(vec![assignment("Mapped Artist", "mapped-artist")]);
+        form.tracks.push(RawTrackEdit {
+            id: "track-1".to_string(),
+            title: "Unmapped Track".to_string(),
+            artist_assignments: TrackArtistAssignments::Explicit(vec![assignment(
+                "Unmapped Artist",
+                "unmapped-artist",
+            )]),
+            side: 1,
+            track_number: Some(2),
+            file: None,
+        });
+
+        assert_eq!(
+            form.new_discogs_artist_ids_for_bound_tracks(),
+            std::collections::BTreeSet::from([
+                "album-artist".to_string(),
+                "mapped-artist".to_string(),
+            ])
+        );
+    }
+
+    #[test]
     fn trims_album_title() {
         let mut form = valid_form();
         form.album_title = "  Album Title  ".to_string();

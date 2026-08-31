@@ -13,7 +13,7 @@ struct ImportProgressLine: View {
 
     var body: some View {
         CandidateRuntimeReader(key: key) { runtime in
-            let percent = runtime?.import?.progressPercent ?? 0
+            let percent = runtime?.import?.progressPercent
             VStack(alignment: .leading, spacing: 0) {
                 Text(line(percent: percent, step: runtime?.import?.step))
                     .font(.system(size: 12.5))
@@ -22,7 +22,7 @@ struct ImportProgressLine: View {
                     .truncationMode(.middle)
                     .padding(.top, 1)
                 ProgressTrackBar(
-                    progress: Double(percent) / 100,
+                    progress: percent.map { Double($0) / 100 },
                     trackHeight: 3
                 )
                 .padding(.top, 7)
@@ -32,13 +32,14 @@ struct ImportProgressLine: View {
 
     /// A row placed as importing whose run has not reported yet is at the
     /// start with no phase named.
-    private func line(percent: UInt32, step: BridgeImportStep?) -> String {
+    private func line(percent: UInt32?, step: BridgeImportStep?) -> String {
         let phaseText =
             step?.localizedText ?? String(localized: "Importing\u{2026}")
         // The percent renders through `.formatted(.percent)` before it's
         // interpolated, so the localized template only ever sees two string
         // slots — a literal `%` next to a format specifier is ambiguous to
         // hand-author as a catalog key.
+        guard let percent else { return phaseText }
         let percentText = (Double(percent) / 100).formatted(.percent)
         return String(localized: "\(phaseText) \u{b7} \(percentText)")
     }

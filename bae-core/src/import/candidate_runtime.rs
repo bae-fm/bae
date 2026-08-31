@@ -269,7 +269,7 @@ impl CandidateRuntime {
     pub(super) fn claim_for_import(&self, candidate_key: &str) {
         self.set(candidate_key, |runtime| {
             runtime.import = Some(ImportInFlight {
-                progress_percent: 0,
+                progress_percent: None,
                 step: Some(ImportStep::Preparing(PrepareStep::Queued)),
             });
         });
@@ -315,11 +315,11 @@ impl CandidateRuntime {
                 // candidate is once nothing is running.
                 let in_flight = match progress {
                     ImportProgress::Preparing { step, .. } => Some(ImportInFlight {
-                        progress_percent: 0,
+                        progress_percent: None,
                         step: Some(ImportStep::Preparing(*step)),
                     }),
                     ImportProgress::Progress { percent, phase, .. } => Some(ImportInFlight {
-                        progress_percent: *percent as u32,
+                        progress_percent: percent.map(u32::from),
                         step: Some(ImportStep::Running(*phase)),
                     }),
                     ImportProgress::Complete { .. }

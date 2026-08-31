@@ -63,7 +63,6 @@ struct PreparedMetadata {
     /// Commit writes one `release_identities` row per element.
     identities: Vec<crate::import::types::ReleaseIdentity>,
     album_title: String,
-    artist_name: String,
 }
 
 /// One release-file row paired with Coven's opaque preparation of the exact
@@ -95,31 +94,25 @@ pub(crate) enum ImportWorkerMessage {
     Shutdown,
 }
 
-pub(crate) enum ImportExpectation {
-    Candidate {
-        content_hash: String,
-        edit_revision: u64,
-    },
-    FileTags {
-        content_hash: String,
-        snapshot: crate::import::file_tag_snapshot::FileTagSnapshot,
-    },
+#[derive(Debug, Clone)]
+pub(crate) struct ImportExpectation {
+    pub(crate) content_hash: String,
+    pub(crate) edit_revision: u64,
+    pub(crate) metadata_revision: u64,
+    pub(crate) file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
 }
 
 impl ImportExpectation {
     pub(crate) fn content_hash(&self) -> &str {
-        match self {
-            Self::Candidate { content_hash, .. } | Self::FileTags { content_hash, .. } => {
-                content_hash
-            }
-        }
+        &self.content_hash
     }
 
     pub(crate) fn edit_revision(&self) -> u64 {
-        match self {
-            Self::Candidate { edit_revision, .. } => *edit_revision,
-            Self::FileTags { snapshot, .. } => snapshot.file_edit_revision,
-        }
+        self.edit_revision
+    }
+
+    pub(crate) fn metadata_revision(&self) -> u64 {
+        self.metadata_revision
     }
 }
 
@@ -133,10 +126,9 @@ pub struct ImportService {
 
 /// One downloaded cover as the import funnel's candidate.
 ///
-/// The content type comes from the HTTP response, so no magic-byte sniffing is
-/// needed to reject a non-image download. It describes the download, not the
-/// stored blob — the resize re-encodes those bytes — so it is checked and
-/// dropped, never recorded.
+/// The content type was verified from the decoded bytes at download time. It
+/// describes the download, not the stored blob — the resize re-encodes those
+/// bytes — so it is checked and dropped, never recorded.
 fn downloaded_cover(
     image: crate::import::cover_art::RemoteImage,
     url: &str,
@@ -540,31 +532,6 @@ fn request_root_scan(
     );
 }
 
-fn import_trace_line(
-    ts: String,
-    import_id: &str,
-    album_title: &str,
-    artist_name: &str,
-    total_duration: std::time::Duration,
-    step_times: &[(&str, std::time::Duration)],
-) -> String {
-    let steps: serde_json::Map<String, serde_json::Value> = step_times
-        .iter()
-        .map(|(name, dur)| ((*name).to_string(), serde_json::json!(dur.as_millis())))
-        .collect();
-    let mut line = serde_json::json!({
-        "ts": ts,
-        "import_id": import_id,
-        "album": album_title,
-        "artist": artist_name,
-        "total_ms": total_duration.as_millis(),
-        "steps": steps,
-    })
-    .to_string();
-    line.push('\n');
-    line
-}
-
 /// Reconcile the release's track rows with the folder's audio, and report which
 /// audio each surviving track is bound to.
 ///
@@ -662,25 +629,56 @@ fn settle_track_rows(
         kept_rows.push(row);
     }
 
-    let dropped: HashSet<String> = seeded.into_iter().flatten().map(|track| track.id).collect();
-    if !dropped.is_empty() {
-        parsed
-            .track_artists
-            .retain(|link| !dropped.contains(&link.track_id));
-        parsed
-            .track_artist_roles
-            .retain(|role| !dropped.contains(&role.track_id));
-        parsed
-            .work_graph
-            .track_works
-            .retain(|link| !dropped.contains(&link.track_id));
-    }
+    let retained_track_ids = tracks.iter().map(|track| track.id.clone()).collect();
+    retain_track_metadata(parsed, &retained_track_ids);
 
     parsed.tracks = tracks;
     if let Some(edit) = user_edit.as_mut() {
         edit.tracks = kept_rows;
     }
     bindings
+}
+
+pub(crate) fn retain_track_metadata(
+    parsed: &mut crate::import::ParsedAlbum,
+    retained_track_ids: &HashSet<String>,
+) {
+    parsed
+        .track_artists
+        .retain(|link| retained_track_ids.contains(&link.track_id));
+    parsed
+        .track_artist_roles
+        .retain(|role| retained_track_ids.contains(&role.track_id));
+    parsed
+        .work_graph
+        .track_works
+        .retain(|link| retained_track_ids.contains(&link.track_id));
+
+    let graph = &mut parsed.work_graph;
+    let mut retained: HashSet<String> = graph
+        .track_works
+        .iter()
+        .map(|link| link.work_id.clone())
+        .collect();
+    loop {
+        let before = retained.len();
+        for part in &graph.work_parts {
+            if retained.contains(&part.parent_work_id) || retained.contains(&part.child_work_id) {
+                retained.insert(part.parent_work_id.clone());
+                retained.insert(part.child_work_id.clone());
+            }
+        }
+        if retained.len() == before {
+            break;
+        }
+    }
+    graph.works.retain(|work| retained.contains(&work.id));
+    graph
+        .work_artists
+        .retain(|link| retained.contains(&link.work_id));
+    graph.work_parts.retain(|part| {
+        retained.contains(&part.parent_work_id) && retained.contains(&part.child_work_id)
+    });
 }
 
 /// Apply the editor's overlay onto the seeded album/release/tracks.
@@ -877,15 +875,13 @@ async fn load_existing_artist_assignments(
 }
 
 /// The archived documents for a release, fetching and storing them when nothing
-/// has yet. Takes the bare `LibraryManager` because neither the import worker
-/// nor the sweep holds an `ImportServiceHandle`.
+/// has yet. Takes the bare `LibraryManager` because the sweep and library
+/// re-identification do not hold an `ImportServiceHandle`.
 ///
 /// Every path that needs a release it may not have archived comes here: the
-/// sweep settling a lead in the background, the confirmation pane opening a
-/// pressing identification never fetched, re-identify pointing a library
-/// release at a new one, the commit worker mapping what the user confirmed. So
-/// what the commit maps and what a pane showed always come out of the same
-/// rows, and a release two of them want is fetched once.
+/// sweep settling a lead in the background, selection preparing the candidate,
+/// and re-identify pointing a library release at a new one. The import worker
+/// consumes only the candidate revision those preparation paths already stored.
 pub(crate) async fn prepare_release(
     library_manager: &LibraryManager,
     release_ref: &MetadataRef,

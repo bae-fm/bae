@@ -140,7 +140,7 @@ pub struct BridgeCandidateRuntimeSnapshot {
 /// How far a running import has got.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeImportInFlight {
-    pub progress_percent: u32,
+    pub progress_percent: Option<u32>,
     pub step: Option<BridgeImportStep>,
 }
 

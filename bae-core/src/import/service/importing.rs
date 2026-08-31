@@ -98,11 +98,8 @@ impl ImportService {
                 command.folder,
                 command.scope,
                 expectation,
-                command.selected_cover,
                 command.storage_mode,
                 command.pin,
-                command.metadata_provenance,
-                command.user_edit,
             )
             .await;
 
@@ -168,27 +165,21 @@ impl ImportService {
         folder: PathBuf,
         scope: crate::import::folder_scanner::ReleaseFileScope,
         expectation: ImportExpectation,
-        selected_cover: Option<CoverSelection>,
         storage_mode: StorageMode,
         pin: bool,
-        metadata_provenance: Option<crate::import::MetadataProvenance>,
-        user_edit: Option<crate::import::ReleaseUserEdit>,
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
         let expected_content_hash = expectation.content_hash().to_string();
         let expected_edit_revision = expectation.edit_revision();
 
         let import_start = std::time::Instant::now();
-        let mut step_times: Vec<(&str, std::time::Duration)> = Vec::new();
-        let mut last_step_start = import_start;
-
         send_event(
             &self.event_tx,
             crate::import::handle::ImportEvent::ImportProgress {
                 candidate_key: candidate_key.clone(),
                 progress: ImportProgress::Preparing {
                     import_id: import_id.clone(),
-                    step: PrepareStep::ReadingFolder,
+                    step: PrepareStep::ValidatingSourceFiles,
                     album_title: String::new(),
                     artist_name: String::new(),
                 },
@@ -206,7 +197,7 @@ impl ImportService {
                 })
             }
         };
-        if stored_candidate.path != folder
+        if stored_candidate.file_root != folder
             || stored_candidate.scope != scope
             || stored_candidate.files.content_hash() != expected_content_hash
             || stored_candidate.file_edit_revision != expected_edit_revision
@@ -222,7 +213,7 @@ impl ImportService {
             .release_files()
             .cloned()
             .collect::<Vec<_>>();
-        tokio::task::spawn_blocking(move || {
+        let audio_observations = tokio::task::spawn_blocking(move || {
             super::file_identity::validate_scanned_file_identities(&identity_files)
         })
         .await
@@ -231,50 +222,63 @@ impl ImportService {
         })??;
         let categorized = stored_candidate.files;
 
-        let file_tag_snapshot = match (&metadata_provenance, &expectation) {
-            (
-                Some(crate::import::MetadataProvenance::FileTags),
-                ImportExpectation::FileTags { snapshot, .. },
-            ) => {
-                let audio_files = categorized.audio().cloned().collect::<Vec<_>>();
-                let current_observations = tokio::task::spawn_blocking(move || {
-                    crate::import::file_tag_snapshot::observe_audio_files(&audio_files)
-                })
-                .await
-                .map_err(|error| crate::import::ImportError::Internal {
-                    detail: format!("file-tag validation task failed: {error}"),
-                })??;
-                if !snapshot
-                    .files
-                    .iter()
-                    .map(|fact| &fact.observation)
-                    .eq(current_observations.iter())
-                {
-                    return Err(crate::import::ImportError::FileTags {
-                        detail: format!(
-                            "{candidate_key}'s audio changed after its file tags were read"
-                        ),
-                    });
-                }
-                Some(snapshot)
-            }
-            (
-                Some(crate::import::MetadataProvenance::FileTags),
-                ImportExpectation::Candidate { .. },
-            ) => {
-                return Err(crate::import::ImportError::Internal {
-                    detail: format!("{candidate_key}'s File Tags import has no metadata snapshot"),
-                });
-            }
-            (_, ImportExpectation::FileTags { .. }) => {
-                return Err(crate::import::ImportError::Internal {
+        let preparation = library_manager
+            .load_import_candidate_preparation(&expected_content_hash)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} has no stored import preparation"),
+            })?;
+        if preparation.file_edit_revision != expected_edit_revision
+            || preparation.metadata_revision != expectation.metadata_revision()
+        {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!(
+                    "{candidate_key}'s preparation changed after it was queued; import it again"
+                ),
+            });
+        }
+        let metadata_provenance = preparation.metadata_provenance;
+        let selected_cover = preparation.cover;
+        let user_edit = Some(
+            crate::import::edits::apply_track_mappings_to_draft(
+                preparation.metadata_draft,
+                &preparation.track_mappings,
+            )?
+            .shape()?,
+        );
+        let prepared_assets = preparation.assets;
+
+        let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();
+        if let Some(snapshot) = file_tag_snapshot {
+            if !snapshot
+                .files
+                .iter()
+                .map(|fact| &fact.observation)
+                .eq(audio_observations.iter())
+            {
+                return Err(crate::import::ImportError::FileTags {
                     detail: format!(
-                        "{candidate_key}'s metadata source changed after its file tags were read"
+                        "{candidate_key}'s audio changed after its file tags were read"
                     ),
                 });
             }
-            (_, ImportExpectation::Candidate { .. }) => None,
-        };
+        }
+        if matches!(
+            metadata_provenance,
+            Some(crate::import::MetadataProvenance::FileTags)
+        ) && file_tag_snapshot.is_none()
+        {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{candidate_key}'s File Tags import has no metadata snapshot"),
+            });
+        }
+        if matches!(selected_cover, Some(CoverSelection::Embedded(_)))
+            && file_tag_snapshot.is_none()
+        {
+            return Err(crate::import::ImportError::CoverArt {
+                detail: format!("{candidate_key}'s embedded cover has no prepared tag snapshot"),
+            });
+        }
 
         // Overwrites a prior import of the same files (below), then gets stamped
         // onto the new release row.
@@ -287,39 +291,31 @@ impl ImportService {
             .map(|plan| plan.db_delete.release_id.clone())
             .collect();
 
-        send_event(
-            &self.event_tx,
-            crate::import::handle::ImportEvent::ImportProgress {
-                candidate_key: candidate_key.clone(),
-                progress: ImportProgress::Preparing {
-                    import_id: import_id.clone(),
-                    step: PrepareStep::ParsingMetadata,
-                    album_title: String::new(),
-                    artist_name: String::new(),
-                },
-            },
-        );
-
         let source_durations = crate::import::probe::source_durations(&categorized)?;
         let audio_durations =
             crate::import::track_slots::audio_durations(&categorized, &source_durations)?;
 
-        let (parsed, release_cover) = match &metadata_provenance {
+        let parsed = match &metadata_provenance {
             Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) => {
                 // The documents are archived by `prepare_release`, keyed by the
                 // picked source release — so nothing about this release's rows
                 // needs to carry them, and the pointer written below is what
                 // finds them again.
                 let release_ref = crate::import::MetadataRef::new(release_id.clone(), *source);
-                let payloads =
-                    prepare_release(library_manager, &release_ref, CallPriority::Interactive)
-                        .await?;
+                let payloads = library_manager
+                    .load_release_payloads(&release_ref)
+                    .await?
+                    .ok_or_else(|| crate::import::ImportError::Internal {
+                        detail: format!(
+                            "{candidate_key}'s selected release payloads are not prepared"
+                        ),
+                    })?;
                 let parsed = payloads.parsed_for_audio(
                     &audio_durations,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                (parsed, payloads.default_cover()?)
+                parsed
             }
             Some(crate::import::MetadataProvenance::FileTags) => {
                 let folder_name = folder
@@ -348,7 +344,7 @@ impl ImportService {
                 // A File Tags import claims no source release, so there is no
                 // release cover to derive: its art comes from the folder or the
                 // files' own tags.
-                (parsed, None)
+                parsed
             }
             None => {
                 let parsed = crate::import::direct_entry_mapper::map_direct_entry_candidate_to_db(
@@ -356,7 +352,7 @@ impl ImportService {
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 );
-                (parsed, None)
+                parsed
             }
         };
 
@@ -374,33 +370,13 @@ impl ImportService {
         );
 
         let mut prepared = self
-            .reconcile_prepared_release(parsed, user_edit, &replacement_release_ids)
+            .reconcile_prepared_release(
+                parsed,
+                user_edit,
+                &replacement_release_ids,
+                &prepared_assets.artist_images,
+            )
             .await?;
-
-        let emit_preparing = {
-            let import_id = import_id.clone();
-            let candidate_key = candidate_key.clone();
-            let album_title = prepared.album_title.clone();
-            let artist_name = prepared.artist_name.clone();
-            let event_tx = self.event_tx.clone();
-            move |step: PrepareStep| {
-                send_event(
-                    &event_tx,
-                    crate::import::handle::ImportEvent::ImportProgress {
-                        candidate_key: candidate_key.clone(),
-                        progress: ImportProgress::Preparing {
-                            import_id: import_id.clone(),
-                            step,
-                            album_title: album_title.clone(),
-                            artist_name: artist_name.clone(),
-                        },
-                    },
-                );
-            }
-        };
-
-        step_times.push(("resolve_metadata", last_step_start.elapsed()));
-        last_step_start = std::time::Instant::now();
 
         prepared.db_release.source_folder_name = folder
             .file_name()
@@ -408,58 +384,30 @@ impl ImportService {
             .map(|s| s.to_string());
         prepared.db_release.content_hash = Some(content_hash);
 
-        // Which cover this import downloads. A pick the command carries is the
-        // user's, and must be there. With no pick, the release's own first
-        // cover option is the one the confirmation pane offered — the pane
-        // seeds its selection from exactly this list — so the commit fetches
-        // that rather than reading "the command names no cover" as "no cover
-        // wanted", which is what imported releases bare whenever the pane's
-        // options came up empty.
-        let remote_cover_data = match (&selected_cover, &release_cover) {
-            (Some(CoverSelection::Remote(url, source)), _) => {
-                emit_preparing(PrepareStep::WritingCoverArt);
-                let image = self
-                    .library_manager
-                    .fetch_required_remote_image(url)
-                    .await?;
+        // The selected remote cover and its exact prepared bytes are one
+        // candidate revision. Import validates that pair and never fetches it.
+        let remote_cover_data = match (&selected_cover, prepared_assets.remote_cover) {
+            (Some(CoverSelection::Remote(url, source)), Some(image)) => {
                 Some(downloaded_cover(image, url, *source)?)
             }
-            (None, Some(cover)) => {
-                emit_preparing(PrepareStep::WritingCoverArt);
-                // A source that answers "no image here" has dropped the art
-                // since its document was stored — an answer, and one that
-                // leaves the release to whatever its folder holds. A fetch that
-                // *fails* fails the import: a cover the source says exists must
-                // not go missing quietly.
-                match self.library_manager.fetch_remote_image(&cover.url).await? {
-                    Some(image) => Some(downloaded_cover(image, &cover.url, cover.source)?),
-                    None => {
-                        warn!(
-                            "{} serves no image at {}; importing with whatever the folder holds",
-                            cover.label, cover.url
-                        );
-                        None
-                    }
-                }
+            (Some(CoverSelection::Remote(_, _)), None) => {
+                return Err(crate::import::ImportError::CoverArt {
+                    detail: "selected remote cover has no prepared bytes".into(),
+                });
             }
-            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)), _) | (None, None) => {
-                None
+            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, None) => None,
+            (Some(CoverSelection::Local(_) | CoverSelection::Embedded(_)) | None, Some(_)) => {
+                return Err(crate::import::ImportError::CoverArt {
+                    detail: "prepared remote-cover bytes have no remote cover selection".into(),
+                });
             }
         };
 
-        step_times.push(("write_cover_art", last_step_start.elapsed()));
-        last_step_start = std::time::Instant::now();
-
-        emit_preparing(PrepareStep::DiscoveringFiles);
         let discovered_files = crate::import::handle::flatten_categorized_files(&categorized);
-
-        step_times.push(("discover_files", last_step_start.elapsed()));
-        last_step_start = std::time::Instant::now();
 
         // Each DbTrack moves into its TrackFile variant, bound to the audio its
         // slot named and carrying the `duration_ms` that audio yields. Past here
         // the DbTracks live in `tracks_to_files`.
-        emit_preparing(PrepareStep::ValidatingTracks);
         let tracks_to_files = resolve_track_files(
             std::mem::take(&mut prepared.db_tracks)
                 .into_iter()
@@ -472,10 +420,7 @@ impl ImportService {
         // seeded the pane, so the worker never opens the tags a second time.
         // A stored embedded selection names the source audio exactly; no
         // different snapshot image may silently stand in for it.
-        let embedded_cover = if matches!(
-            metadata_provenance,
-            Some(crate::import::MetadataProvenance::FileTags)
-        ) {
+        let embedded_cover = if file_tag_snapshot.is_some() {
             let cover = file_tag_snapshot.and_then(|snapshot| snapshot.embedded_cover.as_ref());
             match (&selected_cover, cover) {
                 (Some(CoverSelection::Embedded(source_file_id)), Some(cover))
@@ -505,9 +450,6 @@ impl ImportService {
             None
         };
 
-        step_times.push(("validate_tracks", last_step_start.elapsed()));
-        last_step_start = std::time::Instant::now();
-
         // No storage yet: the winning cover's bytes go to coven's local store below
         // and its row is written by finalize.
         prepared.remote_cover_image = remote_cover_data;
@@ -520,6 +462,12 @@ impl ImportService {
         );
 
         self.run_import(
+            crate::db::ImportCommitGuard::Candidate {
+                candidate_key: candidate_key.clone(),
+                folder: folder.clone(),
+                scope,
+                expectation: expectation.clone(),
+            },
             &storage_mode,
             pin,
             &mut prepared,
@@ -533,8 +481,6 @@ impl ImportService {
         )
         .await?;
 
-        step_times.push(("storage", last_step_start.elapsed()));
-
         let total_duration = import_start.elapsed();
         // The release is written (`run_import` succeeded via `?` above). Report
         // the real track count and the monotonic elapsed — never a zero default.
@@ -543,47 +489,10 @@ impl ImportService {
                 track_count: tracks_to_files.len() as u32,
                 duration_ms: total_duration,
             });
-        let step_summary: Vec<String> = step_times
-            .iter()
-            .map(|(name, dur)| format!("{}={:.0?}", name, dur))
-            .collect();
         info!(
-            "Import timing for '{}': total={:.0?} [{}]",
-            prepared.album_title,
-            total_duration,
-            step_summary.join(", ")
+            "Imported '{}' in {:.0?}",
+            prepared.album_title, total_duration,
         );
-
-        if std::env::var("BAE_IMPORT_TRACE").is_ok_and(|v| v == "1") {
-            if let Some(home) = std::env::var_os("HOME") {
-                let trace_dir = PathBuf::from(home).join(".bae-traces");
-                if let Err(e) = std::fs::create_dir_all(&trace_dir) {
-                    warn!("import trace dir {:?}: {}", trace_dir, e);
-                }
-                let trace_path = trace_dir.join("imports.jsonl");
-                let line = import_trace_line(
-                    library_manager.now().to_rfc3339(),
-                    &import_id,
-                    &prepared.album_title,
-                    &prepared.artist_name,
-                    total_duration,
-                    &step_times,
-                );
-                match std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(&trace_path)
-                {
-                    Ok(mut f) => {
-                        use std::io::Write;
-                        if let Err(e) = f.write_all(line.as_bytes()) {
-                            warn!("import trace write {:?}: {}", trace_path, e);
-                        }
-                    }
-                    Err(e) => warn!("import trace open {:?}: {}", trace_path, e),
-                }
-            }
-        }
 
         Ok(())
     }
@@ -600,6 +509,7 @@ impl ImportService {
     #[allow(clippy::too_many_arguments)]
     pub(super) async fn run_import(
         &self,
+        commit_guard: crate::db::ImportCommitGuard,
         storage_mode: &StorageMode,
         pin: bool,
         prepared: &mut PreparedMetadata,
@@ -673,13 +583,6 @@ impl ImportService {
                 }
             }
         }
-        self.emit_phase_progress(
-            candidate_key,
-            &db_release.id,
-            0,
-            ImportPhase::ReadingFiles,
-            import_id,
-        );
         let total_bytes: u128 = discovered_files
             .iter()
             .map(|file| u128::from(file.size))
@@ -689,13 +592,19 @@ impl ImportService {
                 detail: "stored import candidate contains no bytes".to_string(),
             });
         }
+        self.emit_phase_progress(
+            candidate_key,
+            &db_release.id,
+            Some(0),
+            ImportPhase::ReadingFiles,
+            import_id,
+        );
         let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
         for (idx, file) in discovered_files.iter().enumerate() {
-            // The scan fingerprint uses metadata so discovering remote folders
-            // does not read every byte. Coven streams the file here and keeps
-            // the resulting content identity opaque to bae.
-            super::file_identity::validate_scanned_file_metadata(file)?;
+            // The scan identity for every file was validated once before any
+            // byte was read. Coven streams the file here and keeps the
+            // resulting content identity opaque to bae.
             let bytes_read_before_file = bytes_read;
             let event_tx = self.event_tx.clone();
             let candidate_key_for_progress = candidate_key.to_string();
@@ -713,7 +622,7 @@ impl ImportService {
                         &event_tx,
                         &candidate_key_for_progress,
                         &release_id_for_progress,
-                        percent,
+                        Some(percent),
                         ImportPhase::ReadingFiles,
                         &import_id_for_progress,
                     );
@@ -765,6 +674,10 @@ impl ImportService {
             self.clock.as_ref(),
             self.ids.as_ref(),
         )?;
+        let source_file_sizes: HashMap<PathBuf, u64> = discovered_files
+            .iter()
+            .map(|file| (file.path.clone(), file.size))
+            .collect();
 
         // Measured from the source decode: bae stores originals verbatim (no
         // transcode), so source samples == stored samples. The sources are always
@@ -776,24 +689,18 @@ impl ImportService {
         // Unconditional: `import::loudness` compiles under the same predicate this
         // module does, so there is no configuration where the import runs and the
         // measurement doesn't. A `cfg` here could say otherwise, and once did.
-        self.emit_phase_progress(
-            candidate_key,
-            &db_release.id,
-            0,
-            ImportPhase::MeasuringLoudness,
-            import_id,
-        );
         let loudness = crate::import::loudness::measure_loudness(
             &self.event_tx,
             &mut built_audio.audio_formats,
             &built_audio.audio_segments,
             &file_ids,
+            &source_file_sizes,
             tracks_to_files,
             candidate_key,
             &db_release.id,
             import_id,
         )
-        .await;
+        .await?;
         db_release.album_loudness_lufs = loudness.album_loudness_lufs;
         db_release.album_peak_linear = loudness.album_peak_linear;
 
@@ -871,7 +778,7 @@ impl ImportService {
         self.emit_phase_progress(
             candidate_key,
             &db_release.id,
-            0,
+            None,
             ImportPhase::Finalizing,
             import_id,
         );
@@ -879,6 +786,7 @@ impl ImportService {
         let remote_intent = matches!(storage_mode, StorageMode::Remote);
         library_manager
             .finalize_import_atomic(
+                commit_guard,
                 new_album,
                 db_release,
                 tracks_to_files,
