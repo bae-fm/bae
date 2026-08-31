@@ -16201,6 +16201,197 @@
         }
       }
     },
+    "core.import.sheet.refused_timing": {
+      "comment": "Import file pane: an audio file cannot back a track sheet because the sheet names track boundaries beyond the measured end of the file. Shown on the file in the sheet's audio picker.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تقع أوقات مسارات ملف CUE خارج نطاق هذا الصوت"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Времената на песните в CUE са извън обхвата на това аудио"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE-এর ট্র্যাকের সময় এই অডিওর সীমার বাইরে"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Časy stop v souboru CUE přesahují toto audio"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Trackzeiten der CUE-Datei liegen außerhalb dieser Audiodatei"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The sheet’s track times fall outside this audio"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los tiempos de las pistas del CUE quedan fuera de este audio"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les temps de piste du CUE dépassent cet audio"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE ટ્રૅકના સમય આ ઑડિયોની મર્યાદાની બહાર છે"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "זמני הרצועות בקובץ CUE חורגים מתחום קובץ השמע הזה"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE के ट्रैक समय इस ऑडियो की सीमा से बाहर हैं"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vremena zapisa u CUE-u izlaze izvan ovog zvuka"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I tempi delle tracce del CUE non rientrano in questo audio"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUEのトラック時刻がこの音声の範囲外です"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE ಟ್ರ್ಯಾಕ್ ಸಮಯಗಳು ಈ ಆಡಿಯೊ ವ್ಯಾಪ್ತಿಯಿಂದ ಹೊರಗಿವೆ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE 트랙 시간이 이 오디오 범위를 벗어납니다"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE ട്രാക്ക് സമയങ്ങൾ ഈ ഓഡിയോയുടെ പരിധിക്ക് പുറത്താണ്"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE मधील ट्रॅक वेळा या ऑडिओच्या मर्यादेबाहेर आहेत"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "De tracktijden in de CUE vallen buiten deze audio"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE ਟਰੈਕ ਦੇ ਸਮੇਂ ਇਸ ਆਡੀਓ ਦੀ ਹੱਦ ਤੋਂ ਬਾਹਰ ਹਨ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Czasy utworów w pliku CUE wykraczają poza ten plik dźwiękowy"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Os tempos das faixas do CUE ficam fora deste áudio"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE தட நேரங்கள் இந்த ஆடியோவின் வரம்பிற்கு வெளியே உள்ளன"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE ట్రాక్ సమయాలు ఈ ఆడియో పరిధికి వెలుపల ఉన్నాయి"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เวลาของแทร็กใน CUE อยู่นอกช่วงของไฟล์เสียงนี้"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE parça süreleri bu sesin sınırları dışında"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Час доріжок у CUE виходить за межі цього аудіо"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE کے ٹریک کے اوقات اس آڈیو کی حد سے باہر ہیں"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thời gian bản nhạc trong CUE nằm ngoài phạm vi âm thanh này"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE 的轨道时间超出此音频范围"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CUE 的音軌時間超出此音訊範圍"
+          }
+        }
+      }
+    },
     "core.import.sheet.refused_unreadable": {
       "comment": "Import file pane: an audio file cannot back a track sheet's binding because bae cannot read the file at all — a truncated download, or otherwise broken audio. Shown on the file in the sheet's audio picker.",
       "localizations": {
