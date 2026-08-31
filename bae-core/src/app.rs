@@ -235,7 +235,6 @@ where
                 runtime.handle().clone(),
                 cloudkit_ops,
                 crate::import::cover_art::RemoteImageCache::new(
-                    Arc::clone(&clock),
                     config_handle.config().library_path(),
                 ),
             )

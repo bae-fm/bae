@@ -1,11 +1,6 @@
 use crate::import::{ImportError, MetadataSource};
 use crate::retry::{exponential_backoff, is_transient_status, retry_classified, ClassifiedAttempt};
 use crate::util::content_type::ContentType;
-use chrono::{DateTime, Utc};
-use coven::ClockRef;
-use reqwest::header::{
-    HeaderMap, CACHE_CONTROL, ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED,
-};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
@@ -206,20 +201,8 @@ const MAX_RETRIES: u32 = 3;
 /// Base delay between retries (doubles each attempt: 1s, 2s, 4s).
 const RETRY_BASE_DELAY: Duration = Duration::from_secs(1);
 
-/// How much disk the downloaded-cover cache may hold. Thumbnails run tens of
-/// kilobytes and full covers a few hundred, so this keeps thousands of them
-/// across restarts while staying a rounding error beside the library itself.
+/// Encoded provider images retained across launches.
 const REMOTE_IMAGE_DISK_BUDGET: u64 = 128 * 1024 * 1024;
-
-/// How long a remote image stays fresh when its response states no
-/// `Cache-Control: max-age`. Provider art at a fixed URL rarely changes, so a
-/// day between revalidations costs at most one conditional GET.
-const DEFAULT_REMOTE_IMAGE_TTL: Duration = Duration::from_secs(24 * 60 * 60);
-
-/// Upper bound on a response's declared `max-age`. A host that claims decades
-/// still gets revalidated within a year, and the clamp keeps the freshness
-/// arithmetic inside `chrono::Duration`'s range.
-const MAX_REMOTE_IMAGE_TTL: Duration = Duration::from_secs(365 * 24 * 60 * 60);
 
 fn image_download_client() -> Result<reqwest::Client, ImportError> {
     // The build error is stored as a String because `reqwest::Client`'s builder
@@ -243,149 +226,28 @@ pub struct RemoteImage {
     pub content_type: ContentType,
 }
 
-/// The freshness terms of one image response: how long it may be served without
-/// asking again, and the validators a conditional GET revalidates it with.
-/// `max_age` is `None` when the response declared no lifetime — the caller
-/// resolves that to [`DEFAULT_REMOTE_IMAGE_TTL`] rather than storing the default
-/// as if the host had stated it.
+/// The durable answer for one provider URL.
 #[derive(Debug, Clone)]
-struct Freshness {
-    max_age: Option<Duration>,
-    etag: Option<String>,
-    last_modified: Option<String>,
+enum DiskImageEntry {
+    Image(RemoteImage),
+    Nothing,
 }
 
-impl Freshness {
-    fn from_headers(headers: &HeaderMap) -> Self {
-        Self {
-            max_age: max_age_from_cache_control(headers),
-            etag: header_string(headers, &ETAG),
-            last_modified: header_string(headers, &LAST_MODIFIED),
-        }
-    }
-
-    /// How long a response with these terms stays fresh.
-    fn lifetime(&self) -> chrono::Duration {
-        chrono::Duration::from_std(self.max_age.unwrap_or(DEFAULT_REMOTE_IMAGE_TTL))
-            .expect("remote image TTLs are clamped to a year")
-    }
-
-    /// Apply a 304's headers over the stored entry's: RFC 9111 §4.3.4 says the
-    /// stored response takes the headers the 304 carries and keeps the rest.
-    fn updated_by(self, revalidated: Freshness) -> Freshness {
-        Freshness {
-            max_age: revalidated.max_age.or(self.max_age),
-            etag: revalidated.etag.or(self.etag),
-            last_modified: revalidated.last_modified.or(self.last_modified),
-        }
-    }
-}
-
-fn header_string(headers: &HeaderMap, name: &reqwest::header::HeaderName) -> Option<String> {
-    headers
-        .get(name)
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v.to_string())
-}
-
-/// `max-age` from a `Cache-Control` response header. `None` when the header is
-/// absent, carries no `max-age`, or states one that doesn't parse — all of which
-/// mean the response declared no lifetime of its own.
-fn max_age_from_cache_control(headers: &HeaderMap) -> Option<Duration> {
-    let directives = header_string(headers, &CACHE_CONTROL)?;
-    let seconds: u64 = directives
-        .split(',')
-        .find_map(|directive| {
-            let (name, value) = directive.trim().split_once('=')?;
-            // Directive names are case-insensitive (RFC 9111 §5.2).
-            name.eq_ignore_ascii_case("max-age").then_some(value)
-        })?
-        .trim()
-        .parse()
-        .ok()?;
-    Some(Duration::from_secs(seconds).min(MAX_REMOTE_IMAGE_TTL))
-}
-
-/// One cached remote image: the bytes, when they were fetched, and the terms
-/// that decide when they must be revalidated.
-#[derive(Debug, Clone)]
-struct CachedImage {
-    bytes: Vec<u8>,
-    content_type: ContentType,
-    fetched_at: DateTime<Utc>,
-    freshness: Freshness,
-}
-
-impl CachedImage {
-    fn store(
-        bytes: Vec<u8>,
-        content_type: ContentType,
-        fetched_at: DateTime<Utc>,
-        freshness: Freshness,
-    ) -> Self {
-        Self {
-            bytes,
-            content_type,
-            fetched_at,
-            freshness,
-        }
-    }
-
-    fn is_fresh(&self, now: DateTime<Utc>) -> bool {
-        now < self.fetched_at + self.freshness.lifetime()
-    }
-
-    fn to_remote_image(&self) -> RemoteImage {
-        RemoteImage {
-            bytes: self.bytes.clone(),
-            content_type: self.content_type.clone(),
-        }
-    }
-}
-
-/// The downloaded provider art this device keeps.
+/// A bounded disk cache for provider images.
 ///
-/// One file per address, named by the SHA-256 of the URL and holding a JSON
-/// header line — the content type, when the bytes were fetched, and the
-/// freshness terms a conditional GET revalidates them with — followed by the
-/// bytes. Each is written to a temp file and renamed, so a torn write is never
-/// read back as an entry.
-///
-/// Bounded by total bytes: a write that pushes the directory past the budget
-/// drops least-recently-read entries until it is back under. A read stamps its
-/// file's modified time, which is what "least recently read" is measured by, so
-/// the ordering survives a restart along with the bytes.
-///
-/// Every failure here is a miss, logged: the cache is an optimization over a
-/// fetch that still works without it, so a directory that cannot be written —
-/// a full disk, a revoked permission — must cost a re-download rather than the
-/// cover.
+/// The SHA-256 filename turns an arbitrary URL into one safe path. The file's
+/// first line records either an image's content type or that the URL serves no
+/// image. Reads update the modified time, and writes evict the least recently
+/// read files until the directory is within its byte budget.
 struct DiskImageCache {
     dir: std::path::PathBuf,
     budget: u64,
-    state: Mutex<DiskImageCacheState>,
+    access: Mutex<DiskImageAccess>,
 }
 
-struct DiskImageCacheState {
-    /// Bytes currently held. `None` until the first write measures the
-    /// directory; after that the writes and evictions that are the only things
-    /// changing it keep it current.
-    held: Option<u64>,
-    /// Files touched by this cache instance, in exact access order. Filesystem
-    /// modified times carry order across launches, but their precision is not
-    /// sufficient to distinguish accesses made close together on every host.
-    next_access: u64,
-    accessed: HashMap<std::path::PathBuf, u64>,
-}
-
-/// What an entry's file records beside the bytes.
-#[derive(serde::Serialize, serde::Deserialize)]
-struct DiskEntryHeader {
-    content_type: String,
-    fetched_at: DateTime<Utc>,
-    max_age_secs: Option<u64>,
-    etag: Option<String>,
-    last_modified: Option<String>,
+struct DiskImageAccess {
+    next: u64,
+    current_session: HashMap<std::path::PathBuf, u64>,
 }
 
 impl DiskImageCache {
@@ -393,10 +255,9 @@ impl DiskImageCache {
         Self {
             dir,
             budget,
-            state: Mutex::new(DiskImageCacheState {
-                held: None,
-                next_access: 0,
-                accessed: HashMap::new(),
+            access: Mutex::new(DiskImageAccess {
+                next: 0,
+                current_session: HashMap::new(),
             }),
         }
     }
@@ -405,12 +266,9 @@ impl DiskImageCache {
         self.dir.join(crate::util::fs::hash_bytes(url.as_bytes()))
     }
 
-    /// The entry stored for `url`, or `None` when nothing is stored, the file
-    /// cannot be read, or its header does not parse — all of which are misses a
-    /// fetch answers.
-    fn get(&self, url: &str) -> Option<CachedImage> {
+    fn get(&self, url: &str) -> Option<DiskImageEntry> {
         let path = self.path_for(url);
-        let raw = match std::fs::read(&path) {
+        let mut raw = match std::fs::read(&path) {
             Ok(raw) => raw,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => return None,
             Err(error) => {
@@ -421,100 +279,88 @@ impl DiskImageCache {
                 return None;
             }
         };
-        let split = raw.iter().position(|byte| *byte == b'\n')?;
-        let header: DiskEntryHeader = match serde_json::from_slice(&raw[..split]) {
+        let Some(header_end) = raw.iter().position(|byte| *byte == b'\n') else {
+            warn!(
+                "Discarding the cached image at {}: it has no header",
+                path.display()
+            );
+            self.remove(&path);
+            return None;
+        };
+        let header = match std::str::from_utf8(&raw[..header_end]) {
             Ok(header) => header,
             Err(error) => {
                 warn!(
-                    "Discarding the cached image at {}: its header does not parse: {error}",
+                    "Discarding the cached image at {}: its header is invalid: {error}",
                     path.display()
                 );
                 self.remove(&path);
                 return None;
             }
         };
-        // Reading is what makes an entry recently used, and the file's modified
-        // time is where that is recorded — it is the ordering eviction reads,
-        // and the only part of it that survives a restart.
+        let entry = if header == "none" {
+            DiskImageEntry::Nothing
+        } else if let Some(content_type) = header.strip_prefix("image ") {
+            let content_type = ContentType::from_mime(content_type);
+            raw.drain(..=header_end);
+            DiskImageEntry::Image(RemoteImage {
+                bytes: raw,
+                content_type,
+            })
+        } else {
+            warn!(
+                "Discarding the cached image at {}: its entry kind is invalid",
+                path.display()
+            );
+            self.remove(&path);
+            return None;
+        };
+
         if let Err(error) = std::fs::File::open(&path).and_then(|file| {
             file.set_times(std::fs::FileTimes::new().set_modified(std::time::SystemTime::now()))
         }) {
-            debug!(
-                "Could not stamp {} as recently used: {error}",
+            warn!(
+                "Could not mark the cached image at {} as recently used: {error}",
                 path.display()
             );
         }
-        self.record_access(&path);
-        Some(CachedImage {
-            bytes: raw[split + 1..].to_vec(),
-            content_type: ContentType::from_mime(&header.content_type),
-            fetched_at: header.fetched_at,
-            freshness: Freshness {
-                max_age: header.max_age_secs.map(Duration::from_secs),
-                etag: header.etag,
-                last_modified: header.last_modified,
-            },
-        })
+        self.record_access(path);
+        Some(entry)
     }
 
-    fn put(&self, url: &str, entry: &CachedImage) {
+    fn put(&self, url: &str, entry: &DiskImageEntry) {
         if let Err(error) = self.write(url, entry) {
-            warn!("Could not cache the image from {url}: {error}");
+            warn!("Could not cache the image answer from {url}: {error}");
             return;
         }
         self.evict_to_budget();
     }
 
-    fn write(&self, url: &str, entry: &CachedImage) -> std::io::Result<()> {
+    fn write(&self, url: &str, entry: &DiskImageEntry) -> std::io::Result<()> {
         use std::io::Write;
 
         std::fs::create_dir_all(&self.dir)?;
-        let header = serde_json::to_vec(&DiskEntryHeader {
-            content_type: entry.content_type.as_str().to_string(),
-            fetched_at: entry.fetched_at,
-            max_age_secs: entry.freshness.max_age.map(|age| age.as_secs()),
-            etag: entry.freshness.etag.clone(),
-            last_modified: entry.freshness.last_modified.clone(),
-        })
-        .map_err(std::io::Error::other)?;
-
         let path = self.path_for(url);
-        let replaced = std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
         let spool = tempfile::NamedTempFile::new_in(&self.dir)?;
         {
             let mut file = spool.as_file();
-            file.write_all(&header)?;
-            file.write_all(b"\n")?;
-            file.write_all(&entry.bytes)?;
+            match entry {
+                DiskImageEntry::Image(image) => {
+                    file.write_all(b"image ")?;
+                    file.write_all(image.content_type.as_str().as_bytes())?;
+                    file.write_all(b"\n")?;
+                    file.write_all(&image.bytes)?;
+                }
+                DiskImageEntry::Nothing => file.write_all(b"none\n")?,
+            }
             file.flush()?;
         }
-        let written = (header.len() + 1 + entry.bytes.len()) as u64;
         spool.persist(&path).map_err(|error| error.error)?;
-
-        let mut state = self.state.lock().expect("image cache state mutex poisoned");
-        if let Some(held) = state.held.as_mut() {
-            *held = held.saturating_sub(replaced) + written;
-        }
-        state.record_access(path);
+        self.record_access(path);
         Ok(())
     }
 
-    /// Drop least-recently-read entries until the directory is back inside the
-    /// budget.
     fn evict_to_budget(&self) {
-        // A running total that already clears the budget answers on its own: it
-        // is raised only by a write and lowered only by an eviction, so nothing
-        // else can have pushed the directory over.
-        if let Some(held) = self
-            .state
-            .lock()
-            .expect("image cache state mutex poisoned")
-            .held
-        {
-            if held <= self.budget {
-                return;
-            }
-        }
         let mut entries = match self.measure() {
             Ok(entries) => entries,
             Err(error) => {
@@ -526,56 +372,64 @@ impl DiskImageCache {
             }
         };
         let mut held: u64 = entries.iter().map(|(_, _, size)| size).sum();
-        // Longest unread first, which is the order they go in. Entries touched
-        // by this instance are newer than entries inherited from a prior
-        // launch, and their counter breaks timestamp ties exactly.
-        {
-            let state = self.state.lock().expect("image cache state mutex poisoned");
-            entries.sort_by_key(|(path, last_read, _)| match state.accessed.get(path) {
-                Some(access) => CacheAccess::Current(*access),
-                None => CacheAccess::Prior(*last_read),
-            });
+        if held <= self.budget {
+            return;
         }
-        let mut dropped = 0usize;
-        let mut dropped_paths = Vec::new();
+
+        {
+            let access = self
+                .access
+                .lock()
+                .expect("disk image cache access mutex poisoned");
+            entries.sort_by_key(
+                |(path, modified, _)| match access.current_session.get(path) {
+                    Some(sequence) => CacheAccess::Current(*sequence),
+                    None => CacheAccess::Prior(*modified),
+                },
+            );
+        }
+
+        let mut removed = Vec::new();
         for (path, _, size) in entries {
             if held <= self.budget {
                 break;
             }
             if self.remove(&path) {
-                held -= size;
-                dropped += 1;
-                dropped_paths.push(path);
+                held = held.saturating_sub(size);
+                removed.push(path);
             }
         }
-        if dropped > 0 {
+
+        if !removed.is_empty() {
             debug!(
-                "Image cache at {} past its {}-byte budget: dropped {dropped}, {held} held",
-                self.dir.display(),
-                self.budget
+                directory = %self.dir.display(),
+                removed = removed.len(),
+                held,
+                budget = self.budget,
+                "Evicted remote image cache entries"
             );
-        }
-        let mut state = self.state.lock().expect("image cache state mutex poisoned");
-        state.held = Some(held);
-        for path in dropped_paths {
-            state.accessed.remove(&path);
+            let mut access = self
+                .access
+                .lock()
+                .expect("disk image cache access mutex poisoned");
+            for path in removed {
+                access.current_session.remove(&path);
+            }
         }
     }
 
-    /// Every entry with when it was last read and how big it is.
     fn measure(&self) -> std::io::Result<Vec<(std::path::PathBuf, std::time::SystemTime, u64)>> {
         let mut entries = Vec::new();
         for entry in std::fs::read_dir(&self.dir)? {
             let entry = entry?;
             let metadata = entry.metadata()?;
-            if !metadata.is_file() {
-                continue;
+            if metadata.is_file() {
+                entries.push((
+                    entry.path(),
+                    metadata.modified().unwrap_or(std::time::UNIX_EPOCH),
+                    metadata.len(),
+                ));
             }
-            entries.push((
-                entry.path(),
-                metadata.modified().unwrap_or(std::time::UNIX_EPOCH),
-                metadata.len(),
-            ));
         }
         Ok(entries)
     }
@@ -586,7 +440,7 @@ impl DiskImageCache {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
             Err(error) => {
                 warn!(
-                    "Could not drop the cached image at {}: {error}",
+                    "Could not remove the cached image at {}: {error}",
                     path.display()
                 );
                 false
@@ -594,11 +448,17 @@ impl DiskImageCache {
         }
     }
 
-    fn record_access(&self, path: &std::path::Path) {
-        self.state
+    fn record_access(&self, path: std::path::PathBuf) {
+        let mut access = self
+            .access
             .lock()
-            .expect("image cache state mutex poisoned")
-            .record_access(path.to_path_buf());
+            .expect("disk image cache access mutex poisoned");
+        access.next = access
+            .next
+            .checked_add(1)
+            .expect("disk image cache access counter overflow");
+        let sequence = access.next;
+        access.current_session.insert(path, sequence);
     }
 }
 
@@ -608,179 +468,159 @@ enum CacheAccess {
     Current(u64),
 }
 
-impl DiskImageCacheState {
-    fn record_access(&mut self, path: std::path::PathBuf) {
-        self.next_access = self
-            .next_access
-            .checked_add(1)
-            .expect("image cache access counter overflow");
-        self.accessed.insert(path, self.next_access);
-    }
-}
+type InFlightImages = HashMap<String, Arc<tokio::sync::OnceCell<Option<RemoteImage>>>>;
 
-/// What one image request returned: a body, a 304 saying the bytes already held
-/// are still current, or a 404 saying the host serves no image at this address.
+/// A bounded persistent cache plus one entry for every active download.
 ///
-/// The third is an answer, not a failure. Cover addresses are derived, not
-/// discovered — the Cover Art Archive's path for a release group is knowable
-/// without knowing whether the archive has an image there — so "there is
-/// nothing here" is the ordinary reply to an address that turned out empty, and
-/// a caller that needs bytes is the one that turns it into an error.
-enum ImageResponse {
-    Body {
-        bytes: Vec<u8>,
-        content_type: ContentType,
-        freshness: Freshness,
-    },
-    NotModified {
-        freshness: Freshness,
-    },
-    Nothing,
-}
-
-/// The cache of remote image bytes, keyed by URL, with HTTP freshness: a fresh
-/// entry serves without a request, a stale one revalidates with a conditional
-/// GET — a 304 refreshes its clock, a 200 replaces its bytes.
-///
-/// Provider art is a direct HTTP fetch against arbitrary hosts (CAA, Discogs
-/// CDN), not part of either metadata API client, so it caches here. All three
-/// readers — the cover picker in the UI, the commit worker, and `change_cover`
-/// — share one instance off the library manager, so picking a cover and then
-/// importing it hits the wire once.
-///
-/// The entries live on disk rather than in memory. A cover the app has already
-/// downloaded outlives the pane that asked for it and the process that ran it,
-/// which is what makes reopening the picker — or relaunching — cost nothing;
-/// and holding megabytes of encoded images in RAM bought only the repeat within
-/// one session, which each platform's decoded-image cache already covers.
+/// Provider URLs identify static content for bae's use. Completed answers live
+/// only on disk; the in-memory map exists to make concurrent callers share the
+/// same request and is cleared when that request completes. Disk work runs on
+/// Tokio's blocking pool rather than its async workers.
 #[derive(Clone)]
 pub struct RemoteImageCache {
-    clock: ClockRef,
-    entries: Arc<DiskImageCache>,
-    /// The base backoff a transient download failure is retried with, doubling
-    /// each attempt. A test builds the cache with a near-zero one so a fetch
-    /// that is meant to fail does not sleep the real 1s + 2s + 4s.
+    in_flight: Arc<Mutex<InFlightImages>>,
+    disk: Arc<DiskImageCache>,
     retry_base_delay: Duration,
-    /// Owns the directory `entries` writes into, for a test cache that made one
-    /// of its own. Held for its lifetime, never read.
     #[cfg(any(test, feature = "test-utils"))]
     _owned_dir: Option<Arc<tempfile::TempDir>>,
 }
 
 impl RemoteImageCache {
-    /// The cache for a library, keeping its images under that library's store
-    /// directory so they are deleted with it.
-    pub fn new(clock: ClockRef, library_path: &std::path::Path) -> Self {
-        Self::under(clock, library_path.join("cache").join("remote-images"))
+    pub fn new(library_path: &std::path::Path) -> Self {
+        Self::in_dir(
+            library_path.join("cache").join("remote-images"),
+            REMOTE_IMAGE_DISK_BUDGET,
+            RETRY_BASE_DELAY,
+        )
     }
 
-    /// A cache in a directory of its own, whose downloads retry immediately so
-    /// a test whose fetch is meant to fail does not sleep the real 1s + 2s + 4s
-    /// of backoff. Its clock is the system one: nothing a test asserts through
-    /// this constructor turns on image freshness, and a test that does exercise
-    /// freshness builds the cache with a clock of its own.
     #[cfg(any(test, feature = "test-utils"))]
     pub fn for_test() -> Self {
-        let dir = tempfile::TempDir::new().expect("a temp dir for the test image cache");
+        let directory =
+            tempfile::TempDir::new().expect("a temp directory for the remote image cache");
         let mut cache = Self::in_dir(
-            std::sync::Arc::new(coven::SystemClock),
-            dir.path().to_path_buf(),
+            directory.path().to_path_buf(),
+            REMOTE_IMAGE_DISK_BUDGET,
             Duration::from_millis(1),
         );
-        cache._owned_dir = Some(Arc::new(dir));
+        cache._owned_dir = Some(Arc::new(directory));
         cache
     }
 
-    fn under(clock: ClockRef, dir: std::path::PathBuf) -> Self {
-        Self::in_dir(clock, dir, RETRY_BASE_DELAY)
-    }
-
-    fn in_dir(clock: ClockRef, dir: std::path::PathBuf, retry_base_delay: Duration) -> Self {
+    fn in_dir(dir: std::path::PathBuf, budget: u64, retry_base_delay: Duration) -> Self {
         Self {
-            clock,
-            entries: Arc::new(DiskImageCache::new(dir, REMOTE_IMAGE_DISK_BUDGET)),
+            in_flight: Arc::new(Mutex::new(HashMap::new())),
+            disk: Arc::new(DiskImageCache::new(dir, budget)),
             retry_base_delay,
             #[cfg(any(test, feature = "test-utils"))]
             _owned_dir: None,
         }
     }
 
-    /// Bytes for a remote image URL, served from the cache while fresh and
-    /// revalidated once stale. Retries transient failures (network errors, 5xx)
-    /// up to `MAX_RETRIES` times.
-    ///
-    /// `Ok(None)` is the host answering that it serves no image at this address
-    /// — the reply a derived cover address gets when the archive holds nothing
-    /// for that entity. A caller that requires the bytes uses the corresponding
-    /// required-fetch operation.
+    /// Fetch a provider URL from the bounded disk cache or its host.
     pub async fn fetch(&self, url: &str) -> Result<Option<RemoteImage>, ImportError> {
-        let base_delay = self.retry_base_delay;
-        let now = self.clock.now();
-        let cached = self.entries.get(url);
+        if let Some(entry) = self.read_disk(url).await? {
+            return Ok(entry.into_image());
+        }
 
-        let stale = match cached {
-            Some(entry) if entry.is_fresh(now) => {
-                debug!("Remote image cache hit for {url}");
-                return Ok(Some(entry.to_remote_image()));
-            }
-            Some(entry) => {
-                debug!("Revalidating stale remote image {url}");
-                Some(entry)
-            }
-            None => {
-                debug!("Downloading remote image from {url}");
-                None
-            }
+        let active = {
+            let mut in_flight = self
+                .in_flight
+                .lock()
+                .expect("remote image in-flight mutex poisoned");
+            in_flight
+                .entry(url.to_string())
+                .or_insert_with(|| Arc::new(tokio::sync::OnceCell::new()))
+                .clone()
         };
+        let retry_base_delay = self.retry_base_delay;
+        let disk = Arc::clone(&self.disk);
+        let owned_url = url.to_string();
 
-        let response = send_image_request(
-            url,
-            stale.as_ref().map(|entry| &entry.freshness),
-            "Cover art download",
-            base_delay,
-        )
-        .await?;
+        let result = active
+            .get_or_try_init(|| async {
+                if let Some(entry) = read_disk(Arc::clone(&disk), owned_url.clone()).await? {
+                    return Ok::<Option<RemoteImage>, ImportError>(entry.into_image());
+                }
 
-        let entry = match (response, stale) {
-            (ImageResponse::Nothing, _) => {
-                debug!("No image is served at {url}");
-                return Ok(None);
-            }
-            (
-                ImageResponse::Body {
-                    bytes,
-                    content_type,
-                    freshness,
-                },
-                _,
-            ) => CachedImage::store(bytes, content_type, now, freshness),
-            (ImageResponse::NotModified { freshness }, Some(entry)) => CachedImage {
-                fetched_at: now,
-                freshness: entry.freshness.updated_by(freshness),
-                ..entry
-            },
-            // `send_image_request` only reports a 304 when it sent validators,
-            // which only a stored entry supplies.
-            (ImageResponse::NotModified { .. }, None) => {
-                return Err(ImportError::CoverArt {
-                    detail: format!("{url} answered 304 to an unconditional request"),
-                })
-            }
-        };
+                debug!("Downloading remote image from {owned_url}");
+                let entry =
+                    match send_image_request(&owned_url, "Cover art download", retry_base_delay)
+                        .await?
+                    {
+                        ImageResponse::Body {
+                            bytes,
+                            content_type,
+                        } => DiskImageEntry::Image(RemoteImage {
+                            bytes,
+                            content_type,
+                        }),
+                        ImageResponse::Nothing => {
+                            debug!("No image is served at {owned_url}");
+                            DiskImageEntry::Nothing
+                        }
+                    };
+                let image = entry.clone().into_image();
+                write_disk(Arc::clone(&disk), owned_url.clone(), entry).await?;
+                Ok(image)
+            })
+            .await
+            .cloned();
 
-        let image = entry.to_remote_image();
-        self.entries.put(url, &entry);
-        Ok(Some(image))
+        let mut in_flight = self
+            .in_flight
+            .lock()
+            .expect("remote image in-flight mutex poisoned");
+        if in_flight
+            .get(url)
+            .is_some_and(|current| Arc::ptr_eq(current, &active))
+        {
+            in_flight.remove(url);
+        }
+        result
     }
 
-    /// Bytes for an image the caller cannot proceed without — a cover the user
-    /// picked, or one a release document says the archive holds. An address
-    /// that serves nothing is a failure here, named as one.
+    async fn read_disk(&self, url: &str) -> Result<Option<DiskImageEntry>, ImportError> {
+        read_disk(Arc::clone(&self.disk), url.to_string()).await
+    }
+
     pub(crate) async fn fetch_required(&self, url: &str) -> Result<RemoteImage, ImportError> {
         self.fetch(url).await?.ok_or_else(|| ImportError::CoverArt {
             detail: format!("no image is served at {url}"),
         })
     }
+}
+
+impl DiskImageEntry {
+    fn into_image(self) -> Option<RemoteImage> {
+        match self {
+            Self::Image(image) => Some(image),
+            Self::Nothing => None,
+        }
+    }
+}
+
+async fn read_disk(
+    disk: Arc<DiskImageCache>,
+    url: String,
+) -> Result<Option<DiskImageEntry>, ImportError> {
+    tokio::task::spawn_blocking(move || disk.get(&url))
+        .await
+        .map_err(|error| ImportError::CoverArt {
+            detail: format!("Remote image cache read task failed: {error}"),
+        })
+}
+
+async fn write_disk(
+    disk: Arc<DiskImageCache>,
+    url: String,
+    entry: DiskImageEntry,
+) -> Result<(), ImportError> {
+    tokio::task::spawn_blocking(move || disk.put(&url, &entry))
+        .await
+        .map_err(|error| ImportError::CoverArt {
+            detail: format!("Remote image cache write task failed: {error}"),
+        })
 }
 
 /// Download an image with no caching in front — the artist-image path, whose
@@ -790,26 +630,31 @@ pub(crate) async fn download_image_bytes(
     image_url: &str,
     operation: &str,
 ) -> Result<(Vec<u8>, ContentType), ImportError> {
-    match send_image_request(image_url, None, operation, RETRY_BASE_DELAY).await? {
+    match send_image_request(image_url, operation, RETRY_BASE_DELAY).await? {
         ImageResponse::Body {
             bytes,
             content_type,
-            freshness: _,
         } => Ok((bytes, content_type)),
         ImageResponse::Nothing => Err(ImportError::CoverArt {
             detail: format!("no image is served at {image_url}"),
         }),
-        ImageResponse::NotModified { .. } => Err(ImportError::CoverArt {
-            detail: format!("{image_url} answered 304 to an unconditional request"),
-        }),
     }
 }
 
-/// GET an image URL, conditionally when `revalidate` supplies validators.
-/// Retries transient failures (network errors, 5xx) up to `MAX_RETRIES` times.
+/// What one image request returned. A 404 is an ordinary answer because cover
+/// addresses are derived without knowing whether their host has bytes there.
+enum ImageResponse {
+    Body {
+        bytes: Vec<u8>,
+        content_type: ContentType,
+    },
+    Nothing,
+}
+
+/// GET an image URL. Retries transient failures (network errors, 5xx) up to
+/// `MAX_RETRIES` times.
 async fn send_image_request(
     image_url: &str,
-    revalidate: Option<&Freshness>,
     operation: &str,
     base_delay: Duration,
 ) -> Result<ImageResponse, ImportError> {
@@ -819,39 +664,24 @@ async fn send_image_request(
         operation,
         |attempt| exponential_backoff(base_delay, attempt),
         || async {
-            let mut request = client.get(image_url);
-            if let Some(freshness) = revalidate {
-                if let Some(etag) = &freshness.etag {
-                    request = request.header(IF_NONE_MATCH, etag);
-                }
-                if let Some(last_modified) = &freshness.last_modified {
-                    request = request.header(IF_MODIFIED_SINCE, last_modified);
-                }
-            }
-
-            let response = match request.send().await {
-                Ok(r) => r,
-                Err(e) if is_permanent_request_error(&e) => {
+            let response = match client.get(image_url).send().await {
+                Ok(response) => response,
+                Err(error) if is_permanent_request_error(&error) => {
                     return ClassifiedAttempt::Permanent(ImportError::CoverArt {
-                        detail: format!("Failed to fetch image: {}", e),
+                        detail: format!("Failed to fetch image: {error}"),
                     });
                 }
-                Err(e) => {
+                Err(error) => {
                     return ClassifiedAttempt::Retry(ImportError::CoverArt {
-                        detail: format!("Failed to fetch image: {}", e),
+                        detail: format!("Failed to fetch image: {error}"),
                     });
                 }
             };
 
-            if response.status() == reqwest::StatusCode::NOT_MODIFIED && revalidate.is_some() {
-                return ClassifiedAttempt::Done(ImageResponse::NotModified {
-                    freshness: Freshness::from_headers(response.headers()),
-                });
-            }
             if response.status().is_success() {
                 match read_image_response(response, image_url).await {
                     Ok(body) => ClassifiedAttempt::Done(body),
-                    Err(e) => ClassifiedAttempt::Permanent(e),
+                    Err(error) => ClassifiedAttempt::Permanent(error),
                 }
             } else if response.status() == reqwest::StatusCode::NOT_FOUND {
                 ClassifiedAttempt::Done(ImageResponse::Nothing)
@@ -870,25 +700,24 @@ async fn send_image_request(
 }
 
 /// Errors that fail the same way every attempt — a URL-parse / request-builder
-/// failure, or a redirect loop bottoming out. Retrying only burns the backoff
-/// budget. Network/timeout/connection errors are transient and do keep retrying.
-fn is_permanent_request_error(e: &reqwest::Error) -> bool {
-    e.is_builder() || e.is_redirect()
+/// failure, or a redirect loop bottoming out. Network, timeout, and connection
+/// errors remain retryable.
+fn is_permanent_request_error(error: &reqwest::Error) -> bool {
+    error.is_builder() || error.is_redirect()
 }
 
-/// Read bytes, content type, and freshness terms from a successful image response.
+/// Read bytes and content type from a successful image response.
 async fn read_image_response(
     response: reqwest::Response,
     image_url: &str,
 ) -> Result<ImageResponse, ImportError> {
     let content_type =
         super::image_response::image_content_type_from_response(response.headers(), image_url);
-    let freshness = Freshness::from_headers(response.headers());
 
     let bytes = crate::util::http::read_body_capped(response, crate::util::http::MAX_IMAGE_BYTES)
         .await
-        .map_err(|e| ImportError::CoverArt {
-            detail: format!("Failed to read image response: {}", e),
+        .map_err(|error| ImportError::CoverArt {
+            detail: format!("Failed to read image response: {error}"),
         })?;
     if bytes.len() < 100 {
         return Err(ImportError::CoverArt {
@@ -900,7 +729,6 @@ async fn read_image_response(
     Ok(ImageResponse::Body {
         bytes,
         content_type,
-        freshness,
     })
 }
 
