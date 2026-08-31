@@ -54,7 +54,13 @@ async fn pure_reads_use_the_read_connection() {
     // import_candidate_cover, import_candidate_edit and
     // import_candidate_track_edit.
     db.load_import_candidate_state("missing").await.unwrap();
-    db.load_import_candidate_pane_rows("missing").await.unwrap();
+    assert_eq!(
+        db.load_import_candidate_pane_rows("missing")
+            .await
+            .unwrap_err()
+            .to_string(),
+        "database error: candidate missing has no editable metadata draft"
+    );
 
     // Writers that already have the requested state decide before opening a
     // write transaction.
