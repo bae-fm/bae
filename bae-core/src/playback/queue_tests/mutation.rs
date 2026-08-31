@@ -250,10 +250,10 @@ fn test_play_release_start_index() {
     assert_eq!(upcoming_tracks(&q), vec!["t3"]);
 }
 
-/// Up Next is the user's own arrangement: filling the context lane leaves it
-/// alone, and it still drains before the newly filled context.
+/// Starting playback from a release replaces the active playback context, so
+/// manually queued entries from the previous context do not carry into it.
 #[test]
-fn test_play_release_leaves_up_next_intact() {
+fn test_play_release_clears_up_next() {
     let mut q = queue();
     q.add_to_queue(rel(&["m1", "m2"]));
 
@@ -270,11 +270,9 @@ fn test_play_release_leaves_up_next_intact() {
     assert_eq!(first, "08c7ff07-b56a-4e16-8df6-ae2967fa0806");
     assert_eq!(
         upcoming_tracks(&q),
-        vec!["m1", "m2", "08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"],
-        "Up Next survives the fill and drains first"
+        vec!["08c7fe07-b56a-4c63-8df6-ad2967fa0653", "t3"],
+        "the new context replaces the old Up Next lane"
     );
-    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m1"));
-    assert!(matches!(q.next_entry(), NextEntry::Play(t) if t == "m2"));
     assert!(
         matches!(q.next_entry(), NextEntry::Play(t) if t == "08c7fe07-b56a-4c63-8df6-ad2967fa0653")
     );

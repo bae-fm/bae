@@ -218,11 +218,10 @@ impl PlaybackQueue {
         tracks.into_iter().map(|t| self.mint(t)).collect()
     }
 
-    /// Make a source's tracks the playing context: fill the lane, set the cursor,
-    /// and make the cursor row current. Returns the track to play. Up Next is
-    /// untouched — it is the user's own arrangement and drains before the new
-    /// context. The caller passes a non-empty `track_ids` (and an in-range
-    /// `Index`); the lane is therefore non-empty with a valid cursor.
+    /// Make a source's tracks the playing context: clear Up Next, fill the lane,
+    /// set the cursor, and make the cursor row current. Returns the track to play.
+    /// The caller passes a non-empty `track_ids` (and an in-range `Index`); the
+    /// lane is therefore non-empty with a valid cursor.
     pub fn play_release(
         &mut self,
         source: ContextSource,
@@ -248,6 +247,7 @@ impl PlaybackQueue {
         };
         let context = build_context(source, entries, cursor, shuffle);
         let track = context.current().track_id.clone();
+        self.manual.clear();
         self.current = Some(context.current().clone());
         self.context = Some(context);
         self.revision += 1;
