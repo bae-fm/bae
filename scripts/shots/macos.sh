@@ -64,6 +64,8 @@ for scene in \
     import-release-resolved-reversal \
     import-mapping-cue-wide \
     import-mapping-cue-narrow \
+    queue-pane-standard \
+    queue-pane-narrow \
     storage-manager-dense \
     storage-manager-empty \
     storage-manager-empty-ish \

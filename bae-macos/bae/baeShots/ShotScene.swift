@@ -104,6 +104,28 @@ struct ShotScene {
             AnyView(ImportMappingCuePreviewScene(width: 760))
         },
         ShotScene(
+            id: "queue-pane-standard",
+            size: CGSize(width: 420, height: 720)
+        ) {
+            AnyView(
+                QueueViewPreviewScene(
+                    width: 420,
+                    presentation: .populated
+                )
+            )
+        },
+        ShotScene(
+            id: "queue-pane-narrow",
+            size: CGSize(width: 320, height: 720)
+        ) {
+            AnyView(
+                QueueViewPreviewScene(
+                    width: 320,
+                    presentation: .populated
+                )
+            )
+        },
+        ShotScene(
             id: "storage-manager-dense",
             size: CGSize(width: 1_440, height: 900)
         ) {

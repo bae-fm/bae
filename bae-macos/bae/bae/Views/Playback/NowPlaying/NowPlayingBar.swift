@@ -21,8 +21,7 @@ struct NowPlayingBar: View {
     /// Playing-context shuffle state: `true`/`false` when a context is playing,
     /// `nil` when there is none — which disables the shuffle button.
     let shuffled: Bool?
-    @Binding
-    var showQueue: Bool
+    let showQueue: Bool
     let onPlayPause: () -> Void
     let onNext: () -> Void
     let onPrevious: () -> Void
@@ -31,6 +30,7 @@ struct NowPlayingBar: View {
     let onVolumeChange: (Float) -> Void
     let onToggleMute: () -> Void
     let onSetShuffle: (Bool) -> Void
+    let onSetQueuePresented: (Bool) -> Void
     let onCycleRepeat: () -> Void
     let onDropToQueue: ([String]) -> Void
     let onNavigateToAlbum: () -> Void
@@ -268,7 +268,7 @@ extension NowPlayingBar {
     }
 
     fileprivate var queueButton: some View {
-        Button(action: { showQueue.toggle() }) {
+        Button(action: { onSetQueuePresented(!showQueue) }) {
             queueGlyph
                 .frame(width: 32, height: 32)
                 .contentShape(Rectangle())
@@ -386,7 +386,7 @@ extension NowPlayingBar {
                 isMuted: isMuted,
                 repeatMode: repeatMode,
                 shuffled: shuffled,
-                showQueue: $showQueue,
+                showQueue: showQueue,
                 onPlayPause: {},
                 onNext: {},
                 onPrevious: {},
@@ -395,6 +395,7 @@ extension NowPlayingBar {
                 onVolumeChange: { volume = $0 },
                 onToggleMute: { isMuted.toggle() },
                 onSetShuffle: { _ in },
+                onSetQueuePresented: { showQueue = $0 },
                 onCycleRepeat: {},
                 onDropToQueue: { _ in },
                 onNavigateToAlbum: {},

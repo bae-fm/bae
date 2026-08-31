@@ -19,8 +19,6 @@ struct NowPlayingBarContainer: View {
     let onDropToQueue: ([String]) -> Void
 
     var body: some View {
-        @Bindable
-        var uiStore = uiStore
         let np = playbackStore.nowPlaying
         let track = np.track
         let cover: ImageContent? =
@@ -41,7 +39,7 @@ struct NowPlayingBarContainer: View {
             repeatMode: playbackStore.repeatMode,
             // nil while no playing context — the bar disables shuffle then.
             shuffled: playbackStore.queueContext?.shuffled,
-            showQueue: $uiStore.showQueue,
+            showQueue: uiStore.showQueue,
             onPlayPause: { playback.playPause(for: playbackStore.nowPlaying) },
             onNext: { playback.nextTrack() },
             onPrevious: { playback.previousTrack() },
@@ -59,6 +57,7 @@ struct NowPlayingBarContainer: View {
             onVolumeChange: { playback.setVolume($0) },
             onToggleMute: { playback.setMuted(!playbackStore.isMuted) },
             onSetShuffle: { queue.setShuffle($0) },
+            onSetQueuePresented: { uiStore.setQueuePresented($0) },
             onCycleRepeat: {
                 playback.setRepeatMode(
                     bridgeNextRepeatMode(mode: playbackStore.repeatMode)

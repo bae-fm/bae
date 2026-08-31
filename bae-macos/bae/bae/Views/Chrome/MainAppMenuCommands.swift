@@ -334,7 +334,8 @@ struct MainAppMenuCommands: Commands {
             .disabled(target?.playbackStore.nowPlaying.track?.albumId == nil)
 
             Button("Toggle Queue") {
-                requireTarget().uiStore.toggleQueue()
+                let target = requireTarget()
+                target.uiStore.setQueuePresented(!target.uiStore.showQueue)
             }
             .keyboardShortcut("s", modifiers: [.command, .shift])
             .disabled(target == nil)

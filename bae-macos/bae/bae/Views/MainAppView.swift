@@ -66,6 +66,9 @@ struct MainAppView: View {
                     // queue button or the menu; no click-away.
                     if uiStore.showQueue {
                         QueuePanel(
+                            onClose: {
+                                uiStore.setQueuePresented(false)
+                            },
                             onInsertTracks: { ids, index in
                                 queueActions.insertInQueue(ids, at: index)
                             }

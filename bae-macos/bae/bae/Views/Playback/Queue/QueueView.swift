@@ -14,6 +14,10 @@ struct QueueView: View {
     let nowPlayingTitle: String?
     let nowPlayingArtist: String?
     let nowPlayingCover: ImageContent?
+    let isPlaying: Bool
+    let isLoading: Bool
+    let onClose: () -> Void
+    let onPlayPause: () -> Void
     let onClearUpNext: () -> Void
     let onClearPlayingFrom: () -> Void
     let onSkipTo: (String) -> Void
@@ -195,14 +199,17 @@ struct QueueView: View {
     // MARK: - Header
 
     // Each lane clears itself from its own section header; this one names the
-    // pane and nothing else.
+    // pane and closes it.
     private var header: some View {
-        Text("Queue")
-            .font(.system(size: 22, weight: .heavy))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-            .padding(.bottom, 12)
+        HStack(alignment: .top, spacing: 12) {
+            Text("Queue")
+                .font(.system(size: 22, weight: .heavy))
+            Spacer(minLength: 0)
+            PanelCloseButton(onClose: onClose)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
     }
 
     // MARK: - Now Playing
@@ -211,7 +218,7 @@ struct QueueView: View {
     /// a slim progress strip. Tinted with the accent so the playing track reads
     /// as a distinct object above the queue lanes, not another row.
     private var nowPlayingCard: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             nowPlayingArt
                 .frame(width: 56, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
@@ -240,6 +247,20 @@ struct QueueView: View {
             }
 
             Spacer(minLength: 0)
+
+            PlayPauseControl(
+                isPlaying: isPlaying,
+                isLoading: isLoading,
+                glyphFont: .system(size: 12, weight: .semibold),
+                spinnerControlSize: .small,
+                targetSize: 30,
+                onToggle: onPlayPause
+            )
+            .foregroundStyle(.secondary)
+            .background(
+                .white.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: 9)
+            )
         }
         .padding(12)
         .background(
@@ -271,54 +292,77 @@ struct QueueView: View {
 #if DEBUG
     // MARK: - Previews
 
-    /// Renders the pane with the queue state read from a store in the
-    /// environment (the two lanes) and commands sent to `Queue.stub()`; the
-    /// prop callbacks are no-ops, so drags and clicks settle back rather than
-    /// mutating anything.
+    /// The Queue preview and screenshot composition. It renders the production
+    /// pane with queue state from the environment store and no-op commands, so
+    /// preview interactions settle back instead of changing the fixture.
     @MainActor
-    private func queueViewPreview(
-        store: PlaybackStore,
-        isActive: Bool
-    ) -> some View {
-        QueueView(
-            isActive: isActive,
-            nowPlayingTitle: PreviewData.nowPlayingTitle,
-            nowPlayingArtist: PreviewData.nowPlayingArtist,
-            nowPlayingCover: nil,
-            onClearUpNext: {},
-            onClearPlayingFrom: {},
-            onSkipTo: { _ in },
-            onRemove: { _ in },
-            onReorder: { _, _ in },
-            onInsertTracks: { _, _ in },
-            onSetShuffle: { _ in },
-        )
-        .frame(width: 420, height: 720)
-        .background(Theme.surface)
-        .environment(store)
-        .environment(Queue.stub())
-        .environment(ImageStore.stub())
+    struct QueueViewPreviewScene: View {
+        enum Presentation {
+            case populated
+            case empty
+        }
+
+        let width: CGFloat
+        private let store: PlaybackStore
+
+        init(width: CGFloat, presentation: Presentation) {
+            self.width = width
+            switch presentation {
+            case .populated:
+                let store = PreviewData.queueStore(
+                    manualCount: 2,
+                    shuffled: true
+                )
+                store.play(
+                    track: NowPlayingTrack(
+                        trackId: "preview-now-playing",
+                        trackTitle: PreviewData.nowPlayingTitle,
+                        artistNames: PreviewData.nowPlayingArtist,
+                        albumId: "preview-album",
+                        coverImage: nil,
+                        durationMs: 214_000
+                    )
+                )
+                self.store = store
+            case .empty:
+                self.store = PreviewData.queueStore(
+                    manualCount: 0,
+                    context: nil
+                )
+            }
+        }
+
+        var body: some View {
+            QueueView(
+                isActive: store.nowPlaying.isActive,
+                nowPlayingTitle: store.nowPlaying.track?.trackTitle,
+                nowPlayingArtist: store.nowPlaying.track?.artistNames,
+                nowPlayingCover: nil,
+                isPlaying: store.nowPlaying.isPlaying,
+                isLoading: store.nowPlaying.loadingTrackId != nil,
+                onClose: {},
+                onPlayPause: {},
+                onClearUpNext: {},
+                onClearPlayingFrom: {},
+                onSkipTo: { _ in },
+                onRemove: { _ in },
+                onReorder: { _, _ in },
+                onInsertTracks: { _, _ in },
+                onSetShuffle: { _ in }
+            )
+            .frame(width: width, height: 720)
+            .background(Theme.surface)
+            .environment(store)
+            .environment(Queue.stub())
+            .environment(ImageStore.stub())
+        }
     }
 
     #Preview("With items") {
-        let store = PreviewData.queueStore(manualCount: 2, shuffled: true)
-        store.play(
-            track: NowPlayingTrack(
-                trackId: "t-np",
-                trackTitle: PreviewData.nowPlayingTitle,
-                artistNames: PreviewData.nowPlayingArtist,
-                albumId: "a-01",
-                coverImage: nil,
-                durationMs: 214_000,
-            )
-        )
-        return queueViewPreview(store: store, isActive: true)
+        QueueViewPreviewScene(width: 420, presentation: .populated)
     }
 
     #Preview("Empty") {
-        queueViewPreview(
-            store: PreviewData.queueStore(manualCount: 0, context: nil),
-            isActive: false,
-        )
+        QueueViewPreviewScene(width: 420, presentation: .empty)
     }
 #endif

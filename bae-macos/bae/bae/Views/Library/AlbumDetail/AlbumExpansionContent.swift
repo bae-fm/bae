@@ -136,22 +136,8 @@ struct AlbumExpansionContent: View {
         )
         .shadow(color: .black.opacity(0.45), radius: 28, y: 18)
         .overlay(alignment: .topTrailing) {
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) {
-                    onClose()
-                }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 30, height: 30)
-                    .background(
-                        .white.opacity(0.06),
-                        in: RoundedRectangle(cornerRadius: 9)
-                    )
-            }
-            .buttonStyle(.plain)
-            .padding(16)
+            PanelCloseButton(onClose: onClose)
+                .padding(16)
         }
     }
 

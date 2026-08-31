@@ -89,7 +89,7 @@ class UiStore: @unchecked Sendable {
     var activeSection: MainSection = .library
     var libraryBrowserMode: LibraryBrowserMode = .albums
     var selectedAlbumId: String?
-    var showQueue: Bool = false
+    private(set) var showQueue: Bool = false
 
     /// The pending grid-scroll command, or `nil` before any navigation or once
     /// applied. Durable until consumed — see `PendingAlbumReveal`.
@@ -274,8 +274,8 @@ class UiStore: @unchecked Sendable {
         activeSection = section
     }
 
-    func toggleQueue() {
-        showQueue.toggle()
+    func setQueuePresented(_ presented: Bool) {
+        showQueue = presented
     }
 
     // MARK: - Import candidate selection methods

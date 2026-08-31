@@ -9,11 +9,14 @@ import SwiftUI
 /// Toggled by the queue button or the menu; clicks elsewhere in the window
 /// keep working and keep the panel open.
 struct QueuePanel: View {
+    @Environment(Playback.self)
+    private var playback
     @Environment(PlaybackStore.self)
     private var playbackStore
     @Environment(Queue.self)
     private var queue
 
+    let onClose: () -> Void
     let onInsertTracks: ([String], Int) -> Void
 
     var body: some View {
@@ -29,6 +32,12 @@ struct QueuePanel: View {
             nowPlayingTitle: track?.trackTitle,
             nowPlayingArtist: track?.artistNames,
             nowPlayingCover: cover,
+            isPlaying: np.isPlaying,
+            isLoading: np.loadingTrackId != nil,
+            onClose: onClose,
+            onPlayPause: {
+                playback.playPause(for: playbackStore.nowPlaying)
+            },
             onClearUpNext: { queue.clearUpNext() },
             onClearPlayingFrom: { queue.clearPlayingFrom() },
             onSkipTo: { queue.skipToEntry($0) },
@@ -72,9 +81,13 @@ struct QueuePanel: View {
         store: PlaybackStore,
         queue: Queue
     ) -> some View {
-        QueuePanel(onInsertTracks: { ids, index in
-            queue.insertInQueue(ids, UInt32(index))
-        })
+        QueuePanel(
+            onClose: {},
+            onInsertTracks: { ids, index in
+                queue.insertInQueue(ids, UInt32(index))
+            }
+        )
+        .environment(Playback.stub())
         .environment(store)
         .environment(queue)
         .environment(ImageStore.stub())
