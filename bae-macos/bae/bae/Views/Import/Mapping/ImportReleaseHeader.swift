@@ -22,6 +22,58 @@ struct ImportReleaseSourceActions {
     let clearMetadata: () -> Void
 }
 
+/// The import card's album identity retains the summary's hierarchy while
+/// making each value directly editable.
+struct ImportAlbumIdentityEditor: View {
+    let values: BridgeRawReleaseEdit
+    let summary: ImportReleaseSummary
+    let writer: ReleaseFieldWriter
+    let editingCommands: EditingCommitCommands
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            CommittedTextField(
+                placeholder: String(localized: "Album title"),
+                value: values.albumTitle,
+                boxed: false,
+                font: .system(size: 17, weight: .semibold),
+                editingCommands: editingCommands,
+                onCommit: {
+                    await writer.setField(.albumTitle, $0)
+                },
+            )
+            ArtistAssignmentsField(
+                assignments: values.albumArtistAssignments,
+                placeholder: String(localized: "Album artist"),
+                onChange: { assignments in
+                    Task { await writer.setAlbumArtists(assignments) }
+                },
+            )
+            .font(.system(size: 13))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            HStack(spacing: 6) {
+                CommittedTextField(
+                    placeholder: String(localized: "Year"),
+                    value: values.albumYear,
+                    monospaced: true,
+                    boxed: false,
+                    font: .system(size: 11.5),
+                    editingCommands: editingCommands,
+                    onCommit: {
+                        await writer.setField(.albumYear, $0)
+                    },
+                )
+                .foregroundStyle(.tertiary)
+                .frame(width: 64)
+                ImportReleaseContextView(summary: summary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 /// The disclosure that keeps the editable release fields attached to the
 /// metadata text column.
 struct ImportReleaseDetails: View {
@@ -102,18 +154,17 @@ struct ImportReleaseHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 16) {
-                cover
+                coverColumn
                 VStack(alignment: .leading, spacing: 12) {
                     sourceActionControl
                     if let editValues {
-                        ReleaseFieldsForm(
+                        ImportAlbumIdentityEditor(
                             values: editValues,
+                            summary: releaseSummary,
                             writer: editActions,
-                            sections: [.album],
                             editingCommands: editingCommands
                         )
                     }
-                    ImportReleaseContextView(summary: releaseSummary)
                     detailsSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -311,6 +362,16 @@ struct ImportReleaseHeader: View {
             return true
         } isTargeted: {
             coverDropTargeted = $0
+        }
+    }
+
+    private var coverColumn: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            cover
+            if let sourceAudio = releaseSummary.sourceAudio {
+                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+                    .frame(width: Self.coverSize, alignment: .leading)
+            }
         }
     }
 }

@@ -733,6 +733,70 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
 }
 
 extension ImportMetadataCardLayoutTests {
+    func testSourceAudioSummaryHasNoDisclosureControl() async throws {
+        NSApplication.shared.finishLaunching()
+        let sourceAudio = try XCTUnwrap(
+            PreviewData.mappingCandidate.files.sourceAudio
+        )
+        let size = NSSize(width: 240, height: 40)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+                .frame(width: size.width, height: size.height)
+                .importPreviewEnvironment(),
+            size: size
+        )
+        await SnapshotTestSupport.settle(host)
+
+        XCTAssertTrue(focusFrames(in: host).isEmpty)
+
+        window.contentView = nil
+        window.orderOut(nil)
+    }
+
+    func testAlbumIdentityUsesEditableSummaryTypographyWithoutFieldLabels()
+        async throws
+    {
+        NSApplication.shared.finishLaunching()
+        let recorder = MetadataCardActionRecorder()
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            metadataHeader(
+                provenance: nil,
+                draftIsBlank: false,
+                detailsExpanded: false,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 620)
+        )
+        await SnapshotTestSupport.settle(host)
+
+        let textFields = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSTextField }
+        let title = try XCTUnwrap(
+            textFields.first {
+                $0.stringValue == PreviewData.confirmEditValues.albumTitle
+            }
+        )
+        let year = try XCTUnwrap(
+            textFields.first {
+                $0.stringValue == PreviewData.confirmEditValues.albumYear
+            }
+        )
+        let staticLabels = Set(
+            textFields.filter { !$0.isEditable }.map(\.stringValue)
+        )
+
+        XCTAssertGreaterThan(
+            try XCTUnwrap(title.font).pointSize,
+            try XCTUnwrap(year.font).pointSize
+        )
+        XCTAssertTrue(
+            staticLabels.isDisjoint(with: ["Album", "Title", "Artist", "Year"])
+        )
+
+        window.contentView = nil
+        window.orderOut(nil)
+    }
+
     func testAlbumIdentityFieldsStayVisibleWhenPressingDetailsAreCollapsed()
         async throws
     {

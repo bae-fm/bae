@@ -167,27 +167,23 @@ struct ImportReleaseSummaryView: View {
 }
 
 /// The non-editable context that remains beside the album fields: how many
-/// tracks the draft maps, which metadata source supplied it, and the source
-/// audio observed by the scan. Pressing values live under Details instead.
+/// tracks the draft maps and which metadata source supplied it. Pressing values
+/// live under Details; source audio sits below the cover.
 struct ImportReleaseContextView: View {
     let summary: ImportReleaseSummary
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if summary.contextLine != nil || summary.provenance != nil {
-                HStack(spacing: 6) {
-                    if let contextLine = summary.contextLine {
-                        Text(contextLine)
-                            .font(.system(size: 11.5))
-                            .foregroundStyle(.tertiary)
-                    }
-                    if let provenance = summary.provenance {
-                        ImportMetadataProvenanceChip(provenance: provenance)
-                    }
+        if summary.contextLine != nil || summary.provenance != nil {
+            HStack(spacing: 6) {
+                if let contextLine = summary.contextLine {
+                    Text(contextLine)
+                        .font(.system(size: 11.5))
+                        .foregroundStyle(.tertiary)
                 }
-            }
-            if let sourceAudio = summary.sourceAudio {
-                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+                if let provenance = summary.provenance {
+                    ImportMetadataProvenanceChip(provenance: provenance)
+                }
             }
         }
     }
@@ -295,66 +291,17 @@ extension ImportReleaseSummaryView.Style {
     }
 }
 
-/// The candidate's aggregate source-audio line and its physical files. The
-/// summary stays compact until the user asks which files produced it.
-private struct ImportSourceAudioSummaryView: View {
+/// The candidate's aggregate source-audio facts as one non-interactive line.
+struct ImportSourceAudioSummaryView: View {
     let sourceAudio: BridgeCandidateSourceAudio
 
-    @State
-    private var expanded = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Button {
-                expanded = !expanded
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text(sourceAudio.summary.text)
-                        .lineLimit(1)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
+        Text(sourceAudio.summary.text)
             .font(.system(size: 11.5))
             .foregroundStyle(.tertiary)
+            .lineLimit(1)
+            .truncationMode(.tail)
             .accessibilityLabel(coreString("core.audio.label"))
             .accessibilityValue(sourceAudio.summary.text)
-
-            if expanded {
-                VStack(alignment: .leading, spacing: 3) {
-                    ForEach(sourceAudio.files, id: \.name) { file in
-                        HStack(spacing: 6) {
-                            Text(file.name)
-                                .font(.system(size: 11, design: .monospaced))
-                                .lineLimit(1)
-                                .truncationMode(.middle)
-                                .layoutPriority(1)
-                            Text(
-                                Int64(file.size)
-                                    .formatted(.byteCount(style: .file))
-                            )
-                            .fixedSize()
-                            Text(sourceFormat(file).text)
-                                .lineLimit(1)
-                        }
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.tertiary)
-                        .padding(.leading, 14)
-                    }
-                }
-            }
-        }
-    }
-
-    private func sourceFormat(_ file: BridgeFileInfo) -> BridgeAudioFormat {
-        guard let format = file.audioFormat else {
-            preconditionFailure(
-                "candidate source audio file has no probe facts"
-            )
-        }
-        return format
     }
 }

@@ -52,6 +52,7 @@ struct CommittedTextField: View {
     let value: String
     var monospaced: Bool = false
     var boxed: Bool = true
+    var font: Font = .system(size: 13)
     /// Present on surfaces that can replace the stored value while this field
     /// is focused. Other editors commit through focus, Return, and pause only.
     var editingCommands: EditingCommitCommands?
@@ -122,7 +123,7 @@ struct CommittedTextField: View {
     private var field: some View {
         let base = TextField(placeholder, text: $draft)
             .textFieldStyle(.plain)
-            .font(.system(size: 13))
+            .font(font)
             .focused($focused)
             .onSubmit { startCommit(draft) }
         if monospaced {
