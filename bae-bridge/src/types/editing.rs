@@ -340,7 +340,8 @@ pub struct BridgeMappingEntry {
     /// The number the sheet prints for this entry.
     pub number: u32,
     pub title: Option<String>,
-    /// How long the sheet says this entry runs, in milliseconds.
+    /// This slice's stored source duration: the next sheet boundary, or the
+    /// scanned container duration closing the final entry, in milliseconds.
     pub duration_ms: Option<u64>,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,

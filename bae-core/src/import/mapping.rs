@@ -159,7 +159,8 @@ pub struct MappingEntry {
     /// The number the sheet prints for this entry.
     pub number: u32,
     pub title: Option<String>,
-    /// How long the sheet says this entry runs.
+    /// This slice's stored source duration: the next sheet boundary, or the
+    /// scanned container duration closing the final entry.
     pub duration_ms: Option<u64>,
     /// The container this entry's samples come from — what auditioning plays.
     pub container_id: String,
@@ -461,7 +462,7 @@ impl RowBuilder<'_> {
                         index: index as u32,
                         number: track.number,
                         title: track.title.clone(),
-                        duration_ms: track.track_duration_ms(),
+                        duration_ms,
                         container_id: sheet.audio.relative_path.clone(),
                         container_name: sheet.audio.file_name.clone(),
                         container_path: sheet.audio.path.clone(),

@@ -261,8 +261,9 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
             Some(&*format!("Sheet Track {}", index + 1))
         );
         assert_eq!(source.container_id, "CDImage.flac");
-        // Every entry but the last has a next-entry boundary in the sheet.
-        assert_eq!(source.duration_ms.is_some(), index < 2);
+        // The first entries end at the next sheet boundary; the final entry
+        // ends at the container duration already stored by the scan.
+        assert_eq!(source.duration_ms, Some(if index < 2 { 200 } else { 600 }));
 
         let MappingBecomes::Track { track, .. } = &entry.becomes else {
             panic!("expected a track, got {:?}", entry.becomes);
