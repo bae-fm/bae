@@ -284,10 +284,9 @@ impl ImportServiceHandle {
             None
         };
 
-        let seed_for_pane = metadata_provenance.clone();
         let files = candidate.files.clone();
         let audio_durations = crate::import::track_slots::audio_durations(&files, &durations)?;
-        let release = match &seed_for_pane {
+        let release = match &metadata_provenance {
             Some(crate::import::MetadataProvenance::ExternalRelease {
                 source, release_id, ..
             }) => Some(
@@ -301,14 +300,13 @@ impl ImportServiceHandle {
             Some(crate::import::MetadataProvenance::FileTags) | None => None,
         };
         let pane = tokio::task::spawn_blocking(move || {
-            Ok::<_, crate::import::ImportError>(crate::import::pane::draft_pane(
+            crate::import::pane::draft_pane(
                 release,
                 &files,
                 &durations,
                 rows.metadata_draft,
                 &rows.track_mappings,
-                seed_for_pane.as_ref(),
-            ))
+            )
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {

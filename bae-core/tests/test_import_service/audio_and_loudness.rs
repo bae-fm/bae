@@ -93,6 +93,7 @@ async fn import_progress_names_every_operation_before_loudness() {
             track_number: 1,
         }],
     );
+    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
 
     let import_id = f.ids.new_id();
     f.handle
@@ -123,7 +124,7 @@ async fn import_progress_names_every_operation_before_loudness() {
         else {
             continue;
         };
-        if candidate_key != "test" {
+        if candidate_key != expected_candidate_key {
             continue;
         }
         let step = match progress {
@@ -305,6 +306,7 @@ async fn loudness_pass_emits_within_track_progress() {
             "03 Track Three.flac",
         ],
     );
+    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -337,7 +339,7 @@ async fn loudness_pass_emits_within_track_progress() {
             progress: ImportProgress::Progress { percent, phase, .. },
         } = event
         {
-            if candidate_key == "test" && phase == ImportPhase::MeasuringLoudness {
+            if candidate_key == expected_candidate_key && phase == ImportPhase::MeasuringLoudness {
                 percents.push(percent);
             }
         }
@@ -602,6 +604,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
             "03 Track Three.flac",
         ],
     );
+    let expected_candidate_key = album_dir.to_string_lossy().into_owned();
 
     let import_id = uuid::Uuid::new_v4().to_string();
     f.handle
@@ -639,7 +642,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
         else {
             continue;
         };
-        if candidate_key == "test" {
+        if candidate_key == expected_candidate_key {
             percents.push(percent);
         }
     }

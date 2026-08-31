@@ -454,8 +454,8 @@ fn pane_of(
         durations,
         rows.metadata_draft.clone(),
         &rows.track_mappings,
-        picked,
-    );
+    )
+    .map_err(|error| DbError::Message(error.to_string()))?;
     Ok(PaneValue {
         release: pick.release,
         edit: pick.edit,

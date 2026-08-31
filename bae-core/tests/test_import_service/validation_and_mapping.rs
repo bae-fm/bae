@@ -158,7 +158,7 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
         }],
         relations: vec![],
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
+            front: true,
             darkened: false,
         },
     };
@@ -168,6 +168,7 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
     );
+    support::cover_art_archive().serve_front(mb_release_id, support::cover_png());
     mb_release_id.to_string()
 }
 
@@ -208,11 +209,6 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
     )
     .await;
 
-    let choice = MetadataProvenance::ExternalRelease {
-        source: MetadataSource::MusicBrainz,
-                release_id: mb_id.clone(),
-    };
-
     // The confirmation pane's form, unedited: what the commit reads back off
     // the pick when the user touches nothing.
     f.handle
@@ -225,27 +221,9 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
         )
         .await
         .unwrap();
-    let pane = f
+    let import_id = f
         .handle
-        .candidate_pane(&candidate_key)
-        .await
-        .unwrap()
-        .expect("the picked candidate reads back");
-    let user_edit = edit_from_pane(&pane);
-
-    let import_id = f.ids.new_id();
-    f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key: candidate_key.clone(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(choice),
-            user_edit: Some(user_edit),
-        })
+        .start_import(&candidate_key, StorageMode::Local, false)
         .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
@@ -307,7 +285,7 @@ fn seed_mb_release_with_track_count(
         }],
         relations: vec![],
         cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
-            front: false,
+            front: true,
             darkened: false,
         },
     };
@@ -317,6 +295,7 @@ fn seed_mb_release_with_track_count(
         mb_group_id,
         serde_json::json!({ "id": mb_group_id }).to_string(),
     );
+    support::cover_art_archive().serve_front(mb_release_id, support::cover_png());
     mb_release_id.to_string()
 }
 
@@ -366,16 +345,6 @@ async fn pick_release_for_folder(
         .unwrap()
         .expect("the picked candidate reads back");
     (candidate_key, pane)
-}
-
-/// The edit the commit builds when the user changes nothing: the album fields
-/// the pane's form holds, the tracks from the table's own rows in the order
-/// core lays them out, bindings and all.
-fn edit_from_pane(pane: &bae_core::import::ImportCandidateDetail) -> ReleaseUserEdit {
-    let mut raw = pane.metadata_draft.clone();
-    raw.tracks = bae_core::import::mapping_tracks(&pane.mapping);
-    raw.shape()
-        .expect("the table's rows shape into a savable edit")
 }
 
 /// The tracks the mapping commits, and what the source said about each — the
@@ -431,22 +400,9 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
     );
     assert_eq!(rows[12].1, None);
 
-    let import_id = f.ids.new_id();
-    f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key,
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: mb_id,
-            }),
-            user_edit: Some(edit_from_pane(&pane)),
-        })
+    let import_id = f
+        .handle
+        .start_import(&candidate_key, StorageMode::Local, false)
         .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
@@ -493,22 +449,9 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
     assert_eq!(rows[13].1.as_deref(), Some("14"));
     assert_eq!(rows[13].0.file, None);
 
-    let import_id = f.ids.new_id();
-    f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key,
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: mb_id,
-            }),
-            user_edit: Some(edit_from_pane(&pane)),
-        })
+    let import_id = f
+        .handle
+        .start_import(&candidate_key, StorageMode::Local, false)
         .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
@@ -541,30 +484,25 @@ async fn a_corrected_pairing_survives_the_commit() {
     let (candidate_key, pane) =
         pick_release_for_folder(&f, &collection, &album_dir, &mb_id).await;
 
-    let mut edit = edit_from_pane(&pane);
-    assert_eq!(edit.tracks.len(), 3);
+    let mut tracks = bae_core::import::mapping_tracks(&pane.mapping);
+    assert_eq!(tracks.len(), 3);
     // Re-pairing moves the bindings, not the tracks: the first two source
     // tracks keep their titles and numbers and swap the audio behind them.
-    let first = edit.tracks[0].file.clone();
-    edit.tracks[0].file = edit.tracks[1].file.clone();
-    edit.tracks[1].file = first;
+    let first = tracks[0].file.clone();
+    tracks[0].file = tracks[1].file.clone();
+    tracks[1].file = first;
 
-    let import_id = f.ids.new_id();
     f.handle
-        .send_command(ImportCommand {
-            import_id: import_id.clone(),
-            candidate_key,
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
-            selected_cover: None,
-            storage_mode: StorageMode::Local,
-            pin: false,
-            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
-                source: MetadataSource::MusicBrainz,
-                release_id: mb_id,
-            }),
-            user_edit: Some(edit),
-        })
+        .set_candidate_track_edit(&candidate_key, tracks[0].clone())
+        .await
+        .unwrap();
+    f.handle
+        .set_candidate_track_edit(&candidate_key, tracks[1].clone())
+        .await
+        .unwrap();
+    let import_id = f
+        .handle
+        .start_import(&candidate_key, StorageMode::Local, false)
         .await
         .unwrap();
     let mut rx = f.handle.subscribe_import(import_id);
