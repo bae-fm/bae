@@ -19,4 +19,10 @@ for fragment in "${required_fragments[@]}"; do
     fi
 done
 
+if grep -F -A1 -- '-p bae-bridge --lib' "$BUILD_SCRIPT" \
+    | grep -Fq -- '-p bae-uniffi-bindgen'; then
+    echo "macOS bridge --lib selection also captures the binary-only generator package" >&2
+    exit 1
+fi
+
 echo "macOS bridge build reuses Cargo's native host cache"

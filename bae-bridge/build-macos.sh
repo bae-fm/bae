@@ -75,14 +75,12 @@ fi
 
 echo "Building for macOS (arm64, $CARGO_PROFILE, features: $BAE_BRIDGE_FEATURES)..."
 if [[ "$RUST_HOST" == "$MACOS_TARGET" ]]; then
-    cargo build $CARGO_FLAGS \
-        -p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES" \
-        -p bae-uniffi-bindgen
+    cargo build $CARGO_FLAGS -p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES"
 else
     cargo build $CARGO_FLAGS --target "$MACOS_TARGET" -p bae-bridge \
         --lib --features "$BAE_BRIDGE_FEATURES"
-    cargo build $CARGO_FLAGS -p bae-uniffi-bindgen
 fi
+cargo build $CARGO_FLAGS -p bae-uniffi-bindgen
 
 # Write the Swift compilation conditions derived from the feature set. The
 # Xcode project includes this file (via Signing.xcconfig) so the #if guards in
