@@ -7,11 +7,11 @@ fn same_size_same_mtime_corrupt_replacement_is_not_served_from_probe_cache() {
     let path = result.root.join("Album/01.flac");
     let original_metadata = std::fs::metadata(&path).unwrap();
     std::fs::write(&path, vec![0; original_metadata.len() as usize]).unwrap();
-    std::fs::File::open(&path)
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&path)
         .unwrap()
-        .set_times(
-            std::fs::FileTimes::new().set_modified(original_metadata.modified().unwrap()),
-        )
+        .set_times(std::fs::FileTimes::new().set_modified(original_metadata.modified().unwrap()))
         .unwrap();
 
     let items = scan_items(result.root);
@@ -244,7 +244,11 @@ fn loose_junk_at_scan_root_ignored() {
 fn flat_flac_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Flac));
     let c = result.candidate("Album");
-    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::File, "FLAC");
+    assert_uniform_source_audio(
+        &c.files,
+        crate::album_detail::SourceAudioLayout::File,
+        "FLAC",
+    );
     assert_eq!(c.files.audio().count(), 3);
     assert!(c.files.track_sheets().next().is_none());
 }
@@ -267,7 +271,11 @@ fn cue_flac_pair_binds_and_reports_source_audio() {
         },
     ]);
     let c = result.candidate("Album");
-    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
+    assert_uniform_source_audio(
+        &c.files,
+        crate::album_detail::SourceAudioLayout::Cue,
+        "FLAC",
+    );
     assert_eq!(c.files.bound_sheets().len(), 1);
 }
 
@@ -280,7 +288,11 @@ fn cue_flac_pair_binds_and_reports_source_audio() {
 fn mp3_release_surfaces_as_mp3_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::Mp3));
     let c = result.candidate("Album");
-    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::File, "MP3");
+    assert_uniform_source_audio(
+        &c.files,
+        crate::album_detail::SourceAudioLayout::File,
+        "MP3",
+    );
 }
 
 /// M4A tracks surface as physical files with their probed codec.
@@ -288,7 +300,11 @@ fn mp3_release_surfaces_as_mp3_trackfiles() {
 fn m4a_release_surfaces_as_trackfiles() {
     let result = run_scenario(flat_audio("Album", 3, FileKind::M4a));
     let c = result.candidate("Album");
-    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::File, "ALAC");
+    assert_uniform_source_audio(
+        &c.files,
+        crate::album_detail::SourceAudioLayout::File,
+        "ALAC",
+    );
     assert_eq!(c.files.audio().count(), 3);
 }
 
@@ -313,7 +329,11 @@ fn multi_file_cue_surfaces_as_cue_backed_release() {
     let candidates = scan_valid(tmp.path().to_path_buf());
     assert_eq!(candidates.len(), 1);
     let c = &candidates[0];
-    assert_uniform_source_audio(&c.files, crate::album_detail::SourceAudioLayout::Cue, "ALAC");
+    assert_uniform_source_audio(
+        &c.files,
+        crate::album_detail::SourceAudioLayout::Cue,
+        "ALAC",
+    );
     assert_eq!(c.files.bound_sheets().len(), 1);
     assert_eq!(
         c.files
@@ -528,10 +548,18 @@ fn sibling_folders_keep_their_own_audio_layouts() {
     let top = result.top_level_paths();
     assert_eq!(top.len(), 2);
     let track_files = &result.candidate("Collection/Track Files").files;
-    assert_uniform_source_audio(track_files, crate::album_detail::SourceAudioLayout::File, "FLAC");
+    assert_uniform_source_audio(
+        track_files,
+        crate::album_detail::SourceAudioLayout::File,
+        "FLAC",
+    );
     assert!(track_files.bound_sheets().is_empty());
     let cue_image = &result.candidate("Collection/Cue Image").files;
-    assert_uniform_source_audio(cue_image, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
+    assert_uniform_source_audio(
+        cue_image,
+        crate::album_detail::SourceAudioLayout::Cue,
+        "FLAC",
+    );
     assert_eq!(cue_image.bound_sheets().len(), 1);
 }
 

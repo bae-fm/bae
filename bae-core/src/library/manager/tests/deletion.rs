@@ -34,13 +34,14 @@ fn create_test_release(album_id: &str) -> DbRelease {
 }
 
 async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
-    let root = "/music";
-    let path = "/music/candidate";
+    let root = crate::import::folder_registry::host_root("/music");
+    let path = std::path::Path::new(&root).join("candidate");
+    let path = path.to_string_lossy().into_owned();
     let files = crate::import::folder_scanner::CategorizedFiles {
         files: vec![crate::import::folder_scanner::CandidateFile {
             proposed_audio: true,
             file: crate::import::folder_scanner::ScannedFile::new(
-                std::path::PathBuf::from("/music/candidate/01.flac"),
+                std::path::Path::new(&path).join("01.flac"),
                 "01.flac".to_string(),
                 1_000,
                 1,
@@ -51,11 +52,11 @@ async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
     };
     let content_hash = files.content_hash();
     let candidate = crate::import::folder_scanner::FolderCandidate {
-        path: std::path::PathBuf::from(path),
-        file_root: std::path::PathBuf::from(path),
+        path: std::path::PathBuf::from(&path),
+        file_root: std::path::PathBuf::from(&path),
         name: "Candidate".to_string(),
         files,
-        watched_folder_path: root.to_string(),
+        watched_folder_path: root.clone(),
         scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
         file_edit_revision: 0,
         display_path: "Candidate".to_string(),
@@ -64,14 +65,14 @@ async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
     };
     manager
         .database
-        .add_watched_import_folder(root)
+        .add_watched_import_folder(&root)
         .await
         .unwrap();
-    let generation = manager.database.begin_folder_scan(root).await.unwrap();
+    let generation = manager.database.begin_folder_scan(&root).await.unwrap();
     manager
         .database
         .save_folder_scan_item(
-            root,
+            &root,
             generation,
             &crate::import::folder_scanner::ScanItem::Valid(candidate),
         )
@@ -199,7 +200,7 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         .database
         .save_import_candidate_failure(
             &candidate_hash,
-            "/music/candidate",
+            &crate::import::folder_registry::host_root("/music/candidate"),
             0,
             &crate::import::ImportFailure::error_only("not imported", manager.clock.now()),
         )
@@ -209,7 +210,9 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         .database
         .replace_import_candidate_album_artists(
             &candidate_hash,
-            &[crate::import::ArtistAssignment::existing(artist.clone().into())],
+            &[crate::import::ArtistAssignment::existing(
+                artist.clone().into(),
+            )],
         )
         .await
         .unwrap();
@@ -928,7 +931,6 @@ async fn delete_album_removes_release_covers() {
         .await
     );
 }
-
 
 #[tokio::test]
 async fn test_delete_album_deletes_all_releases() {

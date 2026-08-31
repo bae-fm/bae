@@ -2,8 +2,8 @@
 // signals, the failure an import left, the cover, and the metadata and track
 // rows the user typed.
 
-use crate::import::probe::{SourceDurations, SourceDuration};
 use crate::import::folder_scanner::{CandidateFileEdits, FileRoleChoice};
+use crate::import::probe::{SourceDuration, SourceDurations};
 use crate::import::{
     ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CoverSelection,
     ExistingArtist, ImportFailure, NewArtistSeed, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
@@ -18,6 +18,13 @@ mod artist_identity_conflicts;
 
 fn pane_candidate() -> CategorizedFiles {
     track_files_candidate(&[("01 Track.flac", 111), ("CDImage.flac", 222)])
+}
+
+fn pane_candidate_path() -> String {
+    PathBuf::from(host_root("/music"))
+        .join("Album")
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn file_unit(file_id: &str, duration_ms: Option<u64>) -> SourceDuration {
@@ -56,7 +63,7 @@ fn signals_with(durations: SourceDurations) -> Signals {
 async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
     db.save_import_candidate_verdict(&NewImportCandidateVerdict {
         content_hash: hash.to_string(),
-        folder_path: "/music/Album".to_string(),
+        folder_path: pane_candidate_path(),
         verdict: sample_verdict(),
         signals,
         expected_edit_revision: 0,
@@ -115,9 +122,9 @@ async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, String) {
     db.add_watched_import_folder(&root).await.unwrap();
     let generation = db.begin_folder_scan(&root).await.unwrap();
     db.save_folder_scan_item(&root, generation, &item)
-    .await
-    .unwrap()
-    .expect("the current scan accepts the candidate");
+        .await
+        .unwrap()
+        .expect("the current scan accepts the candidate");
     (files, hash)
 }
 
@@ -193,7 +200,11 @@ async fn a_file_with_no_length_makes_the_total_unknown() {
 
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
 
-    let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    let state = db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(
         state.identify.unwrap().probed_total_duration_ms,
         0,
@@ -346,7 +357,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let error = db
             .save_import_candidate_verdict(&NewImportCandidateVerdict {
                 content_hash: hash.clone(),
-                folder_path: "/music/Album".to_string(),
+                folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,
                 expected_edit_revision: 0,
@@ -382,12 +393,12 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
 
     db.save_import_candidate_failure(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         0,
         &ImportFailure::error_only("the folder vanished", fixed_identified_at()),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     let failure = db
         .load_import_candidate_pane_rows(&hash)
@@ -406,12 +417,12 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
 
     db.save_import_candidate_failure(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         0,
         &ImportFailure::error_only("the disc would not read", fixed_identified_at()),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
             .await
@@ -438,14 +449,14 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     let (_, hash) = stored_pane_candidate(&db).await;
     db.save_import_candidate_failure(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         0,
         &ImportFailure::error_only("the prior attempt failed", fixed_identified_at()),
     )
     .await
     .unwrap();
 
-    let key = format!("{}/Album", host_root("/music"));
+    let key = pane_candidate_path();
     let detail = db
         .load_import_candidate(&key)
         .await
@@ -479,7 +490,10 @@ async fn a_cover_choice_round_trips_in_both_shapes() {
         db.save_import_candidate_cover(&hash, &cover).await.unwrap();
 
         assert_eq!(
-            db.load_import_candidate_pane_rows(&hash).await.unwrap().cover,
+            db.load_import_candidate_pane_rows(&hash)
+                .await
+                .unwrap()
+                .cover,
             Some(cover)
         );
     }
@@ -499,9 +513,12 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
         db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
             .await
             .expect_err("a field with nothing picked"),
-        db.save_import_candidate_track_edit(&hash, &edited_row("import-track-0", "Track Title", None))
-            .await
-            .expect_err("a row with nothing picked"),
+        db.save_import_candidate_track_edit(
+            &hash,
+            &edited_row("import-track-0", "Track Title", None),
+        )
+        .await
+        .expect_err("a row with nothing picked"),
     ] {
         assert!(
             error.to_string().contains("no candidate state row"),
@@ -516,9 +533,14 @@ async fn draft_field_writes_change_only_the_named_fields() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let seed = metadata_draft("Seeded Title", "Artist Name");
-    db.replace_candidate_metadata(&hash, "/music/Album", &seed, Some(&release_pick("rel-1")))
-        .await
-        .unwrap();
+    db.replace_candidate_metadata(
+        &hash,
+        &pane_candidate_path(),
+        &seed,
+        Some(&release_pick("rel-1")),
+    )
+    .await
+    .unwrap();
 
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
         .await
@@ -534,7 +556,10 @@ async fn draft_field_writes_change_only_the_named_fields() {
         .metadata_draft;
     assert_eq!(stored.album_title, "Album Title");
     assert_eq!(stored.pressing.year, "1991");
-    assert_eq!(stored.album_artist_assignments, seed.album_artist_assignments);
+    assert_eq!(
+        stored.album_artist_assignments,
+        seed.album_artist_assignments
+    );
     assert_eq!(stored.tracks, seed.tracks);
 }
 
@@ -617,12 +642,12 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
     let (_, hash) = stored_pane_candidate(&db).await;
     db.replace_candidate_metadata(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         &metadata_draft("Album", "Artist"),
         Some(&release_pick("rel-1")),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     let edit = edited_row(
         "candidate-track-0",
         "Edited title",
@@ -632,12 +657,11 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
             index: 4,
         }),
     );
-    db.save_import_candidate_track_edit(&hash, &edit).await.unwrap();
-
-    let stored = db
-        .load_import_candidate_pane_rows(&hash)
+    db.save_import_candidate_track_edit(&hash, &edit)
         .await
         .unwrap();
+
+    let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(stored.metadata_draft.tracks[0].title, "Edited title");
     assert_eq!(stored.track_mappings.len(), 1);
     assert_eq!(stored.track_mappings[0].file, edit.file().cloned());
@@ -659,44 +683,56 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
     db.replace_candidate_metadata(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         &metadata_draft("Album", "Artist"),
         Some(&release_pick("rel-1")),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
         .await
         .unwrap();
     db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
         .await
         .unwrap();
-    db.save_import_candidate_track_edit(&hash, &edited_row("candidate-track-0", "Track Title", None))
-        .await
-        .unwrap();
+    db.save_import_candidate_track_edit(
+        &hash,
+        &edited_row("candidate-track-0", "Track Title", None),
+    )
+    .await
+    .unwrap();
     let mut edits = CandidateFileEdits::default();
-    edits.file_roles.set(
-        "CDImage.flac".to_string(),
-        FileRoleChoice::NotATrack,
-    );
+    edits
+        .file_roles
+        .set("CDImage.flac".to_string(), FileRoleChoice::NotATrack);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     db.save_import_candidate_file_edits(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         0,
         &edits,
-        &[("/music/Album".to_string(), settled)],
+        &[(pane_candidate_path(), settled)],
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
-    let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    let state = db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .unwrap();
     assert!(state.signals.is_none(), "the disc ID is recomputed");
 
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert!(pane.track_mappings.is_empty(), "the table's physical rows are a new set");
-    assert_eq!(pane.metadata_draft.pressing.year, "1991", "the draft survives");
+    assert!(
+        pane.track_mappings.is_empty(),
+        "the table's physical rows are a new set"
+    );
+    assert_eq!(
+        pane.metadata_draft.pressing.year, "1991",
+        "the draft survives"
+    );
     assert_eq!(
         pane.cover,
         Some(CoverSelection::Local("cover.jpg".to_string())),
@@ -713,28 +749,27 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let old_draft = metadata_draft("Old album", "Replacement Artist");
     db.replace_candidate_metadata(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         &old_draft,
         Some(&release_pick("rel-1")),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     let mut file_edits = CandidateFileEdits::default();
-    file_edits.file_roles.set(
-        "CDImage.flac".to_string(),
-        FileRoleChoice::NotATrack,
-    );
+    file_edits
+        .file_roles
+        .set("CDImage.flac".to_string(), FileRoleChoice::NotATrack);
     let mut settled = files;
     settled.apply_candidate_file_edits(&file_edits).unwrap();
     db.save_import_candidate_file_edits(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         0,
         &file_edits,
-        &[("/music/Album".to_string(), settled)],
+        &[(pane_candidate_path(), settled)],
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
         .await
         .unwrap();
@@ -750,19 +785,23 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .unwrap();
 
     let new_draft = metadata_draft("New album", "New Artist");
-    let applied_revision = db.replace_candidate_metadata(
-        &hash,
-        "/music/Album",
-        &new_draft,
-        Some(&release_pick("rel-2")),
-    )
+    let applied_revision = db
+        .replace_candidate_metadata(
+            &hash,
+            &pane_candidate_path(),
+            &new_draft,
+            Some(&release_pick("rel-2")),
+        )
         .await
         .unwrap();
     let applied = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(applied.metadata_draft, new_draft);
     assert_eq!(applied.track_mappings[0].file, mapping.file().cloned());
     assert_eq!(applied_revision, 4);
-    assert_eq!(applied.cover, None, "applying a source clears a local cover");
+    assert_eq!(
+        applied.cover, None,
+        "applying a source clears a local cover"
+    );
     assert_eq!(
         db.load_import_candidate_state(&hash)
             .await
@@ -783,7 +822,8 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     .await
     .unwrap();
     let blank = crate::import::pane::blank_candidate_draft(&pane_candidate());
-    let cleared_revision = db.replace_candidate_metadata(&hash, "/music/Album", &blank, None)
+    let cleared_revision = db
+        .replace_candidate_metadata(&hash, &pane_candidate_path(), &blank, None)
         .await
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
@@ -801,7 +841,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     assert_eq!(
         db.replace_candidate_metadata(
             &hash,
-            "/music/Album",
+            &pane_candidate_path(),
             &metadata_draft("Album", "Artist"),
             Some(&release_pick("rel-1")),
         )
@@ -822,12 +862,9 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
         3
     );
     assert_eq!(
-        db.replace_import_candidate_album_artists(
-            &hash,
-            &[new_artist("Different Artist")],
-        )
-        .await
-        .unwrap(),
+        db.replace_import_candidate_album_artists(&hash, &[new_artist("Different Artist")],)
+            .await
+            .unwrap(),
         4
     );
     assert_eq!(
@@ -849,20 +886,20 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
     let (_, hash) = stored_pane_candidate(&db).await;
     db.replace_candidate_metadata(
         &hash,
-        "/music/Album",
+        &pane_candidate_path(),
         &metadata_draft("Album", "Artist"),
         Some(&release_pick("rel-chosen")),
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
     db.save_import_candidate_edit_field(&hash, CandidateEditField::Year, "1991")
         .await
         .unwrap();
 
-    assert!(
-        db.save_import_candidate_verdict(&NewImportCandidateVerdict {
+    assert!(db
+        .save_import_candidate_verdict(&NewImportCandidateVerdict {
             content_hash: hash.clone(),
-            folder_path: "/music/Album".to_string(),
+            folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
             expected_edit_revision: 0,
@@ -874,10 +911,13 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             },
         })
         .await
-        .unwrap()
-    );
+        .unwrap());
 
-    let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    let state = db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(state.metadata_provenance, Some(release_pick("rel-chosen")));
     assert_eq!(
         db.load_import_candidate_pane_rows(&hash)
@@ -901,7 +941,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
     assert!(db
         .save_import_candidate_verdict(&NewImportCandidateVerdict {
             content_hash: hash.clone(),
-            folder_path: "/music/Album".to_string(),
+            folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
             expected_edit_revision: 0,
@@ -914,18 +954,14 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         })
         .await
         .unwrap());
-    db.save_import_candidate_edit_field(
-        &hash,
-        CandidateEditField::AlbumTitle,
-        "Person's title",
-    )
-    .await
-    .unwrap();
+    db.save_import_candidate_edit_field(&hash, CandidateEditField::AlbumTitle, "Person's title")
+        .await
+        .unwrap();
 
     assert!(!db
         .save_import_candidate_verdict(&NewImportCandidateVerdict {
             content_hash: hash.clone(),
-            folder_path: "/music/Album".to_string(),
+            folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
             signals: signals_with(SourceDurations::default()),
             expected_edit_revision: 0,
@@ -939,7 +975,11 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         .await
         .unwrap());
 
-    let state = db.load_import_candidate_state(&hash).await.unwrap().unwrap();
+    let state = db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(state.metadata_revision, 2);
     assert_eq!(state.metadata_provenance, Some(first_pick));
     assert_eq!(
