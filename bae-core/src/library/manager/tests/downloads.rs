@@ -13,7 +13,6 @@ async fn insert_pinnable_release(manager: &LibraryManager) -> String {
         content_type: crate::util::content_type::ContentType::Flac,
         source_audio: None,
         cloud_path: None,
-        content_hash: crate::util::fs::hash_bytes(b"fixture"),
         created_at: Utc::now(),
     };
     manager.database.insert_file(&file).await.unwrap();

@@ -285,7 +285,8 @@ async fn insert_local_release_in_album(
     std::fs::create_dir_all(dir).unwrap();
     let created_at = Utc::now();
     for (index, (name, bytes)) in files.iter().enumerate() {
-        std::fs::write(dir.join(name), bytes).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, bytes).unwrap();
         let file = DbFile::new(
             &release.id,
             name,
@@ -293,15 +294,12 @@ async fn insert_local_release_in_album(
             crate::util::content_type::ContentType::Flac,
             bae_test_support::test_uuid(&format!("{}-test-file-{index}", release.id)),
             created_at,
-            crate::util::fs::hash_bytes(bytes),
         );
-        manager.add_file(&file).await.unwrap();
+        manager
+            .add_external_file_for_test(&file, &path)
+            .await
+            .unwrap();
     }
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &dir.to_string_lossy())
-        .await
-        .unwrap();
     release
 }
 
@@ -315,15 +313,6 @@ async fn insert_local_release_without_local_files(
     let mut release = create_test_release(album_id);
     release.remote = false;
     manager.database.insert_release(&release).await.unwrap();
-    manager
-        .database
-        .register_release_external_refs_for_test(
-            &release.id,
-            &format!("/nonexistent/origin-device/{}", Uuid::new_v4()),
-        )
-        .await
-        .unwrap();
-
     let file = DbFile::new(
         &release.id,
         "track1.flac",
@@ -331,9 +320,6 @@ async fn insert_local_release_without_local_files(
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        // No real file backs this fixture (the whole point is "no local copy
-        // resolves"), so there is no plaintext to hash.
-        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
     release

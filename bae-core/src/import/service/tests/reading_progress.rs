@@ -1,5 +1,5 @@
 #[tokio::test]
-async fn reading_progress_advances_while_a_dominant_file_is_hashed() {
+async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
     let (mut service, tmp) = setup_import_service().await;
     let (event_tx, _) = tokio::sync::broadcast::channel(1024);
     service.event_tx = event_tx;

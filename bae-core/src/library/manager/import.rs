@@ -285,14 +285,13 @@ impl LibraryManager {
         track_artist_roles: &[crate::db::DbTrackArtistRole],
         artists: &[DbArtist],
         artist_external_id_updates: &[(String, DbArtist)],
-        files: &[DbFile],
+        files: Vec<crate::import::service::PreparedImportFile>,
         audio_formats: &[DbAudioFormat],
         audio_segments: &[DbAudioSegment],
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>,
         identities: &[crate::import::ReleaseIdentity],
-        local_path: &str,
         replacement_plans: &[ImportReplacementPlan],
     ) -> Result<(), LibraryError> {
         // The home's storage mode decides the blob layout (opaque hashed-by-id vs.
@@ -325,7 +324,6 @@ impl LibraryManager {
                 artist_images,
                 primary_release_id,
                 identities,
-                local_path,
                 storage,
                 &replacement_deletes,
             )

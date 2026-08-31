@@ -472,11 +472,32 @@ impl Database {
         self.read(move |sql| get_releases_for_album_on(&sql, &album_id))
             .await
     }
+    /// Seed a release-file row for tests that do not exercise its blob bytes.
+    /// Production creates the row and its Coven-owned hash together in
+    /// `finalize_import_atomic`.
+    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_file(&self, file: &DbFile) -> Result<(), DbError> {
         let file = file.clone();
         self.call_sql(move |sql| {
             let reg = sql.stamp();
-            insert_file_row(&sql, &file, &reg)
+            let fixture_hash = crate::util::fs::hash_bytes(file.id.as_bytes());
+            insert_file_row_for_test(&sql, &file, &reg, &fixture_hash)
+        })
+        .await
+    }
+
+    /// Insert a release-file fixture through the production opaque-hash path.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn insert_external_file_for_test(
+        &self,
+        file: &DbFile,
+        path: &std::path::Path,
+    ) -> Result<(), DbError> {
+        let prepared = coven::prepare_external_blob(path, |_| {}).await?;
+        let file = file.clone();
+        self.call_sql(move |sql| {
+            let reg = sql.stamp();
+            insert_external_file_row(&sql, &file, &reg, prepared)
         })
         .await
     }
@@ -526,7 +547,7 @@ impl Database {
     /// the import record — every row below lands together or not at all.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[allow(clippy::too_many_arguments)]
-    pub async fn finalize_import_atomic(
+    pub(crate) async fn finalize_import_atomic(
         &self,
         // `None` when the album is an existing one, already in the DB.
         album: Option<&DbAlbum>,
@@ -542,18 +563,13 @@ impl Database {
         track_artist_roles: &[DbTrackArtistRole],
         artists: &[DbArtist],
         artist_external_id_updates: &[(String, DbArtist)],
-        files: &[DbFile],
+        files: Vec<crate::import::service::PreparedImportFile>,
         audio_formats: &[DbAudioFormat],
         audio_segments: &[DbAudioSegment],
         library_image: Option<(&DbLibraryImage, &[u8])>,
         artist_images: &[(&DbLibraryImage, &[u8])],
         primary_release_id: Option<(&str, &str)>, // (album_id, release_id)
         identities: &[crate::import::ReleaseIdentity],
-        // The in-place folder this import's files live in on this device. Every
-        // import lands LOCAL, so each file is registered as a coven user-provided
-        // external ref under this folder; a later make-Remote uploads from them and
-        // drops the refs.
-        local_path: &str,
         // The cloud home's storage mode, which decides the blob layout: `Opaque`
         // keys each blob by its hashed id, `Browsable` lays it out at a readable
         // `cloud_path` computed inside this transaction, ready when the gate flips.
@@ -576,7 +592,6 @@ impl Database {
         let track_artist_roles = track_artist_roles.to_vec();
         let artists = artists.to_vec();
         let artist_external_id_updates = artist_external_id_updates.to_vec();
-        let files = files.to_vec();
         let audio_formats = audio_formats.to_vec();
         let audio_segments = audio_segments.to_vec();
         let library_image = library_image.map(|(image, bytes)| (image.clone(), bytes.to_vec()));
@@ -599,7 +614,6 @@ impl Database {
             .collect();
         let primary_release_id = primary_release_id.map(|(a, r)| (a.to_string(), r.to_string()));
         let identities = identities.to_vec();
-        let local_path = local_path.to_string();
         let replacement_deletes = replacement_deletes.to_vec();
 
         let now_dt = self.inner.clock.now();
@@ -724,14 +738,17 @@ impl Database {
 
                     // Each file is also registered as a coven user-provided external
                     // ref. Every import lands Local — the files ARE the user's own
-                    // files at `local_path`, registered with coven so its
-                    // locality-aware read serves them, and a later make-Remote uploads
+                    // files prepared by coven, and a later make-Remote uploads
                     // from them and drops the refs. On a browsable home the readable
                     // cloud_path is computed here (the album/release rows exist in
                     // this tx) so it is ready when the gate flips; an opaque home
                     // leaves it NULL and coven hashes the id. A populated key on a
                     // Local row is harmless.
-                    for file in &files {
+                    for prepared in files {
+                        let crate::import::service::PreparedImportFile {
+                            row: mut file,
+                            blob,
+                        } = prepared;
                         let cloud_path = if storage.is_browsable() {
                             Some(resolve_audio_cloud_path(
                                 tx,
@@ -741,20 +758,12 @@ impl Database {
                         } else {
                             None
                         };
-                        let file = DbFile {
-                            cloud_path,
-                            ..file.clone()
-                        };
-                        insert_file_row(tx, &file, &reg)?;
-                        // Register the user's own file as this row's external
-                        // blob, after the row exists: coven binds the exact row
-                        // reference (size and content hash included) and serves
-                        // the plaintext from this path while the release is
-                        // Local. `release_files` is the only user-provided table
-                        // — the image tables are host-provided, and coven refuses
-                        // an external registration on those.
-                        let path = std::path::Path::new(&local_path).join(&file.original_filename);
-                        tx.register_external_blob("release_files", &file.id, &path)?;
+                        file.cloud_path = cloud_path;
+                        // Coven inserts its private hash and registers the exact
+                        // prepared path atomically with the rest of the import.
+                        // `release_files` is the only user-provided blob table;
+                        // image tables are host-provided copies.
+                        insert_external_file_row(tx, &file, &reg, blob)?;
                     }
 
                     for af in &audio_formats {
@@ -1014,24 +1023,6 @@ impl Database {
             .map_err(DbError::from)
         })
         .await
-    }
-
-    /// Test-only: register each of a release's files as a coven user-provided
-    /// external ref under `folder` — the in-place files of a Local release. Call
-    /// after the file rows are inserted.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn register_release_external_refs_for_test(
-        &self,
-        release_id: &str,
-        folder: &str,
-    ) -> Result<(), DbError> {
-        let files = self.get_files_for_release(release_id).await?;
-        for file in &files {
-            let path = std::path::Path::new(folder).join(&file.original_filename);
-            self.register_external_blob(crate::sync::RELEASE_FILES_NAMESPACE, &file.id, &path)
-                .await?;
-        }
-        Ok(())
     }
 
     /// Test-only: write a path fragment onto an existing row directly, the way a

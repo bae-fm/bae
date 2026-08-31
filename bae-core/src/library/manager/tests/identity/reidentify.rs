@@ -62,24 +62,21 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
     insert_n_tracks(&manager.database, &release.id, 2).await;
     let now = Utc::now();
     for name in &filenames {
+        let path = media.path().join(name);
         let file = crate::db::DbFile::new(
             &release.id,
             name,
-            0,
+            std::fs::metadata(&path).unwrap().len() as i64,
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
-            crate::util::fs::hash_bytes(b"fixture"),
         );
-        manager.database.insert_file(&file).await.unwrap();
+        manager
+            .database
+            .insert_external_file_for_test(&file, &path)
+            .await
+            .unwrap();
     }
-    // Register the files as coven external refs (in-place files of a Local
-    // release) AFTER inserting them, so the file-tag re-read resolves paths.
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &media.path().to_string_lossy())
-        .await
-        .unwrap();
     manager
         .database
         .insert_release_identities(&release.id, &[mb_identity("g1", "mb-rel-1")])
@@ -521,23 +518,21 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     }
     let now = Utc::now();
     for name in [&f1, &f2] {
+        let path = media.path().join(name);
         let file = crate::db::DbFile::new(
             &release.id,
             name,
-            0,
+            std::fs::metadata(&path).unwrap().len() as i64,
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
-            crate::util::fs::hash_bytes(b"fixture"),
         );
-        manager.database.insert_file(&file).await.unwrap();
+        manager
+            .database
+            .insert_external_file_for_test(&file, &path)
+            .await
+            .unwrap();
     }
-    // Register the in-place files as coven external refs after inserting them.
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &media.path().to_string_lossy())
-        .await
-        .unwrap();
 
     manager
         .re_identify_release(&release.id, ReleaseReseed::FileTags)

@@ -234,24 +234,6 @@ impl Database {
         artist_image_cloud_path_for_storage(storage, artist_id, blob_id, content_type)
     }
 
-    /// Test-only: point a row's blob at a file the user owns, in a write of its
-    /// own. Production registers refs inside the atomic import transaction that
-    /// inserts the row, which is where the binding belongs; this exists for the
-    /// tests that repoint an already-inserted row at a file they just wrote.
-    #[cfg(any(test, feature = "test-utils"))]
-    pub async fn register_external_blob(
-        &self,
-        table: &str,
-        row_id: &str,
-        path: &Path,
-    ) -> Result<(), DbError> {
-        let table = table.to_string();
-        let row_id = row_id.to_string();
-        let path = path.to_path_buf();
-        self.call(move |conn| conn.register_external_blob(&table, &row_id, &path))
-            .await
-    }
-
     /// Where the user's own file for a release file lives on disk, or `None`
     /// when the row carries no external registration.
     ///

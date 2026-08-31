@@ -66,6 +66,13 @@ struct PreparedMetadata {
     artist_name: String,
 }
 
+/// One release-file row paired with Coven's opaque preparation of the exact
+/// user-owned file that row declares.
+pub(crate) struct PreparedImportFile {
+    pub(crate) row: DbFile,
+    pub(crate) blob: coven::PreparedExternalBlob,
+}
+
 fn storage_mode_label(mode: &StorageMode) -> &'static str {
     match mode {
         StorageMode::Remote => "remote",
@@ -866,19 +873,6 @@ async fn load_existing_artist_assignments(
         out.insert(artist_id.clone(), artist);
     }
     Ok(out)
-}
-
-pub(crate) fn common_ancestor<'a>(a: &'a Path, b: &Path) -> &'a Path {
-    let mut longest = a;
-    loop {
-        if b.starts_with(longest) {
-            return longest;
-        }
-        match longest.parent() {
-            Some(parent) => longest = parent,
-            None => return longest,
-        }
-    }
 }
 
 /// The archived documents for a release, fetching and storing them when nothing

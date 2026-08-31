@@ -516,7 +516,6 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         content_type: ContentType::Flac,
         source_audio: None,
         cloud_path: None,
-        content_hash: bae_core::util::fs::hash_bytes(b"fixture"),
         created_at: now,
     };
     let file2 = DbFile {
@@ -527,16 +526,10 @@ async fn reset_file_tags_unknown_returns_tags_from_disk() {
         content_type: ContentType::Flac,
         source_audio: None,
         cloud_path: None,
-        content_hash: bae_core::util::fs::hash_bytes(b"fixture"),
         created_at: now,
     };
-    db.insert_file(&file1).await.unwrap();
-    db.insert_file(&file2).await.unwrap();
-    // A Local release's files are coven external refs at their in-place location;
-    // register them now that the file rows exist so reset can read the tags.
-    db.register_release_external_refs_for_test(&release.id, audio_dir.to_str().unwrap())
-        .await
-        .unwrap();
+    db.insert_external_file_for_test(&file1, &f1).await.unwrap();
+    db.insert_external_file_for_test(&file2, &f2).await.unwrap();
 
     let edit = lm.reset_metadata_to_source(&release.id).await.unwrap();
 

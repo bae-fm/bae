@@ -642,7 +642,7 @@ impl ImportService {
         // Keyed by absolute path, the same key TrackFile uses, so disc-subfolder
         // siblings with identical bare filenames stay distinct.
         let files_now = library_manager.now();
-        let mut db_files: Vec<DbFile> = Vec::with_capacity(total_files);
+        let mut prepared_files = Vec::with_capacity(total_files);
         let mut file_ids: HashMap<PathBuf, String> = HashMap::new();
         let mut source_audio_layouts = HashMap::new();
         for track_file in tracks_to_files {
@@ -689,47 +689,45 @@ impl ImportService {
                 detail: "stored import candidate contains no bytes".to_string(),
             });
         }
-        let mut bytes_hashed = 0u128;
+        let mut bytes_read = 0u128;
         let mut last_release_percent = 0u8;
         for (idx, file) in discovered_files.iter().enumerate() {
             // The scan fingerprint uses metadata so discovering remote folders
-            // does not read every byte. Import computes the durable blob hash
-            // here, validating the scanned metadata before and after the read.
-            let file_to_hash = file.clone();
-            let bytes_hashed_before_file = bytes_hashed;
-            let last_percent_before_file = last_release_percent;
+            // does not read every byte. Coven streams the file here and keeps
+            // the resulting content identity opaque to bae.
+            super::file_identity::validate_scanned_file_metadata(file)?;
+            let bytes_read_before_file = bytes_read;
             let event_tx = self.event_tx.clone();
             let candidate_key_for_progress = candidate_key.to_string();
             let release_id_for_progress = db_release.id.clone();
             let import_id_for_progress = import_id.to_string();
-            let (content_hash, file_bytes_hashed, reported_percent) =
-                tokio::task::spawn_blocking(move || {
-                    let mut file_bytes_hashed = 0u128;
-                    let mut reported_percent = last_percent_before_file;
-                    super::file_identity::hash_scanned_file_for_import(&file_to_hash, |read| {
-                        file_bytes_hashed += u128::from(read);
-                        let completed = bytes_hashed_before_file + file_bytes_hashed;
-                        let percent = ((completed * 100) / total_bytes).min(100) as u8;
-                        if reported_percent != percent {
-                            reported_percent = percent;
-                            ImportService::emit_phase_progress_on(
-                                &event_tx,
-                                &candidate_key_for_progress,
-                                &release_id_for_progress,
-                                percent,
-                                ImportPhase::ReadingFiles,
-                                &import_id_for_progress,
-                            );
-                        }
-                    })
-                    .map(|content_hash| (content_hash, file_bytes_hashed, reported_percent))
-                })
-                .await
-                .map_err(|error| crate::import::ImportError::Internal {
-                    detail: format!("file hashing task failed: {error}"),
-                })??;
-            bytes_hashed += file_bytes_hashed;
-            last_release_percent = reported_percent;
+            let reported_percent = Arc::new(std::sync::atomic::AtomicU8::new(last_release_percent));
+            let reported_percent_for_progress = Arc::clone(&reported_percent);
+            let prepared_blob = coven::prepare_external_blob(&file.path, move |consumed| {
+                let completed = bytes_read_before_file + u128::from(consumed);
+                let percent = ((completed * 100) / total_bytes).min(100) as u8;
+                let previous = reported_percent_for_progress
+                    .swap(percent, std::sync::atomic::Ordering::Relaxed);
+                if previous != percent {
+                    ImportService::emit_phase_progress_on(
+                        &event_tx,
+                        &candidate_key_for_progress,
+                        &release_id_for_progress,
+                        percent,
+                        ImportPhase::ReadingFiles,
+                        &import_id_for_progress,
+                    );
+                }
+            })
+            .await
+            .map_err(|error| crate::import::ImportError::UnusableFile {
+                detail: format!(
+                    "coven could not prepare {} for import: {error}",
+                    file.path.display()
+                ),
+            })?;
+            bytes_read += u128::from(file.size);
+            last_release_percent = reported_percent.load(std::sync::atomic::Ordering::Relaxed);
             let mut db_file = DbFile::new(
                 &db_release.id,
                 &file.relative_path,
@@ -737,7 +735,6 @@ impl ImportService {
                 resolve_file_content_type(file)?,
                 library_manager.new_id(),
                 files_now,
-                content_hash,
             );
             db_file.source_audio =
                 file.source_audio
@@ -750,7 +747,10 @@ impl ImportService {
                             .expect("scan audio duration fits SQLite's integer range"),
                     });
             file_ids.insert(file.path.clone(), db_file.id.clone());
-            db_files.push(db_file);
+            prepared_files.push(PreparedImportFile {
+                row: db_file,
+                blob: prepared_blob,
+            });
             debug!(
                 "Read file {}/{}: {}",
                 idx + 1,
@@ -758,35 +758,6 @@ impl ImportService {
                 file.relative_path,
             );
         }
-
-        // Every import lands LOCAL: reference the files in place and record their
-        // common-ancestor folder as the release's local source. Until a Remote
-        // import's upload lands it stays a valid, playable local release, so
-        // another device never sees a release before its audio is in the cloud.
-        let local_root = {
-            let mut ancestor: Option<&Path> = None;
-            for file in discovered_files.iter() {
-                let parent =
-                    file.path
-                        .parent()
-                        .ok_or_else(|| crate::import::ImportError::Internal {
-                            detail: format!("File has no parent: {:?}", file.path),
-                        })?;
-                ancestor = Some(match ancestor {
-                    None => parent,
-                    Some(a) => common_ancestor(a, parent),
-                });
-            }
-            ancestor.ok_or_else(|| crate::import::ImportError::Internal {
-                detail: "No files to determine local path".to_string(),
-            })?
-        };
-        let local_path = local_root
-            .to_str()
-            .ok_or_else(|| crate::import::ImportError::Internal {
-                detail: format!("Cannot convert path to string: {:?}", local_root),
-            })?
-            .to_string();
 
         let mut built_audio = Self::build_audio_formats(
             tracks_to_files,
@@ -921,14 +892,13 @@ impl ImportService {
                 remapped_track_artist_roles,
                 artists,
                 artist_external_id_updates,
-                &db_files,
+                prepared_files,
                 &built_audio.audio_formats,
                 &built_audio.audio_segments,
                 library_image,
                 &artist_images,
                 cover_rel_id,
                 identities,
-                &local_path,
                 replacement_plans,
             )
             .await?;

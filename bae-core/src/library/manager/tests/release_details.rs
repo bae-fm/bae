@@ -68,7 +68,6 @@ async fn find_release_detail_does_not_panic_on_traversal_filenames_from_a_peer()
         crate::util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
     manager
@@ -338,7 +337,6 @@ async fn release_source_audio_summary_uses_every_file_without_track_formats() {
             facts.content_type.clone(),
             Uuid::new_v4().to_string(),
             Utc::now(),
-            crate::util::fs::hash_bytes(name.as_bytes()),
         );
         file.source_audio = Some(facts);
         manager.add_file(&file).await.unwrap();
@@ -468,7 +466,6 @@ async fn gallery_includes_cloud_only_image_files_with_no_local_path() {
         crate::util::content_type::ContentType::Jpeg,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&image).await.unwrap();
 
@@ -519,7 +516,8 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
             .unwrap();
         buf.into_inner()
     };
-    std::fs::write(source_dir.path().join("art.png"), &cover_bytes).unwrap();
+    let source_path = source_dir.path().join("art.png");
+    std::fs::write(&source_path, &cover_bytes).unwrap();
     let file = DbFile::new(
         &release.id,
         "art.png",
@@ -527,12 +525,9 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
         ContentType::Png,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        crate::util::fs::hash_bytes(&cover_bytes),
     );
-    manager.add_file(&file).await.unwrap();
     manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &source_dir.path().to_string_lossy())
+        .add_external_file_for_test(&file, &source_path)
         .await
         .unwrap();
 
@@ -602,16 +597,16 @@ async fn change_cover_twice_replaces_the_cover_blob() {
             ContentType::Png,
             Uuid::new_v4().to_string(),
             Utc::now(),
-            crate::util::fs::hash_bytes(bytes),
         )
     };
     let green = add_source("green.png", &png([20, 160, 90]));
     let red = add_source("red.png", &png([200, 40, 40]));
-    manager.add_file(&green).await.unwrap();
-    manager.add_file(&red).await.unwrap();
     manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &source_dir.path().to_string_lossy())
+        .add_external_file_for_test(&green, &source_dir.path().join("green.png"))
+        .await
+        .unwrap();
+    manager
+        .add_external_file_for_test(&red, &source_dir.path().join("red.png"))
         .await
         .unwrap();
 

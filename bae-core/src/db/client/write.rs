@@ -406,69 +406,122 @@ pub(super) fn insert_artist_role_row(
         .map_err(DbError::from)
 }
 
-/// The one row-write for `release_files`, so the one place `original_filename`
-/// enters durable state. Export and make-Local join that column onto a directory
-/// the user chose, and it syncs to every other device, so a name that can't be
-/// materialized there is refused here — inside the caller's transaction, which
-/// rolls back whole rather than committing a release nobody can copy out.
-pub(super) fn insert_file_row(
-    conn: &SqlContext<'_, '_>,
+const INSERT_RELEASE_FILE_SQL: &str = r#"
+    INSERT INTO release_files (
+        id, release_id, original_filename, file_size, content_type,
+        source_audio_layout, source_audio_content_type, source_audio_duration_ms,
+        source_audio_sample_rate_hz, source_audio_bits_per_sample,
+        source_audio_bitrate_kbps, source_audio_channels,
+        cloud_path, hash, _updated_at, created_at
+    ) VALUES (
+        :id, :release_id, :original_filename, :file_size, :content_type,
+        :source_audio_layout, :source_audio_content_type, :source_audio_duration_ms,
+        :source_audio_sample_rate_hz, :source_audio_bits_per_sample,
+        :source_audio_bitrate_kbps, :source_audio_channels,
+        :cloud_path, :coven_external_blob_hash, :updated_at, :created_at
+    )
+"#;
+
+/// Validate and expose the non-hash values for the one `release_files` insert.
+/// The callback keeps references to derived audio values inside this scope while
+/// either Coven or a test fixture supplies the hash parameter.
+fn with_file_row_params<T>(
     file: &DbFile,
     reg: &str,
-) -> Result<(), DbError> {
+    write: impl FnOnce(&[(&str, &dyn coven::rusqlite::ToSql)]) -> Result<T, DbError>,
+) -> Result<T, DbError> {
     crate::storage::path_fragment::validate_path_fragment(
         &file.release_id,
         &format!("original_filename for file {}", file.id),
         &file.original_filename,
     )
     .map_err(|e| DbError::Message(e.to_string()))?;
-    conn.execute(
-        r#"
-        INSERT INTO release_files (
-            id, release_id, original_filename, file_size, content_type,
-            source_audio_layout, source_audio_content_type, source_audio_duration_ms,
-            source_audio_sample_rate_hz, source_audio_bits_per_sample,
-            source_audio_bitrate_kbps, source_audio_channels,
-            cloud_path, hash, _updated_at, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#,
-        params![
-            file.id,
-            file.release_id,
-            file.original_filename,
-            file.file_size,
-            file.content_type.as_str(),
-            file.source_audio
-                .as_ref()
-                .and_then(|audio| audio.layout)
-                .map(|layout| match layout {
-                    crate::album_detail::SourceAudioLayout::File => "file",
-                    crate::album_detail::SourceAudioLayout::Cue => "cue",
-                }),
-            file.source_audio
-                .as_ref()
-                .map(|audio| audio.content_type.as_str()),
-            file.source_audio.as_ref().map(|audio| audio.duration_ms),
-            file.source_audio
-                .as_ref()
-                .map(|audio| audio.format.sample_rate_hz),
-            file.source_audio
-                .as_ref()
-                .and_then(|audio| audio.format.bits_per_sample),
-            file.source_audio
-                .as_ref()
-                .and_then(|audio| audio.format.bitrate_kbps),
-            file.source_audio
-                .as_ref()
-                .map(|audio| audio.format.channels),
-            file.cloud_path,
-            file.content_hash,
-            reg,
-            file.created_at.to_rfc3339(),
-        ],
-    )
-    .map(|_| ())
-    .map_err(DbError::from)
+    let source_audio_layout = file
+        .source_audio
+        .as_ref()
+        .and_then(|audio| audio.layout)
+        .map(|layout| match layout {
+            crate::album_detail::SourceAudioLayout::File => "file",
+            crate::album_detail::SourceAudioLayout::Cue => "cue",
+        });
+    let source_audio_content_type = file
+        .source_audio
+        .as_ref()
+        .map(|audio| audio.content_type.as_str());
+    let source_audio_duration_ms = file.source_audio.as_ref().map(|audio| audio.duration_ms);
+    let source_audio_sample_rate_hz = file
+        .source_audio
+        .as_ref()
+        .map(|audio| audio.format.sample_rate_hz);
+    let source_audio_bits_per_sample = file
+        .source_audio
+        .as_ref()
+        .and_then(|audio| audio.format.bits_per_sample);
+    let source_audio_bitrate_kbps = file
+        .source_audio
+        .as_ref()
+        .and_then(|audio| audio.format.bitrate_kbps);
+    let source_audio_channels = file
+        .source_audio
+        .as_ref()
+        .map(|audio| audio.format.channels);
+    let created_at = file.created_at.to_rfc3339();
+    write(coven::rusqlite::named_params! {
+        ":id": file.id,
+        ":release_id": file.release_id,
+        ":original_filename": file.original_filename,
+        ":file_size": file.file_size,
+        ":content_type": file.content_type.as_str(),
+        ":source_audio_layout": source_audio_layout,
+        ":source_audio_content_type": source_audio_content_type,
+        ":source_audio_duration_ms": source_audio_duration_ms,
+        ":source_audio_sample_rate_hz": source_audio_sample_rate_hz,
+        ":source_audio_bits_per_sample": source_audio_bits_per_sample,
+        ":source_audio_bitrate_kbps": source_audio_bitrate_kbps,
+        ":source_audio_channels": source_audio_channels,
+        ":cloud_path": file.cloud_path,
+        ":updated_at": reg,
+        ":created_at": created_at,
+    })
+}
+
+/// Insert and register a user-owned release file while its content hash stays
+/// inside Coven. The row, hash, source path, and import graph share the caller's
+/// transaction.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn insert_external_file_row(
+    conn: &SqlContext<'_, '_>,
+    file: &DbFile,
+    reg: &str,
+    blob: coven::PreparedExternalBlob,
+) -> Result<(), DbError> {
+    with_file_row_params(file, reg, |params| {
+        conn.insert_external_blob(
+            crate::sync::RELEASE_FILES_NAMESPACE,
+            &file.id,
+            blob,
+            INSERT_RELEASE_FILE_SQL,
+            params,
+        )
+    })
+}
+
+/// Seed a non-blob fixture row with a deterministic hash. Tests that exercise
+/// external bytes use the production insert-and-register path instead.
+#[cfg(any(test, feature = "test-utils"))]
+pub(super) fn insert_file_row_for_test(
+    conn: &SqlContext<'_, '_>,
+    file: &DbFile,
+    reg: &str,
+    content_hash: &str,
+) -> Result<(), DbError> {
+    with_file_row_params(file, reg, |params| {
+        let mut params = params.to_vec();
+        params.push((":coven_external_blob_hash", &content_hash));
+        conn.execute(INSERT_RELEASE_FILE_SQL, params.as_slice())
+            .map(|_| ())
+            .map_err(DbError::from)
+    })
 }
 
 #[cfg(any(

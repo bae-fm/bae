@@ -551,7 +551,6 @@ async fn delete_release_fails_before_rows_are_deleted_when_file_cleanup_lookup_f
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
 
@@ -589,7 +588,6 @@ async fn delete_release_rolls_back_when_an_external_ref_clear_is_refused() {
         crate::util::content_type::ContentType::Flac,
         Uuid::new_v4().to_string(),
         Utc::now(),
-        crate::util::fs::hash_bytes(b"fixture"),
     );
     manager.add_file(&file).await.unwrap();
 

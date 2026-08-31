@@ -98,7 +98,6 @@ async fn storage_page_sort_by_file_count() {
                 content_type: crate::util::content_type::ContentType::Flac,
                 source_audio: None,
                 cloud_path: None,
-                content_hash: crate::util::fs::hash_bytes(b"fixture"),
                 created_at: Utc::now(),
             };
             manager.database.insert_file(&file).await.unwrap();
@@ -135,7 +134,6 @@ async fn storage_page_sort_by_total_size() {
             content_type: crate::util::content_type::ContentType::Flac,
             source_audio: None,
             cloud_path: None,
-            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();

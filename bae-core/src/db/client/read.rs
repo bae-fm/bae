@@ -424,7 +424,6 @@ pub(super) fn row_to_file(row: &Row) -> coven::rusqlite::Result<DbFile> {
         content_type: ContentType::from_mime(&row.get::<_, String>("content_type")?),
         source_audio,
         cloud_path: row.get("cloud_path")?,
-        content_hash: row.get("hash")?,
         created_at: rfc3339_column(row, "created_at")?,
     })
 }

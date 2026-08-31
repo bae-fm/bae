@@ -10,18 +10,8 @@ async fn make_exportable_release(
     folder_name: &str,
     files: &[(&str, &[u8])],
 ) -> String {
-    let (release, db_files) = insert_export_release_rows(manager, folder_name, files).await;
-    std::fs::create_dir_all(source_dir).unwrap();
-    for (file, (_, bytes)) in db_files.iter().zip(files) {
-        let path = source_dir.join(&file.original_filename);
-        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, bytes).unwrap();
-    }
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &source_dir.to_string_lossy())
-        .await
-        .unwrap();
+    let (release, _) =
+        insert_export_release_rows(manager, source_dir, folder_name, files).await;
     manager.coven_make_remote(&release.id, true).await.unwrap();
     // The sync loop this fixture's tests connect drains the queue itself, so
     // wait for the make-Remote to finish rather than counting a drain pass this
@@ -58,6 +48,7 @@ async fn wait_for_settled_uploads(manager: &LibraryManager, release_id: &str) {
 #[cfg(feature = "test-utils")]
 async fn insert_export_release_rows(
     manager: &LibraryManager,
+    source_dir: &std::path::Path,
     folder_name: &str,
     files: &[(&str, &[u8])],
 ) -> (DbRelease, Vec<DbFile>) {
@@ -67,6 +58,7 @@ async fn insert_export_release_rows(
     release.source_folder_name = Some(folder_name.to_string());
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
+    std::fs::create_dir_all(source_dir).unwrap();
     let created_at = Utc::now();
     let mut inserted_files = Vec::with_capacity(files.len());
     for (index, (name, bytes)) in files.iter().enumerate() {
@@ -77,9 +69,14 @@ async fn insert_export_release_rows(
             crate::util::content_type::ContentType::Flac,
             bae_test_support::test_uuid(&format!("{}-export-file-{index}", release.id)),
             created_at,
-            crate::util::fs::hash_bytes(bytes),
         );
-        manager.add_file(&file).await.unwrap();
+        let path = source_dir.join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, bytes).unwrap();
+        manager
+            .add_external_file_for_test(&file, &path)
+            .await
+            .unwrap();
         inserted_files.push(file);
     }
     (release, inserted_files)
@@ -98,8 +95,13 @@ async fn insert_local_export_release_with_poisoned_fragment(
     bytes: &[u8],
     poison: PoisonedFragment<'_>,
 ) -> String {
-    let (release, db_files) =
-        insert_export_release_rows(manager, "Album Title", &[("track.flac", bytes)]).await;
+    let (release, db_files) = insert_export_release_rows(
+        manager,
+        source_dir,
+        "Album Title",
+        &[("track.flac", bytes)],
+    )
+    .await;
     match poison {
         PoisonedFragment::OriginalFilename(value) => manager
             .database
@@ -112,18 +114,6 @@ async fn insert_local_export_release_with_poisoned_fragment(
             .await
             .unwrap(),
     }
-    std::fs::create_dir_all(source_dir).unwrap();
-    let source_path = source_dir.join("source.flac");
-    std::fs::write(&source_path, bytes).unwrap();
-    manager
-        .database
-        .register_external_blob(
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            &db_files[0].id,
-            &source_path,
-        )
-        .await
-        .unwrap();
     release.id
 }
 
@@ -458,15 +448,12 @@ async fn export_mid_failure_leaves_no_partial_output_at_final_path() {
             crate::util::content_type::ContentType::Flac,
             Uuid::new_v4().to_string(),
             Utc::now(),
-            crate::util::fs::hash_bytes(bytes),
         );
-        manager.add_file(&file).await.unwrap();
+        manager
+            .add_external_file_for_test(&file, &source_dir.join(name))
+            .await
+            .unwrap();
     }
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &source_dir.to_string_lossy())
-        .await
-        .unwrap();
 
     // Pause so the source file can be deleted before the worker runs, making the
     // later read fail deterministically rather than racing the copy.

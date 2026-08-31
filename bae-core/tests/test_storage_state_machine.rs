@@ -111,7 +111,6 @@ async fn setup_with_cloud(tmp: &TempDir) -> (Database, LibraryManager, Arc<InMem
 /// user-provided external ref (the in-place files of a Local release). No uploads
 /// queued — the test drives the transition itself. Returns (release_id, files).
 async fn create_local_release(
-    db: &Database,
     mgr: &LibraryManager,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
@@ -163,7 +162,8 @@ async fn create_local_release(
     tokio::fs::create_dir_all(source_dir).await.unwrap();
     let mut result = Vec::new();
     for (name, data) in files {
-        tokio::fs::write(source_dir.join(name), data).await.unwrap();
+        let path = source_dir.join(name);
+        tokio::fs::write(&path, data).await.unwrap();
         let db_file = DbFile::new(
             &release_id,
             name,
@@ -171,14 +171,12 @@ async fn create_local_release(
             ContentType::Flac,
             uuid::Uuid::new_v4().to_string(),
             now,
-            bae_core::util::fs::hash_bytes(data),
         );
-        mgr.add_file(&db_file).await.unwrap();
+        mgr.add_external_file_for_test(&db_file, &path)
+            .await
+            .unwrap();
         result.push((name.to_string(), data.to_vec()));
     }
-    db.register_release_external_refs_for_test(&release_id, &source_dir.to_string_lossy())
-        .await
-        .unwrap();
     (release_id, result)
 }
 
@@ -186,12 +184,11 @@ async fn create_local_release(
 /// Local, make-Remote via coven, and drain so the gate flips. Returns (release_id,
 /// [(file_id, original_filename, plaintext)]).
 async fn create_remote_cloud_only_release(
-    db: &Database,
     mgr: &LibraryManager,
     source_dir: &std::path::Path,
     files: &[(&str, &[u8])],
 ) -> (String, Vec<(String, String, Vec<u8>)>) {
-    let (release_id, _named) = create_local_release(db, mgr, source_dir, files).await;
+    let (release_id, _named) = create_local_release(mgr, source_dir, files).await;
 
     let mut captured = Vec::new();
     for file in mgr.get_files_for_release(&release_id).await.unwrap() {
@@ -221,12 +218,12 @@ async fn create_remote_cloud_only_release(
 #[tokio::test]
 async fn test_multiple_releases_independent_completion() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let (_db, mgr, _cloud) = setup_with_cloud(&tmp).await;
 
     let (release_a, _a) =
-        create_local_release(&db, &mgr, &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
+        create_local_release(&mgr, &tmp.path().join("a"), &[("track.flac", b"aaa")]).await;
     let (release_b, _b) =
-        create_local_release(&db, &mgr, &tmp.path().join("b"), &[("track.flac", b"bbb")]).await;
+        create_local_release(&mgr, &tmp.path().join("b"), &[("track.flac", b"bbb")]).await;
     mgr.coven_make_remote(&release_a, true).await.unwrap();
     mgr.coven_make_remote(&release_b, true).await.unwrap();
 
@@ -280,7 +277,6 @@ async fn test_manage_refused_when_sync_not_running() {
     );
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
-        &db,
         &mgr,
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
@@ -291,11 +287,16 @@ async fn test_manage_refused_when_sync_not_running() {
     // nothing would ever drain the queue to flip the release Remote.
     let result = mgr
         .make_releases_remote(std::slice::from_ref(&release_id), false)
-        .await;
-    assert!(
-        result.is_err(),
-        "make-Remote must fail when the upload pipeline isn't running, got {result:?}"
-    );
+        .await
+        .expect("the batch reports a per-release refusal");
+    let bae_core::library::MakeReleasesRemoteOutcome::Partial {
+        receipt: None,
+        failure,
+    } = result
+    else {
+        panic!("make-Remote must refuse the release without a receipt");
+    };
+    assert_eq!(failure.release_ids, vec![release_id.clone()]);
     assert!(
         db.queued_upload_count_for_test().await.unwrap() == 0,
         "no upload may be enqueued when the pipeline can't drain it"
@@ -314,10 +315,9 @@ async fn test_manage_refused_when_sync_not_running() {
 #[tokio::test]
 async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
+    let (_db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
-        &db,
         &mgr,
         &source_dir,
         &[("a.flac", b"cloud-only-a"), ("b.flac", b"cloud-only-b")],
@@ -348,10 +348,9 @@ async fn make_remote_summary_is_local_until_drain_then_remote_not_pinned() {
 #[tokio::test]
 async fn upload_failure_leaves_summary_local_and_upload_pending() {
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
+    let (_db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, _files) = create_local_release(
-        &db,
         &mgr,
         &source_dir,
         &[("a.flac", b"survive-a"), ("b.flac", b"survive-b")],
@@ -378,16 +377,15 @@ async fn upload_failure_leaves_summary_local_and_upload_pending() {
     );
 }
 
-/// make-Remote refuses a truncated source: coven verifies every external source
-/// (exists + length == registered size) up front, so a short original aborts with
-/// nothing enqueued and the source intact.
+/// The upload drain refuses a truncated source while sealing its spool. The
+/// durable queue retains the failed work for retry, the Local gate stays closed,
+/// and the user's source files remain untouched.
 #[tokio::test]
-async fn test_manage_truncated_source_aborts_before_enqueue() {
+async fn truncated_source_keeps_root_local_and_failed_work_queued() {
     let tmp = TempDir::new().unwrap();
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_local_release(
-        &db,
         &mgr,
         &source_dir,
         &[("a.flac", b"full-length-bytes"), ("b.flac", b"second-file")],
@@ -399,12 +397,17 @@ async fn test_manage_truncated_source_aborts_before_enqueue() {
         .await
         .unwrap();
 
-    let result = mgr.coven_make_remote(&release_id, false).await;
-    assert!(result.is_err(), "truncated source must abort make-Remote");
+    mgr.coven_make_remote(&release_id, false).await.unwrap();
+    assert_eq!(
+        mgr.drain_uploads_expecting_work().await.unwrap(),
+        1,
+        "the intact sibling uploads and remains reusable for retry"
+    );
 
-    assert!(
-        db.queued_upload_count_for_test().await.unwrap() == 0,
-        "no upload may be enqueued when a source is truncated"
+    assert_eq!(
+        db.queued_upload_count_for_test().await.unwrap(),
+        files.len(),
+        "the failed root remains queued for an explicit retry"
     );
     for (name, _) in &files {
         assert!(source_dir.join(name).exists(), "source {name} must survive");
@@ -426,7 +429,6 @@ async fn make_local_updates_summary_external_refs_and_queues_deletes() {
     let (db, mgr, _cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
-        &db,
         &mgr,
         &source_dir,
         &[("x.flac", b"download-x"), ("y.flac", b"download-yy")],
@@ -496,7 +498,6 @@ async fn make_local_missing_blob_fails_leaving_summary_remote_and_no_deletes() {
     let (db, mgr, cloud) = setup_with_cloud(&tmp).await;
     let source_dir = tmp.path().join("originals");
     let (release_id, files) = create_remote_cloud_only_release(
-        &db,
         &mgr,
         &source_dir,
         &[("x.flac", b"present"), ("y.flac", b"missing")],
@@ -557,10 +558,9 @@ async fn storage_subscription_delivers_actions_on_cloud_home_transition() {
     use bae_core::album_detail::ReleaseStorageAction;
 
     let tmp = TempDir::new().unwrap();
-    let (db, mgr, cloud, enc) = setup_manager(&tmp).await;
+    let (_db, mgr, cloud, enc) = setup_manager(&tmp).await;
     let source_dir = tmp.path().join("originals");
-    let (release_id, _files) =
-        create_local_release(&db, &mgr, &source_dir, &[("a.flac", b"a")]).await;
+    let (release_id, _files) = create_local_release(&mgr, &source_dir, &[("a.flac", b"a")]).await;
 
     let services = AppServices::for_test(mgr.clone()).await.unwrap();
     let mut values = services.subscribe_storage_values(

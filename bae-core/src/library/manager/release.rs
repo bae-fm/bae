@@ -4,18 +4,6 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
-    pub async fn register_release_external_refs_for_test(
-        &self,
-        release_id: &str,
-        source_dir: &str,
-    ) -> Result<(), LibraryError> {
-        self.database
-            .register_release_external_refs_for_test(release_id, source_dir)
-            .await?;
-        Ok(())
-    }
-
-    #[cfg(any(test, feature = "test-utils"))]
     pub async fn insert_audio_format_with_segments_for_test(
         &self,
         audio_format: &DbAudioFormat,
@@ -32,6 +20,20 @@ impl LibraryManager {
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn add_file(&self, file: &DbFile) -> Result<(), LibraryError> {
         self.database.insert_file(file).await?;
+        Ok(())
+    }
+
+    /// Test-only: seed a file row and its user-owned bytes through Coven's
+    /// production preparation and registration path.
+    #[cfg(any(test, feature = "test-utils"))]
+    pub async fn add_external_file_for_test(
+        &self,
+        file: &DbFile,
+        path: &std::path::Path,
+    ) -> Result<(), LibraryError> {
+        self.database
+            .insert_external_file_for_test(file, path)
+            .await?;
         Ok(())
     }
 

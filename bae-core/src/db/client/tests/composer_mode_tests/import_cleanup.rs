@@ -22,6 +22,18 @@ fn scanned_flac() -> crate::import::folder_scanner::ScannedAudio {
     }
 }
 
+async fn prepare_release_file(
+    row: DbFile,
+    path: &std::path::Path,
+) -> crate::import::service::PreparedImportFile {
+    let size = usize::try_from(row.file_size).expect("fixture file size fits memory");
+    std::fs::write(path, vec![0x5a; size]).expect("write external file fixture");
+    let blob = coven::prepare_external_blob(path, |_| {})
+        .await
+        .expect("prepare external file fixture");
+    crate::import::service::PreparedImportFile { row, blob }
+}
+
 /// Shared arrange for the two reimport-replacement tests. Seeds `album-old` with
 /// `existing_release_ids` and its `primary_release_id` at `replaced_release_id`,
 /// then finalizes a reimport whose new release `rel-new` lands in the fresh
@@ -83,6 +95,7 @@ async fn finalize_reimport_replacing_release(
         discogs_position: None,
         created_at: now,
     };
+    let file_path = tmp.path().join("Track Title New.flac");
     let file = DbFile::new(
         &release_new.id,
         "Track Title New.flac",
@@ -90,11 +103,11 @@ async fn finalize_reimport_replacing_release(
         ContentType::Flac,
         FILE_NEW.to_string(),
         now,
-        crate::util::fs::hash_bytes(b"fixture"),
     );
+    let file = prepare_release_file(file, &file_path).await;
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
-        file_path: tmp.path().join("Track Title New.flac"),
+        file_path,
         source_audio: scanned_flac(),
     }];
 
@@ -117,14 +130,13 @@ async fn finalize_reimport_replacing_release(
         &[],
         &[],
         &[],
-        &[file],
+        vec![file],
         &[],
         &[],
         None,
         &[],
         None,
         &[],
-        tmp.path().to_str().unwrap(),
         crate::config::HomeStorage::Opaque,
         &[replacement],
     )
@@ -321,14 +333,13 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         &track_roles,
         &[],
         &[],
-        &[],
+        Vec::new(),
         &[],
         &[],
         None,
         &[],
         Some((&album.id, &release.id)),
         &[],
-        tmp.path().to_str().unwrap(),
         crate::config::HomeStorage::Opaque,
         &[],
     )
@@ -440,6 +451,7 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
         discogs_position: None,
         created_at: now,
     };
+    let file_path = tmp.path().join("Track Title A.flac");
     let file = DbFile::new(
         &release.id,
         "Track Title A.flac",
@@ -447,11 +459,11 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
         ContentType::Flac,
         FILE_A.to_string(),
         now,
-        crate::util::fs::hash_bytes(b"fixture"),
     );
+    let file = prepare_release_file(file, &file_path).await;
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
-        file_path: tmp.path().join("Track Title A.flac"),
+        file_path,
         source_audio: scanned_flac(),
     }];
 
@@ -469,14 +481,13 @@ async fn fail_import_and_delete_release_removes_finalized_import_state_atomicall
         &[],
         &[],
         &[],
-        &[file],
+        vec![file],
         &[],
         &[],
         None,
         &[],
         Some((&album.id, &release.id)),
         &[],
-        tmp.path().to_str().unwrap(),
         crate::config::HomeStorage::Opaque,
         &[],
     )
@@ -614,6 +625,7 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
         discogs_position: None,
         created_at: now,
     };
+    let file_path = tmp.path().join("Track Title A.flac");
     let file = DbFile::new(
         &release.id,
         "Track Title A.flac",
@@ -621,11 +633,11 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
         ContentType::Flac,
         FILE_A.to_string(),
         now,
-        crate::util::fs::hash_bytes(b"fixture"),
     );
+    let file = prepare_release_file(file, &file_path).await;
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track,
-        file_path: tmp.path().join("Track Title A.flac"),
+        file_path,
         source_audio: scanned_flac(),
     }];
 
@@ -645,14 +657,13 @@ async fn fail_import_and_delete_release_in_surviving_album_clears_dangling_prima
         &[],
         &[],
         &[],
-        &[file],
+        vec![file],
         &[],
         &[],
         None,
         &[],
         Some((&album.id, &release.id)),
         &[],
-        tmp.path().to_str().unwrap(),
         crate::config::HomeStorage::Opaque,
         &[],
     )
@@ -815,6 +826,7 @@ async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically
 
     let album_a = album(ALBUM_A, ARTIST_EXCLUSIVE);
     let release_a = release(RELEASE_A, ALBUM_A);
+    let file_path = tmp.path().join("Track A.flac");
     let file_a = DbFile::new(
         RELEASE_A,
         "Track A.flac",
@@ -822,11 +834,11 @@ async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically
         ContentType::Flac,
         FILE_A.to_string(),
         now,
-        crate::util::fs::hash_bytes(b"fixture"),
     );
+    let file_a = prepare_release_file(file_a, &file_path).await;
     let track_files = vec![crate::import::TrackFile::Standalone {
         db_track: track(TRACK_A, RELEASE_A),
-        file_path: tmp.path().join("Track A.flac"),
+        file_path,
         source_audio: scanned_flac(),
     }];
     // The failed release also credits artist-shared, so both artists are
@@ -871,14 +883,13 @@ async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically
         &[],
         &[],
         &[],
-        &[file_a],
+        vec![file_a],
         &[],
         &[],
         Some((&cover, &bytes)),
         &[(&img_exclusive, &bytes), (&img_shared, &bytes)],
         Some((&album_a.id, &release_a.id)),
         &[],
-        tmp.path().to_str().unwrap(),
         crate::config::HomeStorage::Opaque,
         &[],
     )

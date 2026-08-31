@@ -153,11 +153,6 @@ async fn storage_page_rows_carry_state_appropriate_actions() {
     local.remote = false;
     manager.database.insert_album(&local_album).await.unwrap();
     manager.database.insert_release(&local).await.unwrap();
-    manager
-        .database
-        .register_release_external_refs_for_test(&local.id, "/tmp/local")
-        .await
-        .unwrap();
 
     let page = manager
         .get_storage_page(
@@ -236,11 +231,6 @@ async fn storage_page_rows_have_no_actions_without_cloud_home() {
     release.remote = false;
     manager.database.insert_album(&album).await.unwrap();
     manager.database.insert_release(&release).await.unwrap();
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, "/tmp/local")
-        .await
-        .unwrap();
 
     let page = manager
         .get_storage_page(
@@ -275,11 +265,6 @@ async fn storage_page_local_filter_matches_local_path() {
     manager
         .database
         .insert_release(&local_release)
-        .await
-        .unwrap();
-    manager
-        .database
-        .register_release_external_refs_for_test(&local_release.id, "/tmp/local")
         .await
         .unwrap();
 
@@ -334,13 +319,6 @@ async fn storage_count_matches_filtered_page_total() {
         }
         manager.database.insert_album(&album).await.unwrap();
         manager.database.insert_release(&release).await.unwrap();
-        if local {
-            manager
-                .database
-                .register_release_external_refs_for_test(&release.id, "/tmp/local")
-                .await
-                .unwrap();
-        }
     }
 
     assert_eq!(
@@ -437,7 +415,6 @@ async fn storage_total_size_matches_page_total_size_sum() {
             content_type: crate::util::content_type::ContentType::Flac,
             source_audio: None,
             cloud_path: None,
-            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
         };
         manager.database.insert_file(&file).await.unwrap();

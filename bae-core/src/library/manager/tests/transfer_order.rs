@@ -86,7 +86,8 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
             b"two".as_slice(),
         ),
     ] {
-        std::fs::write(source_dir.join(name), bytes).unwrap();
+        let path = source_dir.join(name);
+        std::fs::write(&path, bytes).unwrap();
         let file = DbFile::new(
             &release.id,
             name,
@@ -94,15 +95,12 @@ async fn make_remote_enqueues_cover_then_files_in_display_order() {
             crate::util::content_type::ContentType::Flac,
             id.to_string(),
             created_at,
-            crate::util::fs::hash_bytes(bytes),
         );
-        manager.add_file(&file).await.unwrap();
+        manager
+            .add_external_file_for_test(&file, &path)
+            .await
+            .unwrap();
     }
-    manager
-        .database
-        .register_release_external_refs_for_test(&release.id, &source_dir.to_string_lossy())
-        .await
-        .unwrap();
     let cover_bytes = b"cover-bytes";
     let cover = DbLibraryImage::cover(
         &release.id,

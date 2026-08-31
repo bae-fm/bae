@@ -91,7 +91,6 @@ async fn seed_playable_track(
         ContentType::Flac,
         file_id.clone(),
         now,
-        crate::util::fs::hash_bytes(b"fixture"),
     );
     library_manager.add_file(&file).await.unwrap();
     let audio_format_id = bae_test_support::test_uuid(&format!("{track_id}-af"));

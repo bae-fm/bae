@@ -63,9 +63,9 @@ pub struct DbLibraryImage {
     /// `{artist_id}/artist.{ext}`). Only the cloud key becomes readable — coven's
     /// local cache layout is unaffected.
     pub cloud_path: Option<String>,
-    /// SHA-256 (lowercase hex) of this image's plaintext bytes — coven's
-    /// author-signed content hash (see [`crate::util::fs::hash_bytes`]). Not
-    /// optional, for the same reason as [`DbFile::content_hash`].
+    /// SHA-256 (lowercase hex) of these host-provided plaintext bytes (see
+    /// [`crate::util::fs::hash_bytes`]). Every image row names a complete blob,
+    /// so this declaration is required.
     pub content_hash: String,
     pub created_at: DateTime<Utc>,
 }

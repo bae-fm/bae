@@ -40,36 +40,6 @@ fn watcher_error_without_a_mapped_path_rescans_every_root() {
     );
 }
 
-/// `common_ancestor` derives the local-path root by folding over the
-/// files' parent dirs. It must compare path components, not string
-/// prefixes, so `/m/Album` and `/m/Album2` collapse to `/m` (a string
-/// prefix would wrongly keep `/m/Album`), and an ancestor argument returns
-/// itself rather than descending.
-#[test]
-fn common_ancestor_cases() {
-    use std::path::Path;
-    // Sibling files share their parent.
-    assert_eq!(
-        common_ancestor(Path::new("/m/Album/01.flac"), Path::new("/m/Album/02.flac")),
-        Path::new("/m/Album")
-    );
-    // `a` is already an ancestor of `b`: keep `a`.
-    assert_eq!(
-        common_ancestor(Path::new("/m/Album"), Path::new("/m/Album/Disc1/01.flac")),
-        Path::new("/m/Album")
-    );
-    // Component-wise, not string-prefix: Album vs Album2 don't share /m/Album.
-    assert_eq!(
-        common_ancestor(Path::new("/m/Album/x"), Path::new("/m/Album2/y")),
-        Path::new("/m")
-    );
-    // Disjoint trees collapse to the root.
-    assert_eq!(
-        common_ancestor(Path::new("/a/b"), Path::new("/c/d")),
-        Path::new("/")
-    );
-}
-
 #[tokio::test]
 async fn explicit_bmp_cover_is_selected() {
     let (service, tmp) = setup_import_service().await;

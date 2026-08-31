@@ -269,15 +269,17 @@ mod tests {
             content_type: ContentType::Jpeg,
             source_audio: None,
             cloud_path: None,
-            content_hash: crate::util::fs::hash_bytes(b"fixture"),
             created_at: Utc::now(),
         };
-        database.insert_file(&file).await.unwrap();
         let missing_dir = temp.path().join("missing-image-dir");
+        std::fs::create_dir_all(&missing_dir).unwrap();
+        let missing_path = missing_dir.join(&file.original_filename);
+        std::fs::write(&missing_path, b"cover").unwrap();
         database
-            .register_release_external_refs_for_test(&release.id, &missing_dir.to_string_lossy())
+            .insert_external_file_for_test(&file, &missing_path)
             .await
             .unwrap();
+        std::fs::remove_file(&missing_path).unwrap();
 
         let logs = capture_warn_logs_async(|| async {
             let (paths, cover_staging) = resolve_release_artwork_paths(&manager, &release.id)
@@ -417,17 +419,13 @@ mod tests {
                 content_type,
                 source_audio: None,
                 cloud_path: None,
-                content_hash: crate::util::fs::hash_bytes(b"fixture"),
                 created_at: Utc::now(),
             };
-            database.insert_file(&file).await.unwrap();
+            database
+                .insert_external_file_for_test(&file, &abs)
+                .await
+                .unwrap();
         }
-        // Register the external refs *after* inserting the files, so the disc-ID
-        // re-read can resolve their paths.
-        database
-            .register_release_external_refs_for_test(&release.id, &local_dir.to_string_lossy())
-            .await
-            .unwrap();
 
         // Two track rows, so the assertion below pins the count to the DB rather
         // than to whatever a folder walk would have counted.

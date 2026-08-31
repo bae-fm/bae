@@ -127,7 +127,8 @@ async fn create_local_release(
     tokio::fs::create_dir_all(source_dir).await.unwrap();
     let mut result = Vec::new();
     for (name, data) in files {
-        tokio::fs::write(source_dir.join(name), data).await.unwrap();
+        let path = source_dir.join(name);
+        tokio::fs::write(&path, data).await.unwrap();
         let file = DbFile::new(
             &release_id,
             name,
@@ -135,15 +136,10 @@ async fn create_local_release(
             ContentType::Flac,
             Uuid::new_v4().to_string(),
             now,
-            bae_core::util::fs::hash_bytes(data),
         );
-        mgr.add_file(&file).await.unwrap();
+        mgr.add_external_file_for_test(&file, &path).await.unwrap();
         result.push((name.to_string(), data.to_vec()));
     }
-    // Register the in-place files as coven external refs (after the rows exist).
-    mgr.register_release_external_refs_for_test(&release_id, &source_dir.to_string_lossy())
-        .await
-        .unwrap();
     (album_id, release_id, result)
 }
 

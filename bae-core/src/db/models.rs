@@ -404,12 +404,6 @@ pub struct DbFile {
     /// key computed at import for a browsable home. coven derives every
     /// upload/read/delete key from this column via the table's `BlobDecl`.
     pub cloud_path: Option<String>,
-    /// SHA-256 (lowercase hex) of this file's plaintext bytes — coven's
-    /// author-signed content hash, verified against the decrypted bytes on
-    /// every cloud fetch (see [`crate::util::fs::hash_file`]). Not optional:
-    /// coven reads it off every blob-bearing row and refuses one without it, so
-    /// a file row and its hash are written together or not at all.
-    pub content_hash: String,
     pub created_at: DateTime<Utc>,
 }
 
@@ -759,8 +753,8 @@ impl DbFile {
     /// Create a file record
     ///
     /// Files are linked to releases. Used for reconstructing original file structure
-    /// during export. `content_hash` is coven's required blob content hash
-    /// (see [`crate::util::fs::hash_file`]).
+    /// during export. Coven owns the blob content hash and fills its private
+    /// declaration while registering the prepared external file.
     pub fn new(
         release_id: &str,
         original_filename: &str,
@@ -768,7 +762,6 @@ impl DbFile {
         content_type: ContentType,
         id: String,
         now: DateTime<Utc>,
-        content_hash: String,
     ) -> Self {
         DbFile {
             id,
@@ -780,7 +773,6 @@ impl DbFile {
             // Files start opaque-keyed (hashed by id). A browsable remote
             // import / manage sets the readable key explicitly before insert.
             cloud_path: None,
-            content_hash,
             created_at: now,
         }
     }
