@@ -6,9 +6,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
@@ -30,9 +28,6 @@ import uniffi.bae_bridge.BridgeLibraryImageType
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ImageStoreTest {
-    @get:Rule
-    val folder = TemporaryFolder()
-
     private val fitTo64 = DecodeSize.FitTo(64)
 
     @Test
@@ -82,35 +77,6 @@ class ImageStoreTest {
         }
 
     @Test
-    fun aBumpedModificationTimeIsADifferentFile() =
-        runBlocking {
-            val file = folder.newFile("candidate.png")
-            file.writeBytes(TestImages.png(128, seed = 1))
-            val store = storeOf()
-            val content = ImageContent.LocalFile(file.path)
-
-            val first = store.image(content, fitTo64).orFail("first read")
-            assertSame(first, store.cachedImage(content, fitTo64))
-
-            file.writeBytes(TestImages.png(128, seed = 2))
-            file.setLastModified(file.lastModified() + 60_000)
-
-            assertNull("the file changed, so its old decode is not served", store.cachedImage(content, fitTo64))
-            assertNotSame(first, store.image(content, fitTo64).orFail("second read"))
-        }
-
-    @Test
-    fun bytesInHandAreDecodedButNeverCached() =
-        runBlocking {
-            val store = storeOf()
-            val content = ImageContent.Bytes(TestImages.png(128))
-
-            val first = store.image(content, fitTo64).orFail("first decode")
-            assertNull("bytes have no identity to pin a cache entry to", store.cachedImage(content, fitTo64))
-            assertNotSame("every look decodes afresh", first, store.image(content, fitTo64).orFail("second decode"))
-        }
-
-    @Test
     fun evictionNeverCrossesBuckets() =
         runBlocking {
             // A 128px source at 64px costs 64 × 64 × 4 = 16 KB; a 256px source at
@@ -125,8 +91,6 @@ class ImageStoreTest {
                         DecodedImageBudgets(
                             libraryImage = 64 * 1024,
                             releaseImage = 64 * 1024,
-                            remote = 64 * 1024,
-                            localFile = 64 * 1024,
                         ),
                 )
             val cover = ImageContent.LibraryImage(coverRef("rel-1"))
@@ -228,30 +192,6 @@ class ImageStoreTest {
         }
 
     @Test
-    fun aNewValidatorReplacesEveryDecodeOfTheOldBytes() =
-        runBlocking {
-            var validator = "etag-1"
-            val store =
-                storeOf(remote = { RemoteImageBytes(bytes = TestImages.png(128), validator = validator) })
-            val content = ImageContent.Remote("https://example.invalid/art.jpg")
-
-            val small = store.image(content, DecodeSize.FitTo(32)).orFail("32px decode")
-            val large = store.image(content, DecodeSize.FitTo(64)).orFail("64px decode")
-            assertSame(small, store.cachedImage(content, DecodeSize.FitTo(32)))
-
-            // Provider art is never held in the byte cache — only core's fetch
-            // knows when the bytes behind a URL moved — so every read reaches the
-            // fetch, and the fetch is what tells the store. It invalidates every
-            // size, not just the one being loaded.
-            validator = "etag-2"
-            store.imageBytes(content)
-
-            assertNull(store.cachedImage(content, DecodeSize.FitTo(32)))
-            assertNull(store.cachedImage(content, DecodeSize.FitTo(64)))
-            assertNotSame(large, store.image(content, DecodeSize.FitTo(64)).orFail("reloaded 64px decode"))
-        }
-
-    @Test
     fun aLibraryImageWithNoBytesResolvesToNothing() =
         runBlocking {
             val store = storeOf(library = { null })
@@ -271,13 +211,11 @@ class ImageStoreTest {
     private fun storeOf(
         library: (() -> ByteArray?)? = null,
         release: (() -> ByteArray)? = null,
-        remote: (() -> RemoteImageBytes)? = null,
         decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
         byteBudgets: ImageByteBudgets = ImageByteBudgets(),
     ) = ImageStore(
         fetchLibraryImageBytes = { checkNotNull(library) { "no library-image fetch in this store" }() },
         fetchReleaseImageBytes = { _, _ -> checkNotNull(release) { "no release-image fetch in this store" }() },
-        fetchRemoteImage = { checkNotNull(remote) { "no remote fetch in this store" }() },
         decodedBudgets = decodedBudgets,
         byteBudgets = byteBudgets,
         // Unconfined keeps every fetch and decode on the test's own thread, so

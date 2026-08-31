@@ -67,14 +67,6 @@ class ImageDecodeTest {
     }
 
     @Test
-    fun decodesAFileAtTheAskedSize() {
-        val file = folder.newFile("art.png")
-        file.writeBytes(TestImages.png(512))
-
-        assertEquals(64, decodeFile(file.path, DecodeSize.FitTo(64))!!.width)
-    }
-
-    @Test
     fun standsAQuarterTurnedSourceUpright() {
         // A scan whose pixels are stored sideways with the orientation tag saying
         // so: decoded as-is it would be 200 × 100, and upright it is 100 × 200.
@@ -85,7 +77,7 @@ class ImageDecodeTest {
             saveAttributes()
         }
 
-        val decoded = decodeFile(file.path, DecodeSize.Native)!!
+        val decoded = decodeBytes(file.readBytes(), DecodeSize.Native)!!
         assertEquals(100, decoded.width)
         assertEquals(200, decoded.height)
     }
@@ -120,7 +112,7 @@ class ImageDecodeTest {
             saveAttributes()
         }
 
-        val decoded = decodeFile(file.path, DecodeSize.Native)!!
+        val decoded = decodeBytes(file.readBytes(), DecodeSize.Native)!!
         val near = QUADRANT_SOURCE / 4
         val far = QUADRANT_SOURCE - near
         val quadrants =
@@ -148,7 +140,7 @@ class ImageDecodeTest {
         val file = folder.newFile("upright.jpg")
         file.writeBytes(TestImages.jpeg(width = 200, height = 100))
 
-        val decoded = decodeFile(file.path, DecodeSize.Native)!!
+        val decoded = decodeBytes(file.readBytes(), DecodeSize.Native)!!
         assertEquals(200, decoded.width)
         assertEquals(100, decoded.height)
     }

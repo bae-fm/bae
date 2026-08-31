@@ -14,15 +14,13 @@ import uniffi.bae_bridge.AppHandle
 import uniffi.bae_bridge.BridgeGallerySource
 import uniffi.bae_bridge.BridgeImageRef
 import java.io.ByteArrayInputStream
-import java.io.File
 
 private const val TAG = "bae.ImageStore"
 private val logger = BaeLogger(TAG)
 
 /**
- * What an image slot shows, and therefore where its bytes come from. Every image
- * in the app is one of these five; a view names the content and renders whatever
- * [ImageStore] hands back.
+ * What an image slot shows, and therefore where its bytes come from. A view names
+ * the content and renders whatever [ImageStore] hands back.
  */
 sealed interface ImageContent {
     /** A curated library image — a release cover or an artist portrait — read by
@@ -39,34 +37,12 @@ sealed interface ImageContent {
         val source: BridgeGallerySource,
     ) : ImageContent
 
-    /** Provider art (Cover Art Archive, Discogs) that isn't in the library.
-     *  Fetched through core, which owns every socket the app opens. */
-    data class Remote(
-        val url: String,
-    ) : ImageContent
-
-    /** A file on disk the user is previewing before it enters the library — an
-     *  import candidate's cover or folder image. */
-    data class LocalFile(
-        val path: String,
-    ) : ImageContent
-
-    /** Bytes already in hand. Decoded on demand and never cached: the caller holds
-     *  the only identity these bytes have, so this is identity-compared by
-     *  reference rather than by content. */
-    class Bytes(
-        val bytes: ByteArray,
-    ) : ImageContent
-
     /** Human-readable description for failure logs. */
     val description: String
         get() =
             when (this) {
                 is LibraryImage -> "library image: ${image.imageType} ${image.id}"
                 is ReleaseImage -> "release image: $releaseId"
-                is Remote -> "remote image: $url"
-                is LocalFile -> "image at path: $path"
-                is Bytes -> "in-memory image: ${bytes.size} bytes"
             }
 }
 
@@ -95,34 +71,24 @@ sealed interface DecodeSize {
             }
 }
 
-/** The decoded cache's four independent budgets, one per content kind. */
+/** The decoded cache's independent budgets, one per content kind. */
 enum class ImageBucket {
     LIBRARY_IMAGE,
     RELEASE_IMAGE,
-    REMOTE,
-    LOCAL_FILE,
 }
 
-/** Which cache the decodes of this content live in. Derived here so callers never
- *  pass a bucket. `Bytes` is never cached, but every content still names a bucket
- *  so the lookup needs no second "is this cacheable" branch — its key is null,
- *  which is what keeps it out. */
+/** Which cache the decodes of this content live in. */
 private val ImageContent.bucket: ImageBucket
     get() =
         when (this) {
             is ImageContent.LibraryImage -> ImageBucket.LIBRARY_IMAGE
             is ImageContent.ReleaseImage -> ImageBucket.RELEASE_IMAGE
-            is ImageContent.Remote -> ImageBucket.REMOTE
-            is ImageContent.LocalFile, is ImageContent.Bytes -> ImageBucket.LOCAL_FILE
         }
 
 private const val MEGABYTE = 1024 * 1024
 
 private const val DECODED_LIBRARY_IMAGE_BUDGET = 48 * MEGABYTE
 private const val DECODED_RELEASE_IMAGE_BUDGET = 16 * MEGABYTE
-private const val DECODED_REMOTE_BUDGET = 8 * MEGABYTE
-private const val DECODED_LOCAL_FILE_BUDGET = 16 * MEGABYTE
-
 private const val ENCODED_LIBRARY_IMAGE_BUDGET = 16 * MEGABYTE
 private const val ENCODED_RELEASE_IMAGE_BUDGET = 8 * MEGABYTE
 
@@ -130,15 +96,10 @@ private const val ENCODED_RELEASE_IMAGE_BUDGET = 8 * MEGABYTE
  * Per-kind byte budgets for the decoded cache. Eviction never crosses buckets, so
  * a native-size release image cannot evict the album grid's covers.
  *
- * The phone numbers are the mobile column of the shared design. Local files are
- * import candidates and Android has no import flow, so nothing ever enters that
- * bucket; it carries a budget anyway because the kind exists on the contract.
  */
 data class DecodedImageBudgets(
     val libraryImage: Int = DECODED_LIBRARY_IMAGE_BUDGET,
     val releaseImage: Int = DECODED_RELEASE_IMAGE_BUDGET,
-    val remote: Int = DECODED_REMOTE_BUDGET,
-    val localFile: Int = DECODED_LOCAL_FILE_BUDGET,
 )
 
 /**
@@ -147,13 +108,9 @@ data class DecodedImageBudgets(
  * release image, a cloud download and decrypt) dominates the cost of re-showing
  * an image the app has already read.
  *
- * Only the two coven-backed kinds are held, and only because their tokens carry
+ * Both kinds are held because their tokens carry
  * content identity — a version that moves with the bytes, an immutable file id —
- * so a held entry can never come to name different bytes. Provider art is keyed
- * on nothing but its URL, and only core's fetch knows when the bytes behind it
- * moved, so holding those bytes here would mean serving stale art indefinitely;
- * every remote read goes to core, whose own URL cache answers it. A local file is
- * already a cheap disk read.
+ * so a held entry can never come to name different bytes.
  */
 data class ImageByteBudgets(
     val libraryImage: Int = ENCODED_LIBRARY_IMAGE_BUDGET,
@@ -168,10 +125,9 @@ data class ImageByteBudgets(
  *
  * What a cached decode is pinned to — its token — is the content's identity, so
  * no entry can outlive the bytes it came from: a curated image keys on its
- * `_updated_at` version, a release file on its file id (immutable — an import
+ * `_updated_at` version, and a release file on its file id (immutable — an import
  * mints a fresh id per file, and a re-import mints new ones rather than
- * repointing an existing row), provider art on its URL plus the validator core
- * returns with the bytes, and a local file on its path and modification time.
+ * repointing an existing row).
  */
 class ImageStore(
     /** Bytes of a curated library image, or null when no such image exists. */
@@ -181,11 +137,6 @@ class ImageStore(
     private val fetchReleaseImageBytes:
         suspend (releaseId: String, source: BridgeGallerySource) -> ByteArray =
         { _, _ -> throw ImageStoreUnavailable() },
-    /** Bytes of provider art at a URL, with the validator identifying them. The
-     *  fetch behind it backs the desktop import flow and is absent from the
-     *  Android bindings, so this keeps its throwing default here. */
-    private val fetchRemoteImage: suspend (url: String) -> RemoteImageBytes =
-        { throw ImageStoreUnavailable() },
     decodedBudgets: DecodedImageBudgets = DecodedImageBudgets(),
     byteBudgets: ImageByteBudgets = ImageByteBudgets(),
     /** Where fetches and decodes run. Injected so tests drive them on their own
@@ -199,7 +150,6 @@ class ImageStore(
 
     private val decoded = DecodedCaches(decodedBudgets)
     private val bytes = ByteCaches(byteBudgets)
-    private val remoteValidators = RemoteValidators()
 
     /**
      * The already-decoded bitmap for [content] at this size, or null when it isn't
@@ -207,14 +157,13 @@ class ImageStore(
      * after (re)mounting instead of flashing a placeholder while an async load
      * lands a frame later.
      *
-     * The only I/O is the `stat` a local file's modification time needs; every
-     * other kind is a pure cache lookup, and [ImageContent.Bytes] is never cached.
+     * This is a memory-only lookup.
      */
     fun cachedImage(
         content: ImageContent,
         size: DecodeSize,
     ): Bitmap? {
-        val key = cacheKey(content, size) ?: return null
+        val key = cacheKey(content, size)
         return decoded[content.bucket].get(key)
     }
 
@@ -230,23 +179,14 @@ class ImageStore(
         size: DecodeSize,
     ): Bitmap? {
         val key = cacheKey(content, size)
-        val cached = key?.let { decoded[content.bucket].get(it) }
+        val cached = decoded[content.bucket].get(key)
         if (cached != null) return cached
         val bitmap =
             withContext(dispatcher) {
-                when (content) {
-                    is ImageContent.LocalFile -> decodeFile(content.path, size)
-                    else -> imageBytes(content)?.let { decodeBytes(it, size) }
-                }
+                imageBytes(content)?.let { decodeBytes(it, size) }
             }
-        // A key is absent only for `Bytes`, whose identity the caller holds —
-        // there is nothing to pin a cache entry to — and for a local file whose
-        // modification time can't be read.
-        if (bitmap != null && key != null) {
+        if (bitmap != null) {
             decoded[content.bucket].put(key, bitmap)
-            if (content is ImageContent.Remote) {
-                remoteValidators.record(key = key, url = content.url)
-            }
         }
         return bitmap
     }
@@ -260,30 +200,17 @@ class ImageStore(
      * `ContentProvider` streaming to a media-browse client — read them here rather
      * than opening a second path to core.
      */
-    suspend fun imageBytes(content: ImageContent): ByteArray? =
-        when (content) {
-            is ImageContent.Bytes -> {
-                content.bytes
-            }
-
-            is ImageContent.LocalFile -> {
-                withContext(dispatcher) { File(content.path).readBytes() }
-            }
-
-            is ImageContent.LibraryImage, is ImageContent.ReleaseImage, is ImageContent.Remote -> {
-                heldOrFetchedBytes(content)
-            }
-        }
+    suspend fun imageBytes(content: ImageContent): ByteArray? = heldOrFetchedBytes(content)
 
     /** The bytes held for [content] in the byte cache, else the ones core hands
      *  back — held under the content's token when there is one. */
     private suspend fun heldOrFetchedBytes(content: ImageContent): ByteArray? {
         val token = token(content)
         val cache = bytes[content.bucket]
-        val held = token?.let { cache?.get(it) }
+        val held = cache.get(token)
         if (held != null) return held
         val fetched = withContext(dispatcher) { fetchBytes(content) }
-        if (fetched != null && token != null && cache != null) {
+        if (fetched != null) {
             cache.put(token, fetched)
         }
         return fetched
@@ -305,50 +232,20 @@ class ImageStore(
             is ImageContent.ReleaseImage -> {
                 fetchReleaseImageBytes(content.releaseId, content.source)
             }
-
-            is ImageContent.Remote -> {
-                val fetched = fetchRemoteImage(content.url)
-                dropDecodesPredating(validator = fetched.validator, url = content.url)
-                fetched.bytes
-            }
-
-            // Both carry their bytes without asking core; imageBytes answers them
-            // before reaching here.
-            is ImageContent.LocalFile, is ImageContent.Bytes -> {
-                error("${content.description} resolves its own bytes")
-            }
         }
-
-    /**
-     * Evict every decode of [url] made from an older validator. Core's byte cache
-     * decides when a URL's bytes are re-read; when they come back different, the
-     * decodes taken from the old ones are stale at *every* pixel size, not just
-     * the one being loaded.
-     */
-    private fun dropDecodesPredating(
-        validator: String,
-        url: String,
-    ) {
-        remoteValidators.adopt(validator = validator, url = url).forEach { stale ->
-            decoded[ImageBucket.REMOTE].remove(stale)
-        }
-    }
 
     /**
      * Cache key for a decoded bitmap: its content identity plus the decode
      * resolution, so the now-playing bar's 48dp decode never serves the album
-     * header's 140dp slot, and vice versa. Null when the content has no cacheable
-     * identity.
+     * header's 140dp slot, and vice versa.
      */
     private fun cacheKey(
         content: ImageContent,
         size: DecodeSize,
-    ): String? = token(content)?.let { "$it#${size.keySuffix}" }
+    ): String = "${token(content)}#${size.keySuffix}"
 
-    /** What pins a cached entry to the exact bytes it came from. Null for
-     *  [ImageContent.Bytes] (no identity to pin to) and for a local file whose
-     *  modification time can't be read. */
-    private fun token(content: ImageContent): String? =
+    /** What pins a cached entry to the exact bytes it came from. */
+    private fun token(content: ImageContent): String =
         when (content) {
             is ImageContent.LibraryImage -> {
                 content.image.libraryToken
@@ -366,28 +263,6 @@ class ImageStore(
                     is BridgeGallerySource.ReleaseFile -> "file:${source.fileId}"
                 }
             }
-
-            is ImageContent.Remote -> {
-                "remote:${content.url}"
-            }
-
-            is ImageContent.LocalFile -> {
-                // File.lastModified() answers 0 both for a missing file and for one
-                // whose time can't be read; either way there is no time to pin an
-                // entry to, so nothing is cached and the load path surfaces the
-                // read failure itself.
-                val modified = File(content.path).lastModified()
-                if (modified == 0L) {
-                    logger.debug("no modification time for ${content.path}; not caching its decode")
-                    null
-                } else {
-                    "path:${content.path}#$modified"
-                }
-            }
-
-            is ImageContent.Bytes -> {
-                null
-            }
         }
 
     companion object {
@@ -403,32 +278,7 @@ class ImageStore(
 private val BridgeImageRef.libraryToken: String
     get() = "library:${imageType.name}:$id:$version"
 
-/**
- * Provider-art bytes plus the token identifying this exact content: the response's
- * `ETag`, or a hash of the bytes when it carries none.
- *
- * Mirrors the bridge's `BridgeRemoteImage`, which only the desktop bindings
- * export — the fetch behind it is desktop-only, and this store compiles for
- * Android.
- */
-data class RemoteImageBytes(
-    val bytes: ByteArray,
-    val validator: String,
-) {
-    // ByteArray's identity equality would make two reads of the same art unequal;
-    // the validator is exactly the token that says whether they are the same
-    // content, so compare on it.
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        return other is RemoteImageBytes && validator == other.validator
-    }
-
-    override fun hashCode(): Int = validator.hashCode()
-}
-
-/** A capability this [ImageStore] isn't wired for — the preview instance, or the
- *  desktop-only provider-art fetch. Throwing surfaces the misuse instead of
- *  masking it with empty bytes. */
+/** A capability this [ImageStore] isn't wired for. */
 class ImageStoreUnavailable : Exception("this ImageStore has no fetch for that content")
 
 /**
@@ -441,7 +291,7 @@ val LocalImageStore =
         error("LocalImageStore not provided")
     }
 
-/** The four per-kind decoded caches, addressed by bucket. Cost is the bitmap's
+/** The per-kind decoded caches, addressed by bucket. Cost is the bitmap's
  *  own allocation, so a budget is a real memory ceiling. */
 private class DecodedCaches(
     budgets: DecodedImageBudgets,
@@ -450,8 +300,6 @@ private class DecodedCaches(
         mapOf(
             ImageBucket.LIBRARY_IMAGE to bitmapCache(budgets.libraryImage),
             ImageBucket.RELEASE_IMAGE to bitmapCache(budgets.releaseImage),
-            ImageBucket.REMOTE to bitmapCache(budgets.remote),
-            ImageBucket.LOCAL_FILE to bitmapCache(budgets.localFile),
         )
 
     /** Every bucket is built in init, so a missing one is a broken map, not a
@@ -467,8 +315,7 @@ private class DecodedCaches(
         }
 }
 
-/** The per-kind encoded-byte caches. Buckets whose absence is deliberate are the
- *  ones [ImageByteBudgets] names: remote art, local files, and in-hand bytes. */
+/** The per-kind encoded-byte caches. */
 private class ByteCaches(
     budgets: ImageByteBudgets,
 ) {
@@ -478,7 +325,7 @@ private class ByteCaches(
             ImageBucket.RELEASE_IMAGE to byteCache(budgets.releaseImage),
         )
 
-    operator fun get(bucket: ImageBucket): LruCache<String, ByteArray>? = caches[bucket]
+    operator fun get(bucket: ImageBucket): LruCache<String, ByteArray> = caches.getValue(bucket)
 
     private fun byteCache(maxBytes: Int) =
         object : LruCache<String, ByteArray>(maxBytes) {
@@ -487,48 +334,6 @@ private class ByteCaches(
                 value: ByteArray,
             ): Int = value.size
         }
-}
-
-/**
- * The validator each remote URL's cached decodes were made from, and the keys they
- * live under. [LruCache] can't enumerate its keys, so the store tracks what it
- * wrote in order to drop a URL's decodes when its bytes change.
- */
-private class RemoteValidators {
-    private class Entry(
-        var validator: String?,
-        val keys: MutableSet<String>,
-    )
-
-    private val entries = HashMap<String, Entry>()
-
-    /** Note that [url]'s decode at this size lives under [key]. */
-    @Synchronized
-    fun record(
-        key: String,
-        url: String,
-    ) {
-        entries.getOrPut(url) { Entry(validator = null, keys = mutableSetOf()) }.keys.add(key)
-    }
-
-    /**
-     * Adopt the validator a fetch just returned for [url], and hand back the keys
-     * holding decodes of the previous one. Empty when the validator is unchanged,
-     * or when this is the first fetch for the URL.
-     */
-    @Synchronized
-    fun adopt(
-        validator: String,
-        url: String,
-    ): Set<String> {
-        val entry = entries.getOrPut(url) { Entry(validator = null, keys = mutableSetOf()) }
-        val previous = entry.validator
-        entry.validator = validator
-        if (previous == null || previous == validator) return emptySet()
-        val stale = entry.keys.toSet()
-        entry.keys.clear()
-        return stale
-    }
 }
 
 /**
@@ -545,21 +350,6 @@ internal fun decodeBytes(
         size = size,
         decode = { options -> BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) },
         exif = { ExifInterface(ByteArrayInputStream(bytes)) },
-    )
-
-/**
- * Decode the file at [path] the same way [decodeBytes] decodes in-memory bytes.
- * Reads through [BitmapFactory] rather than loading the file whole, so a large
- * image never sits in memory at full size just to be downsampled.
- */
-internal fun decodeFile(
-    path: String,
-    size: DecodeSize,
-): Bitmap? =
-    decodeSampled(
-        size = size,
-        decode = { options -> BitmapFactory.decodeFile(path, options) },
-        exif = { ExifInterface(path) },
     )
 
 /**
