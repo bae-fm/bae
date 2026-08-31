@@ -763,6 +763,7 @@ mod tests {
             duration: Duration::from_secs(1),
             sample_rate,
             bits_per_sample: Some(16),
+            bitrate_kbps: None,
             channels,
         }
     }

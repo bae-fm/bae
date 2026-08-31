@@ -533,8 +533,18 @@ fn source_audio_of(file: &ScannedFile) -> Result<Option<ScannedAudio>, FolderSca
     }
     let duration_ms = probe.duration.as_millis() as u64;
     let bits_per_sample = probe.bits_per_sample.map(i64::from);
-    let bitrate_kbps = (bits_per_sample.is_none() && duration_ms > 0)
-        .then(|| (file.size.saturating_mul(8) / duration_ms) as i64);
+    let bitrate_kbps = if bits_per_sample.is_none() {
+        let Some(bitrate_kbps) = probe.bitrate_kbps else {
+            info!(
+                "Invalid candidate: audio stream bitrate could not be read from {}",
+                file.relative_path
+            );
+            return Ok(None);
+        };
+        Some(bitrate_kbps)
+    } else {
+        None
+    };
     Ok(Some(ScannedAudio {
         content_type: probe.content_type.clone(),
         duration_ms,

@@ -18,6 +18,9 @@ pub struct ProbeResult {
     /// Source bit depth for lossless audio. Perceptual codecs are `None` even
     /// when FFmpeg exposes a coded-word width.
     pub bits_per_sample: Option<u32>,
+    /// Average coded-stream bitrate for perceptual codecs. Container metadata,
+    /// embedded artwork, and other non-audio bytes are excluded.
+    pub bitrate_kbps: Option<i64>,
     pub channels: u32,
 }
 
@@ -209,6 +212,89 @@ unsafe fn probed_duration(
     }
 }
 
+fn kbps_from_bps(bps: i64) -> Option<i64> {
+    if bps <= 0 {
+        return None;
+    }
+    let rounded = bps / 1_000 + i64::from(bps % 1_000 >= 500);
+    Some(rounded.max(1))
+}
+
+/// FFmpeg exposes a declared/estimated bitrate for formats such as MP3, AAC,
+/// and Vorbis. Opus commonly leaves that field unset, so derive its average
+/// from audio-packet bytes only. Both paths describe the coded audio stream;
+/// neither includes container tags or embedded artwork.
+unsafe fn probed_lossy_bitrate_kbps(
+    path: &str,
+    fmt_ctx: *mut ffmpeg_sys_next::AVFormatContext,
+    stream_index: c_int,
+    duration: std::time::Duration,
+) -> Option<i64> {
+    use ffmpeg_sys_next::*;
+
+    let stream = *(*fmt_ctx).streams.add(stream_index as usize);
+    if let Some(kbps) = kbps_from_bps((*(*stream).codecpar).bit_rate) {
+        return Some(kbps);
+    }
+
+    let start = if (*stream).start_time == AV_NOPTS_VALUE {
+        0
+    } else {
+        (*stream).start_time
+    };
+    if av_seek_frame(fmt_ctx, stream_index, start, AVSEEK_FLAG_BACKWARD) < 0 {
+        warn!("probe_audio_from_path: cannot seek {path} to measure audio bitrate");
+        return None;
+    }
+
+    let mut packet = av_packet_alloc();
+    if packet.is_null() {
+        warn!("probe_audio_from_path: cannot allocate packet to measure {path} bitrate");
+        return None;
+    }
+    let mut audio_bytes = 0u64;
+    let read_result = loop {
+        let result = av_read_frame(fmt_ctx, packet);
+        if result < 0 {
+            break result;
+        }
+        if (*packet).stream_index == stream_index {
+            let packet_size = (*packet).size;
+            if packet_size < 0 {
+                av_packet_unref(packet);
+                warn!("probe_audio_from_path: negative audio packet size in {path}");
+                av_packet_free(&mut packet);
+                return None;
+            }
+            let Some(total) = audio_bytes.checked_add(packet_size as u64) else {
+                av_packet_unref(packet);
+                warn!("probe_audio_from_path: audio byte count overflow for {path}");
+                av_packet_free(&mut packet);
+                return None;
+            };
+            audio_bytes = total;
+        }
+        av_packet_unref(packet);
+    };
+    av_packet_free(&mut packet);
+
+    if read_result != AVERROR_EOF {
+        warn!("probe_audio_from_path: failed while reading audio packets from {path}");
+        return None;
+    }
+    if audio_bytes == 0 {
+        warn!("probe_audio_from_path: no audio packets found while measuring {path}");
+        return None;
+    }
+
+    let bps = u128::from(audio_bytes) * 8 * 1_000_000_000 / duration.as_nanos();
+    let Ok(bps) = i64::try_from(bps) else {
+        warn!("probe_audio_from_path: measured bitrate is out of range for {path}");
+        return None;
+    };
+    kbps_from_bps(bps)
+}
+
 /// The file's audio properties, read from its current bytes.
 pub fn probe_audio_from_path(path: &str) -> Option<ProbeResult> {
     open_and_probe(path)
@@ -275,6 +361,14 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
             bits_per_sample = decode_one_frame_for_bit_depth(fmt_ctx, stream_index);
         }
 
+        let bitrate_kbps = if content_type.is_lossless_audio() {
+            None
+        } else {
+            duration.and_then(|duration| {
+                probed_lossy_bitrate_kbps(path, fmt_ctx, stream_index, duration)
+            })
+        };
+
         avformat_close_input(&mut fmt_ctx);
 
         if let Some(duration) = duration {
@@ -283,6 +377,7 @@ fn open_and_probe(path: &str) -> Option<ProbeResult> {
                 duration,
                 sample_rate,
                 bits_per_sample,
+                bitrate_kbps,
                 channels,
             })
         } else {

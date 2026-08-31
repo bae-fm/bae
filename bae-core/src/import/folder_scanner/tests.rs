@@ -135,3 +135,4 @@ include!("tests/cue_and_file_validation.rs");
 include!("tests/scenario_fixtures.rs");
 include!("tests/scan_scenarios.rs");
 include!("tests/bindings.rs");
+include!("tests/audio_formats.rs");

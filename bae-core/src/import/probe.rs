@@ -192,6 +192,7 @@ pub(crate) fn sheet_analysis(
                 duration: std::time::Duration::from_millis(source_audio.duration_ms),
                 sample_rate: source_audio.format.sample_rate_hz as u32,
                 bits_per_sample: source_audio.format.bits_per_sample.map(|bits| bits as u32),
+                bitrate_kbps: source_audio.format.bitrate_kbps,
                 channels: source_audio.format.channels as u32,
             },
         });

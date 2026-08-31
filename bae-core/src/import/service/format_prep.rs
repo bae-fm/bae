@@ -744,6 +744,7 @@ FILE "Test Album.ape" WAVE
             duration: std::time::Duration::from_secs(1),
             sample_rate,
             bits_per_sample: Some(16),
+            bitrate_kbps: None,
             channels,
         }
     }
@@ -853,6 +854,7 @@ FILE "test.ape" WAVE
                     duration: std::time::Duration::from_secs(12 * 60),
                     sample_rate: 75,
                     bits_per_sample: Some(16),
+                    bitrate_kbps: None,
                     channels: 2,
                 },
             }],
