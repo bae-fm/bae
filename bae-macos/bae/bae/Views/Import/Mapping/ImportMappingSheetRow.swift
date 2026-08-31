@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// A track sheet, heading the group of entries it carves: its name, the audio
+/// A track sheet source summary above the playable table: its name, the audio
 /// it describes, and which disc of the release those entries are.
 ///
 /// The two controls are the sheet's decisions and nothing else's. Which audio a
@@ -11,9 +11,6 @@ import SwiftUI
 /// the assignment is the truth and no name is read for it.
 struct ImportMappingSheetRow: View {
     let sheet: BridgeSheetGroup
-    /// The widths the table resolved for this pane, so the group header holds
-    /// its entries' columns open at the width they are drawn at.
-    let columns: ImportMappingColumns.Tracks
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core. `nil` until it has been asked for; empty means there is nothing to
     /// offer, so no menu appears.
@@ -26,18 +23,10 @@ struct ImportMappingSheetRow: View {
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
-                .frame(width: columns.source, alignment: .leading)
-            HStack {
-                ImportSheetDiscMenu(
-                    sheet: sheet,
-                    onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
-                )
-                Spacer(minLength: 0)
-            }
-            .frame(width: columns.mappedTrack, alignment: .leading)
-            // The slices below fill Length; the heading only holds the column
-            // open so its entries stay aligned with ordinary track rows.
-            Spacer().frame(width: ImportMappingColumns.length)
+            ImportSheetDiscMenu(
+                sheet: sheet,
+                onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
+            )
         }
     }
 

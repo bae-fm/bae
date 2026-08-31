@@ -71,6 +71,19 @@ extension BridgeMappingTable {
     /// the order the table lays them out.
     var units: [BridgeMappingUnit] { rows.flatMap(\.units) }
 
+    /// The track sheets in table order. Their source-level controls sit above
+    /// the playable rows rather than masquerading as tracks inside them.
+    var sheets: [BridgeSheetGroup] {
+        rows.compactMap { row in
+            guard case .sheet(let sheet, _) = row else { return nil }
+            return sheet
+        }
+    }
+
+    /// Every playable row, including slices a track sheet carves, in the same
+    /// order core supplied them.
+    var trackUnits: [BridgeMappingUnit] { units.filter(\.isTrack) }
+
     /// Rows that will write a track.
     var willWriteCount: Int { units.count(where: \.writesTrack) }
 

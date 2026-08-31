@@ -62,6 +62,8 @@ for scene in \
     import-release-queue-collapsed \
     import-release-scanning-refresh \
     import-release-resolved-reversal \
+    import-mapping-cue-wide \
+    import-mapping-cue-narrow \
     storage-manager-dense \
     storage-manager-empty \
     storage-manager-empty-ish \

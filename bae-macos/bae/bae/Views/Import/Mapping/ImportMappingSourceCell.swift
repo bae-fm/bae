@@ -12,6 +12,9 @@ struct ImportMappingSourceCell: View {
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
+    /// Track rows keep the size beside their source. Files rows put it in the
+    /// table's dedicated Size column instead.
+    let showsFileSize: Bool
     let actions: ImportMappingActions
 
     private var isPreviewing: Bool {
@@ -49,12 +52,14 @@ struct ImportMappingSourceCell: View {
                 auditionButton(path: file.localPath)
             }
             nameCell(file)
-            Text(file.sizeText)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                // A squeezed column must truncate the name, never wrap the
-                // size mid-digit.
-                .fixedSize()
+            if showsFileSize {
+                Text(file.sizeText)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    // A squeezed column must truncate the name, never wrap the
+                    // size mid-digit.
+                    .fixedSize()
+            }
             ForEach(ImportEvidence.badges(evidence)) { badge in
                 ImportEvidenceChip(signal: badge.signal)
                     .fixedSize()
@@ -91,15 +96,12 @@ struct ImportMappingSourceCell: View {
         return { actions.openDocument(file.name, file.localPath) }
     }
 
-    /// One entry of a track sheet: the number and title it prints. The audio is
-    /// the container's, which is the only file on disk there is to audition.
+    /// One entry of a track sheet. Its number belongs to the table's dedicated
+    /// `#` column; Source carries only the sheet title and playback affordance.
+    /// The audio is the container's, which is the only file on disk to audition.
     private func entryCell(_ entry: BridgeMappingEntry) -> some View {
         HStack(spacing: 6) {
             auditionButton(path: entry.containerLocalPath)
-            Text(verbatim: "\(entry.number).")
-                .font(.system(size: 12, design: .monospaced))
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
             Text(entry.title ?? "")
                 .font(.system(size: 12))
                 .lineLimit(1)

@@ -6,8 +6,9 @@ import SwiftUI
 ///
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
-/// where the pairing is visible. A track sheet heads the group of entries it
-/// carves; a collapsed directory is one row, because the roles of fourteen rip
+/// where the pairing is visible. A track sheet describes how playable rows are
+/// carved, so its source controls sit above the track table rather than inside
+/// it. A collapsed directory is one row, because the roles of fourteen rip
 /// logs are one fact.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
@@ -45,17 +46,7 @@ struct ImportMappingTable: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            section(
-                title: coreString("ui.import.mapping.tracks_title"),
-                trailing: table.reconciliation
-                    .flatMap(bridgeSlotReconciliationText),
-                supportsArtistFill: true
-            ) {
-                trackHeaderRow
-                ForEach(table.rows, id: \.rowId) { row in
-                    trackBody(of: row)
-                }
-            }
+            tracksSection
             if !table.keptRows.isEmpty {
                 section(title: coreString("ui.import.mapping.files_title")) {
                     fileHeaderRow
@@ -73,19 +64,12 @@ struct ImportMappingTable: View {
     @ViewBuilder
     private func section<Rows: View>(
         title: String,
-        trailing: String? = nil,
-        supportsArtistFill: Bool = false,
         @ViewBuilder rows: () -> Rows
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: title, trailing: trailing)
+            FormSectionHeader(title: title)
             ScrollView(.horizontal) {
-                if supportsArtistFill {
-                    artistFillRows(rows)
-                }
-                else {
-                    rowStack(rows)
-                }
+                rowStack(rows)
             }
             .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .onGeometryChange(for: CGFloat.self) { geo in
@@ -121,29 +105,51 @@ struct ImportMappingTable: View {
 
     // MARK: - Tracks
 
-    /// The rows that become tracks. A sheet heads the run of slices it carves;
-    /// the slices are tracks like any other and carry no sheet controls of
-    /// their own.
-    @ViewBuilder
-    private func trackBody(of row: BridgeMappingRow) -> some View {
-        switch row {
-        case .unit(let unit):
-            if unit.isTrack {
-                trackRow(unit)
-            }
-        case .sheet(let sheet, let entries):
-            ImportMappingSheetRow(
-                sheet: sheet,
-                columns: columns.tracks,
-                options: bindingOptions[sheet.sheetId],
-                evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
-                actions: actions,
+    private var tracksSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FormSectionHeader(
+                title: coreString("ui.import.mapping.tracks_title"),
+                trailing: table.reconciliation
+                    .flatMap(bridgeSlotReconciliationText)
             )
-            .rowChrome()
-            ForEach(entries.filter(\.isTrack), id: \.rowId, content: trackRow)
-        case .directory:
-            EmptyView()
+            ScrollView(.horizontal) {
+                VStack(alignment: .leading, spacing: 8) {
+                    if !table.sheets.isEmpty {
+                        rowStack {
+                            ForEach(
+                                table.sheets,
+                                id: \.sheetId,
+                                content: sheetRow
+                            )
+                        }
+                    }
+                    artistFillRows {
+                        trackHeaderRow
+                        ForEach(
+                            table.trackUnits,
+                            id: \.rowId,
+                            content: trackRow
+                        )
+                    }
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .onGeometryChange(for: CGFloat.self) { geo in
+                geo.size.width
+            } action: {
+                paneWidth = $0
+            }
         }
+    }
+
+    private func sheetRow(_ sheet: BridgeSheetGroup) -> some View {
+        ImportMappingSheetRow(
+            sheet: sheet,
+            options: bindingOptions[sheet.sheetId],
+            evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
+            actions: actions,
+        )
+        .rowChrome()
     }
 
     private func trackRow(_ unit: BridgeMappingUnit) -> some View {
@@ -213,6 +219,8 @@ struct ImportMappingTable: View {
         headerRow {
             eyebrow("ui.import.mapping.column.name")
                 .frame(width: columns.files.name, alignment: .leading)
+            FormEyebrow(text: Text("Size"))
+                .frame(width: columns.files.size, alignment: .trailing)
         }
     }
 
@@ -263,10 +271,9 @@ extension View {
 
 /// The widths the mapping table resolves for one pane.
 ///
-/// Tracks have five columns. Files have one: its Name cell owns the whole inner
-/// table, including the inline size, evidence badges, and any actionable role
-/// control. Keeping those section shapes explicit prevents hidden Files
-/// columns from reserving width for values the section does not show.
+/// Tracks have five columns. Files have a flexible Name and fixed Size column.
+/// Keeping those section shapes explicit prevents track-only columns from
+/// reserving width for values the Files section does not show.
 ///
 /// Source leads because the file is the origin of every mapping row. `#` and
 /// Length are fixed — a track number and a duration have a known size and
@@ -278,19 +285,11 @@ struct ImportMappingColumns {
         let source: CGFloat
         let title: CGFloat
         let artist: CGFloat
-
-        /// The mapped track fields a track-sheet heading replaces. Its Source
-        /// cell still owns the descriptor and audio association, while this
-        /// span owns the disc assignment that shapes the resulting tracks.
-        var mappedTrack: CGFloat {
-            ImportMappingColumns.position + title + artist
-                + ImportMappingColumns.spacing * 2
-        }
     }
 
     struct Files {
-        /// The Files section's only column: the whole inner table width.
         let name: CGFloat
+        let size: CGFloat
     }
 
     let tracks: Tracks
@@ -298,6 +297,7 @@ struct ImportMappingColumns {
 
     static let position: CGFloat = 34
     static let length: CGFloat = 88
+    static let fileSize: CGFloat = 64
     static let spacing: CGFloat = 10
     static let rowPadding: CGFloat = 14
 
@@ -339,7 +339,10 @@ struct ImportMappingColumns {
                 title: title,
                 artist: artist
             ),
-            files: Files(name: width - rowPadding * 2)
+            files: Files(
+                name: width - rowPadding * 2 - spacing - fileSize,
+                size: fileSize
+            )
         )
     }
 
@@ -353,29 +356,33 @@ struct ImportMappingColumns {
 }
 
 /// A collapsed directory as the one Files row core decided it should be: its
-/// path and aggregate size in the section's one Name column.
+/// path and aggregate size in the section's Name and Size columns.
 struct ImportMappingDirectoryRow: View {
     let directory: BridgeCollapsedDirectory
     let columns: ImportMappingColumns.Files
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "folder")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
-            Text(directory.dirPrefix)
-                .font(.system(size: 12, design: .monospaced))
-                .lineLimit(1)
-                .truncationMode(.middle)
+        HStack(spacing: ImportMappingColumns.spacing) {
+            HStack(spacing: 8) {
+                Image(systemName: "folder")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                Text(directory.dirPrefix)
+                    .font(.system(size: 12, design: .monospaced))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+            }
+            .frame(width: columns.name, alignment: .leading)
             Text(
                 Int64(directory.totalSize)
                     .formatted(.byteCount(style: .file))
             )
             .font(.caption)
             .foregroundStyle(.tertiary)
-            Spacer(minLength: 0)
+            .lineLimit(1)
+            .frame(width: columns.size, alignment: .trailing)
         }
-        .frame(width: columns.name, alignment: .leading)
     }
 }
 

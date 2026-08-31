@@ -19,16 +19,24 @@ struct ImportMappingFileRow: View {
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
-            ImportMappingSourceCell(
-                source: unit.source,
-                previewingPath: previewingPath,
-                evidence: evidence,
-                actions: actions,
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            roleControl
+            HStack(spacing: ImportMappingColumns.spacing) {
+                ImportMappingSourceCell(
+                    source: unit.source,
+                    previewingPath: previewingPath,
+                    evidence: evidence,
+                    showsFileSize: false,
+                    actions: actions,
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                roleControl
+            }
+            .frame(width: columns.name, alignment: .leading)
+            Text(sizeText)
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .frame(width: columns.size, alignment: .trailing)
         }
-        .frame(width: columns.name, alignment: .leading)
     }
 
     @ViewBuilder
@@ -42,5 +50,10 @@ struct ImportMappingFileRow: View {
                 onPick: { actions.setRole(file.fileId, $0) },
             )
         }
+    }
+
+    private var sizeText: String {
+        guard case .file(let file) = unit.source else { return "" }
+        return file.sizeText
     }
 }

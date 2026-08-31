@@ -92,6 +92,18 @@ struct ShotScene {
             )
         },
         ShotScene(
+            id: "import-mapping-cue-wide",
+            size: CGSize(width: 1212, height: 900)
+        ) {
+            AnyView(ImportMappingCuePreviewScene(width: 1212))
+        },
+        ShotScene(
+            id: "import-mapping-cue-narrow",
+            size: CGSize(width: 760, height: 900)
+        ) {
+            AnyView(ImportMappingCuePreviewScene(width: 760))
+        },
+        ShotScene(
             id: "storage-manager-dense",
             size: CGSize(width: 1_440, height: 900)
         ) {

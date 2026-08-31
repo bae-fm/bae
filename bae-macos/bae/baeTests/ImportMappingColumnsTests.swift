@@ -7,7 +7,7 @@ import Testing
 /// them out in.
 ///
 /// The one that matters is that each section adds up: Tracks uses its five
-/// columns and Files uses one full-width Name column. Neither may reserve an
+/// columns and Files uses Name plus Size. Neither may reserve an
 /// invisible slice past the pane's right edge.
 struct ImportMappingColumnsTests {
     /// Every column, the gaps between them and the row's two leading edges, as
@@ -20,7 +20,7 @@ struct ImportMappingColumnsTests {
     }
 
     @Test(
-        "the Files name occupies the whole inner table",
+        "the Files columns occupy the whole inner table",
         arguments: [
             0,
             ImportMappingColumns.minimumTableWidth,
@@ -28,11 +28,12 @@ struct ImportMappingColumnsTests {
             1200,
         ] as [CGFloat]
     )
-    func filesNameUsesTheHiddenColumns(width: CGFloat) {
+    func filesColumnsUseTheInnerWidth(width: CGFloat) {
         let columns = ImportMappingColumns.resolved(tableWidth: width)
 
         #expect(
-            columns.files.name
+            columns.files.name + ImportMappingColumns.spacing
+                + columns.files.size
                 == max(width, ImportMappingColumns.minimumTableWidth)
                 - ImportMappingColumns.rowPadding * 2
         )

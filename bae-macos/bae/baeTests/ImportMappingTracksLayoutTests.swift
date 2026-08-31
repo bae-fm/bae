@@ -210,7 +210,7 @@ struct ImportMappingTracksLayoutTests {
 
     @MainActor
     @Test(
-        "descriptor and association stay inside Source",
+        "sheet source and disc controls stay separated",
         arguments: [
             (ImportMappingColumns.minimumTableWidth, false),
             (ImportMappingColumns.minimumTableWidth, true),
@@ -218,16 +218,14 @@ struct ImportMappingTracksLayoutTests {
             (1200, true),
         ] as [(CGFloat, Bool)]
     )
-    func descriptorControlsStayInsideSource(
+    func sheetControlsStaySeparated(
         tableWidth: CGFloat,
         associated: Bool
     ) async throws {
-        let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
         let size = NSSize(width: tableWidth, height: 40)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingSheetRow(
                 sheet: sheet(associated: associated),
-                columns: columns.tracks,
                 options: [
                     BridgeSheetBindingOption(
                         fileId: longAudioName,
@@ -251,23 +249,75 @@ struct ImportMappingTracksLayoutTests {
                     < $1.convert($1.bounds, to: host).minX
             }
         try #require(controls.count == 2)
-        let sourceEnd =
-            ImportMappingColumns.rowPadding + columns.tracks.source
         let associationFrame = controls[0].convert(controls[0].bounds, to: host)
         let discFrame = controls[1].convert(controls[1].bounds, to: host)
-        let mappingStart = sourceEnd + ImportMappingColumns.spacing
 
-        #expect(associationFrame.maxX <= sourceEnd)
+        #expect(associationFrame.maxX < discFrame.minX)
         #expect(associationFrame.width >= 24)
-        // The borderless Menu's AppKit cell bleeds five points beyond its
-        // SwiftUI frame. The frame itself starts at the mapped-track span.
-        #expect(abs(discFrame.minX - mappingStart) <= 6)
+        #expect(
+            discFrame.maxX >= tableWidth - ImportMappingColumns.rowPadding - 6
+        )
         withExtendedLifetime(window) {}
     }
 
 }
 
 extension ImportMappingTracksLayoutTests {
+    @Test("track-sheet source is partitioned from playable rows")
+    func trackSheetSourceIsPartitionedFromPlayableRows() {
+        let table = BridgeMappingTable(
+            images: [],
+            rows: [
+                .sheet(
+                    sheet: sheet(associated: true),
+                    entries: [sheetEntryUnit(number: 1, title: "Source Title")]
+                )
+            ],
+            reconciliation: .agrees(count: 1)
+        )
+
+        #expect(table.sheets.map(\.sheetId) == ["descriptor.cue"])
+        #expect(table.trackUnits.map(\.rowId) == ["entry:descriptor.cue:0"])
+    }
+
+    @MainActor
+    @Test("sheet-entry Source omits the duplicate track number")
+    func sheetEntrySourceOmitsDuplicateTrackNumber() {
+        let host = NSHostingView(
+            rootView: ImportMappingSourceCell(
+                source: sheetEntryUnit(number: 42, title: nil).source,
+                previewingPath: nil,
+                evidence: [],
+                showsFileSize: true,
+                actions: actions(recording: MappingTrackActionRecorder())
+            )
+            .fixedSize()
+        )
+        host.layoutSubtreeIfNeeded()
+
+        #expect(host.fittingSize.width < 46)
+    }
+
+    @Test(
+        "Files reserve a fixed trailing Size column",
+        arguments: [
+            ImportMappingColumns.minimumTableWidth,
+            ImportMappingColumns.idealTableWidth,
+            1200,
+        ] as [CGFloat]
+    )
+    func filesReserveTrailingSizeColumn(tableWidth: CGFloat) {
+        let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
+        let innerWidth = tableWidth - ImportMappingColumns.rowPadding * 2
+
+        #expect(
+            columns.files.name
+                == innerWidth - ImportMappingColumns.spacing
+                - columns.files.size
+        )
+        #expect(columns.files.size == 64)
+    }
+
     fileprivate var audioPath: String { "/tmp/source/track.flac" }
     fileprivate var longAudioName: String {
         "A very long source filename that must remain inside its column.flac"
@@ -326,6 +376,44 @@ extension ImportMappingTracksLayoutTests {
         )
     }
 
+    private func sheetEntryUnit(
+        number: UInt32,
+        title: String?
+    ) -> BridgeMappingUnit {
+        let entry = BridgeMappingEntry(
+            sheetId: "descriptor.cue",
+            index: number - 1,
+            number: number,
+            title: title,
+            durationMs: 180_000,
+            containerId: longAudioName,
+            containerName: longAudioName,
+            containerLocalPath: audioPath,
+            audioFormat: MappingFixtures.audioFormat
+        )
+        return BridgeMappingUnit(
+            source: .sheetEntry(entry: entry),
+            becomes: .track(
+                track: BridgeRawTrackEdit(
+                    id: "sheet-track-\(number)",
+                    title: "Track Title",
+                    artistAssignments: .explicit(
+                        assignments: [MappingFixtures.newArtist("Artist Name")]
+                    ),
+                    side: 1,
+                    trackNumber: Int32(number),
+                    file: .sheetSlice(
+                        fileId: entry.containerId,
+                        sheetId: entry.sheetId,
+                        index: entry.index
+                    )
+                ),
+                sourcePosition: String(number)
+            ),
+            durationMs: entry.durationMs
+        )
+    }
+
     @MainActor
     private func hostedTrack(
         tableWidth: CGFloat,
@@ -375,6 +463,7 @@ extension ImportMappingTracksLayoutTests {
                 source: source,
                 previewingPath: previewing,
                 evidence: [],
+                showsFileSize: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
             .frame(width: 180, alignment: .leading)

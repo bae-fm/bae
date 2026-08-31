@@ -162,6 +162,7 @@ struct ImportMappingTrackRow: View {
             source: unit.source,
             previewingPath: previewingPath,
             evidence: evidence,
+            showsFileSize: true,
             actions: actions,
         )
         .frame(width: columns.source, alignment: .leading)

@@ -85,6 +85,28 @@
         )
     }
 
+    /// The production CUE mapping pane used by both Xcode previews and the
+    /// screenshot target, with only its viewport width varying.
+    @MainActor
+    struct ImportMappingCuePreviewScene: View {
+        let width: CGFloat
+
+        @State
+        private var storageCloud = true
+        @State
+        private var storagePinned = true
+
+        var body: some View {
+            ImportMappingPreview.make(
+                candidate: PreviewData.sheetMappingCandidate,
+                storageCloud: $storageCloud,
+                storagePinned: $storagePinned
+            )
+            .frame(width: width, height: 900)
+            .importPreviewEnvironment()
+        }
+    }
+
     #Preview("Mapping pane — a release picked") {
         @Previewable
         @State
@@ -231,19 +253,11 @@
     }
 
     #Preview("Mapping pane — a cue carving one container") {
-        @Previewable
-        @State
-        var storageCloud = true
-        @Previewable
-        @State
-        var storagePinned = true
-        ImportMappingPreview.make(
-            candidate: PreviewData.sheetMappingCandidate,
-            storageCloud: $storageCloud,
-            storagePinned: $storagePinned
-        )
-        .frame(width: 1212, height: 900)
-        .importPreviewEnvironment()
+        ImportMappingCuePreviewScene(width: 1212)
+    }
+
+    #Preview("Mapping pane — a cue carving one container, narrow") {
+        ImportMappingCuePreviewScene(width: 760)
     }
 
     #Preview("Mapping pane — one file for ten tracks") {
