@@ -164,6 +164,32 @@ if [ "${#STAGED_SWIFT_FILES[@]}" -gt 0 ] && xcrun --find swift-format &> /dev/nu
     }
 fi
 
+STAGED_CSHARP_FILES=()
+while IFS= read -r file; do
+    case "$file" in
+        bae-avalonia/*.cs)
+            [ -f "$file" ] && STAGED_CSHARP_FILES+=("$file")
+            ;;
+    esac
+done < <(staged_files_with_extension cs)
+
+if [ "${#STAGED_CSHARP_FILES[@]}" -gt 0 ]; then
+    if ! command -v dotnet > /dev/null; then
+        echo "dotnet is required to format staged C# files"
+        exit 1
+    fi
+    record_staged_worktree_state "$FORMAT_STATE"
+    run_check "dotnet format whitespace (staged C# files)" \
+        format_dotnet_whitespace \
+        bae-avalonia/bae-avalonia.csproj \
+        "${STAGED_CSHARP_FILES[@]}" || {
+        echo "dotnet format whitespace failed"
+        exit 1
+    }
+    restage_and_fail_if_changed \
+        "dotnet format whitespace" "$FORMAT_STATE" "bae-avalonia/"
+fi
+
 # bae-avalonia bridge boundary. The compiler can't see dependency direction, so
 # this fails loud if a view or store reaches for NativeBae outside the sanctioned
 # composition boundary. Pure Python — runs on the dev host without the bindings.

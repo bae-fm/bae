@@ -17,12 +17,12 @@ internal static class MappingTableReading
     /// sheet carves.</summary>
     internal static IReadOnlyList<BridgeMappingUnit> Units(
         this BridgeMappingTrackGroup group) => group switch
-    {
-        BridgeMappingTrackGroup.Unit unit => new[] { unit.UnitValue },
-        BridgeMappingTrackGroup.Sheet sheet => sheet.Entries,
-        _ => throw new ArgumentOutOfRangeException(
-            nameof(group), group, "Unknown mapping track group"),
-    };
+        {
+            BridgeMappingTrackGroup.Unit unit => new[] { unit.UnitValue },
+            BridgeMappingTrackGroup.Sheet sheet => sheet.Entries,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(group), group, "Unknown mapping track group"),
+        };
 
     /// <summary>Every unit the table carries, top-level rows and sheet entries
     /// alike, in the order the table lays them out.</summary>

@@ -24,6 +24,12 @@ staged_files_with_extension() {
     done <<< "$CHANGED_FILES"
 }
 
+format_dotnet_whitespace() {
+    local project="$1"
+    shift
+    dotnet format whitespace "$project" --include "$@"
+}
+
 changed_workspace_crates() {
     local crate
     for crate in "$@"; do

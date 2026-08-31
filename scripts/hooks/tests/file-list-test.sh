@@ -44,6 +44,14 @@ if [ "$swift_files" != $'bae-ios/bae/bae/AppService.swift\nBaeKit/Package.swift'
     exit 1
 fi
 
+CHANGED_FILES=$'bae-avalonia/Views/ImportPane.cs\nbae-avalonia/Views/ImportPane.axaml\nnotes/example.cs'
+csharp_files=$(staged_files_with_extension cs)
+if [ "$csharp_files" != $'bae-avalonia/Views/ImportPane.cs\nnotes/example.cs' ]; then
+    echo "staged C# files were routed incorrectly:"
+    echo "$csharp_files"
+    exit 1
+fi
+
 repo=$(mktemp -d)
 trap 'rm -rf "$repo"' EXIT
 git -C "$repo" init -q
@@ -68,6 +76,25 @@ run_stage_formatter_changes() {
 }
 
 cd "$repo"
+
+mkdir "$repo/bin"
+dotnet_args="$repo/dotnet-args"
+printf '%s\n' \
+    '#!/bin/bash' \
+    'printf '\''%s\n'\'' "$@" > "$DOTNET_ARGS"' \
+    > "$repo/bin/dotnet"
+chmod +x "$repo/bin/dotnet"
+export DOTNET_ARGS="$dotnet_args"
+PATH="$repo/bin:$PATH" format_dotnet_whitespace \
+    bae-avalonia/bae-avalonia.csproj \
+    bae-avalonia/Views/First.cs \
+    bae-avalonia/Views/Second.cs
+expected_dotnet_args=$'format\nwhitespace\nbae-avalonia/bae-avalonia.csproj\n--include\nbae-avalonia/Views/First.cs\nbae-avalonia/Views/Second.cs'
+if [ "$(cat "$dotnet_args")" != "$expected_dotnet_args" ]; then
+    echo "dotnet whitespace formatter received the wrong arguments:"
+    cat "$dotnet_args"
+    exit 1
+fi
 
 # An unstaged hunk that existed before formatting is not formatter output.
 printf 'staged\n' > partial.txt
