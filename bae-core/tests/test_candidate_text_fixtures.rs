@@ -83,14 +83,7 @@ fn load_fixture(path: &Path) -> Fixture {
         .unwrap_or_else(|e| panic!("failed to parse fixture {path:?}: {e}"))
 }
 
-/// Minimal valid MP3: ID3v2 header + padding. The folder scanner's audio
-/// validator only checks the first bytes against known magic numbers.
-fn minimal_mp3() -> Vec<u8> {
-    let mut v = Vec::with_capacity(32);
-    v.extend_from_slice(b"ID3");
-    v.resize(32, 0);
-    v
-}
+const PROBEABLE_MP3: &[u8] = include_bytes!("../test-fixtures/audio-format/placeholder-mp3.mp3");
 
 /// Minimal JPEG magic — `is_valid_image` dispatches by extension and
 /// checks the first three bytes.
@@ -173,7 +166,7 @@ fn materialize(fixture: &Fixture, tmp: &TempDir) -> (PathBuf, HashMap<PathBuf, V
     // filenames don't feed the suggestion pool — their stems are track
     // titles, the wrong bucket for Artist / Album autocomplete — so
     // fixtures don't need to declare specific audio files.
-    fs::write(folder.join("sentinel.mp3"), minimal_mp3()).unwrap();
+    fs::write(folder.join("sentinel.mp3"), PROBEABLE_MP3).unwrap();
 
     // Generic filenames land on image files so they're tagged as artwork
     // by the categorizer and the service tags them FilenameGeneric(.jpg).
