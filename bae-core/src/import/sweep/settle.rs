@@ -57,11 +57,13 @@ pub(super) async fn finish_candidate(
         );
         return false;
     };
-    let Some(settled_lead) = settle_lead(context, &mut verdict, token).await else {
+    let candidate = entry.job.representative();
+    let Some(settled_lead) =
+        settle_lead(context, &mut verdict, candidate, &signals.durations, token).await
+    else {
         return false;
     };
 
-    let candidate = entry.job.representative();
     let metadata =
         match metadata_for_settled_lead(context, candidate, &signals.durations, settled_lead) {
             Ok(metadata) => metadata,
@@ -172,6 +174,8 @@ pub(super) async fn save(
 async fn settle_lead(
     context: &SweepContext,
     verdict: &mut TerminalVerdict,
+    candidate: &FolderCandidate,
+    durations: &crate::import::probe::SourceDurations,
     token: &CancellationToken,
 ) -> Option<SettledLead> {
     let TerminalVerdict::Found { matches, .. } = verdict else {
@@ -204,7 +208,18 @@ async fn settle_lead(
             return None;
         }
     };
-    match payloads.source_tracks() {
+    let audio_durations =
+        match crate::import::track_slots::audio_durations(&candidate.files, durations) {
+            Ok(durations) => durations,
+            Err(error) => {
+                warn!(
+                    "sweep: {} has incomplete audio timing ({error}); writing no row",
+                    candidate.path.display()
+                );
+                return None;
+            }
+        };
+    match payloads.source_tracks_for_audio(&audio_durations) {
         Ok(source_tracks) => {
             // `SourceTracks::Nothing` is an answer — this release states no
             // tracklist — so the verdict stores with the match unverifiable, and
@@ -329,7 +344,15 @@ pub(super) async fn record_explicit_lookup_verdict(
                     );
                     continue;
                 };
-                let Some(settled_lead) = settle_lead(context, &mut verdict, token).await else {
+                let Some(settled_lead) = settle_lead(
+                    context,
+                    &mut verdict,
+                    &entry.candidate,
+                    &signals.durations,
+                    token,
+                )
+                .await
+                else {
                     continue;
                 };
                 let metadata = match metadata_for_settled_lead(

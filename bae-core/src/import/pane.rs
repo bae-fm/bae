@@ -139,8 +139,9 @@ pub fn release_pane(
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<PanePick, ImportError> {
-    let detail = payloads.detail()?;
-    let parsed = payloads.parsed(clock, ids)?;
+    let audio_durations = crate::import::track_slots::audio_durations(files, durations)?;
+    let detail = payloads.detail_for_audio(&audio_durations)?;
+    let parsed = payloads.parsed_for_audio(&audio_durations, clock, ids)?;
     let seed = parsed_album_to_user_edit(&parsed);
     let source_tracks = source_tracks_of(&seed, &detail);
     let mapping = table_for(

@@ -19,6 +19,20 @@ fn map(
     map_discogs_to_db(release, master_year, mb_xref, &clock, &ids)
 }
 
+fn map_for_audio(
+    release: &DiscogsRelease,
+    master_year: Option<u32>,
+    audio_durations_ms: &[u64],
+) -> Result<ParsedAlbum, ImportError> {
+    let clock = FixedClock(
+        chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&chrono::Utc),
+    );
+    let ids = SequentialIdProvider::new("d");
+    map_discogs_to_db_for_audio(release, master_year, None, audio_durations_ms, &clock, &ids)
+}
+
 #[test]
 fn test_parse_side_from_position() {
     // CD format: disc number = side
@@ -45,6 +59,7 @@ fn make_track(position: &str, title: &str) -> DiscogsTrack {
         artists: vec![],
         type_: "track".to_string(),
         extraartists: None,
+        sub_tracks: vec![],
     }
 }
 
@@ -56,6 +71,7 @@ fn make_heading(title: &str) -> DiscogsTrack {
         artists: vec![],
         type_: "heading".to_string(),
         extraartists: None,
+        sub_tracks: vec![],
     }
 }
 
@@ -266,6 +282,7 @@ fn test_2lp_vinyl_with_headings() {
             artists: vec![],
             type_: "track".to_string(),
             extraartists: None,
+            sub_tracks: vec![],
         },
         DiscogsTrack {
             position: "B1ii".to_string(),
@@ -274,6 +291,7 @@ fn test_2lp_vinyl_with_headings() {
             artists: vec![],
             type_: "track".to_string(),
             extraartists: None,
+            sub_tracks: vec![],
         },
         DiscogsTrack {
             position: "B1iii".to_string(),
@@ -282,6 +300,7 @@ fn test_2lp_vinyl_with_headings() {
             artists: vec![],
             type_: "track".to_string(),
             extraartists: None,
+            sub_tracks: vec![],
         },
         make_heading("-"),
         make_track("B2", "Track Three"),
@@ -292,7 +311,7 @@ fn test_2lp_vinyl_with_headings() {
         make_track("D2", "Track Eight"),
     ]);
 
-    let parsed = map(&release, Some(2004), None).unwrap();
+    let parsed = map_for_audio(&release, Some(2004), &[1; 9]).unwrap();
     let tracks = &parsed.tracks;
 
     // 9 tracks: 2 on A, 2 on B (heading collapsed + Track Three), 3 on C, 2 on D
@@ -379,6 +398,7 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
             artists: vec![sub_artist.clone()],
             type_: "track".to_string(),
             extraartists: None,
+            sub_tracks: vec![],
         },
         DiscogsTrack {
             position: "B1ii".to_string(),
@@ -387,10 +407,11 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
             artists: vec![sub_artist.clone()],
             type_: "track".to_string(),
             extraartists: None,
+            sub_tracks: vec![],
         },
     ]);
 
-    let parsed = map(&release, Some(2024), None).unwrap();
+    let parsed = map_for_audio(&release, Some(2024), &[1; 2]).unwrap();
     let tracks = &parsed.tracks;
     let artists = &parsed.artists;
     let track_artists = &parsed.track_artists;
@@ -551,6 +572,21 @@ fn process_tracklist_drops_headings_with_no_subtracks() {
 }
 
 #[test]
+fn heading_subtracks_expand_to_matching_audio_rows() {
+    let mut first = make_track("1a", "Part One");
+    first.duration = Some("1:00".to_string());
+    let mut second = make_track("1b", "Part Two");
+    second.duration = Some("2:00".to_string());
+    let tracklist = vec![make_heading("Suite Title"), first, second];
+
+    let tracks = process_tracklist_for_audio(&tracklist, &[60_000, 120_000]);
+
+    assert_eq!(tracks.len(), 2);
+    assert_eq!(tracks[0].title, "Suite Title: Part One");
+    assert_eq!(tracks[1].title, "Suite Title: Part Two");
+}
+
+#[test]
 fn process_tracklist_filters_index_entries() {
     // Discogs "index" rows are structural, not playable tracks.
     let index = DiscogsTrack {
@@ -560,8 +596,10 @@ fn process_tracklist_filters_index_entries() {
         artists: vec![],
         type_: "index".to_string(),
         extraartists: None,
+        sub_tracks: vec![],
     };
-    let result = process_tracklist(&[index, make_track("A1", "Real Track")]);
+    let tracklist = [index, make_track("A1", "Real Track")];
+    let result = process_tracklist(&tracklist);
     assert_eq!(result.len(), 1);
     assert_eq!(result[0].title, "Real Track");
 }
@@ -596,6 +634,7 @@ fn discogs_role_is_composer_matches_composing_roles() {
 /// A composer role artist with no credited_name falls back to its canonical
 /// name and logs the fallback rather than dropping the credit silently.
 #[test]
+#[serial_test::serial(discogs_mapper_fallback_log)]
 fn role_artist_without_credited_name_falls_back_to_canonical_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.extraartists = Some(vec![DiscogsRoleArtist {
@@ -629,6 +668,7 @@ fn role_artist_without_credited_name_falls_back_to_canonical_name() {
 /// back to a name match when the credit has no id, and that match is
 /// unrestricted by whether the existing artist bears a source id.
 #[test]
+#[serial_test::serial(discogs_mapper_fallback_log)]
 fn id_less_role_credit_reuses_release_artist_by_name() {
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     // Release artist: name "Artist Name A", discogs id "artist-1".

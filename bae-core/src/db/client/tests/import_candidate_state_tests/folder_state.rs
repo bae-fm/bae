@@ -631,8 +631,8 @@ fn walkthrough_folder() -> tempfile::TempDir {
         String::from("PERFORMER \"Test Artist\"\nTITLE \"Album\"\nFILE \"cd.wav\" WAVE\n");
     for track in 1..=12 {
         cue.push_str(&format!(
-            "  TRACK {track:02} AUDIO\n    TITLE \"Track {track:02}\"\n    INDEX 01 {:02}:00:00\n",
-            (track - 1) * 5,
+            "  TRACK {track:02} AUDIO\n    TITLE \"Track {track:02}\"\n    INDEX 01 00:{:02}:00\n",
+            track - 1,
         ));
     }
     std::fs::write(tmp.path().join("cd.cue"), cue).unwrap();

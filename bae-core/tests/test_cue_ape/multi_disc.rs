@@ -223,6 +223,7 @@ async fn assert_multi_disc_cue_ape_per_disc_mapping(storage_mode: StorageMode, p
                     duration: Some("0:30".to_string()),
                     artists: vec![],
                     extraartists: None,
+                    sub_tracks: vec![],
                 })
             })
             .collect(),

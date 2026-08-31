@@ -48,6 +48,41 @@ pub(super) fn cue_pair_codec_label(audio: &ScannedFile) -> CueCodecLabel {
     }
 }
 
+pub(super) fn sheet_fits_single_audio(sheet: &CueSheet, audio: &ScannedFile) -> bool {
+    sheet
+        .playable_tracks()
+        .all(|track| track_fits_audio(track, audio))
+}
+
+fn track_fits_audio(track: &crate::cue_flac::CueTrack, audio: &ScannedFile) -> bool {
+    audio.source_audio.as_ref().is_some_and(|source_audio| {
+        track
+            .duration_ms_with_file_duration(source_audio.duration_ms)
+            .is_ok()
+    })
+}
+
+fn sheet_fits_resolved_audio(
+    sheet_file: &ScannedFile,
+    sheet: &CueSheet,
+    bound_audio: &ScannedFile,
+    audio: &HashMap<&str, &ScannedFile>,
+) -> bool {
+    if sheet.single_file().is_some() {
+        return sheet_fits_single_audio(sheet, bound_audio);
+    }
+    let Some(cue_dir) = sheet_file.path.parent() else {
+        return false;
+    };
+    sheet.playable_tracks().all(|track| {
+        let path = cue_dir.join(&track.file_reference);
+        audio
+            .values()
+            .find(|candidate| candidate.path == path)
+            .is_some_and(|candidate| track_fits_audio(track, candidate))
+    })
+}
+
 /// Check if a file is an image/artwork file
 pub(super) fn is_image_file(path: &Path) -> bool {
     ContentTypeHint::path_is_raster_image(path)
@@ -168,7 +203,7 @@ pub(super) fn settle_sheet_bindings(
     let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
     for (index, entry) in files.iter().enumerate() {
         cancellation.check()?;
-        let FileRole::TrackSheet { binding, .. } = &entry.role else {
+        let FileRole::TrackSheet { sheet, binding, .. } = &entry.role else {
             continue;
         };
         let binding = match edits.get(&entry.file.relative_path) {
@@ -191,7 +226,18 @@ pub(super) fn settle_sheet_bindings(
             continue;
         };
         let binding = match cue_pair_codec_label(audio_path) {
-            CueCodecLabel::Supported => binding,
+            CueCodecLabel::Supported
+                if sheet_fits_resolved_audio(&entry.file, sheet, audio_path, &audio) =>
+            {
+                binding
+            }
+            CueCodecLabel::Supported => {
+                info!(
+                    "sheet {} has boundaries outside {file_id}; it stays unbound and the audio imports as one track",
+                    entry.file.relative_path,
+                );
+                SheetBinding::Unresolved
+            }
             CueCodecLabel::Unsupported(codec) => {
                 info!(
                     "sheet {} names {codec} audio, which bae can't play from a single-file CUE; \

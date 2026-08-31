@@ -251,11 +251,13 @@ fn produced_keys() -> Vec<String> {
         BridgeSheetBindingOffer::RefusedCodec {
             codec: String::new(),
         },
+        BridgeSheetBindingOffer::RefusedTiming,
         BridgeSheetBindingOffer::RefusedUnreadable,
     ] {
         let expected: Option<&str> = match o {
             BridgeSheetBindingOffer::Offered => None,
             BridgeSheetBindingOffer::RefusedCodec { .. } => Some("core.import.sheet.refused_codec"),
+            BridgeSheetBindingOffer::RefusedTiming => Some("core.import.sheet.refused_timing"),
             BridgeSheetBindingOffer::RefusedUnreadable => {
                 Some("core.import.sheet.refused_unreadable")
             }

@@ -293,43 +293,40 @@ pub async fn lookup_by_discid(
 }
 
 /// A Discogs release's tracklist. Headings and index entries are not tracks and
-/// are skipped; a real track with no parseable duration leaves the total
-/// unknown while the count still stands.
+/// Nested index rows are expanded to their playable leaves when no local audio
+/// layout is available. A playable row with no parseable duration leaves the
+/// total unknown while the count still stands.
 pub(crate) fn discogs_source_tracks(release: &crate::discogs::DiscogsRelease) -> SourceTracks {
-    let tracks: Vec<&crate::discogs::DiscogsTrack> = release
-        .tracklist
-        .iter()
-        .filter(|track| track.type_ == "track")
-        .collect();
+    let tracks = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
+    source_tracks_from_discogs_layout(&tracks)
+}
+
+pub(crate) fn discogs_source_tracks_for_audio(
+    release: &crate::discogs::DiscogsRelease,
+    audio_durations_ms: &[u64],
+) -> SourceTracks {
+    let tracks = crate::import::discogs_mapper::process_tracklist_for_audio(
+        &release.tracklist,
+        audio_durations_ms,
+    );
+    source_tracks_from_discogs_layout(&tracks)
+}
+
+fn source_tracks_from_discogs_layout(
+    tracks: &[crate::import::discogs_mapper::ProcessedTrack<'_>],
+) -> SourceTracks {
     if tracks.is_empty() {
         return SourceTracks::Nothing;
     }
     SourceTracks::Listed {
         count: tracks.len() as u32,
-        total_duration_ms: tracks
-            .iter()
-            .map(|t| t.duration.as_deref().and_then(parse_duration_to_ms))
-            .sum::<Option<u64>>(),
+        total_duration_ms: tracks.iter().map(|track| track.duration_ms).sum(),
     }
 }
 
 /// Parse a Discogs-style duration string ("3:45") to milliseconds.
 pub fn parse_duration_to_ms(duration: &str) -> Option<u64> {
-    let parts: Vec<&str> = duration.split(':').collect();
-    match parts.len() {
-        2 => {
-            let mins: u64 = parts[0].parse().ok()?;
-            let secs: u64 = parts[1].parse().ok()?;
-            Some((mins * 60 + secs) * 1000)
-        }
-        3 => {
-            let hours: u64 = parts[0].parse().ok()?;
-            let mins: u64 = parts[1].parse().ok()?;
-            let secs: u64 = parts[2].parse().ok()?;
-            Some((hours * 3600 + mins * 60 + secs) * 1000)
-        }
-        _ => None,
-    }
+    crate::import::discogs_mapper::parse_duration_to_ms(duration)
 }
 
 /// Build the UI-shaped `ImportSearchReleaseDetail` from a parsed MB response,
@@ -393,7 +390,26 @@ pub(crate) fn build_discogs_detail(
     cover_art: Vec<RemoteCover>,
 ) -> ImportSearchReleaseDetail {
     let processed = crate::import::discogs_mapper::process_tracklist(&release.tracklist);
+    build_discogs_detail_with_tracks(release, cover_art, &processed)
+}
 
+pub(crate) fn build_discogs_detail_for_audio(
+    release: &crate::discogs::DiscogsRelease,
+    cover_art: Vec<RemoteCover>,
+    audio_durations_ms: &[u64],
+) -> ImportSearchReleaseDetail {
+    let processed = crate::import::discogs_mapper::process_tracklist_for_audio(
+        &release.tracklist,
+        audio_durations_ms,
+    );
+    build_discogs_detail_with_tracks(release, cover_art, &processed)
+}
+
+fn build_discogs_detail_with_tracks(
+    release: &crate::discogs::DiscogsRelease,
+    cover_art: Vec<RemoteCover>,
+    processed: &[crate::import::discogs_mapper::ProcessedTrack<'_>],
+) -> ImportSearchReleaseDetail {
     let format_string = if release.format.is_empty() {
         None
     } else {
@@ -403,19 +419,15 @@ pub(crate) fn build_discogs_detail(
     let tracks: Vec<ReleaseTrack> = processed
         .iter()
         .map(|pt| {
-            let source_track_index = pt
-                .source_track_indices
-                .first()
-                .expect("processed Discogs track has a source track");
-            let source_track = &release.tracklist[*source_track_index];
-            let duration_ms = source_track
-                .duration
-                .as_ref()
-                .and_then(|d| parse_duration_to_ms(d));
+            let artist = pt
+                .source_tracks
+                .iter()
+                .find_map(|track| track.artists.first())
+                .map(|artist| artist.name.clone());
             ReleaseTrack {
                 title: pt.title.clone(),
-                artist: source_track.artists.first().map(|a| a.name.clone()),
-                duration_ms,
+                artist,
+                duration_ms: pt.duration_ms,
                 position: pt.position.clone(),
                 side: pt.side as u32,
             }
@@ -764,6 +776,193 @@ mod tests {
         assert!(
             matches!(&err, ImportError::SourceData { detail, .. } if detail.contains("has no track title")),
             "unexpected error: {err}"
+        );
+    }
+
+    fn nested_discogs_release() -> crate::discogs::DiscogsRelease {
+        crate::discogs::client::parse_discogs_release_json(
+            &serde_json::json!({
+                "id": 123,
+                "title": "Album Title",
+                "artists": [{ "id": 1, "name": "Artist Name" }],
+                "tracklist": [
+                    {
+                        "position": "",
+                        "type_": "index",
+                        "title": "Suite Title",
+                        "duration": "5:00",
+                        "sub_tracks": [
+                            {
+                                "position": "1a",
+                                "type_": "track",
+                                "title": "Movement One",
+                                "duration": "2:00"
+                            },
+                            {
+                                "position": "1b",
+                                "type_": "track",
+                                "title": "Movement Two",
+                                "duration": "3:00"
+                            }
+                        ]
+                    },
+                    {
+                        "position": "2",
+                        "type_": "track",
+                        "title": "Track Title",
+                        "duration": "4:00"
+                    }
+                ]
+            })
+            .to_string(),
+        )
+        .expect("nested Discogs tracklist parses")
+    }
+
+    #[test]
+    fn discogs_detail_includes_nested_index_tracks() {
+        let release = nested_discogs_release();
+
+        let detail = build_discogs_detail(&release, Vec::new());
+        let titles: Vec<&str> = detail
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect();
+
+        assert_eq!(
+            titles,
+            vec![
+                "Suite Title: Movement One",
+                "Suite Title: Movement Two",
+                "Track Title"
+            ]
+        );
+    }
+
+    #[test]
+    fn discogs_detail_collapses_an_index_for_one_matching_audio_file() {
+        let release = nested_discogs_release();
+
+        let detail = build_discogs_detail_for_audio(&release, Vec::new(), &[300_000, 240_000]);
+        let titles: Vec<&str> = detail
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect();
+
+        assert_eq!(titles, vec!["Suite Title", "Track Title"]);
+    }
+
+    #[test]
+    fn discogs_detail_selects_each_index_layout_from_ordered_durations() {
+        let release = crate::discogs::client::parse_discogs_release_json(
+            &serde_json::json!({
+                "id": 456,
+                "title": "Album Title",
+                "artists": [{ "id": 1, "name": "Artist Name" }],
+                "tracklist": [
+                    {
+                        "position": "",
+                        "type_": "index",
+                        "title": "Suite One",
+                        "duration": "3:00",
+                        "sub_tracks": [
+                            { "position": "1a", "type_": "track", "title": "Part One", "duration": "1:00" },
+                            { "position": "1b", "type_": "track", "title": "Part Two", "duration": "2:00" }
+                        ]
+                    },
+                    {
+                        "position": "",
+                        "type_": "index",
+                        "title": "Suite Two",
+                        "duration": "9:00",
+                        "sub_tracks": [
+                            { "position": "2a", "type_": "track", "title": "Part Three", "duration": "4:00" },
+                            { "position": "2b", "type_": "track", "title": "Part Four", "duration": "5:00" }
+                        ]
+                    }
+                ]
+            })
+            .to_string(),
+        )
+        .expect("two nested Discogs indexes parse");
+
+        let detail =
+            build_discogs_detail_for_audio(&release, Vec::new(), &[60_000, 120_000, 540_000]);
+        let titles: Vec<&str> = detail
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect();
+
+        assert_eq!(
+            titles,
+            vec!["Suite One: Part One", "Suite One: Part Two", "Suite Two"]
+        );
+    }
+
+    #[test]
+    fn nested_index_durations_align_after_preceding_tracks() {
+        let release = crate::discogs::client::parse_discogs_release_json(
+            &serde_json::json!({
+                "id": 789,
+                "title": "Album Title",
+                "artists": [{ "id": 1, "name": "Artist Name" }],
+                "tracklist": [
+                    { "position": "1", "type_": "track", "title": "Opening Track", "duration": "10:00" },
+                    {
+                        "position": "",
+                        "type_": "index",
+                        "title": "Grouped Work",
+                        "sub_tracks": [
+                            {
+                                "position": "",
+                                "type_": "index",
+                                "title": "Suite One",
+                                "duration": "3:00",
+                                "sub_tracks": [
+                                    { "position": "2a", "type_": "track", "title": "Part One", "duration": "1:00" },
+                                    { "position": "2b", "type_": "track", "title": "Part Two", "duration": "2:00" }
+                                ]
+                            },
+                            {
+                                "position": "",
+                                "type_": "index",
+                                "title": "Suite Two",
+                                "duration": "9:00",
+                                "sub_tracks": [
+                                    { "position": "3a", "type_": "track", "title": "Part Three", "duration": "4:00" },
+                                    { "position": "3b", "type_": "track", "title": "Part Four", "duration": "5:00" }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            })
+            .to_string(),
+        )
+        .expect("nested Discogs indexes parse");
+
+        let detail = build_discogs_detail_for_audio(
+            &release,
+            Vec::new(),
+            &[600_000, 60_000, 120_000, 540_000],
+        );
+        let titles: Vec<&str> = detail
+            .tracks
+            .iter()
+            .map(|track| track.title.as_str())
+            .collect();
+
+        assert_eq!(
+            titles,
+            vec![
+                "Opening Track",
+                "Grouped Work: Suite One: Part One",
+                "Grouped Work: Suite One: Part Two",
+                "Grouped Work: Suite Two"
+            ]
         );
     }
 }

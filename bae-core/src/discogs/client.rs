@@ -204,6 +204,8 @@ struct TrackResponse {
     extraartists: Option<Vec<ExtraArtistCredit>>,
     #[serde(default)]
     type_: String,
+    #[serde(default)]
+    sub_tracks: Vec<TrackResponse>,
 }
 #[derive(Debug, Deserialize)]
 struct LabelResponse {
@@ -228,6 +230,34 @@ fn extra_artist_to_model(a: ExtraArtistCredit) -> Option<DiscogsRoleArtist> {
     })
 }
 
+fn track_to_model(track: TrackResponse) -> DiscogsTrack {
+    DiscogsTrack {
+        position: track.position,
+        title: track.title,
+        duration: track.duration,
+        artists: track
+            .artists
+            .into_iter()
+            .map(|artist| DiscogsArtist {
+                id: artist.id.to_string(),
+                name: artist.name,
+            })
+            .collect(),
+        extraartists: track.extraartists.map(|extraartists| {
+            extraartists
+                .into_iter()
+                .filter_map(extra_artist_to_model)
+                .collect()
+        }),
+        type_: if track.type_.is_empty() {
+            "track".to_string()
+        } else {
+            track.type_
+        },
+        sub_tracks: track.sub_tracks.into_iter().map(track_to_model).collect(),
+    }
+}
+
 /// Raw Discogs release JSON to the public `DiscogsRelease`. The same projection
 /// `get_release` applies to a fresh response, exposed as a free function so an
 /// archived `source_release_payloads` row can be replayed without re-fetching.
@@ -237,30 +267,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         .tracklist
         .unwrap_or_default()
         .into_iter()
-        .map(|t| DiscogsTrack {
-            position: t.position,
-            title: t.title,
-            duration: t.duration,
-            artists: t
-                .artists
-                .into_iter()
-                .map(|a| DiscogsArtist {
-                    id: a.id.to_string(),
-                    name: a.name,
-                })
-                .collect(),
-            extraartists: t.extraartists.map(|extraartists| {
-                extraartists
-                    .into_iter()
-                    .filter_map(extra_artist_to_model)
-                    .collect()
-            }),
-            type_: if t.type_.is_empty() {
-                "track".to_string()
-            } else {
-                t.type_
-            },
-        })
+        .map(track_to_model)
         .collect();
     let artists = release
         .artists

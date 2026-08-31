@@ -136,6 +136,21 @@ impl ReleasePayloads {
         }
     }
 
+    pub fn source_tracks_for_audio(
+        &self,
+        audio_durations_ms: &[u64],
+    ) -> Result<SourceTracks, ImportError> {
+        match self.release.source {
+            MetadataSource::MusicBrainz => Ok(crate::import::search::mb_source_tracks(
+                &self.musicbrainz_anchor()?,
+            )),
+            MetadataSource::Discogs => Ok(crate::import::search::discogs_source_tracks_for_audio(
+                &self.discogs_anchor()?,
+                audio_durations_ms,
+            )),
+        }
+    }
+
     /// The cover options this release offers, in the order a picker shows
     /// them.
     ///
@@ -177,6 +192,25 @@ impl ReleasePayloads {
         }
     }
 
+    pub fn detail_for_audio(
+        &self,
+        audio_durations_ms: &[u64],
+    ) -> Result<ImportSearchReleaseDetail, ImportError> {
+        let covers = self.covers()?;
+        match self.release.source {
+            MetadataSource::MusicBrainz => crate::import::search::build_mb_detail(
+                &self.release.id,
+                &self.musicbrainz_anchor()?,
+                covers,
+            ),
+            MetadataSource::Discogs => Ok(crate::import::search::build_discogs_detail_for_audio(
+                &self.discogs_anchor()?,
+                covers,
+                audio_durations_ms,
+            )),
+        }
+    }
+
     /// The DB-shape album the commit writes, and the editor's seed is projected
     /// from — the same mapping the fetch path runs, over the same documents.
     pub fn parsed(
@@ -201,6 +235,37 @@ impl ReleasePayloads {
                     &release,
                     master_year,
                     self.musicbrainz_xref()?.as_ref(),
+                    clock,
+                    ids,
+                )
+            }
+        }
+    }
+
+    pub fn parsed_for_audio(
+        &self,
+        audio_durations_ms: &[u64],
+        clock: &dyn coven::Clock,
+        ids: &dyn coven::IdProvider,
+    ) -> Result<ParsedAlbum, ImportError> {
+        match self.release.source {
+            MetadataSource::MusicBrainz => {
+                crate::import::musicbrainz_mapper::map_mb_response_to_db(
+                    &self.musicbrainz_anchor()?,
+                    None,
+                    self.discogs_xref()?,
+                    clock,
+                    ids,
+                )
+            }
+            MetadataSource::Discogs => {
+                let release = self.discogs_anchor()?;
+                let master_year = self.discogs_master_year(&release)?;
+                crate::import::discogs_mapper::map_discogs_to_db_for_audio(
+                    &release,
+                    master_year,
+                    self.musicbrainz_xref()?.as_ref(),
+                    audio_durations_ms,
                     clock,
                     ids,
                 )

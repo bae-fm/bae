@@ -483,7 +483,7 @@ impl RowBuilder<'_> {
     /// This unit's playing time as the stored measurements record it. A unit
     /// nothing has read yet shows none, whether or not a release is picked.
     fn duration_ms(&self, unit: &AudioFile) -> Option<u64> {
-        self.durations.duration_of(unit).flatten()
+        self.durations.duration_of(unit)
     }
 
     /// What the unit becomes: the track the picked tracklist puts on it, or the

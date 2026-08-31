@@ -291,6 +291,24 @@ pub(crate) fn audio_units(files: &CategorizedFiles) -> Vec<AudioFile> {
     units_of(&audio_layout(files))
 }
 
+/// The candidate's effective audio rows in mapping order, reduced to the
+/// duration evidence a metadata track layout compares against.
+pub(crate) fn audio_durations(
+    files: &CategorizedFiles,
+    durations: &SourceDurations,
+) -> Result<Vec<u64>, ImportError> {
+    audio_units(files)
+        .iter()
+        .map(|audio| {
+            durations
+                .duration_of(audio)
+                .ok_or_else(|| ImportError::UnusableFile {
+                    detail: format!("{} has no measured duration", audio.file_id()),
+                })
+        })
+        .collect()
+}
+
 /// Blank editable tracks over the candidate's physical audio layout. Direct
 /// entry names nothing from files or sheets, but sheet slicing and
 /// disc assignment remain physical facts about where the samples live.
@@ -498,7 +516,7 @@ pub(crate) fn slot_files(files: &CategorizedFiles, durations: &SourceDurations) 
             name: file.file_name.clone(),
             size: file.size,
             path: file.path.clone(),
-            duration_ms: durations.duration_of(unit).flatten(),
+            duration_ms: durations.duration_of(unit),
             span: span_at(&units, index),
         });
     }
@@ -556,18 +574,26 @@ pub(crate) fn resolve_track_files(
         }
         match &audio {
             AudioFile::Standalone { .. } => {
-                db_track.duration_ms = file
-                    .source_audio
-                    .as_ref()
-                    .map(|audio| audio.duration_ms as i64);
+                let source_audio =
+                    file.source_audio
+                        .clone()
+                        .ok_or_else(|| ImportError::UnusableFile {
+                            detail: format!("{} has no scanned audio facts", file.relative_path),
+                        })?;
+                let duration_ms = source_audio.duration_ms;
+                db_track.duration_ms =
+                    Some(
+                        i64::try_from(duration_ms).map_err(|_| ImportError::UnusableFile {
+                            detail: format!(
+                                "{} is too long to represent in milliseconds",
+                                file.relative_path
+                            ),
+                        })?,
+                    );
                 track_files.push(TrackFile::Standalone {
                     db_track,
                     file_path: file.path.clone(),
-                    source_audio: file.source_audio.clone().ok_or_else(|| {
-                        ImportError::UnusableFile {
-                            detail: format!("{} has no scanned audio facts", file.relative_path),
-                        }
-                    })?,
+                    source_audio,
                 });
             }
             AudioFile::SheetSlice {
@@ -582,25 +608,17 @@ pub(crate) fn resolve_track_files(
                     }
                 };
                 let cue_index = *index as usize;
-                let cue_track = analysis
-                    .cue_sheet
-                    .playable_tracks()
-                    .nth(cue_index)
-                    .ok_or_else(|| ImportError::UnusableFile {
-                        detail: format!("{sheet_id} no longer describes a track {}", cue_index + 1),
-                    })?;
-                // The sheet gives exact per-track timing, but the final track
-                // has no next-track boundary in it, so its duration comes from
-                // the container's total duration minus its INDEX 01 start.
+                let duration_ms =
+                    crate::import::probe::sheet_track_duration_ms(&analysis, cue_index, sheet_id)?;
                 db_track.duration_ms =
-                    cue_track.track_duration_ms().map(|d| d as i64).or_else(|| {
-                        analysis
-                            .audio_files
-                            .iter()
-                            .find(|file| file.file_reference == cue_track.file_reference)
-                            .map(|file| file.probe.duration.as_millis() as i64)
-                            .map(|total| total - cue_track.start_time_ms() as i64)
-                    });
+                    Some(
+                        i64::try_from(duration_ms).map_err(|_| ImportError::UnusableFile {
+                            detail: format!(
+                                "{sheet_id} track {} is too long to represent in milliseconds",
+                                cue_index + 1
+                            ),
+                        })?,
+                    );
                 track_files.push(TrackFile::CueBacked {
                     db_track,
                     file_path: file.path.clone(),

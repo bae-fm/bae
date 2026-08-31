@@ -26,6 +26,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
                 duration: Some("3:00".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             })
             .collect(),
         master_id: Some(master_id.to_string()),

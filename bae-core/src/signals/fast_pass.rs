@@ -80,10 +80,12 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
 }
 
 /// Enumerate and read every non-OCR source. Blocking; the service runs it via
-/// `spawn_blocking`. A failure surfaces as missing data for that one source and
-/// never aborts extraction.
-///
-pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFiles) -> FastPass {
+/// `spawn_blocking`. Missing text inputs are logged and skipped; invalid audio
+/// timing aborts extraction because every later track layout requires it.
+pub(super) fn gather_non_ocr_sources(
+    folder: &Path,
+    categorized: &CategorizedFiles,
+) -> Result<FastPass, crate::import::ImportError> {
     let mut pass = FastPass::empty();
 
     // Path components: the candidate folder's own name and its parent's.
@@ -117,7 +119,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFil
     // Disc ID, CUE-CATALOG barcodes, and the probed durations all come off the
     // same parsed scan, no re-read and no second walk over the audio.
     let track_count = categorized.track_count();
-    pass.durations = source_durations(categorized);
+    pass.durations = source_durations(categorized)?;
     pass.disc_id = match compute_discid_from_categorized(categorized) {
         Some(computed) => DiscIdSignal::Computed {
             disc_id: computed.disc_id,
@@ -172,7 +174,7 @@ pub(super) fn gather_non_ocr_sources(folder: &Path, categorized: &CategorizedFil
         })
         .collect();
 
-    pass
+    Ok(pass)
 }
 
 /// The filenames the classifier should see: artwork and documents.

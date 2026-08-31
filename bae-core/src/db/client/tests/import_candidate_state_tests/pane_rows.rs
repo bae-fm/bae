@@ -27,7 +27,7 @@ fn pane_candidate_path() -> String {
         .into_owned()
 }
 
-fn file_unit(file_id: &str, duration_ms: Option<u64>) -> SourceDuration {
+fn file_unit(file_id: &str, duration_ms: u64) -> SourceDuration {
     SourceDuration {
         audio: AudioFile::Standalone {
             file_id: file_id.to_string(),
@@ -36,7 +36,7 @@ fn file_unit(file_id: &str, duration_ms: Option<u64>) -> SourceDuration {
     }
 }
 
-fn slice_unit(index: u32, duration_ms: Option<u64>) -> SourceDuration {
+fn slice_unit(index: u32, duration_ms: u64) -> SourceDuration {
     SourceDuration {
         audio: AudioFile::SheetSlice {
             file_id: "CDImage.flac".to_string(),
@@ -162,10 +162,10 @@ async fn verdict_stores_only_the_derived_total() {
     let candidate = pane_candidate();
     let hash = candidate.content_hash();
     let durations = SourceDurations::new(vec![
-        file_unit("01 Track.flac", Some(180_000)),
-        file_unit("CDImage.flac", Some(600_000)),
-        slice_unit(0, Some(200_000)),
-        slice_unit(1, None),
+        file_unit("01 Track.flac", 180_000),
+        file_unit("CDImage.flac", 600_000),
+        slice_unit(0, 200_000),
+        slice_unit(1, 400_000),
     ]);
 
     assert!(store_verdict(&db, &hash, signals_with(durations.clone())).await);
@@ -183,32 +183,6 @@ async fn verdict_stores_only_the_derived_total() {
             .probed_total_duration_ms,
         780_000,
         "the column is the sum the same write derived"
-    );
-}
-
-/// A file that would not open zeroes the total: a partial sum reads as "the
-/// durations disagree", which is a wrong answer where the honest one is that
-/// nobody knows.
-#[tokio::test]
-async fn a_file_with_no_length_makes_the_total_unknown() {
-    let (db, _tmp) = empty_db().await;
-    let (_, hash) = stored_pane_candidate(&db).await;
-    let durations = SourceDurations::new(vec![
-        file_unit("01 Track.flac", Some(180_000)),
-        file_unit("CDImage.flac", None),
-    ]);
-
-    assert!(store_verdict(&db, &hash, signals_with(durations)).await);
-
-    let state = db
-        .load_import_candidate_state(&hash)
-        .await
-        .unwrap()
-        .unwrap();
-    assert_eq!(
-        state.identify.unwrap().probed_total_duration_ms,
-        0,
-        "and the column says the same"
     );
 }
 
@@ -303,7 +277,7 @@ async fn every_settled_signal_shape_round_trips() {
             disc_id,
             barcode,
             text,
-            durations: SourceDurations::new(vec![file_unit("01 Track.flac", Some(1_000))]),
+            durations: SourceDurations::new(vec![file_unit("01 Track.flac", 1_000)]),
         };
 
         assert!(store_verdict(&db, &hash, signals.clone()).await, "{what}");
@@ -676,9 +650,9 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let (db, _tmp) = empty_db().await;
     let (files, hash) = stored_pane_candidate(&db).await;
     let durations = SourceDurations::new(vec![
-        file_unit("01 Track.flac", Some(180_000)),
-        file_unit("CDImage.flac", Some(600_000)),
-        slice_unit(0, Some(200_000)),
+        file_unit("01 Track.flac", 180_000),
+        file_unit("CDImage.flac", 600_000),
+        slice_unit(0, 200_000),
     ]);
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
     db.replace_candidate_metadata(

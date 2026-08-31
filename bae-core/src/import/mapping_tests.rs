@@ -132,7 +132,7 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let mut tracks = source_tracks(1);
     tracks[0].duration_ms = None;
     let slots = slot_table(&tracks, &files, &durations);
@@ -159,7 +159,7 @@ fn a_track_awaiting_metadata_uses_its_stored_probe() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
     write_flac(&tmp.path().join("01.flac"));
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
 
     let table = mapping_table(&files, None, &durations);
 
@@ -225,7 +225,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     .expect("write cue");
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(3), &files, &durations);
     let table = mapping_table(
         &files,
@@ -294,7 +294,7 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
     write_flac(&tmp.path().join("02.flac"));
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(4), &files, &durations);
     let table = mapping_table(
         &files,
@@ -347,7 +347,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(4), &files, &durations);
     let table = mapping_table(
         &files,
@@ -446,7 +446,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(2), &files, &durations);
     let table = mapping_table(
         &files,
@@ -485,7 +485,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
     fs::write(tmp.path().join("cover.jpg"), fake_jpeg()).expect("write cover");
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(3), &files, &durations);
     let table = mapping_table(
         &files,
@@ -524,7 +524,7 @@ fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
     write_flac(&tmp.path().join("02.flac"));
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let slots = slot_table(&source_tracks(2), &files, &durations);
     let table = mapping_table(
         &files,
@@ -559,7 +559,7 @@ fn projecting_the_table_opens_no_audio() {
     write_flac(&tmp.path().join("bonus.flac"));
 
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
     let opens_after_probing: Vec<u64> = ["CDImage.flac", "bonus.flac"]
         .iter()
         .map(|name| crate::audio_codec::probe_opens_for(&tmp.path().join(name)))

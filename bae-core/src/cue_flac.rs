@@ -7,6 +7,8 @@ pub enum CueFlacError {
     Io(#[from] std::io::Error),
     #[error("CUE parsing error: {0}")]
     CueParsing(String),
+    #[error("CUE timing error: {0}")]
+    CueTiming(String),
 }
 
 /// One `INDEX` point of a track, positioned in CUE frames (1/75th of a second).
@@ -113,6 +115,48 @@ impl CueTrack {
     pub fn track_duration_ms(&self) -> Option<u64> {
         self.end_cue_frames
             .map(|end| (end * 1000 / 75).saturating_sub(self.start_time_ms()))
+    }
+
+    /// This track's duration against the probed length of the audio file it
+    /// references. Every CUE boundary must fall inside that file.
+    pub fn duration_ms_with_file_duration(
+        &self,
+        file_duration_ms: u64,
+    ) -> Result<u64, CueFlacError> {
+        let start_ms = self
+            .start_cue_frames
+            .checked_mul(1_000)
+            .map(|frames_ms| frames_ms / 75)
+            .ok_or_else(|| {
+                CueFlacError::CueTiming(format!(
+                    "track {} start is too large to represent",
+                    self.number
+                ))
+            })?;
+        let end_ms = match self.end_cue_frames {
+            Some(end_frames) => end_frames
+                .checked_mul(1_000)
+                .map(|frames_ms| frames_ms / 75)
+                .ok_or_else(|| {
+                    CueFlacError::CueTiming(format!(
+                        "track {} end is too large to represent",
+                        self.number
+                    ))
+                })?,
+            None => file_duration_ms,
+        };
+        if end_ms > file_duration_ms {
+            return Err(CueFlacError::CueTiming(format!(
+                "track {} ends at {end_ms} ms, after its audio ends at {file_duration_ms} ms",
+                self.number
+            )));
+        }
+        end_ms.checked_sub(start_ms).ok_or_else(|| {
+            CueFlacError::CueTiming(format!(
+                "track {} starts at {start_ms} ms, after it ends at {end_ms} ms",
+                self.number
+            ))
+        })
     }
 
     /// Pregap duration in ms; `None` when the track has no pregap (no INDEX 00,

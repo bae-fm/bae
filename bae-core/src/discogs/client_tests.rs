@@ -108,6 +108,31 @@ fn search_result_remote_cover_is_absent_without_cover_fields() {
 }
 
 #[test]
+fn release_parser_preserves_nested_tracklist_entries() {
+    let release = parse_discogs_release_json(
+        &serde_json::json!({
+            "id": 123,
+            "title": "Album Title",
+            "tracklist": [{
+                "position": "",
+                "type_": "index",
+                "title": "Suite Title",
+                "sub_tracks": [
+                    { "position": "1a", "type_": "track", "title": "Movement One" },
+                    { "position": "1b", "type_": "track", "title": "Movement Two" }
+                ]
+            }]
+        })
+        .to_string(),
+    )
+    .expect("nested tracklist parses");
+
+    assert_eq!(release.tracklist.len(), 1);
+    assert_eq!(release.tracklist[0].sub_tracks.len(), 2);
+    assert_eq!(release.tracklist[0].sub_tracks[1].position, "1b");
+}
+
+#[test]
 fn observe_signals_only_on_rejection_or_success() {
     let signals = Arc::new(Mutex::new(Vec::<&'static str>::new()));
     let recorded = signals.clone();

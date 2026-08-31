@@ -52,6 +52,9 @@ pub struct DiscogsTrack {
     pub extraartists: Option<Vec<DiscogsRoleArtist>>,
     /// Track type: "track", "heading", or "index"
     pub type_: String,
+    /// Child entries owned by an index row. Discogs uses this shape for a
+    /// suite or other grouped work whose children may be ripped separately.
+    pub sub_tracks: Vec<DiscogsTrack>,
 }
 
 #[cfg(test)]

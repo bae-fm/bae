@@ -1,7 +1,7 @@
 use super::*;
 use crate::import::folder_scanner::{
-    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDisc, SheetDiscEdits,
-    StoredCandidateEdits,
+    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetBindingOffer, SheetDisc,
+    SheetDiscEdits, StoredCandidateEdits,
 };
 use crate::import::probe::source_durations;
 use std::fs;
@@ -10,12 +10,12 @@ use std::path::Path;
 /// Synthetic FLAC bytes valid enough to round-trip through the scan's
 /// audio validation and the CUE container probe.
 ///
-/// 44.1 kHz / 2-channel / 16-bit STREAMINFO declaring 1 second of audio.
-fn synthetic_flac_bytes() -> Vec<u8> {
+/// 44.1 kHz / 2-channel / 16-bit STREAMINFO declaring `duration_ms` of audio.
+fn synthetic_flac_bytes(duration_ms: u64) -> Vec<u8> {
     let sample_rate: u32 = 44_100;
     let channels: u32 = 2;
     let bps: u32 = 16;
-    let total_samples: u64 = 44_100;
+    let total_samples = u64::from(sample_rate) * duration_ms / 1_000;
 
     let mut buf = Vec::new();
     buf.extend_from_slice(b"fLaC");
@@ -69,7 +69,15 @@ fn cue_sheet_text(audio_file_name: &str, count: usize) -> String {
 }
 
 fn write_flac(path: &Path) {
-    fs::write(path, synthetic_flac_bytes()).expect("write flac");
+    fs::write(path, synthetic_flac_bytes(1_000)).expect("write flac");
+}
+
+fn write_sheet_audio(path: &Path, track_count: usize) {
+    let duration_ms = u64::try_from(track_count)
+        .expect("fixture track count fits u64")
+        .checked_mul(180_000)
+        .expect("fixture duration fits u64");
+    fs::write(path, synthetic_flac_bytes(duration_ms)).expect("write sheet audio");
 }
 
 fn source_tracks(count: usize) -> Vec<SourceTrack> {
@@ -93,7 +101,8 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
 /// The table's rows for `source` against the folder at `root`, with the
 /// folder's audio measured — the table itself opens nothing.
 fn slots(source: &[SourceTrack], files: &CategorizedFiles) -> Vec<TrackSlot> {
-    slot_table(source, files, &source_durations(files)).rows
+    let durations = source_durations(files).expect("scanned fixture audio has durations");
+    slot_table(source, files, &durations).rows
 }
 
 fn scan(root: &Path) -> CategorizedFiles {
@@ -184,7 +193,7 @@ fn a_track_with_no_audio_becomes_a_track_only_slot() {
 #[test]
 fn a_disc_image_and_loose_audio_produce_slots_for_both() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
+    write_sheet_audio(&tmp.path().join("CDImage.flac"), 11);
     fs::write(
         tmp.path().join("CDImage.cue"),
         cue_sheet_text("CDImage.flac", 11),
@@ -242,7 +251,7 @@ fn a_disc_image_and_loose_audio_produce_slots_for_both() {
 #[test]
 fn a_sheet_disagreeing_with_the_source_lands_in_the_same_table() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
+    write_sheet_audio(&tmp.path().join("CDImage.flac"), 12);
     fs::write(
         tmp.path().join("CDImage.cue"),
         cue_sheet_text("CDImage.flac", 12),
@@ -280,7 +289,7 @@ fn discs_are_laid_down_in_natural_order() {
     for disc in 1..=10 {
         let dir = tmp.path().join(format!("CD{disc}"));
         fs::create_dir_all(&dir).expect("mkdir");
-        write_flac(&dir.join("CDImage.flac"));
+        write_sheet_audio(&dir.join("CDImage.flac"), disc);
         fs::write(
             dir.join("CDImage.cue"),
             cue_sheet_text("CDImage.flac", disc),
@@ -324,13 +333,13 @@ fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, SheetDisc)])
 #[test]
 fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("alpha.flac"));
+    write_sheet_audio(&tmp.path().join("alpha.flac"), 2);
     fs::write(
         tmp.path().join("alpha.cue"),
         cue_sheet_text("alpha.flac", 2),
     )
     .expect("write cue");
-    write_flac(&tmp.path().join("beta.flac"));
+    write_sheet_audio(&tmp.path().join("beta.flac"), 3);
     fs::write(tmp.path().join("beta.cue"), cue_sheet_text("beta.flac", 3)).expect("write cue");
 
     let mut files = scan(tmp.path());
@@ -365,7 +374,7 @@ fn the_disc_assignment_orders_the_units_the_filenames_do_not() {
 #[test]
 fn an_ignored_sheet_leaves_its_container_a_track_of_its_own() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
+    write_sheet_audio(&tmp.path().join("CDImage.flac"), 3);
     fs::write(
         tmp.path().join("CDImage.cue"),
         cue_sheet_text("CDImage.flac", 3),
@@ -500,7 +509,7 @@ fn an_unnamed_slot_is_titled_after_its_file() {
 #[test]
 fn sheet_slices_bind_to_their_container_and_share_one_analysis() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
+    write_sheet_audio(&tmp.path().join("CDImage.flac"), 4);
     fs::write(
         tmp.path().join("CDImage.cue"),
         cue_sheet_text("CDImage.flac", 4),
@@ -630,7 +639,8 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
     .expect("write cue");
 
     let files = scan(tmp.path());
-    let table = slot_table(&source_tracks(2), &files, &source_durations(&files));
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
+    let table = slot_table(&source_tracks(2), &files, &durations);
 
     let lengths: Vec<Option<u64>> = table.audio.iter().map(|file| file.duration_ms).collect();
     // 38 frames of 1/75s is ~506ms; the tail is what is left of the second.
@@ -639,12 +649,43 @@ fn a_sheet_s_slices_each_carry_their_own_length() {
     assert_eq!(lengths[1], Some(494));
 }
 
+#[test]
+fn a_sheet_whose_timing_exceeds_its_audio_leaves_the_container_standalone() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    write_flac(&tmp.path().join("CDImage.flac"));
+    fs::write(
+        tmp.path().join("CDImage.cue"),
+        cue_sheet_text("CDImage.flac", 2),
+    )
+    .expect("write cue");
+
+    let files = scan(tmp.path());
+
+    assert_eq!(
+        audio_units(&files),
+        vec![AudioFile::Standalone {
+            file_id: "CDImage.flac".to_string(),
+        }]
+    );
+    assert!(matches!(
+        files.track_sheets().next().map(|sheet| sheet.binding),
+        Some(crate::import::folder_scanner::SheetBinding::Unresolved)
+    ));
+    assert!(matches!(
+        files.sheet_binding_options("CDImage.cue").as_slice(),
+        [crate::import::folder_scanner::SheetBindingOption {
+            file_id,
+            offer: SheetBindingOffer::RefusedTiming,
+        }] if file_id == "CDImage.flac"
+    ));
+}
+
 /// One container carved into several rows reads as one run down the link
 /// column: first, middle, last. A file backing a row on its own is whole.
 #[test]
 fn a_container_s_rows_read_as_one_run() {
     let tmp = tempfile::TempDir::new().expect("tempdir");
-    write_flac(&tmp.path().join("CDImage.flac"));
+    write_sheet_audio(&tmp.path().join("CDImage.flac"), 3);
     fs::write(
         tmp.path().join("CDImage.cue"),
         cue_sheet_text("CDImage.flac", 3),
@@ -653,7 +694,8 @@ fn a_container_s_rows_read_as_one_run() {
     write_flac(&tmp.path().join("bonus.flac"));
 
     let files = scan(tmp.path());
-    let table = slot_table(&source_tracks(4), &files, &source_durations(&files));
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
+    let table = slot_table(&source_tracks(4), &files, &durations);
 
     assert_eq!(
         table.audio.iter().map(|file| file.span).collect::<Vec<_>>(),
@@ -680,7 +722,7 @@ fn the_tally_names_the_disagreement() {
         write_flac(&tmp.path().join(format!("{index:02}.flac")));
     }
     let files = scan(tmp.path());
-    let durations = source_durations(&files);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
 
     assert_eq!(
         slot_table(&source_tracks(13), &files, &durations).reconciliation,

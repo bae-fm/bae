@@ -73,15 +73,16 @@ fn broken_flac() -> Vec<u8> {
 }
 
 /// CUE sheet content referencing `audio_filename` with `n_tracks` entries.
-/// Each track is spaced 5 minutes apart so the sheet parses cleanly.
+/// Each track is spaced one CUE frame apart, inside every audio fixture used by
+/// the scanner scenarios.
 fn make_cue_content_n_tracks(audio_filename: &str, title: &str, n_tracks: usize) -> String {
     let mut s =
         format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE \"{audio_filename}\" WAVE\n");
     for i in 1..=n_tracks {
-        let minute = (i - 1) * 5;
+        let frame = i - 1;
         s.push_str(&format!(
-            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 {:02}:00:00\n",
-            i, minute,
+            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 00:00:{:02}\n",
+            i, frame,
         ));
     }
     s
@@ -94,10 +95,10 @@ fn make_cue_content_unquoted(audio_filename: &str, title: &str, n_tracks: usize)
     let mut s =
         format!("PERFORMER \"Test Artist\"\nTITLE \"{title}\"\nFILE {audio_filename} WAVE\n");
     for i in 1..=n_tracks {
-        let minute = (i - 1) * 5;
+        let frame = i - 1;
         s.push_str(&format!(
-            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 {:02}:00:00\n",
-            i, minute,
+            "  TRACK {:02} AUDIO\n    TITLE \"Track {i:02}\"\n    INDEX 01 00:00:{:02}\n",
+            i, frame,
         ));
     }
     s
@@ -108,10 +109,10 @@ fn make_cue_content_unquoted(audio_filename: &str, title: &str, n_tracks: usize)
 fn make_cue_content_no_header(audio_filename: &str, n_tracks: usize) -> String {
     let mut s = format!("FILE \"{audio_filename}\" WAVE\n");
     for i in 1..=n_tracks {
-        let minute = (i - 1) * 5;
+        let frame = i - 1;
         s.push_str(&format!(
-            "  TRACK {:02} AUDIO\n    INDEX 01 {:02}:00:00\n",
-            i, minute,
+            "  TRACK {:02} AUDIO\n    INDEX 01 00:00:{:02}\n",
+            i, frame,
         ));
     }
     s

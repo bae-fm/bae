@@ -257,6 +257,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 duration: Some("0:30".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -265,6 +266,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 duration: Some("0:30".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -273,6 +275,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
                 duration: Some("0:30".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             },
         ],
         master_id: Some("test-master".to_string()),
@@ -304,6 +307,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 duration: Some("0:30".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -312,6 +316,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 duration: Some("0:30".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             },
             DiscogsTrack {
                 type_: "track".to_string(),
@@ -320,6 +325,7 @@ fn create_mp3_test_album() -> DiscogsRelease {
                 duration: Some("0:30".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             },
         ],
         master_id: Some("test-master-mp3".to_string()),

@@ -337,6 +337,7 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
                 duration: Some("3:00".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             })
             .collect(),
         master_id: None,

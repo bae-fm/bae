@@ -217,6 +217,42 @@ ml = "ഈ ഓഡിയോ വായിക്കാനാകുന്നില്
 pa = "ਇਹ ਆਡੀਓ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕਦੀ"
 th = "ไม่สามารถอ่านไฟล์เสียงนี้ได้"
 
+[messages."core.import.sheet.refused_timing"]
+comment = "Import file pane: an audio file cannot back a track sheet because the sheet names track boundaries beyond the measured end of the file. Shown on the file in the sheet's audio picker."
+value = "The sheet’s track times fall outside this audio"
+
+[messages."core.import.sheet.refused_timing".translations]
+es = "Los tiempos de las pistas del CUE quedan fuera de este audio"
+fr = "Les temps de piste du CUE dépassent cet audio"
+de = "Die Trackzeiten der CUE-Datei liegen außerhalb dieser Audiodatei"
+pt-BR = "Os tempos das faixas do CUE ficam fora deste áudio"
+ja = "CUEのトラック時刻がこの音声の範囲外です"
+ko = "CUE 트랙 시간이 이 오디오 범위를 벗어납니다"
+zh-Hans = "CUE 的轨道时间超出此音频范围"
+ar = "تقع أوقات مسارات ملف CUE خارج نطاق هذا الصوت"
+he = "זמני הרצועות בקובץ CUE חורגים מתחום קובץ השמע הזה"
+uk = "Час доріжок у CUE виходить за межі цього аудіо"
+bg = "Времената на песните в CUE са извън обхвата на това аудио"
+pl = "Czasy utworów w pliku CUE wykraczają poza ten plik dźwiękowy"
+cs = "Časy stop v souboru CUE přesahují toto audio"
+hr = "Vremena zapisa u CUE-u izlaze izvan ovog zvuka"
+zh-Hant = "CUE 的音軌時間超出此音訊範圍"
+it = "I tempi delle tracce del CUE non rientrano in questo audio"
+tr = "CUE parça süreleri bu sesin sınırları dışında"
+vi = "Thời gian bản nhạc trong CUE nằm ngoài phạm vi âm thanh này"
+nl = "De tracktijden in de CUE vallen buiten deze audio"
+hi = "CUE के ट्रैक समय इस ऑडियो की सीमा से बाहर हैं"
+bn = "CUE-এর ট্র্যাকের সময় এই অডিওর সীমার বাইরে"
+ta = "CUE தட நேரங்கள் இந்த ஆடியோவின் வரம்பிற்கு வெளியே உள்ளன"
+te = "CUE ట్రాక్ సమయాలు ఈ ఆడియో పరిధికి వెలుపల ఉన్నాయి"
+mr = "CUE मधील ट्रॅक वेळा या ऑडिओच्या मर्यादेबाहेर आहेत"
+ur = "CUE کے ٹریک کے اوقات اس آڈیو کی حد سے باہر ہیں"
+gu = "CUE ટ્રૅકના સમય આ ઑડિયોની મર્યાદાની બહાર છે"
+kn = "CUE ಟ್ರ್ಯಾಕ್ ಸಮಯಗಳು ಈ ಆಡಿಯೊ ವ್ಯಾಪ್ತಿಯಿಂದ ಹೊರಗಿವೆ"
+ml = "CUE ട്രാക്ക് സമയങ്ങൾ ഈ ഓഡിയോയുടെ പരിധിക്ക് പുറത്താണ്"
+pa = "CUE ਟਰੈਕ ਦੇ ਸਮੇਂ ਇਸ ਆਡੀਓ ਦੀ ਹੱਦ ਤੋਂ ਬਾਹਰ ਹਨ"
+th = "เวลาของแทร็กใน CUE อยู่นอกช่วงของไฟล์เสียงนี้"
+
 [messages."core.import.invalid.corrupt_audio"]
 comment = "Import scan: a folder's audio file is corrupt or zero-byte ({path} is the file path)."
 args = { path = "Str" }

@@ -205,7 +205,7 @@ impl ImportServiceHandle {
         let metadata_provenance = state
             .as_ref()
             .and_then(|state| state.metadata_provenance.clone());
-        let durations = crate::import::probe::source_durations(&candidate.files);
+        let durations = crate::import::probe::source_durations(&candidate.files)?;
         let rows = self
             .library_manager
             .load_import_candidate_pane_rows(&content_hash)
@@ -286,6 +286,7 @@ impl ImportServiceHandle {
 
         let seed_for_pane = metadata_provenance.clone();
         let files = candidate.files.clone();
+        let audio_durations = crate::import::track_slots::audio_durations(&files, &durations)?;
         let release = match &seed_for_pane {
             Some(crate::import::MetadataProvenance::ExternalRelease {
                 source, release_id, ..
@@ -295,7 +296,7 @@ impl ImportServiceHandle {
                     &crate::import::MetadataRef::new(release_id.clone(), *source),
                 )
                 .await?
-                .detail()?,
+                .detail_for_audio(&audio_durations)?,
             ),
             Some(crate::import::MetadataProvenance::FileTags) | None => None,
         };

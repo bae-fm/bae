@@ -161,7 +161,14 @@ impl LibraryManager {
                         source.as_str()
                     ))
                 })?;
-                payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?
+                let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
+                parsed_for_existing_release(
+                    &payloads,
+                    *source,
+                    &existing_tracks,
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                )?
             }
             Some(MetadataProvenance::FileTags) => {
                 project_file_tags(
@@ -220,7 +227,14 @@ impl LibraryManager {
                     crate::util::rate_limiter::CallPriority::Interactive,
                 )
                 .await?;
-                let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
+                let existing_tracks = self.database.get_tracks_for_release(release_id).await?;
+                let parsed = parsed_for_existing_release(
+                    &payloads,
+                    release_ref.source,
+                    &existing_tracks,
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                )?;
 
                 // The source pressing's track count must match the local
                 // release's row count. Re-identify only re-points the identity;
@@ -229,11 +243,7 @@ impl LibraryManager {
                 // import has no such constraint — it maps its own audio into
                 // track slots and a count disagreement is a slot, not a
                 // refusal — so this check is re-identify's alone.
-                let existing_track_count = self
-                    .database
-                    .get_tracks_for_release(release_id)
-                    .await?
-                    .len();
+                let existing_track_count = existing_tracks.len();
                 let new_track_count = parsed.tracks.len();
                 if existing_track_count != new_track_count {
                     return Err(LibraryError::Import(format!(
@@ -833,6 +843,48 @@ impl LibraryManager {
         }
         Ok(plans)
     }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn parsed_for_existing_release(
+    payloads: &crate::import::payloads::ReleasePayloads,
+    source: crate::import::MetadataSource,
+    tracks: &[DbTrack],
+    clock: &dyn coven::Clock,
+    ids: &dyn coven::IdProvider,
+) -> Result<crate::import::ParsedAlbum, LibraryError> {
+    match source {
+        crate::import::MetadataSource::MusicBrainz => {
+            payloads.parsed(clock, ids).map_err(LibraryError::from)
+        }
+        crate::import::MetadataSource::Discogs => {
+            let audio_durations = stored_track_durations(tracks)?;
+            payloads
+                .parsed_for_audio(&audio_durations, clock, ids)
+                .map_err(LibraryError::from)
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn stored_track_durations(tracks: &[DbTrack]) -> Result<Vec<u64>, LibraryError> {
+    tracks
+        .iter()
+        .map(|track| {
+            let duration = track.duration_ms.ok_or_else(|| {
+                LibraryError::Import(format!(
+                    "release track '{}' has no measured duration",
+                    track.id
+                ))
+            })?;
+            u64::try_from(duration).map_err(|_| {
+                LibraryError::Import(format!(
+                    "release track '{}' has a negative duration",
+                    track.id
+                ))
+            })
+        })
+        .collect()
 }
 
 /// Project the embedded tags of a release's local audio files into a `ParsedAlbum`,

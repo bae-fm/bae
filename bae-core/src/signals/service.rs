@@ -330,9 +330,16 @@ async fn run_extraction(
 
 async fn run_fast_pass_blocking<F>(runtime_handle: &Handle, task: F) -> Option<FastPass>
 where
-    F: FnOnce() -> FastPass + Send + 'static,
+    F: FnOnce() -> Result<FastPass, crate::import::ImportError> + Send + 'static,
 {
-    run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await
+    match run_blocking(runtime_handle, "fast-pass spawn_blocking failed", task).await {
+        Some(Ok(pass)) => Some(pass),
+        Some(Err(error)) => {
+            error!("signals: folder timing is invalid: {error}; aborting extraction");
+            None
+        }
+        None => None,
+    }
 }
 
 async fn run_blocking<T, F>(runtime_handle: &Handle, failure_context: &str, task: F) -> Option<T>

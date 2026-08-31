@@ -300,6 +300,10 @@ impl ImportService {
             },
         );
 
+        let source_durations = crate::import::probe::source_durations(&categorized)?;
+        let audio_durations =
+            crate::import::track_slots::audio_durations(&categorized, &source_durations)?;
+
         let (parsed, release_cover) = match &metadata_provenance {
             Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) => {
                 // The documents are archived by `prepare_release`, keyed by the
@@ -310,7 +314,11 @@ impl ImportService {
                 let payloads =
                     prepare_release(library_manager, &release_ref, CallPriority::Interactive)
                         .await?;
-                let parsed = payloads.parsed(self.clock.as_ref(), self.ids.as_ref())?;
+                let parsed = payloads.parsed_for_audio(
+                    &audio_durations,
+                    self.clock.as_ref(),
+                    self.ids.as_ref(),
+                )?;
                 (parsed, payloads.default_cover()?)
             }
             Some(crate::import::MetadataProvenance::FileTags) => {

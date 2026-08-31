@@ -260,7 +260,7 @@ FILE "{flac_filename}" WAVE
     INDEX 01 00:00:00
   TRACK 02 AUDIO
     TITLE "Track Two"
-    INDEX 01 05:00:00
+    INDEX 01 00:01:00
 "#
     )
 }
@@ -471,7 +471,9 @@ fn cue_with_supported_codec_yields_valid_source_audio() {
         std::fs::create_dir(&root).unwrap();
         std::fs::write(
             root.join("album.cue"),
-            make_cue_content(audio_name, "Test Album"),
+            format!(
+                "PERFORMER \"Test Artist\"\nTITLE \"Test Album\"\nFILE \"{audio_name}\" WAVE\n  TRACK 01 AUDIO\n    TITLE \"Track One\"\n    INDEX 01 00:00:00\n"
+            ),
         )
         .unwrap();
         std::fs::write(root.join(audio_name), audio_format_fixture(fixture)).unwrap();

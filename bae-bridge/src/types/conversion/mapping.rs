@@ -190,6 +190,7 @@ impl BridgeSheetBindingOption {
                 SheetBindingOffer::RefusedCodec { codec } => {
                     BridgeSheetBindingOffer::RefusedCodec { codec }
                 }
+                SheetBindingOffer::RefusedTiming => BridgeSheetBindingOffer::RefusedTiming,
                 SheetBindingOffer::RefusedUnreadable => BridgeSheetBindingOffer::RefusedUnreadable,
             },
         }

@@ -58,6 +58,7 @@ fn make_discogs_release(id: &str, title: &str, tracks: &[&str]) -> DiscogsReleas
                 duration: Some("0:02".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             })
             .collect(),
         master_id: None,

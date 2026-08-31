@@ -446,8 +446,6 @@ impl Fixture {
         dir
     }
 
-    /// Sum of the fixture audio's real probed durations — what the sweep stores
-    /// and the Ready rule compares against.
     /// What every fixture FLAC in `dir` plays for, as the fast pass measures
     /// it — the durations a stored verdict carries.
     fn probed_durations(&self, dir: &Path) -> crate::import::probe::SourceDurations {
@@ -458,12 +456,13 @@ impl Fixture {
                     audio: crate::import::AudioFile::Standalone {
                         file_id: (*name).to_string(),
                     },
-                    duration_ms: Some(
+                    duration_ms: u64::try_from(
                         crate::audio_codec::probe_audio_from_path(dir.join(name).to_str().unwrap())
                             .expect("fixture FLAC probes")
                             .duration
-                            .as_millis() as u64,
-                    ),
+                            .as_millis(),
+                    )
+                    .expect("fixture duration fits u64"),
                 })
                 .collect(),
         )

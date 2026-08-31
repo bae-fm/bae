@@ -359,7 +359,7 @@ fn single_file_cue_pairs_by_file_directive_not_stem() {
         album.join("Sheet.cue"),
         "PERFORMER \"X\"\nTITLE \"Y\"\nFILE \"Audio.flac\" WAVE\n  \
              TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  \
-             TRACK 02 AUDIO\n    INDEX 01 03:00:00\n",
+             TRACK 02 AUDIO\n    INDEX 01 00:01:00\n",
     )
     .unwrap();
     let candidates = scan_valid(tmp.path().to_path_buf());

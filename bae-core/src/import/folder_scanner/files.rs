@@ -344,6 +344,8 @@ pub enum SheetBindingOffer {
     /// single-file CUE playback. Carries the probed codec so the picker says
     /// which file and why.
     RefusedCodec { codec: String },
+    /// The sheet names boundaries outside this file's measured duration.
+    RefusedTiming,
     /// FFmpeg can't identify a playable stream in the file at all — a download
     /// truncated after its header, or otherwise broken audio. Nothing can be
     /// carved out of it either.
@@ -692,7 +694,10 @@ impl CategorizedFiles {
             .map(|audio| SheetBindingOption {
                 file_id: audio.relative_path.clone(),
                 offer: match cue_pair_codec_label(audio) {
-                    CueCodecLabel::Supported => SheetBindingOffer::Offered,
+                    CueCodecLabel::Supported if sheet_fits_single_audio(sheet.sheet, audio) => {
+                        SheetBindingOffer::Offered
+                    }
+                    CueCodecLabel::Supported => SheetBindingOffer::RefusedTiming,
                     CueCodecLabel::Unsupported(codec) => SheetBindingOffer::RefusedCodec { codec },
                     CueCodecLabel::Unprobeable => SheetBindingOffer::RefusedUnreadable,
                 },

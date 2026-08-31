@@ -56,7 +56,8 @@ pub(super) fn materialise(
                 // named. With nothing archived behind the pick the row leads
                 // with its folder name rather than someone else's release.
                 if let Some(seed) = row.metadata_provenance.clone() {
-                    row.matched = picked_release(sql, &seed)?;
+                    let audio_durations = candidate_audio_durations(sql, &row.candidate_key)?;
+                    row.matched = picked_release(sql, &seed, &audio_durations)?;
                 }
                 let content_hash = scanned.content_hash.as_deref().ok_or_else(|| {
                     DbError::Message(format!("candidate {} has no content hash", scanned.path))
@@ -181,6 +182,7 @@ fn resolved_boundaries(
 fn picked_release(
     sql: &SqlReadContext<'_>,
     pick: &MetadataProvenance,
+    audio_durations_ms: &[u64],
 ) -> Result<Option<MatchedRelease>, DbError> {
     let MetadataProvenance::ExternalRelease {
         source, release_id, ..
@@ -195,8 +197,33 @@ fn picked_release(
     else {
         return Ok(None);
     };
-    let detail = payloads.detail().map_err(message)?;
+    let detail = payloads
+        .detail_for_audio(audio_durations_ms)
+        .map_err(message)?;
     Ok(Some(MatchedRelease::of_pick(*source, &detail)))
+}
+
+fn candidate_audio_durations(
+    sql: &SqlReadContext<'_>,
+    candidate_key: &str,
+) -> Result<Vec<u64>, DbError> {
+    let (_, stored) = load_item_by_key(sql, candidate_key)?.ok_or_else(|| {
+        DbError::Message(format!(
+            "candidate {candidate_key} vanished while materialising its picked release"
+        ))
+    })?;
+    let candidate = match stored.item {
+        ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => candidate,
+        ScanItem::Invalid(_) | ScanItem::Decided { .. } => {
+            return Err(DbError::Message(format!(
+                "candidate {candidate_key} cannot carry a picked release"
+            )))
+        }
+    };
+    let durations = crate::import::probe::source_durations(&candidate.files)
+        .map_err(|error| DbError::Message(error.to_string()))?;
+    crate::import::track_slots::audio_durations(&candidate.files, &durations)
+        .map_err(|error| DbError::Message(error.to_string()))
 }
 
 /// One candidate, whole, before its runtime is folded in. `None` when the key
@@ -249,7 +276,8 @@ pub(super) fn load_candidate_detail_on(
     let picked = current
         .as_ref()
         .and_then(|state| state.metadata_provenance.clone());
-    let durations = crate::import::probe::source_durations(&candidate.files);
+    let durations = crate::import::probe::source_durations(&candidate.files)
+        .map_err(|error| DbError::Message(error.to_string()))?;
     let signals = current.as_ref().and_then(|state| state.signals.clone());
     let pane_rows = load_pane_rows_on(sql, &content_hash)?;
     let (initial_metadata_source, metadata_revision) = sql.query_row(
@@ -291,7 +319,10 @@ pub(super) fn load_candidate_detail_on(
         resumed_identify_state = identify.verdict.clone().resume_state(&status_of);
     }
     if let Some(pick) = picked.as_ref() {
-        matched = picked_release(sql, pick)?;
+        let audio_durations =
+            crate::import::track_slots::audio_durations(&candidate.files, &durations)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+        matched = picked_release(sql, pick, &audio_durations)?;
     }
 
     let pane = pane_of(sql, &candidate, picked.as_ref(), &durations, &pane_rows)?;
@@ -408,7 +439,10 @@ fn pane_of(
                 })?;
             Some(
                 payloads
-                    .detail()
+                    .detail_for_audio(
+                        &crate::import::track_slots::audio_durations(&candidate.files, durations)
+                            .map_err(|error| DbError::Message(error.to_string()))?,
+                    )
                     .map_err(|error| DbError::Message(error.to_string()))?,
             )
         }

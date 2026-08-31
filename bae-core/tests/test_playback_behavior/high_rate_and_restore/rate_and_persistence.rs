@@ -74,6 +74,7 @@ impl HighSampleRateTestFixture {
                 duration: Some("0:03".to_string()),
                 artists: vec![],
                 extraartists: None,
+                sub_tracks: vec![],
             }],
             master_id: Some("test-master-96khz".to_string()),
         };

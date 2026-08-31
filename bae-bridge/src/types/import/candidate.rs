@@ -64,6 +64,8 @@ pub enum BridgeSheetBindingOffer {
     /// through [`bridge_sheet_refused_codec_key`] — the same wording a sheet
     /// the scan already refused carries.
     RefusedCodec { codec: String },
+    /// The sheet names boundaries outside this file's measured duration.
+    RefusedTiming,
     /// bae can't read the file at all. Localized through
     /// [`bridge_sheet_refused_unreadable_key`].
     RefusedUnreadable,
@@ -74,6 +76,7 @@ impl BridgeSheetBindingOffer {
         match self {
             Self::Offered => None,
             Self::RefusedCodec { .. } => Some(SHEET_REFUSED_CODEC_KEY),
+            Self::RefusedTiming => Some(SHEET_REFUSED_TIMING_KEY),
             Self::RefusedUnreadable => Some(SHEET_REFUSED_UNREADABLE_KEY),
         }
     }
@@ -118,6 +121,7 @@ pub fn bridge_sheet_refused_unreadable_key() -> String {
 }
 
 pub(crate) const SHEET_REFUSED_CODEC_KEY: &str = "core.import.sheet.refused_codec";
+pub(crate) const SHEET_REFUSED_TIMING_KEY: &str = "core.import.sheet.refused_timing";
 pub(crate) const SHEET_REFUSED_UNREADABLE_KEY: &str = "core.import.sheet.refused_unreadable";
 
 /// The job the scan proposed for one file. Mirror of bae-core's `FileRole`. No

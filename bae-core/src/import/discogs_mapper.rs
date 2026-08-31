@@ -76,6 +76,30 @@ pub fn map_discogs_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
+    let tracks = process_tracklist(&release.tracklist);
+    map_discogs_to_db_with_tracks(release, master_year, mb_xref, &tracks, clock, ids)
+}
+
+pub(crate) fn map_discogs_to_db_for_audio(
+    release: &DiscogsRelease,
+    master_year: Option<u32>,
+    mb_xref: Option<&MbReleaseResponse>,
+    audio_durations_ms: &[u64],
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
+    let tracks = process_tracklist_for_audio(&release.tracklist, audio_durations_ms);
+    map_discogs_to_db_with_tracks(release, master_year, mb_xref, &tracks, clock, ids)
+}
+
+fn map_discogs_to_db_with_tracks(
+    release: &DiscogsRelease,
+    master_year: Option<u32>,
+    mb_xref: Option<&MbReleaseResponse>,
+    processed: &[ProcessedTrack<'_>],
+    clock: &dyn Clock,
+    ids: &dyn IdProvider,
+) -> Result<ParsedAlbum, ImportError> {
     // With no artists list, fall back to the artist half of the "Artist - Album"
     // title split.
     let mut release_refs: Vec<ArtistRef> = if release.artists.is_empty() {
@@ -149,7 +173,6 @@ pub fn map_discogs_to_db(
         }
     }
 
-    let processed = process_tracklist(&release.tracklist);
     let tracks: Vec<TrackIr> = processed
         .iter()
         .map(|pt| discogs_track_ir(release, pt))
@@ -214,8 +237,7 @@ fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
     let mut seen_credit_ids: HashSet<String> = HashSet::new();
     let mut credit_position = 0i32;
 
-    for source_track_index in &pt.source_track_indices {
-        let discogs_track = &release.tracklist[*source_track_index];
+    for discogs_track in &pt.source_tracks {
         match discogs_track.extraartists.as_ref() {
             Some(extraartists) => {
                 for (role_position, credit) in extraartists.iter().enumerate() {
@@ -268,158 +290,404 @@ fn discogs_track_ir(release: &DiscogsRelease, pt: &ProcessedTrack) -> TrackIr {
     }
 }
 
-/// A processed track: heading/sub-track collapsing and index filtering applied,
-/// with its side derived from the position. Per-side track numbers are assigned
-/// downstream by the assembler's single numbering pass.
-pub(crate) struct ProcessedTrack {
+/// One playable track from a selected Discogs layout. The source entries stay
+/// attached so credits survive both an expanded index and its collapsed form.
+#[derive(Clone)]
+pub(crate) struct ProcessedTrack<'a> {
     pub title: String,
     pub position: String,
-    /// Source tracklist indices. For collapsed sub-tracks, this contains all
-    /// sub-track entries; for regular tracks, this contains the one source row.
-    pub source_track_indices: Vec<usize>,
+    pub duration_ms: Option<u64>,
+    pub source_tracks: Vec<&'a crate::discogs::DiscogsTrack>,
     pub side: i32,
 }
 
-/// Process a Discogs tracklist: filter index entries, collapse headings with
-/// sub-tracks, and assign sides from the position format.
-pub(crate) fn process_tracklist(tracklist: &[crate::discogs::DiscogsTrack]) -> Vec<ProcessedTrack> {
-    use crate::discogs::DiscogsTrack;
+#[derive(Clone)]
+struct CandidateLayout<'a> {
+    tracks: Vec<ProcessedTrack<'a>>,
+    expanded_groups: usize,
+}
 
-    let filtered: Vec<(usize, &DiscogsTrack)> = tracklist
-        .iter()
-        .enumerate()
-        .filter(|(_, track)| track.type_ != "index")
-        .collect();
+/// The source's leaf tracks, independent of a particular folder.
+pub(crate) fn process_tracklist(
+    tracklist: &[crate::discogs::DiscogsTrack],
+) -> Vec<ProcessedTrack<'_>> {
+    select_tracklist(tracklist, TrackLayoutTarget::Expanded)
+}
 
-    struct CollapsedTrack {
-        title: String,
-        position: String,
-        /// Source tracklist indices for artist lookups.
-        source_track_indices: Vec<usize>,
-    }
+/// The source layout whose playable rows best fit the candidate's audio. Count
+/// decides first; ordered per-track durations decide between equal-count
+/// layouts; an unresolved tie keeps the more expanded source description.
+pub(crate) fn process_tracklist_for_audio<'a>(
+    tracklist: &'a [crate::discogs::DiscogsTrack],
+    audio_durations_ms: &[u64],
+) -> Vec<ProcessedTrack<'a>> {
+    select_tracklist(tracklist, TrackLayoutTarget::Audio(audio_durations_ms))
+}
 
-    let flush_accumulated_sub_tracks =
-        |collapsed: &mut Vec<CollapsedTrack>,
-         current_heading: Option<&str>,
-         sub_tracks: &mut Vec<String>,
-         sub_track_indices: &mut Vec<usize>,
-         heading_position: &mut Option<String>| {
-            if sub_tracks.is_empty() {
-                return;
-            }
+enum TrackLayoutTarget<'a> {
+    Expanded,
+    Audio(&'a [u64]),
+}
 
-            let heading = current_heading.expect("sub-tracks are accumulated under a heading");
-            let title = format!("{}: {}", heading, sub_tracks.join(" \u{2013} "));
-            collapsed.push(CollapsedTrack {
-                title,
-                position: heading_position
-                    .take()
-                    .expect("sub-tracks have a base heading position"),
-                source_track_indices: std::mem::take(sub_track_indices),
-            });
-            sub_tracks.clear();
-        };
-
-    let mut collapsed: Vec<CollapsedTrack> = Vec::new();
-    let mut current_heading: Option<String> = None;
-    let mut sub_tracks: Vec<String> = Vec::new();
-    let mut sub_track_indices: Vec<usize> = Vec::new();
-    let mut heading_position: Option<String> = None;
-
-    for &(source_track_index, entry) in &filtered {
-        if entry.type_ == "heading" {
-            flush_accumulated_sub_tracks(
-                &mut collapsed,
-                current_heading.as_deref(),
-                &mut sub_tracks,
-                &mut sub_track_indices,
-                &mut heading_position,
-            );
-
-            if entry.title == "-" {
-                // A heading titled "-" clears the current heading.
-                current_heading = None;
-                heading_position = None;
-            } else {
-                current_heading = Some(entry.title.clone());
-                heading_position = None;
-            }
-            continue;
+impl TrackLayoutTarget<'_> {
+    fn audio_from(&self, offset: usize) -> &[u64] {
+        match self {
+            Self::Expanded => &[],
+            Self::Audio(audio) if offset < audio.len() => &audio[offset..],
+            Self::Audio(_) => &[],
         }
+    }
+}
 
-        if current_heading.is_some() && is_sub_track_position(&entry.position) {
-            if heading_position.is_none() {
-                heading_position = Some(extract_base_position(&entry.position));
+enum LayoutEntry<'a> {
+    Index(&'a crate::discogs::DiscogsTrack),
+    Heading {
+        heading: &'a crate::discogs::DiscogsTrack,
+        children: &'a [crate::discogs::DiscogsTrack],
+    },
+    Track(&'a crate::discogs::DiscogsTrack),
+}
+
+impl<'a> LayoutEntry<'a> {
+    fn options(
+        &self,
+        target: &TrackLayoutTarget<'_>,
+        audio_offset: usize,
+    ) -> Vec<CandidateLayout<'a>> {
+        match self {
+            Self::Index(index) => index_layouts(index, target, audio_offset),
+            Self::Heading { heading, children } => heading_layouts(heading, children),
+            Self::Track(track) => vec![fixed_track_layout(track)],
+        }
+    }
+}
+
+fn select_tracklist<'a>(
+    tracklist: &'a [crate::discogs::DiscogsTrack],
+    target: TrackLayoutTarget<'_>,
+) -> Vec<ProcessedTrack<'a>> {
+    let layouts = candidate_layouts(tracklist, &target, 0);
+    layouts
+        .into_values()
+        .min_by(|left, right| compare_layouts(left, right, &target))
+        .expect("Discogs layout generation always yields a candidate")
+        .tracks
+}
+
+fn compare_layouts(
+    left: &CandidateLayout<'_>,
+    right: &CandidateLayout<'_>,
+    target: &TrackLayoutTarget<'_>,
+) -> std::cmp::Ordering {
+    match target {
+        TrackLayoutTarget::Expanded => right
+            .tracks
+            .len()
+            .cmp(&left.tracks.len())
+            .then_with(|| right.expanded_groups.cmp(&left.expanded_groups)),
+        TrackLayoutTarget::Audio(audio) => left
+            .tracks
+            .len()
+            .abs_diff(audio.len())
+            .cmp(&right.tracks.len().abs_diff(audio.len()))
+            .then_with(|| compare_duration_fit(&left.tracks, &right.tracks, audio))
+            .then_with(|| right.expanded_groups.cmp(&left.expanded_groups)),
+    }
+}
+
+fn compare_duration_fit(
+    left: &[ProcessedTrack<'_>],
+    right: &[ProcessedTrack<'_>],
+    audio: &[u64],
+) -> std::cmp::Ordering {
+    let score = |tracks: &[ProcessedTrack<'_>]| {
+        tracks
+            .iter()
+            .zip(audio)
+            .filter_map(|(track, local)| Some(track.duration_ms?.abs_diff(*local)))
+            .fold((0u64, 0u128), |(known, error), difference| {
+                (
+                    known + 1,
+                    error
+                        .checked_add(u128::from(difference))
+                        .expect("Discogs duration differences fit u128"),
+                )
+            })
+    };
+    let (left_known, left_error) = score(left);
+    let (right_known, right_error) = score(right);
+    match (left_known, right_known) {
+        (0, 0) => std::cmp::Ordering::Equal,
+        (0, _) => std::cmp::Ordering::Greater,
+        (_, 0) => std::cmp::Ordering::Less,
+        _ => left_error
+            .checked_mul(u128::from(right_known))
+            .expect("Discogs average duration comparison fits u128")
+            .cmp(
+                &right_error
+                    .checked_mul(u128::from(left_known))
+                    .expect("Discogs average duration comparison fits u128"),
+            )
+            .then_with(|| right_known.cmp(&left_known)),
+    }
+}
+
+fn candidate_layouts<'a>(
+    entries: &'a [crate::discogs::DiscogsTrack],
+    target: &TrackLayoutTarget<'_>,
+    audio_offset: usize,
+) -> std::collections::BTreeMap<usize, CandidateLayout<'a>> {
+    let mut layouts = std::collections::BTreeMap::from([(
+        0,
+        CandidateLayout {
+            tracks: Vec::new(),
+            expanded_groups: 0,
+        },
+    )]);
+
+    let mut entry_index = 0;
+    while entry_index < entries.len() {
+        let entry = &entries[entry_index];
+        let (layout_entry, consumed) = if entry.type_ == "index" && !entry.sub_tracks.is_empty() {
+            (LayoutEntry::Index(entry), 1)
+        } else if entry.type_ == "heading" && entry.title != "-" {
+            let mut end = entry_index + 1;
+            while end < entries.len()
+                && entries[end].type_ == "track"
+                && is_sub_track_position(&entries[end].position)
+            {
+                end += 1;
             }
-            sub_tracks.push(entry.title.clone());
-            sub_track_indices.push(source_track_index);
+            if end == entry_index + 1 {
+                entry_index += 1;
+                continue;
+            }
+            (
+                LayoutEntry::Heading {
+                    heading: entry,
+                    children: &entries[entry_index + 1..end],
+                },
+                end - entry_index,
+            )
+        } else if entry.type_ == "track" {
+            (LayoutEntry::Track(entry), 1)
         } else {
-            flush_accumulated_sub_tracks(
-                &mut collapsed,
-                current_heading.as_deref(),
-                &mut sub_tracks,
-                &mut sub_track_indices,
-                &mut heading_position,
-            );
-            current_heading = None;
-            heading_position = None;
+            entry_index += 1;
+            continue;
+        };
+        let mut combined = std::collections::BTreeMap::new();
+        for prefix in layouts.values() {
+            for option in layout_entry.options(target, audio_offset + prefix.tracks.len()) {
+                let mut tracks = prefix.tracks.clone();
+                tracks.extend(option.tracks);
+                keep_better_layout(
+                    &mut combined,
+                    CandidateLayout {
+                        tracks,
+                        expanded_groups: prefix.expanded_groups + option.expanded_groups,
+                    },
+                    target,
+                    audio_offset,
+                );
+            }
+        }
+        layouts = combined;
+        entry_index += consumed;
+    }
+    layouts
+}
 
-            collapsed.push(CollapsedTrack {
-                title: entry.title.clone(),
-                position: entry.position.clone(),
-                source_track_indices: vec![source_track_index],
-            });
+fn fixed_track_layout(entry: &crate::discogs::DiscogsTrack) -> CandidateLayout<'_> {
+    CandidateLayout {
+        tracks: vec![ProcessedTrack {
+            title: entry.title.clone(),
+            position: entry.position.clone(),
+            duration_ms: entry.duration.as_deref().and_then(parse_duration_to_ms),
+            source_tracks: vec![entry],
+            side: parse_side_from_position(&entry.position),
+        }],
+        expanded_groups: 0,
+    }
+}
+
+fn heading_layouts<'a>(
+    heading: &'a crate::discogs::DiscogsTrack,
+    children: &'a [crate::discogs::DiscogsTrack],
+) -> Vec<CandidateLayout<'a>> {
+    let expanded = CandidateLayout {
+        tracks: children
+            .iter()
+            .map(|child| ProcessedTrack {
+                title: format!("{}: {}", heading.title, child.title),
+                position: child.position.clone(),
+                duration_ms: child.duration.as_deref().and_then(parse_duration_to_ms),
+                source_tracks: vec![child],
+                side: parse_side_from_position(&child.position),
+            })
+            .collect(),
+        expanded_groups: 1,
+    };
+    let position = extract_base_position(&children[0].position);
+    let sources: Vec<&crate::discogs::DiscogsTrack> = children.iter().collect();
+    let collapsed = CandidateLayout {
+        tracks: vec![ProcessedTrack {
+            title: format!(
+                "{}: {}",
+                heading.title,
+                children
+                    .iter()
+                    .map(|track| track.title.as_str())
+                    .collect::<Vec<_>>()
+                    .join(" \u{2013} ")
+            ),
+            side: parse_side_from_position(&position),
+            position,
+            duration_ms: sum_track_durations(&sources),
+            source_tracks: sources,
+        }],
+        expanded_groups: 0,
+    };
+    vec![collapsed, expanded]
+}
+
+fn keep_better_layout<'a>(
+    layouts: &mut std::collections::BTreeMap<usize, CandidateLayout<'a>>,
+    candidate: CandidateLayout<'a>,
+    target: &TrackLayoutTarget<'_>,
+    audio_offset: usize,
+) {
+    let count = candidate.tracks.len();
+    match layouts.get(&count) {
+        Some(current)
+            if compare_duration_fit(
+                &candidate.tracks,
+                &current.tracks,
+                target.audio_from(audio_offset),
+            )
+            .then_with(|| current.expanded_groups.cmp(&candidate.expanded_groups))
+                != std::cmp::Ordering::Less => {}
+        _ => {
+            layouts.insert(count, candidate);
         }
     }
+}
 
-    flush_accumulated_sub_tracks(
-        &mut collapsed,
-        current_heading.as_deref(),
-        &mut sub_tracks,
-        &mut sub_track_indices,
-        &mut heading_position,
-    );
+fn index_layouts<'a>(
+    index: &'a crate::discogs::DiscogsTrack,
+    target: &TrackLayoutTarget<'_>,
+    audio_offset: usize,
+) -> Vec<CandidateLayout<'a>> {
+    let child_layouts = candidate_layouts(&index.sub_tracks, target, audio_offset);
+    let expanded = child_layouts
+        .into_values()
+        .map(|mut layout| {
+            for track in &mut layout.tracks {
+                track.title = format!("{}: {}", index.title, track.title);
+                track.source_tracks.insert(0, index);
+            }
+            layout.expanded_groups += 1;
+            layout
+        })
+        .collect::<Vec<_>>();
+    let source_tracks = leaf_tracks(&index.sub_tracks);
+    if source_tracks.is_empty() {
+        return expanded;
+    }
+    let position = if index.position.is_empty() {
+        source_tracks
+            .first()
+            .map(|track| extract_base_position(&track.position))
+            .expect("a grouped Discogs index with playable leaves has a first leaf")
+    } else {
+        index.position.clone()
+    };
+    let duration_ms = index
+        .duration
+        .as_deref()
+        .and_then(parse_duration_to_ms)
+        .or_else(|| sum_track_durations(&source_tracks));
+    let mut collapsed_sources = Vec::with_capacity(source_tracks.len() + 1);
+    collapsed_sources.push(index);
+    collapsed_sources.extend(source_tracks);
+    let collapsed = CandidateLayout {
+        tracks: vec![ProcessedTrack {
+            title: index.title.clone(),
+            side: parse_side_from_position(&position),
+            position,
+            duration_ms,
+            source_tracks: collapsed_sources,
+        }],
+        expanded_groups: 0,
+    };
+    std::iter::once(collapsed).chain(expanded).collect()
+}
 
-    collapsed
-        .into_iter()
-        .map(|ct| {
-            let side = parse_side_from_position(&ct.position);
-            ProcessedTrack {
-                title: ct.title,
-                position: ct.position,
-                source_track_indices: ct.source_track_indices,
-                side,
+fn leaf_tracks(entries: &[crate::discogs::DiscogsTrack]) -> Vec<&crate::discogs::DiscogsTrack> {
+    entries
+        .iter()
+        .flat_map(|entry| {
+            if entry.type_ == "index" && !entry.sub_tracks.is_empty() {
+                leaf_tracks(&entry.sub_tracks)
+            } else if entry.type_ == "track" {
+                vec![entry]
+            } else {
+                Vec::new()
             }
         })
         .collect()
 }
 
-/// Whether a position names a sub-track ("B1i", "B1ii", "B1iii"): a letter
-/// prefix, then a number, then a roman-numeral or letter suffix.
+fn sum_track_durations(tracks: &[&crate::discogs::DiscogsTrack]) -> Option<u64> {
+    tracks
+        .iter()
+        .map(|track| track.duration.as_deref().and_then(parse_duration_to_ms))
+        .sum()
+}
+
+/// Whether a flat position names a sub-track (`B1ii` or `1b`).
 fn is_sub_track_position(position: &str) -> bool {
     let bytes = position.as_bytes();
-    if bytes.len() < 3 {
+    let Some(digit_start) = bytes.iter().position(u8::is_ascii_digit) else {
+        return false;
+    };
+    if !bytes[..digit_start].iter().all(u8::is_ascii_alphabetic) {
         return false;
     }
-    if !bytes[0].is_ascii_alphabetic() {
-        return false;
-    }
-    let mut digit_end = 1;
+    let mut digit_end = digit_start;
     while digit_end < bytes.len() && bytes[digit_end].is_ascii_digit() {
         digit_end += 1;
     }
-    // At least one digit, and a suffix after it.
-    digit_end > 1 && digit_end < bytes.len()
+    digit_end > digit_start
+        && digit_end < bytes.len()
+        && bytes[digit_end..].iter().all(u8::is_ascii_alphabetic)
 }
 
-/// Extract the base position from a sub-track position (e.g., "B1i" -> "B1").
+/// Extract the playable parent position (`B1ii` -> `B1`, `1b` -> `1`).
 fn extract_base_position(position: &str) -> String {
     let bytes = position.as_bytes();
-    let mut end = 1;
+    let Some(mut end) = bytes.iter().position(u8::is_ascii_digit) else {
+        return position.to_string();
+    };
     while end < bytes.len() && bytes[end].is_ascii_digit() {
         end += 1;
     }
     position[..end].to_string()
+}
+
+pub(crate) fn parse_duration_to_ms(duration: &str) -> Option<u64> {
+    let parts: Vec<&str> = duration.split(':').collect();
+    match parts.as_slice() {
+        [minutes, seconds] => {
+            Some((minutes.parse::<u64>().ok()? * 60 + seconds.parse::<u64>().ok()?) * 1_000)
+        }
+        [hours, minutes, seconds] => Some(
+            (hours.parse::<u64>().ok()? * 3_600
+                + minutes.parse::<u64>().ok()? * 60
+                + seconds.parse::<u64>().ok()?)
+                * 1_000,
+        ),
+        _ => None,
+    }
 }
 
 /// The side a Discogs position string names: for vinyl (`A1`, `B2`, `C1`) the

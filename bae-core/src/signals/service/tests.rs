@@ -361,9 +361,12 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn fast_pass_join_error_aborts_without_empty_snapshot() {
-    let fast_pass = run_fast_pass_blocking(&tokio::runtime::Handle::current(), || -> FastPass {
-        panic!("fast-pass blocking task panicked")
-    })
+    let fast_pass = run_fast_pass_blocking(
+        &tokio::runtime::Handle::current(),
+        || -> Result<FastPass, crate::import::ImportError> {
+            panic!("fast-pass blocking task panicked")
+        },
+    )
     .await;
 
     assert!(
@@ -558,7 +561,8 @@ fn non_utf8_cue_is_decoded_not_dropped() {
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass = gather_non_ocr_sources(&folder, &files);
+    let pass =
+        gather_non_ocr_sources(&folder, &files).expect("scanned fixture audio has complete timing");
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
     assert!(

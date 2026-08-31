@@ -130,6 +130,11 @@ impl ImportServiceHandle {
                             detail: format!("{audio_file_id} is {codec}"),
                         })
                     }
+                    Some(SheetBindingOffer::RefusedTiming) => {
+                        return Err(crate::import::ImportError::SheetBinding {
+                            detail: format!("{sheet_file_id} has timings outside {audio_file_id}"),
+                        })
+                    }
                     Some(SheetBindingOffer::RefusedUnreadable) => {
                         return Err(crate::import::ImportError::SheetBinding {
                             detail: format!("{audio_file_id} cannot be read"),
@@ -238,7 +243,7 @@ impl ImportServiceHandle {
             });
         };
         let content_hash = candidate.files.content_hash();
-        let durations = crate::import::probe::source_durations(&candidate.files);
+        let durations = crate::import::probe::source_durations(&candidate.files)?;
         match &provenance {
             crate::import::MetadataProvenance::FileTags => {
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;

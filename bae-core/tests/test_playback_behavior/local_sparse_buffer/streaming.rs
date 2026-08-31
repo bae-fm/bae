@@ -91,6 +91,7 @@ fn create_multi_window_cue_album() -> DiscogsRelease {
         duration: Some("1:00".to_string()),
         artists: vec![],
         extraartists: None,
+        sub_tracks: vec![],
     };
     DiscogsRelease {
         id: "multi-window-cue-release".to_string(),

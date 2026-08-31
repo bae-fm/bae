@@ -292,6 +292,7 @@ fn cue_track(position: &str, title: &str) -> DiscogsTrack {
         duration: Some("0:10".to_string()),
         artists: vec![],
         extraartists: None,
+        sub_tracks: vec![],
     }
 }
 
