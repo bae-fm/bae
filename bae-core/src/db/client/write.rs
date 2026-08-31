@@ -406,6 +406,11 @@ pub(super) fn insert_artist_role_row(
         .map_err(DbError::from)
 }
 
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 const INSERT_RELEASE_FILE_SQL: &str = r#"
     INSERT INTO release_files (
         id, release_id, original_filename, file_size, content_type,
@@ -425,6 +430,11 @@ const INSERT_RELEASE_FILE_SQL: &str = r#"
 /// Validate and expose the non-hash values for the one `release_files` insert.
 /// The callback keeps references to derived audio values inside this scope while
 /// either Coven or a test fixture supplies the hash parameter.
+#[cfg(any(
+    test,
+    feature = "test-utils",
+    not(any(target_os = "ios", target_os = "android"))
+))]
 fn with_file_row_params<T>(
     file: &DbFile,
     reg: &str,
