@@ -1082,6 +1082,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "bae-uniffi-bindgen"
+version = "0.1.0"
+dependencies = [
+ "uniffi",
+]
+
+[[package]]
 name = "base16ct"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

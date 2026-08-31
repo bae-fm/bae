@@ -6,10 +6,7 @@ name: Android build (reusable)
 # profile=release, a signed APK uploaded as the `bae-android-release` artifact.
 #
 # Runs on Linux: the NDK cross-compiles for Android from a Linux host (the build
-# scripts derive the toolchain's prebuilt/linux-x86_64 dir), and Linux runners
-# are far cheaper than macOS. The host ffmpeg from setup-linux backs the
-# `cargo run --bin uniffi-bindgen` host build, which builds bae-bridge → bae-core
-# for the host to read the cross-built .so's metadata.
+# scripts derive the toolchain's prebuilt/linux-x86_64 dir).
 
 on:
   workflow_call:
@@ -72,9 +69,12 @@ jobs:
       # toolchains this job never uses on the GitHub-hosted Ubuntu image.
       uses: ./.github/actions/free-ubuntu-runner-disk
 
-    - name: Setup Linux environment
-      # Host ffmpeg for the uniffi-bindgen host build.
-      uses: ./.github/actions/setup-linux
+    - name: Install native build tools
+      # libclang backs ffmpeg-sys bindgen for the Android targets; nasm backs
+      # native crypto assembly. No host FFmpeg or audio device is needed.
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends clang libclang-dev nasm
 
     - name: Setup Rust environment
       uses: ./.github/actions/setup-rust

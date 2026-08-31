@@ -8,7 +8,8 @@ required_fragments=(
     'CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$CARGO_PROFILE"'
     'CARGO_ARTIFACT_DIR="$CARGO_TARGET_DIR/$MACOS_TARGET/$CARGO_PROFILE"'
     'BINDGEN="$CARGO_TARGET_DIR/$CARGO_PROFILE/uniffi-bindgen"'
-    '--lib --bin uniffi-bindgen --features "$BAE_BRIDGE_FEATURES"'
+    '-p bae-bridge --lib --features "$BAE_BRIDGE_FEATURES"'
+    '-p bae-uniffi-bindgen'
 )
 
 for fragment in "${required_fragments[@]}"; do

@@ -9,6 +9,7 @@ members = [
     "bae-mcp",
     "bae-subsonic",
     "bae-test-support",
+    "bae-uniffi-bindgen",
 ]
 resolver = "2"
 

@@ -140,7 +140,11 @@ echo "Writing Swift compilation conditions: ${SWIFT_CONDITIONS:-(none)}"
 echo "Generating Swift bindings..."
 SWIFT_BINDINGS_DIR="bae-bridge/swift-bindings-ios"
 mkdir -p "$SWIFT_BINDINGS_DIR"
-run_host_cargo run --bin uniffi-bindgen generate \
+# The generator is a host-only package. Keeping it outside bae-bridge prevents
+# this native build from compiling bae-core again after the iOS targets.
+run_host_cargo build -p bae-uniffi-bindgen
+BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
+"$BINDGEN" generate \
     --library "$CARGO_TARGET_DIR/aarch64-apple-ios/$CARGO_PROFILE/libbae_bridge.a" \
     --language swift \
     --out-dir "$SWIFT_BINDINGS_DIR/"

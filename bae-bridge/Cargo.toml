@@ -14,10 +14,6 @@ ignored = ["libsqlite3-sys"]
 name = "bae_bridge"
 crate-type = ["lib", "staticlib", "cdylib"]
 
-[[bin]]
-name = "uniffi-bindgen"
-path = "uniffi-bindgen.rs"
-
 [dependencies]
 bae-desktop = { path = "../bae-desktop", optional = true }
 bae-cast = { path = "../bae-cast", optional = true }
@@ -25,7 +21,7 @@ bae-core = { path = "../bae-core" }
 # The CloudKit adapter implements coven's CloudKitOps, so it names coven types
 # directly (same pinned instance bae-core uses, via the workspace dep).
 coven = { workspace = true }
-uniffi = { version = "0.32", features = ["cli", "tokio"] }
+uniffi = { version = "0.32", features = ["tokio"] }
 tokio = { version = "1.0", features = ["full"] }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

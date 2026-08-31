@@ -23,6 +23,7 @@ WORKSPACE_CRATES=(
     bae-mcp
     bae-subsonic
     bae-test-support
+    bae-uniffi-bindgen
 )
 
 TMPFILE=$(mktemp)
@@ -106,6 +107,10 @@ run_check "UniFFI runtime boundary" scripts/check-uniffi-runtime-boundary.py || 
 }
 
 run_check "macOS native Cargo cache" scripts/check-macos-build-cache.sh || {
+    exit 1
+}
+
+run_check "mobile host Cargo cache" scripts/check-mobile-build-cache.sh || {
     exit 1
 }
 

@@ -180,6 +180,7 @@ check "restricted-path visibility"  scripts/check-rust-visibility.sh
 check "owner dependency boundary"   scripts/owner-dependency-boundary.sh
 check "UniFFI runtime boundary"      scripts/check-uniffi-runtime-boundary.py
 check "macOS native Cargo cache"     scripts/check-macos-build-cache.sh
+check "mobile host Cargo cache"      scripts/check-mobile-build-cache.sh
 check "clippy (workspace)"          cargo clippy --workspace -- -D warnings
 check "clippy (bae-core + test-utils)" \
   cargo clippy -p bae-core --tests --features bae-core/test-utils -- -D warnings

@@ -122,7 +122,11 @@ echo "Generating Kotlin bindings into $BINDINGS_DIR ..."
 # linger (e.g. an OAuth function left in the baeium bindings).
 rm -rf "$BINDINGS_DIR"
 mkdir -p "$BINDINGS_DIR"
-cargo run --bin uniffi-bindgen generate \
+# The generator is a host-only package. Keeping it outside bae-bridge prevents
+# this native build from compiling bae-core again after the Android targets.
+cargo build -p bae-uniffi-bindgen
+BINDGEN="$CARGO_TARGET_DIR/debug/uniffi-bindgen"
+"$BINDGEN" generate \
     --library "$CARGO_TARGET_DIR/$FIRST_TARGET/$CARGO_PROFILE/libbae_bridge.a" \
     --language kotlin \
     --out-dir "$BINDINGS_DIR/" \

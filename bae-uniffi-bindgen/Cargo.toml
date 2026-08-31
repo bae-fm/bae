@@ -1,0 +1,16 @@
+[package]
+name = "bae-uniffi-bindgen"
+version = "0.1.0"
+edition = "2021"
+license = "LicenseRef-UNLICENSED"
+publish = false
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/main.rs"
+
+[dependencies]
+uniffi = { version = "0.32", features = ["cli"] }
+
+[lints]
+workspace = true
