@@ -10,9 +10,9 @@ struct StorageTransferInspectorContent {
     }
 
     enum Item: Identifiable {
-        case download(operation: BridgeDownloadOp)
-        case output(operation: BridgeOutputOp)
-        case upload(group: BridgeUploadReleaseGroup)
+        case download(operation: BridgeDownloadOp, paused: Bool)
+        case output(operation: BridgeOutputOp, paused: Bool)
+        case upload(group: BridgeUploadReleaseGroup, paused: Bool)
 
         var id: ItemKind {
             switch self {
@@ -37,6 +37,14 @@ struct StorageTransferInspectorContent {
             case .upload: "arrow.up.arrow.down.circle"
             }
         }
+
+        var pauseRequested: Bool {
+            switch self {
+            case .download(_, let paused), .output(_, let paused),
+                .upload(_, let paused):
+                paused
+            }
+        }
     }
 
     let items: [Item]
@@ -50,17 +58,17 @@ struct StorageTransferInspectorContent {
         var selectedItems: [Item] = downloads.downloads
             .filter { $0.releaseId == releaseId }
             .map {
-                .download(operation: $0)
+                .download(operation: $0, paused: downloads.paused)
             }
         selectedItems += outputs.outputs
             .filter { $0.releaseId == releaseId }
             .map {
-                .output(operation: $0)
+                .output(operation: $0, paused: outputs.paused)
             }
         selectedItems += outbox.uploadGroups
             .filter { $0.releaseId == releaseId }
             .map {
-                .upload(group: $0)
+                .upload(group: $0, paused: outbox.pauseRequested)
             }
         items = selectedItems
     }
@@ -122,6 +130,11 @@ struct StorageTransferInspector: View {
                 Label(item.title, systemImage: item.icon)
                     .font(.callout.weight(.medium))
                 Spacer()
+                let paused = item.pauseRequested
+                Button(paused ? "Resume" : "Pause") {
+                    setPaused(!paused, for: item)
+                }
+                .controlSize(.small)
             }
             .foregroundStyle(.secondary)
             .padding(.horizontal)
@@ -129,18 +142,35 @@ struct StorageTransferInspector: View {
             Divider()
 
             switch item {
-            case .download(let operation):
+            case .download(let operation, _):
                 DownloadRow(op: operation) {
                     downloads.cancelDownload(operation.releaseId)
                 }
-            case .output(let operation):
+            case .output(let operation, _):
                 OutputRow(op: operation) {
                     outputs.cancelOutput(operation.releaseId)
                 }
-            case .upload(let group):
+            case .upload(let group, _):
                 OutboxReleaseRow(group: group) {
                     cancelTransition(group.releaseId)
                 }
+            }
+        }
+    }
+
+    private func setPaused(
+        _ paused: Bool,
+        for item: StorageTransferInspectorContent.Item
+    ) {
+        switch item {
+        case .download:
+            downloads.setDownloadsPaused(paused)
+        case .output:
+            outputs.setOutputsPaused(paused)
+        case .upload:
+            Task {
+                do { try await sync.setSyncPaused(paused) }
+                catch { uiStore.showError(error) }
             }
         }
     }

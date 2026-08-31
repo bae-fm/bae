@@ -6,6 +6,18 @@ import Testing
 @MainActor
 @Suite("Storage transfer inspector")
 struct StorageTransferInspectorTests {
+    @Test("each visible transfer queue carries its pause state")
+    func visibleQueuesCarryPauseState() {
+        let content = StorageTransferInspectorContent(
+            releaseId: "rel-row-1",
+            downloads: PreviewData.downloadSnapshot(paused: false),
+            outputs: PreviewData.outputSnapshot(paused: true),
+            outbox: PreviewData.outboxSnapshot(pauseState: .running)
+        )
+
+        #expect(content.items.map(\.pauseRequested) == [false, true, false])
+    }
+
     @Test("content contains only the selected release")
     func contentContainsOnlyTheSelectedRelease() {
         let selectedReleaseId = "rel-selected"
@@ -50,11 +62,11 @@ struct StorageTransferInspectorTests {
         #expect(content.items.count == 3)
         for item in content.items {
             switch item {
-            case .download(let operation):
+            case .download(let operation, _):
                 #expect(operation.releaseId == selectedReleaseId)
-            case .output(let operation):
+            case .output(let operation, _):
                 #expect(operation.releaseId == selectedReleaseId)
-            case .upload(let group):
+            case .upload(let group, _):
                 #expect(group.releaseId == selectedReleaseId)
             }
         }
