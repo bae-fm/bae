@@ -52,6 +52,14 @@ if [ "$csharp_files" != $'bae-avalonia/Views/ImportPane.cs\nnotes/example.cs' ];
     exit 1
 fi
 
+CHANGED_FILES=$'bae-android/app/src/main/java/fm/bae/ImportPane.kt\nbae-android/app/src/main/res/layout.xml\nnotes/example.kt'
+kotlin_files=$(staged_files_with_extension kt)
+if [ "$kotlin_files" != $'bae-android/app/src/main/java/fm/bae/ImportPane.kt\nnotes/example.kt' ]; then
+    echo "staged Kotlin files were routed incorrectly:"
+    echo "$kotlin_files"
+    exit 1
+fi
+
 repo=$(mktemp -d)
 trap 'rm -rf "$repo"' EXIT
 git -C "$repo" init -q
@@ -93,6 +101,23 @@ expected_dotnet_args=$'format\nwhitespace\nbae-avalonia/bae-avalonia.csproj\n--i
 if [ "$(cat "$dotnet_args")" != "$expected_dotnet_args" ]; then
     echo "dotnet whitespace formatter received the wrong arguments:"
     cat "$dotnet_args"
+    exit 1
+fi
+
+ktlint_args="$repo/ktlint-args"
+printf '%s\n' \
+    '#!/bin/bash' \
+    'printf '\''%s\n'\'' "$@" > "$KTLINT_ARGS"' \
+    > "$repo/bin/ktlint"
+chmod +x "$repo/bin/ktlint"
+export KTLINT_ARGS="$ktlint_args"
+PATH="$repo/bin:$PATH" format_ktlint \
+    bae-android/app/src/main/java/fm/bae/First.kt \
+    bae-android/app/src/main/java/fm/bae/Second.kt
+expected_ktlint_args=$'-F\nbae-android/app/src/main/java/fm/bae/First.kt\nbae-android/app/src/main/java/fm/bae/Second.kt'
+if [ "$(cat "$ktlint_args")" != "$expected_ktlint_args" ]; then
+    echo "Kotlin formatter received the wrong arguments:"
+    cat "$ktlint_args"
     exit 1
 fi
 

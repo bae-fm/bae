@@ -30,6 +30,10 @@ format_dotnet_whitespace() {
     dotnet format whitespace "$project" --include "$@"
 }
 
+format_ktlint() {
+    ktlint -F "$@"
+}
+
 changed_workspace_crates() {
     local crate
     for crate in "$@"; do

@@ -51,6 +51,15 @@ run_check() {
     fi
 }
 
+require_command() {
+    local command_name="$1"
+    local purpose="$2"
+    if ! command -v "$command_name" > /dev/null; then
+        echo "$command_name is required to $purpose"
+        exit 1
+    fi
+}
+
 # Re-stage files the formatter modified (within optional path scope) and
 # fail the commit so the dev sees what changed and re-runs `git commit`.
 restage_and_fail_if_changed() {
@@ -114,6 +123,44 @@ run_check "mobile host Cargo cache" scripts/check-mobile-build-cache.sh || {
     exit 1
 }
 
+if staged_path_under ".github/workflows" || staged_path_under ".github/actions"; then
+    require_command actionlint "lint staged GitHub automation"
+    require_command shellcheck "check shell embedded in GitHub workflows"
+    run_check "actionlint" \
+        env SHELLCHECK_OPTS=--severity=error actionlint -color || {
+        exit 1
+    }
+fi
+
+RUST_SOURCE_OR_MANIFEST_CHANGED=0
+RUST_DEPENDENCY_INPUT_CHANGED=0
+while IFS= read -r file; do
+    case "$file" in
+        *.rs | Cargo.toml | */Cargo.toml)
+            RUST_SOURCE_OR_MANIFEST_CHANGED=1
+            ;;
+    esac
+    case "$file" in
+        Cargo.toml | */Cargo.toml | Cargo.lock | deny.toml)
+            RUST_DEPENDENCY_INPUT_CHANGED=1
+            ;;
+    esac
+done <<< "$CHANGED_FILES"
+
+if [ "$RUST_SOURCE_OR_MANIFEST_CHANGED" -eq 1 ]; then
+    require_command cargo-machete "check for unused Rust dependencies"
+    run_check "cargo machete" cargo machete || {
+        exit 1
+    }
+fi
+
+if [ "$RUST_DEPENDENCY_INPUT_CHANGED" -eq 1 ]; then
+    require_command cargo-deny "check Rust dependency licenses and advisories"
+    run_check "cargo deny" cargo deny check || {
+        exit 1
+    }
+fi
+
 DIRECTLY_CHANGED_CRATES=()
 while IFS= read -r crate; do
     [ -n "$crate" ] && DIRECTLY_CHANGED_CRATES+=("$crate")
@@ -164,6 +211,55 @@ if [ "${#STAGED_SWIFT_FILES[@]}" -gt 0 ] && xcrun --find swift-format &> /dev/nu
     }
 fi
 
+STAGED_KOTLIN_FILES=()
+while IFS= read -r file; do
+    case "$file" in
+        bae-android/*.kt)
+            [ -f "$file" ] && STAGED_KOTLIN_FILES+=("$file")
+            ;;
+    esac
+done < <(staged_files_with_extension kt)
+
+KOTLIN_STYLE_CONFIG_CHANGED=0
+if staged_file_in_list ".editorconfig"; then
+    KOTLIN_STYLE_CONFIG_CHANGED=1
+fi
+
+if [ "${#STAGED_KOTLIN_FILES[@]}" -gt 0 ]; then
+    require_command ktlint "format and lint staged Kotlin files"
+    record_staged_worktree_state "$FORMAT_STATE"
+    run_check "ktlint format (staged files)" \
+        format_ktlint "${STAGED_KOTLIN_FILES[@]}" || {
+        echo "ktlint format failed"
+        exit 1
+    }
+    restage_and_fail_if_changed \
+        "ktlint" "$FORMAT_STATE" "bae-android/"
+    run_check "ktlint (staged files)" \
+        ktlint "${STAGED_KOTLIN_FILES[@]}" || {
+        exit 1
+    }
+fi
+
+if [ "$KOTLIN_STYLE_CONFIG_CHANGED" -eq 1 ]; then
+    require_command ktlint "verify Kotlin after style configuration changes"
+    run_check "ktlint (all hand-written sources)" \
+        ktlint "bae-android/app/src/**/*.kt" || {
+        exit 1
+    }
+fi
+
+if [ "${#STAGED_KOTLIN_FILES[@]}" -gt 0 ] \
+    || staged_file_in_list "bae-android/detekt.yml"; then
+    require_command detekt "check Kotlin dead code"
+    run_check "detekt" detekt \
+        --input bae-android/app/src/main/java \
+        --config bae-android/detekt.yml \
+        --build-upon-default-config || {
+        exit 1
+    }
+fi
+
 STAGED_CSHARP_FILES=()
 while IFS= read -r file; do
     case "$file" in
@@ -173,11 +269,14 @@ while IFS= read -r file; do
     esac
 done < <(staged_files_with_extension cs)
 
+CSHARP_FORMAT_CONFIG_CHANGED=0
+if staged_file_in_list ".editorconfig" \
+    || staged_file_in_list "bae-avalonia/bae-avalonia.csproj"; then
+    CSHARP_FORMAT_CONFIG_CHANGED=1
+fi
+
 if [ "${#STAGED_CSHARP_FILES[@]}" -gt 0 ]; then
-    if ! command -v dotnet > /dev/null; then
-        echo "dotnet is required to format staged C# files"
-        exit 1
-    fi
+    require_command dotnet "format staged C# files"
     record_staged_worktree_state "$FORMAT_STATE"
     run_check "dotnet format whitespace (staged C# files)" \
         format_dotnet_whitespace \
@@ -190,6 +289,15 @@ if [ "${#STAGED_CSHARP_FILES[@]}" -gt 0 ]; then
         "dotnet format whitespace" "$FORMAT_STATE" "bae-avalonia/"
 fi
 
+if [ "$CSHARP_FORMAT_CONFIG_CHANGED" -eq 1 ]; then
+    require_command dotnet "verify C# after formatter configuration changes"
+    run_check "dotnet format whitespace (project verification)" \
+        dotnet format whitespace bae-avalonia/bae-avalonia.csproj \
+        --verify-no-changes || {
+        exit 1
+    }
+fi
+
 # bae-avalonia bridge boundary. The compiler can't see dependency direction, so
 # this fails loud if a view or store reaches for NativeBae outside the sanctioned
 # composition boundary. Pure Python — runs on the dev host without the bindings.
@@ -199,6 +307,15 @@ if staged_path_under "bae-avalonia"; then
         exit 1
     }
 fi
+
+run_check "localization orphan check" python3 scripts/loc-chrome-orphans.py || {
+    exit 1
+}
+
+run_check "localization English-skeleton check" \
+    python3 scripts/loc-english-skeleton.py || {
+    exit 1
+}
 
 echo "✅ All checks passed"
 exit 0
