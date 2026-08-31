@@ -303,10 +303,10 @@ struct QueueView: View {
         }
 
         let width: CGFloat
-        private let store: PlaybackStore
+        @Environment(PlaybackStore.self)
+        private var store
 
-        init(width: CGFloat, presentation: Presentation) {
-            self.width = width
+        static func store(for presentation: Presentation) -> PlaybackStore {
             switch presentation {
             case .populated:
                 let store = PreviewData.queueStore(
@@ -323,9 +323,9 @@ struct QueueView: View {
                         durationMs: 214_000
                     )
                 )
-                self.store = store
+                return store
             case .empty:
-                self.store = PreviewData.queueStore(
+                return PreviewData.queueStore(
                     manualCount: 0,
                     context: nil
                 )
@@ -352,17 +352,22 @@ struct QueueView: View {
             )
             .frame(width: width, height: 720)
             .background(Theme.surface)
-            .environment(store)
-            .environment(Queue.stub())
-            .environment(ImageStore.stub())
         }
     }
 
     #Preview("With items") {
-        QueueViewPreviewScene(width: 420, presentation: .populated)
+        QueueViewPreviewScene(width: 420)
+            .environment(
+                QueueViewPreviewScene.store(for: .populated)
+            )
+            .environment(Queue.stub())
+            .environment(ImageStore.stub())
     }
 
     #Preview("Empty") {
-        QueueViewPreviewScene(width: 420, presentation: .empty)
+        QueueViewPreviewScene(width: 420)
+            .environment(QueueViewPreviewScene.store(for: .empty))
+            .environment(Queue.stub())
+            .environment(ImageStore.stub())
     }
 #endif

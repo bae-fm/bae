@@ -108,10 +108,12 @@ struct ShotScene {
             size: CGSize(width: 420, height: 720)
         ) {
             AnyView(
-                QueueViewPreviewScene(
-                    width: 420,
-                    presentation: .populated
-                )
+                QueueViewPreviewScene(width: 420)
+                    .environment(
+                        QueueViewPreviewScene.store(for: .populated)
+                    )
+                    .environment(Queue.stub())
+                    .environment(ImageStore.stub())
             )
         },
         ShotScene(
@@ -119,10 +121,12 @@ struct ShotScene {
             size: CGSize(width: 320, height: 720)
         ) {
             AnyView(
-                QueueViewPreviewScene(
-                    width: 320,
-                    presentation: .populated
-                )
+                QueueViewPreviewScene(width: 320)
+                    .environment(
+                        QueueViewPreviewScene.store(for: .populated)
+                    )
+                    .environment(Queue.stub())
+                    .environment(ImageStore.stub())
             )
         },
         ShotScene(
