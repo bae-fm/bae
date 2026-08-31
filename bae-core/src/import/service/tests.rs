@@ -344,3 +344,4 @@ fn terminal_import_failure_preserves_an_artist_identity_conflict() {
 include!("tests/coordinator.rs");
 include!("tests/cover_and_rescan.rs");
 include!("tests/edits_and_formats.rs");
+include!("tests/reading_progress.rs");
