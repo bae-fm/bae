@@ -95,10 +95,63 @@ impl From<LibraryError> for AutomationError {
     }
 }
 
+impl From<bae_core::ui::UiError> for AutomationError {
+    fn from(value: bae_core::ui::UiError) -> Self {
+        use bae_core::ui::{UiError, UiErrorCategory};
+        let (category, detail) = match value {
+            UiError::NotFound { entity, id } => {
+                return Self::NotFound(format!("{entity:?} {id}"));
+            }
+            UiError::Diagnostic { category, detail } => (category, detail),
+        };
+        match category {
+            UiErrorCategory::Database => Self::Database(detail),
+            UiErrorCategory::Import => Self::Import(detail),
+            UiErrorCategory::Config => Self::Validation(detail),
+            UiErrorCategory::Internal => Self::Internal(detail),
+            UiErrorCategory::Export
+            | UiErrorCategory::Save
+            | UiErrorCategory::CloudSetup(_)
+            | UiErrorCategory::DeviceIdentityMissing
+            | UiErrorCategory::Credentials
+            | UiErrorCategory::Network
+            | UiErrorCategory::Keyring
+            | UiErrorCategory::KeyringLocked
+            | UiErrorCategory::Membership => Self::Unavailable(detail),
+        }
+    }
+}
+
 impl From<ImportError> for AutomationError {
     /// Import failures cross as an opaque `import` error carrying the typed
     /// error's Display as the message.
     fn from(value: ImportError) -> Self {
         Self::Import(value.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn internal_ui_diagnostics_remain_internal() {
+        let error = AutomationError::from(bae_core::ui::UiError::internal("admission invariant"));
+        assert!(matches!(
+            error,
+            AutomationError::Internal(detail) if detail == "admission invariant"
+        ));
+    }
+
+    #[test]
+    fn keyed_ui_absence_remains_not_found() {
+        let error = AutomationError::from(bae_core::ui::UiError::NotFound {
+            entity: bae_core::ui::UiEntityKind::Release,
+            id: "release-id".to_string(),
+        });
+        assert!(matches!(
+            error,
+            AutomationError::NotFound(detail) if detail.contains("release-id")
+        ));
     }
 }

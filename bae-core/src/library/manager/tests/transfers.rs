@@ -538,20 +538,27 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
     let mut values = manager.subscribe_outbox_values();
     assert!(values.borrow_and_update().is_none());
 
-    let queued_revision = manager
+    let outcome = manager
         .make_releases_remote(
             &[release.id.clone(), second_release.id.clone()],
             false,
         )
         .await
         .unwrap();
+    let MakeReleasesRemoteOutcome::Complete { receipt } = outcome else {
+        panic!("both releases must be admitted");
+    };
+    assert_eq!(
+        receipt.release_ids,
+        vec![release.id.clone(), second_release.id.clone()]
+    );
 
     let snapshot = values
         .borrow_and_update()
         .clone()
         .expect("make-Remote publishes an outbox value")
         .expect("the durable queue projects");
-    assert_eq!(snapshot.revision, queued_revision);
+    assert_eq!(snapshot.revision, receipt.outbox_revision);
     assert!(snapshot
         .upload_groups
         .iter()
@@ -564,12 +571,12 @@ async fn make_remote_publishes_its_durable_queue_before_returning() {
 
 #[cfg(feature = "test-utils")]
 #[tokio::test]
-async fn a_move_to_cloud_batch_refuses_an_active_target_without_admitting_another() {
+async fn an_active_target_does_not_block_sibling_cloud_admissions() {
     let (manager, temp_dir) = setup_test_manager().await;
     connect_test_cloud(&manager).await;
-    let new_release = insert_local_release_with_files(
+    let first_new_release = insert_local_release_with_files(
         &manager,
-        &temp_dir.path().join("new-target"),
+        &temp_dir.path().join("first-new-target"),
         "First Album",
         &[("first.flac", b"first-bytes")],
     )
@@ -581,28 +588,60 @@ async fn a_move_to_cloud_batch_refuses_an_active_target_without_admitting_anothe
         &[("second.flac", b"second-bytes")],
     )
     .await;
-    manager
-        .coven_make_remote(&active_release.id, false)
-        .await
-        .expect("admit the existing transition");
+    let last_new_release = insert_local_release_with_files(
+        &manager,
+        &temp_dir.path().join("last-new-target"),
+        "Third Album",
+        &[("third.flac", b"third-bytes")],
+    )
+    .await;
+    let _active_command = manager
+        .admit_transfer_values(
+            std::slice::from_ref(&active_release.id),
+            ReleaseStorageAction::MakeRemote,
+        )
+        .expect("hold the target in another foreground command");
 
-    manager
+    let outcome = manager
         .make_releases_remote(
-            &[new_release.id.clone(), active_release.id.clone()],
+            &[
+                first_new_release.id.clone(),
+                active_release.id.clone(),
+                last_new_release.id.clone(),
+            ],
             false,
         )
         .await
-        .expect_err("an active target refuses the whole batch");
-
+        .expect("the batch returns every release's admission outcome");
+    let MakeReleasesRemoteOutcome::Partial {
+        receipt: Some(receipt),
+        failure,
+    } = outcome
+    else {
+        panic!("two releases must be admitted around one refusal");
+    };
     assert_eq!(
-        manager
-            .database
-            .make_remote_progress_for_release(&new_release.id)
-            .await
-            .expect("read the new target's transition"),
-        None,
-        "the new target was not admitted before the active target refused the batch",
+        receipt.release_ids,
+        vec![first_new_release.id.clone(), last_new_release.id.clone()]
     );
+    assert_eq!(failure.release_ids, vec![active_release.id.clone()]);
+    let crate::ui::UiError::Diagnostic { category, detail } = failure.error else {
+        panic!("storage admission refusals carry a diagnostic error");
+    };
+    assert_eq!(category, crate::ui::UiErrorCategory::Internal);
+    assert!(detail.contains(&active_release.id));
+
+    for release in [first_new_release, last_new_release] {
+        assert_eq!(
+            manager
+                .database
+                .make_remote_progress_for_release(&release.id)
+                .await
+                .expect("read the sibling target's transition"),
+            Some(coven::MakeRemoteProgress::Uploading),
+            "each independent target is durably admitted",
+        );
+    }
 }
 
 #[cfg(feature = "test-utils")]

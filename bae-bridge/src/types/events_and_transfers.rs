@@ -95,6 +95,73 @@ pub enum BridgeUploadIssue {
     SourceUnavailable { paths: Vec<String> },
 }
 
+/// The durable queue handoff for releases admitted by one move-to-cloud
+/// command. The revision is the final canonical outbox value published before
+/// the command returned.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMakeRemoteReceipt {
+    pub outbox_revision: u64,
+    pub release_ids: Vec<String>,
+}
+
+/// The releases one move-to-cloud command refused, paired with the typed error
+/// the UI displays. Other releases from the same command may have a receipt.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMakeRemoteBatchFailure {
+    pub release_ids: Vec<String>,
+    pub error: BridgeError,
+}
+
+/// Per-release admission outcome for one move-to-cloud command.
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMakeReleasesRemoteOutcome {
+    Complete {
+        receipt: BridgeMakeRemoteReceipt,
+    },
+    Partial {
+        receipt: Option<BridgeMakeRemoteReceipt>,
+        failure: BridgeMakeRemoteBatchFailure,
+    },
+}
+
+impl BridgeMakeRemoteReceipt {
+    fn from_core(receipt: bae_core::library::MakeRemoteReceipt) -> Self {
+        let bae_core::library::MakeRemoteReceipt {
+            outbox_revision,
+            release_ids,
+        } = receipt;
+        Self {
+            outbox_revision,
+            release_ids,
+        }
+    }
+}
+
+impl BridgeMakeRemoteBatchFailure {
+    fn from_core(failure: bae_core::library::MakeRemoteBatchFailure) -> Self {
+        let bae_core::library::MakeRemoteBatchFailure { release_ids, error } = failure;
+        Self {
+            release_ids,
+            error: BridgeError::from_core(error),
+        }
+    }
+}
+
+impl BridgeMakeReleasesRemoteOutcome {
+    pub(crate) fn from_core(outcome: bae_core::library::MakeReleasesRemoteOutcome) -> Self {
+        use bae_core::library::MakeReleasesRemoteOutcome;
+        match outcome {
+            MakeReleasesRemoteOutcome::Complete { receipt } => Self::Complete {
+                receipt: BridgeMakeRemoteReceipt::from_core(receipt),
+            },
+            MakeReleasesRemoteOutcome::Partial { receipt, failure } => Self::Partial {
+                receipt: receipt.map(BridgeMakeRemoteReceipt::from_core),
+                failure: BridgeMakeRemoteBatchFailure::from_core(failure),
+            },
+        }
+    }
+}
+
 /// Which phase's bytes a progress bar counts. Mirror of bae-core's
 /// `UploadPhase`. Preparation reads plaintext source bytes; the provider write
 /// sends encrypted bytes of a different size.

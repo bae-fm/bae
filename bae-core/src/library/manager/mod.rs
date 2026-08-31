@@ -190,6 +190,29 @@ impl From<crate::import::ArtistIdentityConflict> for LibraryError {
     }
 }
 
+#[derive(Debug)]
+pub struct MakeRemoteReceipt {
+    pub outbox_revision: u64,
+    pub release_ids: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct MakeRemoteBatchFailure {
+    pub release_ids: Vec<String>,
+    pub error: crate::ui::UiError,
+}
+
+#[derive(Debug)]
+pub enum MakeReleasesRemoteOutcome {
+    Complete {
+        receipt: MakeRemoteReceipt,
+    },
+    Partial {
+        receipt: Option<MakeRemoteReceipt>,
+        failure: MakeRemoteBatchFailure,
+    },
+}
+
 /// A stored fragment we refuse to join onto a local path surfaces as an import
 /// failure: the row it came from is unusable, and the copy it was for does not run.
 impl From<crate::storage::path_fragment::PathFragmentError> for LibraryError {

@@ -100,31 +100,47 @@ public class OutboxStore {
         return command
     }
 
-    /// Hand a successful Storage command to the retained outbox revision it
-    /// published. If that value already won the callback race, it remains the
-    /// authority; if the whole upload already finished, no transition remains.
-    public func cloudUploadsQueued(
+    /// Finish one foreground command from its exact durable receipt. Releases
+    /// in the receipt hand off to its outbox revision; refused releases drop
+    /// only this command's queueing ownership. If the retained value already won
+    /// the callback race, it remains the authority; if an admitted upload already
+    /// finished, no transition remains.
+    public func finishCloudUploads(
         for command: CloudUploadCommand,
-        atRevision revision: UInt64
+        receipt: BridgeMakeRemoteReceipt?
     ) {
-        for releaseId in command.releaseIds {
-            cloudUploadCommands.removeValue(forKey: releaseId)
-            if snapshot.revision >= revision {
-                cloudUploadHandoffs.removeValue(forKey: releaseId)
-            }
-            else {
-                cloudUploadHandoffs[releaseId] = .awaiting(
-                    revision: revision
-                )
-            }
+        let admittedReleaseIds: Set<String>
+        switch receipt {
+        case .some(let receipt):
+            admittedReleaseIds = Set(receipt.releaseIds)
+            precondition(
+                admittedReleaseIds.count == receipt.releaseIds.count
+                    && admittedReleaseIds.isSubset(of: command.releaseIds),
+                "a cloud-upload receipt must name unique releases from its command"
+            )
+        case .none:
+            admittedReleaseIds = []
         }
-    }
 
-    /// End a foreground batch that failed before durable enqueue. Handoffs not
-    /// owned by this command are left alone.
-    public func cloudUploadsFailed(for command: CloudUploadCommand) {
         let commandId = ObjectIdentifier(command)
         for releaseId in command.releaseIds {
+            if admittedReleaseIds.contains(releaseId) {
+                cloudUploadCommands.removeValue(forKey: releaseId)
+                guard let receipt else {
+                    preconditionFailure(
+                        "an admitted release requires a receipt"
+                    )
+                }
+                if snapshot.revision >= receipt.outboxRevision {
+                    cloudUploadHandoffs.removeValue(forKey: releaseId)
+                }
+                else {
+                    cloudUploadHandoffs[releaseId] = .awaiting(
+                        revision: receipt.outboxRevision
+                    )
+                }
+                continue
+            }
             guard var commands = cloudUploadCommands[releaseId] else {
                 continue
             }

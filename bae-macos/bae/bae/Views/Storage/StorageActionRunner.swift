@@ -118,8 +118,8 @@ final class StorageActionRunner {
         }
     }
 
-    /// Confirm callback for `MoveToCloudConfirmSheet`: admit every pending
-    /// release as one cloud-storage batch, pinning it when `pin` is set.
+    /// Confirm callback for `MoveToCloudConfirmSheet`: admit each pending
+    /// release independently, pinning every admitted release when `pin` is set.
     func confirmMoveToCloud(pin: Bool) {
         guard let releaseIds = pendingMoveToCloud else {
             preconditionFailure("move-to-cloud confirmation has no releases")

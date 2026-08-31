@@ -319,10 +319,23 @@ impl Automation {
                     AutomationReleaseStorageAction::MakeRemote,
                     "move to cloud",
                 )?;
-                let outbox_revision = self
+                let outcome = self
                     .services
                     .make_releases_remote(std::slice::from_ref(&release_id), pin)
                     .await?;
+                let outbox_revision = match outcome {
+                    bae_core::library::MakeReleasesRemoteOutcome::Complete { receipt } => {
+                        receipt.outbox_revision
+                    }
+                    bae_core::library::MakeReleasesRemoteOutcome::Partial {
+                        receipt: None,
+                        failure,
+                    } => return Err(failure.error.into()),
+                    bae_core::library::MakeReleasesRemoteOutcome::Partial {
+                        receipt: Some(_),
+                        ..
+                    } => unreachable!("one release cannot be both admitted and refused"),
+                };
                 Ok(AutomationStorageActionOutcome::CloudUploadQueued {
                     release_id,
                     outbox_revision,

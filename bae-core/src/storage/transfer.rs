@@ -4,12 +4,14 @@
 //! coven owns the blob lifecycle; bae drives the user-facing transition (guards,
 //! progress events) and calls into coven:
 //!
-//! - `make_releases_remote`: `coven.make_remote_batch` atomically enqueues every
-//!   selected release's blobs. It uploads each blob from its external (in-place)
-//!   source, and on the last publishes `remote` true and drops the external
-//!   refs. User-provided source files stay in place; host-provided local-store
-//!   copies follow coven's cache retention policy. The cover rides along. The
-//!   commit wakes subscribed release projections.
+//! - `make_releases_remote`: each selected release is independently admitted to
+//!   coven's durable queue, so one release may start uploading while later
+//!   releases are still being admitted and one refusal does not block its
+//!   siblings. coven uploads each blob from its external (in-place) source, and
+//!   on the last publishes `remote` true and drops the external refs.
+//!   User-provided source files stay in place; host-provided local-store copies
+//!   follow coven's cache retention policy. The cover rides along. The commit
+//!   wakes subscribed release projections.
 //! - `make_release_local`: `coven.make_local` materializes every blob back to a
 //!   local file durability-first (release files to the chosen folder, the cover to
 //!   coven's local store), then flips `remote` false, registers the external refs,
@@ -451,10 +453,18 @@ mod tests {
     async fn a_failed_move_to_cloud_batch_ships_storage_transfer_failed() {
         let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
 
-        manager
+        let outcome = manager
             .make_releases_remote(&["missing-release".to_string()], false)
             .await
-            .expect_err("the missing release refuses the batch");
+            .expect("a per-release refusal is returned as a batch outcome");
+        let crate::library::MakeReleasesRemoteOutcome::Partial {
+            receipt: None,
+            failure,
+        } = outcome
+        else {
+            panic!("the missing release must be refused without a receipt");
+        };
+        assert_eq!(failure.release_ids, vec!["missing-release"]);
 
         let events = shipped_events(&diagnostics, &transport).await;
         let failed = events

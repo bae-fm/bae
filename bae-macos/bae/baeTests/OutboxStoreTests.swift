@@ -3,6 +3,16 @@ import Testing
 
 @testable import bae
 
+private func cloudUploadReceipt(
+    _ releaseIds: [String],
+    revision: UInt64 = 2
+) -> BridgeMakeRemoteReceipt {
+    BridgeMakeRemoteReceipt(
+        outboxRevision: revision,
+        releaseIds: releaseIds
+    )
+}
+
 /// The Bridge* records are generated at build from `bae-bridge/src/types.rs`;
 /// these start from `OutboxStore.emptySnapshot` and set only the fields the
 /// derived `hasPendingCloudWork` reads.
@@ -269,7 +279,10 @@ struct StorageCloudUploadHandoffTests {
                 == .queueing
         )
 
-        store.cloudUploadsQueued(for: command, atRevision: 2)
+        store.finishCloudUploads(
+            for: command,
+            receipt: cloudUploadReceipt(["release-a"])
+        )
         #expect(
             store.storageUploadObservation(forRelease: "release-a")
                 == .awaiting
@@ -298,7 +311,10 @@ struct StorageCloudUploadHandoffTests {
         active.revision = 2
         active.perRelease["release-a"] = active.total
         store.applySnapshot(active)
-        store.cloudUploadsQueued(for: command, atRevision: 2)
+        store.finishCloudUploads(
+            for: command,
+            receipt: cloudUploadReceipt(["release-a"])
+        )
 
         guard
             case .active = store.storageUploadObservation(
@@ -314,15 +330,15 @@ struct StorageCloudUploadHandoffTests {
     func failedCommandEndsItsLocalTransition() {
         let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
         let command = store.beginCloudUploads(forReleases: ["release-a"])
-        store.cloudUploadsFailed(for: command)
+        store.finishCloudUploads(for: command, receipt: nil)
 
         #expect(
             store.storageUploadObservation(forRelease: "release-a") == nil
         )
     }
 
-    @Test("an active target refuses the batch without admitting another")
-    func activeTargetRefusesTheWholeBatch() {
+    @Test("an active target remains active while its sibling hands off")
+    func activeTargetDoesNotBlockItsSiblingHandoff() {
         var snapshot = OutboxStore.emptySnapshot
         snapshot.perRelease["release-b"] = snapshot.total
         let store = OutboxStore(snapshot: snapshot)
@@ -330,9 +346,13 @@ struct StorageCloudUploadHandoffTests {
         let command = store.beginCloudUploads(
             forReleases: ["release-a", "release-b"]
         )
-        store.cloudUploadsFailed(for: command)
+        store.finishCloudUploads(
+            for: command,
+            receipt: cloudUploadReceipt(["release-a"])
+        )
         #expect(
-            store.storageUploadObservation(forRelease: "release-a") == nil
+            store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
         )
         #expect(
             store.storageUploadObservation(forRelease: "release-b")
@@ -353,13 +373,39 @@ struct StorageCloudUploadHandoffTests {
             )
         }
 
-        store.cloudUploadsQueued(for: command, atRevision: 2)
+        store.finishCloudUploads(
+            for: command,
+            receipt: cloudUploadReceipt(releaseIds)
+        )
         for releaseId in releaseIds {
             #expect(
                 store.storageUploadObservation(forRelease: releaseId)
                     == .awaiting
             )
         }
+    }
+
+    @Test(
+        "a partial receipt hands off admitted releases and rests refused ones"
+    )
+    func partialReceiptOwnsOnlyAdmittedReleases() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let command = store.beginCloudUploads(
+            forReleases: ["release-a", "release-b"]
+        )
+
+        store.finishCloudUploads(
+            for: command,
+            receipt: cloudUploadReceipt(["release-a"])
+        )
+
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
+        )
+        #expect(
+            store.storageUploadObservation(forRelease: "release-b") == nil
+        )
     }
 
     @Test("an overlapping loser cannot clear the winning command's handoff")
@@ -369,15 +415,67 @@ struct StorageCloudUploadHandoffTests {
 
         let first = store.beginCloudUploads(forReleases: releaseIds)
         let second = store.beginCloudUploads(forReleases: releaseIds)
-        store.cloudUploadsFailed(for: first)
+        store.finishCloudUploads(for: first, receipt: nil)
 
         #expect(
             store.storageUploadObservation(forRelease: "release-a")
                 == .queueing
         )
-        store.cloudUploadsQueued(for: second, atRevision: 2)
+        store.finishCloudUploads(
+            for: second,
+            receipt: cloudUploadReceipt(releaseIds)
+        )
         #expect(
             store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
+        )
+    }
+
+    @Test("a late loser cannot clear an already-published handoff")
+    func lateOverlappingFailureKeepsTheWinningHandoff() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let first = store.beginCloudUploads(forReleases: ["release-a"])
+        let second = store.beginCloudUploads(forReleases: ["release-a"])
+
+        store.finishCloudUploads(
+            for: second,
+            receipt: cloudUploadReceipt(["release-a"])
+        )
+        store.finishCloudUploads(for: first, receipt: nil)
+
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
+        )
+    }
+
+    @Test("a partial command leaves a refused release owned by its overlap")
+    func partialOverlapKeepsEachWinningCommand() {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let batch = store.beginCloudUploads(
+            forReleases: ["release-a", "release-b"]
+        )
+        let overlapping = store.beginCloudUploads(forReleases: ["release-b"])
+
+        store.finishCloudUploads(
+            for: batch,
+            receipt: cloudUploadReceipt(["release-a"], revision: 2)
+        )
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
+        )
+        #expect(
+            store.storageUploadObservation(forRelease: "release-b")
+                == .queueing
+        )
+
+        store.finishCloudUploads(
+            for: overlapping,
+            receipt: cloudUploadReceipt(["release-b"], revision: 3)
+        )
+        #expect(
+            store.storageUploadObservation(forRelease: "release-b")
                 == .awaiting
         )
     }
@@ -393,7 +491,9 @@ struct ReleaseEditorCloudBatchTests {
         let editor = ReleaseEditor(
             moveReleasesToCloud: { releaseIds, pin in
                 await recorder.append(releaseIds: releaseIds, pin: pin)
-                return 2
+                return .complete(
+                    receipt: cloudUploadReceipt(releaseIds)
+                )
             },
             outboxStore: store
         )
@@ -407,6 +507,56 @@ struct ReleaseEditorCloudBatchTests {
         #expect(calls.count == 1)
         #expect(calls.first?.releaseIds == ["release-a", "release-b"])
         #expect(calls.first?.pin == true)
+    }
+
+    @Test(
+        "partial admission keeps the durable release and surfaces the refusal"
+    )
+    func partialAdmissionPreservesItsReceipt() async {
+        let store = OutboxStore(snapshot: OutboxStore.emptySnapshot)
+        let refusal = BridgeError.Diagnostic(
+            category: .internal,
+            detail: "release release-b already has an active storage transition"
+        )
+        let editor = ReleaseEditor(
+            moveReleasesToCloud: { _, _ in
+                .partial(
+                    receipt: cloudUploadReceipt(["release-a"]),
+                    failure: BridgeMakeRemoteBatchFailure(
+                        releaseIds: ["release-b"],
+                        error: refusal
+                    )
+                )
+            },
+            outboxStore: store
+        )
+
+        do {
+            try await editor.moveReleasesToCloud(
+                ["release-a", "release-b"],
+                false
+            )
+            Issue.record("the refused release must surface its error")
+        }
+        catch let error as BridgeError {
+            guard case .Diagnostic(let category, let detail) = error else {
+                Issue.record("the typed storage refusal must cross unchanged")
+                return
+            }
+            #expect(category == .internal)
+            #expect(detail.contains("release-b"))
+        }
+        catch {
+            Issue.record("the refusal must remain a BridgeError")
+        }
+
+        #expect(
+            store.storageUploadObservation(forRelease: "release-a")
+                == .awaiting
+        )
+        #expect(
+            store.storageUploadObservation(forRelease: "release-b") == nil
+        )
     }
 }
 

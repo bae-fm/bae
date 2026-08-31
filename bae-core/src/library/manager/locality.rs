@@ -14,37 +14,22 @@ impl LibraryManager {
         release_id: &str,
         pin: bool,
     ) -> Result<u64, LibraryError> {
-        self.coven_make_remote_batch(&[release_id.to_string()], pin)
-            .await
-    }
-
-    pub async fn coven_make_remote_batch(
-        &self,
-        release_ids: &[String],
-        pin: bool,
-    ) -> Result<u64, LibraryError> {
-        let mut roots = Vec::with_capacity(release_ids.len());
-        for release_id in release_ids {
-            // The album title rides onto the queue rows here, while the release is
-            // certainly there to read it from — the queue outliving that row is the
-            // whole reason the rows carry a name of their own.
-            let album_title = self.database.release_album_title(release_id).await?;
-            let ordered_blobs = self
-                .release_pinnable_blobs(release_id)
-                .await?
-                .into_iter()
-                .map(|entry| entry.blob)
-                .collect();
-            roots.push(coven::MakeRemoteRoot {
-                id: release_id.clone(),
-                label: album_title,
-                refs: ordered_blobs,
-            });
-        }
+        // The album title rides onto the queue rows here, while the release is
+        // certainly there to read it from — the queue outliving that row is the
+        // whole reason the rows carry a name of their own.
+        let album_title = self.database.release_album_title(release_id).await?;
+        let ordered_blobs = self
+            .release_pinnable_blobs(release_id)
+            .await?
+            .into_iter()
+            .map(|entry| entry.blob)
+            .collect();
         self.database
-            .make_remote_batch("releases", roots, pin)
+            .make_remote("releases", release_id, &album_title, pin, ordered_blobs)
             .await
-            .map_err(|e| LibraryError::Storage(format!("make releases remote: {e}")))?;
+            .map_err(|error| {
+                LibraryError::Storage(format!("make release {release_id} remote: {error}"))
+            })?;
         // Publish the same canonical projection the durable live query emits
         // before the initiating command can clear its foreground label or emit
         // RemoteUploadQueued. This gives both entrypoints one continuous state
@@ -340,23 +325,39 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Move Local releases to Cloud as one admission. `pin` chooses whether
-    /// coven keeps the blobs in `storage/pinned/` (offline) vs the evictable
-    /// cache. Once the upload lands, a remote release no longer refers to the
-    /// user's source path; the source file itself remains untouched.
+    /// Move Local releases to Cloud. Each release is admitted independently so
+    /// coven can start draining one release while later releases are still being
+    /// checked and admitted. Empty and duplicate selections are invalid commands;
+    /// release-specific refusals are returned beside the durable receipt for the
+    /// releases that were admitted. `pin` chooses whether coven keeps the blobs
+    /// in `storage/pinned/` (offline) vs the evictable cache. Once the upload
+    /// lands, a remote release no longer refers to the user's source path; the
+    /// source file itself remains untouched.
     pub async fn make_releases_remote(
         &self,
         release_ids: &[String],
         pin: bool,
-    ) -> Result<u64, LibraryError> {
+    ) -> Result<MakeReleasesRemoteOutcome, LibraryError> {
         if release_ids.is_empty() {
             return Err(LibraryError::Validation(
                 "move-to-cloud batch has no releases".to_string(),
             ));
         }
-        let admission = async {
-            let mut file_counts = Vec::with_capacity(release_ids.len());
-            for release_id in release_ids {
+
+        let mut selected = std::collections::HashSet::with_capacity(release_ids.len());
+        for release_id in release_ids {
+            if !selected.insert(release_id) {
+                return Err(LibraryError::Validation(format!(
+                    "release {release_id} appears more than once in the storage batch"
+                )));
+            }
+        }
+
+        let mut admitted_release_ids = Vec::with_capacity(release_ids.len());
+        let mut last_revision = None;
+        let mut failures = Vec::new();
+        for release_id in release_ids {
+            let admission = async {
                 let file_count = crate::storage::transfer::validate_transfer_preconditions(
                     release_id,
                     ReleaseStorageAction::MakeRemote,
@@ -364,40 +365,51 @@ impl LibraryManager {
                 )
                 .await
                 .map_err(|error| LibraryError::Storage(error.to_string()))?;
-                file_counts.push((release_id.clone(), file_count));
+                let _value_guard = self.admit_transfer_values(
+                    std::slice::from_ref(release_id),
+                    ReleaseStorageAction::MakeRemote,
+                )?;
+                let revision = self.coven_make_remote(release_id, pin).await?;
+                Ok::<_, LibraryError>((revision, file_count))
             }
-            let value_guard =
-                self.admit_transfer_values(release_ids, ReleaseStorageAction::MakeRemote)?;
-            let revision = self.coven_make_remote_batch(release_ids, pin).await?;
-            Ok::<_, LibraryError>((revision, file_counts, value_guard))
-        }
-        .await;
-        let (revision, file_counts, _value_guard) = match admission {
-            Ok(admitted) => admitted,
-            Err(error) => {
-                let mut recorded = std::collections::HashSet::with_capacity(release_ids.len());
-                for release_id in release_ids {
-                    if recorded.insert(release_id) {
-                        crate::storage::transfer::record_transfer_failed(
-                            self,
-                            release_id,
-                            ReleaseStorageAction::MakeRemote,
-                            &error,
-                        );
-                    }
+            .await;
+
+            match admission {
+                Ok((revision, file_count)) => {
+                    crate::storage::transfer::record_transfer_completed(
+                        self,
+                        release_id,
+                        ReleaseStorageAction::MakeRemote,
+                        file_count,
+                    );
+                    admitted_release_ids.push(release_id.clone());
+                    last_revision = Some(revision);
                 }
-                return Err(error);
+                Err(error) => {
+                    crate::storage::transfer::record_transfer_failed(
+                        self,
+                        release_id,
+                        ReleaseStorageAction::MakeRemote,
+                        &error,
+                    );
+                    failures.push((release_id.clone(), error));
+                }
             }
-        };
-        for (release_id, file_count) in file_counts {
-            crate::storage::transfer::record_transfer_completed(
-                self,
-                &release_id,
-                ReleaseStorageAction::MakeRemote,
-                file_count,
-            );
         }
-        Ok(revision)
+
+        let receipt = last_revision.map(|outbox_revision| MakeRemoteReceipt {
+            outbox_revision,
+            release_ids: admitted_release_ids,
+        });
+        if failures.is_empty() {
+            return Ok(MakeReleasesRemoteOutcome::Complete {
+                receipt: receipt.expect("a non-empty successful command has a receipt"),
+            });
+        }
+        Ok(MakeReleasesRemoteOutcome::Partial {
+            receipt,
+            failure: MakeRemoteBatchFailure::from_errors(failures),
+        })
     }
 
     /// Make a Cloud release Local: copy its files back out to `new_path` and
@@ -477,7 +489,7 @@ impl LibraryManager {
 
     /// Admit every foreground transfer action under one lock. Either every
     /// release becomes active in the value stream or none does.
-    fn admit_transfer_values(
+    pub(super) fn admit_transfer_values(
         &self,
         release_ids: &[String],
         action: ReleaseStorageAction,
@@ -562,5 +574,34 @@ impl LibraryManager {
         };
 
         outcome
+    }
+}
+
+impl MakeRemoteBatchFailure {
+    fn from_errors(failures: Vec<(String, LibraryError)>) -> Self {
+        let mut failures = failures.into_iter();
+        let (first_release_id, first_error) = failures
+            .next()
+            .expect("a partial make-Remote outcome has at least one failure");
+        let first_category = first_error.category();
+        let mut same_category = true;
+        let mut release_ids = vec![first_release_id.clone()];
+        let mut details = vec![format!("release {first_release_id}: {first_error}")];
+        for (release_id, error) in failures {
+            same_category &= error.category() == first_category;
+            details.push(format!("release {release_id}: {error}"));
+            release_ids.push(release_id);
+        }
+        Self {
+            release_ids,
+            error: crate::ui::UiError::Diagnostic {
+                category: if same_category {
+                    first_category
+                } else {
+                    crate::ui::UiErrorCategory::Internal
+                },
+                detail: details.join("\n"),
+            },
+        }
     }
 }

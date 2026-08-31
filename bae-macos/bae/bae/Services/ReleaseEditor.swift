@@ -12,7 +12,8 @@ final class ReleaseEditor: Observable {
             _ releaseId: String, _ selection: BridgeCoverSelection
         ) async throws -> Void
     private let moveReleasesToCloudAction:
-        @Sendable (_ releaseIds: [String], _ pin: Bool) async throws -> UInt64
+        @Sendable (_ releaseIds: [String], _ pin: Bool) async throws ->
+            BridgeMakeReleasesRemoteOutcome
     private let outboxStore: OutboxStore
     let makeReleaseLocal:
         @Sendable (_ releaseId: String, _ newPath: String) async throws -> Void
@@ -37,7 +38,8 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (String, BridgeCoverSelection)
             async throws -> Void = { _, _ in },
         moveReleasesToCloud:
-            @escaping @Sendable ([String], Bool) async throws -> UInt64 =
+            @escaping @Sendable ([String], Bool) async throws ->
+            BridgeMakeReleasesRemoteOutcome =
             { _, _ in throw StubError.notImplemented },
         outboxStore: OutboxStore,
         makeReleaseLocal:
@@ -137,16 +139,20 @@ final class ReleaseEditor: Observable {
         let command = outboxStore.beginCloudUploads(
             forReleases: releaseIds
         )
+        let outcome: BridgeMakeReleasesRemoteOutcome
         do {
-            let revision = try await moveReleasesToCloudAction(releaseIds, pin)
-            outboxStore.cloudUploadsQueued(
-                for: command,
-                atRevision: revision
-            )
+            outcome = try await moveReleasesToCloudAction(releaseIds, pin)
         }
         catch {
-            outboxStore.cloudUploadsFailed(for: command)
+            outboxStore.finishCloudUploads(for: command, receipt: nil)
             throw error
+        }
+        switch outcome {
+        case .complete(let receipt):
+            outboxStore.finishCloudUploads(for: command, receipt: receipt)
+        case .partial(let receipt, let failure):
+            outboxStore.finishCloudUploads(for: command, receipt: receipt)
+            throw failure.error
         }
     }
 

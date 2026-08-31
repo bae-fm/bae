@@ -616,12 +616,13 @@ impl AppHandle {
         self: std::sync::Arc<Self>,
         release_ids: Vec<String>,
         pin: bool,
-    ) -> Result<u64, BridgeError> {
+    ) -> Result<BridgeMakeReleasesRemoteOutcome, BridgeError> {
         self.run_exported(move |this| async move {
             this.services
                 .make_releases_remote(&release_ids, pin)
                 .await
-                .map_err(BridgeError::internal)
+                .map(BridgeMakeReleasesRemoteOutcome::from_core)
+                .map_err(BridgeError::from)
         })
         .await
     }

@@ -245,15 +245,17 @@ impl Database {
         self.inner.handle.blob_cloud_key(blob)
     }
 
-    pub(crate) async fn make_remote_batch(
+    pub(crate) async fn make_remote(
         &self,
         root_table: &str,
-        roots: Vec<coven::MakeRemoteRoot>,
+        root_id: &str,
+        root_label: &str,
         pin: bool,
+        refs: Vec<coven::RowBlobRef>,
     ) -> Result<(), coven::MakeRemoteError> {
         self.inner
             .handle
-            .make_remote_batch(root_table, roots, pin)
+            .make_remote(root_table, root_id, root_label, pin, refs)
             .await
     }
 
