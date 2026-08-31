@@ -9,8 +9,9 @@ use std::path::Path;
 /// primitive (a production host never names its own crypto type), so bae
 /// computes it here, over the on-disk file a `release_files` row's blob reads
 /// from — streamed in fixed chunks so hashing a multi-hundred-megabyte FLAC
-/// never holds the whole file in memory.
-pub fn hash_file(path: &Path) -> std::io::Result<String> {
+/// never holds the whole file in memory. `report` receives the number of bytes
+/// consumed by each successful read, so callers can expose byte progress.
+pub fn hash_file(path: &Path, mut report: impl FnMut(u64)) -> std::io::Result<String> {
     use sha2::{Digest, Sha256};
     use std::io::Read;
 
@@ -23,6 +24,7 @@ pub fn hash_file(path: &Path) -> std::io::Result<String> {
             break;
         }
         hasher.update(&buf[..read]);
+        report(read as u64);
     }
     Ok(hex::encode(hasher.finalize()))
 }

@@ -665,15 +665,6 @@ impl ImportService {
                 }
             }
         }
-        let file_to_tracks: HashMap<PathBuf, Vec<String>> = {
-            let mut map: HashMap<PathBuf, Vec<String>> = HashMap::new();
-            for tf in tracks_to_files {
-                map.entry(tf.file_path().to_path_buf())
-                    .or_default()
-                    .push(tf.db_track().id.clone());
-            }
-            map
-        };
         self.emit_phase_progress(
             candidate_key,
             &db_release.id,
@@ -681,18 +672,56 @@ impl ImportService {
             ImportPhase::ReadingFiles,
             import_id,
         );
+        let total_bytes: u128 = discovered_files
+            .iter()
+            .map(|file| u128::from(file.size))
+            .sum();
+        if total_bytes == 0 {
+            return Err(crate::import::ImportError::Internal {
+                detail: "stored import candidate contains no bytes".to_string(),
+            });
+        }
+        let mut bytes_hashed = 0u128;
+        let mut last_release_percent = 0u8;
         for (idx, file) in discovered_files.iter().enumerate() {
             // The scan fingerprint uses metadata so discovering remote folders
             // does not read every byte. Import computes the durable blob hash
             // here, validating the scanned metadata before and after the read.
             let file_to_hash = file.clone();
-            let content_hash = tokio::task::spawn_blocking(move || {
-                super::file_identity::hash_scanned_file_for_import(&file_to_hash)
-            })
-            .await
-            .map_err(|error| crate::import::ImportError::Internal {
-                detail: format!("file hashing task failed: {error}"),
-            })??;
+            let bytes_hashed_before_file = bytes_hashed;
+            let last_percent_before_file = last_release_percent;
+            let event_tx = self.event_tx.clone();
+            let candidate_key_for_progress = candidate_key.to_string();
+            let release_id_for_progress = db_release.id.clone();
+            let import_id_for_progress = import_id.to_string();
+            let (content_hash, file_bytes_hashed, reported_percent) =
+                tokio::task::spawn_blocking(move || {
+                    let mut file_bytes_hashed = 0u128;
+                    let mut reported_percent = last_percent_before_file;
+                    super::file_identity::hash_scanned_file_for_import(&file_to_hash, |read| {
+                        file_bytes_hashed += u128::from(read);
+                        let completed = bytes_hashed_before_file + file_bytes_hashed;
+                        let percent = ((completed * 100) / total_bytes).min(100) as u8;
+                        if reported_percent != percent {
+                            reported_percent = percent;
+                            ImportService::emit_phase_progress_on(
+                                &event_tx,
+                                &candidate_key_for_progress,
+                                &release_id_for_progress,
+                                percent,
+                                ImportPhase::ReadingFiles,
+                                &import_id_for_progress,
+                            );
+                        }
+                    })
+                    .map(|content_hash| (content_hash, file_bytes_hashed, reported_percent))
+                })
+                .await
+                .map_err(|error| crate::import::ImportError::Internal {
+                    detail: format!("file hashing task failed: {error}"),
+                })??;
+            bytes_hashed += file_bytes_hashed;
+            last_release_percent = reported_percent;
             let mut db_file = DbFile::new(
                 &db_release.id,
                 &file.relative_path,
@@ -714,25 +743,6 @@ impl ImportService {
                     });
             file_ids.insert(file.path.clone(), db_file.id.clone());
             db_files.push(db_file);
-            if let Some(track_ids) = file_to_tracks.get(&file.path) {
-                for track_id in track_ids {
-                    self.emit_phase_progress(
-                        candidate_key,
-                        track_id,
-                        100,
-                        ImportPhase::ReadingFiles,
-                        import_id,
-                    );
-                }
-            }
-            let release_percent = ((idx + 1) * 100 / total_files.max(1)) as u8;
-            self.emit_phase_progress(
-                candidate_key,
-                &db_release.id,
-                release_percent,
-                ImportPhase::ReadingFiles,
-                import_id,
-            );
             debug!(
                 "Read file {}/{}: {}",
                 idx + 1,

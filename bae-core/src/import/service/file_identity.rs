@@ -12,9 +12,10 @@ pub(super) fn validate_scanned_file_identities(
 
 pub(super) fn hash_scanned_file_for_import(
     file: &ScannedFile,
+    report: impl FnMut(u64),
 ) -> Result<String, crate::import::ImportError> {
     validate_scanned_file_metadata(file)?;
-    let content_hash = crate::util::fs::hash_file(&file.path).map_err(|error| {
+    let content_hash = crate::util::fs::hash_file(&file.path, report).map_err(|error| {
         crate::import::ImportError::UnusableFile {
             detail: format!("failed to hash {}: {error}", file.path.display()),
         }
@@ -64,9 +65,11 @@ mod tests {
             modified_at_ns,
         );
 
-        assert_eq!(
-            hash_scanned_file_for_import(&file).expect("hash source file"),
-            crate::util::fs::hash_bytes(bytes)
-        );
+        let mut bytes_reported = 0u64;
+        let hash = hash_scanned_file_for_import(&file, |read| bytes_reported += read)
+            .expect("hash source file");
+
+        assert_eq!(hash, crate::util::fs::hash_bytes(bytes));
+        assert_eq!(bytes_reported, bytes.len() as u64);
     }
 }
