@@ -239,6 +239,8 @@ extension TriageRowView {
                     return nil
                 case .noMatch:
                     return nil
+                case .lookupFailed:
+                    return nil
                 default:
                     return needsYou.localizedText
                 }
@@ -303,6 +305,9 @@ extension TriageRowView {
                 chip(needsYou.localizedText, tint: .blue)
             case .countsOrLengthsDisagree:
                 trailingIcon("questionmark.circle", tint: .orange)
+            case .lookupFailed:
+                trailingIcon("exclamationmark.triangle.fill", tint: .orange)
+                    .help(needsYou.localizedText)
             case .noMatch:
                 EmptyView()
             case .stillIdentifying:

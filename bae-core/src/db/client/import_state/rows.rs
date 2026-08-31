@@ -1,9 +1,12 @@
-//! Reading `import_candidate_state` back: the identify columns with their
-//! match rows, the metadata draft and provenance, and the per-file decisions.
+//! Reading `import_candidate_state` back: normal verdict columns or an attached
+//! failed verdict, match rows, metadata draft and provenance, and file decisions.
 
 use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
 use super::signal_rows::load_signals_on;
-use super::verdict_rows::{read_match_row, unreadable, verdict_of, MatchLists};
+use super::verdict_rows::{
+    read_identify_failure_row, read_match_row, unreadable, verdict_of, IdentifyFailureRow,
+    MatchLists,
+};
 use super::*;
 use crate::import::{MetadataProvenance, MetadataSource};
 use std::str::FromStr;
@@ -152,11 +155,25 @@ pub(crate) fn load_states_on(
     }
     let mut edits = load_edits_on(sql, only)?;
     let mut signals = load_signals_on(sql, only)?;
+    let failure_rows = sql.query(
+        "SELECT content_hash, failures_json, track_count, probed_total_duration_ms, identified_at \
+         FROM import_candidate_identify_failure \
+         WHERE :only IS NULL OR content_hash = :only",
+        named_params! { ":only": only },
+        |row| Ok(read_identify_failure_row(row)),
+    )?;
+    let mut failures: HashMap<String, IdentifyFailureRow> = HashMap::new();
+    for row in failure_rows {
+        let row = row?;
+        if failures.insert(row.content_hash.clone(), row).is_some() {
+            return Err(DbError::Message("duplicate identify failure row".into()));
+        }
+    }
 
     let mut out = HashMap::with_capacity(states.len());
     for state in states {
         let state = state?;
-        let identify = match (
+        let normal_identify = match (
             state.verdict_kind,
             state.probed_total_duration_ms,
             state.identified_at,
@@ -179,6 +196,26 @@ pub(crate) fn load_states_on(
             }),
             // The table writes and clears the identify columns as one group.
             _ => None,
+        };
+        let failed_identify =
+            failures
+                .remove(&state.content_hash)
+                .map(|failed| DbCandidateIdentifyResult {
+                    verdict: crate::identify::TerminalVerdict::Failed {
+                        failures: failed.failures,
+                        track_count: failed.track_count,
+                    },
+                    probed_total_duration_ms: failed.probed_total_duration_ms,
+                    identified_at: failed.identified_at,
+                });
+        let identify = match (normal_identify, failed_identify) {
+            (Some(_), Some(_)) => {
+                return Err(DbError::Message(format!(
+                    "import candidate {} stores both a verdict and an identify failure",
+                    state.content_hash
+                )))
+            }
+            (normal, failed) => normal.or(failed),
         };
         let mut file_edits = edits.remove(&state.content_hash).unwrap_or_default();
         file_edits.revision = u64::try_from(state.edit_revision).map_err(|_| {

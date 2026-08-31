@@ -33,6 +33,43 @@ fn metadata_for_settled_lead(
     }
 }
 
+fn metadata_or_failed_verdict(
+    context: &SweepContext,
+    candidate: &FolderCandidate,
+    durations: &crate::import::probe::SourceDurations,
+    settled_lead: SettledLead,
+    verdict: &mut TerminalVerdict,
+) -> crate::import::CandidateMetadataDraft {
+    match metadata_for_settled_lead(context, candidate, durations, settled_lead) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            warn!(
+                "sweep: could not project metadata for {} ({error}); storing the failure",
+                candidate.path.display()
+            );
+            let track_count = match verdict {
+                TerminalVerdict::Found { track_count, .. }
+                | TerminalVerdict::Failed { track_count, .. }
+                | TerminalVerdict::ManualOnly { track_count } => *track_count,
+                TerminalVerdict::NotFoundAnywhere => 0,
+            };
+            *verdict = TerminalVerdict::Failed {
+                failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
+                    crate::signals::LookupFailure::Diagnostic {
+                        detail: error.to_string(),
+                    },
+                )],
+                track_count,
+            };
+            crate::import::CandidateMetadataDraft {
+                edit: crate::import::pane::blank_candidate_draft(&candidate.files),
+                provenance: None,
+                cover: None,
+            }
+        }
+    }
+}
+
 /// Turn one candidate's terminal state into a stored row, or into nothing.
 /// Returns whether a row was written.
 pub(super) async fn finish_candidate(
@@ -41,11 +78,8 @@ pub(super) async fn finish_candidate(
     state: IdentifyState,
     token: &CancellationToken,
 ) -> bool {
-    // The one gate on storability. "Terminal" only means nothing is in flight;
-    // a `Found` built from the one signal whose lookup survived, or a
-    // `NotFoundAnywhere` where neither lookup ever answered, is terminal and is
-    // not an answer. The conversion refuses those, and refusing means no row,
-    // which means the next pass asks again.
+    // Only in-flight states fail conversion. Provider failures convert to an
+    // explicit failed verdict and are stored below.
     let Ok(mut verdict) = TerminalVerdict::try_from(state) else {
         return false;
     };
@@ -64,17 +98,13 @@ pub(super) async fn finish_candidate(
         return false;
     };
 
-    let metadata =
-        match metadata_for_settled_lead(context, candidate, &signals.durations, settled_lead) {
-            Ok(metadata) => metadata,
-            Err(error) => {
-                warn!(
-                    "sweep: could not project metadata for {} ({error}); writing no row",
-                    candidate.path.display()
-                );
-                return false;
-            }
-        };
+    let metadata = metadata_or_failed_verdict(
+        context,
+        candidate,
+        &signals.durations,
+        settled_lead,
+        &mut verdict,
+    );
     save(
         context,
         token,
@@ -162,7 +192,8 @@ pub(super) async fn save(
 /// **The documents land before the verdict does.** A stored verdict whose lead
 /// carries a tracklist is the queue's promise that opening that candidate needs
 /// no network, so the two are written in this order and a failure here writes
-/// neither — the next pass asks again, exactly as a failed lookup does.
+/// neither. The candidate stores an explicit failure, while the release
+/// document archive remains absent.
 ///
 /// Only a single-match `Found` has a lead. Several matches and a conflict are
 /// questions for a person, answered from the result rows the verdict already
@@ -178,7 +209,12 @@ async fn settle_lead(
     durations: &crate::import::probe::SourceDurations,
     token: &CancellationToken,
 ) -> Option<SettledLead> {
-    let TerminalVerdict::Found { matches, .. } = verdict else {
+    let TerminalVerdict::Found {
+        matches,
+        track_count,
+        ..
+    } = verdict
+    else {
         return Some(SettledLead::NoExternalRelease);
     };
     let [only_match] = matches.as_mut_slice() else {
@@ -193,8 +229,7 @@ async fn settle_lead(
     );
     let payloads = tokio::select! {
         biased;
-        // Shutdown mid-lookup is a transport failure by another name: nothing
-        // was learned, so nothing is written and the next launch asks again.
+        // Shutdown is not a provider answer and writes nothing.
         _ = token.cancelled() => return None,
         payloads = settle => payloads,
     };
@@ -202,10 +237,16 @@ async fn settle_lead(
         Ok(payloads) => payloads,
         Err(error) => {
             debug!(
-                "sweep: could not settle {} ({error}); writing no row",
+                "sweep: could not settle {} ({error}); storing the failure",
                 only_match.release_id
             );
-            return None;
+            *verdict = TerminalVerdict::Failed {
+                failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
+                    crate::import::search::import_error_to_lookup_failure(&error),
+                )],
+                track_count: *track_count,
+            };
+            return Some(SettledLead::NoExternalRelease);
         }
     };
     let audio_durations =
@@ -235,39 +276,41 @@ async fn settle_lead(
         }
         Err(error) => {
             debug!(
-                "sweep: {} states no readable tracklist ({error}); writing no row",
+                "sweep: {} states no readable tracklist ({error}); storing the failure",
                 only_match.release_id
             );
-            None
+            *verdict = TerminalVerdict::Failed {
+                failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
+                    crate::signals::LookupFailure::Diagnostic {
+                        detail: error.to_string(),
+                    },
+                )],
+                track_count: *track_count,
+            };
+            Some(SettledLead::NoExternalRelease)
         }
     }
 }
 
 /// Whether `candidate_key` holds a stored verdict for its current file shape
 /// — see [`ImportServiceHandle::stored_verdict`], which owns the read. A
-/// failure resolves to `false` after a `warn!`: the caller's fallback is a
-/// full identification run, which re-answers the candidate and re-stores the
-/// row, so nothing is served from — or left depending on — the unreadable
-/// one.
-pub(super) async fn has_stored_verdict(context: &SweepContext, candidate_key: &str) -> bool {
-    match context.import.stored_verdict(candidate_key).await {
-        Ok(verdict) => verdict.is_some(),
-        Err(error) => {
-            warn!(
-                "reading the stored verdict for {candidate_key} failed ({error}); \
-                 re-running identification"
-            );
-            false
-        }
-    }
+/// read failure is returned to the caller; it must not be converted into
+/// permission to overwrite state that could not be inspected.
+pub(super) async fn has_stored_verdict(
+    context: &SweepContext,
+    candidate_key: &str,
+) -> Result<bool, crate::import::ImportError> {
+    Ok(context
+        .import
+        .stored_verdict(candidate_key)
+        .await?
+        .is_some())
 }
 
 /// Watch a run a person started and store the first verdict it reaches.
 ///
-/// **The first that stores, not the first that settles.** A terminal state
-/// shaped by a lookup that never answered does not convert, so a re-run from the
-/// toolbar after a network blip is still captured. Once one verdict is stored
-/// the watch ends: a signal the user then toggles off is them filtering their
+/// **The first that stores.** Once one verdict is stored the watch ends: a
+/// signal the user then toggles off is them filtering their
 /// own view, not a durable fact about the folder, and persisting it would leave
 /// the next launch showing a queue narrowed by exclusions nobody remembers
 /// making.
@@ -330,11 +373,8 @@ pub(super) async fn record_explicit_lookup_verdict(
                 if !state.is_terminal() {
                     continue;
                 }
-                let Ok(mut verdict) = TerminalVerdict::try_from(state) else {
-                    // Terminal but shaped by a failed lookup. Keep watching: a
-                    // re-run from the toolbar may still answer it.
-                    continue;
-                };
+                let mut verdict = TerminalVerdict::try_from(state)
+                    .expect("a terminal identify state always has a verdict");
                 // Settles here too: a row a person's own run wrote is a row the
                 // queue treats as answered, and the promise that an answered
                 // lead opens offline holds however the answer was reached.
@@ -355,20 +395,13 @@ pub(super) async fn record_explicit_lookup_verdict(
                 else {
                     continue;
                 };
-                let metadata = match metadata_for_settled_lead(
+                let metadata = metadata_or_failed_verdict(
                     context,
                     &entry.candidate,
                     &signals.durations,
                     settled_lead,
-                ) {
-                    Ok(metadata) => metadata,
-                    Err(error) => {
-                        warn!(
-                            "sweep: could not project metadata for {candidate_key} ({error}); writing no row"
-                        );
-                        continue;
-                    }
-                };
+                    &mut verdict,
+                );
                 if save(
                     context,
                     token,

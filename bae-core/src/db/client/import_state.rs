@@ -21,7 +21,10 @@ use crate::import::folder_scanner::{
 };
 use rows::{load_candidate_file_edits_on, seed_columns, MetadataProvenanceAuthor};
 use std::collections::HashSet;
-use verdict_rows::{delete_matches, insert_matches, verdict_columns};
+use verdict_rows::{
+    delete_identify_failure, delete_matches, insert_identify_failure, insert_matches,
+    verdict_columns,
+};
 
 /// The next scan generation. One upsert rather than a read of a seeded row
 /// and a write back: the counter's row is created by the first allocation,
@@ -442,6 +445,8 @@ impl Database {
         };
         self.call(move |sql| {
             let columns = verdict_columns(&verdict.verdict);
+            let stored_probed = columns.kind.map(|_| probed);
+            let stored_identified_at = columns.kind.map(|_| now.as_str());
             let pick = verdict.metadata.provenance.as_ref().map(seed_columns);
             let preserve_user_metadata = stored_pick_author(sql, &verdict.content_hash)?
                 == Some(MetadataProvenanceAuthor::User);
@@ -476,8 +481,8 @@ impl Database {
                         ":kind": columns.kind,
                         ":track_count": columns.track_count,
                         ":matched_barcode": columns.matched_barcode,
-                        ":probed": probed,
-                        ":now": now,
+                        ":probed": stored_probed,
+                        ":now": stored_identified_at,
                         ":provenance_kind": pick.as_ref().map(|pick| pick.kind),
                         ":provenance_source": pick.as_ref().and_then(|pick| pick.source),
                         ":provenance_release_id": pick.as_ref().and_then(|pick| pick.release_id),
@@ -502,8 +507,8 @@ impl Database {
                         columns.kind,
                         columns.track_count,
                         columns.matched_barcode,
-                        probed,
-                        now,
+                        stored_probed,
+                        stored_identified_at,
                         pick.as_ref().map(|pick| pick.kind),
                         pick.as_ref().and_then(|pick| pick.source),
                         pick.as_ref().and_then(|pick| pick.release_id),
@@ -518,6 +523,14 @@ impl Database {
                 // superseded ones go in the same transaction that replaces it.
                 delete_matches(sql, &verdict.content_hash)?;
                 insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
+                delete_identify_failure(sql, &verdict.content_hash)?;
+                insert_identify_failure(
+                    sql,
+                    &verdict.content_hash,
+                    &verdict.verdict,
+                    probed,
+                    &now,
+                )?;
                 if !preserve_user_metadata {
                     pane_rows::replace_draft(
                         sql,
@@ -648,6 +661,7 @@ impl Database {
                 )));
             }
             delete_matches(sql, &content_hash)?;
+            delete_identify_failure(sql, &content_hash)?;
             // The disc ID is recomputed because the candidate's shape changed,
             // which takes the signals with it. The table's rows are a different
             // set now, so the row edits addressed them by identities that no

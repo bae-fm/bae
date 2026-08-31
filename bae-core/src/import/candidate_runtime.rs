@@ -8,12 +8,10 @@
 //! release an import wrote, the error one failed with. Whoever wants those
 //! reads the rows.
 //!
-//! One exception, and it is deliberate: a run that settles without an answer
-//! worth storing — a lookup that never responded — has nothing to write, so
-//! its terminal state is held here for the rest of the session. It is the one
-//! thing in the map that is not strictly in flight, and it is here because
-//! [`IdentifyPhase::NoAnswer`](crate::import::IdentifyPhase) has no row to be
-//! read from.
+//! A terminal identify state stays here only across the interval between the
+//! reducer producing it and the verdict transaction committing it. The stored
+//! event then removes it. If that write fails, the state remains visible and
+//! the operation reports the write failure to its initiator.
 //!
 //! Changes are published per key — one [`CandidateRuntimeChange`] for the one
 //! candidate an event concerned — so a consumer holding the list never
@@ -344,11 +342,9 @@ impl CandidateRuntime {
                 // terminal state stays. A genuine mid-run cancel goes
                 // `Triangulating` → `Idle` and clears as before.
                 //
-                // What the retained terminal state covers is bounded: the
-                // interval before the verdict's durable write lands (cleared
-                // by `CandidateVerdictStored` below), and terminal states
-                // that never store — a settle shaped by a lookup that never
-                // answered — which are session-only by design.
+                // The retained terminal state covers the interval before the
+                // verdict's durable write lands. `CandidateVerdictStored`
+                // below clears it after the transaction commits.
                 let torn_down = matches!(state, crate::identify::IdentifyState::Idle)
                     && self.get(candidate_key).is_some_and(|runtime| {
                         runtime

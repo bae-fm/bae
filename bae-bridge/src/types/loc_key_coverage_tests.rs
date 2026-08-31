@@ -350,6 +350,7 @@ fn produced_keys() -> Vec<String> {
         BridgeNeedsYou::SeveralMatches { count: 0 },
         BridgeNeedsYou::NoMatch,
         BridgeNeedsYou::NothingToLookUp,
+        BridgeNeedsYou::LookupFailed,
         BridgeNeedsYou::TrackCountDisagrees {
             local: 0,
             source: 0,
@@ -367,6 +368,7 @@ fn produced_keys() -> Vec<String> {
             BridgeNeedsYou::SeveralMatches { .. } => "core.import.triage.several_matches",
             BridgeNeedsYou::NoMatch => "core.import.triage.no_match",
             BridgeNeedsYou::NothingToLookUp => "core.import.triage.nothing_to_look_up",
+            BridgeNeedsYou::LookupFailed => "core.import.triage.lookup_failed",
             BridgeNeedsYou::TrackCountDisagrees { .. } => {
                 "core.import.triage.track_count_disagrees"
             }

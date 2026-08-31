@@ -451,9 +451,9 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
     );
 }
 
-/// The case the ownership guard exists for, end to end: the sweep fails a
-/// candidate, the user then enters Lookup, and the next pass must not take it
-/// back.
+/// The case the ownership guard exists for, end to end: the sweep stores a
+/// failed candidate, the user explicitly reruns it, and the next pass must not
+/// take it back.
 ///
 /// `identify.start` supersedes, so taking it would cancel their Interactive run
 /// and restart it in the background. This only holds because the sweep gives up
@@ -461,7 +461,7 @@ async fn a_finished_candidate_leaves_no_driver_behind() {
 /// would claim this one forever.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_candidate_the_sweep_failed_then_the_user_looked_up_is_left_alone() {
+async fn a_candidate_the_sweep_failed_then_the_user_reran_is_left_alone() {
     let fixture = Fixture::new("failed-then-looked-up").await;
     fixture.extraction.register_analyzer(Arc::new(SlowAnalyzer {
         delay: Duration::from_millis(2_000),
@@ -477,13 +477,20 @@ async fn a_candidate_the_sweep_failed_then_the_user_looked_up_is_left_alone() {
     let key = dir.to_string_lossy().into_owned();
 
     fixture.sweep_once().await;
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "the first pass learned nothing"
-    );
+    assert!(matches!(
+        fixture.identified_for(&dir).await.map(|row| row.verdict),
+        Some(TerminalVerdict::Failed { .. })
+    ));
 
-    // The user enters Lookup.
-    fixture.start_explicit_lookup_and_await_run(&dir).await;
+    // The user explicitly reruns the stored failure.
+    fixture.sweep.rerun_for_explicit_lookup(key.clone());
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while !fixture.identify.is_running(&key) {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("identify registers the explicit rerun");
     assert!(fixture.identify.is_running(&key), "their run is in flight");
 
     let lookups_before = fixture.provider.count_containing("/discid/");

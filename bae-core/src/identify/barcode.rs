@@ -3,19 +3,21 @@
 //! signal-extraction service; identify only looks the codes up.
 
 use crate::discogs::client::DiscogsSearchParams;
-use crate::import::search::{search_mb, MetadataResult};
+use crate::import::search::{
+    import_error_to_lookup_failure, merge_provider_results, search_mb, MetadataResult,
+};
 use crate::library::LibraryManager;
 use crate::musicbrainz::ReleaseSearchParams;
 use crate::util::rate_limiter::CallPriority;
 
-/// Union search: MB first, then Discogs. Errors on MB bubble up as `Err`;
-/// Discogs failures are logged and skipped so a provider outage doesn't break
-/// the phase.
+/// Union search over every configured provider. A configured provider that
+/// fails makes the lookup fail; otherwise partial evidence could be presented
+/// as the complete answer.
 pub async fn lookup_barcode(
     barcode: &str,
     library_manager: &LibraryManager,
     priority: CallPriority,
-) -> Result<Vec<MetadataResult>, String> {
+) -> Result<Vec<MetadataResult>, crate::signals::LookupFailure> {
     let mb = search_mb(
         ReleaseSearchParams {
             barcode: Some(barcode.to_string()),
@@ -24,57 +26,33 @@ pub async fn lookup_barcode(
         priority,
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|error| import_error_to_lookup_failure(&error))?;
 
-    let discogs = discogs_barcode_lookup(library_manager, barcode, priority).await;
-
-    Ok(merge_barcode_results(mb, discogs))
-}
-
-/// `None` when there is no client, or the search failed. Discogs is the
-/// best-effort secondary source, so its outage must not fail the phase or drop the
-/// MB matches — but dropping a whole source from a user-facing lookup is abnormal
-/// enough to warn about.
-async fn discogs_barcode_lookup(
-    library_manager: &LibraryManager,
-    barcode: &str,
-    priority: CallPriority,
-) -> Option<Vec<MetadataResult>> {
-    match library_manager
-        .search_discogs(
-            DiscogsSearchParams {
-                barcode: Some(barcode.to_string()),
-                ..Default::default()
-            },
-            priority,
+    let discogs = if library_manager.discogs_is_usable() {
+        Some(
+            library_manager
+                .search_discogs(
+                    DiscogsSearchParams {
+                        barcode: Some(barcode.to_string()),
+                        ..Default::default()
+                    },
+                    priority,
+                )
+                .await
+                .map_err(|error| import_error_to_lookup_failure(&error)),
         )
-        .await
-    {
-        Ok(results) => Some(results),
-        Err(e) => {
-            tracing::warn!("Discogs barcode search failed for {barcode}, skipping Discogs: {e}");
-            None
-        }
-    }
-}
+    } else {
+        None
+    };
 
-/// MB first, then Discogs. Each result carries its own `source`, so the two sets
-/// are disjoint by construction and the merge is a plain concatenation with nothing
-/// to deduplicate. `discogs` is `None` when its lookup was skipped or failed.
-fn merge_barcode_results(
-    mut mb: Vec<MetadataResult>,
-    discogs: Option<Vec<MetadataResult>>,
-) -> Vec<MetadataResult> {
-    if let Some(mut discogs) = discogs {
-        mb.append(&mut discogs);
-    }
-    mb
+    merge_provider_results(mb, discogs)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::import::MetadataSource;
+    use crate::signals::LookupFailure;
 
     fn result(source: MetadataSource, release_id: &str) -> MetadataResult {
         MetadataResult {
@@ -99,9 +77,9 @@ mod tests {
             result(MetadataSource::MusicBrainz, "mb-1"),
             result(MetadataSource::MusicBrainz, "mb-2"),
         ];
-        let discogs = Some(vec![result(MetadataSource::Discogs, "dg-1")]);
+        let discogs = Some(Ok(vec![result(MetadataSource::Discogs, "dg-1")]));
 
-        let merged = merge_barcode_results(mb, discogs);
+        let merged = merge_provider_results(mb, discogs).unwrap();
         let ids: Vec<(MetadataSource, &str)> = merged
             .iter()
             .map(|r| (r.source, r.release_id.as_str()))
@@ -116,11 +94,11 @@ mod tests {
         );
     }
 
-    /// A Discogs outage doesn't break the phase: the MB results still stand.
+    /// With Discogs disabled, MusicBrainz is the complete configured lookup.
     #[test]
-    fn merge_without_discogs_is_mb_only() {
+    fn merge_with_discogs_disabled_is_mb_only() {
         let mb = vec![result(MetadataSource::MusicBrainz, "mb-1")];
-        let merged = merge_barcode_results(mb, None);
+        let merged = merge_provider_results(mb, None).unwrap();
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].source, MetadataSource::MusicBrainz);
         assert_eq!(merged[0].release_id, "mb-1");
@@ -129,8 +107,17 @@ mod tests {
     #[test]
     fn merge_with_empty_discogs_is_mb_only() {
         let mb = vec![result(MetadataSource::MusicBrainz, "mb-1")];
-        let merged = merge_barcode_results(mb, Some(vec![]));
+        let merged = merge_provider_results(mb, Some(Ok(vec![]))).unwrap();
         assert_eq!(merged.len(), 1);
         assert_eq!(merged[0].release_id, "mb-1");
+    }
+
+    #[test]
+    fn configured_discogs_failure_fails_the_combined_lookup() {
+        let mb = vec![result(MetadataSource::MusicBrainz, "mb-1")];
+        assert_eq!(
+            merge_provider_results(mb, Some(Err(LookupFailure::Network))),
+            Err(LookupFailure::Network)
+        );
     }
 }

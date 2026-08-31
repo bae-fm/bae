@@ -20,8 +20,8 @@
 //! same decisions instead of re-making them.
 //!
 //! [`verdict::TerminalVerdict`] is the third projection: what a *terminal*
-//! state (`Found`, `NotFoundAnywhere`, `ManualOnly`) persists to
-//! `import_candidate_state` so it need not be re-fetched on the next launch.
+//! state (`Found`, `NotFoundAnywhere`, `ManualOnly`, `Failed`) persists so it
+//! need not be re-fetched on the next launch.
 //! [`ready`] reads that stored verdict back and says what the queue needs from
 //! the user for that candidate — derived on every read, never stored.
 
@@ -46,7 +46,7 @@ pub use state::{
     BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyEvent, IdentifyState, SignalToggle,
 };
 pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
-pub use verdict::TerminalVerdict;
+pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView};
 
 use crate::db::{LibraryCheck, LibraryStatus};

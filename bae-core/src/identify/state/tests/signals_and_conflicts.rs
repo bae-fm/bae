@@ -486,8 +486,20 @@ fn failed_discid_lookup_preserves_track_count() {
         },
     );
     match state {
-        IdentifyState::NotFoundAnywhere { context } => assert_eq!(context.track_count, 5),
-        other => panic!("expected NotFoundAnywhere, got {other:?}"),
+        IdentifyState::Failed {
+            failures,
+            track_count,
+            ..
+        } => {
+            assert_eq!(track_count, 5);
+            assert_eq!(
+                failures,
+                vec![crate::identify::IdentifyFailure::DiscId(
+                    LookupFailure::Provider { status: Some(503) }
+                )]
+            );
+        }
+        other => panic!("expected Failed, got {other:?}"),
     }
 }
 

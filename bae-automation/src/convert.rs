@@ -767,6 +767,33 @@ pub(super) fn automation_identify_state(
         IdentifyStateView::ManualOnly { track_count } => {
             AutomationIdentifyState::ManualOnly { track_count }
         }
+        IdentifyStateView::Failed { failures } => AutomationIdentifyState::Failed {
+            failures: failures
+                .into_iter()
+                .map(|failure| match failure {
+                    bae_core::identify::IdentifyFailure::DiscId(failure) => {
+                        AutomationIdentifyFailure::DiscId {
+                            failure: automation_lookup_failure(failure),
+                        }
+                    }
+                    bae_core::identify::IdentifyFailure::Barcode(failure) => {
+                        AutomationIdentifyFailure::Barcode {
+                            failure: automation_lookup_failure(failure),
+                        }
+                    }
+                    bae_core::identify::IdentifyFailure::Catalog(failure) => {
+                        AutomationIdentifyFailure::Catalog {
+                            failure: automation_lookup_failure(failure),
+                        }
+                    }
+                    bae_core::identify::IdentifyFailure::ReleaseDetails(failure) => {
+                        AutomationIdentifyFailure::ReleaseDetails {
+                            failure: automation_lookup_failure(failure),
+                        }
+                    }
+                })
+                .collect(),
+        },
     }
 }
 

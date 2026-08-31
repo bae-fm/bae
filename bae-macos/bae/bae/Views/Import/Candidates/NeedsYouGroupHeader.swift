@@ -27,13 +27,15 @@ struct NeedsYouGroupHeader: View {
         .padding(.bottom, 7)
     }
 
-    private var title: LocalizedStringKey {
+    private var title: String {
         switch group {
-        case .pickAPressing: "Pick a Pressing"
-        case .countsOrLengthsDisagree: "Counts or Lengths Disagree"
-        case .alreadyInLibrary: "Already in Library"
-        case .noMatch: "No Match"
-        case .stillIdentifying: "Still Identifying"
+        case .pickAPressing: String(localized: "Pick a Pressing")
+        case .countsOrLengthsDisagree:
+            String(localized: "Counts or Lengths Disagree")
+        case .alreadyInLibrary: String(localized: "Already in Library")
+        case .lookupFailed: coreString("core.import.triage.lookup_failed")
+        case .noMatch: String(localized: "No Match")
+        case .stillIdentifying: String(localized: "Still Identifying")
         }
     }
 }
@@ -46,6 +48,7 @@ struct NeedsYouGroupHeader: View {
             NeedsYouGroupHeader(group: .pickAPressing, count: 31)
             NeedsYouGroupHeader(group: .countsOrLengthsDisagree, count: 10)
             NeedsYouGroupHeader(group: .alreadyInLibrary, count: 15)
+            NeedsYouGroupHeader(group: .lookupFailed, count: 2)
             NeedsYouGroupHeader(group: .noMatch, count: 48)
             NeedsYouGroupHeader(group: .stillIdentifying, count: 18)
         }

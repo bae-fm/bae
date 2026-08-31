@@ -1,10 +1,11 @@
 //! The identify verdict as columns and match rows, and the read back.
 //!
-//! A verdict is one row of `import_candidate_state`'s identify columns plus
-//! the `import_candidate_match` rows of the releases it matched, in order.
+//! A normal verdict is `import_candidate_state`'s identify columns plus the
+//! ordered release-match rows. A failed verdict is its typed attached row;
+//! both shapes are replaced by the same transaction.
 
 use super::*;
-use crate::identify::{ResultProvenance, TerminalVerdict};
+use crate::identify::{IdentifyFailure, ResultProvenance, TerminalVerdict};
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::MetadataSource;
@@ -22,7 +23,7 @@ fn source_of(stored: &str) -> Result<MetadataSource, DbError> {
 /// The identify columns of one verdict. `track_count` is absent for
 /// `not_found`, which counts nothing, mirroring the table's CHECKs.
 pub(super) struct VerdictColumns<'a> {
-    pub(super) kind: &'static str,
+    pub(super) kind: Option<&'static str>,
     pub(super) track_count: Option<u32>,
     /// The barcode the match was found through, where one was.
     pub(super) matched_barcode: Option<&'a str>,
@@ -35,18 +36,23 @@ pub(super) fn verdict_columns(verdict: &TerminalVerdict) -> VerdictColumns<'_> {
             matched_barcode,
             ..
         } => VerdictColumns {
-            kind: "found",
+            kind: Some("found"),
             track_count: Some(*track_count),
             matched_barcode: matched_barcode.as_deref(),
         },
         TerminalVerdict::NotFoundAnywhere => VerdictColumns {
-            kind: "not_found",
+            kind: Some("not_found"),
             track_count: None,
             matched_barcode: None,
         },
         TerminalVerdict::ManualOnly { track_count } => VerdictColumns {
-            kind: "manual_only",
+            kind: Some("manual_only"),
             track_count: Some(*track_count),
+            matched_barcode: None,
+        },
+        TerminalVerdict::Failed { .. } => VerdictColumns {
+            kind: None,
+            track_count: None,
             matched_barcode: None,
         },
     }
@@ -87,9 +93,95 @@ pub(super) fn insert_matches(
                 insert_match(sql, content_hash, position, result, provenance)?;
             }
         }
-        TerminalVerdict::NotFoundAnywhere | TerminalVerdict::ManualOnly { .. } => {}
+        TerminalVerdict::NotFoundAnywhere
+        | TerminalVerdict::ManualOnly { .. }
+        | TerminalVerdict::Failed { .. } => {}
     }
     Ok(())
+}
+
+pub(super) fn delete_identify_failure(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_identify_failure WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    Ok(())
+}
+
+pub(super) fn insert_identify_failure(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    verdict: &TerminalVerdict,
+    probed_total_duration_ms: i64,
+    identified_at: &str,
+) -> Result<(), DbError> {
+    let TerminalVerdict::Failed {
+        failures,
+        track_count,
+    } = verdict
+    else {
+        return Ok(());
+    };
+    if failures.is_empty() {
+        return Err(DbError::Message(format!(
+            "failed verdict for {content_hash} contains no failed lookup"
+        )));
+    }
+    let failures_json = serde_json::to_string(failures).map_err(|error| {
+        DbError::Message(format!(
+            "failed to serialize identify failure for {content_hash}: {error}"
+        ))
+    })?;
+    sql.execute(
+        "INSERT INTO import_candidate_identify_failure \
+             (content_hash, failures_json, track_count, probed_total_duration_ms, identified_at) \
+         VALUES (?, ?, ?, ?, ?)",
+        params![
+            content_hash,
+            failures_json,
+            i64::from(*track_count),
+            probed_total_duration_ms,
+            identified_at,
+        ],
+    )?;
+    Ok(())
+}
+
+pub(super) struct IdentifyFailureRow {
+    pub(super) content_hash: String,
+    pub(super) failures: Vec<IdentifyFailure>,
+    pub(super) track_count: u32,
+    pub(super) probed_total_duration_ms: u64,
+    pub(super) identified_at: DateTime<Utc>,
+}
+
+pub(super) fn read_identify_failure_row(row: &Row<'_>) -> Result<IdentifyFailureRow, DbError> {
+    let content_hash: String = row.get("content_hash")?;
+    let failures_json: String = row.get("failures_json")?;
+    let failures: Vec<IdentifyFailure> = serde_json::from_str(&failures_json).map_err(|error| {
+        DbError::Message(format!(
+            "identify failure for {content_hash} is unreadable: {error}"
+        ))
+    })?;
+    if failures.is_empty() {
+        return Err(DbError::Message(format!(
+            "identify failure for {content_hash} contains no failed lookup"
+        )));
+    }
+    let track_count: i64 = row.get("track_count")?;
+    let probed_total_duration_ms: i64 = row.get("probed_total_duration_ms")?;
+    Ok(IdentifyFailureRow {
+        content_hash,
+        failures,
+        track_count: u32::try_from(track_count)
+            .map_err(|_| DbError::Message("identify failure track count is out of range".into()))?,
+        probed_total_duration_ms: u64::try_from(probed_total_duration_ms)
+            .map_err(|_| DbError::Message("identify failure probed duration is negative".into()))?,
+        identified_at: super::rfc3339_column(row, "identified_at")?,
+    })
 }
 
 fn insert_match(

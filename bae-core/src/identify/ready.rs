@@ -62,6 +62,8 @@ pub enum NeedsYou {
     /// Nothing to look up: no disc-ID artifact and no barcode source. Manual
     /// search is the only way forward.
     NothingToLookUp,
+    /// An automatic provider lookup failed. A person may retry it explicitly.
+    LookupFailed,
     /// The source's track count differs from the folder's.
     TrackCountDisagrees { local: u32, source: u32 },
     /// Both counts agree but the totals do not, beyond
@@ -79,13 +81,14 @@ pub enum NeedsYou {
     LocalDurationUnknown,
 }
 
-/// Which of the three shapes a stored verdict has. The `verdict_kind` column's
-/// three values, read as a type.
+/// Which shape a stored verdict has. The first three mirror the normal verdict
+/// column; `Failed` is the attached failed-verdict row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VerdictKind {
     Found,
     NotFound,
     ManualOnly,
+    Failed,
 }
 
 /// The match a `Found` verdict leads with, as its own columns.
@@ -179,6 +182,12 @@ impl VerdictSummary {
                 match_count: 0,
                 lead: None,
             },
+            TerminalVerdict::Failed { track_count, .. } => Self {
+                kind: VerdictKind::Failed,
+                track_count: Some(*track_count),
+                match_count: 0,
+                lead: None,
+            },
         }
     }
 }
@@ -221,6 +230,7 @@ pub fn classify_summary(
         VerdictKind::Found => summary.track_count.unwrap_or_default(),
         VerdictKind::NotFound => return QueueClassification::NeedsYou(NeedsYou::NoMatch),
         VerdictKind::ManualOnly => return QueueClassification::NeedsYou(NeedsYou::NothingToLookUp),
+        VerdictKind::Failed => return QueueClassification::NeedsYou(NeedsYou::LookupFailed),
     };
 
     // "An exact signal is not the same as a unique result" — a disc ID or a

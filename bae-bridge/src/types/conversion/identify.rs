@@ -428,6 +428,33 @@ impl BridgeIdentifyState {
             IdentifyStateView::ManualOnly { track_count } => {
                 BridgeIdentifyState::ManualOnly { track_count }
             }
+            IdentifyStateView::Failed { failures } => BridgeIdentifyState::Failed {
+                failures: failures
+                    .into_iter()
+                    .map(|failure| match failure {
+                        bae_core::identify::IdentifyFailure::DiscId(failure) => {
+                            crate::types::BridgeIdentifyFailure::DiscId {
+                                failure: BridgeLookupFailure::from_core(failure),
+                            }
+                        }
+                        bae_core::identify::IdentifyFailure::Barcode(failure) => {
+                            crate::types::BridgeIdentifyFailure::Barcode {
+                                failure: BridgeLookupFailure::from_core(failure),
+                            }
+                        }
+                        bae_core::identify::IdentifyFailure::Catalog(failure) => {
+                            crate::types::BridgeIdentifyFailure::Catalog {
+                                failure: BridgeLookupFailure::from_core(failure),
+                            }
+                        }
+                        bae_core::identify::IdentifyFailure::ReleaseDetails(failure) => {
+                            crate::types::BridgeIdentifyFailure::ReleaseDetails {
+                                failure: BridgeLookupFailure::from_core(failure),
+                            }
+                        }
+                    })
+                    .collect(),
+            },
         }
     }
 }

@@ -132,12 +132,8 @@ async fn a_stored_verdict_is_not_re_fetched() {
     );
 }
 
-// ── 3. A transport failure leaves no row and is retried ─────────────────────
+// ── 3. A transport failure is stored until an explicit rerun ────────────────
 
-/// A lookup that never got an answer is not a verdict. Nothing is written, so
-/// the next pass asks again — and there is no attempt counter or backoff row to
-/// stop it from succeeding when the provider comes back.
-///
 /// The failing response is a 400 rather than a 5xx so the client's own retry
 /// policy stays out of it; what is under test is what the sweep does with a
 /// failure, not how many times the client repeats one.
@@ -145,11 +141,11 @@ async fn a_stored_verdict_is_not_re_fetched() {
 /// its terminal state whenever a late signals snapshot reaches it -- the
 /// extraction can still be running when the sweep pass that watched the run
 /// has already returned. The next pass starts a fresh run for the same
-/// candidate; that stale re-broadcast is not the fresh run's answer, and the
-/// retry must keep waiting for its own.
+/// candidate; that stale re-broadcast is not the explicit re-run's answer, and
+/// the re-run must keep waiting for its own.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_retry_ignores_the_previous_run_s_terminal_state() {
+async fn an_explicit_rerun_ignores_the_previous_run_s_terminal_state() {
     let fixture = Fixture::new("retry-ignores-stale").await;
     let dir = fixture.disc_id_candidate("Album");
     let key = dir.to_string_lossy().into_owned();
@@ -161,7 +157,10 @@ async fn a_retry_ignores_the_previous_run_s_terminal_state() {
 
     let mut events = fixture.import.subscribe_events();
     fixture.sweep_once().await;
-    assert!(fixture.identified_for(&dir).await.is_none());
+    assert!(matches!(
+        fixture.identified_for(&dir).await.map(|row| row.verdict),
+        Some(TerminalVerdict::Failed { .. })
+    ));
     // The failed run's own terminal event, exactly as the lingering driver
     // would broadcast it again.
     let stale = drain_events(&mut events)
@@ -189,28 +188,38 @@ async fn a_retry_ignores_the_previous_run_s_terminal_state() {
         ),
     ]);
     fixture.provider.hold("/discid/");
-    let context = fixture.context();
-    let token = CancellationToken::new();
-    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
-    // The retry's lookup is in flight: its run owns the candidate now.
+    fixture.sweep.rerun_for_explicit_lookup(key.clone());
+    // The explicit lookup is in flight: its run owns the candidate now.
     wait_for_request(&fixture.provider, "/discid/", 2).await;
     fixture.import.emit_event_for_test(stale);
     fixture.provider.release();
-    tokio::time::timeout(Duration::from_secs(15), pass)
-        .await
-        .expect("pass finishes after the held lookup is released")
-        .unwrap();
+    tokio::time::timeout(Duration::from_secs(15), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(ImportEvent::Scan(ScanEvent::CandidateVerdictStored { candidate_key }))
+                    if candidate_key == key
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the explicit re-run stores its verdict");
 
     assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the retry stores its own answer, not the previous run's"
+        matches!(
+            fixture.identified_for(&dir).await.map(|row| row.verdict),
+            Some(TerminalVerdict::Found { .. })
+        ),
+        "the explicit re-run stores its own answer, not the previous run's"
     );
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_transport_failure_leaves_no_row_and_is_retried() {
-    let fixture = Fixture::new("failure-retried").await;
+async fn a_transport_failure_is_stored_and_not_automatically_retried() {
+    let fixture = Fixture::new("failure-stored").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     fixture
@@ -219,10 +228,12 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
     fixture.scan(1).await;
 
     fixture.sweep_once().await;
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "a failed lookup must leave no row — a stored failure is a stored answer"
-    );
+    let stored = fixture
+        .identified_for(&dir)
+        .await
+        .expect("the failed outcome is stored");
+    assert!(matches!(stored.verdict, TerminalVerdict::Failed { .. }));
+    let requests_after_failure = fixture.provider.requests().len();
 
     fixture.provider.set_routes(vec![
         (
@@ -238,9 +249,10 @@ async fn a_transport_failure_leaves_no_row_and_is_retried() {
     ]);
     fixture.sweep_once().await;
 
-    assert!(
-        fixture.identified_for(&dir).await.is_some(),
-        "the candidate is retried, and the retry stores"
+    assert_eq!(
+        fixture.provider.requests().len(),
+        requests_after_failure,
+        "a stored failure waits for an explicit rerun"
     );
 }
 
@@ -516,17 +528,18 @@ async fn settling_a_lead_costs_one_release_lookup_whichever_signal_found_it() {
     );
 }
 
-/// The write ordering, from the outside: a stored verdict's lead always has its
-/// documents alongside it, because the settle step writes them first and the
-/// verdict is not written at all when it fails.
+/// The write ordering, from the outside: a failed lead fetch stores the failure
+/// without storing partial release documents, and automatic passes leave it
+/// alone until an explicit re-run.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_settled_verdict_never_stores_without_its_documents() {
+async fn a_failed_settle_is_stored_without_partial_documents() {
     let fixture = Fixture::new("settle-ordering").await;
     let dir = fixture.disc_id_candidate("Album");
     let probed = fixture.probed_total_ms(&dir);
     // The disc-ID lookup answers; the release lookup that settles the lead does
-    // not. The verdict is reachable, and must still not be stored.
+    // not. The failed terminal answer must be stored without pretending the
+    // release itself was settled.
     fixture.provider.route(
         "/discid/",
         200,
@@ -537,16 +550,18 @@ async fn a_settled_verdict_never_stores_without_its_documents() {
 
     fixture.sweep_once().await;
 
-    assert!(
-        fixture.identified_for(&dir).await.is_none(),
-        "a lead whose documents could not be fetched stores no verdict"
-    );
+    assert!(matches!(
+        fixture.identified_for(&dir).await.map(|row| row.verdict),
+        Some(TerminalVerdict::Failed { .. })
+    ));
     assert!(
         fixture.archived("mb-order-1").await.is_none(),
         "and nothing half-written is left behind"
     );
 
-    // The provider comes back, and now both land together.
+    let requests_after_failure = fixture.provider.requests().len();
+    // The provider comes back, but an automatic pass does not replace the
+    // stored failure.
     fixture.provider.set_routes(vec![
         (
             "/discid/",
@@ -561,10 +576,14 @@ async fn a_settled_verdict_never_stores_without_its_documents() {
     ]);
     fixture.sweep_once().await;
 
-    assert!(fixture.identified_for(&dir).await.is_some(), "the retry stores");
+    assert_eq!(
+        fixture.provider.requests().len(),
+        requests_after_failure,
+        "the stored failure is not retried automatically"
+    );
     assert!(
-        fixture.archived("mb-order-1").await.is_some(),
-        "with the documents the verdict rests on"
+        fixture.archived("mb-order-1").await.is_none(),
+        "an automatic pass leaves the failed settle untouched"
     );
 }
 
@@ -630,6 +649,52 @@ async fn explicit_lookup_settles_its_lead_before_storing_the_verdict() {
         "a settled row is finished: {:?}",
         fixture.provider.requests()
     );
+}
+
+/// A release document can carry a readable tracklist yet still be impossible
+/// to project into candidate metadata. An explicit run stores that terminal
+/// release-details failure instead of waiting for another state event that
+/// will never arrive.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn explicit_lookup_stores_a_metadata_projection_failure() {
+    let fixture = Fixture::new("interactive-projection-failure").await;
+    let dir = fixture.disc_id_candidate("Album");
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-projection-1", "rg-projection-1", &[probed, 0]),
+    );
+    let mut incomplete: serde_json::Value = serde_json::from_str(&release_json(
+        "mb-projection-1",
+        "rg-projection-1",
+        &[probed, 0],
+    ))
+    .unwrap();
+    incomplete
+        .as_object_mut()
+        .unwrap()
+        .remove("release-group");
+    fixture.provider.route(
+        "/release/mb-projection-1?",
+        200,
+        incomplete.to_string(),
+    );
+    fixture.scan(1).await;
+
+    fixture.start_explicit_lookup(&dir);
+    let row = tokio::time::timeout(Duration::from_secs(2), fixture.await_identified_row(&dir))
+        .await
+        .expect("the explicit recorder stores the projection failure");
+
+    assert!(matches!(
+        identify_result(&row).verdict,
+        TerminalVerdict::Failed {
+            ref failures,
+            ..
+        } if matches!(failures.as_slice(), [crate::identify::IdentifyFailure::ReleaseDetails(_)])
+    ));
 }
 
 /// The receipt for "so ready it is offline": picking a candidate whose lead is

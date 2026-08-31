@@ -139,8 +139,11 @@ pub(crate) fn discogs_validation_from_result(
 }
 
 impl LibraryManager {
-    pub fn has_discogs_token(&self) -> bool {
-        self.config_handle.has_discogs_key()
+    pub(crate) fn discogs_is_usable(&self) -> bool {
+        self.config_handle
+            .config()
+            .discogs_token_status()
+            .is_usable()
     }
 
     pub fn get_discogs_token(&self) -> Result<Option<String>, LibraryError> {

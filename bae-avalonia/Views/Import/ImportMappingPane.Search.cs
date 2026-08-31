@@ -72,6 +72,15 @@ internal sealed partial class ImportMappingPane
         {
             column.Children.Add(ChoiceList(matches));
         }
+        else if (ShownIdentifyState is BridgeIdentifyState.Failed failed)
+        {
+            foreach (var failure in failed.Failures)
+            {
+                column.Children.Add(ImportPaneUi.Cell(
+                    BridgeDisplay.LocalizedLine(failure),
+                    secondary: true));
+            }
+        }
         else if (ShownIdentifyState is not BridgeIdentifyState.Idle
             and not BridgeIdentifyState.Triangulating)
         {

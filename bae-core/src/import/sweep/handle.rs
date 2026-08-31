@@ -56,9 +56,15 @@ impl QueueSweepHandle {
                     );
                     return;
                 };
-                if has_stored_verdict(&this.context, &candidate_key).await
-                    || this.context.identify.is_running(&candidate_key)
-                {
+                let has_stored_verdict =
+                    match has_stored_verdict(&this.context, &candidate_key).await {
+                        Ok(stored) => stored,
+                        Err(error) => {
+                            warn!("cannot read the stored verdict for {candidate_key}: {error}");
+                            return;
+                        }
+                    };
+                if has_stored_verdict || this.context.identify.is_running(&candidate_key) {
                     return;
                 }
                 this.start_explicit_lookup_run(candidate_key, candidate);

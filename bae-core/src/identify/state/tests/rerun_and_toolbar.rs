@@ -165,6 +165,52 @@ fn toggle_during_triangulation_keeps_looking_up() {
     }
 }
 
+/// A failure from a signal the user excluded while it was in flight is not
+/// part of the active evidence and cannot invalidate the remaining answer.
+#[test]
+fn excluded_in_flight_disc_failure_does_not_fail_the_barcode_answer() {
+    let (state, _) = update(
+        started(),
+        signals(
+            DiscIdSignal::Computed {
+                disc_id: "d".to_string(),
+                track_count: 5,
+                source_file: None,
+            },
+            BarcodeSignal::Settled {
+                codes: artwork_codes(&["BAR"]),
+            },
+            &[],
+        ),
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::SignalToggled {
+            signal: SignalToggle::Disc,
+        },
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::DiscidLookupFailed {
+            failure: LookupFailure::Network,
+            track_count: 5,
+        },
+    );
+    let (state, _) = step(
+        state,
+        IdentifyEvent::BarcodeLookupMatched {
+            for_barcode: "BAR".to_string(),
+            results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
+        },
+    );
+
+    assert!(matches!(state, IdentifyState::Found { .. }), "got {state:?}");
+    assert!(matches!(
+        crate::identify::TerminalVerdict::try_from(state),
+        Ok(crate::identify::TerminalVerdict::Found { .. })
+    ));
+}
+
 /// `ReRun` from a settled state resets to `Triangulating` and re-dispatches both
 /// lookups from the retained signals.
 #[test]
@@ -639,7 +685,7 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
             failure: failure.clone(),
         },
     );
-    assert!(matches!(state, IdentifyState::NotFoundAnywhere { .. }));
+    assert!(matches!(state, IdentifyState::Failed { .. }));
     let barcode = state
         .toolbar()
         .into_iter()
@@ -678,7 +724,7 @@ fn toolbar_keeps_failed_disc_id_lookup_after_settle() {
             track_count: 5,
         },
     );
-    assert!(matches!(state, IdentifyState::NotFoundAnywhere { .. }));
+    assert!(matches!(state, IdentifyState::Failed { .. }));
     let disc = state
         .toolbar()
         .into_iter()
@@ -822,9 +868,8 @@ fn toggle_from_found_re_derives_terminal_state() {
 }
 
 /// A barcode lookup can fail while the disc-ID lookup is still in flight. The
-/// pipeline stays `Triangulating` until the disc settles, then combines over
-/// the disc results while retaining the barcode failure in the context (so the
-/// barcode badge still reads Failed on the terminal state).
+/// pipeline stays `Triangulating` until the disc settles, then reports the
+/// failed automatic lookup instead of presenting the disc's partial answer.
 #[test]
 fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     let (state, _) = update(
@@ -864,12 +909,11 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
         },
     );
 
-    match &state {
-        IdentifyState::Found { context, .. } => {
-            assert_eq!(context.barcode_failure.as_ref(), Some(&failure));
-        }
-        other => panic!("expected Found from the disc results, got {other:?}"),
-    }
+    assert!(matches!(
+        &state,
+        IdentifyState::Failed { failures, .. }
+            if failures == &vec![crate::identify::IdentifyFailure::Barcode(failure.clone())]
+    ));
     // The terminal toolbar surfaces the retained barcode failure.
     let barcode = state
         .toolbar()

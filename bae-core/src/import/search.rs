@@ -253,16 +253,52 @@ pub async fn search_discogs(
 /// status is preserved); a local/internal MB error becomes opaque `Diagnostic`
 /// detail. `NotFound` never reaches here — callers map it to "no matches"
 /// before this is called.
-fn mb_error_to_lookup_failure(e: musicbrainz::MusicBrainzError) -> LookupFailure {
+fn mb_error_to_lookup_failure(e: &musicbrainz::MusicBrainzError) -> LookupFailure {
     use musicbrainz::MusicBrainzError;
     match e {
         MusicBrainzError::Network(_) => LookupFailure::Network,
         MusicBrainzError::Timeout => LookupFailure::Timeout,
-        MusicBrainzError::Provider { status } => LookupFailure::Provider { status },
+        MusicBrainzError::Provider { status } => LookupFailure::Provider { status: *status },
         MusicBrainzError::NotFound(_) | MusicBrainzError::Other(_) => LookupFailure::Diagnostic {
             detail: e.to_string(),
         },
     }
+}
+
+/// Preserve provider failures while lifting the import service's typed error
+/// into the identify state machine.
+pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailure {
+    match error {
+        ImportError::MusicBrainz(error) => mb_error_to_lookup_failure(error),
+        ImportError::Discogs(error) => match error {
+            DiscogsError::Transport(error) if error.is_timeout() => LookupFailure::Timeout,
+            DiscogsError::Transport(_) => LookupFailure::Network,
+            DiscogsError::Provider(status) => LookupFailure::Provider {
+                status: Some(status.as_u16()),
+            },
+            DiscogsError::RateLimit => LookupFailure::Provider { status: Some(429) },
+            DiscogsError::InvalidApiKey => LookupFailure::Provider { status: Some(401) },
+            DiscogsError::NotFound | DiscogsError::Serialization(_) => LookupFailure::Diagnostic {
+                detail: error.to_string(),
+            },
+        },
+        _ => LookupFailure::Diagnostic {
+            detail: error.to_string(),
+        },
+    }
+}
+
+/// Combine every configured provider's answer. `None` means Discogs was not a
+/// configured source; `Some(Err(_))` means it was part of this lookup and did
+/// not answer, so the combined lookup is incomplete.
+pub(crate) fn merge_provider_results(
+    mut musicbrainz: Vec<MetadataResult>,
+    discogs: Option<Result<Vec<MetadataResult>, LookupFailure>>,
+) -> Result<Vec<MetadataResult>, LookupFailure> {
+    if let Some(discogs) = discogs {
+        musicbrainz.extend(discogs?);
+    }
+    Ok(musicbrainz)
 }
 
 /// The releases MusicBrainz has for a disc ID, each with its cover art. Empty
@@ -275,7 +311,7 @@ pub async fn lookup_by_discid(
     let releases = match musicbrainz::lookup_by_discid(discid, priority).await {
         Ok(releases) => releases,
         Err(musicbrainz::MusicBrainzError::NotFound(_)) => return Ok(Vec::new()),
-        Err(e) => return Err(mb_error_to_lookup_failure(e)),
+        Err(e) => return Err(mb_error_to_lookup_failure(&e)),
     };
 
     Ok(releases

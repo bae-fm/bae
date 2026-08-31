@@ -50,3 +50,25 @@ extension BridgeLookupFailure {
         return localizedDescription
     }
 }
+
+extension BridgeIdentifyFailure {
+    /// The failed step plus its provider reason. Keeping the step attached is
+    /// what distinguishes two simultaneous provider failures with the same
+    /// underlying reason.
+    var badgeLine: String {
+        switch self {
+        case .discId(let failure):
+            return String(localized: "Disc ID") + ": " + failure.badgeLine
+        case .barcode(let failure):
+            return String(localized: "Barcode") + ": " + failure.badgeLine
+        case .catalog(let failure):
+            return String(localized: "Catalog number") + ": "
+                + failure.badgeLine
+        case .releaseDetails(let failure):
+            return String(
+                localized:
+                    "Failed to load release details: \(failure.badgeLine)"
+            )
+        }
+    }
+}

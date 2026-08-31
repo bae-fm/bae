@@ -361,6 +361,27 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     )? {
         leads.insert(content_hash, lead?);
     }
+    let mut identify_failures: HashMap<String, (u32, u64)> = HashMap::new();
+    for (content_hash, track_count, probed) in sql.query(
+        "SELECT content_hash, track_count, probed_total_duration_ms \
+         FROM import_candidate_identify_failure",
+        [],
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        },
+    )? {
+        identify_failures.insert(
+            content_hash,
+            (
+                to_u32(track_count, "a failed verdict's track count")?,
+                to_u64(probed, "a failed verdict's probed total")?,
+            ),
+        );
+    }
 
     let mut states = HashMap::new();
     for row in sql.query(
@@ -380,7 +401,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         },
     )? {
         let (content_hash, edit_revision, verdict_kind, track_count, probed, metadata_provenance) = row;
-        let verdict = verdict_kind
+        let normal_verdict = verdict_kind
             .map(|kind| -> Result<VerdictSummary, DbError> {
                 Ok(VerdictSummary {
                     kind: match kind.as_str() {
@@ -397,6 +418,21 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 })
             })
             .transpose()?;
+        let failed = identify_failures.remove(&content_hash);
+        if normal_verdict.is_some() && failed.is_some() {
+            return Err(DbError::Message(format!(
+                "candidate {content_hash} stores both a verdict and an identify failure"
+            )));
+        }
+        let failed_probed = failed.as_ref().map(|(_, probed)| *probed);
+        let verdict = normal_verdict.or_else(|| {
+            failed.map(|(track_count, _)| VerdictSummary {
+                kind: VerdictKind::Failed,
+                track_count: Some(track_count),
+                match_count: 0,
+                lead: None,
+            })
+        });
         let metadata_provenance = metadata_provenance?;
         let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
             DbError::Message(format!(
@@ -417,6 +453,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 probed_total_duration_ms: probed
                     .map(|probed| to_u64(probed, "a candidate's probed total"))
                     .transpose()?
+                    .or(failed_probed)
                     .unwrap_or_default(),
                 metadata_provenance,
                 metadata_draft_valid,

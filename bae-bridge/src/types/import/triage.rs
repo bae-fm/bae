@@ -248,6 +248,7 @@ pub enum BridgeNeedsYouGroup {
     PickAPressing,
     CountsOrLengthsDisagree,
     AlreadyInLibrary,
+    LookupFailed,
     NoMatch,
     StillIdentifying,
 }
@@ -273,8 +274,7 @@ pub enum BridgeIdentifyPhase {
     Queued,
     /// A run is in flight.
     Running,
-    /// A run settled without an answer worth keeping — a lookup that never
-    /// responded. It is retried on a later pass; nobody is waiting on it.
+    /// A run settled but its verdict has not been stored yet.
     NoAnswer,
 }
 
@@ -290,6 +290,7 @@ pub enum BridgeNeedsYou {
     },
     NoMatch,
     NothingToLookUp,
+    LookupFailed,
     TrackCountDisagrees {
         local: u32,
         source: u32,
@@ -313,6 +314,7 @@ impl BridgeNeedsYou {
             Self::SeveralMatches { .. } => "core.import.triage.several_matches",
             Self::NoMatch => "core.import.triage.no_match",
             Self::NothingToLookUp => "core.import.triage.nothing_to_look_up",
+            Self::LookupFailed => "core.import.triage.lookup_failed",
             Self::TrackCountDisagrees { .. } => "core.import.triage.track_count_disagrees",
             Self::DurationsDisagree { .. } => "core.import.triage.durations_disagree",
             Self::SourceLengthsUnknown => "core.import.triage.source_lengths_unknown",
@@ -339,6 +341,7 @@ pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
         BridgeNeedsYouGroup::PickAPressing,
         BridgeNeedsYouGroup::CountsOrLengthsDisagree,
         BridgeNeedsYouGroup::AlreadyInLibrary,
+        BridgeNeedsYouGroup::LookupFailed,
         BridgeNeedsYouGroup::NoMatch,
         BridgeNeedsYouGroup::StillIdentifying,
     ]

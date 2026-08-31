@@ -33,7 +33,7 @@ extension BridgeNeedsYou {
                 DurationClock.text(Int64(sourceMs))
             )
         case .alreadyInLibrary, .noMatch, .nothingToLookUp,
-            .sourceLengthsUnknown, .localDurationUnknown:
+            .lookupFailed, .sourceLengthsUnknown, .localDurationUnknown:
             return template
         }
     }

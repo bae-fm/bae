@@ -190,6 +190,12 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
         ),
         TerminalVerdict::NotFoundAnywhere,
         TerminalVerdict::ManualOnly { track_count: 11 },
+        TerminalVerdict::Failed {
+            failures: vec![crate::identify::IdentifyFailure::DiscId(
+                crate::signals::LookupFailure::Network,
+            )],
+            track_count: 11,
+        },
     ];
 
     for verdict in verdicts {
@@ -214,6 +220,10 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
             }
             TerminalVerdict::ManualOnly { track_count } => {
                 assert_eq!(summary.kind, VerdictKind::ManualOnly);
+                assert_eq!(summary.track_count, Some(*track_count));
+            }
+            TerminalVerdict::Failed { track_count, .. } => {
+                assert_eq!(summary.kind, VerdictKind::Failed);
                 assert_eq!(summary.track_count, Some(*track_count));
             }
         }

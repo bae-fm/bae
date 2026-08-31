@@ -82,6 +82,13 @@ struct ImportSearchPane: View {
         return true
     }
 
+    private var automaticFailures: [BridgeIdentifyFailure] {
+        guard case .failed(let failures) = state.identifyState else {
+            return []
+        }
+        return failures
+    }
+
     /// Whether the toolbar row renders: live badges when the signals are
     /// known, or just its escapes (Auto / Search manually) on a resumed
     /// verdict — a terminal state stood back up from the store, whose raw
@@ -91,7 +98,7 @@ struct ImportSearchPane: View {
             return true
         }
         switch state.identifyState {
-        case .found, .notFoundAnywhere, .manualOnly:
+        case .found, .notFoundAnywhere, .manualOnly, .failed:
             return true
         case .idle, .triangulating:
             return false
@@ -196,6 +203,9 @@ struct ImportSearchPane: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        else if !automaticFailures.isEmpty {
+            lookupFailedLine
+        }
         else if hasAutomaticRunStarted {
             nothingFoundLine
         }
@@ -206,6 +216,25 @@ struct ImportSearchPane: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+    }
+
+    private var lookupFailedLine: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(automaticFailures.enumerated()), id: \.offset) {
+                    _,
+                    failure in
+                    Text(failure.badgeLine)
+                        .font(.callout)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     /// The result line when nothing was found: what happened, and the one

@@ -318,6 +318,7 @@ impl crate::types::BridgeNeedsYouGroup {
             G::PickAPressing => Self::PickAPressing,
             G::CountsOrLengthsDisagree => Self::CountsOrLengthsDisagree,
             G::AlreadyInLibrary => Self::AlreadyInLibrary,
+            G::LookupFailed => Self::LookupFailed,
             G::NoMatch => Self::NoMatch,
             G::StillIdentifying => Self::StillIdentifying,
         }
@@ -360,6 +361,7 @@ impl crate::types::BridgeNeedsYou {
             N::SeveralMatches { count } => Self::SeveralMatches { count },
             N::NoMatch => Self::NoMatch,
             N::NothingToLookUp => Self::NothingToLookUp,
+            N::LookupFailed => Self::LookupFailed,
             N::TrackCountDisagrees { local, source } => Self::TrackCountDisagrees { local, source },
             N::DurationsDisagree {
                 probed_ms,

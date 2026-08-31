@@ -90,6 +90,10 @@ pub enum IdentifyStateView {
     ManualOnly {
         track_count: u32,
     },
+
+    Failed {
+        failures: Vec<super::IdentifyFailure>,
+    },
 }
 
 impl From<IdentifyState> for IdentifyStateView {
@@ -138,6 +142,12 @@ impl From<IdentifyState> for IdentifyStateView {
                 track_count,
                 context: _,
             } => IdentifyStateView::ManualOnly { track_count },
+
+            IdentifyState::Failed {
+                failures,
+                track_count: _,
+                context: _,
+            } => IdentifyStateView::Failed { failures },
         }
     }
 }

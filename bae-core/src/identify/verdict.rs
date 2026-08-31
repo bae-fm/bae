@@ -16,27 +16,27 @@
 //! freeze a snapshot nothing invalidates. A reader re-checks it live, against
 //! the release ids named here, rather than trusting a stored copy.
 //!
-//! `IdentifyState` calling a state "terminal" only means nothing is in
-//! flight — it says nothing about whether a lookup that fed it actually
-//! answered. `TryFrom` checks that separately, over every variant: a `Found`
-//! can be reached with one signal's lookup having failed just
-//! as easily as `NotFoundAnywhere` can, and in every case what failed is
-//! evidence half-missing, not evidence against. Only a state whose context
-//! carries no recorded failure on either signal converts; everything else —
-//! including a state that would otherwise satisfy one of the four terminal
-//! shapes — is handed back as `Err`, same as `Idle`/`Triangulating`. The
-//! ordinary, common case (both lookups ran to completion, whatever they
-//! found) is what actually reaches `Ok` and is what the sweep persists —
-//! this gate narrows *which* terminal states are storable, it doesn't make
-//! the terminal states themselves rarer.
+//! The reducer makes partial evidence unrepresentable as a successful terminal
+//! state: any active lookup failure produces `IdentifyState::Failed`. Only
+//! `Idle` and `Triangulating` have no terminal verdict.
 
 use super::combine::ResultProvenance;
 use super::state::{IdentifyState, SignalsContext};
 use crate::import::search::MetadataResult;
+use crate::signals::LookupFailure;
+
+/// Which lookup failed.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum IdentifyFailure {
+    DiscId(LookupFailure),
+    Barcode(LookupFailure),
+    Catalog(LookupFailure),
+    ReleaseDetails(LookupFailure),
+}
 
 /// The identify pipeline's outcome once it can no longer change without new
-/// input from the user or a re-run. Built from [`IdentifyState`]'s three
-/// terminal variants (`Found`, `NotFoundAnywhere`, `ManualOnly`);
+/// input from the user or a re-run. Built from [`IdentifyState`]'s four
+/// terminal variants (`Found`, `NotFoundAnywhere`, `ManualOnly`, `Failed`);
 /// `Idle` and `Triangulating` have no terminal verdict, hence the fallible
 /// conversion below.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -69,44 +69,21 @@ pub enum TerminalVerdict {
     /// nothing; here, none ran, so a reader offers manual search rather than
     /// claiming a lookup that never happened.
     ManualOnly { track_count: u32 },
+    /// At least one provider step failed, so partial evidence must not be
+    /// classified as a complete answer.
+    Failed {
+        failures: Vec<IdentifyFailure>,
+        track_count: u32,
+    },
 }
 
 impl TryFrom<IdentifyState> for TerminalVerdict {
     /// The state handed back unchanged when it isn't terminal yet (`Idle` or
-    /// `Triangulating`) — nothing to store, and the caller may want it back
-    /// rather than have it silently discarded.
+    /// `Triangulating`).
     type Error = IdentifyState;
 
     fn try_from(state: IdentifyState) -> Result<Self, Self::Error> {
-        // Checked before the per-variant match, uniformly, because a lookup
-        // failure can shape *any* terminal outcome, not just settle it empty:
-        //
-        // - `Found` from the surviving signal alone. `combine::combine_results`
-        //   takes whichever side is non-empty when the other is — and a
-        //   `Failed` lookup contributes zero results exactly like a clean
-        //   `Skipped` does. A single result reached this way passes the
-        //   queue's Ready rule ("exactly one result") on evidence where half
-        //   the cross-check never ran.
-        // - `Found` over a union from a missing intersection partner. Two
-        //   disc-ID results and one barcode result that would have intersected
-        //   to one release instead reads as three to pick between, because the
-        //   lookup that would have narrowed them failed.
-        // - `NotFoundAnywhere` from both sides settling empty — a genuine
-        //   double-empty search and a failed lookup are indistinguishable
-        //   once `combine_results` sees two empty sets (see
-        //   `identify::state::re_derive`).
-        //
-        // In every case the state machine still calls it "terminal" — nothing
-        // is in flight — but "terminal" and "safe to persist forever" are not
-        // the same question, and only the context's own failure fields can
-        // answer the second one.
-        if has_lookup_failure(&state) {
-            return Err(state);
-        }
-
         match state {
-            // Both lookups completed (this arm's whole precondition, enforced
-            // above) — a genuine result, safe to store.
             IdentifyState::Found {
                 matches,
                 track_count,
@@ -129,6 +106,15 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 context: _,
             } => Ok(Self::ManualOnly { track_count }),
 
+            IdentifyState::Failed {
+                failures,
+                track_count,
+                context: _,
+            } => Ok(Self::Failed {
+                failures,
+                track_count,
+            }),
+
             other @ (IdentifyState::Idle | IdentifyState::Triangulating { .. }) => Err(other),
         }
     }
@@ -140,7 +126,7 @@ impl TerminalVerdict {
     pub fn named_releases(&self) -> Vec<&MetadataResult> {
         match self {
             Self::Found { matches, .. } => matches.iter().collect(),
-            Self::NotFoundAnywhere | Self::ManualOnly { .. } => Vec::new(),
+            Self::NotFoundAnywhere | Self::ManualOnly { .. } | Self::Failed { .. } => Vec::new(),
         }
     }
 
@@ -206,22 +192,16 @@ impl TerminalVerdict {
                 track_count,
                 context: empty_context(track_count),
             },
+            Self::Failed {
+                failures,
+                track_count,
+            } => IdentifyState::Failed {
+                failures,
+                track_count,
+                context: empty_context(track_count),
+            },
         }
     }
-}
-
-/// Whether the state's carried context recorded a lookup failure on either
-/// signal, checked uniformly across every terminal variant (`Idle` and
-/// `Triangulating` carry no verdict either way, so they read as `false` here
-/// — the earlier arms in `try_from` already reject them for that reason).
-fn has_lookup_failure(state: &IdentifyState) -> bool {
-    let context = match state {
-        IdentifyState::Found { context, .. }
-        | IdentifyState::NotFoundAnywhere { context }
-        | IdentifyState::ManualOnly { context, .. } => context,
-        IdentifyState::Idle | IdentifyState::Triangulating { .. } => return false,
-    };
-    context.discid_failure.is_some() || context.barcode_failure.is_some()
 }
 
 #[cfg(test)]
@@ -312,10 +292,7 @@ mod tests {
     /// `Found` keeps its matches and provenance, and drops
     /// `library_statuses` — that's re-checked live, not stored. `mk_context`
     /// carries no recorded failure, so this also stands as the positive case:
-    /// a `Found` reached with both lookups completing converts and is what
-    /// the sweep actually persists in the ordinary case — the failure gate
-    /// below narrows which terminal states are storable, it doesn't make
-    /// `Ok` rare.
+    /// a `Found` reached with both lookups completing converts normally.
     #[test]
     fn found_drops_library_status_and_keeps_the_rest() {
         let verdict = TerminalVerdict::try_from(found_state()).unwrap();
@@ -361,27 +338,24 @@ mod tests {
         assert!(context.barcode_codes.is_empty());
     }
 
-    /// A `Found` reached with the barcode side surviving alone because the
-    /// disc-ID lookup died — `combine::combine_results` takes the non-empty
-    /// side whenever the other is empty, and a `Failed` lookup contributes
-    /// zero results exactly like a clean `Skipped` one. This single result
-    /// would satisfy the queue's Ready rule ("exactly one result") on
-    /// evidence where the disc-ID cross-check never ran, so it must not
-    /// convert. This is the regression a `Found`-is-always-safe assumption
-    /// would slip past if the failure gate were narrowed back to
-    /// `NotFoundAnywhere` alone.
+    /// The reducer exposes a failed lookup directly, and verdict conversion
+    /// preserves that terminal state.
     #[test]
-    fn found_reached_with_a_recorded_discid_failure_is_rejected() {
-        let mut state = found_state();
-        let IdentifyState::Found { context, .. } = &mut state else {
-            unreachable!()
-        };
+    fn a_recorded_discid_failure_derives_and_stores_as_failed() {
+        let mut context = mk_context(11);
         context.discid_failure = Some(crate::signals::LookupFailure::Provider { status: None });
-        let verdict = TerminalVerdict::try_from(state);
-        assert!(
-            verdict.is_err(),
-            "a Found built from a failed lookup on the other signal must not store"
-        );
+        let state = crate::identify::state::re_derive_for_tests(context);
+        assert!(matches!(state, IdentifyState::Failed { .. }));
+        let verdict = TerminalVerdict::try_from(state).unwrap();
+        assert!(matches!(
+            verdict,
+            TerminalVerdict::Failed {
+                failures,
+                track_count: 11,
+            } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Provider {
+                    status: None
+                })]
+        ));
     }
 
     /// Signals that share no result settle as one `Found` over their union, so
@@ -435,9 +409,9 @@ mod tests {
     /// disagreeing: had it succeeded with a release the barcode side also
     /// returned, the intersection would have narrowed to one release. A
     /// missing intersection partner is exactly what can manufacture a longer
-    /// match list, so this must not convert either.
+    /// match list, so this stores as a failure rather than that partial list.
     #[test]
-    fn a_union_reached_with_a_recorded_discid_failure_is_rejected() {
+    fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
         let context = SignalsContext {
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
             barcode_codes: vec![],
@@ -459,11 +433,14 @@ mod tests {
             track_count: 9,
         };
         let state = crate::identify::state::re_derive_for_tests(context);
-        let verdict = TerminalVerdict::try_from(state);
-        assert!(
-            verdict.is_err(),
-            "a match list shaped by a failed lookup on the other signal must not store"
-        );
+        let verdict = TerminalVerdict::try_from(state).unwrap();
+        assert!(matches!(
+            verdict,
+            TerminalVerdict::Failed {
+                failures,
+                track_count: 9,
+            } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)]
+        ));
     }
 
     /// A genuinely empty search — both signals ran, neither failed, neither
@@ -475,33 +452,54 @@ mod tests {
         assert!(matches!(verdict, Ok(TerminalVerdict::NotFoundAnywhere)));
     }
 
-    /// A disc-ID lookup that failed over the network, with no barcode source to
-    /// fall back on, settles the reducer into `NotFoundAnywhere` — see
-    /// `identify::state::re_derive`, which cannot tell "searched, found
-    /// nothing" apart from "never got an answer" by the time it combines. The
-    /// conversion must catch this from `discid_failure` and refuse to store it
-    /// — this is the regression a stored-failure-as-NotFoundAnywhere bug would
-    /// slip past if this check were ever removed.
+    /// A disc-ID lookup failure derives to `Failed`, never to no-match.
     #[test]
-    fn not_found_anywhere_masking_a_discid_failure_is_rejected() {
+    fn discid_failure_derives_to_failed() {
         let mut context = mk_context(7);
         context.discid_failure = Some(crate::signals::LookupFailure::Network);
-        let verdict = TerminalVerdict::try_from(IdentifyState::NotFoundAnywhere { context });
-        assert!(
-            verdict.is_err(),
-            "a failed lookup must not store as not-found"
-        );
+        let state = crate::identify::state::re_derive_for_tests(context);
+        assert!(matches!(state, IdentifyState::Failed { .. }));
+        let verdict = TerminalVerdict::try_from(state).unwrap();
+        assert!(matches!(
+            verdict,
+            TerminalVerdict::Failed {
+                failures,
+                track_count: 7,
+            } if failures == vec![IdentifyFailure::DiscId(crate::signals::LookupFailure::Network)]
+        ));
     }
 
     /// Same for the barcode side.
     #[test]
-    fn not_found_anywhere_masking_a_barcode_failure_is_rejected() {
+    fn barcode_failure_derives_to_failed() {
         let mut context = mk_context(7);
         context.barcode_failure = Some(crate::signals::LookupFailure::Timeout);
-        let verdict = TerminalVerdict::try_from(IdentifyState::NotFoundAnywhere { context });
-        assert!(
-            verdict.is_err(),
-            "a failed lookup must not store as not-found"
-        );
+        let state = crate::identify::state::re_derive_for_tests(context);
+        assert!(matches!(state, IdentifyState::Failed { .. }));
+        let verdict = TerminalVerdict::try_from(state).unwrap();
+        assert!(matches!(
+            verdict,
+            TerminalVerdict::Failed {
+                failures,
+                track_count: 7,
+            } if failures == vec![IdentifyFailure::Barcode(crate::signals::LookupFailure::Timeout)]
+        ));
+    }
+
+    #[test]
+    fn chosen_catalog_failure_derives_to_failed() {
+        let mut context = mk_context(7);
+        context.chosen_catalog = Some("CAT-7".to_string());
+        context.catalog_failure = Some(crate::signals::LookupFailure::Network);
+        let state = crate::identify::state::re_derive_for_tests(context);
+        assert!(matches!(state, IdentifyState::Failed { .. }));
+        let verdict = TerminalVerdict::try_from(state).unwrap();
+        assert!(matches!(
+            verdict,
+            TerminalVerdict::Failed {
+                failures,
+                track_count: 7,
+            } if failures == vec![IdentifyFailure::Catalog(crate::signals::LookupFailure::Network)]
+        ));
     }
 }

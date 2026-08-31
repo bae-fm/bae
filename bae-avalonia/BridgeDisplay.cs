@@ -180,6 +180,22 @@ internal static class BridgeDisplay
             : Loc.Core(key);
     }
 
+    internal static string LocalizedLine(BridgeIdentifyFailure failure)
+    {
+        return failure switch
+        {
+            BridgeIdentifyFailure.DiscId discId =>
+                $"{Loc.Chrome("signal.kind.disc_id")}: {LocalizedLine(discId.Failure)}",
+            BridgeIdentifyFailure.Barcode barcode =>
+                $"{Loc.Chrome("signal.kind.barcode")}: {LocalizedLine(barcode.Failure)}",
+            BridgeIdentifyFailure.Catalog catalog =>
+                $"{Loc.Chrome("signal.kind.catalog")}: {LocalizedLine(catalog.Failure)}",
+            BridgeIdentifyFailure.ReleaseDetails details =>
+                $"{Loc.Chrome("import.error.load_release")}: {LocalizedLine(details.Failure)}",
+            _ => throw new ArgumentOutOfRangeException(nameof(failure)),
+        };
+    }
+
     /// <summary>
     /// The localized user-facing line for a playback failure, or null when there
     /// is none. The actionable cloud-only cases resolve their own keyed line;

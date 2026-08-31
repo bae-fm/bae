@@ -279,6 +279,8 @@ internal sealed partial class ImportSectionView
             RowArtist(row),
         BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
             row.Matched?.Artist,
+        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.LookupFailed, BridgeNeedsYouReason.Disagreement) =>
+            null,
         BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
             BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
         BridgeTriagePlacement.Importing or BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
@@ -406,12 +408,20 @@ internal sealed partial class ImportSectionView
                     BridgeNeedsYouGroup.PickAPressing => Chip(BridgeDisplay.LocalizedLine(disagreement.DisagreementValue), "BaeWarningBrush"),
                     BridgeNeedsYouGroup.AlreadyInLibrary => Chip(BridgeDisplay.LocalizedLine(disagreement.DisagreementValue), "BaeInfoBrush"),
                     BridgeNeedsYouGroup.CountsOrLengthsDisagree => DotIcon("BaeWarningBrush"),
+                    BridgeNeedsYouGroup.LookupFailed => LookupFailedIcon(disagreement.DisagreementValue),
                     BridgeNeedsYouGroup.NoMatch => SearchManuallyChip(row),
                     _ => new Panel(),
                 };
             default:
                 return new Panel();
         }
+    }
+
+    private static Control LookupFailedIcon(BridgeNeedsYou failure)
+    {
+        var icon = DotIcon("BaeWarningBrush");
+        ToolTip.SetTip(icon, BridgeDisplay.LocalizedLine(failure));
+        return icon;
     }
 
     private Control SearchManuallyChip(BridgeTriageRow row)

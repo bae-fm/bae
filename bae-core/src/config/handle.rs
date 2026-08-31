@@ -82,10 +82,6 @@ impl ConfigHandle {
         }
     }
 
-    pub fn has_discogs_key(&self) -> bool {
-        self.config().discogs.is_some()
-    }
-
     /// Rename the library. The name is already validated non-blank by its type.
     pub fn rename_library(
         &self,

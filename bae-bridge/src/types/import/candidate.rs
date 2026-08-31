@@ -897,6 +897,20 @@ pub enum BridgeIdentifyState {
     ManualOnly {
         track_count: u32,
     },
+    /// At least one automatic provider lookup failed. The stored failure waits
+    /// for an explicit re-run rather than being retried by the queue sweep.
+    Failed {
+        failures: Vec<BridgeIdentifyFailure>,
+    },
+}
+
+/// Which automatic provider lookup failed.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeIdentifyFailure {
+    DiscId { failure: BridgeLookupFailure },
+    Barcode { failure: BridgeLookupFailure },
+    Catalog { failure: BridgeLookupFailure },
+    ReleaseDetails { failure: BridgeLookupFailure },
 }
 
 // ── Unified UI event system ─────────────────────────────────────────────

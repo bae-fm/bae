@@ -93,6 +93,8 @@ pub enum NeedsYouGroup {
     /// to the user; the row's `reason` still names which.
     CountsOrLengthsDisagree,
     AlreadyInLibrary,
+    /// An automatic provider lookup failed and awaits an explicit retry.
+    LookupFailed,
     /// Nothing matched, or there was nothing to look up.
     NoMatch,
     /// No verdict yet.
@@ -100,10 +102,11 @@ pub enum NeedsYouGroup {
 }
 
 impl NeedsYouGroup {
-    pub const IN_ORDER: [Self; 5] = [
+    pub const IN_ORDER: [Self; 6] = [
         Self::PickAPressing,
         Self::CountsOrLengthsDisagree,
         Self::AlreadyInLibrary,
+        Self::LookupFailed,
         Self::NoMatch,
         Self::StillIdentifying,
     ];
@@ -121,6 +124,7 @@ impl NeedsYouGroup {
             | NeedsYou::SourceLengthsUnknown
             | NeedsYou::LocalDurationUnknown => Self::CountsOrLengthsDisagree,
             NeedsYou::AlreadyInLibrary => Self::AlreadyInLibrary,
+            NeedsYou::LookupFailed => Self::LookupFailed,
             NeedsYou::NoMatch | NeedsYou::NothingToLookUp => Self::NoMatch,
         }
     }
@@ -144,25 +148,18 @@ pub enum NeedsYouReason {
 ///
 /// Without this the row cannot tell three different things apart, and the
 /// design's dimmed group is supposed to show which: a candidate the sweep has
-/// not reached, one being worked on right now, and one whose run *finished* but
-/// produced nothing storable. The third is not rare — the conversion into
-/// [`TerminalVerdict`](crate::identify::TerminalVerdict) refuses any terminal
-/// state carrying a recorded lookup failure, so every network blip lands there
-/// — and rendering it as "working on it" would promise progress that nothing is
-/// making.
+/// not reached, one being worked on, and a terminal run whose verdict has not
+/// been stored. Provider failures do not use the third state; they are stored
+/// failed verdicts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IdentifyPhase {
     /// Nothing has run yet: the sweep has not reached this candidate.
     Queued,
     /// A run is in flight — signals are being gathered, or a lookup is out.
     Running,
-    /// A run settled without an answer worth keeping: a lookup that never
-    /// responded, so half the evidence is missing and nothing was stored. It is
-    /// retried on a later pass; nobody is waiting on this one.
-    ///
-    /// A verdict that has just been accepted and is still being written reads
-    /// this way for the moment between the two — which is the same shape as the
-    /// answer arriving a moment later.
+    /// A run settled but its verdict is not stored yet. This is normally the
+    /// moment between accepting the terminal state and completing its write;
+    /// a write failure can leave the run here.
     NoAnswer,
 }
 
@@ -176,7 +173,8 @@ impl IdentifyPhase {
             IdentifyState::Triangulating { .. } => Self::Running,
             IdentifyState::Found { .. }
             | IdentifyState::NotFoundAnywhere { .. }
-            | IdentifyState::ManualOnly { .. } => Self::NoAnswer,
+            | IdentifyState::ManualOnly { .. }
+            | IdentifyState::Failed { .. } => Self::NoAnswer,
         }
     }
 }

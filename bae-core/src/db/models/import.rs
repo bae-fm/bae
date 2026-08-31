@@ -16,9 +16,10 @@ pub(crate) struct DbCandidateFileTagSnapshot {
 }
 
 /// What a caller supplies to record one candidate's identify verdict via
-/// [`crate::db::Database::save_import_candidate_verdict`] — the identify
-/// columns of `import_candidate_state` except `identified_at`. That column is
-/// stamped by the write path from the injected clock, the same convention as
+/// [`crate::db::Database::save_import_candidate_verdict`]. Normal outcomes use
+/// `import_candidate_state`'s identify columns and failed outcomes use the
+/// attached identify-failure row. Their timestamp is stamped by the write path
+/// from the injected clock, the same convention as
 /// `created_at` in `db/client/identity.rs`/`release.rs`: a timestamp that
 /// records "when this write happened" is the DB layer's to assign, not data a
 /// caller hands in — carrying it here would let a caller lie about it, and
@@ -57,9 +58,8 @@ pub struct NewImportCandidateVerdict {
 }
 
 /// What identification concluded about one candidate. Present as a whole or
-/// absent as a whole: the identify columns and the match rows below them are
-/// written together and cleared together, so no reader has to reason about a
-/// half-filled result.
+/// absent as a whole: normal identify columns, match rows, and the failed
+/// verdict row are replaced or cleared in one transaction.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     pub verdict: crate::identify::TerminalVerdict,

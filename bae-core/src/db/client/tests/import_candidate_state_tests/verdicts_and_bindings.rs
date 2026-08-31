@@ -423,15 +423,10 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
     );
 }
 
-/// A transport failure writes no row. Driven through the real identify
-/// reducer (a disc-ID lookup that fails over the network, no barcode
-/// source to fall back on) rather than hand-built, so this actually
-/// exercises the guard in `identify::verdict::TerminalVerdict::try_from` —
-/// the one thing standing between "nothing was learned" and a permanent
-/// `NotFoundAnywhere` row. If that guard is ever weakened or removed, this
-/// starts writing a row and fails.
+/// A transport failure is a stored terminal answer rather than absence that
+/// an automatic sweep interprets as permission to retry.
 #[tokio::test]
-async fn no_row_is_written_for_a_transport_failure() {
+async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     use crate::identify::state::step as identify_step;
     use crate::identify::{IdentifyEvent, IdentifyState};
     use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, TextSignal};
@@ -467,17 +462,18 @@ async fn no_row_is_written_for_a_transport_failure() {
         },
     );
 
-    // Exactly the shape a scheduler will use: only a successful conversion
-    // ever reaches `save_import_candidate_verdict`.
-    if let Ok(verdict) = TerminalVerdict::try_from(state) {
-        let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 0);
-        db.save_import_candidate_verdict(&row).await.unwrap();
-    }
+    let verdict = TerminalVerdict::try_from(state).expect("the failure is terminal");
+    let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 0);
+    db.save_import_candidate_verdict(&row).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
-    assert!(
-        !loaded.contains_key(&hash),
-        "a transport failure teaches nothing -- absence is the retry signal"
+    let loaded = loaded
+        .get(&hash)
+        .and_then(|state| state.identify.as_ref())
+        .expect("the failed verdict is stored");
+    assert_eq!(
+        loaded.verdict, verdict,
+        "the provider failure survives the database boundary"
     );
 }
 

@@ -28,12 +28,10 @@
 //! choices, not inputs to Lookup. A stored identify verdict is settled because the settle
 //! step and the verdict are written together.
 //!
-//! **Nothing durable is written for work that did not complete.** A transport
-//! failure, a cancelled shutdown, a settle lookup that never answered, a
-//! candidate that vanished mid-flight — each leaves no row, and absence is the
-//! retry signal. There are no attempt counters and no backoff, because a stored
-//! failure is a stored answer, and the retry that would have succeeded then
-//! never happens.
+//! **Provider failures are answers.** They are stored as failed verdicts and
+//! automatic passes leave them alone; only an explicit re-run replaces one.
+//! Cancellation and a candidate that vanished mid-flight still write nothing,
+//! because neither is an outcome of the candidate's lookup.
 
 use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
@@ -517,7 +515,7 @@ async fn run_pass_once(
                             emit_progress(context, identified, total);
                         } else {
                             debug!(
-                                "sweep: {} learned nothing; it is retried next pass",
+                                "sweep: {} finished without a current stored verdict",
                                 done.representative_key
                             );
                         }
@@ -535,9 +533,9 @@ async fn run_pass_once(
                     }
                 }
                 Some(Ok(ImportEvent::IdentifyStateChanged { candidate_key, run, state, .. })) => {
-                    // Terminal only means the machine stopped moving; whether
-                    // what it stopped on is storable is `finish_candidate`'s
-                    // question. Either way the candidate's slot is free now.
+                    // Terminal means the machine stopped moving, including on
+                    // an explicit failure verdict. Either way the candidate's
+                    // slot is free now.
                     // A state from another run of the same candidate -- an
                     // earlier one still broadcasting -- is not this pass's.
                     let settled = (state.is_terminal()

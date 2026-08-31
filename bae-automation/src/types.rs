@@ -325,6 +325,15 @@ pub struct AutomationResultProvenance {
     pub by_catalog: bool,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationIdentifyFailure {
+    DiscId { failure: AutomationLookupFailure },
+    Barcode { failure: AutomationLookupFailure },
+    Catalog { failure: AutomationLookupFailure },
+    ReleaseDetails { failure: AutomationLookupFailure },
+}
+
 /// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`
 /// internals that drive core triangulation don't cross; terminal states carry
 /// the full match data an MCP client acts on.
@@ -345,6 +354,9 @@ pub enum AutomationIdentifyState {
     NotFoundAnywhere,
     ManualOnly {
         track_count: u32,
+    },
+    Failed {
+        failures: Vec<AutomationIdentifyFailure>,
     },
 }
 

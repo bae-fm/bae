@@ -304,6 +304,7 @@ internal static partial class NativeBae
             BridgeIdentifyState.Found found => new ImportCandidateRowStatus { Kind = "found", Count = found.Groups.Sum(group => group.Pressings.Length) },
             BridgeIdentifyState.NotFoundAnywhere => new ImportCandidateRowStatus { Kind = "not_found" },
             BridgeIdentifyState.ManualOnly => new ImportCandidateRowStatus { Kind = "manual" },
+            BridgeIdentifyState.Failed => new ImportCandidateRowStatus { Kind = "failed" },
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown identify state"),
         };
 

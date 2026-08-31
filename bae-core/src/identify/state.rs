@@ -183,6 +183,29 @@ impl SignalsContext {
         self.catalog_results.clear();
         self.catalog_failure = None;
     }
+
+    /// Failures belonging to evidence the current selection still uses.
+    /// Lookups already in flight are allowed to finish after exclusion, but
+    /// their answer no longer participates in the derived state.
+    fn active_failures(&self) -> Vec<super::IdentifyFailure> {
+        let mut failures = Vec::new();
+        if !self.disc_excluded {
+            if let Some(failure) = &self.discid_failure {
+                failures.push(super::IdentifyFailure::DiscId(failure.clone()));
+            }
+        }
+        if !self.barcode_excluded {
+            if let Some(failure) = &self.barcode_failure {
+                failures.push(super::IdentifyFailure::Barcode(failure.clone()));
+            }
+        }
+        if self.chosen_catalog.is_some() {
+            if let Some(failure) = &self.catalog_failure {
+                failures.push(super::IdentifyFailure::Catalog(failure.clone()));
+            }
+        }
+        failures
+    }
 }
 
 /// One candidate's identify state.
@@ -228,6 +251,14 @@ pub enum IdentifyState {
         track_count: u32,
         context: SignalsContext,
     },
+
+    /// An automatic lookup failed, either in the live reducer or resumed from
+    /// its stored verdict after the run ended.
+    Failed {
+        failures: Vec<super::IdentifyFailure>,
+        track_count: u32,
+        context: SignalsContext,
+    },
 }
 
 impl IdentifyState {
@@ -238,7 +269,8 @@ impl IdentifyState {
             IdentifyState::Triangulating { context, .. }
             | IdentifyState::Found { context, .. }
             | IdentifyState::NotFoundAnywhere { context }
-            | IdentifyState::ManualOnly { context, .. } => Some(context),
+            | IdentifyState::ManualOnly { context, .. }
+            | IdentifyState::Failed { context, .. } => Some(context),
             IdentifyState::Idle => None,
         }
     }
@@ -246,16 +278,14 @@ impl IdentifyState {
     /// Whether the machine has stopped moving on its own: nothing is in flight,
     /// so only the user (a toggle, a re-run) can change it now.
     ///
-    /// This is not "safe to persist". A terminal state can have been shaped by a
-    /// lookup that never answered, and
-    /// [`super::verdict::TerminalVerdict::try_from`] is what decides that — a
-    /// watcher uses this to know it has an answer to judge, and the conversion
-    /// to judge it.
+    /// A lookup failure is terminal too; conversion preserves it as a failed
+    /// verdict rather than misclassifying its partial evidence.
     pub fn is_terminal(&self) -> bool {
         match self {
             IdentifyState::Found { .. }
             | IdentifyState::NotFoundAnywhere { .. }
-            | IdentifyState::ManualOnly { .. } => true,
+            | IdentifyState::ManualOnly { .. }
+            | IdentifyState::Failed { .. } => true,
             IdentifyState::Idle | IdentifyState::Triangulating { .. } => false,
         }
     }
@@ -792,7 +822,8 @@ fn apply_toggle(state: IdentifyState, signal: SignalToggle) -> (IdentifyState, V
             }
             IdentifyState::Found { mut context, .. }
             | IdentifyState::NotFoundAnywhere { mut context }
-            | IdentifyState::ManualOnly { mut context, .. } => {
+            | IdentifyState::ManualOnly { mut context, .. }
+            | IdentifyState::Failed { mut context, .. } => {
                 toggle_exclusion(&mut context, exclude_disc);
                 (re_derive(context), vec![])
             }
@@ -822,7 +853,8 @@ fn choose_catalog(state: IdentifyState, value: String) -> (IdentifyState, Vec<Ef
         } => (discid, barcode, context),
         IdentifyState::Found { context, .. }
         | IdentifyState::NotFoundAnywhere { context }
-        | IdentifyState::ManualOnly { context, .. } => (
+        | IdentifyState::ManualOnly { context, .. }
+        | IdentifyState::Failed { context, .. } => (
             settled_discid_progress(&context),
             settled_barcode_progress(&context),
             context,
@@ -860,6 +892,14 @@ fn choose_catalog(state: IdentifyState, value: String) -> (IdentifyState, Vec<Ef
 /// Both sides empty — because the lookups found nothing, or because the user
 /// excluded the signals that did — lands on `NotFoundAnywhere`.
 fn re_derive(context: SignalsContext) -> IdentifyState {
+    let failures = context.active_failures();
+    if !failures.is_empty() {
+        return IdentifyState::Failed {
+            failures,
+            track_count: context.track_count,
+            context,
+        };
+    }
     let outcome = combine_results(
         context.active_discid_results(),
         context.active_barcode_results(),

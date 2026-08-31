@@ -36,19 +36,19 @@ fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEven
     }
 }
 
-fn barcode_lookup_failed(barcode: String, message: String) -> IdentifyEvent {
-    debug!("Barcode lookup failed for {barcode}: {message}");
+fn barcode_lookup_failed(barcode: String, failure: LookupFailure) -> IdentifyEvent {
+    debug!("Barcode lookup failed for {barcode}: {failure:?}");
     IdentifyEvent::BarcodeLookupFailed {
         for_barcode: barcode,
-        failure: LookupFailure::Diagnostic { detail: message },
+        failure,
     }
 }
 
-fn catalog_lookup_failed(catalog: String, message: String) -> IdentifyEvent {
-    debug!("Catalog lookup failed for {catalog}: {message}");
+fn catalog_lookup_failed(catalog: String, failure: LookupFailure) -> IdentifyEvent {
+    debug!("Catalog lookup failed for {catalog}: {failure:?}");
     IdentifyEvent::CatalogLookupFailed {
         for_catalog: catalog,
-        failure: LookupFailure::Diagnostic { detail: message },
+        failure,
     }
 }
 
@@ -399,13 +399,16 @@ fn dispatch_effect(
                     return;
                 }
                 let event = match lookup {
-                    Err(message) => barcode_lookup_failed(barcode, message),
+                    Err(failure) => barcode_lookup_failed(barcode, failure),
                     Ok(results) if results.is_empty() => IdentifyEvent::BarcodeLookupMissed {
                         for_barcode: barcode,
                     },
                     Ok(results) => {
                         match annotate_with_library_status(results, &library_manager).await {
-                            Err(message) => barcode_lookup_failed(barcode, message),
+                            Err(message) => barcode_lookup_failed(
+                                barcode,
+                                LookupFailure::Diagnostic { detail: message },
+                            ),
                             Ok(results) => IdentifyEvent::BarcodeLookupMatched {
                                 for_barcode: barcode,
                                 results,
@@ -425,10 +428,13 @@ fn dispatch_effect(
                     return;
                 }
                 let event = match lookup {
-                    Err(message) => catalog_lookup_failed(catalog, message),
+                    Err(failure) => catalog_lookup_failed(catalog, failure),
                     Ok(results) => {
                         match annotate_with_library_status(results, &library_manager).await {
-                            Err(message) => catalog_lookup_failed(catalog, message),
+                            Err(message) => catalog_lookup_failed(
+                                catalog,
+                                LookupFailure::Diagnostic { detail: message },
+                            ),
                             Ok(results) => IdentifyEvent::CatalogLookupCompleted {
                                 for_catalog: catalog,
                                 results,

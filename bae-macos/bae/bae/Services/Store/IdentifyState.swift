@@ -30,6 +30,7 @@ enum IdentifyState: Equatable {
     /// offers manual search. Distinct from `notFoundAnywhere`, where signals
     /// ran and matched nothing.
     case manualOnly(trackCount: UInt32)
+    case failed([BridgeIdentifyFailure])
 
     init(bridge: BridgeIdentifyState) {
         switch bridge {
@@ -51,6 +52,8 @@ enum IdentifyState: Equatable {
         case .notFoundAnywhere: self = .notFoundAnywhere
         case .manualOnly(let trackCount):
             self = .manualOnly(trackCount: trackCount)
+        case .failed(let failures):
+            self = .failed(failures)
         }
     }
 

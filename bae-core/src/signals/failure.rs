@@ -10,7 +10,7 @@
 /// as `Network` / `Timeout` / `Provider`; a local failure (re-identify resolution,
 /// the in-library check, a compute task panic) as `Diagnostic`, since it carries no
 /// provider verdict.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum LookupFailure {
     /// A transport/connection failure that produced no HTTP response
     /// (connection refused, DNS failure, a dropped body).
