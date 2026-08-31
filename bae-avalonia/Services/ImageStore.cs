@@ -94,9 +94,9 @@ internal sealed class ImageStore
     public Func<string, BridgeGallerySource, byte[]?> FetchReleaseImageBytes { get; init; }
         = (_, _) => throw new InvalidOperationException("ImageStore stub: FetchReleaseImageBytes not wired");
 
-    /// <summary>Bytes of provider art at a URL, with the validator identifying
-    /// them.</summary>
-    public Func<string, BridgeRemoteImage?> FetchRemoteImage { get; init; }
+    /// <summary>Bytes of provider art at a URL, or null when the source serves
+    /// no image there.</summary>
+    public Func<string, byte[]?> FetchRemoteImageBytes { get; init; }
         = _ => throw new InvalidOperationException("ImageStore stub: FetchRemoteImage not wired");
 
     private readonly ImageCache<Bitmap> _cache = new(DecodedByteCost);
@@ -108,14 +108,14 @@ internal sealed class ImageStore
             session.WithCurrentHandle(handle => NativeBae.LibraryImageBytes(handle, image)).Result,
         FetchReleaseImageBytes = (releaseId, source) =>
             session.WithCurrentHandle(handle => NativeBae.ReleaseImageBytes(handle, releaseId, source)).Result,
-        FetchRemoteImage = url =>
+        FetchRemoteImageBytes = url =>
             session.WithCurrentHandle(handle => NativeBae.RemoteImage(handle, url)).Result,
     };
 
     /// <summary>The already-decoded image for this content at this width, or null
     /// when the store doesn't hold one. Synchronous, so a control can paint real
-    /// art the moment it rebinds instead of blanking first. The only I/O is the
-    /// stat a local file's modification date needs.</summary>
+    /// art the moment it rebinds instead of blanking first. This is a memory-only
+    /// lookup.</summary>
     internal Bitmap? Cached(ImageContent content, int pixelWidth)
     {
         var key = CacheKey(content, pixelWidth);
@@ -147,10 +147,6 @@ internal sealed class ImageStore
         if (bitmap is not null && key is not null)
         {
             _cache.Store(content.Bucket, key, bitmap);
-            if (content is ImageContent.Remote remote)
-            {
-                _cache.RecordRemoteKey(remote.Url, key);
-            }
         }
 
         return bitmap;
@@ -237,19 +233,7 @@ internal sealed class ImageStore
                 case ImageContent.ReleaseImage release:
                     return FetchReleaseImageBytes(release.ReleaseId, release.Source);
                 case ImageContent.Remote remote:
-                    var fetched = FetchRemoteImage(remote.Url);
-                    if (fetched is null)
-                    {
-                        return null;
-                    }
-
-                    // Core's byte cache decides when a URL is re-read; when the
-                    // bytes come back different, the decodes taken from the old
-                    // ones are stale at every size, not just the one being loaded.
-                    // This is the only moment the store learns they moved — a size
-                    // it already holds is served from the cache and asks nothing.
-                    _cache.AdoptRemoteValidator(remote.Url, fetched.Validator);
-                    return fetched.Bytes;
+                    return FetchRemoteImageBytes(remote.Url);
                 case ImageContent.LocalFile local:
                     return File.ReadAllBytes(local.Path);
                 case ImageContent.Bytes bytes:

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using Bae.Desktop;
 using Xunit;
 
@@ -58,17 +57,6 @@ public class ImageCacheTests
         Assert.Equal("second", cache.Get(ImageBucket.LibraryImage, "k")?.Name);
     }
 
-    [Fact]
-    public void Remove_ForgetsTheEntry()
-    {
-        var cache = Cache();
-        cache.Store(ImageBucket.Remote, "k", new FakeBitmap("art", 10));
-
-        cache.Remove(ImageBucket.Remote, "k");
-
-        Assert.Null(cache.Get(ImageBucket.Remote, "k"));
-    }
-
     // ── Eviction ───────────────────────────────────────────────────────────────
 
     [Fact]
@@ -105,72 +93,6 @@ public class ImageCacheTests
         Assert.NotNull(cache.Get(ImageBucket.LibraryImage, "cover"));
     }
 
-    // ── Remote validators ──────────────────────────────────────────────────────
-
-    [Fact]
-    public void AdoptRemoteValidator_TheFirstFetchDropsNothing()
-    {
-        var cache = Cache();
-        cache.Store(ImageBucket.Remote, "url#96", new FakeBitmap("art", 10));
-        cache.RecordRemoteKey("https://art.example/a.jpg", "url#96");
-
-        cache.AdoptRemoteValidator("https://art.example/a.jpg", "v1");
-
-        Assert.NotNull(cache.Get(ImageBucket.Remote, "url#96"));
-    }
-
-    [Fact]
-    public void AdoptRemoteValidator_AnUnchangedValidatorKeepsEveryDecode()
-    {
-        var cache = Cache();
-        const string url = "https://art.example/a.jpg";
-        foreach (var key in new[] { "url#96", "url#240" })
-        {
-            cache.Store(ImageBucket.Remote, key, new FakeBitmap(key, 10));
-            cache.RecordRemoteKey(url, key);
-        }
-
-        cache.AdoptRemoteValidator(url, "v1");
-        cache.AdoptRemoteValidator(url, "v1");
-
-        Assert.NotNull(cache.Get(ImageBucket.Remote, "url#96"));
-        Assert.NotNull(cache.Get(ImageBucket.Remote, "url#240"));
-    }
-
-    [Fact]
-    public void AdoptRemoteValidator_AChangedValidatorDropsEverySizeOfThatUrl()
-    {
-        var cache = Cache();
-        const string url = "https://art.example/a.jpg";
-        foreach (var key in new[] { "url#96", "url#240" })
-        {
-            cache.Store(ImageBucket.Remote, key, new FakeBitmap(key, 10));
-            cache.RecordRemoteKey(url, key);
-        }
-
-        cache.AdoptRemoteValidator(url, "v1");
-        cache.AdoptRemoteValidator(url, "v2");
-
-        Assert.Null(cache.Get(ImageBucket.Remote, "url#96"));
-        Assert.Null(cache.Get(ImageBucket.Remote, "url#240"));
-    }
-
-    [Fact]
-    public void AdoptRemoteValidator_LeavesAnotherUrlsDecodesAlone()
-    {
-        var cache = Cache();
-        cache.Store(ImageBucket.Remote, "a#96", new FakeBitmap("a", 10));
-        cache.RecordRemoteKey("https://art.example/a.jpg", "a#96");
-        cache.AdoptRemoteValidator("https://art.example/a.jpg", "v1");
-
-        cache.Store(ImageBucket.Remote, "b#96", new FakeBitmap("b", 10));
-        cache.RecordRemoteKey("https://art.example/b.jpg", "b#96");
-        cache.AdoptRemoteValidator("https://art.example/b.jpg", "v1");
-        cache.AdoptRemoteValidator("https://art.example/b.jpg", "v2");
-
-        Assert.NotNull(cache.Get(ImageBucket.Remote, "a#96"));
-        Assert.Null(cache.Get(ImageBucket.Remote, "b#96"));
-    }
 }
 
 public class ImageTokensTests
@@ -209,34 +131,10 @@ public class ImageTokensTests
     }
 
     [Fact]
-    public void LocalFile_MovesWhenTheFileIsModified()
+    public void LocalFile_KeysOnThePathAlone()
     {
-        var directory = Directory.CreateTempSubdirectory().FullName;
-        try
-        {
-            var path = Path.Combine(directory, "candidate.png");
-            File.WriteAllBytes(path, new byte[] { 1, 2, 3 });
-            var before = ImageTokens.LocalFile(path);
-            Assert.NotNull(before);
+        const string path = "/unread/path/candidate.png";
 
-            // Filesystem timestamps are coarse, so the new date is set outright
-            // rather than by writing quickly twice.
-            File.WriteAllBytes(path, new byte[] { 4, 5, 6, 7 });
-            File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(1));
-
-            Assert.NotEqual(before, ImageTokens.LocalFile(path));
-        }
-        finally
-        {
-            Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void LocalFile_HasNoTokenForAFileThatIsNotThere()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"absent-{Guid.NewGuid():N}.png");
-
-        Assert.Null(ImageTokens.LocalFile(path));
+        Assert.Equal($"path:{path}", ImageTokens.LocalFile(path));
     }
 }

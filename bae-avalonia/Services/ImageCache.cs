@@ -45,13 +45,8 @@ internal sealed record ImageBudgets(
 /// bindings and the UI toolkit, so the cache and eviction rules are exercised
 /// directly by unit tests.
 ///
-/// Entries are addressed by a token (what pins a decode to the exact bytes it
-/// came from) plus the pixel size it was decoded at — see <see cref="ImageTokens"/>.
-///
-/// Provider art carries a second identity: the validator core returns with the
-/// bytes. A fetch that reports a different validator for a URL invalidates every
-/// decode taken from the previous one, at every size, not just the one being
-/// reloaded.
+/// Entries are addressed by a content reference plus the pixel size it was
+/// decoded at — see <see cref="ImageTokens"/>.
 /// </summary>
 internal sealed class ImageCache<TImage>
     where TImage : class
@@ -73,15 +68,8 @@ internal sealed class ImageCache<TImage>
         internal int Cost { get; set; }
     }
 
-    private sealed class RemoteEntry
-    {
-        internal string? Validator { get; set; }
-        internal HashSet<string> Keys { get; } = new();
-    }
-
     private readonly Func<TImage, int> _costOf;
     private readonly Dictionary<ImageBucket, Bucket> _buckets;
-    private readonly Dictionary<string, RemoteEntry> _remote = new();
     private readonly object _gate = new();
 
     internal ImageCache(Func<TImage, int> costOf, ImageBudgets? budgets = null)
@@ -127,64 +115,6 @@ internal sealed class ImageCache<TImage>
             target.Cost += node.Value.Cost;
             EvictToBudget(target);
         }
-    }
-
-    /// <summary>Forget the decode held under <paramref name="key"/>, if any.</summary>
-    internal void Remove(ImageBucket bucket, string key)
-    {
-        lock (_gate)
-        {
-            Drop(_buckets[bucket], key);
-        }
-    }
-
-    /// <summary>Note that <paramref name="url"/>'s decode at some size lives
-    /// under <paramref name="key"/>, so a later validator change can find it.</summary>
-    internal void RecordRemoteKey(string url, string key)
-    {
-        lock (_gate)
-        {
-            RemoteEntryFor(url).Keys.Add(key);
-        }
-    }
-
-    /// <summary>
-    /// Adopt the validator a fetch just returned for <paramref name="url"/>. When
-    /// it differs from the one the held decodes were made from, those decodes are
-    /// stale at every size and are dropped. The first fetch for a URL establishes
-    /// the validator without dropping anything.
-    /// </summary>
-    internal void AdoptRemoteValidator(string url, string validator)
-    {
-        lock (_gate)
-        {
-            var entry = RemoteEntryFor(url);
-            if (entry.Validator is null || entry.Validator == validator)
-            {
-                entry.Validator = validator;
-                return;
-            }
-
-            var remote = _buckets[ImageBucket.Remote];
-            foreach (var key in entry.Keys)
-            {
-                Drop(remote, key);
-            }
-
-            entry.Keys.Clear();
-            entry.Validator = validator;
-        }
-    }
-
-    private RemoteEntry RemoteEntryFor(string url)
-    {
-        if (!_remote.TryGetValue(url, out var entry))
-        {
-            entry = new RemoteEntry();
-            _remote[url] = entry;
-        }
-
-        return entry;
     }
 
     private static void Drop(Bucket bucket, string key)

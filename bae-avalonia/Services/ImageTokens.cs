@@ -1,6 +1,4 @@
-﻿using System;
-using System.Globalization;
-using System.IO;
+﻿using System.Globalization;
 
 namespace Bae.Desktop;
 
@@ -13,8 +11,7 @@ namespace Bae.Desktop;
 /// image files keys on its file id, which is immutable: an import mints a fresh
 /// id per file and a re-import mints new ones rather than repointing an existing
 /// row, so an id never comes to name different bytes. Provider art keys on its
-/// URL, paired with the validator core returns alongside the bytes. A file the
-/// user is previewing before import keys on its path and modification date.
+/// URL. A file the user is previewing before import keys on its path.
 ///
 /// Free of the generated bindings and the UI toolkit: the caller reads the
 /// fields off the bridge values and hands over strings.
@@ -28,31 +25,7 @@ internal static class ImageTokens
 
     internal static string Remote(string url) => $"remote:{url}";
 
-    /// <summary>The token for the file at <paramref name="path"/>, or null when
-    /// its modification date can't be read — a candidate the user moved or
-    /// deleted. Nothing is cached under a date we don't have; the load path
-    /// surfaces the read failure itself.</summary>
-    internal static string? LocalFile(string path)
-    {
-        try
-        {
-            var info = new FileInfo(path);
-            if (!info.Exists)
-            {
-                return null;
-            }
-
-            var modified = info.LastWriteTimeUtc.Ticks.ToString(
-                CultureInfo.InvariantCulture);
-            return $"path:{path}#{modified}";
-        }
-        catch (Exception exception) when (
-            exception is IOException or UnauthorizedAccessException
-                or ArgumentException or NotSupportedException)
-        {
-            return null;
-        }
-    }
+    internal static string LocalFile(string path) => $"path:{path}";
 
     /// <summary>The cache key for a decode: the content's identity plus the
     /// resolution it was decoded at, so the now-playing bar's 48px decode never

@@ -961,11 +961,10 @@ internal static partial class NativeBae
             StorageMode(storageMode),
             pin)));
 
-    /// <summary>Provider art at a URL for the import flow's cover search — its
-    /// bytes and the validator identifying them — or null when the source
-    /// serves no image there, and on a failed fetch (logged). Core owns the
-    /// socket; the UI never opens one.</summary>
-    internal static BridgeRemoteImage? RemoteImage(AppHandle? handle, string url) =>
+    /// <summary>Provider art at a URL for the import flow's cover search, or
+    /// null when the source serves no image there and on a failed fetch
+    /// (logged). Core owns the socket; the UI never opens one.</summary>
+    internal static byte[]? RemoteImage(AppHandle? handle, string url) =>
         handle is null ? null : Capture(() => Await(() => handle.FetchRemoteImageBytes(url)));
 
     internal static byte[]? LibraryImageBytes(AppHandle? handle, BridgeImageRef image) =>
