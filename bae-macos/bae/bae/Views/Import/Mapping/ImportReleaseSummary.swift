@@ -291,7 +291,7 @@ extension ImportReleaseSummaryView.Style {
     }
 }
 
-/// The candidate's aggregate source-audio facts as one non-interactive line.
+/// The candidate's aggregate source-audio facts as non-interactive text.
 struct ImportSourceAudioSummaryView: View {
     let sourceAudio: BridgeCandidateSourceAudio
 
@@ -299,8 +299,9 @@ struct ImportSourceAudioSummaryView: View {
         Text(sourceAudio.summary.text)
             .font(.system(size: 11.5))
             .foregroundStyle(.tertiary)
-            .lineLimit(1)
-            .truncationMode(.tail)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityLabel(coreString("core.audio.label"))
             .accessibilityValue(sourceAudio.summary.text)
     }

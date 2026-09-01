@@ -474,7 +474,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
 
 @MainActor
 final class ImportMetadataCardLayoutTests: XCTestCase {
-    func testUnmatchedMetadataKeepsDetailsWithTextBesideSourceActions()
+    func testUnmatchedMetadataKeepsSourceActionsBesideDetails()
         async throws
     {
         NSApplication.shared.finishLaunching()
@@ -581,18 +581,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         let cover = try coverFrame(in: host)
 
         XCTAssertGreaterThanOrEqual(layout.details.minX, cover.maxX)
-        XCTAssertLessThan(layout.details.minX, layout.findOnline.minX)
-        XCTAssertGreaterThanOrEqual(
-            layout.details.maxX,
-            layout.fileTags.maxX
-        )
-        XCTAssertLessThan(
-            abs(
-                layout.findOnline.midY
-                    - layout.fileTags.midY
-            ),
-            2
-        )
+        XCTAssertLessThanOrEqual(layout.findOnline.maxX, layout.details.minX)
+        XCTAssertLessThanOrEqual(layout.fileTags.maxX, layout.details.minX)
+        XCTAssertFalse(layout.findOnline.intersects(layout.fileTags))
         try click(at: layout.findOnline.center, in: host, window: window)
         try click(at: layout.fileTags.center, in: host, window: window)
         XCTAssertEqual(recorder.findOnlineCount, 1)
@@ -824,7 +815,7 @@ extension ImportMetadataCardLayoutTests {
         window.orderOut(nil)
     }
 
-    func testMatchedReleaseKeepsOnlyItsChangeActionOutsideCollapsedDetails()
+    func testMatchedReleaseKeepsItsSourceActionsOutsideCollapsedDetails()
         async
     {
         let recorder = MetadataCardActionRecorder()
@@ -842,7 +833,7 @@ extension ImportMetadataCardLayoutTests {
         await SnapshotTestSupport.settle(host)
 
         let sourceControls = focusFrames(in: host).filter { $0.height >= 20 }
-        XCTAssertEqual(sourceControls.count, 1)
+        XCTAssertEqual(sourceControls.count, 2)
         window.contentView = nil
         window.orderOut(nil)
     }
@@ -860,6 +851,20 @@ extension ImportMetadataCardLayoutTests {
         ])
 
         XCTAssertEqual(summary.text, "Various")
+    }
+
+    func testSourceAudioFactsBreakOnlyBetweenComponents() {
+        let summary = BridgeSourceAudioSummary.uniform(
+            descriptor: BridgeSourceAudioDescriptor(
+                layout: .cue,
+                format: MappingFixtures.audioFormat
+            )
+        )
+
+        XCTAssertEqual(
+            summary.text,
+            "FLAC · 44.1\u{00a0}kHz · 16\u{2011}bit · stereo"
+        )
     }
 
     func testBlankDraftInitialExpansionSurvivesDraftPopulation() {

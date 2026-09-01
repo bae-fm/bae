@@ -156,7 +156,6 @@ struct ImportReleaseHeader: View {
             HStack(alignment: .top, spacing: 16) {
                 coverColumn
                 VStack(alignment: .leading, spacing: 12) {
-                    sourceActionControl
                     if let editValues {
                         ImportAlbumIdentityEditor(
                             values: editValues,
@@ -239,29 +238,33 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// Metadata sources stay together: both replace the same draft by choosing
-    /// where its metadata comes from.
+    /// Metadata sources stay beneath the source-media summary: both replace
+    /// the same draft by choosing where its metadata comes from.
     private var sourceActionControl: some View {
         VStack(alignment: .leading, spacing: 5) {
-            FormEyebrow(text: Text("Metadata"))
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                FormEyebrow(text: Text("Metadata"))
+                Spacer(minLength: 0)
                 ProgressView()
                     .controlSize(.small)
                     .opacity(isReading ? 1 : 0)
-                if draftIsBlank, !releaseSummary.hasMatchedRelease {
-                    findOnlineButton.buttonStyle(.borderedProminent)
+            }
+            if draftIsBlank, !releaseSummary.hasMatchedRelease {
+                findOnlineButton.buttonStyle(.borderedProminent)
+            }
+            else {
+                findOnlineButton.buttonStyle(.bordered)
+            }
+            HStack(spacing: 5) {
+                Button {
+                    sourceActions.useFileTags()
+                } label: {
+                    Text("Use file metadata")
+                        .frame(maxWidth: .infinity)
                 }
-                else {
-                    findOnlineButton.buttonStyle(.bordered)
-                }
-                if !releaseSummary.hasMatchedRelease {
-                    Button("Use file metadata") {
-                        sourceActions.useFileTags()
-                    }
-                    .buttonStyle(.bordered)
-                    if !draftIsBlank {
-                        clearMetadataMenu
-                    }
+                .buttonStyle(.bordered)
+                if !draftIsBlank {
+                    clearMetadataMenu
                 }
             }
         }
@@ -278,7 +281,9 @@ struct ImportReleaseHeader: View {
             else {
                 Text("Match release…")
             }
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
@@ -291,20 +296,6 @@ struct ImportReleaseHeader: View {
                 expanded: $detailsExpanded
             )
         }
-        if releaseSummary.hasMatchedRelease, detailsExpanded {
-            matchedReleaseSecondaryActions
-        }
-    }
-
-    private var matchedReleaseSecondaryActions: some View {
-        HStack(spacing: 8) {
-            Button("Use file metadata") {
-                sourceActions.useFileTags()
-            }
-            .buttonStyle(.bordered)
-            clearMetadataMenu
-        }
-        .disabled(isReading)
     }
 
     private var clearMetadataMenu: some View {
@@ -372,7 +363,9 @@ struct ImportReleaseHeader: View {
                 ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
                     .frame(width: Self.coverSize, alignment: .leading)
             }
+            sourceActionControl
         }
+        .frame(width: Self.coverSize, alignment: .leading)
     }
 }
 

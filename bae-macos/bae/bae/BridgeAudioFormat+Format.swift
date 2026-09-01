@@ -9,6 +9,10 @@ extension BridgeAudioFormat {
     /// owns the parts and the lossy/lossless split (`bitsPerSample == nil`); this
     /// is the UI's locale rendering of them.
     var text: String {
+        audioFactsText(parts)
+    }
+
+    fileprivate var parts: [String] {
         var parts = [codec]
         if bitsPerSample == nil, let kbps = bitrateKbps {
             parts.append(coreString("core.audio.bitrate_kbps", kbps))
@@ -18,7 +22,7 @@ extension BridgeAudioFormat {
             parts.append(coreString("core.audio.bit_depth", bits))
         }
         parts.append(channelsText)
-        return parts.joined(separator: coreString("core.audio.list_separator"))
+        return parts
     }
 
     private var sampleRateText: String {
@@ -42,15 +46,7 @@ extension BridgeAudioFormat {
 
 extension BridgeSourceAudioDescriptor {
     var text: String {
-        switch layout {
-        case .file:
-            format.text
-        case .cue:
-            [coreString("core.audio.layout.cue"), format.text]
-                .joined(
-                    separator: coreString("core.audio.list_separator")
-                )
-        }
+        format.text
     }
 }
 
@@ -60,7 +56,17 @@ extension BridgeSourceAudioSummary {
         case .uniform(let descriptor):
             descriptor.text
         case .mixed:
-            coreString("core.audio.mixed")
+            nonbreakingAudioFact(coreString("core.audio.mixed"))
         }
     }
+}
+
+private func audioFactsText(_ parts: [String]) -> String {
+    parts.map(nonbreakingAudioFact)
+        .joined(separator: coreString("core.audio.list_separator"))
+}
+
+private func nonbreakingAudioFact(_ text: String) -> String {
+    text.replacingOccurrences(of: " ", with: "\u{00a0}")
+        .replacingOccurrences(of: "-", with: "\u{2011}")
 }
