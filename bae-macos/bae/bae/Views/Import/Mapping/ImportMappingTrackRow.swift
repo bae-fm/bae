@@ -110,6 +110,10 @@ struct ImportMappingTrackRow: View {
                 chrome: .inline,
                 onCommit: { commit(track, \.title, $0) },
             )
+            // The text sits an inline chrome-pad inside the field. Pull the
+            // pad back out so the text starts at the column's edge, under the
+            // header — the chrome bleeds into the column gutters instead.
+            .padding(.horizontal, -FieldChrome.inlineHorizontalPadding)
             .frame(width: columns.title)
         }
         else {
