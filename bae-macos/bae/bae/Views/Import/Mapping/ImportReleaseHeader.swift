@@ -44,7 +44,12 @@ struct ImportAlbumIdentityEditor: View {
                     await writer.setField(.albumTitle, $0)
                 },
             )
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
+            // Centered, not baseline-aligned: the artist is an AppKit-backed
+            // button and the year an AppKit text field, and SwiftUI's baseline
+            // for such controls is unreliable — bottom-as-baseline fallbacks
+            // skewed the pair. Both wear the same chrome padding at
+            // near-equal sizes, so centering puts their text on one line.
+            HStack(alignment: .center, spacing: 6) {
                 ArtistAssignmentsField(
                     assignments: values.albumArtistAssignments,
                     placeholder: String(localized: "Album artist"),
