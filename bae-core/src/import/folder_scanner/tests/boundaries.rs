@@ -508,6 +508,47 @@ fn a_wrapper_of_numbered_parts_combines_unless_the_user_says_otherwise() {
     }));
 }
 
+#[test]
+fn labeled_disc_numbers_win_over_other_numbers_in_part_names() {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let root = temp_dir.path().join("Queue");
+    let wrapper = root.join("Collection").join("Release Wrapper");
+    for child in [
+        "1935 Archive - CD 1 - Location A",
+        "CD 2 - 1935-36 - Location A",
+        "1936 Archive - CD 3 - 1937 - Location B",
+        "Session 1937-40 - CD 4 - Location C",
+        "Archive 1940 - CD 5 - 1941 - Location D",
+    ] {
+        let child = wrapper.join(child);
+        std::fs::create_dir_all(&child).unwrap();
+        std::fs::write(child.join("track.flac"), fake_flac()).unwrap();
+    }
+
+    let items = scan_for_candidates_with_decisions_collect(
+        root,
+        FolderReleaseDecisions::default(),
+    );
+
+    assert!(items.iter().any(|item| matches!(
+        item,
+        ScanItem::Decided {
+            key,
+            decision: FolderReleaseDecision::CombineAsOneRelease,
+        } if key.relative_folder_path == "Collection/Release Wrapper"
+    )));
+    let releases: Vec<_> = items
+        .iter()
+        .filter_map(|item| match item {
+            ScanItem::Valid(candidate) => Some(candidate),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(releases.len(), 1);
+    assert_eq!(releases[0].path, wrapper);
+    assert_eq!(releases[0].scope, ReleaseFileScope::Recursive);
+}
+
 /// A folder with tracks of its own and an album folder beside them is two
 /// releases, and each one is a candidate carrying the reading that made it
 /// one — which is what the flip control on the row rewrites.

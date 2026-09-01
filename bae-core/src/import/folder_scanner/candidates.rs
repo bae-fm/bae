@@ -152,10 +152,19 @@ pub fn heuristic_folder_release_decision(
     }
 }
 
-/// The one number in a folder's name, or `None` when it holds none or several.
-/// Several is as unusable as none: `1994 CD2` names a year and a disc, and
-/// nothing in the name says which is which.
+/// The part number in a folder's name. An explicit `CD n`, `Disc n`, `Disk n`,
+/// `Vol n`, or `Volume n` marker is authoritative wherever it appears, so
+/// years and other numbers elsewhere in the name do not compete with it.
+/// Without a marker, exactly one numeric run is required.
 pub(super) fn folder_part_number(name: &str) -> Option<u32> {
+    let labeled_numbers = labeled_part_numbers(name)?;
+    if let Some((&number, remaining)) = labeled_numbers.split_first() {
+        return remaining
+            .iter()
+            .all(|candidate| *candidate == number)
+            .then_some(number);
+    }
+
     let mut found: Option<u32> = None;
     let mut digits = String::new();
     for character in name.chars().chain(std::iter::once(' ')) {
@@ -173,6 +182,51 @@ pub(super) fn folder_part_number(name: &str) -> Option<u32> {
         }
     }
     found
+}
+
+fn labeled_part_numbers(name: &str) -> Option<Vec<u32>> {
+    const LABELS: &[&[u8]] = &[b"volume", b"disc", b"disk", b"vol", b"cd"];
+
+    let bytes = name.as_bytes();
+    let mut numbers = Vec::new();
+    let mut index = 0;
+    while index < bytes.len() {
+        let Some(label) = LABELS.iter().find(|label| {
+            bytes
+                .get(index..index + label.len())
+                .is_some_and(|candidate| candidate.eq_ignore_ascii_case(label))
+        }) else {
+            index += 1;
+            continue;
+        };
+        let starts_outside_word = match name[..index].chars().next_back() {
+            Some(character) => !character.is_alphabetic(),
+            None => true,
+        };
+        if !starts_outside_word {
+            index += label.len();
+            continue;
+        }
+
+        let mut digit_start = index + label.len();
+        while digit_start < bytes.len()
+            && matches!(bytes[digit_start], b' ' | b'\t' | b'.' | b'-' | b'_' | b'#')
+        {
+            digit_start += 1;
+        }
+        let mut digit_end = digit_start;
+        while digit_end < bytes.len() && bytes[digit_end].is_ascii_digit() {
+            digit_end += 1;
+        }
+        if digit_end > digit_start {
+            let number = name[digit_start..digit_end].parse::<u32>().ok()?;
+            numbers.push(number);
+            index = digit_end;
+        } else {
+            index += label.len();
+        }
+    }
+    Some(numbers)
 }
 
 /// Which persisted scan entries a set of folder readings supersedes. Reads the
@@ -316,6 +370,7 @@ mod heuristic_tests {
             &["1", "3"][..],
             &["2", "3"][..],
             &["CD1", "CD2", "Bonus"][..],
+            &["CD1 Volume 2", "CD2 Volume 3"][..],
             &["Live in Tokyo", "Live in Osaka"][..],
             &["1", "1"][..],
         ] {
@@ -327,13 +382,44 @@ mod heuristic_tests {
         }
     }
 
-    /// A name with two numbers says nothing about which is the part number.
+    /// A labeled disc number is authoritative even when other numbers surround
+    /// it.
     #[test]
-    fn a_name_with_two_numbers_names_no_part() {
-        assert_eq!(
-            decide(&["1994 CD1", "1994 CD2"]),
-            FolderReleaseDecision::KeepAsSeparateReleases
-        );
+    fn a_labeled_disc_number_wins_over_other_numbers() {
+        for names in [
+            &["1994 CD1 archive 2001", "1995 CD2 archive 2002"][..],
+            &["1994CD1 archive 2001", "1995CD2 archive 2002"][..],
+            &["1994 Disc 1 archive 2001", "1995 Disc 2 archive 2002"][..],
+            &["1994 Disk 1 archive 2001", "1995 Disk 2 archive 2002"][..],
+            &["1994 Vol. 1 archive 2001", "1995 Vol. 2 archive 2002"][..],
+            &["1994 Volume 1 archive 2001", "1995 Volume 2 archive 2002"][..],
+            &[
+                "1994 Volume 1 (CD 1) archive 2001",
+                "1995 Volume 2 (CD 2) archive 2002",
+            ][..],
+        ] {
+            assert_eq!(
+                decide(names),
+                FolderReleaseDecision::CombineAsOneRelease,
+                "{names:?}"
+            );
+        }
+    }
+
+    /// Without a label, several numbers leave the part number ambiguous.
+    #[test]
+    fn unlabeled_multiple_numbers_name_no_part() {
+        for names in [
+            &["1994 archive 1", "1995 archive 2"][..],
+            &["SACD 1994 layer 1", "SACD 1995 layer 2"][..],
+            &["éCD1 archive 1994", "éCD2 archive 1995"][..],
+        ] {
+            assert_eq!(
+                decide(names),
+                FolderReleaseDecision::KeepAsSeparateReleases,
+                "{names:?}"
+            );
+        }
     }
 
     /// Tracks sitting in the folder beside its child folders are their own
