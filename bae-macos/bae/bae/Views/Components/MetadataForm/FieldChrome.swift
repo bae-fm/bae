@@ -12,8 +12,10 @@ struct FieldChrome: ViewModifier {
     let boxed: Bool
 
     /// How far the field's text sits inside its chrome. Surfaces that line a
-    /// borderless field's text up with plain text beside it offset by this.
+    /// borderless field's text up with plain text beside it, or set rows of
+    /// borderless fields at a text-height pitch, offset by these.
     static let horizontalPadding: CGFloat = 10
+    static let verticalPadding: CGFloat = 6
 
     @State
     private var hovering = false
@@ -21,7 +23,7 @@ struct FieldChrome: ViewModifier {
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, Self.horizontalPadding)
-            .padding(.vertical, 6)
+            .padding(.vertical, Self.verticalPadding)
             .background(restingFill)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay {

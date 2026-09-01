@@ -53,6 +53,10 @@ struct CommittedTextField: View {
     var monospaced: Bool = false
     var boxed: Bool = true
     var font: Font = .system(size: 13)
+    /// How the placeholder is drawn when set — a field that reads as a fact
+    /// at rest shows its empty mark in the tertiary label color rather than
+    /// the system placeholder color.
+    var placeholderStyle: HierarchicalShapeStyle?
     /// Present on surfaces that can replace the stored value while this field
     /// is focused. Other editors commit through focus, Return, and pause only.
     var editingCommands: EditingCommitCommands?
@@ -121,11 +125,17 @@ struct CommittedTextField: View {
 
     @ViewBuilder
     private var field: some View {
-        let base = TextField(placeholder, text: $draft)
-            .textFieldStyle(.plain)
-            .font(font)
-            .focused($focused)
-            .onSubmit { startCommit(draft) }
+        let base = TextField(
+            placeholder,
+            text: $draft,
+            prompt: placeholderStyle.map {
+                Text(placeholder).foregroundStyle($0)
+            }
+        )
+        .textFieldStyle(.plain)
+        .font(font)
+        .focused($focused)
+        .onSubmit { startCommit(draft) }
         if monospaced {
             base.monospacedDigit()
         }

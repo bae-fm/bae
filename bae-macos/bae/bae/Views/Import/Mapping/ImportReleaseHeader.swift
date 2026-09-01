@@ -62,9 +62,8 @@ struct ImportAlbumIdentityEditor: View {
                 CommittedTextField(
                     placeholder: String(localized: "Year"),
                     value: values.albumYear,
-                    monospaced: true,
                     boxed: false,
-                    font: .system(size: 13, design: .monospaced),
+                    font: .system(size: 13),
                     editingCommands: editingCommands,
                     onCommit: {
                         await writer.setField(.albumYear, $0)
@@ -92,29 +91,41 @@ struct ImportAlbumIdentityEditor: View {
 /// ruled Release heading. They are always in view: a pressing is half of what
 /// the import commits, and a fold hid the half most often worth checking.
 ///
-/// An empty field shows an em dash, and the field chrome arrives on hover and
-/// focus — at rest the grid reads as facts, under the pointer as the form.
+/// The grid is a fact sheet: fixed label and value columns that hug the
+/// leading edge, rows one text line apart, no rules between them. An empty
+/// value is an em dash in the tertiary color. The field chrome arrives on
+/// hover and focus — at rest the grid reads as facts, under the pointer as
+/// the form.
 struct ImportReleaseFieldsGrid: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
 
     static let labelWidth: CGFloat = 104
+    static let valueWidth: CGFloat = 150
+    /// From the end of a value to the start of the next label.
+    static let columnGap: CGFloat = 36
+    /// From the end of a label to the start of its value.
+    static let labelGap: CGFloat = 12
+    static let rowSpacing: CGFloat = 10
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             FormSectionHeader(title: String(localized: "Release"), ruled: true)
+            // The value text sits a chrome-pad inside its borderless field on
+            // every side, so the grid's gaps are what remain of the stated
+            // distances once that pad is taken off.
             Grid(
                 alignment: .leadingFirstTextBaseline,
-                horizontalSpacing: 28,
-                verticalSpacing: 12
+                horizontalSpacing: Self.columnGap
+                    - FieldChrome.horizontalPadding,
+                verticalSpacing: Self.rowSpacing
             ) {
                 GridRow {
                     field(
                         .pressingYear,
                         label: String(localized: "Year"),
-                        text: values.pressing.year,
-                        monospaced: true
+                        text: values.pressing.year
                     )
                     field(
                         .format,
@@ -158,11 +169,9 @@ struct ImportReleaseFieldsGrid: View {
         text: String,
         monospaced: Bool = false
     ) -> some View {
-        // The value's text sits a chrome-pad inside its borderless field, so
-        // the spacing here is what remains of the 12pt label-to-value gap.
         HStack(
             alignment: .firstTextBaseline,
-            spacing: 12 - FieldChrome.horizontalPadding
+            spacing: Self.labelGap - FieldChrome.horizontalPadding
         ) {
             Text(label)
                 .font(.system(size: 12))
@@ -178,12 +187,16 @@ struct ImportReleaseFieldsGrid: View {
                     size: 12.5,
                     design: monospaced ? .monospaced : .default
                 ),
+                placeholderStyle: .tertiary,
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(field, $0) },
             )
-            .frame(maxWidth: .infinity)
+            .frame(width: Self.valueWidth + FieldChrome.horizontalPadding * 2)
+            // Rows sit one text line apart: the chrome's vertical pad is
+            // taken back out of the layout and drawn into the row gap when
+            // the field is hovered or focused.
+            .padding(.vertical, -FieldChrome.verticalPadding)
         }
-        .frame(maxWidth: .infinity)
     }
 }
 
