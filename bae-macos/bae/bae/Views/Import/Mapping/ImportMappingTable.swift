@@ -233,12 +233,17 @@ struct ImportMappingTable: View {
         }
     }
 
+    // The trailing clear cell mirrors the tracks section's action slot, so
+    // the Size column's right edge lines up with Length and the row spans the
+    // full table — its divider with it.
     private var fileHeaderRow: some View {
         headerRow {
             eyebrow("ui.import.mapping.files_title")
                 .frame(width: columns.files.name, alignment: .leading)
             FormEyebrow(text: Text("Size"))
                 .frame(width: columns.files.size, alignment: .trailing)
+            Color.clear
+                .frame(width: ImportMappingColumns.action, height: 1)
         }
     }
 
@@ -379,7 +384,10 @@ struct ImportMappingColumns {
                 artist: artist
             ),
             files: Files(
-                name: width - rowPadding * 2 - spacing - fileSize,
+                // The Size column's right edge lines up with Length's in the
+                // tracks section above, so the name column also leaves room
+                // for the action slot and its gap.
+                name: width - rowPadding * 2 - spacing * 2 - fileSize - action,
                 size: fileSize
             )
         )
@@ -421,6 +429,8 @@ struct ImportMappingDirectoryRow: View {
             .foregroundStyle(.tertiary)
             .lineLimit(1)
             .frame(width: columns.size, alignment: .trailing)
+            Color.clear
+                .frame(width: ImportMappingColumns.action, height: 1)
         }
     }
 }

@@ -34,6 +34,8 @@ struct ImportMappingSheetRow: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
                     .frame(width: fileColumns.size, alignment: .trailing)
+                Color.clear
+                    .frame(width: ImportMappingColumns.action, height: 1)
             }
         }
         else {

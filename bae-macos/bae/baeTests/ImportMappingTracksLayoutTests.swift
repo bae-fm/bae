@@ -336,8 +336,8 @@ extension ImportMappingTracksLayoutTests {
 
         #expect(
             columns.files.name
-                == innerWidth - ImportMappingColumns.spacing
-                - columns.files.size
+                == innerWidth - ImportMappingColumns.spacing * 2
+                - columns.files.size - ImportMappingColumns.action
         )
         #expect(columns.files.size == 64)
     }

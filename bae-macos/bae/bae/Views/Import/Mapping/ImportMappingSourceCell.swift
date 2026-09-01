@@ -118,7 +118,7 @@ struct ImportMappingSourceCell: View {
             isPreviewing ? actions.stopPreview() : actions.preview(target)
         } label: {
             Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(
                     isPreviewing
                         ? AnyShapeStyle(Theme.accent)

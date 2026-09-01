@@ -32,9 +32,12 @@ struct ImportMappingColumnsTests {
     func filesColumnsUseTheInnerWidth(width: CGFloat) {
         let columns = ImportMappingColumns.resolved(tableWidth: width)
 
+        // Name, Size, and the trailing reserve that keeps Size's right edge
+        // level with the tracks section's Length column.
         #expect(
             columns.files.name + ImportMappingColumns.spacing
-                + columns.files.size
+                + columns.files.size + ImportMappingColumns.spacing
+                + ImportMappingColumns.action
                 == max(width, ImportMappingColumns.minimumTableWidth)
                 - ImportMappingColumns.rowPadding * 2
         )

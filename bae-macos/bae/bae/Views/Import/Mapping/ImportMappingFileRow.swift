@@ -36,6 +36,10 @@ struct ImportMappingFileRow: View {
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .frame(width: columns.size, alignment: .trailing)
+            // The tracks section's action slot, empty: it keeps Size's right
+            // edge level with Length and the row full-width.
+            Color.clear
+                .frame(width: ImportMappingColumns.action, height: 1)
         }
     }
 

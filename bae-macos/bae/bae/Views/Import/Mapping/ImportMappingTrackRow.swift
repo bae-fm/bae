@@ -177,6 +177,18 @@ struct ImportMappingTrackRow: View {
             actions: actions,
         )
         .frame(width: columns.source, alignment: .leading)
+        // The whole cell auditions on double-click, not only the play glyph
+        // — the filename is the biggest target the row has. Simultaneous, so
+        // the glyph's own single click is not held back for a second one.
+        .contentShape(Rectangle())
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded {
+                    if let target = unit.source.previewTarget {
+                        actions.preview(target)
+                    }
+                }
+        )
         .overlay(alignment: .trailing) {
             if let track, needsAnswer {
                 chooseFileMenu(track)
