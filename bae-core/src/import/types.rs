@@ -19,7 +19,9 @@ use crate::cue_flac::CueSheet;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::DbTrack;
 use serde::{Deserialize, Serialize};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod progress;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use progress::*;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::{path::Path, path::PathBuf, sync::Arc};
@@ -526,6 +528,7 @@ impl RawReleaseEdit {
     /// have audio bound. Existing-library assignments need no prepared image
     /// because import does not insert those artists; fileless rows do not
     /// become tracks.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn new_discogs_artist_ids_for_bound_tracks(
         &self,
     ) -> std::collections::BTreeSet<String> {

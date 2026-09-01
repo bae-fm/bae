@@ -1,3 +1,4 @@
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use super::MetadataSource;
 
 /// The storage state the user picks for an import. Every import FIRST lands
