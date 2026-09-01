@@ -217,14 +217,19 @@ fn insert_candidate(
     let created = sql.execute(
         "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, ?) \
          ON CONFLICT (content_hash) DO NOTHING",
-        params![content_hash, candidate.display_path],
+        params![content_hash, path],
     )? == 1;
     if !created {
         sql.execute(
             "UPDATE import_candidate_state SET folder_path = ? WHERE content_hash = ?",
-            params![candidate.display_path, content_hash],
+            params![path, content_hash],
         )?;
     }
+    sql.execute(
+        "INSERT INTO import_candidate_watched_root (content_hash, watched_folder_path) \
+         VALUES (?, ?) ON CONFLICT DO NOTHING",
+        params![content_hash, watched_folder_path],
+    )?;
     let has_draft = sql
         .query_row(
             "SELECT 1 FROM import_candidate_edit WHERE content_hash = ?",

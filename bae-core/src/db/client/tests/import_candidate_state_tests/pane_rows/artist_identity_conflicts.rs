@@ -38,7 +38,7 @@ async fn an_artist_identity_conflict_round_trips_with_both_library_artists() {
     db.insert_artist(&musicbrainz).await.unwrap();
     let expected = artist_identity_failure(&discogs, &musicbrainz);
 
-    db.save_import_candidate_failure(&hash, "/music/Album", 0, &expected)
+    db.save_import_candidate_failure(&hash, 0, &expected)
         .await
         .unwrap();
 
@@ -201,10 +201,10 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
     .await
     .unwrap();
     let failure = artist_identity_failure(&discogs, &musicbrainz);
-    db.save_import_candidate_failure(&hash, "/music/Album", 0, &failure)
+    db.save_import_candidate_failure(&hash, 0, &failure)
         .await
         .unwrap();
-    db.save_import_candidate_failure(&pending_hash, "/pending", 0, &failure)
+    db.save_import_candidate_failure(&pending_hash, 0, &failure)
         .await
         .unwrap();
 
@@ -321,7 +321,6 @@ async fn resolving_a_conflict_refuses_a_third_provider_identity_without_changing
     db.insert_artist(&musicbrainz).await.unwrap();
     db.save_import_candidate_failure(
         &hash,
-        "/music/Album",
         0,
         &artist_identity_failure(&discogs, &musicbrainz),
     )

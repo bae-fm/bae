@@ -67,19 +67,13 @@ pub(super) fn load_failure_on(
 impl Database {
     /// Record that an import of this candidate failed, so the pane still
     /// offers Retry after a relaunch.
-    ///
-    /// The anchor row is created when nothing has identified or picked the
-    /// candidate: an import driven straight from a command has no pick behind
-    /// it, and the failure is still a fact about those bytes.
     pub async fn save_import_candidate_failure(
         &self,
         content_hash: &str,
-        folder_path: &str,
         edit_revision: u64,
         failure: &ImportFailure,
     ) -> Result<(), DbError> {
         let content_hash = content_hash.to_string();
-        let folder_path = folder_path.to_string();
         let failure = failure.clone();
         let edit_revision = i64::try_from(edit_revision).map_err(|_| {
             DbError::Message(format!(
@@ -87,13 +81,25 @@ impl Database {
             ))
         })?;
         self.call(move |sql| {
+            let current_revision = sql
+                .query_row(
+                    "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
+                    [&content_hash],
+                    |row| row.get::<_, i64>(0),
+                )
+                .optional()?
+                .ok_or_else(|| {
+                    DbError::Message(
+                        "import failure has no current candidate state row".to_string(),
+                    )
+                })?;
+            if current_revision != edit_revision {
+                return Err(DbError::Message(format!(
+                    "candidate file decisions changed from revision {edit_revision}"
+                )));
+            }
             let error = failure.error.as_str();
             let failed_at = failure.failed_at.to_rfc3339();
-            sql.execute(
-                "INSERT INTO import_candidate_state (content_hash, folder_path, edit_revision) \
-                 VALUES (?, ?, ?) ON CONFLICT (content_hash) DO NOTHING",
-                params![content_hash, folder_path, edit_revision],
-            )?;
             sql.execute(
                 "INSERT INTO import_candidate_failure (content_hash, error, failed_at) \
                  VALUES (?, ?, ?) \

@@ -512,13 +512,12 @@ impl LibraryManager {
     pub async fn save_import_candidate_failure(
         &self,
         content_hash: &str,
-        folder_path: &str,
         edit_revision: u64,
         failure: &crate::import::ImportFailure,
     ) -> Result<(), LibraryError> {
         Ok(self
             .database
-            .save_import_candidate_failure(content_hash, folder_path, edit_revision, failure)
+            .save_import_candidate_failure(content_hash, edit_revision, failure)
             .await?)
     }
 

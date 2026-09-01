@@ -18,29 +18,15 @@ impl Database {
             return Ok(None);
         }
         self.call(move |sql| {
-            let root = std::path::Path::new(&path);
-            let mut candidate_hashes: HashSet<String> = sql
+            let candidate_hashes: HashSet<String> = sql
                 .query(
-                    "SELECT content_hash FROM scan_candidate \
-                     WHERE watched_folder_path = ? AND content_hash IS NOT NULL",
+                    "SELECT content_hash FROM import_candidate_watched_root \
+                     WHERE watched_folder_path = ?",
                     [&path],
                     |row| row.get(0),
                 )?
                 .into_iter()
                 .collect();
-            candidate_hashes.extend(
-                sql.query(
-                    "SELECT content_hash, folder_path FROM import_candidate_state",
-                    [],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)),
-                )?
-                .into_iter()
-                .filter_map(|(content_hash, folder_path)| {
-                    std::path::Path::new(&folder_path)
-                        .starts_with(root)
-                        .then_some(content_hash)
-                }),
-            );
             let entry_keys = stored_entries(sql, &path)?
                 .into_iter()
                 .map(|(key, _)| key)
@@ -53,12 +39,13 @@ impl Database {
                 )));
             }
             for content_hash in candidate_hashes {
-                let remaining_references: i64 = sql.query_row(
-                    "SELECT EXISTS(SELECT 1 FROM scan_candidate WHERE content_hash = ?)",
+                let remaining_roots: i64 = sql.query_row(
+                    "SELECT EXISTS(SELECT 1 FROM import_candidate_watched_root \
+                     WHERE content_hash = ?)",
                     [&content_hash],
                     |row| row.get(0),
                 )?;
-                if remaining_references == 0 {
+                if remaining_roots == 0 {
                     sql.execute(
                         "DELETE FROM import_candidate_state WHERE content_hash = ?",
                         [&content_hash],

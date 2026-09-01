@@ -461,10 +461,9 @@ impl Database {
     /// injected clock, not taken from `verdict` — see
     /// [`NewImportCandidateVerdict`]'s doc.
     ///
-    /// The row's other half — the user's file decisions — is left untouched: an
-    /// upsert rather than a replace, because a candidate can hold a decision
-    /// before anything has identified it, and a verdict must not erase the
-    /// decision that produced the shape it was derived from.
+    /// The row's other half — the user's file decisions — is left untouched.
+    /// Discovery creates the candidate row; a verdict updates that row because
+    /// it must not recreate a candidate removed while identification ran.
     pub async fn save_import_candidate_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
@@ -498,10 +497,10 @@ impl Database {
             DbError::Message("a probed total exceeds SQLite's integer range".to_string())
         })?;
         let now = self.inner.clock.now().to_rfc3339();
-        // Which of the two writes applies — and whether either does — is a
-        // question about the stored revision, so it is asked on the read
-        // connection. A verdict derived from file decisions the row has since
-        // moved past writes nothing, and must not open a write to say so.
+        // Whether the write applies is a question about the stored revision,
+        // so it is asked on the read connection. A verdict derived from file
+        // decisions the row has since moved past writes nothing, and must not
+        // open a write to say so.
         let current: Option<(i64, i64)> = {
             let content_hash = verdict.content_hash.clone();
             self.read(move |sql| {
@@ -515,21 +514,14 @@ impl Database {
             })
             .await?
         };
-        // Both statements below carry the revision they were chosen for, so a
-        // decision landing between the read and the write leaves them writing
-        // nothing rather than writing over it.
-        let update_existing = match current {
+        match current {
             Some((current_edit, current_metadata))
-                if current_edit == expected && current_metadata == expected_metadata =>
-            {
-                true
-            }
-            None if expected == 0 && expected_metadata == 0 => false,
+                if current_edit == expected && current_metadata == expected_metadata => {}
             // The row has moved past the file decisions this verdict was
             // derived from, or it names a revision no row ever had. Either way
             // there is nothing to write.
             Some(_) | None => return Ok(false),
-        };
+        }
         self.call(move |sql| {
             let columns = verdict_columns(&verdict.verdict);
             let stored_probed = columns.kind.map(|_| probed);
@@ -542,9 +534,11 @@ impl Database {
             // conclusion, or with nothing when it concluded none. A pick a
             // person made is theirs and is left exactly as it is: a run whose
             // signals turn up nothing says nothing about a release they chose.
-            let wrote = if update_existing {
-                sql.execute(
-                    "UPDATE import_candidate_state SET \
+            // The revision predicate closes the interval between the read and
+            // this write: a decision landing there leaves this writing nothing
+            // instead of overwriting it.
+            let wrote = sql.execute(
+                "UPDATE import_candidate_state SET \
                          folder_path = :folder_path, \
                          verdict_kind = :kind, verdict_track_count = :track_count, \
                          verdict_matched_barcode = :matched_barcode, \
@@ -562,49 +556,24 @@ impl Database {
                          metadata_revision = CASE WHEN :preserve_user_metadata \
                              THEN metadata_revision ELSE :next_metadata END \
                      WHERE content_hash = :content_hash AND edit_revision = :expected \
-                         AND metadata_revision = :expected_metadata",
-                    named_params! {
-                        ":folder_path": verdict.folder_path,
-                        ":kind": columns.kind,
-                        ":track_count": columns.track_count,
-                        ":matched_barcode": columns.matched_barcode,
-                        ":probed": stored_probed,
-                        ":now": stored_identified_at,
-                        ":provenance_kind": pick.as_ref().map(|pick| pick.kind),
-                        ":provenance_source": pick.as_ref().and_then(|pick| pick.source),
-                        ":provenance_release_id": pick.as_ref().and_then(|pick| pick.release_id),
-                        ":content_hash": verdict.content_hash,
-                        ":expected": expected,
-                        ":expected_metadata": expected_metadata,
-                        ":next_metadata": next_metadata,
-                        ":preserve_user_metadata": preserve_user_metadata,
-                    },
-                )? == 1
-            } else {
-                sql.execute(
-                    "INSERT INTO import_candidate_state \
-                         (content_hash, folder_path, verdict_kind, verdict_track_count, \
-                          verdict_matched_barcode, probed_total_duration_ms, identified_at, \
-                          provenance_kind, provenance_source, provenance_release_id, provenance_author, \
-                          edit_revision, metadata_revision) \
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
-                    params![
-                        verdict.content_hash,
-                        verdict.folder_path,
-                        columns.kind,
-                        columns.track_count,
-                        columns.matched_barcode,
-                        stored_probed,
-                        stored_identified_at,
-                        pick.as_ref().map(|pick| pick.kind),
-                        pick.as_ref().and_then(|pick| pick.source),
-                        pick.as_ref().and_then(|pick| pick.release_id),
-                        pick.as_ref()
-                            .map(|_| MetadataProvenanceAuthor::Identification.as_str()),
-                        next_metadata,
-                    ],
-                )? == 1
-            };
+                     AND metadata_revision = :expected_metadata",
+                named_params! {
+                    ":folder_path": verdict.folder_path,
+                    ":kind": columns.kind,
+                    ":track_count": columns.track_count,
+                    ":matched_barcode": columns.matched_barcode,
+                    ":probed": stored_probed,
+                    ":now": stored_identified_at,
+                    ":provenance_kind": pick.as_ref().map(|pick| pick.kind),
+                    ":provenance_source": pick.as_ref().and_then(|pick| pick.source),
+                    ":provenance_release_id": pick.as_ref().and_then(|pick| pick.release_id),
+                    ":content_hash": verdict.content_hash,
+                    ":expected": expected,
+                    ":expected_metadata": expected_metadata,
+                    ":next_metadata": next_metadata,
+                    ":preserve_user_metadata": preserve_user_metadata,
+                },
+            )? == 1;
             if wrote {
                 // The result lists belong to the verdict that named them: the
                 // superseded ones go in the same transaction that replaces it.
@@ -619,11 +588,7 @@ impl Database {
                     &now,
                 )?;
                 if !preserve_user_metadata {
-                    pane_rows::replace_draft(
-                        sql,
-                        &verdict.content_hash,
-                        &verdict.metadata.edit,
-                    )?;
+                    pane_rows::replace_draft(sql, &verdict.content_hash, &verdict.metadata.edit)?;
                     pane_rows::replace_track_mappings(
                         sql,
                         &verdict.content_hash,
@@ -720,9 +685,7 @@ impl Database {
                     })
                 })
                 .transpose()?;
-            if current_revision != Some(expected_revision)
-                && !(current_revision.is_none() && expected_revision == 0)
-            {
+            if current_revision != Some(expected_revision) {
                 return Err(DbError::Message(format!(
                     "candidate file decisions changed at revision {expected_revision}"
                 )));
@@ -746,9 +709,8 @@ impl Database {
                 .as_ref()
                 .and_then(|(_, _, author)| author.as_deref())
                 == Some(MetadataProvenanceAuthor::User.as_str());
-            let changed = if current_revision.is_some() {
-                sql.execute(
-                    "UPDATE import_candidate_state SET \
+            let changed = sql.execute(
+                "UPDATE import_candidate_state SET \
                          folder_path = ?, \
                          verdict_kind = NULL, verdict_track_count = NULL, \
                          verdict_matched_barcode = NULL, \
@@ -764,20 +726,13 @@ impl Database {
                              ELSE NULL END, \
                          edit_revision = ? \
                      WHERE content_hash = ? AND edit_revision = ?",
-                    params![
-                        folder_path,
-                        next_revision_i64,
-                        content_hash,
-                        expected_revision_i64,
-                    ],
-                )?
-            } else {
-                sql.execute(
-                    "INSERT INTO import_candidate_state \
-                         (content_hash, folder_path, edit_revision) VALUES (?, ?, ?)",
-                    params![content_hash, folder_path, next_revision_i64],
-                )?
-            };
+                params![
+                    folder_path,
+                    next_revision_i64,
+                    content_hash,
+                    expected_revision_i64,
+                ],
+            )?;
             if changed != 1 {
                 return Err(DbError::Message(format!(
                     "candidate file decision write changed {changed} rows; expected exactly one"

@@ -121,7 +121,7 @@ impl ImportService {
             // to see.
             if let Err(write) = self
                 .library_manager
-                .save_import_candidate_failure(&content_hash, &folder_path, edit_revision, &failure)
+                .save_import_candidate_failure(&content_hash, edit_revision, &failure)
                 .await
             {
                 error!("could not record the failed import of {folder_path}: {write}");

@@ -304,6 +304,17 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
         .unwrap()
         .is_some());
 
+    db.finish_folder_scan(root, generation, None)
+        .await
+        .unwrap();
+    let generation = db.begin_folder_scan(root).await.unwrap();
+    db.finish_folder_scan(root, generation, None)
+        .await
+        .unwrap();
+    assert!(db.load_folder_scan_snapshots().await.unwrap()[0]
+        .items
+        .is_empty());
+
     assert!(db.remove_watched_import_folder(root).await.unwrap().is_some());
     assert!(db
         .load_import_folder_registry()
@@ -319,6 +330,83 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
         None
     );
     assert!(db.load_folder_scan_snapshots().await.unwrap().is_empty());
+    assert!(db
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .is_none());
+}
+
+#[tokio::test]
+async fn shared_candidate_state_leaves_with_its_last_watched_root() {
+    let (db, _tmp) = empty_db().await;
+    let first = host_root("/mounted/first");
+    let second = host_root("/mounted/second");
+    for root in [&first, &second] {
+        db.add_watched_import_folder(root).await.unwrap();
+    }
+
+    let second_candidate = scanned_candidate(&second, "Release");
+    let first_candidate = scanned_candidate(&first, "Release");
+    for (root, candidate) in [(&second, &second_candidate), (&first, &first_candidate)] {
+        let generation = db.begin_folder_scan(root).await.unwrap();
+        db.save_folder_scan_item(root, generation, candidate)
+            .await
+            .unwrap();
+        db.finish_folder_scan(root, generation, None)
+            .await
+            .unwrap();
+    }
+    let crate::import::folder_scanner::ScanItem::Valid(candidate) = &first_candidate else {
+        panic!("the fixture must produce a valid candidate");
+    };
+    let content_hash = candidate.files.content_hash();
+
+    db.remove_watched_import_folder(&first).await.unwrap();
+    assert!(db
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .is_some());
+
+    let generation = db.begin_folder_scan(&second).await.unwrap();
+    db.finish_folder_scan(&second, generation, None)
+        .await
+        .unwrap();
+    db.remove_watched_import_folder(&second).await.unwrap();
+    assert!(db
+        .load_import_candidate_state(&content_hash)
+        .await
+        .unwrap()
+        .is_none());
+}
+
+#[tokio::test]
+async fn a_late_import_failure_cannot_recreate_state_after_root_removal() {
+    let (db, _tmp) = empty_db().await;
+    let root = host_root("/mounted/library");
+    let candidate = scanned_candidate(&root, "Release");
+    let crate::import::folder_scanner::ScanItem::Valid(folder) = &candidate else {
+        panic!("the fixture must produce a valid candidate");
+    };
+    let content_hash = folder.files.content_hash();
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &candidate)
+        .await
+        .unwrap();
+    db.remove_watched_import_folder(&root).await.unwrap();
+
+    db.save_import_candidate_failure(
+        &content_hash,
+        0,
+        &crate::import::ImportFailure::error_only(
+            "the source disappeared",
+            fixed_identified_at(),
+        ),
+    )
+    .await
+    .expect_err("a removed candidate cannot receive an import failure");
     assert!(db
         .load_import_candidate_state(&content_hash)
         .await

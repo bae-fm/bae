@@ -200,7 +200,6 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         .database
         .save_import_candidate_failure(
             &candidate_hash,
-            &crate::import::folder_registry::host_root("/music/candidate"),
             0,
             &crate::import::ImportFailure::error_only("not imported", manager.clock.now()),
         )

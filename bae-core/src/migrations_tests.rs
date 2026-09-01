@@ -4,6 +4,9 @@ use coven::{Coven, CovenError, FixedClock, MigrationError, StoreDir};
 use serial_test::serial;
 use std::sync::Arc;
 
+#[path = "migrations_tests/migration_ten.rs"]
+mod migration_ten;
+
 fn config(store_id: &str) -> coven::Config {
     coven::Config::with_defaults(
         store_id.to_string(),
@@ -63,6 +66,12 @@ fn version_five() -> Vec<coven::Migration> {
     migrations
 }
 
+fn version_six() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(6);
+    migrations
+}
+
 fn version_seven() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(7);
@@ -72,6 +81,12 @@ fn version_seven() -> Vec<coven::Migration> {
 fn version_eight() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(8);
+    migrations
+}
+
+fn version_nine() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(9);
     migrations
 }
 
@@ -100,7 +115,8 @@ async fn migration_eight_preserves_pressing_year_and_adds_blank_album_year() {
         .expect("seed version-seven draft");
     drop(handle);
 
-    let handle = open(store_dir, "migration-album-year", all()).expect("migrate to version eight");
+    let handle =
+        open(store_dir, "migration-album-year", version_eight()).expect("migrate to version eight");
     handle
         .read(|sql| {
             let values: (String, String) = sql.query_row(
@@ -142,8 +158,8 @@ async fn migration_nine_preserves_a_remote_cover_as_explicitly_unprepared() {
         .expect("seed version-eight remote cover");
     drop(handle);
 
-    let handle =
-        open(store_dir, "migration-prepared-assets", all()).expect("migrate prepared assets");
+    let handle = open(store_dir, "migration-prepared-assets", version_nine())
+        .expect("migrate prepared assets");
     handle
         .read(|sql| {
             let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
@@ -907,7 +923,8 @@ async fn migration_six_rebuilds_scan_cache_without_byte_digests() {
         .expect("seed version-five scan cache");
     drop(handle);
 
-    let handle = open(store_dir, "migration-scan-metadata", all()).expect("migrate to version six");
+    let handle =
+        open(store_dir, "migration-scan-metadata", version_six()).expect("migrate to version six");
     handle
         .read(|sql| {
             let counts: (i64, i64) = sql.query_row(

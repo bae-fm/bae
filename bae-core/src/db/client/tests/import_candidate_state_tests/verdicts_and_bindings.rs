@@ -125,6 +125,7 @@ async fn round_trip_preserves_the_verdict_including_provenance() {
     let hash = candidate.content_hash();
     let verdict = sample_verdict();
     let row = new_candidate_row(&hash, "/music/Some Album", &verdict, 2_700_000);
+    store_candidate_state(&db, &candidate, &row.folder_path).await;
 
     db.save_import_candidate_verdict(&row).await.unwrap();
 
@@ -162,6 +163,7 @@ async fn resizing_a_file_orphans_the_old_row_under_a_new_hash() {
         &sample_verdict(),
         2_700_000,
     );
+    store_candidate_state(&db, &original, &row.folder_path).await;
     db.save_import_candidate_verdict(&row).await.unwrap();
 
     let resized = track_files_candidate(&[("01 Track.flac", 999_999), ("02 Track.flac", 234_567)]);
@@ -196,16 +198,21 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
         (
             track_files_candidate(&[("01 Track.flac", 100_001)]).content_hash(),
             "/music/Candidate A",
+            100_001,
             release_pick("release-a"),
         ),
         (
             track_files_candidate(&[("01 Track.flac", 100_002)]).content_hash(),
             "/music/Candidate B",
+            100_002,
             crate::import::MetadataProvenance::FileTags,
         ),
     ];
 
-    for (content_hash, folder_path, provenance) in &cases {
+    for (content_hash, folder_path, size, provenance) in &cases {
+        let candidate = track_files_candidate(&[("01 Track.flac", *size)]);
+        assert_eq!(&candidate.content_hash(), content_hash);
+        store_candidate_state(&db, &candidate, folder_path).await;
         let row = new_candidate_row(content_hash, folder_path, &sample_verdict(), 1_000);
         db.save_import_candidate_verdict(&row).await.unwrap();
         db.replace_candidate_metadata(
@@ -229,7 +236,7 @@ async fn every_metadata_provenance_variant_survives_a_database_reopen() {
     .unwrap();
     let loaded = reopened.load_import_candidate_states().await.unwrap();
 
-    for (content_hash, _, provenance) in &cases {
+    for (content_hash, _, _, provenance) in &cases {
         assert_eq!(
             loaded
                 .get(content_hash)
@@ -253,7 +260,8 @@ fn found_nothing() -> TerminalVerdict {
 #[tokio::test]
 async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_made() {
     let (db, _tmp) = empty_db().await;
-    let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
+    let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
+    let hash = store_candidate_state(&db, &candidate, "/music/Album").await;
 
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
     settled.metadata.provenance = Some(release_pick("mb-rel-1"));
@@ -281,7 +289,8 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
 #[tokio::test]
 async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
     let (db, _tmp) = empty_db().await;
-    let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
+    let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
+    let hash = store_candidate_state(&db, &candidate, "/music/Album").await;
 
     let initial = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
     db.save_import_candidate_verdict(&initial).await.unwrap();
@@ -314,7 +323,8 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
 #[tokio::test]
 async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     let (db, _tmp) = empty_db().await;
-    let hash = track_files_candidate(&[("01 Track.flac", 123_456)]).content_hash();
+    let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
+    let hash = store_candidate_state(&db, &candidate, "/music/Album").await;
 
     let mut first = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
     first.metadata.provenance = Some(release_pick("mb-rel-first"));
@@ -346,6 +356,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = candidate.content_hash();
     let edits = crate::import::folder_scanner::CandidateFileEdits::default();
+    store_candidate_state(&db, &candidate, "/music/Album").await;
 
     let mut settled = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
     settled.metadata.provenance = Some(release_pick("mb-rel-derived"));
@@ -357,7 +368,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
         0,
         metadata_revision,
         &edits,
-        &[],
+        &[("/music/Album".to_string(), candidate.clone())],
         &mapping_preparation,
     )
         .await
@@ -385,7 +396,7 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
         1,
         metadata_revision,
         &edits,
-        &[],
+        &[("/music/Album".to_string(), candidate.clone())],
         &mapping_preparation,
     )
         .await
@@ -417,6 +428,7 @@ async fn a_moved_folder_hashes_identically_and_keeps_its_row() {
         &sample_verdict(),
         2_700_000,
     );
+    store_candidate_state(&db, &at_old_location, &row.folder_path).await;
     db.save_import_candidate_verdict(&row).await.unwrap();
 
     let mut at_new_location = at_old_location.clone();
@@ -448,6 +460,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     let (db, _tmp) = empty_db().await;
     let candidate = track_files_candidate(&[("01 Track.flac", 123_456)]);
     let hash = candidate.content_hash();
+    store_candidate_state(&db, &candidate, "/music/Some Album").await;
 
     let (state, _) = identify_step(IdentifyState::Idle, IdentifyEvent::Started);
     let (state, _) = identify_step(
@@ -634,6 +647,12 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     .unwrap();
     assert_eq!(proposed.track_count(), 12);
     let hash = proposed.content_hash();
+    store_candidate_state(
+        &db,
+        &proposed,
+        &folder.path().to_string_lossy(),
+    )
+    .await;
 
     db.save_import_candidate_verdict(&new_candidate_row(
         &hash,
@@ -656,17 +675,25 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
 
     let mut edits = SheetBindingEdits::default();
     edits.set("cd.cue".to_string(), UserSheetBinding::Cleared);
+    let mut settled = proposed.clone();
+    settled
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            sheet_bindings: edits.clone(),
+            ..Default::default()
+        })
+        .unwrap();
+    let folder_path = folder.path().to_string_lossy().into_owned();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     db.save_import_candidate_file_edits(
         &hash,
-        &folder.path().to_string_lossy(),
+        &folder_path,
         0,
         metadata_revision,
         &CandidateFileEdits {
             sheet_bindings: edits,
             ..Default::default()
         },
-        &[],
+        &[(folder_path.clone(), settled)],
         &mapping_preparation,
     )
     .await

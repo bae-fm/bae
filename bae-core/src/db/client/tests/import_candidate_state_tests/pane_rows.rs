@@ -132,6 +132,46 @@ async fn stored_pane_candidate(db: &Database) -> (CategorizedFiles, String) {
     (files, hash)
 }
 
+async fn store_candidate_state(
+    db: &Database,
+    files: &CategorizedFiles,
+    folder_path: &str,
+) -> String {
+    use crate::import::folder_scanner::{FolderCandidate, ReleaseFileScope, ScanItem};
+
+    let path = PathBuf::from(folder_path);
+    let root = path
+        .parent()
+        .expect("the candidate fixture has a watched root")
+        .to_string_lossy()
+        .into_owned();
+    let name = path
+        .file_name()
+        .expect("the candidate fixture has a folder name")
+        .to_string_lossy()
+        .into_owned();
+    let item = ScanItem::Valid(FolderCandidate {
+        path: path.clone(),
+        file_root: path,
+        name: name.clone(),
+        files: files.clone(),
+        watched_folder_path: root.clone(),
+        scope: ReleaseFileScope::Direct,
+        file_edit_revision: 0,
+        display_path: name,
+        resolved_boundaries: Vec::new(),
+        combine_ancestor_key: None,
+    });
+    let hash = files.content_hash();
+    db.add_watched_import_folder(&root).await.unwrap();
+    let generation = db.begin_folder_scan(&root).await.unwrap();
+    db.save_folder_scan_item(&root, generation, &item)
+        .await
+        .unwrap()
+        .expect("the current scan accepts the candidate");
+    hash
+}
+
 fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
     RawReleaseEdit {
         album_title: title.to_string(),
@@ -160,12 +200,24 @@ fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
     }
 }
 
+#[tokio::test]
+async fn a_verdict_cannot_create_state_for_an_absent_candidate() {
+    let (db, _tmp) = empty_db().await;
+    let hash = pane_candidate().content_hash();
+
+    assert!(!store_verdict(&db, &hash, signals_with(SourceDurations::default())).await);
+    assert!(db
+        .load_import_candidate_state(&hash)
+        .await
+        .unwrap()
+        .is_none());
+}
+
 /// The verdict stores its derived total without duplicating per-file scan facts.
 #[tokio::test]
 async fn verdict_stores_only_the_derived_total() {
     let (db, _tmp) = empty_db().await;
-    let candidate = pane_candidate();
-    let hash = candidate.content_hash();
+    let (_, hash) = stored_pane_candidate(&db).await;
     let durations = SourceDurations::new(vec![
         file_unit("01 Track.flac", 180_000),
         file_unit("CDImage.flac", 600_000),
@@ -277,7 +329,7 @@ async fn every_settled_signal_shape_round_trips() {
 
     for (what, disc_id, barcode, text) in cases {
         let (db, _tmp) = empty_db().await;
-        let hash = pane_candidate().content_hash();
+        let (_, hash) = stored_pane_candidate(&db).await;
         let signals = Signals {
             disc_id,
             barcode,
@@ -331,7 +383,8 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         },
     ] {
         let (db, _tmp) = empty_db().await;
-        let hash = pane_candidate().content_hash();
+        let candidate = pane_candidate();
+        let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
         let error = db
             .save_import_candidate_verdict(&NewImportCandidateVerdict {
@@ -356,13 +409,12 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
             error.to_string().contains("still scanning"),
             "{error} should name what was refused"
         );
-        assert!(
-            db.load_import_candidate_state(&hash)
-                .await
-                .unwrap()
-                .is_none(),
-            "the refused write left no row behind"
-        );
+        let state = db
+            .load_import_candidate_state(&hash)
+            .await
+            .unwrap()
+            .expect("the discovered candidate remains");
+        assert!(state.identify.is_none(), "the refused write left no verdict");
     }
 }
 
@@ -375,7 +427,6 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
 
     db.save_import_candidate_failure(
         &hash,
-        &pane_candidate_path(),
         0,
         &ImportFailure::error_only("the folder vanished", fixed_identified_at()),
     )
@@ -399,7 +450,6 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
 
     db.save_import_candidate_failure(
         &hash,
-        &pane_candidate_path(),
         0,
         &ImportFailure::error_only("the disc would not read", fixed_identified_at()),
     )
@@ -431,7 +481,6 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
     let (_, hash) = stored_pane_candidate(&db).await;
     db.save_import_candidate_failure(
         &hash,
-        &pane_candidate_path(),
         0,
         &ImportFailure::error_only("the prior attempt failed", fixed_identified_at()),
     )

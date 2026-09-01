@@ -738,10 +738,8 @@ async fn a_stored_failure_keeps_the_row_pending_saying_why() {
     assert_eq!(pending.len(), 1, "before any attempt the row is pending");
     assert!(pending[0].import_status.is_none());
 
-    let folder_path = candidate.path.to_string_lossy().into_owned();
     db.save_import_candidate_failure(
         &hash,
-        &folder_path,
         0,
         &crate::import::ImportFailure::error_only("the disk filled", now()),
     )
