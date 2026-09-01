@@ -107,7 +107,7 @@ struct ImportMappingTrackRow: View {
             CommittedTextField(
                 placeholder: coreString("ui.import.slots.untitled"),
                 value: track.title,
-                boxed: false,
+                chrome: .inline,
                 onCommit: { commit(track, \.title, $0) },
             )
             .frame(width: columns.title)

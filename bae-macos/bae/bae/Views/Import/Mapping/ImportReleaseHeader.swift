@@ -37,7 +37,7 @@ struct ImportAlbumIdentityEditor: View {
             CommittedTextField(
                 placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
-                boxed: false,
+                chrome: .inline,
                 font: .system(size: 24, weight: .semibold),
                 editingCommands: editingCommands,
                 onCommit: {
@@ -55,14 +55,14 @@ struct ImportAlbumIdentityEditor: View {
                 .font(.system(size: 14))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: true, vertical: false)
-                .modifier(FieldChrome(focused: false, boxed: false))
+                .modifier(FieldChrome(focused: false, style: .inline))
                 Text(verbatim: "\u{00b7}")
                     .font(.system(size: 14))
                     .foregroundStyle(.quaternary)
                 CommittedTextField(
                     placeholder: String(localized: "Year"),
                     value: values.albumYear,
-                    boxed: false,
+                    chrome: .inline,
                     font: .system(size: 13),
                     editingCommands: editingCommands,
                     onCommit: {
@@ -75,14 +75,14 @@ struct ImportAlbumIdentityEditor: View {
             }
             if let sourceAudio = summary.sourceAudio {
                 ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
-                    .padding(.horizontal, FieldChrome.horizontalPadding)
+                    .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
             }
         }
-        // The fields are borderless, so their text sits a chrome-pad in from
-        // the column's edge. Pull the block back by that pad: the heading text
+        // The fields are inline, so their text sits a chrome-pad in from the
+        // column's edge. Pull the block back by that pad: the heading text
         // lines up with the Release eyebrow and labels under it, and the chrome
         // that appears on hover reaches into the gutter beside the cover.
-        .padding(.leading, -FieldChrome.horizontalPadding)
+        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -102,6 +102,7 @@ struct ImportReleaseFieldsGrid: View {
     let editingCommands: EditingCommitCommands
 
     static let labelWidth: CGFloat = 104
+    /// The value field, chrome included: it hugs the value column.
     static let valueWidth: CGFloat = 150
     /// From the end of a value to the start of the next label.
     static let columnGap: CGFloat = 36
@@ -112,13 +113,13 @@ struct ImportReleaseFieldsGrid: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             FormSectionHeader(title: String(localized: "Release"), ruled: true)
-            // The value text sits a chrome-pad inside its borderless field on
-            // every side, so the grid's gaps are what remain of the stated
-            // distances once that pad is taken off.
+            // The value text sits a chrome-pad inside its inline field, so the
+            // grid's gaps are what remain of the stated distances once that
+            // pad is taken off.
             Grid(
                 alignment: .leadingFirstTextBaseline,
                 horizontalSpacing: Self.columnGap
-                    - FieldChrome.horizontalPadding,
+                    - FieldChrome.inlineHorizontalPadding,
                 verticalSpacing: Self.rowSpacing
             ) {
                 GridRow {
@@ -171,7 +172,7 @@ struct ImportReleaseFieldsGrid: View {
     ) -> some View {
         HStack(
             alignment: .firstTextBaseline,
-            spacing: Self.labelGap - FieldChrome.horizontalPadding
+            spacing: Self.labelGap - FieldChrome.inlineHorizontalPadding
         ) {
             Text(label)
                 .font(.system(size: 12))
@@ -182,20 +183,16 @@ struct ImportReleaseFieldsGrid: View {
                 placeholder: "\u{2014}",
                 value: text,
                 monospaced: monospaced,
-                boxed: false,
+                chrome: .inline,
                 font: .system(
                     size: 12.5,
                     design: monospaced ? .monospaced : .default
                 ),
-                placeholderStyle: .tertiary,
+                placeholderRole: .emptyMark,
                 editingCommands: editingCommands,
                 onCommit: { await writer.setField(field, $0) },
             )
-            .frame(width: Self.valueWidth + FieldChrome.horizontalPadding * 2)
-            // Rows sit one text line apart: the chrome's vertical pad is
-            // taken back out of the layout and drawn into the row gap when
-            // the field is hovered or focused.
-            .padding(.vertical, -FieldChrome.verticalPadding)
+            .frame(width: Self.valueWidth)
         }
     }
 }

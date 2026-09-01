@@ -47,16 +47,23 @@ final class EditingCommitCommands {
 /// underneath replaces what is on screen rather than being overwritten by a
 /// stale draft.
 struct CommittedTextField: View {
+    /// What the placeholder is for.
+    enum PlaceholderRole {
+        /// The system placeholder: says what goes here, and stays while the
+        /// empty field is focused.
+        case hint
+        /// A fact sheet's mark for "nothing here": the tertiary label color
+        /// at rest, gone the moment the field is focused.
+        case emptyMark
+    }
+
     let placeholder: String
     /// The stored value. Re-seeds the draft whenever the field is not focused.
     let value: String
     var monospaced: Bool = false
-    var boxed: Bool = true
+    var chrome: FieldChrome.Style = .boxed
     var font: Font = .system(size: 13)
-    /// How the placeholder is drawn when set — a field that reads as a fact
-    /// at rest shows its empty mark in the tertiary label color rather than
-    /// the system placeholder color.
-    var placeholderStyle: HierarchicalShapeStyle?
+    var placeholderRole: PlaceholderRole = .hint
     /// Present on surfaces that can replace the stored value while this field
     /// is focused. Other editors commit through focus, Return, and pause only.
     var editingCommands: EditingCommitCommands?
@@ -97,7 +104,7 @@ struct CommittedTextField: View {
 
     private var configuredField: some View {
         field
-            .modifier(FieldChrome(focused: focused, boxed: boxed))
+            .modifier(FieldChrome(focused: focused, style: chrome))
             .onAppear { draft = value }
             .onChange(of: value) { _, next in
                 // A field being typed into owns what it shows; anything else
@@ -125,22 +132,28 @@ struct CommittedTextField: View {
 
     @ViewBuilder
     private var field: some View {
-        let base = TextField(
-            placeholder,
-            text: $draft,
-            prompt: placeholderStyle.map {
-                Text(placeholder).foregroundStyle($0)
-            }
-        )
-        .textFieldStyle(.plain)
-        .font(font)
-        .focused($focused)
-        .onSubmit { startCommit(draft) }
+        let base = TextField(placeholder, text: $draft, prompt: prompt)
+            .textFieldStyle(.plain)
+            .font(font)
+            .focused($focused)
+            .onSubmit { startCommit(draft) }
         if monospaced {
             base.monospacedDigit()
         }
         else {
             base
+        }
+    }
+
+    /// What the field shows while empty, by the placeholder's role. `nil`
+    /// leaves the system placeholder in place.
+    private var prompt: Text? {
+        switch placeholderRole {
+        case .hint:
+            nil
+        case .emptyMark:
+            // Gone while editing, so the caret sits alone at the leading edge.
+            Text(focused ? "" : placeholder).foregroundStyle(.tertiary)
         }
     }
 

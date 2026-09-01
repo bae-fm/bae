@@ -1,23 +1,22 @@
 import BaeKit
 import SwiftUI
 
-/// A `String` text field styled to the confirm-pane vocabulary: a recessed
-/// well that lifts and gains an accent border on focus. `boxed` is the
-/// grouped-card look (always-visible well); `boxed: false` is the track
-/// table's borderless cell, transparent until focused.
+/// A `String` text field in the shared field chrome: the grouped-card well by
+/// default, or the track table's inline cell that shows its chrome only under
+/// the pointer and while focused.
 struct MetadataField: View {
     let placeholder: String
     @Binding
     var text: String
     var monospaced: Bool = false
-    var boxed: Bool = true
+    var chrome: FieldChrome.Style = .boxed
 
     @FocusState
     private var focused: Bool
 
     var body: some View {
         field
-            .modifier(FieldChrome(focused: focused, boxed: boxed))
+            .modifier(FieldChrome(focused: focused, style: chrome))
     }
 
     @ViewBuilder
@@ -53,11 +52,12 @@ struct MetadataField: View {
                 text: $catalogNumber,
                 monospaced: true
             )
-            // Borderless cell: transparent until focused. Empty shows placeholder.
+            // Inline cell: transparent until hovered or focused. Empty shows
+            // the placeholder.
             MetadataField(
                 placeholder: "Track title",
                 text: $borderless,
-                boxed: false
+                chrome: .inline
             )
         }
         .padding(24)

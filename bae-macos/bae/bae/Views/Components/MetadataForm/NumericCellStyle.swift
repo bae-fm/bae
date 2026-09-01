@@ -13,7 +13,7 @@ struct NumericCellStyle: ViewModifier {
             .font(.system(size: 13))
             .monospacedDigit()
             .multilineTextAlignment(.center)
-            .modifier(FieldChrome(focused: focused, boxed: false))
+            .modifier(FieldChrome(focused: focused, style: .inline))
     }
 }
 

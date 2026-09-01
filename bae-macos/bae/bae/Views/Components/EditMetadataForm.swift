@@ -106,7 +106,7 @@ extension EditMetadataForm {
             MetadataField(
                 placeholder: String(localized: "Title"),
                 text: track.title,
-                boxed: false,
+                chrome: .inline,
             )
             .frame(maxWidth: .infinity)
             trackArtistsField(track.artistAssignments)
