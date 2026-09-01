@@ -22,8 +22,10 @@ struct ImportReleaseSourceActions {
     let clearMetadata: () -> Void
 }
 
-/// The import card's album identity retains the summary's hierarchy while
-/// making each value directly editable.
+/// The album as a document heading: the title large, the artist and year
+/// under it, the folder's audio facts under those. Every line is the field it
+/// reads — the chrome arrives on hover and focus, so at rest it reads as a
+/// heading and under the pointer it reads as the editor it is.
 struct ImportAlbumIdentityEditor: View {
     let values: BridgeRawReleaseEdit
     let summary: ImportReleaseSummary
@@ -31,102 +33,173 @@ struct ImportAlbumIdentityEditor: View {
     let editingCommands: EditingCommitCommands
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 6) {
             CommittedTextField(
-                placeholder: String(localized: "Title"),
+                placeholder: String(localized: "Album title"),
                 value: values.albumTitle,
                 boxed: false,
-                font: .system(size: 17, weight: .semibold),
+                font: .system(size: 24, weight: .semibold),
                 editingCommands: editingCommands,
                 onCommit: {
                     await writer.setField(.albumTitle, $0)
                 },
             )
-            ArtistAssignmentsField(
-                assignments: values.albumArtistAssignments,
-                placeholder: String(localized: "Artist"),
-                onChange: { assignments in
-                    Task { await writer.setAlbumArtists(assignments) }
-                },
-            )
-            .font(.system(size: 13))
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            HStack(spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                ArtistAssignmentsField(
+                    assignments: values.albumArtistAssignments,
+                    placeholder: String(localized: "Album artist"),
+                    onChange: { assignments in
+                        Task { await writer.setAlbumArtists(assignments) }
+                    },
+                )
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: true, vertical: false)
+                .modifier(FieldChrome(focused: false, boxed: false))
+                Text(verbatim: "\u{00b7}")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.quaternary)
                 CommittedTextField(
                     placeholder: String(localized: "Year"),
                     value: values.albumYear,
                     monospaced: true,
                     boxed: false,
-                    font: .system(size: 11.5),
+                    font: .system(size: 13, design: .monospaced),
                     editingCommands: editingCommands,
                     onCommit: {
                         await writer.setField(.albumYear, $0)
                     },
                 )
-                .foregroundStyle(.tertiary)
-                .frame(width: 64)
+                .foregroundStyle(.secondary)
+                .frame(width: 72)
                 ImportReleaseContextView(summary: summary)
             }
+            if let sourceAudio = summary.sourceAudio {
+                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
+                    .padding(.horizontal, FieldChrome.horizontalPadding)
+            }
         }
+        // The fields are borderless, so their text sits a chrome-pad in from
+        // the column's edge. Pull the block back by that pad: the heading text
+        // lines up with the Release eyebrow and labels under it, and the chrome
+        // that appears on hover reaches into the gutter beside the cover.
+        .padding(.leading, -FieldChrome.horizontalPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-/// The disclosure that keeps the editable pressing fields attached to the
-/// album identity.
-struct ImportReleaseDetails: View {
+/// The pressing fields of the release being written, two to a row under a
+/// ruled Release heading. They are always in view: a pressing is half of what
+/// the import commits, and a fold hid the half most often worth checking.
+///
+/// An empty field shows an em dash, and the field chrome arrives on hover and
+/// focus — at rest the grid reads as facts, under the pointer as the form.
+struct ImportReleaseFieldsGrid: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
-    @Binding
-    var expanded: Bool
+
+    static let labelWidth: CGFloat = 104
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Button {
-                expanded = !expanded
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text("Release")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 12) {
+            FormSectionHeader(title: String(localized: "Release"), ruled: true)
+            Grid(
+                alignment: .leadingFirstTextBaseline,
+                horizontalSpacing: 28,
+                verticalSpacing: 12
+            ) {
+                GridRow {
+                    field(
+                        .pressingYear,
+                        label: String(localized: "Year"),
+                        text: values.pressing.year,
+                        monospaced: true
+                    )
+                    field(
+                        .format,
+                        label: coreString("core.release.media"),
+                        text: values.pressing.format
+                    )
                 }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            if expanded {
-                ReleaseFieldsForm(
-                    values: values,
-                    writer: writer,
-                    sections: [.pressing],
-                    showsSectionHeaders: false,
-                    editingCommands: editingCommands
-                )
+                GridRow {
+                    field(
+                        .label,
+                        label: String(localized: "Label"),
+                        text: values.pressing.label
+                    )
+                    field(
+                        .country,
+                        label: String(localized: "Country"),
+                        text: values.pressing.country
+                    )
+                }
+                GridRow {
+                    field(
+                        .catalogNumber,
+                        label: String(localized: "Catalog number"),
+                        text: values.pressing.catalogNumber,
+                        monospaced: true
+                    )
+                    field(
+                        .barcode,
+                        label: String(localized: "Barcode"),
+                        text: values.pressing.barcode,
+                        monospaced: true
+                    )
+                }
             }
         }
     }
+
+    private func field(
+        _ field: BridgeCandidateEditField,
+        label: String,
+        text: String,
+        monospaced: Bool = false
+    ) -> some View {
+        // The value's text sits a chrome-pad inside its borderless field, so
+        // the spacing here is what remains of the 12pt label-to-value gap.
+        HStack(
+            alignment: .firstTextBaseline,
+            spacing: 12 - FieldChrome.horizontalPadding
+        ) {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(width: Self.labelWidth, alignment: .leading)
+            CommittedTextField(
+                placeholder: "\u{2014}",
+                value: text,
+                monospaced: monospaced,
+                boxed: false,
+                font: .system(
+                    size: 12.5,
+                    design: monospaced ? .monospaced : .default
+                ),
+                editingCommands: editingCommands,
+                onCommit: { await writer.setField(field, $0) },
+            )
+            .frame(maxWidth: .infinity)
+        }
+        .frame(maxWidth: .infinity)
+    }
 }
 
-/// The editable metadata draft card: cover, release fields, source provenance,
-/// replacement actions, and commit controls.
+/// The editable metadata draft card: where the draft's metadata comes from,
+/// then the cover beside the album heading and its release fields, then the
+/// commit row once there is something to commit.
 struct ImportReleaseHeader: View {
     let releaseSummary: ImportReleaseSummary
-    let draftIsBlank: Bool
-    /// Whether a read is in flight — the change control says so and stays put
-    /// rather than the card being replaced by a placeholder.
+    /// Whether a read is in flight — the source controls wait for it rather
+    /// than the card being replaced by a placeholder.
     let isReading: Bool
     let coverContent: ImageContent?
+    /// Whether there is any artwork to pick from — the release's images or the
+    /// folder's. Without one, the cover well says so instead of inviting a
+    /// pick.
     let hasCoverOptions: Bool
-    @Binding
-    var detailsExpanded: Bool
-    /// The album fields stay visible; pressing fields fold under Release.
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
     /// Where a typed field's value goes.
@@ -141,9 +214,9 @@ struct ImportReleaseHeader: View {
     let onSelectCover: (BridgeCoverSelection) -> Void
 
     /// The cover the card leads with. Big enough to read the artwork as
-    /// artwork — at a thumbnail's size it was an icon beside the title, and
-    /// the cover is the thing being confirmed.
-    static let coverSize: CGFloat = 160
+    /// artwork — the cover is the thing being confirmed, and the heading
+    /// beside it is sized to match.
+    static let coverSize: CGFloat = 200
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -151,12 +224,15 @@ struct ImportReleaseHeader: View {
     private var confirmsClear = false
     @State
     private var coverDropTargeted = false
+    @State
+    private var coverHovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top, spacing: 16) {
-                coverColumn
-                VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
+            sourceActionRow
+            HStack(alignment: .top, spacing: 24) {
+                cover
+                VStack(alignment: .leading, spacing: 22) {
                     if let editValues {
                         ImportAlbumIdentityEditor(
                             values: editValues,
@@ -164,8 +240,12 @@ struct ImportReleaseHeader: View {
                             writer: editActions,
                             editingCommands: editingCommands
                         )
+                        ImportReleaseFieldsGrid(
+                            values: editValues,
+                            writer: editActions,
+                            editingCommands: editingCommands
+                        )
                     }
-                    detailsSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -173,7 +253,7 @@ struct ImportReleaseHeader: View {
                 commitRow(commit)
             }
         }
-        .padding(14)
+        .padding(16)
         .formGroupCard()
         .confirmationDialog(
             "Clear metadata?",
@@ -239,57 +319,23 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// Metadata sources stay beneath the source-media summary: both replace
-    /// the same draft by choosing where its metadata comes from.
-    private var sourceActionControl: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            if draftIsBlank, !releaseSummary.hasMatchedRelease {
-                findOnlineButton.buttonStyle(.borderedProminent)
+    /// Where the draft's metadata comes from. One constant set of controls in
+    /// every draft state: both sources replace the same draft, so neither is
+    /// promoted over the other, and clearing sits behind the ellipsis.
+    private var sourceActionRow: some View {
+        HStack(spacing: 8) {
+            Button("Find release…") {
+                sourceActions.findOnline()
             }
-            else {
-                findOnlineButton.buttonStyle(.bordered)
+            .buttonStyle(.bordered)
+            Button("Use file metadata") {
+                sourceActions.useFileTags()
             }
-            HStack(spacing: 5) {
-                Button {
-                    sourceActions.useFileTags()
-                } label: {
-                    Text("Use file metadata")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                if !draftIsBlank {
-                    clearMetadataMenu
-                }
-            }
-        }
-        .disabled(isReading)
-    }
-
-    private var findOnlineButton: some View {
-        Button {
-            sourceActions.findOnline()
-        } label: {
-            if releaseSummary.hasMatchedRelease {
-                Text("Change release…")
-            }
-            else {
-                Text("Find release…")
-            }
+            .buttonStyle(.bordered)
+            clearMetadataMenu
             Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity)
-    }
-
-    @ViewBuilder
-    private var detailsSection: some View {
-        if let editValues {
-            ImportReleaseDetails(
-                values: editValues,
-                writer: editActions,
-                editingCommands: editingCommands,
-                expanded: $detailsExpanded
-            )
-        }
+        .disabled(isReading)
     }
 
     private var clearMetadataMenu: some View {
@@ -299,43 +345,57 @@ struct ImportReleaseHeader: View {
             }
         } label: {
             Image(systemName: "ellipsis")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 22)
+                .contentShape(Rectangle())
                 .accessibilityLabel(Text("Clear metadata"))
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
+        .background(
+            .white.opacity(0.06),
+            in: RoundedRectangle(cornerRadius: 6)
+        )
     }
 
+    /// The cover, or the well it goes in. The well invites the two ways a
+    /// cover arrives — dragging one of the folder's images onto it, or picking
+    /// from the release's and the folder's — and says when there is neither.
     private var cover: some View {
         Group {
             if let coverContent {
                 ImageView(content: coverContent, pointSize: Self.coverSize)
             }
             else {
-                Theme.placeholder
+                artworkWell
             }
         }
         .frame(width: Self.coverSize, height: Self.coverSize)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(alignment: .topTrailing) {
-            if hasCoverOptions {
+            if coverContent != nil, hasCoverOptions {
                 Image(systemName: "pencil")
                     .font(.caption2)
                     .foregroundStyle(.white)
                     .padding(3)
                     .background(.black.opacity(0.5))
                     .clipShape(RoundedRectangle(cornerRadius: 3))
-                    .padding(2)
+                    .padding(4)
             }
         }
+        .contentShape(Rectangle())
         .onTapGesture {
             if hasCoverOptions {
                 onEditCover()
             }
         }
+        .onHover { coverHovering = $0 }
         .overlay {
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 8)
                 .stroke(
-                    Color.accentColor,
+                    Theme.accent,
                     lineWidth: coverDropTargeted ? 3 : 0
                 )
         }
@@ -350,16 +410,37 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    private var coverColumn: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            cover
-            if let sourceAudio = releaseSummary.sourceAudio {
-                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
-                    .frame(width: Self.coverSize, alignment: .leading)
+    private var artworkWell: some View {
+        let inviting = hasCoverOptions && coverHovering
+        return VStack(spacing: 4) {
+            if hasCoverOptions {
+                Text("Add artwork")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Drag an image here, or click to choose")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
-            sourceActionControl
+            else {
+                Text("No artwork")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
         }
-        .frame(width: Self.coverSize, alignment: .leading)
+        .padding(16)
+        .frame(width: Self.coverSize, height: Self.coverSize)
+        .background(
+            inviting ? Theme.accent.opacity(0.06) : .white.opacity(0.03)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .strokeBorder(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .foregroundStyle(
+                    inviting
+                        ? AnyShapeStyle(Theme.accent)
+                        : AnyShapeStyle(.white.opacity(0.16))
+                )
+        }
     }
 }
 
@@ -371,11 +452,9 @@ struct ImportReleaseHeader: View {
                 candidate: PreviewData.mappingCandidate,
                 editValues: PreviewData.confirmEditValues
             ),
-            draftIsBlank: false,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: true,
-            detailsExpanded: .constant(false),
             editValues: PreviewData.confirmEditValues,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
@@ -390,7 +469,7 @@ struct ImportReleaseHeader: View {
             onSelectCover: { _ in },
         )
         .padding(24)
-        .frame(width: 900, height: 360)
+        .frame(width: 900, height: 420)
         .importPreviewEnvironment()
         .environment(Library.stub())
         .candidateReaderPreviewEnvironment()

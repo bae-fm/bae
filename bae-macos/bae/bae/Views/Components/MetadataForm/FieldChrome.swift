@@ -2,15 +2,25 @@ import BaeKit
 import SwiftUI
 
 /// The shared field chrome: recessed fill + hairline border that becomes a
-/// lifted fill + accent border on focus. `boxed` controls the resting look;
-/// the focused look is identical for boxed and borderless cells.
+/// lifted fill + accent border on focus. `boxed` controls the resting look —
+/// a boxed field always shows its well; a borderless one shows nothing at
+/// rest and takes the boxed resting look under the pointer, so text that is
+/// editable says so the moment it is hovered. The focused look is identical
+/// for boxed and borderless cells.
 struct FieldChrome: ViewModifier {
     let focused: Bool
     let boxed: Bool
 
+    /// How far the field's text sits inside its chrome. Surfaces that line a
+    /// borderless field's text up with plain text beside it offset by this.
+    static let horizontalPadding: CGFloat = 10
+
+    @State
+    private var hovering = false
+
     func body(content: Content) -> some View {
         content
-            .padding(.horizontal, 10)
+            .padding(.horizontal, Self.horizontalPadding)
             .padding(.vertical, 6)
             .background(restingFill)
             .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -18,20 +28,21 @@ struct FieldChrome: ViewModifier {
                 RoundedRectangle(cornerRadius: 6)
                     .strokeBorder(borderColor, lineWidth: focused ? 1.5 : 1)
             }
+            .onHover { hovering = $0 }
     }
 
     private var restingFill: Color {
         if focused {
             return Theme.fieldHover
         }
-        return boxed ? Theme.field : .clear
+        return boxed || hovering ? Theme.field : .clear
     }
 
     private var borderColor: Color {
         if focused {
             return Theme.accent
         }
-        return boxed ? .white.opacity(0.07) : .clear
+        return boxed || hovering ? .white.opacity(0.07) : .clear
     }
 }
 

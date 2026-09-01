@@ -52,28 +52,17 @@ struct ReleaseFieldWriter {
 ///
 /// It reads values and reports edits; where those values live is the caller's.
 struct ReleaseFieldsForm: View {
-    enum Section: Hashable {
-        case album
-        case pressing
-    }
-
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
-    let sections: Set<Section>
-    let showsSectionHeaders: Bool
     var editingCommands: EditingCommitCommands?
 
     init(
         values: BridgeRawReleaseEdit,
         writer: ReleaseFieldWriter,
-        sections: Set<Section> = [.album, .pressing],
-        showsSectionHeaders: Bool = true,
         editingCommands: EditingCommitCommands? = nil
     ) {
         self.values = values
         self.writer = writer
-        self.sections = sections
-        self.showsSectionHeaders = showsSectionHeaders
         self.editingCommands = editingCommands
     }
 
@@ -81,19 +70,13 @@ struct ReleaseFieldsForm: View {
     init(form: Binding<BridgeRawReleaseEdit>) {
         values = form.wrappedValue
         writer = .binding(form)
-        sections = [.album, .pressing]
-        showsSectionHeaders = true
         editingCommands = nil
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            if sections.contains(.album) {
-                albumGroup
-            }
-            if sections.contains(.pressing) {
-                pressingGroup
-            }
+            albumGroup
+            pressingGroup
         }
     }
 
@@ -119,9 +102,7 @@ struct ReleaseFieldsForm: View {
 
     private var albumGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if showsSectionHeaders {
-                FormSectionHeader(title: String(localized: "Album"))
-            }
+            FormSectionHeader(title: String(localized: "Album"))
             VStack(spacing: 0) {
                 fieldRow(
                     row(
@@ -175,9 +156,7 @@ struct ReleaseFieldsForm: View {
 
     private var pressingGroup: some View {
         groupCard(
-            title:
-                showsSectionHeaders
-                ? String(localized: "Release pressing") : nil,
+            title: String(localized: "Release pressing"),
             rows: [
                 row(
                     .pressingYear,
@@ -229,11 +208,9 @@ struct ReleaseFieldsForm: View {
 
     /// A titled inset card of label-left / value-right rows separated by
     /// hairlines.
-    private func groupCard(title: String?, rows: [FieldRow]) -> some View {
+    private func groupCard(title: String, rows: [FieldRow]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let title {
-                FormSectionHeader(title: title)
-            }
+            FormSectionHeader(title: title)
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.label) {
                     index,

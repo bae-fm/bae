@@ -41,7 +41,6 @@
                 libraryStatus: nil,
                 hasCoverOptions: true,
                 coverContent: nil,
-                detailsExpanded: .constant(candidate.metadataDraftIsBlank),
                 editActions: ReleaseFieldWriter { _, _ in },
                 editingCommands: EditingCommitCommands(),
                 endEditing: {},

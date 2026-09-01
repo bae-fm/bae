@@ -22,8 +22,6 @@ struct ImportMappingPane: View {
     let libraryStatus: BridgeLibraryStatus?
     let hasCoverOptions: Bool
     let coverContent: ImageContent?
-    @Binding
-    var detailsExpanded: Bool
     /// Where an album-level field's typed value goes: a row under this
     /// candidate, written as the field is left.
     let editActions: ReleaseFieldWriter
@@ -50,7 +48,7 @@ struct ImportMappingPane: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 20) {
                 CandidateFolderLine(
                     placement: candidate.row?.placement,
                     folderName: candidate.displayName,
@@ -63,11 +61,7 @@ struct ImportMappingPane: View {
                 banners
                 if candidate.detail != nil {
                     if !mapping.images.isEmpty {
-                        ImportMappingGallery(
-                            images: mapping.images,
-                            evidence: candidate.fileEvidence,
-                            actions: mappingActions
-                        )
+                        imagesSection
                     }
                     ImportMappingTable(
                         table: mapping,
@@ -78,7 +72,22 @@ struct ImportMappingPane: View {
                     )
                 }
             }
-            .padding(20)
+            .padding(.horizontal, 24)
+            .padding(.top, 20)
+            .padding(.bottom, 32)
+        }
+    }
+
+    /// The folder's images under their own ruled heading, level with the
+    /// Tracks heading the table draws beneath them.
+    private var imagesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            FormSectionHeader(title: String(localized: "Images"), ruled: true)
+            ImportMappingGallery(
+                images: mapping.images,
+                evidence: candidate.fileEvidence,
+                actions: mappingActions
+            )
         }
     }
 
@@ -108,7 +117,6 @@ struct ImportMappingPane: View {
                 || candidate.fileTagsPreview.isLoading,
             coverContent: coverContent,
             hasCoverOptions: hasCoverOptions,
-            detailsExpanded: $detailsExpanded,
             editActions: editActions,
             editingCommands: editingCommands,
             endEditing: endEditing,

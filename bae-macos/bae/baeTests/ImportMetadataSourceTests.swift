@@ -474,9 +474,7 @@ final class ImportFileTagsRepeatabilityTests: XCTestCase {
 
 @MainActor
 final class ImportMetadataCardLayoutTests: XCTestCase {
-    func testUnmatchedMetadataKeepsSourceActionsBesideDetails()
-        async throws
-    {
+    func testSourceActionsLeadTheCardAboveCoverAndFields() async throws {
         NSApplication.shared.finishLaunching()
         let provenances: [BridgeMetadataProvenance?] = [
             nil,
@@ -487,7 +485,7 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         }
     }
 
-    func testBlankMetadataOpensEditableDetailsBesideTheCover()
+    func testBlankMetadataOpensEditableFieldsBesideTheCover()
         async throws
     {
         NSApplication.shared.finishLaunching()
@@ -520,52 +518,38 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         window.orderOut(nil)
     }
 
-    func testDetailsDisclosureRendersTheProductionReleaseFields() async throws {
+    /// The pressing fields are part of the card in every state — there is no
+    /// fold to open before the year, label and catalog number can be checked.
+    func testReleaseFieldsStayInViewWithTheAlbumIdentity() async throws {
         NSApplication.shared.finishLaunching()
-        let size = NSSize(width: 700, height: 900)
-        let collapsed = await detailsControlCount(
-            expanded: false,
-            size: size
-        )
-        let expanded = await detailsControlCount(
-            expanded: true,
-            size: size
-        )
-
-        XCTAssertGreaterThan(expanded, collapsed)
-    }
-
-    private func detailsControlCount(
-        expanded: Bool,
-        size: NSSize
-    ) async -> Int {
+        let recorder = MetadataCardActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
-            ImportReleaseDetails(
-                values: PreviewData.confirmEditValues,
-                writer: ReleaseFieldWriter { _, _ in },
-                editingCommands: EditingCommitCommands(),
-                expanded: .constant(expanded)
-            )
-            .frame(width: size.width)
-            .padding(14)
-            .environment(Library.stub())
-            .environment(UiStore()),
-            size: size
+            metadataHeader(
+                provenance: nil,
+                draftIsBlank: false,
+                recorder: recorder
+            ),
+            size: NSSize(width: 900, height: 620)
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
-        let count = editableTextValues(in: host).count
+        await SnapshotTestSupport.settle(host)
+
+        let text = editableTextValues(in: host)
+        let values = PreviewData.confirmEditValues
+        XCTAssertTrue(text.contains(values.albumTitle))
+        XCTAssertTrue(text.contains(values.albumYear))
+        XCTAssertTrue(text.contains(values.pressing.year))
+        XCTAssertTrue(text.contains(values.pressing.label))
+        XCTAssertTrue(text.contains(values.pressing.catalogNumber))
+
         window.contentView = nil
         window.orderOut(nil)
-        return count
     }
 
     private func assertCardLayout(
         provenance: BridgeMetadataProvenance?
     ) async throws {
         let recorder = MetadataCardActionRecorder()
-        let size = NSSize(width: 900, height: 420)
+        let size = NSSize(width: 900, height: 520)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
                 provenance: provenance,
@@ -580,9 +564,15 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
         let layout = try focusLayout(in: host)
         let cover = try coverFrame(in: host)
 
-        XCTAssertGreaterThanOrEqual(layout.details.minX, cover.maxX)
-        XCTAssertLessThanOrEqual(layout.findOnline.maxX, layout.details.minX)
-        XCTAssertLessThanOrEqual(layout.fileTags.maxX, layout.details.minX)
+        // The source controls have the card's first row to themselves: neither
+        // shares a band with the cover, and they read left to right.
+        XCTAssertFalse(layout.findOnline.intersects(cover))
+        XCTAssertFalse(layout.fileTags.intersects(cover))
+        XCTAssertTrue(
+            layout.findOnline.maxY <= cover.minY
+                || layout.findOnline.minY >= cover.maxY
+        )
+        XCTAssertLessThan(layout.findOnline.maxX, layout.fileTags.minX)
         XCTAssertFalse(layout.findOnline.intersects(layout.fileTags))
         try click(at: layout.findOnline.center, in: host, window: window)
         try click(at: layout.fileTags.center, in: host, window: window)
@@ -596,7 +586,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
     private func metadataHeader(
         provenance: BridgeMetadataProvenance?,
         draftIsBlank: Bool,
-        detailsExpanded: Bool? = nil,
         recorder: MetadataCardActionRecorder
     ) -> some View {
         let editValues =
@@ -614,11 +603,9 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
                 candidate: candidate,
                 editValues: editValues
             ),
-            draftIsBlank: draftIsBlank,
             isReading: false,
             coverContent: nil,
             hasCoverOptions: false,
-            detailsExpanded: .constant(detailsExpanded ?? draftIsBlank),
             editValues: editValues,
             editActions: ReleaseFieldWriter { _, _ in },
             editingCommands: EditingCommitCommands(),
@@ -632,38 +619,27 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             onEditCover: {},
             onSelectCover: { _ in }
         )
-        .frame(width: 900, height: 420)
+        .frame(width: 900, height: 520)
         .importPreviewEnvironment()
         .environment(Library.stub())
     }
 
+    /// The two source buttons, as the key-view loop finds them, left to right.
     private func focusLayout(
         in host: NSView
     ) throws -> MetadataCardFocusLayout {
-        let frames = focusFrames(in: host)
-        let details = try detailsFrame(in: host)
-        let remaining =
-            frames
+        let controls = focusFrames(in: host)
             .filter { $0.height >= 20 }
             .sorted {
                 if abs($0.midY - $1.midY) < 2 { return $0.minX < $1.minX }
                 return $0.midY < $1.midY
             }
-        let findOnline = try XCTUnwrap(remaining.first)
-        let fileTags = try XCTUnwrap(remaining.dropFirst().first)
-        XCTAssertEqual(remaining.count, 2)
+        let findOnline = try XCTUnwrap(controls.first)
+        let fileTags = try XCTUnwrap(controls.dropFirst().first)
+        XCTAssertEqual(controls.count, 2)
         return MetadataCardFocusLayout(
-            details: details,
             findOnline: findOnline,
             fileTags: fileTags
-        )
-    }
-
-    private func detailsFrame(in host: NSView) throws -> NSRect {
-        try XCTUnwrap(
-            focusFrames(in: host)
-                .filter { $0.height < 20 }
-                .max { $0.width < $1.width }
         )
     }
 
@@ -744,16 +720,13 @@ extension ImportMetadataCardLayoutTests {
         window.orderOut(nil)
     }
 
-    func testAlbumIdentityUsesEditableSummaryTypographyWithoutFieldLabels()
-        async throws
-    {
+    func testAlbumIdentityTitleOutsizesItsYear() async throws {
         NSApplication.shared.finishLaunching()
         let recorder = MetadataCardActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
                 provenance: nil,
                 draftIsBlank: false,
-                detailsExpanded: false,
                 recorder: recorder
             ),
             size: NSSize(width: 900, height: 620)
@@ -772,52 +745,17 @@ extension ImportMetadataCardLayoutTests {
                 $0.stringValue == PreviewData.confirmEditValues.albumYear
             }
         )
-        let staticLabels = Set(
-            textFields.filter { !$0.isEditable }.map(\.stringValue)
-        )
 
         XCTAssertGreaterThan(
             try XCTUnwrap(title.font).pointSize,
             try XCTUnwrap(year.font).pointSize
         )
-        XCTAssertTrue(
-            staticLabels.isDisjoint(with: ["Album", "Title", "Artist", "Year"])
-        )
 
         window.contentView = nil
         window.orderOut(nil)
     }
 
-    func testAlbumIdentityFieldsStayVisibleWhenPressingDetailsAreCollapsed()
-        async throws
-    {
-        NSApplication.shared.finishLaunching()
-        let recorder = MetadataCardActionRecorder()
-        let (window, host) = SnapshotTestSupport.hostInWindow(
-            metadataHeader(
-                provenance: nil,
-                draftIsBlank: false,
-                detailsExpanded: false,
-                recorder: recorder
-            ),
-            size: NSSize(width: 900, height: 620)
-        )
-        await SnapshotTestSupport.settle(host)
-
-        let text = editableTextValues(in: host)
-        XCTAssertTrue(text.contains(PreviewData.confirmEditValues.albumTitle))
-        XCTAssertTrue(text.contains(PreviewData.confirmEditValues.albumYear))
-        XCTAssertFalse(
-            text.contains(PreviewData.confirmEditValues.pressing.year)
-        )
-
-        window.contentView = nil
-        window.orderOut(nil)
-    }
-
-    func testMatchedReleaseKeepsItsSourceActionsOutsideCollapsedDetails()
-        async
-    {
+    func testMatchedReleaseKeepsBothSourceActions() async {
         let recorder = MetadataCardActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
             metadataHeader(
@@ -828,7 +766,7 @@ extension ImportMetadataCardLayoutTests {
                 draftIsBlank: false,
                 recorder: recorder
             ),
-            size: NSSize(width: 900, height: 420)
+            size: NSSize(width: 900, height: 520)
         )
         await SnapshotTestSupport.settle(host)
 
@@ -866,104 +804,6 @@ extension ImportMetadataCardLayoutTests {
             "FLAC · 44.1\u{00a0}kHz · 16\u{2011}bit · stereo"
         )
     }
-
-    func testBlankDraftInitialExpansionSurvivesDraftPopulation() {
-        var state = CandidateMetadataDetailsState()
-
-        state.establishInitialState(
-            for: "candidate-a",
-            draftIsBlank: true,
-            hasMatchedRelease: false
-        )
-
-        XCTAssertTrue(
-            state.isExpanded(
-                for: "candidate-a",
-                draftIsBlank: false,
-                hasMatchedRelease: false
-            )
-        )
-    }
-
-    func testApplyingAnExternalReleaseCollapsesDetails() {
-        var state = CandidateMetadataDetailsState()
-        state.establishInitialState(
-            for: "candidate-a",
-            draftIsBlank: true,
-            hasMatchedRelease: false
-        )
-
-        state.externalReleaseApplied(for: "candidate-a")
-
-        XCTAssertFalse(
-            state.isExpanded(
-                for: "candidate-a",
-                draftIsBlank: false,
-                hasMatchedRelease: true
-            )
-        )
-    }
-
-    func testInitiallyMatchedReleaseStartsCollapsed() {
-        var state = CandidateMetadataDetailsState()
-
-        state.establishInitialState(
-            for: "candidate-a",
-            draftIsBlank: true,
-            hasMatchedRelease: true
-        )
-
-        XCTAssertFalse(
-            state.isExpanded(
-                for: "candidate-a",
-                draftIsBlank: true,
-                hasMatchedRelease: true
-            )
-        )
-    }
-
-    func testDetailsDisclosureStateIsRememberedPerCandidate() {
-        var state = CandidateMetadataDetailsState()
-
-        XCTAssertTrue(
-            state.isExpanded(
-                for: "candidate-a",
-                draftIsBlank: true,
-                hasMatchedRelease: false
-            )
-        )
-        state.setExpanded(false, for: "candidate-a")
-        XCTAssertFalse(
-            state.isExpanded(
-                for: "candidate-a",
-                draftIsBlank: true,
-                hasMatchedRelease: false
-            )
-        )
-
-        XCTAssertFalse(
-            state.isExpanded(
-                for: "candidate-b",
-                draftIsBlank: false,
-                hasMatchedRelease: false
-            )
-        )
-        state.setExpanded(true, for: "candidate-b")
-        XCTAssertTrue(
-            state.isExpanded(
-                for: "candidate-b",
-                draftIsBlank: false,
-                hasMatchedRelease: false
-            )
-        )
-        XCTAssertFalse(
-            state.isExpanded(
-                for: "candidate-a",
-                draftIsBlank: true,
-                hasMatchedRelease: false
-            )
-        )
-    }
 }
 
 @MainActor
@@ -980,7 +820,6 @@ extension NSRect {
 }
 
 private struct MetadataCardFocusLayout {
-    let details: NSRect
     let findOnline: NSRect
     let fileTags: NSRect
 }

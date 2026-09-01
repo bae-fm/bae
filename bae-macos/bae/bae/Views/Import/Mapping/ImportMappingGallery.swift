@@ -13,7 +13,7 @@ struct ImportMappingGallery: View {
     var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
 
-    static let tileSize: CGFloat = 96
+    static let tileSize: CGFloat = 128
 
     var body: some View {
         LazyVGrid(
@@ -23,52 +23,83 @@ struct ImportMappingGallery: View {
                         minimum: Self.tileSize,
                         maximum: Self.tileSize
                     ),
-                    spacing: 8,
+                    spacing: 10,
                     alignment: .top
                 )
             ],
             alignment: .leading,
-            spacing: 8
+            spacing: 10
         ) {
-            ForEach(images, id: \.fileId, content: tile)
+            ForEach(images, id: \.fileId) { image in
+                ImportMappingGalleryTile(
+                    image: image,
+                    images: images,
+                    evidence: ImportEvidence.of(image.fileId, in: evidence),
+                    actions: actions
+                )
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
 
-    private func tile(_ image: BridgeMappingImage) -> some View {
-        let found = ImportEvidence.of(image.fileId, in: evidence)
-        return Button {
+/// One image of the gallery: the picture, its filename under it, and an
+/// accent outline while the pointer says it can be opened. Dragging it onto
+/// the cover well makes it the cover.
+struct ImportMappingGalleryTile: View {
+    let image: BridgeMappingImage
+    /// Every image of the gallery — what the lightbox pages through from this
+    /// one.
+    let images: [BridgeMappingImage]
+    let evidence: [BridgeFileEvidence]
+    let actions: ImportMappingActions
+
+    @State
+    private var hovering = false
+
+    private var tileSize: CGFloat { ImportMappingGallery.tileSize }
+
+    var body: some View {
+        Button {
             actions.openImages(images, image.localPath)
         } label: {
-            VStack(spacing: 3) {
+            VStack(alignment: .leading, spacing: 6) {
                 ImageView(
                     content: .localFile(path: image.localPath),
-                    pointSize: Self.tileSize
+                    pointSize: tileSize
                 )
-                .frame(width: Self.tileSize, height: Self.tileSize)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .frame(width: tileSize, height: tileSize)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(
+                            Theme.accent,
+                            lineWidth: hovering ? 2 : 0
+                        )
+                }
                 .overlay(alignment: .bottomLeading) {
                     HStack(spacing: 3) {
-                        ForEach(ImportEvidence.badges(found)) { badge in
+                        ForEach(ImportEvidence.badges(evidence)) { badge in
                             ImportEvidenceChip(
                                 signal: badge.signal,
                                 onImage: true
                             )
                         }
                     }
-                    .padding(3)
+                    .padding(4)
                 }
                 Text(image.name)
-                    .font(.caption2)
+                    .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            .frame(width: Self.tileSize, alignment: .top)
+            .frame(width: tileSize, alignment: .topLeading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering = $0 }
         .draggable(image.fileId)
-        .help(ImportEvidence.hoverText(found))
+        .help(ImportEvidence.hoverText(evidence))
     }
 }

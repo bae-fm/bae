@@ -10,8 +10,6 @@ struct ImportMetadataSourceSection: View {
     let isReading: Bool
     let coverContent: ImageContent?
     let hasCoverOptions: Bool
-    @Binding
-    var detailsExpanded: Bool
     let editActions: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
     let endEditing: @MainActor () async -> Void
@@ -49,11 +47,9 @@ struct ImportMetadataSourceSection: View {
                     candidate: candidate,
                     editValues: edit
                 ),
-                draftIsBlank: candidate.metadataDraftIsBlank,
                 isReading: isReading,
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
-                detailsExpanded: $detailsExpanded,
                 editValues: edit,
                 editActions: editActions,
                 editingCommands: editingCommands,

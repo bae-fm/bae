@@ -31,19 +31,6 @@ extension ImportView {
             mappingPane(for: candidate, runtime: runtime)
         }
         .id(candidate.key)
-        .onAppear {
-            establishMetadataDetailsInitialState(for: candidate)
-        }
-        .onChange(of: candidate.metadataDraftIsBlank) { _, _ in
-            establishMetadataDetailsInitialState(for: candidate)
-        }
-        .onChange(of: candidate.metadataProvenance) { _, provenance in
-            if case .externalRelease = provenance {
-                metadataDetailsState.externalReleaseApplied(
-                    for: candidate.key
-                )
-            }
-        }
     }
 
     private func mappingPane(
@@ -58,7 +45,6 @@ extension ImportView {
             libraryStatus: candidate.pickedLibraryStatus,
             hasCoverOptions: hasCoverOptions(candidate),
             coverContent: candidate.cover?.thumbnailContent,
-            detailsExpanded: metadataDetailsExpanded(for: candidate),
             editActions: editActions(for: candidate),
             editingCommands: editingCommands,
             endEditing: commitAndEndEditing,

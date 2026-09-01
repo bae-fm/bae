@@ -57,7 +57,7 @@ struct ImportMappingTable: View {
         }
     }
 
-    /// One titled card of rows. A pane too narrow for the columns scrolls
+    /// One titled run of rows. A pane too narrow for the columns scrolls
     /// sideways rather than squeezing a column past the point it says
     /// anything, and both sections scroll as one so their columns stay aligned.
     @ViewBuilder
@@ -66,7 +66,7 @@ struct ImportMappingTable: View {
         @ViewBuilder rows: () -> Rows
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: title)
+            FormSectionHeader(title: title, ruled: true)
             ScrollView(.horizontal) {
                 rowStack(rows)
             }
@@ -86,7 +86,6 @@ struct ImportMappingTable: View {
             rows()
         }
         .frame(width: tableWidth, alignment: .leading)
-        .formGroupCard()
     }
 
     private func artistFillRows<Rows: View>(
@@ -109,7 +108,8 @@ struct ImportMappingTable: View {
             FormSectionHeader(
                 title: coreString("ui.import.mapping.tracks_title"),
                 trailing: table.reconciliation
-                    .flatMap(bridgeSlotReconciliationText)
+                    .flatMap(bridgeSlotReconciliationText),
+                ruled: true
             )
             ScrollView(.horizontal) {
                 artistFillRows {
@@ -243,11 +243,8 @@ struct ImportMappingTable: View {
             content()
         }
         .padding(.horizontal, ImportMappingColumns.rowPadding)
-        .padding(.vertical, 8)
-        .background(Theme.surfaceElevated)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(.white.opacity(0.13)).frame(height: 1)
-        }
+        .padding(.top, 4)
+        .padding(.bottom, 6)
     }
 
     private func evidenceFor(_ unit: BridgeMappingUnit) -> [BridgeFileEvidence]
@@ -259,8 +256,9 @@ struct ImportMappingTable: View {
 
 extension View {
     /// What every row of the mapping table sits in: one leading edge, one
-    /// height, and a separator over it. No striping — the columns are what a
-    /// reader follows across a row, and a tinted band under half of them is a
+    /// height, and a hairline over it. No box and no striping — the table sits
+    /// open on the pane under its ruled heading, the columns are what a reader
+    /// follows across a row, and a tinted band under half of them is a
     /// second, competing grouping.
     fileprivate func rowChrome(background: Color = .clear) -> some View {
         padding(.horizontal, ImportMappingColumns.rowPadding)
@@ -274,9 +272,12 @@ extension View {
             }
     }
 
-    /// A sheet is the heading for the track rows immediately below it.
+    /// A sheet is the heading for the track rows immediately below it: a
+    /// raised band with an accent edge, inset so the edge stands clear of the
+    /// sheet's name.
     fileprivate func sheetGroupHeaderChrome() -> some View {
-        padding(.horizontal, ImportMappingColumns.rowPadding)
+        padding(.leading, ImportMappingColumns.rowPadding + 10)
+            .padding(.trailing, ImportMappingColumns.rowPadding)
             .padding(.vertical, 8)
             .frame(minHeight: 44)
             .background(Theme.surfaceElevated)
@@ -284,7 +285,7 @@ extension View {
                 Rectangle().fill(Theme.accent).frame(width: 3)
             }
             .overlay(alignment: .top) {
-                Rectangle().fill(.white.opacity(0.13)).frame(height: 1)
+                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
             }
     }
 }
@@ -319,7 +320,10 @@ struct ImportMappingColumns {
     static let length: CGFloat = 88
     static let fileSize: CGFloat = 64
     static let spacing: CGFloat = 10
-    static let rowPadding: CGFloat = 14
+    /// The rows' inset from the table's edges. The table is open on the pane,
+    /// so this matches the section heading's inset and the rows line up under
+    /// it.
+    static let rowPadding: CGFloat = 2
 
     private static let idealTitle: CGFloat = 220
     private static let floorTitle: CGFloat = 96

@@ -19,14 +19,26 @@ struct FormEyebrow: View {
 
 /// A section header: the eyebrow, and an optional right-aligned note stating
 /// what the section holds.
+///
+/// `ruled` runs a hairline from the eyebrow to the far edge. A header over a
+/// bordered card has the card's edge to divide it from what came before; a
+/// header over open content — a gallery, a borderless table — has the rule.
 struct FormSectionHeader: View {
     let title: String
     var trailing: String?
+    var ruled = false
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: ruled ? .center : .firstTextBaseline, spacing: 8) {
             FormEyebrow(text: Text(verbatim: title), size: 11)
-            Spacer()
+            if ruled {
+                Rectangle()
+                    .fill(.white.opacity(0.06))
+                    .frame(height: 1)
+            }
+            else {
+                Spacer()
+            }
             if let trailing {
                 Text(trailing)
                     .font(.system(size: 11.5))
