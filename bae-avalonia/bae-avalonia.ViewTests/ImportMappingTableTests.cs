@@ -519,7 +519,8 @@ public sealed class ImportMappingTableTests
                 1,
                 null,
                 file),
-            SourcePosition: null);
+            Position: null,
+            NamedBySource: true);
 
     private static BridgeAudioFile Standalone(string fileId) => new BridgeAudioFile.Standalone(fileId);
 

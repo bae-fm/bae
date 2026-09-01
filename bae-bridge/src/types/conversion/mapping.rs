@@ -532,10 +532,12 @@ impl BridgeMappingBecomes {
         match becomes {
             MappingBecomes::Track {
                 track,
-                source_position,
+                position,
+                named_by_source,
             } => Self::Track {
                 track: BridgeRawTrackEdit::from_core(track),
-                source_position,
+                position,
+                named_by_source,
             },
             MappingBecomes::AwaitingPick => Self::AwaitingPick,
         }
@@ -546,10 +548,12 @@ impl BridgeMappingBecomes {
         match self {
             Self::Track {
                 track,
-                source_position,
+                position,
+                named_by_source,
             } => MappingBecomes::Track {
                 track: track.into_core(),
-                source_position,
+                position,
+                named_by_source,
             },
             Self::AwaitingPick => MappingBecomes::AwaitingPick,
         }

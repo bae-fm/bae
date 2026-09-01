@@ -70,7 +70,8 @@
                     source: .file(file: mappingAudio(index)),
                     becomes: .track(
                         track: confirmEditValues.tracks[index - 1],
-                        sourcePosition: "\(index)"
+                        position: "\(index)",
+                        namedBySource: true
                     ),
                     durationMs: UInt64(180_000 + index * 15000)
                 )
@@ -199,7 +200,7 @@
                 .map {
                     index,
                     track in
-                    let sourcePosition = "\(index + 1)"
+                    let position = "\(index + 1)"
                     let sourceDurationMs = UInt64(252_000 + index * 9000)
                     if index == 0 {
                         return .unit(
@@ -228,7 +229,8 @@
                                 ),
                                 becomes: .track(
                                     track: track,
-                                    sourcePosition: sourcePosition
+                                    position: position,
+                                    namedBySource: true
                                 ),
                                 durationMs: sourceDurationMs
                             )
@@ -239,7 +241,8 @@
                             source: .missing,
                             becomes: .track(
                                 track: track,
-                                sourcePosition: sourcePosition
+                                position: position,
+                                namedBySource: true
                             ),
                             durationMs: sourceDurationMs
                         )
@@ -274,7 +277,8 @@
                 source: .sheetEntry(entry: entry),
                 becomes: .track(
                     track: confirmEditValues.tracks[index],
-                    sourcePosition: "\(index + 1)"
+                    position: "\(index + 1)",
+                    namedBySource: true
                 ),
                 durationMs: durationMs
             )
@@ -354,7 +358,8 @@
                                         fileId: "Track \(index).flac"
                                     )
                                 ),
-                                sourcePosition: "\(index)"
+                                position: "\(index)",
+                                namedBySource: true
                             ),
                             durationMs: mappingAudio(index).durationMs
                         )
@@ -660,7 +665,8 @@
                             source: .file(file: mappingAudio(index + 1)),
                             becomes: .track(
                                 track: track,
-                                sourcePosition: nil
+                                position: "\(index + 1)",
+                                namedBySource: true
                             ),
                             durationMs: mappingAudio(index + 1).durationMs
                         )

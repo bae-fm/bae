@@ -388,7 +388,7 @@ internal sealed partial class ImportMappingTable
     {
         var track = becomes.TrackValue;
 
-        var position = ImportPaneUi.Cell(becomes.SourcePosition, secondary: true);
+        var position = ImportPaneUi.Cell(becomes.Position, secondary: true);
         Avalonia.Controls.Grid.SetColumn(position, 0);
         grid.Children.Add(position);
 
@@ -499,8 +499,7 @@ internal sealed partial class ImportMappingTable
         {
             actions.Children.Add(ChooseFileButton(track));
         }
-        if (unit.Becomes is BridgeMappingBecomes.Track { SourcePosition: null }
-            && unit.Source is BridgeMappingSource.File file)
+        if (unit.Source is BridgeMappingSource.File file)
         {
             var exclude = ImportPaneUi.RowButton(Loc.Core("ui.import.slots.exclude"));
             var fileId = file.FileValue.FileId;

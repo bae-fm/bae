@@ -9,13 +9,14 @@ import Foundation
 extension BridgeMappingUnit {
     /// The track this row commits, where it commits one.
     var track: BridgeRawTrackEdit? {
-        guard case .track(let track, _) = becomes else { return nil }
+        guard case .track(let track, _, _) = becomes else { return nil }
         return track
     }
 
-    /// The position the picked release names for this row's track.
-    var sourcePosition: String? {
-        guard case .track(_, let position) = becomes else { return nil }
+    /// The position this row commits — core-rendered from the track's own
+    /// numbering, whatever filled the draft.
+    var position: String? {
+        guard case .track(_, let position, _) = becomes else { return nil }
         return position
     }
 

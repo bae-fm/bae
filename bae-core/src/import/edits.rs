@@ -105,13 +105,15 @@ pub enum TrackEditState {
     Edited(RawTrackEdit),
 }
 
-/// A track row's source position and physical decision, stored independently
-/// from its editable metadata so replacing or clearing metadata cannot change
-/// what the source named or delete the pairing.
+/// A track row's source membership and physical decision, stored
+/// independently from its editable metadata so replacing or clearing metadata
+/// cannot change what the source named or delete the pairing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CandidateTrackMappingEdit {
     pub track_id: String,
-    pub source_position: Option<String>,
+    /// Whether the source's tracklist contains this track — false exactly for
+    /// a row that exists only because audio was found for it.
+    pub named_by_source: bool,
     pub dropped: bool,
     pub file: CandidateTrackFileBinding,
 }
@@ -228,8 +230,8 @@ pub(crate) fn apply_track_mapping_edits(
 }
 
 /// Carry user-owned file bindings and dropped rows onto a newly projected
-/// metadata source. Automatic bindings and source positions come from the new
-/// projection.
+/// metadata source. Automatic bindings and source membership come from the
+/// new projection.
 pub(crate) fn preserve_track_mapping_decisions(
     proposed: Vec<CandidateTrackMappingEdit>,
     current: &[CandidateTrackMappingEdit],

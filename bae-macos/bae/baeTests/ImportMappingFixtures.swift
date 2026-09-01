@@ -87,7 +87,8 @@ extension MappingFixtures {
                         title: "Track \(index)",
                         file: .standalone(fileId: "\(index).flac")
                     ),
-                    sourcePosition: "\(index)"
+                    position: "\(index)",
+                    namedBySource: true
                 ),
                 durationMs: UInt64(200_000 + index * 1000)
             )
@@ -112,7 +113,8 @@ extension MappingFixtures {
                                     title: lastTitle,
                                     file: .standalone(fileId: "13.flac")
                                 ),
-                                sourcePosition: nil
+                                position: "13",
+                                namedBySource: false
                             ),
                             durationMs: audioFile(13).durationMs
                         )
@@ -180,7 +182,8 @@ extension MappingFixtures {
                         title: "Track \(index + 1)",
                         file: nil
                     ),
-                    sourcePosition: "\(index + 1)"
+                    position: "\(index + 1)",
+                    namedBySource: true
                 ),
                 durationMs: UInt64(200_000 + index * 1000)
             )
@@ -200,7 +203,8 @@ extension MappingFixtures {
                             title: "Track 1",
                             file: .standalone(fileId: containerId)
                         ),
-                        sourcePosition: "1"
+                        position: "1",
+                        namedBySource: true
                     ),
                     durationMs: 201_000
                 )
@@ -269,7 +273,8 @@ extension MappingFixtures {
                         index: UInt32(index)
                     )
                 ),
-                sourcePosition: "\(index + 1)"
+                position: "\(index + 1)",
+                namedBySource: true
             ),
             durationMs: UInt64(200_000 + index * 1000)
         )
@@ -313,7 +318,8 @@ extension MappingFixtures {
                                 trackNumber: Int32(index),
                                 file: .standalone(fileId: "\(index).flac")
                             ),
-                            sourcePosition: "\(index)"
+                            position: "\(index)",
+                            namedBySource: true
                         ),
                         durationMs: audioFile(index).durationMs
                     )

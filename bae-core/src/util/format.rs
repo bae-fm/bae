@@ -79,6 +79,26 @@ pub fn compute_track_position(
     }
 }
 
+/// Render a track's position for a table without side group headers — the
+/// import mapping pane. The disc case carries its disc number ("2-3"), since
+/// no header above the row states it. `None` where there is no number to
+/// print.
+pub fn ungrouped_track_position_text(
+    position: &crate::album_detail::TrackPosition,
+) -> Option<String> {
+    use crate::album_detail::TrackPosition;
+    match position {
+        TrackPosition::Sided {
+            side_letter,
+            number,
+        } => Some(format!("{side_letter}{number}")),
+        TrackPosition::SidedUnnumbered { side_letter } => Some(side_letter.clone()),
+        TrackPosition::Disc { disc, number } => Some(format!("{disc}-{number}")),
+        TrackPosition::Flat { number } => Some(number.to_string()),
+        TrackPosition::DiscUnnumbered { .. } | TrackPosition::Unnumbered => None,
+    }
+}
+
 /// Render the per-track position label from the structured position.
 pub fn track_position_text(position: &crate::album_detail::TrackPosition) -> String {
     use crate::album_detail::TrackPosition;

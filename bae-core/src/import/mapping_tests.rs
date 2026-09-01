@@ -70,7 +70,7 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
                 artist_assignments: crate::import::TrackArtistAssignments::AlbumArtists,
                 file: None,
             },
-            position: Some((index + 1).to_string()),
+            named_by_source: true,
             duration_ms: Some(180_000),
         })
         .collect()
@@ -146,6 +146,7 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
             slots: &slots,
             track_id_prefix: "candidate-track",
             source: TracklistSource::CandidateFiles,
+            format: None,
         }),
         &durations,
     );
@@ -236,6 +237,7 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
             slots: &slots,
             track_id_prefix: "import-track",
             source: TracklistSource::ExternalRelease,
+            format: None,
         }),
         &durations,
     );
@@ -309,6 +311,7 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
             slots: &slots,
             track_id_prefix: "import-track",
             source: TracklistSource::ExternalRelease,
+            format: None,
         }),
         &durations,
     );
@@ -362,6 +365,7 @@ fn the_commit_tracks_are_the_table_s_rows_in_order() {
             slots: &slots,
             track_id_prefix: "import-track",
             source: TracklistSource::ExternalRelease,
+            format: None,
         }),
         &durations,
     );
@@ -488,6 +492,7 @@ fn with_track_writes_the_edited_row_back_by_its_id() {
             slots: &slots,
             track_id_prefix: "import-track",
             source: TracklistSource::ExternalRelease,
+            format: None,
         }),
         &durations,
     );
@@ -527,6 +532,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
             slots: &slots,
             track_id_prefix: "import-track",
             source: TracklistSource::ExternalRelease,
+            format: None,
         }),
         &durations,
     );
@@ -566,6 +572,7 @@ fn an_edit_to_a_table_with_no_tally_leaves_it_without_one() {
             slots: &slots,
             track_id_prefix: "file-tag-track",
             source: TracklistSource::CandidateFiles,
+            format: None,
         }),
         &durations,
     );
@@ -607,6 +614,7 @@ fn projecting_the_table_opens_no_audio() {
                 slots: &slots,
                 track_id_prefix: "import-track",
                 source: TracklistSource::ExternalRelease,
+                format: None,
             }),
             &durations,
         )

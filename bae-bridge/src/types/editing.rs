@@ -378,9 +378,13 @@ pub enum BridgeMappingBecomes {
     /// `bridge_mapping_tracks` reads the edited rows back out in commit order.
     Track {
         track: BridgeRawTrackEdit,
-        /// The source's own position string — `A1`, `1`, `1-2`, or prose —
-        /// where the picked release names one for this track.
-        source_position: Option<String>,
+        /// The position this row commits, rendered by core from the track's
+        /// own side and number and the release's format — `8`, `A1`, `2-3`.
+        /// `None` where the track has no number.
+        position: Option<String>,
+        /// Whether the source's tracklist contains this track — false exactly
+        /// for a row that exists only because audio was found for it.
+        named_by_source: bool,
     },
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,

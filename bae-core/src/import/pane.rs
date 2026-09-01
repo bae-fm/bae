@@ -91,40 +91,41 @@ pub(crate) fn candidate_draft_from_source(pane: PanePick) -> CandidateSourceDraf
         .filter_map(|unit| match &unit.becomes {
             MappingBecomes::Track {
                 track,
-                source_position,
-            } => Some((track.clone(), source_position.clone())),
+                named_by_source,
+                ..
+            } => Some((track.clone(), *named_by_source)),
             MappingBecomes::AwaitingPick => None,
         })
         .collect::<Vec<_>>();
-    let (tracks, source_positions) = track_rows.into_iter().unzip();
+    let (tracks, named_by_source) = track_rows.into_iter().unzip();
     draft.tracks = tracks;
-    detach_candidate_mappings(draft, pane.source_discogs_artist_ids, source_positions)
+    detach_candidate_mappings(draft, pane.source_discogs_artist_ids, named_by_source)
 }
 
 pub(crate) fn candidate_draft_from_edit(draft: RawReleaseEdit) -> CandidateSourceDraft {
-    let source_positions = vec![None; draft.tracks.len()];
-    detach_candidate_mappings(draft, std::collections::BTreeSet::new(), source_positions)
+    let named_by_source = vec![true; draft.tracks.len()];
+    detach_candidate_mappings(draft, std::collections::BTreeSet::new(), named_by_source)
 }
 
 fn detach_candidate_mappings(
     mut draft: RawReleaseEdit,
     source_discogs_artist_ids: std::collections::BTreeSet<String>,
-    source_positions: Vec<Option<String>>,
+    named_by_source: Vec<bool>,
 ) -> CandidateSourceDraft {
     assert_eq!(
         draft.tracks.len(),
-        source_positions.len(),
-        "every candidate draft track has one source-position answer"
+        named_by_source.len(),
+        "every candidate draft track has one namedness answer"
     );
     let mapped_new_discogs_artist_ids = draft.new_discogs_artist_ids_for_bound_tracks();
     let mut track_mappings = Vec::with_capacity(draft.tracks.len());
-    for (position, (track, source_position)) in
-        draft.tracks.iter_mut().zip(source_positions).enumerate()
+    for (position, (track, named_by_source)) in
+        draft.tracks.iter_mut().zip(named_by_source).enumerate()
     {
         track.id = format!("{CANDIDATE_TRACK_ID_PREFIX}-{position}");
         track_mappings.push(crate::import::CandidateTrackMappingEdit {
             track_id: track.id.clone(),
-            source_position,
+            named_by_source,
             dropped: false,
             file: crate::import::CandidateTrackFileBinding::Automatic(track.file.take()),
         });
@@ -158,7 +159,7 @@ pub(crate) fn draft_pane(
 }
 
 /// Recalculate automatic file bindings for the current draft against a changed
-/// candidate file shape. Stored mappings supply source positions only; their
+/// candidate file shape. Stored mappings supply source membership only; their
 /// user decisions are carried onto this result by the caller.
 pub(crate) fn automatic_mappings_for_draft(
     files: &CategorizedFiles,
@@ -188,14 +189,13 @@ fn draft_table(
         .tracks
         .iter()
         .map(|track| {
-            let position = mapping_edits
+            let named_by_source = mapping_edits
                 .iter()
                 .find(|mapping| mapping.track_id == track.id)
                 .ok_or_else(|| ImportError::Internal {
                     detail: format!("candidate track {} has no stored source row", track.id),
                 })?
-                .source_position
-                .clone();
+                .named_by_source;
             Ok(SourceTrack {
                 edit: crate::import::TrackUserEdit {
                     title: track.title.clone(),
@@ -204,7 +204,7 @@ fn draft_table(
                     track_number: track.track_number,
                     file: None,
                 },
-                position,
+                named_by_source,
                 duration_ms: None,
             })
         })
@@ -221,6 +221,7 @@ fn draft_table(
         &source_tracks,
         CANDIDATE_TRACK_ID_PREFIX,
         source,
+        Some(draft.pressing.format.as_str()),
         &[],
     ))
 }
@@ -249,6 +250,7 @@ pub fn release_pane(
         &source_tracks,
         IMPORT_TRACK_ID_PREFIX,
         TracklistSource::ExternalRelease,
+        seed.pressing.format.as_deref(),
         track_edits,
     );
     let mapped_tracks = crate::import::mapping_tracks(&mapping);
@@ -330,15 +332,14 @@ pub(crate) fn file_tags_pane(
         ids,
     )?;
     let seed = parsed_album_to_user_edit(&parsed);
-    // The folder's own tracklist knows no position string beyond the track
-    // number it printed, and states no length: a length here would be the
-    // folder's own audio compared against itself.
+    // The folder's own tracklist states no length: a length here would be
+    // the folder's own audio compared against itself.
     let source_tracks: Vec<SourceTrack> = seed
         .tracks
         .iter()
         .map(|edit| SourceTrack {
             edit: edit.clone(),
-            position: edit.track_number.map(|n| n.to_string()),
+            named_by_source: true,
             duration_ms: None,
         })
         .collect();
@@ -348,6 +349,7 @@ pub(crate) fn file_tags_pane(
         &source_tracks,
         FILE_TAG_TRACK_ID_PREFIX,
         TracklistSource::CandidateFiles,
+        seed.pressing.format.as_deref(),
         track_edits,
     );
     Ok(PanePick {
@@ -371,7 +373,7 @@ pub fn manual_pane(
         .iter()
         .map(|edit| SourceTrack {
             edit: edit.clone(),
-            position: None,
+            named_by_source: true,
             duration_ms: None,
         })
         .collect();
@@ -381,6 +383,7 @@ pub fn manual_pane(
         &source_tracks,
         MANUAL_TRACK_ID_PREFIX,
         TracklistSource::CandidateFiles,
+        None,
         track_edits,
     );
     let seed = ReleaseUserEdit {
@@ -419,12 +422,8 @@ fn edit_form(
     overlay.apply(form)
 }
 
-/// The source's tracks, paired with the position and length it printed.
-///
-/// The seed and the detail describe the same release and come out the same
-/// length, so the two ride each seeded row by position. A row the detail runs
-/// out for falls back to its own track number, which is the only position
-/// anyone could read.
+/// The source's tracks, paired with the length it printed. Every one is in
+/// the source's tracklist — that is what the seed is.
 fn source_tracks_of(
     seed: &ReleaseUserEdit,
     detail: &ImportSearchReleaseDetail,
@@ -432,16 +431,10 @@ fn source_tracks_of(
     seed.tracks
         .iter()
         .enumerate()
-        .map(|(index, edit)| {
-            let source = detail.tracks.get(index);
-            SourceTrack {
-                edit: edit.clone(),
-                position: match source {
-                    Some(track) => Some(track.position.clone()),
-                    None => edit.track_number.map(|n| n.to_string()),
-                },
-                duration_ms: source.and_then(|track| track.duration_ms),
-            }
+        .map(|(index, edit)| SourceTrack {
+            edit: edit.clone(),
+            named_by_source: true,
+            duration_ms: detail.tracks.get(index).and_then(|track| track.duration_ms),
         })
         .collect()
 }
@@ -452,6 +445,7 @@ fn table_for(
     source_tracks: &[SourceTrack],
     track_id_prefix: &str,
     source: TracklistSource,
+    format: Option<&str>,
     track_edits: &[CandidateTrackEdit],
 ) -> MappingTable {
     let slots = slot_table(source_tracks, files, durations);
@@ -461,6 +455,7 @@ fn table_for(
             slots: &slots,
             track_id_prefix,
             source,
+            format,
         }),
         durations,
     );

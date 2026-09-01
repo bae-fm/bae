@@ -24,7 +24,7 @@ const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format,
 const TRACK_EDIT_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, side, track_number";
 const TRACK_MAPPING_COLUMNS: &str =
-    "content_hash, track_id, source_position, dropped, file_author, file_kind, file_id, sheet_id, slice_index";
+    "content_hash, track_id, named_by_source, dropped, file_author, file_kind, file_id, sheet_id, slice_index";
 
 fn advance_metadata_revision(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<u64, DbError> {
     let revision = sql
@@ -289,7 +289,7 @@ fn save_track_mapping(
         &format!(
             "INSERT INTO import_candidate_track_mapping ({TRACK_MAPPING_COLUMNS}) \
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (content_hash, track_id) DO UPDATE SET \
-                 source_position = excluded.source_position, dropped = excluded.dropped, \
+                 named_by_source = excluded.named_by_source, dropped = excluded.dropped, \
                  file_author = excluded.file_author, file_kind = excluded.file_kind, \
                  file_id = excluded.file_id, sheet_id = excluded.sheet_id, \
                  slice_index = excluded.slice_index"
@@ -297,7 +297,7 @@ fn save_track_mapping(
         params![
             content_hash,
             mapping.track_id,
-            mapping.source_position,
+            mapping.named_by_source,
             mapping.dropped,
             file_author,
             file_kind,
@@ -555,7 +555,7 @@ fn load_track_mappings_on(
             Ok((
                 row.get::<_, String>("content_hash")?,
                 row.get::<_, String>("track_id")?,
-                row.get::<_, Option<String>>("source_position")?,
+                row.get::<_, i64>("named_by_source")?,
                 row.get::<_, i64>("dropped")?,
                 row.get::<_, String>("file_author")?,
                 row.get::<_, Option<String>>("file_kind")?,
@@ -569,7 +569,7 @@ fn load_track_mappings_on(
     for (
         content_hash,
         track_id,
-        source_position,
+        named_by_source,
         dropped,
         file_author,
         file_kind,
@@ -600,7 +600,7 @@ fn load_track_mappings_on(
             .or_default()
             .push(CandidateTrackMappingEdit {
                 track_id,
-                source_position,
+                named_by_source: named_by_source == 1,
                 dropped: dropped == 1,
                 file: match file_author.as_str() {
                     "automatic" => CandidateTrackFileBinding::Automatic(file),

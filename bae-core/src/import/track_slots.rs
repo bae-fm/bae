@@ -96,12 +96,14 @@ pub fn lengths_disagree(file_ms: Option<u64>, release_ms: Option<u64>) -> bool {
 }
 
 /// One track as the source names it: the editable row projected from it, plus
-/// the two facts only the source knows.
+/// the facts only the source knows.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceTrack {
     pub edit: TrackUserEdit,
-    /// The source's own position string — `A1`, `1`, `1-2`, or arbitrary prose.
-    pub position: Option<String>,
+    /// Whether the source's tracklist contains this track. False exactly for
+    /// a row that exists only because audio was found for it — the tally and
+    /// nothing else turns on this.
+    pub named_by_source: bool,
     /// How long the source says this track runs.
     pub duration_ms: Option<u64>,
 }
@@ -121,7 +123,7 @@ pub enum TrackSlot {
     /// The source names this track and audio on disk backs it.
     Paired {
         track: TrackUserEdit,
-        position: Option<String>,
+        named_by_source: bool,
         source_duration_ms: Option<u64>,
         file: SlotFile,
     },
@@ -135,7 +137,7 @@ pub enum TrackSlot {
     /// A track the source names with no audio bound to it.
     TrackOnly {
         track: TrackUserEdit,
-        position: Option<String>,
+        named_by_source: bool,
         source_duration_ms: Option<u64>,
     },
 }
@@ -448,7 +450,7 @@ pub(crate) fn slot_table(
             match (source_tracks.get(index), audio.get(index)) {
                 (Some(source), Some(file)) => TrackSlot::Paired {
                     track,
-                    position: source.position.clone(),
+                    named_by_source: source.named_by_source,
                     source_duration_ms: source.duration_ms,
                     file: file.clone(),
                 },
@@ -458,7 +460,7 @@ pub(crate) fn slot_table(
                 },
                 (Some(source), None) => TrackSlot::TrackOnly {
                     track,
-                    position: source.position.clone(),
+                    named_by_source: source.named_by_source,
                     source_duration_ms: source.duration_ms,
                 },
                 // `map_source_rows` yields exactly `max(len, len)` rows, so an

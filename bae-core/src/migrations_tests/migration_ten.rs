@@ -41,7 +41,7 @@ async fn records_live_roots_and_removes_unowned_candidate_state() {
     handle
         .read(|sql| {
             let version: i64 = sql.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-            assert_eq!(version, 10);
+            assert_eq!(version, i64::try_from(all().len()).expect("ladder fits"));
             let roots = sql.query(
                 "SELECT watched_folder_path FROM import_candidate_watched_root
                  WHERE content_hash = 'shared-hash' ORDER BY watched_folder_path",

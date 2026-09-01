@@ -37,7 +37,7 @@ struct ImportMappingTrackRow: View {
 
     /// The track this row writes, where a release has named one.
     private var track: BridgeRawTrackEdit? {
-        if case .track(let track, _) = unit.becomes { return track }
+        if case .track(let track, _, _) = unit.becomes { return track }
         return nil
     }
 
@@ -93,7 +93,7 @@ struct ImportMappingTrackRow: View {
     }
 
     private var position: String {
-        if case .track(_, let position) = unit.becomes {
+        if case .track(_, let position, _) = unit.becomes {
             return position ?? ""
         }
         return ""
@@ -215,7 +215,7 @@ struct ImportMappingTrackRow: View {
     private func removal(
         _ track: BridgeRawTrackEdit
     ) -> ImportMappingRowRemoval? {
-        if unit.sourcePosition == nil, case .file(let file) = unit.source {
+        if case .file(let file) = unit.source {
             return ImportMappingRowRemoval(
                 label: coreString("ui.import.slots.exclude"),
                 help: coreString("ui.import.slots.exclude_help")

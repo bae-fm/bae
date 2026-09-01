@@ -133,7 +133,8 @@ struct ImportMappingTracksLayoutTests {
             source: pairedUnit.source,
             becomes: .track(
                 track: track,
-                sourcePosition: "1"
+                position: "1",
+                namedBySource: true
             ),
             durationMs: 180_000
         )
@@ -168,7 +169,7 @@ struct ImportMappingTracksLayoutTests {
         let track = try #require(pairedUnit.track)
         let unit = BridgeMappingUnit(
             source: pairedUnit.source,
-            becomes: .track(track: track, sourcePosition: "1"),
+            becomes: .track(track: track, position: "1", namedBySource: true),
             durationMs: 210_000
         )
 
@@ -376,7 +377,8 @@ extension ImportMappingTracksLayoutTests {
                     trackNumber: 1,
                     file: .standalone(fileId: "track.flac")
                 ),
-                sourcePosition: "1"
+                position: "1",
+                namedBySource: true
             ),
             durationMs: 180_000
         )
@@ -441,7 +443,8 @@ extension ImportMappingTracksLayoutTests {
                         index: entry.index
                     )
                 ),
-                sourcePosition: String(number)
+                position: String(number),
+                namedBySource: true
             ),
             durationMs: entry.durationMs
         )

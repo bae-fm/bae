@@ -188,8 +188,14 @@ pub enum MappingBecomes {
     /// A track of the release being committed. The row edits it in place.
     Track {
         track: RawTrackEdit,
-        /// What the picked release names for this track, where it names one.
-        source_position: Option<String>,
+        /// The position this row commits, rendered from the track's own side
+        /// and number and the release's format — `8`, `A1`, `2-3`. `None`
+        /// where the track has no number. The same fact in every metadata
+        /// mode, because it reads the draft rather than the picked source.
+        position: Option<String>,
+        /// Whether the source's tracklist contains this track. False exactly
+        /// for a row that exists only because audio was found for it.
+        named_by_source: bool,
     },
     /// No release is picked yet, so what this becomes is the open question.
     AwaitingPick,
@@ -278,6 +284,9 @@ pub struct PickedTracklist<'a> {
     /// Track row `n` of the table is addressed as `{track_id_prefix}-{n}`.
     pub track_id_prefix: &'a str,
     pub source: TracklistSource,
+    /// The pressing format of the release being committed — what decides
+    /// whether a row's position reads `8`, `A1`, or `2-3`.
+    pub format: Option<&'a str>,
 }
 
 /// Project the mapping table for one folder, against the tracklist picked for
@@ -317,11 +326,17 @@ pub fn mapping_table(
     let collapsed = files.collapsed_directories();
     let disc_options = disc_options(files, picked.as_ref());
 
+    let multi_side = picked.as_ref().is_some_and(|picked| {
+        let mut sides = picked.slots.rows.iter().map(|slot| slot.track().side);
+        let first = sides.next();
+        sides.any(|side| Some(side) != first)
+    });
     let mut builder = RowBuilder {
         picked,
         durations,
         slot_of,
         next_track: 0,
+        multi_side,
     };
     let mut track_groups = Vec::with_capacity(units.len());
     let mut file_rows = Vec::with_capacity(files.files.len().saturating_sub(units.len()));
@@ -438,6 +453,9 @@ struct RowBuilder<'a> {
     durations: &'a SourceDurations,
     slot_of: HashMap<AudioFile, usize>,
     next_track: usize,
+    /// Whether the tracklist spans more than one side or disc — what decides
+    /// that a row's position carries its side.
+    multi_side: bool,
 }
 
 impl RowBuilder<'_> {
@@ -561,23 +579,33 @@ impl RowBuilder<'_> {
         };
         let id = format!("{}-{}", picked.track_id_prefix, self.next_track);
         self.next_track += 1;
-        let (source_position, source_duration_ms) = match slot {
+        let (named_by_source, source_duration_ms) = match slot {
             TrackSlot::Paired {
-                position,
+                named_by_source,
                 source_duration_ms,
                 ..
             }
             | TrackSlot::TrackOnly {
-                position,
+                named_by_source,
                 source_duration_ms,
                 ..
-            } => (position.clone(), *source_duration_ms),
-            TrackSlot::FileOnly { .. } => (None, None),
+            } => (*named_by_source, *source_duration_ms),
+            TrackSlot::FileOnly { .. } => (false, None),
         };
+        let edit = slot.track();
+        let position = crate::util::format::ungrouped_track_position_text(
+            &crate::util::format::compute_track_position(
+                picked.format,
+                edit.side,
+                edit.track_number,
+                self.multi_side,
+            ),
+        );
         (
             MappingBecomes::Track {
-                track: RawTrackEdit::from_user_edit(slot.track().clone(), id),
-                source_position,
+                track: RawTrackEdit::from_user_edit(edit.clone(), id),
+                position,
+                named_by_source,
             },
             source_duration_ms,
         )
@@ -690,7 +718,7 @@ fn tally(groups: &[MappingTrackGroup]) -> SlotReconciliation {
             matches!(
                 &unit.becomes,
                 MappingBecomes::Track {
-                    source_position: Some(_),
+                    named_by_source: true,
                     ..
                 }
             )
