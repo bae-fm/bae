@@ -34,8 +34,10 @@ struct FieldChrome: ViewModifier {
         content
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
-            .background(fill)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            // The rounding lives on the fill, not on a clip of the content:
+            // clipping the field cuts its text off whenever AppKit remounts
+            // it with a transiently under-measured height.
+            .background(fill, in: RoundedRectangle(cornerRadius: cornerRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .strokeBorder(ring, lineWidth: ringWidth)
