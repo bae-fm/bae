@@ -364,6 +364,7 @@ struct ArtistAssignmentsField: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusable()
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             editor
                 .frame(width: 320)

@@ -33,7 +33,7 @@ struct ImportAlbumIdentityEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             CommittedTextField(
-                placeholder: String(localized: "Album title"),
+                placeholder: String(localized: "Title"),
                 value: values.albumTitle,
                 boxed: false,
                 font: .system(size: 17, weight: .semibold),
@@ -44,7 +44,7 @@ struct ImportAlbumIdentityEditor: View {
             )
             ArtistAssignmentsField(
                 assignments: values.albumArtistAssignments,
-                placeholder: String(localized: "Album artist"),
+                placeholder: String(localized: "Artist"),
                 onChange: { assignments in
                     Task { await writer.setAlbumArtists(assignments) }
                 },
