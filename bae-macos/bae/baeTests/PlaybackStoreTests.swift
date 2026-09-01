@@ -221,7 +221,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("retains the playing track until the target metadata arrives")
     func retainsPlayingTrack() {
         let store = PlaybackStore()
-        store.nowPlaying = .playing(makeTrack("a"))
+        store.play(track: makeTrack("a"))
 
         store.beginLoading(trackId: "b")
 
@@ -234,7 +234,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("retains the paused track until the target metadata arrives")
     func retainsPausedTrack() {
         let store = PlaybackStore()
-        store.nowPlaying = .paused(makeTrack("a"), reason: .manual)
+        store.pause(track: makeTrack("a"), reason: .manual)
 
         store.beginLoading(trackId: "b")
 
@@ -248,7 +248,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("switches to the target once its metadata lands")
     func switchesToTarget() {
         let store = PlaybackStore()
-        store.nowPlaying = .playing(makeTrack("a"))
+        store.play(track: makeTrack("a"))
 
         store.beginLoading(trackId: "b")
         #expect(store.nowPlaying.track?.trackId == "a")
@@ -265,7 +265,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("ignores a target for a stale track id")
     func ignoresStaleTarget() {
         let store = PlaybackStore()
-        store.nowPlaying = .playing(makeTrack("a"))
+        store.play(track: makeTrack("a"))
         store.beginLoading(trackId: "b")
 
         store.setLoadingTarget(trackId: "stale", target: makeTrack("stale"))
@@ -294,7 +294,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("a seek while playing re-enters loading for the current track")
     func seekWhilePlayingEntersLoading() {
         let store = PlaybackStore()
-        store.nowPlaying = .playing(makeTrack("a"))
+        store.play(track: makeTrack("a"))
 
         store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
 
@@ -307,7 +307,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("a seek while paused re-enters loading for the current track")
     func seekWhilePausedEntersLoading() {
         let store = PlaybackStore()
-        store.nowPlaying = .paused(makeTrack("a"), reason: .manual)
+        store.pause(track: makeTrack("a"), reason: .manual)
 
         store.setLoadingTarget(trackId: "a", target: makeTrack("a"))
 
@@ -321,7 +321,7 @@ struct PlaybackStoreBeginLoadingTests {
     @Test("ignores a resolved target for a track other than the one playing")
     func ignoresTargetForOtherPlayingTrack() {
         let store = PlaybackStore()
-        store.nowPlaying = .playing(makeTrack("a"))
+        store.play(track: makeTrack("a"))
 
         store.setLoadingTarget(trackId: "b", target: makeTrack("b"))
 
@@ -356,6 +356,45 @@ struct NowPlayingStateTests {
         #expect(stopped.track == nil)
         #expect(!stopped.isActive)
         #expect(!stopped.isPlaying)
+    }
+}
+
+@Suite("PlaybackStore side-pause prompt presentation")
+struct PlaybackStoreSidePausePromptTests {
+    private static let prompt = BridgeSidePausePrompt(
+        id: "side-pause-1",
+        titleKey: "core.playback.pause.side_ended.title",
+        sideLetter: "A",
+        messageKey: "core.playback.pause.side_ended.message.vinyl"
+    )
+
+    @MainActor
+    @Test("a dismissed prompt stays dismissed through repeated state delivery")
+    func repeatedStateDoesNotPresentAgain() {
+        let store = PlaybackStore()
+        let track = makeTrack("track-1")
+
+        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+        #expect(store.presentedSidePausePrompt == Self.prompt)
+
+        store.dismissSidePausePrompt(Self.prompt)
+        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+
+        #expect(store.presentedSidePausePrompt == nil)
+    }
+
+    @MainActor
+    @Test("the same boundary can present after playback leaves the pause")
+    func laterPausePresentsAgain() {
+        let store = PlaybackStore()
+        let track = makeTrack("track-1")
+
+        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+        store.dismissSidePausePrompt(Self.prompt)
+        store.play(track: track)
+        store.pause(track: track, reason: .sideEnded(prompt: Self.prompt))
+
+        #expect(store.presentedSidePausePrompt == Self.prompt)
     }
 }
 
@@ -603,7 +642,7 @@ struct PlaybackStoreSeekProjectionTests {
     @Test("same-track loading keeps the projected seek position")
     func sameTrackLoadingKeepsProjectedPosition() {
         let store = PlaybackStore()
-        store.nowPlaying = .playing(makeTrack("track-1"))
+        store.play(track: makeTrack("track-1"))
         _ = store.updatePlaybackPosition(
             positionMs: 10_000,
             durationMs: 100_000,

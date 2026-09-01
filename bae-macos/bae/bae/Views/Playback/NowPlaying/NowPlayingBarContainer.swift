@@ -75,7 +75,6 @@ struct NowPlayingBarContainer: View {
             castControl: configStore.config.castEnabled
                 ? AnyView(CastButton()) : AnyView(EmptyView()),
         )
-        .sidePausePromptAlert()
     }
 }
 

@@ -178,6 +178,7 @@ struct MainAppView: View {
         .ignoresSafeArea(.all, edges: .top)
         .modifier(TrafficLightOffset(xOffset: 6, yOffset: 7))
         .onDrop(of: [.fileURL], isTargeted: nil, perform: handleDrop)
+        .sidePausePromptAlert()
         // A running import-audio preview is scoped to this library session, so
         // it ends when this view leaves the tree — closing, switching, or
         // locking the library. Not a tab switch: MainAppView stays mounted

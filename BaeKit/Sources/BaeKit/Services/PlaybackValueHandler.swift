@@ -32,8 +32,7 @@ final class PlaybackValueHandler {
     private func applyPlaybackState(_ state: BridgePlaybackValueState) {
         switch state {
         case .stopped:
-            playbackStore.nowPlaying = .stopped
-            playbackStore.resetPlaybackPosition()
+            playbackStore.stop()
             mediaControlService.updateNowPlaying(
                 state: .stopped,
                 appHandle: appHandle

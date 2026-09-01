@@ -290,7 +290,7 @@ extension PreviewData {
             )
         )
         if nowPlaying {
-            store.nowPlaying = .playing(nowPlayingTrack)
+            store.play(track: nowPlayingTrack)
         }
         return store
     }

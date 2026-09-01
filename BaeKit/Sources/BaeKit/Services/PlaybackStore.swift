@@ -23,7 +23,8 @@ private struct UpcomingPageKey: Hashable {
 /// allows across a `Task` boundary when the capture is actor-isolated.
 @Observable
 public class PlaybackStore {
-    public var nowPlaying: NowPlaying = .stopped
+    public private(set) var nowPlaying: NowPlaying = .stopped
+    private var dismissedSidePausePromptId: String?
 
     public var volume: Float = 1.0
     public var isMuted: Bool = false
@@ -88,6 +89,24 @@ public class PlaybackStore {
 
     public init() {}
 
+    public var presentedSidePausePrompt: BridgeSidePausePrompt? {
+        guard let prompt = nowPlaying.sidePausePrompt,
+            prompt.id != dismissedSidePausePromptId
+        else {
+            return nil
+        }
+        return prompt
+    }
+
+    public func dismissSidePausePrompt(_ prompt: BridgeSidePausePrompt) {
+        dismissedSidePausePromptId = prompt.id
+    }
+
+    public func stop() {
+        setNowPlaying(.stopped)
+        resetPlaybackPosition()
+    }
+
     /// Enter the loading transition for `trackId`, retaining the currently
     /// displayed track. Core's first `PlaybackLoading` carries only a track id
     /// (before it resolves metadata); without carrying the prior track forward,
@@ -97,10 +116,12 @@ public class PlaybackStore {
     /// lands via `setLoadingTarget`.
     public func beginLoading(trackId: String) {
         let previousTrackId = nowPlaying.track?.trackId
-        nowPlaying = .loading(
-            trackId: trackId,
-            target: nil,
-            previous: nowPlaying.track
+        setNowPlaying(
+            .loading(
+                trackId: trackId,
+                target: nil,
+                previous: nowPlaying.track
+            )
         )
         if trackId != previousTrackId {
             resetPlaybackPosition()
@@ -139,22 +160,24 @@ public class PlaybackStore {
             )
             return
         }
-        nowPlaying = .loading(
-            trackId: trackId,
-            target: target,
-            previous: previous
+        setNowPlaying(
+            .loading(
+                trackId: trackId,
+                target: target,
+                previous: previous
+            )
         )
     }
 
     public func pause(track: NowPlayingTrack, reason: BridgePlaybackPauseReason)
     {
         preparePlaybackPosition(for: track)
-        nowPlaying = .paused(track, reason: reason)
+        setNowPlaying(.paused(track, reason: reason))
     }
 
     public func play(track: NowPlayingTrack) {
         preparePlaybackPosition(for: track)
-        nowPlaying = .playing(track)
+        setNowPlaying(.playing(track))
     }
 
     public func updatePlaybackProgress(
@@ -257,6 +280,13 @@ public class PlaybackStore {
         if track.trackId != nowPlaying.track?.trackId {
             playbackPosition = playbackPosition?.withoutProjection
         }
+    }
+
+    private func setNowPlaying(_ next: NowPlaying) {
+        if nowPlaying.sidePausePrompt?.id != next.sidePausePrompt?.id {
+            dismissedSidePausePromptId = nil
+        }
+        nowPlaying = next
     }
 
     private func publish(
@@ -447,7 +477,7 @@ extension BridgePlaybackPauseReason {
     }
 }
 
-extension BridgeSidePausePrompt: Identifiable {
+extension BridgeSidePausePrompt {
     public func title() -> String {
         String(
             format: localizedCoreString(titleKey),
@@ -531,5 +561,14 @@ public enum NowPlaying {
         case .playing, .loading: true
         case .paused, .stopped: false
         }
+    }
+}
+
+extension NowPlaying {
+    fileprivate var sidePausePrompt: BridgeSidePausePrompt? {
+        guard case .paused(_, let reason) = self else {
+            return nil
+        }
+        return reason.sidePausePrompt
     }
 }
