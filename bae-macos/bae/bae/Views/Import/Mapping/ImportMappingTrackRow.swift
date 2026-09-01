@@ -104,16 +104,16 @@ struct ImportMappingTrackRow: View {
     @ViewBuilder
     private var titleCell: some View {
         if let track {
+            // The field's chrome fills the column, so its text sits an
+            // inline chrome-pad inside it; the Title header carries the same
+            // inset, keeping the two aligned without the chrome spilling into
+            // the neighbouring column.
             CommittedTextField(
                 placeholder: coreString("ui.import.slots.untitled"),
                 value: track.title,
                 chrome: .inline,
                 onCommit: { commit(track, \.title, $0) },
             )
-            // The text sits an inline chrome-pad inside the field. Pull the
-            // pad back out so the text starts at the column's edge, under the
-            // header — the chrome bleeds into the column gutters instead.
-            .padding(.horizontal, -FieldChrome.inlineHorizontalPadding)
             .frame(width: columns.title)
         }
         else {
@@ -141,6 +141,7 @@ struct ImportMappingTrackRow: View {
                     commitArtists(track, .explicit(assignments: $0))
                 },
             )
+            .modifier(FieldChrome(focused: false, style: .inline))
             .frame(width: columns.artist)
             .simultaneousGesture(
                 TapGesture().onEnded { onSelectArtist(track.id) }

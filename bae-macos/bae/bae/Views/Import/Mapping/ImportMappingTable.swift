@@ -183,9 +183,13 @@ struct ImportMappingTable: View {
                     width: ImportMappingColumns.position,
                     alignment: .leading
                 )
+            // Inset to the fields' text, which sits an inline chrome-pad
+            // inside each column.
             eyebrow("ui.import.mapping.column.title")
+                .padding(.leading, FieldChrome.inlineHorizontalPadding)
                 .frame(width: columns.tracks.title, alignment: .leading)
             eyebrow("ui.import.mapping.column.artist")
+                .padding(.leading, FieldChrome.inlineHorizontalPadding)
                 .frame(width: columns.tracks.artist, alignment: .leading)
             eyebrow("ui.import.slots.column.length")
                 .frame(width: ImportMappingColumns.length, alignment: .trailing)
