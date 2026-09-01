@@ -168,10 +168,12 @@ struct ImportMappingTable: View {
         )
     }
 
+    // The leading header cell is blank in both sections: the row under it is
+    // a filename, and naming that column says nothing the rows don't.
     private var trackHeaderRow: some View {
         headerRow {
-            eyebrow("ui.import.mapping.column.source")
-                .frame(width: columns.tracks.source, alignment: .leading)
+            Color.clear
+                .frame(width: columns.tracks.source, height: 1)
             FormEyebrow(text: Text(verbatim: "#"))
                 .frame(
                     width: ImportMappingColumns.position,
@@ -225,8 +227,8 @@ struct ImportMappingTable: View {
 
     private var fileHeaderRow: some View {
         headerRow {
-            eyebrow("ui.import.mapping.column.name")
-                .frame(width: columns.files.name, alignment: .leading)
+            Color.clear
+                .frame(width: columns.files.name, height: 1)
             FormEyebrow(text: Text("Size"))
                 .frame(width: columns.files.size, alignment: .trailing)
         }

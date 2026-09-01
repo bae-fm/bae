@@ -355,19 +355,12 @@ struct ImportReleaseHeader: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 22)
-                .contentShape(Rectangle())
                 .accessibilityLabel(Text("Clear metadata"))
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.bordered)
         .menuIndicator(.hidden)
         .fixedSize()
-        .background(
-            .white.opacity(0.06),
-            in: RoundedRectangle(cornerRadius: 6)
-        )
     }
 
     /// The cover, or the well it goes in. The well invites the two ways a
