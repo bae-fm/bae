@@ -104,6 +104,35 @@ async fn album_artist_assignments_preserve_existing_and_new_artist_choices() {
     shut_down(handle).await;
 }
 
+/// Pointing a row at audio another row holds swaps the two rows' bindings in
+/// one write: the displaced row takes the chosen row's previous audio, so two
+/// rows never hold one file and the displaced file never silently unbinds.
+#[tokio::test(flavor = "multi_thread")]
+async fn choosing_audio_another_row_holds_swaps_the_two_rows() {
+    let (handle, _tmp, key, _hash) = pane_fixture().await;
+    let before = track_rows(&pane(&handle, &key).await.mapping);
+    let first_file = before[0].file.clone().expect("row 0 is paired");
+    let second_file = before[1].file.clone().expect("row 1 is paired");
+
+    handle
+        .set_candidate_track_edit(
+            &key,
+            crate::import::RawTrackEdit {
+                file: Some(second_file.clone()),
+                ..before[0].clone()
+            },
+        )
+        .await
+        .unwrap();
+
+    let after = track_rows(&pane(&handle, &key).await.mapping);
+    assert_eq!(after[0].file, Some(second_file));
+    assert_eq!(after[1].file, Some(first_file));
+    assert_eq!(after[1].title, before[1].title);
+
+    shut_down(handle).await;
+}
+
 /// An edited row comes back edited and its neighbours come back untouched.
 #[tokio::test(flavor = "multi_thread")]
 async fn an_edited_track_row_redraws_alone() {

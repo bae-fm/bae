@@ -446,13 +446,13 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .await
         .unwrap()
         .expect("the candidate has a stored preparation");
-    db.save_import_candidate_track_edit_prepared(
+    db.save_import_candidate_track_edits_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
         preparation.file_edit_revision,
         preparation.metadata_revision,
-        &edited_row("candidate-track-0", "Track Title", None),
+        &[edited_row("candidate-track-0", "Track Title", None)],
         &preparation.source_discogs_artist_ids,
         &preparation.assets.artist_images,
     )

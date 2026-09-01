@@ -109,28 +109,57 @@ impl ImportServiceHandle {
     }
 
     /// Record one mapping-table row as the user left it.
+    ///
+    /// Pointing the row at audio another row holds is a swap: the other row
+    /// takes this row's previous audio in the same write, so two rows can
+    /// never hold one file and the displaced file never silently unbinds.
     pub async fn set_candidate_track_edit(
         &self,
         candidate_key: &str,
         track: crate::import::RawTrackEdit,
     ) -> Result<(), crate::import::ImportError> {
         let replacement = track.clone();
+        let mut displaced: Option<crate::import::RawTrackEdit> = None;
+        let displaced_out = &mut displaced;
         let prepared = self
             .prepared_artist_edit(candidate_key, move |draft| {
+                let previous_file = draft
+                    .tracks
+                    .iter()
+                    .find(|row| row.id == replacement.id)
+                    .and_then(|row| row.file.clone());
+                if let Some(new_file) = replacement
+                    .file
+                    .as_ref()
+                    .filter(|f| previous_file.as_ref() != Some(f))
+                {
+                    if let Some(other) = draft
+                        .tracks
+                        .iter_mut()
+                        .find(|row| row.id != replacement.id && row.file.as_ref() == Some(new_file))
+                    {
+                        other.file = previous_file;
+                        *displaced_out = Some(other.clone());
+                    }
+                }
                 if let Some(current) = draft.tracks.iter_mut().find(|row| row.id == replacement.id)
                 {
                     *current = replacement;
                 }
             })
             .await?;
+        let mut edits = vec![crate::import::CandidateTrackEdit::edited(track)];
+        if let Some(displaced) = displaced {
+            edits.push(crate::import::CandidateTrackEdit::edited(displaced));
+        }
         self.library_manager
-            .save_import_candidate_track_edit_prepared(
+            .save_import_candidate_track_edits_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
                 &prepared.content_hash,
                 prepared.file_edit_revision,
                 prepared.metadata_revision,
-                &crate::import::CandidateTrackEdit::edited(track),
+                &edits,
                 &prepared.source_discogs_artist_ids,
                 &prepared.assets,
             )
@@ -187,13 +216,13 @@ impl ImportServiceHandle {
             })
             .await?;
         self.library_manager
-            .save_import_candidate_track_edit_prepared(
+            .save_import_candidate_track_edits_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
                 &prepared.content_hash,
                 prepared.file_edit_revision,
                 prepared.metadata_revision,
-                &crate::import::CandidateTrackEdit::dropped(track_id),
+                &[crate::import::CandidateTrackEdit::dropped(track_id)],
                 &prepared.source_discogs_artist_ids,
                 &prepared.assets,
             )

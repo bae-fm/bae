@@ -264,21 +264,25 @@ impl Database {
         .await
     }
 
-    pub async fn save_import_candidate_track_edit_prepared(
+    /// Record the mapping-table rows one gesture changed, as one write: a
+    /// plain row edit is one entry, and a file choice that displaces another
+    /// row's audio is two. The rows land together or not at all, so the table
+    /// can never be read with only half a swap applied.
+    pub async fn save_import_candidate_track_edits_prepared(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
         content_hash: &str,
         expected_file_edit_revision: u64,
         expected_revision: u64,
-        edit: &crate::import::CandidateTrackEdit,
+        edits: &[crate::import::CandidateTrackEdit],
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let candidate_path = candidate_path.to_string();
         let content_hash = content_hash.to_string();
-        let edit = edit.clone();
+        let edits = edits.to_vec();
         let source_discogs_artist_ids = source_discogs_artist_ids.clone();
         let assets = assets.to_vec();
         self.call(move |sql| {
@@ -291,7 +295,9 @@ impl Database {
             )?;
             require_file_edit_revision(sql, &content_hash, expected_file_edit_revision)?;
             require_metadata_revision(sql, &content_hash, expected_revision)?;
-            save_track_edit(sql, &content_hash, &edit)?;
+            for edit in &edits {
+                save_track_edit(sql, &content_hash, edit)?;
+            }
             super::prepared_asset_rows::replace_artist_assets_for_stored_draft(
                 sql,
                 &content_hash,

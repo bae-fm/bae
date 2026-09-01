@@ -661,26 +661,26 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_import_candidate_track_edit_prepared(
+    pub async fn save_import_candidate_track_edits_prepared(
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
         content_hash: &str,
         expected_file_edit_revision: u64,
         expected_revision: u64,
-        edit: &crate::import::CandidateTrackEdit,
+        edits: &[crate::import::CandidateTrackEdit],
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, LibraryError> {
         Ok(self
             .database
-            .save_import_candidate_track_edit_prepared(
+            .save_import_candidate_track_edits_prepared(
                 watched_folder_path,
                 candidate_path,
                 content_hash,
                 expected_file_edit_revision,
                 expected_revision,
-                edit,
+                edits,
                 source_discogs_artist_ids,
                 assets,
             )
