@@ -27,6 +27,18 @@ import sys
 
 print(json.load(sys.stdin)["target_directory"])
 ')"
+rust_roots="$(printf '%s' "$metadata" | python3 -c '
+import json
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1]).resolve()
+metadata = json.load(sys.stdin)
+packages = {package["id"]: package for package in metadata["packages"]}
+for package_id in metadata["workspace_members"]:
+    package_root = pathlib.Path(packages[package_id]["manifest_path"]).resolve().parent
+    print(package_root.relative_to(root).as_posix())
+' "$ROOT")"
 coven_root="$(cd "$(dirname "$coven_manifest")/../.." && pwd)"
 coven_revision="$(git -C "$coven_root" rev-parse HEAD)"
 
@@ -156,6 +168,9 @@ allowed_capability_outputs=(
 )
 
 checker_args=(--owner-dependency-only)
+while IFS= read -r rust_root; do
+  checker_args+=(--rust-root "$rust_root")
+done <<< "$rust_roots"
 for capability_type in "${capability_types[@]}"; do
   checker_args+=(--capability-type "$capability_type")
 done
