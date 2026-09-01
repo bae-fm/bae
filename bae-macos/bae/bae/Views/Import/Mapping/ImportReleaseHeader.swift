@@ -239,7 +239,7 @@ struct ImportReleaseHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            sourceActionRow
+            actionRow
             HStack(alignment: .top, spacing: 24) {
                 cover
                 VStack(alignment: .leading, spacing: 22) {
@@ -258,9 +258,6 @@ struct ImportReleaseHeader: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            if let commit {
-                commitRow(commit)
             }
         }
         .padding(16)
@@ -281,42 +278,61 @@ struct ImportReleaseHeader: View {
         }
     }
 
-    /// Storage, the unanswered tally when there is one, and the Import action
-    /// — the commit lives on the card that states what will be committed.
-    private func commitRow(_ commit: ImportCommitControls) -> some View {
+    /// The card's one row of actions: where the draft's metadata comes from
+    /// on the left and, once there is something to commit, the commit on the
+    /// right — storage, the unanswered tally, and the Import action.
+    ///
+    /// The source controls are one constant set in every draft state: both
+    /// sources replace the same draft, so neither is promoted over the other,
+    /// and clearing sits behind the ellipsis.
+    private var actionRow: some View {
         HStack(alignment: .center, spacing: 16) {
-            if commit.unansweredCount > 0 {
-                Text(
-                    coreString(
-                        "ui.import.commit.unanswered",
-                        commit.unansweredCount
-                    )
-                )
-                .font(.system(size: 11.5))
-                .foregroundStyle(.orange)
-            }
-            Spacer(minLength: 12)
-            if !commitSettled(commit), configStore.config.hasCloudHome {
-                HStack(spacing: 10) {
-                    ImportCheckboxToggle(
-                        "Cloud",
-                        isOn: commit.storageCloud
-                    )
-                    if commit.storageCloud.wrappedValue {
-                        ImportCheckboxToggle(
-                            "Pinned",
-                            isOn: commit.storagePinned
-                        )
-                    }
+            HStack(spacing: 8) {
+                Button("Find release…") {
+                    sourceActions.findOnline()
                 }
-                .fixedSize()
+                .buttonStyle(.bordered)
+                Button("Use file metadata") {
+                    sourceActions.useFileTags()
+                }
+                .buttonStyle(.bordered)
+                clearMetadataMenu
             }
-            ImportConfirmationCardAction(
-                importStatus: commit.importStatus,
-                candidateKey: commit.candidateKey,
-                onConfirmImport: commit.actions.confirmImport,
-                onViewInLibrary: commit.actions.viewInLibrary,
-            )
+            .disabled(isReading)
+            Spacer(minLength: 12)
+            if let commit {
+                if commit.unansweredCount > 0 {
+                    Text(
+                        coreString(
+                            "ui.import.commit.unanswered",
+                            commit.unansweredCount
+                        )
+                    )
+                    .font(.system(size: 11.5))
+                    .foregroundStyle(.orange)
+                }
+                if !commitSettled(commit), configStore.config.hasCloudHome {
+                    HStack(spacing: 10) {
+                        ImportCheckboxToggle(
+                            "Cloud",
+                            isOn: commit.storageCloud
+                        )
+                        if commit.storageCloud.wrappedValue {
+                            ImportCheckboxToggle(
+                                "Pinned",
+                                isOn: commit.storagePinned
+                            )
+                        }
+                    }
+                    .fixedSize()
+                }
+                ImportConfirmationCardAction(
+                    importStatus: commit.importStatus,
+                    candidateKey: commit.candidateKey,
+                    onConfirmImport: commit.actions.confirmImport,
+                    onViewInLibrary: commit.actions.viewInLibrary,
+                )
+            }
         }
     }
 
@@ -327,25 +343,6 @@ struct ImportReleaseHeader: View {
         case .importing, .complete: return true
         case .error, nil: return false
         }
-    }
-
-    /// Where the draft's metadata comes from. One constant set of controls in
-    /// every draft state: both sources replace the same draft, so neither is
-    /// promoted over the other, and clearing sits behind the ellipsis.
-    private var sourceActionRow: some View {
-        HStack(spacing: 8) {
-            Button("Find release…") {
-                sourceActions.findOnline()
-            }
-            .buttonStyle(.bordered)
-            Button("Use file metadata") {
-                sourceActions.useFileTags()
-            }
-            .buttonStyle(.bordered)
-            clearMetadataMenu
-            Spacer(minLength: 0)
-        }
-        .disabled(isReading)
     }
 
     private var clearMetadataMenu: some View {
