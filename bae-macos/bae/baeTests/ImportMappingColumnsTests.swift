@@ -7,15 +7,16 @@ import Testing
 /// them out in.
 ///
 /// The one that matters is that each section adds up: Tracks uses its five
-/// columns and Files uses Name plus Size. Neither may reserve an
-/// invisible slice past the pane's right edge.
+/// columns plus the action slot, and Files uses Name plus Size. Neither may
+/// reserve an invisible slice past the pane's right edge.
 struct ImportMappingColumnsTests {
-    /// Every column, the gaps between them and the row's two leading edges, as
-    /// the row lays them out.
+    /// Every column, the action slot, the gaps between them and the row's two
+    /// leading edges, as the row lays them out.
     private func rowWidth(_ columns: ImportMappingColumns) -> CGFloat {
         columns.tracks.title + columns.tracks.artist + columns.tracks.source
             + ImportMappingColumns.position + ImportMappingColumns.length
-            + ImportMappingColumns.spacing * 4
+            + ImportMappingColumns.action
+            + ImportMappingColumns.spacing * 5
             + ImportMappingColumns.rowPadding * 2
     }
 

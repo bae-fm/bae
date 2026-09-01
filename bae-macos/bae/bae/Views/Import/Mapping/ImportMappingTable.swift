@@ -183,6 +183,8 @@ struct ImportMappingTable: View {
                 .frame(width: columns.tracks.artist, alignment: .leading)
             eyebrow("ui.import.slots.column.length")
                 .frame(width: ImportMappingColumns.length, alignment: .trailing)
+            Color.clear
+                .frame(width: ImportMappingColumns.action)
         }
     }
 
@@ -292,15 +294,16 @@ extension View {
 
 /// The widths the mapping table resolves for one pane.
 ///
-/// Tracks have five columns. Files have a flexible Name and fixed Size column.
-/// Keeping those section shapes explicit prevents track-only columns from
-/// reserving width for values the Files section does not show.
+/// Tracks have five columns and a trailing action slot. Files have a flexible
+/// Name and fixed Size column. Keeping those section shapes explicit prevents
+/// track-only columns from reserving width for values the Files section does
+/// not show.
 ///
-/// Source leads because the file is the origin of every mapping row. `#` and
-/// Length are fixed — a track number and a duration have a known size and
-/// squeezing them says nothing. Source, Title, and Artist give up width in
-/// proportion as the pane narrows, each down to a floor below which it stops
-/// being a column and starts being an ellipsis.
+/// Source leads because the file is the origin of every mapping row. `#`,
+/// Length and the action slot are fixed — a track number, a duration and one
+/// glyph have a known size and squeezing them says nothing. Source, Title, and
+/// Artist give up width in proportion as the pane narrows, each down to a
+/// floor below which it stops being a column and starts being an ellipsis.
 struct ImportMappingColumns {
     struct Tracks {
         let source: CGFloat
@@ -318,6 +321,8 @@ struct ImportMappingColumns {
 
     static let position: CGFloat = 34
     static let length: CGFloat = 88
+    /// The slot at the row's far right where a row is taken out of the list.
+    static let action: CGFloat = 24
     static let fileSize: CGFloat = 64
     static let spacing: CGFloat = 10
     /// The rows' inset from the table's edges. The table is open on the pane,
@@ -332,8 +337,8 @@ struct ImportMappingColumns {
     private static let idealSource: CGFloat = 260
     private static let floorSource: CGFloat = 140
 
-    private static let chrome: CGFloat = rowPadding * 2 + spacing * 4
-    private static let rigid: CGFloat = position + length
+    private static let chrome: CGFloat = rowPadding * 2 + spacing * 5
+    private static let rigid: CGFloat = position + length + action
 
     static let idealTableWidth: CGFloat =
         idealTitle + idealArtist + idealSource + rigid + chrome
@@ -354,7 +359,7 @@ struct ImportMappingColumns {
         return ImportMappingColumns(
             tracks: Tracks(
                 // What the others leave. Stating the leading flexible share as
-                // the remainder keeps all five columns summing to the table's
+                // the remainder keeps every column summing to the table's
                 // width at every size.
                 source: max(
                     floorSource,

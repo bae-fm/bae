@@ -26,6 +26,10 @@ struct ImportMappingTrackRow: View {
 
     @State
     private var hovering = false
+    /// The removal X's own hover, distinct from the row's: it backs the ring
+    /// that marks the control as live before any press.
+    @State
+    private var removalHovered = false
 
     /// Whether the folder and the release disagree about how long this row
     /// runs. Core decides how far apart is far enough — it is a judgement about
@@ -77,7 +81,13 @@ struct ImportMappingTrackRow: View {
                     width: ImportMappingColumns.length,
                     alignment: .trailing
                 )
+            removalCell
         }
+        // The whole row is the hover shape, gaps included. Hover follows
+        // hit-testing, and a stack's empty space is not hit-testable on its
+        // own — without this, the pointer crossing a gap on its way to the
+        // removal X ends the hover that shows the X.
+        .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .contextMenu {
             if let track, !audioChoices.isEmpty {
@@ -155,8 +165,8 @@ struct ImportMappingTrackRow: View {
         }
     }
 
-    /// What the folder offers for this track, and — while the pointer is here,
-    /// or while the row has nothing — the controls that change it.
+    /// What the folder offers for this track, and — while the row has nothing
+    /// — the picker that answers it.
     private var sourceCell: some View {
         ImportMappingSourceCell(
             source: unit.source,
@@ -167,47 +177,75 @@ struct ImportMappingTrackRow: View {
         )
         .frame(width: columns.source, alignment: .leading)
         .overlay(alignment: .trailing) {
-            if let track {
-                rowActions(track)
+            if let track, needsAnswer {
+                chooseFileMenu(track)
                     .padding(.leading, 8)
                     .background(Theme.surfaceElevated.opacity(0.94))
-                    .opacity(hovering || needsAnswer ? 1 : 0)
-                    .allowsHitTesting(hovering || needsAnswer)
             }
         }
     }
 
-    /// Pick the audio this row writes, and the one action that belongs to the
-    /// row's own disagreement — Exclude for audio the release does not name,
-    /// Drop for a track this folder has nothing for.
+    /// The one action that belongs to the row's own disagreement, at the far
+    /// right where a row is taken out of a list: Exclude for audio the release
+    /// does not name, Drop for a track this folder has nothing for. Offered
+    /// while the pointer is on the row; a settled row has nothing to offer and
+    /// keeps the slot empty so every row ends at the same edge.
     ///
-    /// Re-pairing is this menu, not a drag. A drag needs a second hit target
-    /// and a second interaction design per toolkit, has no keyboard or
+    /// Re-pairing is the context menu, not a drag. A drag needs a second hit
+    /// target and a second interaction design per toolkit, has no keyboard or
     /// accessibility path, and buys nothing over picking from the folder's
     /// audio by name — which is what re-pointing a row and swapping two rows
     /// both come down to.
-    @ViewBuilder
-    private func rowActions(_ track: BridgeRawTrackEdit) -> some View {
-        HStack(spacing: 8) {
-            if needsAnswer {
-                chooseFileMenu(track)
-            }
-            if unit.sourcePosition == nil, case .file(let file) = unit.source {
-                Button(coreString("ui.import.slots.exclude")) {
-                    actions.exclude(file.fileId)
+    private var removalCell: some View {
+        ZStack {
+            if let track, let removal = removal(track) {
+                Button(action: removal.perform) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(
+                            removalHovered ? Theme.accent : .secondary
+                        )
+                        .frame(
+                            width: ImportMappingColumns.action,
+                            height: ImportMappingColumns.action
+                        )
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(
+                                    Theme.accent.opacity(
+                                        removalHovered ? 0.22 : 0
+                                    )
+                                )
+                        )
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.link)
-                .font(.system(size: 11.5))
-            }
-            else if track.file == nil {
-                Button(coreString("ui.import.slots.drop")) {
-                    actions.drop(track.id)
-                }
-                .buttonStyle(.link)
-                .font(.system(size: 11.5))
+                .buttonStyle(PressableIconButtonStyle())
+                .onHover { removalHovered = $0 }
+                .help(removal.label)
+                .accessibilityLabel(removal.label)
+                .opacity(hovering ? 1 : 0)
+                .allowsHitTesting(hovering)
             }
         }
-        .fixedSize()
+        .frame(
+            width: ImportMappingColumns.action,
+            height: ImportMappingColumns.action
+        )
+    }
+
+    /// What taking this row out means, where it means anything.
+    private func removal(_ track: BridgeRawTrackEdit) -> RowRemoval? {
+        if unit.sourcePosition == nil, case .file(let file) = unit.source {
+            return RowRemoval(label: coreString("ui.import.slots.exclude")) {
+                actions.exclude(file.fileId)
+            }
+        }
+        if track.file == nil {
+            return RowRemoval(label: coreString("ui.import.slots.drop")) {
+                actions.drop(track.id)
+            }
+        }
+        return nil
     }
 
     @ViewBuilder
@@ -272,4 +310,10 @@ struct ImportMappingTrackRow: View {
         if case .albumArtists = assignments { return true }
         return false
     }
+}
+
+/// The removal a track row offers: what the X is called, and what it does.
+private struct RowRemoval {
+    let label: String
+    let perform: () -> Void
 }
