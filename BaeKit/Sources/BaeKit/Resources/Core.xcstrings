@@ -36611,6 +36611,197 @@
         }
       }
     },
+    "ui.import.slots.drop_help": {
+      "comment": "Import mapping table: tooltip on the X of a row the release names but no audio backs — what dropping the track does.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ترك هذه المقطوعة خارج الاستيراد. يذكرها الإصدار، لكن هذا المجلد لا يحوي صوتًا لها."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Оставяне на тази песен извън внасянето. Изданието я посочва, но тази папка няма аудио за нея."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ট্র্যাকটি আমদানির বাইরে রাখুন। রিলিজে এটি আছে, কিন্তু এই ফোল্ডারে এর কোনো অডিও নেই।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vynechat tuto skladbu z importu. Vydání ji uvádí, ale tato složka pro ni nemá žádný zvuk."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diesen Titel aus dem Import lassen. Die Veröffentlichung nennt ihn, aber dieser Ordner hat kein Audio dafür."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave this track out of the import. The release names it, but this folder has no audio for it."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar esta pista fuera de la importación. La edición la nombra, pero esta carpeta no tiene audio para ella."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laisser cette piste hors de l’import. L’édition la nomme, mais ce dossier n’a aucun audio pour elle."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ ટ્રૅકને આયાતની બહાર રાખો. રિલીઝમાં તે છે, પણ આ ફોલ્ડરમાં તેનો ઑડિયો નથી."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להשאיר את הרצועה הזו מחוץ לייבוא. המהדורה מציינת אותה, אך בתיקייה הזו אין לה שמע."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस ट्रैक को आयात से बाहर छोड़ें। रिलीज़ में यह है, लेकिन इस फ़ोल्डर में इसके लिए कोई ऑडियो नहीं है।"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Izostavi ovu pjesmu iz uvoza. Izdanje je navodi, ali ova mapa nema zvuk za nju."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lascia questa traccia fuori dall’importazione. L’edizione la elenca, ma questa cartella non ha audio per essa."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このトラックを取り込みから外します。リリースには載っていますが、このフォルダーに対応する音声がありません。"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಟ್ರ್ಯಾಕ್‌ನ್ನು ಆಮದಿನಿಂದ ಹೊರಗಿಡಿ. ಬಿಡುಗಡೆಯಲ್ಲಿ ಇದು ಇದೆ, ಆದರೆ ಈ ಫೋಲ್ಡರ್‌ನಲ್ಲಿ ಇದಕ್ಕೆ ಆಡಿಯೊ ಇಲ್ಲ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 트랙을 가져오기에서 뺍니다. 릴리스에는 있지만 이 폴더에 해당 오디오가 없습니다."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ട്രാക്ക് ഇറക്കുമതിയിൽ നിന്ന് ഒഴിവാക്കുക. റിലീസിൽ ഇത് ഉണ്ട്, പക്ഷേ ഈ ഫോൾഡറിൽ ഇതിന് ഓഡിയോ ഇല്ല."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "हा ट्रॅक आयातीबाहेर ठेवा. रिलीजमध्ये तो आहे, पण या फोल्डरमध्ये त्याचा ऑडिओ नाही."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Laat deze track buiten de import. De uitgave noemt hem, maar deze map heeft er geen audio voor."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਸ ਟਰੈਕ ਨੂੰ ਦਰਾਮਦ ਤੋਂ ਬਾਹਰ ਰੱਖੋ। ਰਿਲੀਜ਼ ਵਿੱਚ ਇਹ ਹੈ, ਪਰ ਇਸ ਫੋਲਡਰ ਵਿੱਚ ਇਸ ਲਈ ਕੋਈ ਆਡੀਓ ਨਹੀਂ।"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pomiń ten utwór przy importowaniu. Wydanie go wymienia, ale ten folder nie ma dla niego dźwięku."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deixar esta faixa fora da importação. A edição a nomeia, mas esta pasta não tem áudio para ela."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்தப் பாடலை இறக்குமதியில் சேர்க்காதே. வெளியீட்டில் இது உள்ளது, ஆனால் இந்தக் கோப்புறையில் இதற்கான ஒலி இல்லை."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ ట్రాక్‌ను దిగుమతిలో చేర్చవద్దు. విడుదలలో ఇది ఉంది, కానీ ఈ ఫోల్డర్‌లో దీనికి ఆడియో లేదు."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ไม่นำแทร็กนี้เข้า รุ่นนี้ระบุแทร็กนี้ไว้ แต่โฟลเดอร์นี้ไม่มีเสียงสำหรับมัน"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu parçayı aktarımın dışında bırak. Sürüm onu listeliyor, ancak bu klasörde ona ait ses yok."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Не імпортувати цей трек. Реліз його називає, але в цій папці немає аудіо для нього."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس ٹریک کو درآمد سے باہر رکھیں۔ ریلیز میں یہ درج ہے، مگر اس فولڈر میں اس کی آڈیو نہیں۔"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ bài này ra khỏi lần nhập. Bản phát hành có bài này, nhưng thư mục này không có âm thanh cho nó."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将此曲目排除在导入之外。版本中列有此曲目，但此文件夹没有对应的音频。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將此曲目排除在匯入之外。版本中列有此曲目，但此資料夾沒有對應的音訊。"
+          }
+        }
+      }
+    },
     "ui.import.slots.exclude": {
       "comment": "Import slot table: the action on a row backed by audio the release does not name — take the file out of the tracklist. It is still stored with the release.",
       "localizations": {
@@ -36798,6 +36989,197 @@
           "stringUnit": {
             "state": "translated",
             "value": "排除"
+          }
+        }
+      }
+    },
+    "ui.import.slots.exclude_help": {
+      "comment": "Import mapping table: tooltip on the X of a row backed by audio the release does not name — what excluding the file does.",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "إخراج هذا الملف من قائمة المقطوعات. يظل مستوردًا مع الإصدار ومدرجًا ضمن الملفات، لكن ليس كمقطوعة."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Извеждане на този файл от списъка с песни. Той все пак се внася с изданието и стои във Файлове, но не като песен."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "এই ফাইলটি ট্র্যাক তালিকা থেকে বাদ দিন। এটি রিলিজের সঙ্গে আমদানি হবে এবং ফাইল-এ থাকবে, কিন্তু ট্র্যাক হিসেবে নয়।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vyjmout tento soubor ze seznamu skladeb. I tak se importuje s vydáním a zobrazí v Souborech, ale ne jako skladba."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Datei aus der Titelliste nehmen. Sie wird weiterhin mit der Veröffentlichung importiert und unter Dateien geführt, aber nicht als Titel."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Take this file out of the tracklist. It is still imported with the release and listed under Files, but not as a track."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar este archivo de la lista de pistas. Se importa igualmente con la edición y aparece en Archivos, pero no como pista."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer ce fichier de la liste des pistes. Il est tout de même importé avec l’édition et figure dans Fichiers, mais pas comme piste."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "આ ફાઇલને ટ્રૅક સૂચિમાંથી બહાર કાઢો. તે રિલીઝ સાથે આયાત થાય છે અને ફાઇલોમાં દેખાય છે, પણ ટ્રૅક તરીકે નહીં."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "להוציא את הקובץ הזה מרשימת הרצועות. הוא עדיין מיובא עם המהדורה ומופיע תחת קבצים, אך לא כרצועה."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "इस फ़ाइल को ट्रैक सूची से बाहर करें। यह रिलीज़ के साथ फिर भी आयात होगी और फ़ाइलें में दिखेगी, लेकिन ट्रैक के रूप में नहीं।"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukloni ovu datoteku s popisa pjesama. I dalje se uvozi s izdanjem i prikazuje pod Datoteke, ali ne kao pjesma."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Togli questo file dalla tracklist. Viene comunque importato con l’edizione ed elencato in File, ma non come traccia."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このファイルをトラックリストから外します。リリースと一緒に取り込まれ「ファイル」に載りますが、トラックにはなりません。"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಈ ಫೈಲ್‌ನ್ನು ಟ್ರ್ಯಾಕ್ ಪಟ್ಟಿಯಿಂದ ತೆಗೆಯಿರಿ. ಇದು ಬಿಡುಗಡೆಯೊಂದಿಗೆ ಆಮದಾಗಿ ಫೈಲ್‌ಗಳಲ್ಲಿ ಇರುತ್ತದೆ, ಆದರೆ ಟ್ರ್ಯಾಕ್ ಆಗಿ ಅಲ್ಲ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 파일을 트랙 목록에서 뺍니다. 릴리스와 함께 가져와 파일에 표시되지만 트랙으로는 다루지 않습니다."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ഈ ഫയൽ ട്രാക്ക് പട്ടികയിൽ നിന്ന് മാറ്റുക. ഇത് റിലീസിനൊപ്പം ഇറക്കുമതി ചെയ്ത് ഫയലുകളിൽ കാണിക്കും, പക്ഷേ ട്രാക്കായി അല്ല."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ही फाइल ट्रॅक सूचीतून काढा. ती रिलीजसह आयात होते आणि फाइल्समध्ये दिसते, पण ट्रॅक म्हणून नाही."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Haal dit bestand uit de tracklijst. Het wordt nog steeds met de uitgave geïmporteerd en staat onder Bestanden, maar niet als track."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਇਸ ਫਾਈਲ ਨੂੰ ਟਰੈਕ ਸੂਚੀ ਤੋਂ ਬਾਹਰ ਕਰੋ। ਇਹ ਰਿਲੀਜ਼ ਨਾਲ ਫਿਰ ਵੀ ਦਰਾਮਦ ਹੁੰਦੀ ਹੈ ਅਤੇ ਫਾਈਲਾਂ ਵਿੱਚ ਦਿਖਦੀ ਹੈ, ਪਰ ਟਰੈਕ ਵਜੋਂ ਨਹੀਂ।"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń ten plik z listy utworów. Nadal zostanie zaimportowany z wydaniem i pokazany w Plikach, ale nie jako utwór."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tirar este arquivo da lista de faixas. Ele ainda é importado com a edição e aparece em Arquivos, mas não como faixa."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இந்தக் கோப்பைப் பாடல் பட்டியலிலிருந்து நீக்கு. இது வெளியீட்டுடன் இறக்குமதியாகி கோப்புகளில் இருக்கும், ஆனால் பாடலாக இல்லை."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ఈ ఫైల్‌ను ట్రాక్ జాబితా నుండి తీసివేయండి. ఇది విడుదలతో పాటు దిగుమతి అవుతూ ఫైల్స్‌లో ఉంటుంది, కానీ ట్రాక్‌గా కాదు."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "นำไฟล์นี้ออกจากรายการแทร็ก ไฟล์ยังถูกนำเข้าพร้อมรุ่นและอยู่ในไฟล์ แต่ไม่ใช่แทร็ก"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu dosyayı parça listesinden çıkar. Sürümle birlikte yine aktarılır ve Dosyalar altında görünür, ancak parça olmaz."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Вилучити цей файл зі списку треків. Він усе одно імпортується з релізом і показується у Файлах, але не як трек."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اس فائل کو ٹریک لسٹ سے نکالیں۔ یہ ریلیز کے ساتھ پھر بھی درآمد ہوتی ہے اور فائلوں میں دکھتی ہے، مگر ٹریک کے طور پر نہیں۔"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bỏ tệp này khỏi danh sách bài. Tệp vẫn được nhập cùng bản phát hành và nằm trong Tệp, nhưng không phải là một bài."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "将此文件移出曲目列表。它仍随版本一起导入并列在“文件”下，但不作为曲目。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "將此檔案移出曲目清單。它仍會隨版本一起匯入並列在「檔案」下，但不作為曲目。"
           }
         }
       }

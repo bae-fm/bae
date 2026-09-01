@@ -26,10 +26,6 @@ struct ImportMappingTrackRow: View {
 
     @State
     private var hovering = false
-    /// The removal X's own hover, distinct from the row's: it backs the ring
-    /// that marks the control as live before any press.
-    @State
-    private var removalHovered = false
 
     /// Whether the folder and the release disagree about how long this row
     /// runs. Core decides how far apart is far enough — it is a judgement about
@@ -199,32 +195,10 @@ struct ImportMappingTrackRow: View {
     private var removalCell: some View {
         ZStack {
             if let track, let removal = removal(track) {
-                Button(action: removal.perform) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(
-                            removalHovered ? Theme.accent : .secondary
-                        )
-                        .frame(
-                            width: ImportMappingColumns.action,
-                            height: ImportMappingColumns.action
-                        )
-                        .background(
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(
-                                    Theme.accent.opacity(
-                                        removalHovered ? 0.22 : 0
-                                    )
-                                )
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableIconButtonStyle())
-                .onHover { removalHovered = $0 }
-                .help(removal.label)
-                .accessibilityLabel(removal.label)
-                .opacity(hovering ? 1 : 0)
-                .allowsHitTesting(hovering)
+                ImportMappingRowRemovalButton(
+                    removal: removal,
+                    offered: hovering
+                )
             }
         }
         .frame(
@@ -234,14 +208,22 @@ struct ImportMappingTrackRow: View {
     }
 
     /// What taking this row out means, where it means anything.
-    private func removal(_ track: BridgeRawTrackEdit) -> RowRemoval? {
+    private func removal(
+        _ track: BridgeRawTrackEdit
+    ) -> ImportMappingRowRemoval? {
         if unit.sourcePosition == nil, case .file(let file) = unit.source {
-            return RowRemoval(label: coreString("ui.import.slots.exclude")) {
+            return ImportMappingRowRemoval(
+                label: coreString("ui.import.slots.exclude"),
+                help: coreString("ui.import.slots.exclude_help")
+            ) {
                 actions.exclude(file.fileId)
             }
         }
         if track.file == nil {
-            return RowRemoval(label: coreString("ui.import.slots.drop")) {
+            return ImportMappingRowRemoval(
+                label: coreString("ui.import.slots.drop"),
+                help: coreString("ui.import.slots.drop_help")
+            ) {
                 actions.drop(track.id)
             }
         }
@@ -310,10 +292,4 @@ struct ImportMappingTrackRow: View {
         if case .albumArtists = assignments { return true }
         return false
     }
-}
-
-/// The removal a track row offers: what the X is called, and what it does.
-private struct RowRemoval {
-    let label: String
-    let perform: () -> Void
 }
