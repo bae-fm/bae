@@ -648,6 +648,9 @@
                 }
         )
 
+        /// Nine audio files with nothing said about them yet, the folder's
+        /// images, and the documents and logs carried alongside — a blank
+        /// draft still has a whole folder under it.
         private static let blankDraftMappingTable = BridgeMappingTable(
             images: mappingImages,
             trackGroups: blankDraftValues.tracks.enumerated()
@@ -663,7 +666,11 @@
                         )
                     )
                 },
-            files: [],
+            files: [
+                carriedRow(infoLog, role: .document),
+                carriedRow(notesDocument, role: .document),
+                .directory(directory: previewLogsDirectory),
+            ],
             reconciliation: nil
         )
 
