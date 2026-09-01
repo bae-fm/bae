@@ -28,7 +28,11 @@ struct ImportMappingRowRemovalButton: View {
         Button(action: removal.perform) {
             Image(systemName: "xmark")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(hovering ? Theme.accent : .secondary)
+                .foregroundStyle(
+                    hovering
+                        ? AnyShapeStyle(Theme.accent)
+                        : AnyShapeStyle(.tertiary)
+                )
                 .frame(
                     width: ImportMappingColumns.action,
                     height: ImportMappingColumns.action
