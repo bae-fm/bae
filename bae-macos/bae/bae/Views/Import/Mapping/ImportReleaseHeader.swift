@@ -101,11 +101,11 @@ struct ImportReleaseFieldsGrid: View {
     let writer: ReleaseFieldWriter
     let editingCommands: EditingCommitCommands
 
-    static let labelWidth: CGFloat = 104
+    static let labelWidth: CGFloat = 64
     /// The value field, chrome included: it hugs the value column.
     static let valueWidth: CGFloat = 150
     /// From the end of a value to the start of the next label.
-    static let columnGap: CGFloat = 36
+    static let columnGap: CGFloat = 20
     /// From the end of a label to the start of its value.
     static let labelGap: CGFloat = 12
     static let rowSpacing: CGFloat = 10
@@ -149,7 +149,7 @@ struct ImportReleaseFieldsGrid: View {
                 GridRow {
                     field(
                         .catalogNumber,
-                        label: String(localized: "Catalog number"),
+                        label: String(localized: "Catalog"),
                         text: values.pressing.catalogNumber,
                         monospaced: true
                     )
@@ -174,11 +174,13 @@ struct ImportReleaseFieldsGrid: View {
             alignment: .firstTextBaseline,
             spacing: Self.labelGap - FieldChrome.inlineHorizontalPadding
         ) {
+            // Right-aligned against its value, so each label-value pair
+            // reads as one unit instead of two ragged columns.
             Text(label)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .frame(width: Self.labelWidth, alignment: .leading)
+                .frame(width: Self.labelWidth, alignment: .trailing)
             CommittedTextField(
                 placeholder: "\u{2014}",
                 value: text,

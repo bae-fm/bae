@@ -18854,7 +18854,7 @@
       }
     },
     "Catalog" : {
-      "comment" : "Import pressing row / signal badge: catalog provenance label",
+      "comment" : "Import pressing row / signal badge / release grid: catalog (number) label",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
