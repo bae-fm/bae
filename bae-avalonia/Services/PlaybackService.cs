@@ -79,8 +79,8 @@ internal sealed class PlaybackService
     public Func<bool, (bool Current, string? Error)> SetPauseBetweenSides { get; init; }
         = _ => throw new InvalidOperationException("PlaybackService stub: SetPauseBetweenSides not wired");
 
-    /// <summary>Start the import audio preview for a file path.</summary>
-    public Func<string, bool> PreviewPlay { get; init; }
+    /// <summary>Start the import audio preview for an exact source window.</summary>
+    public Func<BridgePreviewTarget, bool> PreviewPlay { get; init; }
         = _ => throw new InvalidOperationException("PlaybackService stub: PreviewPlay not wired");
 
     public Func<bool> PreviewStop { get; init; }
@@ -111,7 +111,7 @@ internal sealed class PlaybackService
             session.WithCurrentHandle(handle => NativeBae.SetShowRemainingTime(handle, enabled)),
         SetPauseBetweenSides = enabled =>
             session.WithCurrentHandle(handle => NativeBae.SetPauseBetweenSides(handle, enabled)),
-        PreviewPlay = path => session.WithCurrentHandle(handle => NativeBae.PreviewPlay(handle, path)),
+        PreviewPlay = target => session.WithCurrentHandle(handle => NativeBae.PreviewPlay(handle, target)),
         PreviewStop = () => session.WithCurrentHandle(NativeBae.PreviewStop),
         PreviewTogglePause = () => session.WithCurrentHandle(NativeBae.PreviewTogglePause),
     };

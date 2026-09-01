@@ -25,7 +25,11 @@ struct MediaControlServiceTests {
 
         service.updateNowPlayingForPreview(
             state: .playing(
-                path: "/tmp/Preview Track.flac",
+                target: BridgePreviewTarget(
+                    path: "/tmp/Preview Track.flac",
+                    startSample: 0,
+                    endSample: nil
+                ),
                 durationMs: 120_000
             )
         )
@@ -75,7 +79,11 @@ struct MediaControlServiceTests {
 
         service.updateNowPlayingForPreview(
             state: .playing(
-                path: "/tmp/Preview Track.flac",
+                target: BridgePreviewTarget(
+                    path: "/tmp/Preview Track.flac",
+                    startSample: 0,
+                    endSample: nil
+                ),
                 durationMs: 90_000
             )
         )

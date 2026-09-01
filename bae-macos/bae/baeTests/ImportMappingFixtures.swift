@@ -48,6 +48,11 @@ extension MappingFixtures {
             name: "\(index).flac",
             size: UInt64(30_000_000 + index * 1_000_000),
             localPath: "/tmp/walkthrough/\(index).flac",
+            previewTarget: BridgePreviewTarget(
+                path: "/tmp/walkthrough/\(index).flac",
+                startSample: 0,
+                endSample: nil
+            ),
             durationMs: UInt64(200_000 + index * 1000),
             audioFormat: audioFormat,
             role: .audio,
@@ -129,6 +134,11 @@ extension MappingFixtures {
         name: containerId,
         size: 380_000_000,
         localPath: containerPath,
+        previewTarget: BridgePreviewTarget(
+            path: containerPath,
+            startSample: 0,
+            endSample: nil
+        ),
         durationMs: 2_400_000,
         audioFormat: audioFormat,
         role: .audio,
@@ -228,7 +238,13 @@ extension MappingFixtures {
 
     /// One entry of the bound sheet, carved out of the container.
     static func entry(_ index: Int) -> BridgeMappingUnit {
-        BridgeMappingUnit(
+        let startSample = UInt64(index) * 200 * 44_100
+        let previewTarget = BridgePreviewTarget(
+            path: containerPath,
+            startSample: startSample,
+            endSample: startSample + 200 * 44_100
+        )
+        return BridgeMappingUnit(
             source: .sheetEntry(
                 entry: BridgeMappingEntry(
                     sheetId: sheetId,
@@ -239,6 +255,7 @@ extension MappingFixtures {
                     containerId: containerId,
                     containerName: containerId,
                     containerLocalPath: containerPath,
+                    previewTarget: previewTarget,
                     audioFormat: audioFormat
                 )
             ),

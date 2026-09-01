@@ -66,13 +66,12 @@ internal static class MappingTableReading
         };
     }
 
-    /// <summary>The file on disk this row's audio lives in — the file itself, or
-    /// the container a sheet entry is carved out of. Null for a track the release
-    /// names that the folder has nothing for.</summary>
-    internal static string? AudioPath(this BridgeMappingSource source) => source switch
+    /// <summary>The exact source window this row auditions. Null for a track
+    /// the release names that the folder has nothing for.</summary>
+    internal static BridgePreviewTarget? PreviewTarget(this BridgeMappingSource source) => source switch
     {
-        BridgeMappingSource.File file => file.FileValue.LocalPath,
-        BridgeMappingSource.SheetEntry entry => entry.Entry.ContainerLocalPath,
+        BridgeMappingSource.File file => file.FileValue.PreviewTarget,
+        BridgeMappingSource.SheetEntry entry => entry.Entry.PreviewTarget,
         _ => null,
     };
 

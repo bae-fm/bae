@@ -812,7 +812,7 @@ impl AppServices {
     delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device_name: String, stream_url_provider: crate::renderer::MediaUrlProvider, cover_url_provider: crate::renderer::CoverUrlProvider, stream_format: crate::renderer::StreamFormatFn) -> ());
     delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn crate::playback::airplay_output::AirPlaySink>, device_name: String, latency_frames: u32) -> ());
     delegate_sync!(playback, playback_stop_remote => stop_remote() -> ());
-    delegate_sync!(playback, playback_preview_play => preview_play(path: String) -> ());
+    delegate_sync!(playback, playback_preview_play => preview_play(target: crate::playback::PreviewTarget) -> ());
     delegate_sync!(playback, playback_preview_stop => preview_stop() -> ());
     delegate_sync!(playback, playback_preview_toggle_pause => preview_toggle_pause() -> ());
     delegate_sync!(playback, playback_preview_seek_by_ratio => preview_seek_by_ratio(ratio: f64) -> ());

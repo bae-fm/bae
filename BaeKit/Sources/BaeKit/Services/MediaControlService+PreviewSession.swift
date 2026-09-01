@@ -167,8 +167,8 @@
 
         public func updateNowPlayingForPreview(state: BridgePreviewState) {
             switch state {
-            case .playing(let path, let durationMs),
-                .paused(let path, let durationMs):
+            case .playing(let target, let durationMs),
+                .paused(let target, let durationMs):
                 let playbackRate: Double =
                     if case .playing = state {
                         1.0
@@ -177,7 +177,7 @@
                         0.0
                     }
                 setPreviewNowPlaying(
-                    path: path,
+                    path: target.path,
                     durationMs: durationMs,
                     playbackRate: playbackRate
                 )

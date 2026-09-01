@@ -54,7 +54,7 @@ extension ImportView {
             candidate: candidate,
             runtime: runtime,
             bindingOptions: sheetBindingOptions,
-            previewingPath: importStore.previewState.active?.path,
+            previewingTarget: importStore.previewState.active?.target,
             libraryStatus: candidate.pickedLibraryStatus,
             hasCoverOptions: hasCoverOptions(candidate),
             coverContent: candidate.cover?.thumbnailContent,

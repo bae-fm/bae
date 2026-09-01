@@ -316,6 +316,8 @@ pub struct BridgeMappingFile {
     pub size: u64,
     /// Absolute path — what auditioning this row plays.
     pub local_path: String,
+    /// The whole-file target when this file currently supplies audio.
+    pub preview_target: Option<BridgePreviewTarget>,
     /// Playing time in milliseconds from the scan's stored facts. `None` for
     /// non-audio files.
     pub duration_ms: Option<u64>,
@@ -348,6 +350,8 @@ pub struct BridgeMappingEntry {
     pub container_id: String,
     pub container_name: String,
     pub container_local_path: String,
+    /// The exact window of the container that auditioning this entry plays.
+    pub preview_target: BridgePreviewTarget,
     pub audio_format: BridgeAudioFormat,
 }
 

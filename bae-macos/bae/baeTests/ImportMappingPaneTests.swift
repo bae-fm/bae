@@ -27,7 +27,7 @@ private final class Recorder {
     var externalMetadata: [(source: BridgeMetadataSource, releaseId: String)] =
         []
     var fileTagsApplications = 0
-    var played: [String] = []
+    var played: [BridgePreviewTarget] = []
     var stops = 0
     /// What the pick call throws, when the test is about a pick that fails.
     var pickFailure: (any Error)?
@@ -90,8 +90,8 @@ private final class Recorder {
 
     var previewAudio: PreviewAudio {
         PreviewAudio(
-            previewPlay: { [self] path in
-                MainActor.assumeIsolated { played.append(path) }
+            previewPlay: { [self] target in
+                MainActor.assumeIsolated { played.append(target) }
             },
             previewStop: { [self] in
                 MainActor.assumeIsolated { stops += 1 }
@@ -534,11 +534,12 @@ extension ImportMappingPaneTests {
             services: recorder.services(store)
         )
         let entry = try #require(
-            MappingFixtures.mapping(of: store).units[4].source.audioPath
+            MappingFixtures.mapping(of: store).units[4].source.previewTarget
         )
 
         actions.preview(entry)
-        #expect(recorder.played == [MappingFixtures.containerPath])
+        #expect(recorder.played == [entry])
+        #expect(entry.path == MappingFixtures.containerPath)
 
         actions.stopPreview()
         #expect(recorder.stops == 1)

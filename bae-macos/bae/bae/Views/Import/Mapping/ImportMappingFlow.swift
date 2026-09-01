@@ -146,7 +146,7 @@ extension ImportMappingFlow {
             setSheetDisc: discAction(key: key, services: services),
             openDocument: services.openDocument,
             openImages: services.openImages,
-            preview: { path in services.previewAudio.previewPlay(path) },
+            preview: { target in services.previewAudio.previewPlay(target) },
             stopPreview: { services.previewAudio.previewStop() },
             editTrack: { track in
                 start {

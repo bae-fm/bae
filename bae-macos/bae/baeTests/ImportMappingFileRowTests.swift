@@ -21,7 +21,7 @@ struct ImportMappingFileRowTests {
                         tableWidth: tableWidth
                     )
                     .files,
-                previewingPath: nil,
+                previewingTarget: nil,
                 evidence: [],
                 actions: actions(recording: choice)
             )
@@ -52,6 +52,7 @@ struct ImportMappingFileRowTests {
             name: "excluded.flac",
             size: 24_000_000,
             localPath: "/tmp/excluded.flac",
+            previewTarget: nil,
             durationMs: 180_000,
             audioFormat: MappingFixtures.audioFormat,
             role: .other,

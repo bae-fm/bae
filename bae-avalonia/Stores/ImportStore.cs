@@ -107,10 +107,10 @@ internal sealed class ImportStore : IDisposable
     public BridgeLibraryStatus? ReleaseLibraryStatus { get; private set; }
     public event Action? ReleaseLibraryStatusChanged;
 
-    // The file the preview transport is playing, by its absolute path — the
-    // only identity the preview events carry. The mapping pane accents the slot
-    // row whose audio this is; null when nothing is previewing.
-    public string? PreviewingPath { get; private set; }
+    // The exact source window the preview transport is playing. The mapping
+    // pane accents only the row for that window; null when nothing is
+    // previewing.
+    public BridgePreviewTarget? PreviewingTarget { get; private set; }
 
     // The previewing track's total-duration label, from PreviewPlaying/Paused.
     // Shown after the elapsed position; null when nothing is previewing.
@@ -815,19 +815,19 @@ internal sealed class ImportStore : IDisposable
         {
             case BridgePreviewState.Playing playing:
                 _previewDurationLabel = BridgeDisplay.Clock(playing.DurationMs);
-                PreviewingPath = playing.Path;
+                PreviewingTarget = playing.Target;
                 _mediaControls.UpdateNowPlayingForPreview(
-                    playing.Path, playing.DurationMs, isPlaying: true);
+                    playing.Target.Path, playing.DurationMs, isPlaying: true);
                 break;
             case BridgePreviewState.Paused paused:
                 _previewDurationLabel = BridgeDisplay.Clock(paused.DurationMs);
-                PreviewingPath = paused.Path;
+                PreviewingTarget = paused.Target;
                 _mediaControls.UpdateNowPlayingForPreview(
-                    paused.Path, paused.DurationMs, isPlaying: false);
+                    paused.Target.Path, paused.DurationMs, isPlaying: false);
                 break;
             case BridgePreviewState.Idle:
                 _previewDurationLabel = null;
-                PreviewingPath = null;
+                PreviewingTarget = null;
                 _mediaControls.UpdatePreviewIdle();
                 break;
         }
@@ -847,7 +847,7 @@ internal sealed class ImportStore : IDisposable
     public void ClearPreview()
     {
         _previewDurationLabel = null;
-        PreviewingPath = null;
+        PreviewingTarget = null;
         PreviewElapsedText = string.Empty;
         PreviewElapsedChanged?.Invoke();
     }

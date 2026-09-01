@@ -276,17 +276,44 @@ public sealed class ImportMappingTableTests
         Assert.Equal(new[] { (SheetId, "/folder/disc.cue") }, opened);
     }
 
-    // Auditioning a sheet entry plays the container it is carved out of — the
-    // only file on disk there is to play.
+    // Auditioning a sheet entry plays only that entry's window of its container.
     [AvaloniaFact]
-    public void AuditioningAnEntryPlaysItsContainer()
+    public void AuditioningAnEntryPlaysItsExactSourceWindow()
     {
-        var played = new List<string>();
+        var played = new List<BridgePreviewTarget>();
         var table = Build(SheetTable(Disc(1)), preview: played.Add);
 
         PlayButton(Rows(table)[2]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-        Assert.Equal(new[] { ContainerPath }, played);
+        Assert.Equal(new[] { EntryTarget(0) }, played);
+    }
+
+    // Two sheet entries share one container path, but they are different
+    // preview identities. Playing the second must not turn the first row into a
+    // stop button or make clicking it stop the second.
+    [AvaloniaFact]
+    public void SheetEntryPreviewIdentityIncludesItsSampleWindow()
+    {
+        var played = new List<BridgePreviewTarget>();
+        var stopped = false;
+        var table = Build(
+            SheetTable(Disc(1)),
+            preview: played.Add,
+            previewingTarget: EntryTarget(1),
+            stopPreview: () => stopped = true);
+        var rows = Rows(table);
+
+        Assert.Equal(
+            Loc.Core("ui.import.slots.play"),
+            PlayButton(rows[2]).Content);
+        Assert.Contains(
+            rows[3].GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Core("ui.import.slots.stop")));
+
+        PlayButton(rows[2]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+        Assert.False(stopped);
+        Assert.Equal(new[] { EntryTarget(0) }, played);
     }
 
     // ── Reading the table ────────────────────────────────────────────────────
@@ -341,6 +368,7 @@ public sealed class ImportMappingTableTests
             Name: "01.flac",
             Size: 1024,
             LocalPath: "/folder/01.flac",
+            PreviewTarget: new BridgePreviewTarget("/folder/01.flac", 0, null),
             DurationMs: 180_000,
             AudioFormat: SourceAudio,
             Role: BridgeMappingRole.Audio,
@@ -374,6 +402,7 @@ public sealed class ImportMappingTableTests
             Name: "01.flac",
             Size: 1024,
             LocalPath: "/folder/01.flac",
+            PreviewTarget: new BridgePreviewTarget("/folder/01.flac", 0, null),
             DurationMs: 180_000,
             AudioFormat: SourceAudio,
             Role: BridgeMappingRole.Audio,
@@ -448,6 +477,7 @@ public sealed class ImportMappingTableTests
             ContainerId: "disc.flac",
             ContainerName: "disc.flac",
             ContainerLocalPath: ContainerPath,
+            PreviewTarget: EntryTarget(index),
             AudioFormat: SourceAudio)),
         new BridgeMappingBecomes.AwaitingPick(),
         DurationMs: null);
@@ -466,6 +496,9 @@ public sealed class ImportMappingTableTests
             Name: fileId,
             Size: 1024,
             LocalPath: $"/folder/{fileId}",
+            PreviewTarget: fileId.EndsWith(".flac", StringComparison.Ordinal)
+                ? new BridgePreviewTarget($"/folder/{fileId}", 0, null)
+                : null,
             DurationMs: null,
             AudioFormat: fileId.EndsWith(".flac", StringComparison.Ordinal)
                 ? SourceAudio
@@ -490,18 +523,25 @@ public sealed class ImportMappingTableTests
 
     private static BridgeAudioFile Standalone(string fileId) => new BridgeAudioFile.Standalone(fileId);
 
+    private static BridgePreviewTarget EntryTarget(uint index) => new(
+        ContainerPath,
+        StartSample: index * 44_100,
+        EndSample: (index + 1) * 44_100);
+
     // ── Building and reaching into the control ───────────────────────────────
 
     private static Control Build(
         BridgeMappingTable table,
         System.Action<string, BridgeSheetDisc>? setSheetDisc = null,
         System.Action<string, string>? openDocument = null,
-        System.Action<string>? preview = null,
+        System.Action<BridgePreviewTarget>? preview = null,
+        BridgePreviewTarget? previewingTarget = null,
+        System.Action? stopPreview = null,
         BridgeFileEvidence[]? evidence = null) =>
         new ImportMappingTable(
             table,
             _ => Task.FromResult(new List<ImportSheetBindingOption>()),
-            () => null,
+            () => previewingTarget,
             new LibraryService(),
             new ImportMappingActions(
                 SetRole: (_, _) => { },
@@ -510,7 +550,7 @@ public sealed class ImportMappingTableTests
                 OpenDocument: openDocument ?? ((_, _) => { }),
                 OpenImages: (_, _) => { },
                 Preview: preview ?? (_ => { }),
-                StopPreview: () => { },
+                StopPreview: stopPreview ?? (() => { }),
                 EditTrack: _ => { },
                 SetTrackArtists: (_, _) => { },
                 ChooseFile: (_, _) => { },

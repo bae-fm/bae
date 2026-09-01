@@ -25,6 +25,11 @@
                 name: "Track \(index).flac",
                 size: UInt64(35_000_000 + index * 2_000_000),
                 localPath: "/tmp/fake/Track \(index).flac",
+                previewTarget: BridgePreviewTarget(
+                    path: "/tmp/fake/Track \(index).flac",
+                    startSample: 0,
+                    endSample: nil
+                ),
                 durationMs: UInt64(180_000 + index * 15000 + drift),
                 audioFormat: sourceAudioFormat,
                 role: .audio,
@@ -42,6 +47,12 @@
                 name: file.file.fileName,
                 size: file.file.size,
                 localPath: file.file.localPath,
+                previewTarget: role == .audio
+                    ? BridgePreviewTarget(
+                        path: file.file.localPath,
+                        startSample: 0,
+                        endSample: nil
+                    ) : nil,
                 durationMs: nil,
                 audioFormat: file.file.audioFormat,
                 role: role,
@@ -200,6 +211,12 @@
                                         size: moreTracksAudio.file.size,
                                         localPath: moreTracksAudio.file
                                             .localPath,
+                                        previewTarget: BridgePreviewTarget(
+                                            path: moreTracksAudio.file
+                                                .localPath,
+                                            startSample: 0,
+                                            endSample: nil
+                                        ),
                                         durationMs: 272_000,
                                         audioFormat: moreTracksAudio.file
                                             .audioFormat,
@@ -246,6 +263,11 @@
                 containerId: mappedAudioContainer.file.name,
                 containerName: mappedAudioContainer.file.fileName,
                 containerLocalPath: mappedAudioContainer.file.localPath,
+                previewTarget: BridgePreviewTarget(
+                    path: mappedAudioContainer.file.localPath,
+                    startSample: UInt64(index) * 44_100,
+                    endSample: UInt64(index + 1) * 44_100
+                ),
                 audioFormat: sourceAudioFormat
             )
             return BridgeMappingUnit(

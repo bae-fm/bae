@@ -22,7 +22,7 @@ namespace Bae.Desktop;
 /// sheet) in the viewer: the file's name, then its path on disk.</param>
 /// <param name="OpenImages">Open the folder's images in the lightbox: the
 /// gallery's images, then the path of the one that was clicked.</param>
-/// <param name="Preview">Audition a row's audio from its own path.</param>
+/// <param name="Preview">Audition a row's exact source window.</param>
 /// <param name="StopPreview">Stop whatever is auditioning.</param>
 /// <param name="EditTrack">Write a row's edited track back onto the row that
 /// commits it.</param>
@@ -40,7 +40,7 @@ internal sealed record ImportMappingActions(
     Action<string, BridgeSheetDisc> SetSheetDisc,
     Action<string, string> OpenDocument,
     Action<IReadOnlyList<BridgeMappingImage>, string> OpenImages,
-    Action<string> Preview,
+    Action<BridgePreviewTarget> Preview,
     Action StopPreview,
     Action<BridgeRawTrackEdit> EditTrack,
     Action<IReadOnlyList<string>, BridgeTrackArtistAssignments> SetTrackArtists,

@@ -1,3 +1,4 @@
+import BaeBridge
 import Foundation
 
 #if os(macOS)
@@ -7,13 +8,16 @@ import Foundation
     /// methods are desktop-only (there is no import flow on iOS), so the
     /// whole type is gated to macOS.
     public final class PreviewAudio: Sendable, Observable {
-        public let previewPlay: @Sendable (_ path: String) -> Void
+        public let previewPlay:
+            @Sendable (_ target: BridgePreviewTarget) -> Void
         public let previewStop: @Sendable () -> Void
         public let previewTogglePause: @Sendable () -> Void
         public let previewSeekByRatio: @Sendable (_ ratio: Double) -> Void
 
         public init(
-            previewPlay: @escaping @Sendable (String) -> Void = { _ in },
+            previewPlay: @escaping @Sendable (BridgePreviewTarget) -> Void = {
+                _ in
+            },
             previewStop: @escaping @Sendable () -> Void = {},
             previewTogglePause: @escaping @Sendable () -> Void = {},
             previewSeekByRatio: @escaping @Sendable (Double) -> Void = { _ in }
@@ -26,7 +30,7 @@ import Foundation
 
         public convenience init(handle: any AppHandleProtocol) {
             self.init(
-                previewPlay: { handle.previewPlay(path: $0) },
+                previewPlay: { handle.previewPlay(target: $0) },
                 previewStop: { handle.previewStop() },
                 previewTogglePause: { handle.previewTogglePause() },
                 previewSeekByRatio: { handle.previewSeekByRatio(ratio: $0) }

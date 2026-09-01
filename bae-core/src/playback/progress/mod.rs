@@ -5,15 +5,21 @@ pub use handle::PlaybackProgressHandle;
 use tokio::sync::mpsc as tokio_mpsc;
 use tracing::warn;
 
-/// Display-ready state of preview (file audition) playback. Carries identity
-/// (path) and duration only — position flows exclusively through
+/// Display-ready state of preview (source-window audition) playback. Carries
+/// identity and duration only — position flows exclusively through
 /// `PlaybackProgress::PreviewPositionUpdate`, so there is one sink for it, not
 /// two.
 #[derive(Debug, Clone)]
 pub enum PreviewState {
     Idle,
-    Playing { path: String, duration_ms: u64 },
-    Paused { path: String, duration_ms: u64 },
+    Playing {
+        target: crate::playback::PreviewTarget,
+        duration_ms: u64,
+    },
+    Paused {
+        target: crate::playback::PreviewTarget,
+        duration_ms: u64,
+    },
 }
 
 /// The queue shape owned by the playback loop: per-instance queue entries,

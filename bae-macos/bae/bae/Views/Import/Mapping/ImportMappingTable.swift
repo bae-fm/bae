@@ -15,8 +15,8 @@ struct ImportMappingTable: View {
     /// probes to decide, so the table is handed the answer: a sheet with no
     /// offer yet shows no picker.
     let bindingOptions: [String: [BridgeSheetBindingOption]]
-    /// The path currently auditioning, if any — the row playing it is accented.
-    let previewingPath: String?
+    /// The source window currently auditioning, if any — its row is accented.
+    let previewingTarget: BridgePreviewTarget?
     /// Extracted identifying signals by their source file. The row for that
     /// file carries the chip independently of the selected pressing.
     var evidence: [BridgeFileEvidence] = []
@@ -156,14 +156,14 @@ struct ImportMappingTable: View {
             unit: unit,
             columns: columns.tracks,
             audioChoices: table.audioChoices,
-            previewingPath: previewingPath,
+            previewingTarget: previewingTarget,
             evidence: evidenceFor(unit),
             actions: actions,
             artistFillCoordinateSpace: artistFillCoordinateSpace,
             onSelectArtist: selectArtist,
         )
         .rowChrome(
-            background: unit.source.audioPath == previewingPath
+            background: unit.source.previewTarget == previewingTarget
                 ? Theme.accentSoft : .clear
         )
     }
@@ -198,7 +198,7 @@ struct ImportMappingTable: View {
             ImportMappingFileRow(
                 file: file,
                 columns: columns.files,
-                previewingPath: previewingPath,
+                previewingTarget: previewingTarget,
                 evidence: ImportEvidence.of(file.fileId, in: evidence),
                 actions: actions,
             )

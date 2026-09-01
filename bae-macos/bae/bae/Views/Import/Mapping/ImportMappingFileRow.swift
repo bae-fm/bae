@@ -11,7 +11,7 @@ import SwiftUI
 struct ImportMappingFileRow: View {
     let file: BridgeMappingFile
     let columns: ImportMappingColumns.Files
-    let previewingPath: String?
+    let previewingTarget: BridgePreviewTarget?
     /// Identifying signals extracted from this file — the rip log a disc ID
     /// was computed from wears its chip here.
     var evidence: [BridgeFileEvidence]
@@ -22,7 +22,7 @@ struct ImportMappingFileRow: View {
             HStack(spacing: ImportMappingColumns.spacing) {
                 ImportMappingSourceCell(
                     source: .file(file: file),
-                    previewingPath: previewingPath,
+                    previewingTarget: previewingTarget,
                     evidence: evidence,
                     showsFileSize: false,
                     actions: actions,

@@ -1,6 +1,13 @@
 use std::path::Path;
 use thiserror::Error;
 use tracing::warn;
+
+/// Convert a CUE position from 1/75-second frames to source samples without an
+/// overflowing intermediate multiplication.
+pub fn cue_frames_to_samples(frames: u64, sample_rate: u64) -> u64 {
+    u64::try_from(u128::from(frames) * u128::from(sample_rate) / 75)
+        .expect("CUE sample position exceeds u64")
+}
 #[derive(Debug, Error)]
 pub enum CueFlacError {
     #[error("IO error: {0}")]

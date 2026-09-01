@@ -8,7 +8,7 @@ struct ImportMappingSourceCell: View {
     static let auditionTargetSize: CGFloat = 24
 
     let source: BridgeMappingSource
-    let previewingPath: String?
+    let previewingTarget: BridgePreviewTarget?
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
@@ -18,7 +18,8 @@ struct ImportMappingSourceCell: View {
     let actions: ImportMappingActions
 
     private var isPreviewing: Bool {
-        source.audioPath.map { $0 == previewingPath } ?? false
+        guard let previewTarget = source.previewTarget else { return false }
+        return previewTarget == previewingTarget
     }
 
     var body: some View {
@@ -48,8 +49,8 @@ struct ImportMappingSourceCell: View {
 
     private func fileCell(_ file: BridgeMappingFile) -> some View {
         HStack(spacing: 6) {
-            if file.role.fileRole.isAudio {
-                auditionButton(path: file.localPath)
+            if let previewTarget = source.previewTarget {
+                auditionButton(target: previewTarget)
             }
             nameCell(file)
             if showsFileSize {
@@ -101,7 +102,9 @@ struct ImportMappingSourceCell: View {
     /// The audio is the container's, which is the only file on disk to audition.
     private func entryCell(_ entry: BridgeMappingEntry) -> some View {
         HStack(spacing: 6) {
-            auditionButton(path: entry.containerLocalPath)
+            if let previewTarget = source.previewTarget {
+                auditionButton(target: previewTarget)
+            }
             Text(entry.title ?? "")
                 .font(.system(size: 12))
                 .lineLimit(1)
@@ -110,9 +113,9 @@ struct ImportMappingSourceCell: View {
         }
     }
 
-    private func auditionButton(path: String) -> some View {
+    private func auditionButton(target: BridgePreviewTarget) -> some View {
         Button {
-            isPreviewing ? actions.stopPreview() : actions.preview(path)
+            isPreviewing ? actions.stopPreview() : actions.preview(target)
         } label: {
             Image(systemName: isPreviewing ? "stop.fill" : "play.fill")
                 .font(.system(size: 12, weight: .semibold))

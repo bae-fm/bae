@@ -35,15 +35,15 @@ final class DesktopEventHandler {
 
     func apply(_ values: BridgePreviewValues) {
         switch values.state {
-        case .playing(let path, let durationMs):
+        case .playing(let target, let durationMs):
             importStore.previewState = .playing(
-                path: path,
+                target: target,
                 durationMs: durationMs
             )
             mediaControlService.updateNowPlayingForPreview(state: values.state)
-        case .paused(let path, let durationMs):
+        case .paused(let target, let durationMs):
             importStore.previewState = .paused(
-                path: path,
+                target: target,
                 durationMs: durationMs
             )
             mediaControlService.updateNowPlayingForPreview(state: values.state)

@@ -169,8 +169,8 @@ pub(crate) enum PlaybackCommand {
     ReevaluateSidePauseStaging,
     /// Skip to the queue entry with this per-instance id (manual, pregap skipped).
     SkipTo(QueueEntryId),
-    /// Preview a local audio file (toggle: same path stops, different path switches).
-    PreviewPlay(String),
+    /// Preview a local source window (the same target stops; another switches).
+    PreviewPlay(crate::playback::PreviewTarget),
     /// Stop any active preview.
     PreviewStop,
     /// Toggle pause/resume on the active preview.
@@ -526,9 +526,9 @@ impl PlaybackHandle {
             PlaybackCommand::ReevaluateSidePauseStaging,
         );
     }
-    /// Preview a local audio file. Same path toggles off, different path switches.
-    pub fn preview_play(&self, path: String) {
-        dispatch_command(&self.command_tx, PlaybackCommand::PreviewPlay(path));
+    /// Preview a local source window. The same target stops; another switches.
+    pub fn preview_play(&self, target: crate::playback::PreviewTarget) {
+        dispatch_command(&self.command_tx, PlaybackCommand::PreviewPlay(target));
     }
     /// Stop any active preview playback.
     pub fn preview_stop(&self) {

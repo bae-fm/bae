@@ -425,7 +425,7 @@ internal sealed partial class ImportMappingPane : UserControl
             _table = new ImportMappingTable(
                 mapping,
                 sheetFileId => _import.SheetBindingOptions(_key!, sheetFileId),
-                () => _import.PreviewingPath,
+                () => _import.PreviewingTarget,
                 _app.Library,
                 actions,
                 _candidate.FileEvidence);
@@ -720,7 +720,7 @@ internal sealed partial class ImportMappingPane : UserControl
         OpenDocument: (name, path) =>
             _ = _dialogs.ShowDocumentFile(new ImportDocument { Name = name, Path = path }),
         OpenImages: ShowFolderImages,
-        Preview: path => _app.Playback.PreviewPlay(path),
+        Preview: target => _app.Playback.PreviewPlay(target),
         StopPreview: () => _app.Playback.PreviewStop(),
         EditTrack: track => _ = EditTrack(track),
         SetTrackArtists: (trackIds, assignments) =>

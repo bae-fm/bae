@@ -1141,8 +1141,8 @@ impl PlaybackService {
                         self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
                     }
                 }
-                PlaybackCommand::PreviewPlay(path) => {
-                    self.preview_play(path).await;
+                PlaybackCommand::PreviewPlay(target) => {
+                    self.preview_play(target).await;
                 }
                 PlaybackCommand::PreviewStop => {
                     self.preview_stop();

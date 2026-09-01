@@ -30,6 +30,51 @@ use tokio::sync::mpsc as tokio_mpsc;
 use tokio::task::JoinHandle;
 use tracing::{error, info, warn};
 
+/// One local source window that can be auditioned. The sample span is relative
+/// to `path`; byte seek landings are absent because an import candidate has not
+/// recorded them yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreviewTarget {
+    path: String,
+    span: crate::db::SegmentSpan,
+}
+
+impl PreviewTarget {
+    pub fn whole_file(path: String) -> Self {
+        Self {
+            path,
+            span: crate::db::SegmentSpan::whole_file(),
+        }
+    }
+
+    pub fn sample_range(path: String, start_sample: u64, end_sample: Option<u64>) -> Self {
+        Self {
+            path,
+            span: crate::db::SegmentSpan {
+                start_sample,
+                end_sample,
+                start_byte: None,
+                end_byte: None,
+            },
+        }
+    }
+
+    pub fn into_sample_range(self) -> (String, u64, Option<u64>) {
+        (self.path, self.span.start_sample, self.span.end_sample)
+    }
+
+    fn duration(&self, file_duration: Duration, sample_rate: u32) -> Option<Duration> {
+        let start = Duration::from_secs_f64(self.span.start_sample as f64 / sample_rate as f64);
+        let end = self
+            .span
+            .end_sample
+            .map(|sample| Duration::from_secs_f64(sample as f64 / sample_rate as f64))
+            .unwrap_or(file_duration);
+        end.checked_sub(start)
+            .filter(|duration| !duration.is_zero())
+    }
+}
+
 /// The preview shape of a fill-error handler: the audition has one file and one
 /// buffer, so a failed byte fill can only mean this preview is unplayable — it
 /// goes straight to the UI as a `PlaybackError`. (The fill itself cancels the
@@ -89,7 +134,7 @@ pub(crate) struct PreviewPlayer {
 /// across seeks so the reader isn't restarted), the event-listener task, and the
 /// live streaming pipeline.
 struct ActivePreview {
-    path: String,
+    target: PreviewTarget,
     duration: Duration,
     sample_rate: u32,
     channels: u32,
@@ -116,9 +161,9 @@ impl PreviewPlayer {
         }
     }
 
-    /// Path of the file currently being previewed, if any.
-    pub(crate) fn current_path(&self) -> Option<&str> {
-        self.active.as_ref().map(|a| a.path.as_str())
+    /// Exact source window currently being previewed, if any.
+    pub(crate) fn current_target(&self) -> Option<&PreviewTarget> {
+        self.active.as_ref().map(|active| &active.target)
     }
 
     /// Whether a preview file is loaded (playing or paused).
@@ -126,13 +171,13 @@ impl PreviewPlayer {
         self.active.is_some()
     }
 
-    /// Start a fresh preview of `path`. Switches off any currently-loaded
+    /// Start a fresh preview of `target`. Switches off any currently-loaded
     /// preview first. The outcome distinguishes a clean start from a setup
     /// failure (stat/probe) and a stream-start failure, so the service reports
     /// the matching `playback_failed` operation.
     pub(crate) async fn play(
         &mut self,
-        path: String,
+        target: PreviewTarget,
         audio_device: &dyn AudioOutputDevice,
     ) -> PreviewPlayOutcome {
         // Stop the active preview without resuming main — the new preview keeps
@@ -141,20 +186,29 @@ impl PreviewPlayer {
             self.stop();
         }
 
-        let source_size = match tokio::fs::metadata(&path).await {
+        let source_size = match tokio::fs::metadata(&target.path).await {
             Ok(metadata) => metadata.len(),
             Err(e) => {
-                error!("Failed to stat preview file {}: {}", path, e);
+                error!("Failed to stat preview file {}: {}", target.path, e);
                 return PreviewPlayOutcome::SetupFailed;
             }
         };
 
-        let Some(probe) = probe_preview_audio(&path).await else {
+        let Some(probe) = probe_preview_audio(&target.path).await else {
+            return PreviewPlayOutcome::SetupFailed;
+        };
+        let Some(duration) = target.duration(probe.duration, probe.sample_rate) else {
+            error!(
+                path = target.path,
+                start_sample = target.span.start_sample,
+                end_sample = target.span.end_sample,
+                "Preview target has an empty or reversed sample window"
+            );
             return PreviewPlayOutcome::SetupFailed;
         };
 
         let buffer = create_sparse_buffer(source_size);
-        let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(path.clone()));
+        let reader: Box<dyn AudioDataReader> = Box::new(LocalReader::new(target.path.clone()));
         reader.start_reading(
             buffer.clone(),
             preview_fill_error_handler(self.progress_tx.clone()),
@@ -162,8 +216,8 @@ impl PreviewPlayer {
 
         let started = self
             .start_streaming(
-                path.clone(),
-                probe.duration,
+                target.clone(),
+                duration,
                 probe.sample_rate,
                 probe.channels,
                 buffer,
@@ -173,15 +227,14 @@ impl PreviewPlayer {
             )
             .await;
         if started {
-            info!("Preview started: {}", path);
+            info!("Preview started: {}", target.path);
             PreviewPlayOutcome::Started
         } else {
             PreviewPlayOutcome::StreamStartFailed
         }
     }
 
-    /// Seek by slider ratio (0.0–1.0) within the active preview. A preview is a
-    /// whole file, so there is no pregap to offset past.
+    /// Seek by slider ratio (0.0–1.0) within the active preview window.
     pub(crate) async fn seek_by_ratio(&mut self, ratio: f64, audio_device: &dyn AudioOutputDevice) {
         let Some(active) = self.active.as_ref() else {
             return;
@@ -206,7 +259,7 @@ impl PreviewPlayer {
         }
 
         let buffer = active.buffer.clone();
-        let path = active.path.clone();
+        let target = active.target.clone();
         let duration = active.duration;
         let sample_rate = active.sample_rate;
         let channels = active.channels;
@@ -228,7 +281,7 @@ impl PreviewPlayer {
 
         let started = self
             .start_streaming(
-                path,
+                target,
                 duration,
                 sample_rate,
                 channels,
@@ -275,7 +328,7 @@ impl PreviewPlayer {
         let Some(active) = self.active.as_ref() else {
             return;
         };
-        let path = active.path.clone();
+        let target = active.target.clone();
         let dur_ms = active.duration.as_millis() as u64;
 
         let Some(preview_output) = &self.audio_output else {
@@ -288,7 +341,7 @@ impl PreviewPlayer {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Paused {
-                        path,
+                        target,
                         duration_ms: dur_ms,
                     }),
                 );
@@ -298,7 +351,7 @@ impl PreviewPlayer {
                 emit_progress(
                     &self.progress_tx,
                     PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
-                        path,
+                        target,
                         duration_ms: dur_ms,
                     }),
                 );
@@ -337,7 +390,7 @@ impl PreviewPlayer {
     /// and returns true; on failure cancels the buffer and returns false.
     async fn start_streaming(
         &mut self,
-        path: String,
+        target: PreviewTarget,
         duration: Duration,
         sample_rate: u32,
         channels: u32,
@@ -357,17 +410,15 @@ impl PreviewPlayer {
             }
         }
 
-        // Preview is a single whole-file window; the offset into it is the seek
-        // target (0 for a fresh play), and the lead-in trim makes the first
-        // output sample exact. No recorded landing byte exists for an
-        // unimported file, so the decoder sample-seeks.
+        // The offset is relative to the selected source window. No recorded
+        // landing byte exists for an unimported file, so the decoder sample-seeks.
         let start_offset = seek_to
             .map(|d| (d.as_secs_f64() * sample_rate as f64) as u64)
             .unwrap_or(0);
         let decode = StreamDecodeParams::new(
             vec![SegmentDecodeParams::new(
                 buffer.clone(),
-                crate::db::SegmentSpan::whole_file(), // audition the whole file
+                target.span,
                 start_offset,
             )],
             true,
@@ -379,7 +430,7 @@ impl PreviewPlayer {
         // measurements) at unity gain. The listener reads position off this fmt,
         // carried on the event stream.
         let fmt = TrackFmt {
-            track_id: path.clone(),
+            track_id: target.path.clone(),
             duration_ms: duration.as_millis() as u64,
             pregap_ms: None,
             position_offset: seek_to.unwrap_or(Duration::ZERO),
@@ -388,7 +439,7 @@ impl PreviewPlayer {
 
         let progress_tx = self.progress_tx.clone();
         let command_tx = self.command_tx.clone();
-        let active_path = path.clone();
+        let active_target = target.clone();
         let active_buffer = buffer.clone();
         let active = match start_stream_pipeline(
             self.audio_output.as_deref_mut().unwrap(),
@@ -400,7 +451,7 @@ impl PreviewPlayer {
             "Preview decode",
             DecodeFailureReport::LogOnly,
             move |pipeline, audio_events| ActivePreview {
-                path: active_path,
+                target: active_target,
                 duration,
                 sample_rate,
                 channels,
@@ -430,12 +481,12 @@ impl PreviewPlayer {
         let dur_ms = duration.as_millis() as u64;
         let preview_state = if paused {
             PreviewState::Paused {
-                path: path.clone(),
+                target: target.clone(),
                 duration_ms: dur_ms,
             }
         } else {
             PreviewState::Playing {
-                path: path.clone(),
+                target: target.clone(),
                 duration_ms: dur_ms,
             }
         };
@@ -560,7 +611,7 @@ impl PreviewPlayer {
         buffer: SharedSparseBuffer,
     ) {
         self.active = Some(ActivePreview {
-            path,
+            target: PreviewTarget::whole_file(path),
             duration: Duration::from_secs(1),
             sample_rate: 44_100,
             channels: 2,
@@ -590,7 +641,10 @@ mod tests {
         let (device, _capture_rx) = CaptureAudioDevice::new();
 
         let started = player
-            .play(path.display().to_string(), &device)
+            .play(
+                PreviewTarget::whole_file(path.display().to_string()),
+                &device,
+            )
             .await
             .started();
         if started {
@@ -598,6 +652,136 @@ mod tests {
         }
 
         assert!(!started);
+    }
+
+    #[tokio::test]
+    async fn preview_plays_only_the_requested_sample_window() {
+        let fixture_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+        let path = fixture_dir.join("Test Album.flac");
+        let probe = crate::audio_codec::probe_audio_from_path(
+            path.to_str().expect("fixture path is UTF-8"),
+        )
+        .expect("probe fixture");
+        let sample_rate = u64::from(probe.sample_rate);
+        let target = PreviewTarget::sample_range(
+            path.display().to_string(),
+            10 * sample_rate,
+            Some(11 * sample_rate),
+        );
+
+        let (progress_tx, mut progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, mut command_rx) = tokio_mpsc::unbounded_channel();
+        let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+        let (device, mut capture_rx) = CaptureAudioDevice::new();
+
+        assert!(player.play(target.clone(), &device).await.started());
+
+        let mut playing = None;
+        while let Ok(progress) = progress_rx.try_recv() {
+            if let PlaybackProgress::PreviewStateChanged(PreviewState::Playing {
+                target,
+                duration_ms,
+            }) = progress
+            {
+                playing = Some((target, duration_ms));
+            }
+        }
+        assert_eq!(playing, Some((target, 1_000)));
+
+        let captured = capture_rx.recv().await.expect("preview capture");
+        let completed = tokio::time::timeout(Duration::from_secs(10), command_rx.recv())
+            .await
+            .expect("bounded preview completes within the timeout")
+            .expect("bounded preview sends its completion command");
+        assert!(matches!(completed, PlaybackCommand::PreviewCompleted));
+        let captured = captured.lock().expect("preview capture lock").clone();
+        assert_eq!(
+            captured.len(),
+            probe.sample_rate as usize * probe.channels as usize,
+            "a one-second source window emits exactly one second of samples"
+        );
+        let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
+        let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
+        let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
+        reference_buffer.append_at(0, &reference_bytes);
+        let reference = crate::audio_codec::decode_audio(reference_buffer, None, None)
+            .expect("decode reference fixture");
+        let expected: Vec<f32> = reference
+            .samples
+            .iter()
+            .take(1_000)
+            .map(|sample| *sample as f32 / i32::MAX as f32)
+            .collect();
+        assert!(captured.len() >= expected.len());
+        for (index, (actual, expected)) in captured.iter().zip(&expected).enumerate() {
+            assert!(
+                (actual - expected).abs() < 0.01,
+                "preview sample {index} differs: {actual} vs {expected}"
+            );
+        }
+
+        player.stop();
+    }
+
+    #[tokio::test]
+    async fn preview_seek_is_relative_to_the_requested_sample_window() {
+        let fixture_dir =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/cue_flac");
+        let path = fixture_dir.join("Test Album.flac");
+        let probe = crate::audio_codec::probe_audio_from_path(
+            path.to_str().expect("fixture path is UTF-8"),
+        )
+        .expect("probe fixture");
+        let sample_rate = u64::from(probe.sample_rate);
+        let target = PreviewTarget::sample_range(
+            path.display().to_string(),
+            10 * sample_rate,
+            Some(11 * sample_rate),
+        );
+        let (progress_tx, _progress_rx) = tokio_mpsc::unbounded_channel();
+        let (command_tx, _command_rx) = tokio_mpsc::unbounded_channel();
+        let mut player = PreviewPlayer::new(progress_tx, command_tx, 50);
+        let (device, mut capture_rx) =
+            crate::playback::audio_output::RealtimeCaptureAudioDevice::new();
+
+        assert!(player.play(target, &device).await.started());
+        player.toggle_pause();
+        let _initial_capture = capture_rx.recv().await.expect("initial preview capture");
+
+        player.seek_by_ratio(0.5, &device).await;
+        let seeked_capture = capture_rx.recv().await.expect("seeked preview capture");
+        player.toggle_pause();
+        let captured = crate::playback::audio_output::wait_for_samples(
+            &seeked_capture,
+            1_000,
+            Duration::from_secs(10),
+        )
+        .await;
+
+        let reference_path = fixture_dir.join("02 Test Artist - Track Two (White Noise).flac");
+        let reference_bytes = std::fs::read(reference_path).expect("read reference fixture");
+        let reference_buffer = create_sparse_buffer(reference_bytes.len() as u64);
+        reference_buffer.append_at(0, &reference_bytes);
+        let reference = crate::audio_codec::decode_audio(reference_buffer, None, None)
+            .expect("decode reference fixture");
+        let half_second = probe.sample_rate as usize * probe.channels as usize / 2;
+        let expected: Vec<f32> = reference
+            .samples
+            .iter()
+            .skip(half_second)
+            .take(1_000)
+            .map(|sample| *sample as f32 / i32::MAX as f32)
+            .collect();
+        assert!(captured.len() >= expected.len());
+        for (index, (actual, expected)) in captured.iter().zip(&expected).enumerate() {
+            assert!(
+                (actual - expected).abs() < 0.01,
+                "seeked preview sample {index} differs: {actual} vs {expected}"
+            );
+        }
+
+        player.stop();
     }
 
     /// A failed stream start leaves no active preview and cancels the buffer — the
@@ -613,7 +797,7 @@ mod tests {
 
         let started = player
             .start_streaming(
-                "preview.wav".to_string(),
+                PreviewTarget::whole_file("preview.wav".to_string()),
                 Duration::from_secs(1),
                 44_100,
                 2,
@@ -636,7 +820,7 @@ mod tests {
 
         let started = player
             .start_streaming(
-                "preview.wav".to_string(),
+                PreviewTarget::whole_file("preview.wav".to_string()),
                 Duration::from_secs(1),
                 44_100,
                 2,
@@ -648,7 +832,10 @@ mod tests {
             .await;
 
         assert!(started);
-        assert_eq!(player.current_path(), Some("preview.wav"));
+        assert_eq!(
+            player.current_target(),
+            Some(&PreviewTarget::whole_file("preview.wav".to_string()))
+        );
         player.stop();
     }
 
@@ -701,7 +888,7 @@ mod tests {
         assert!(
             player
                 .start_streaming(
-                    "preview.wav".to_string(),
+                    PreviewTarget::whole_file("preview.wav".to_string()),
                     Duration::from_secs(1),
                     44_100,
                     2,

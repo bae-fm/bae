@@ -670,6 +670,8 @@ public sealed class ImportMappingPaneTests
                 Name: fileId,
                 Size: 1024,
                 LocalPath: $"/Music/Incoming/Album/{fileId}",
+                PreviewTarget: new BridgePreviewTarget(
+                    $"/Music/Incoming/Album/{fileId}", 0, null),
                 DurationMs: 180_000,
                 AudioFormat: SourceAudio,
                 Role: BridgeMappingRole.Audio,

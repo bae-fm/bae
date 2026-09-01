@@ -17,8 +17,8 @@ struct ImportMappingPane: View {
     let runtime: BridgeCandidateRuntimeSnapshot?
     /// What each track sheet may be bound to, by the sheet's file id.
     let bindingOptions: [String: [BridgeSheetBindingOption]]
-    /// The path currently auditioning, if any.
-    let previewingPath: String?
+    /// The exact source window currently auditioning, if any.
+    let previewingTarget: BridgePreviewTarget?
     let libraryStatus: BridgeLibraryStatus?
     let hasCoverOptions: Bool
     let coverContent: ImageContent?
@@ -72,7 +72,7 @@ struct ImportMappingPane: View {
                     ImportMappingTable(
                         table: mapping,
                         bindingOptions: bindingOptions,
-                        previewingPath: previewingPath,
+                        previewingTarget: previewingTarget,
                         evidence: candidate.fileEvidence,
                         actions: mappingActions,
                     )

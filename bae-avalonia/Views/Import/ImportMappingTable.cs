@@ -28,7 +28,7 @@ internal sealed partial class ImportMappingTable
 {
     private readonly BridgeMappingTable _table;
     private readonly Func<string, Task<List<ImportSheetBindingOption>>> _bindingOptions;
-    private readonly Func<string?> _previewingPath;
+    private readonly Func<BridgePreviewTarget?> _previewingTarget;
     private readonly ImportMappingActions _actions;
     private readonly LibraryService _library;
     private readonly IReadOnlyList<ImportAudioChoice> _audioChoices;
@@ -40,7 +40,7 @@ internal sealed partial class ImportMappingTable
     // The row hosts and the audio each one plays, in row order, so the accent on
     // the playing row moves without rebuilding the table under the fields the
     // user is typing in.
-    private readonly List<(Border Host, string? AudioPath)> _rowHosts = new();
+    private readonly List<(Border Host, BridgePreviewTarget? Target)> _rowHosts = new();
 
     // Every row's grid, the header's included, so the resolved widths reach all
     // of them at once when the pane is resized. One column grid means one list.
@@ -58,14 +58,14 @@ internal sealed partial class ImportMappingTable
     internal ImportMappingTable(
         BridgeMappingTable table,
         Func<string, Task<List<ImportSheetBindingOption>>> bindingOptions,
-        Func<string?> previewingPath,
+        Func<BridgePreviewTarget?> previewingTarget,
         LibraryService library,
         ImportMappingActions actions,
         IReadOnlyList<BridgeFileEvidence>? evidence = null)
     {
         _table = table;
         _bindingOptions = bindingOptions;
-        _previewingPath = previewingPath;
+        _previewingTarget = previewingTarget;
         _library = library;
         _actions = actions;
         _audioChoices = table.AudioChoices();
@@ -211,10 +211,10 @@ internal sealed partial class ImportMappingTable
     /// does not take the focus out of a field being typed in.</summary>
     internal void ApplyPreviewAccent()
     {
-        var playing = _previewingPath();
-        foreach (var (host, path) in _rowHosts)
+        var playing = _previewingTarget();
+        foreach (var (host, target) in _rowHosts)
         {
-            if (playing is { Length: > 0 } && path == playing)
+            if (playing is not null && target == playing)
             {
                 host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeSelectionTintBrush");
             }
@@ -281,7 +281,7 @@ internal sealed partial class ImportMappingTable
     // What every row sits in: one leading edge, one height, and a separator over
     // it. No striping — the columns are what a reader follows across a row, and a
     // tinted band under half of them is a second, competing grouping.
-    private Border HostOf(Grid grid, string? audioPath)
+    private Border HostOf(Grid grid, BridgePreviewTarget? target)
     {
         var host = new Border
         {
@@ -291,7 +291,7 @@ internal sealed partial class ImportMappingTable
             BorderThickness = new Thickness(0, _rowHosts.Count == 0 ? 0 : 1, 0, 0),
         };
         host[!Border.BorderBrushProperty] = new DynamicResourceExtension("BaeHairlineBrush");
-        _rowHosts.Add((host, audioPath));
+        _rowHosts.Add((host, target));
         return host;
     }
 
@@ -333,7 +333,7 @@ internal sealed partial class ImportMappingTable
             // so its picker does not wait to be hovered.
             actions.IsVisible = NeedsAnswer(unit, editable);
             cell.Children.Add(actions);
-            var host = HostOf(grid, unit.Source.AudioPath());
+            var host = HostOf(grid, unit.Source.PreviewTarget());
             host.PointerEntered += (_, _) => actions.IsVisible = true;
             host.PointerExited += (_, _) =>
                 actions.IsVisible = NeedsAnswer(unit, editable);
@@ -343,7 +343,7 @@ internal sealed partial class ImportMappingTable
         }
         Avalonia.Controls.Grid.SetColumn(cell, 4);
         grid.Children.Add(cell);
-        return HostOf(grid, unit.Source.AudioPath());
+        return HostOf(grid, unit.Source.PreviewTarget());
     }
 
     private static bool NeedsAnswer(BridgeMappingUnit unit, BridgeRawTrackEdit track) =>
@@ -369,7 +369,7 @@ internal sealed partial class ImportMappingTable
         var role = RoleControl(file) ?? RoleChip(file.Role.FileRole());
         Avalonia.Controls.Grid.SetColumn(role, 4);
         grid.Children.Add(role);
-        return HostOf(grid, file.LocalPath);
+        return HostOf(grid, file.PreviewTarget);
     }
 
     /// <summary>Whether the folder and the release disagree about how long this
@@ -553,9 +553,9 @@ internal sealed partial class ImportMappingTable
             VerticalAlignment = VerticalAlignment.Center,
         };
         var role = file.Role.FileRole();
-        if (role is BridgeFileRole.Audio)
+        if (file.PreviewTarget is { } target)
         {
-            line.Children.Add(AuditionButton(file.LocalPath));
+            line.Children.Add(AuditionButton(target));
         }
         var name = ImportPaneUi.FileName(
             null,
@@ -610,7 +610,7 @@ internal sealed partial class ImportMappingTable
             Spacing = 6,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        line.Children.Add(AuditionButton(entry.ContainerLocalPath));
+        line.Children.Add(AuditionButton(entry.PreviewTarget));
 
         var number = ImportPaneUi.Cell($"{entry.Number}.", secondary: true);
         number.FontFamily = new FontFamily("monospace");
@@ -634,20 +634,20 @@ internal sealed partial class ImportMappingTable
         return line;
     }
 
-    private Control AuditionButton(string path)
+    private Control AuditionButton(BridgePreviewTarget target)
     {
-        var playing = _previewingPath() is { Length: > 0 } current && current == path;
+        var playing = _previewingTarget() == target;
         var button = ImportPaneUi.RowButton(
             Loc.Core(playing ? "ui.import.slots.stop" : "ui.import.slots.play"));
         button.Click += (_, _) =>
         {
-            if (_previewingPath() == path)
+            if (_previewingTarget() == target)
             {
                 _actions.StopPreview();
             }
             else
             {
-                _actions.Preview(path);
+                _actions.Preview(target);
             }
         };
         return button;
@@ -793,7 +793,7 @@ internal sealed partial class ImportMappingTable
         var disc = DiscControl(sheet);
         Avalonia.Controls.Grid.SetColumn(disc, 4);
         grid.Children.Add(disc);
-        var host = HostOf(grid, audioPath: null);
+        var host = HostOf(grid, target: null);
         if (headsTracks)
         {
             host[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
@@ -948,6 +948,6 @@ internal sealed partial class ImportMappingTable
             secondary: true);
         Avalonia.Controls.Grid.SetColumn(kind, 4);
         grid.Children.Add(kind);
-        return HostOf(grid, audioPath: null);
+        return HostOf(grid, target: null);
     }
 }

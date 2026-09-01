@@ -21,8 +21,8 @@ struct ImportMappingActions {
     /// Open the folder's images in the lightbox: the gallery's images, then
     /// the path of the one that was clicked.
     let openImages: ([BridgeMappingImage], String) -> Void
-    /// Audition a row's audio from its own path.
-    let preview: (String) -> Void
+    /// Audition the exact source window carried by a mapping row.
+    let preview: (BridgePreviewTarget) -> Void
     /// Stop whatever is auditioning.
     let stopPreview: () -> Void
     /// Write a row's edited track back onto the row that commits it.

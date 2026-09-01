@@ -52,11 +52,10 @@ impl PlaybackService {
         self.preview.stop();
     }
 
-    /// Preview a local file. Same path toggles off (and resumes main); a
-    /// different path switches; a fresh path starts and pauses the main player.
-    pub(super) async fn preview_play(&mut self, path: String) {
-        // Same path: dismiss (and resume main).
-        if self.preview.current_path() == Some(path.as_str()) {
+    /// Preview a local source window. The same target toggles off (and resumes
+    /// main); a different target switches and pauses the main player.
+    pub(super) async fn preview_play(&mut self, target: crate::playback::PreviewTarget) {
+        if self.preview.current_target() == Some(&target) {
             self.preview_stop();
             return;
         }
@@ -66,7 +65,7 @@ impl PlaybackService {
         // ships the matching operation: the file couldn't be prepared, or the
         // audio stream couldn't be built.
         use crate::playback::preview_player::PreviewPlayOutcome;
-        match self.preview.play(path, self.audio_device.as_ref()).await {
+        match self.preview.play(target, self.audio_device.as_ref()).await {
             PreviewPlayOutcome::Started => self.pause_main_for_preview(),
             PreviewPlayOutcome::SetupFailed => {
                 self.telemetry_playback_failed(PlaybackOperation::Preview);

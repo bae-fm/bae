@@ -32,23 +32,21 @@ extension BridgeMappingUnit {
 }
 
 extension BridgeMappingSource {
-    /// The file on disk this row's audio lives in — the file itself, or the
-    /// container a sheet entry is carved out of. `nil` for a track the release
-    /// names that the folder has nothing for.
-    var audioPath: String? {
-        switch self {
-        case .file(let file): file.localPath
-        case .sheetEntry(let entry): entry.containerLocalPath
-        case .missing: nil
-        }
-    }
-
     /// The playing time the folder itself offers for this row: measured off
     /// the file, or stated by the sheet for one of its entries.
     var durationMs: UInt64? {
         switch self {
         case .file(let file): file.durationMs
         case .sheetEntry(let entry): entry.durationMs
+        case .missing: nil
+        }
+    }
+
+    /// The exact local source window auditioning this row plays.
+    var previewTarget: BridgePreviewTarget? {
+        switch self {
+        case .file(let file): file.previewTarget
+        case .sheetEntry(let entry): entry.previewTarget
         case .missing: nil
         }
     }

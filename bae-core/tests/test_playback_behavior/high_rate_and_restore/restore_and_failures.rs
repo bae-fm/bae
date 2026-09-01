@@ -266,7 +266,9 @@ async fn test_preview_seek_while_paused_emits_position_update() {
         .into_owned();
 
     // Start preview — wait for it to reach Playing state.
-    fixture.playback_handle.preview_play(preview_path);
+    fixture
+        .playback_handle
+        .preview_play(bae_core::playback::PreviewTarget::whole_file(preview_path));
     let mut saw_playing = false;
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {

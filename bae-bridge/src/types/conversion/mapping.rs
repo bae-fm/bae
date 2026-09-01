@@ -376,6 +376,7 @@ impl BridgeMappingFile {
             name,
             size,
             path,
+            preview_target,
             duration_ms,
             audio_format,
             role,
@@ -385,6 +386,7 @@ impl BridgeMappingFile {
         BridgeMappingFile {
             role: BridgeMappingRole::from_core(role),
             local_path: path.to_string_lossy().to_string(),
+            preview_target: preview_target.map(BridgePreviewTarget::from_core),
             file_id,
             name,
             size,
@@ -404,6 +406,7 @@ impl BridgeMappingFile {
             name,
             size,
             local_path,
+            preview_target,
             duration_ms,
             audio_format,
             role,
@@ -415,6 +418,7 @@ impl BridgeMappingFile {
             name,
             size,
             path: std::path::PathBuf::from(local_path),
+            preview_target: preview_target.map(BridgePreviewTarget::into_core),
             duration_ms,
             audio_format: audio_format.map(|format| bae_core::album_detail::AudioFormat {
                 codec: format.codec,
@@ -445,6 +449,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_path,
+            preview_target,
             audio_format,
         } = entry;
         BridgeMappingEntry {
@@ -456,6 +461,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_local_path: container_path.to_string_lossy().to_string(),
+            preview_target: BridgePreviewTarget::from_core(preview_target),
             audio_format: BridgeAudioFormat::from_core(audio_format),
         }
     }
@@ -470,6 +476,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_local_path,
+            preview_target,
             audio_format,
         } = self;
         bae_core::import::MappingEntry {
@@ -481,6 +488,7 @@ impl BridgeMappingEntry {
             container_id,
             container_name,
             container_path: std::path::PathBuf::from(container_local_path),
+            preview_target: preview_target.into_core(),
             audio_format: bae_core::album_detail::AudioFormat {
                 codec: audio_format.codec,
                 sample_rate_hz: audio_format.sample_rate_hz,

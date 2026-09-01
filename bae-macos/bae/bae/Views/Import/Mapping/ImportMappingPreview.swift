@@ -28,7 +28,7 @@
             candidate: Candidate,
             storageCloud: Binding<Bool>,
             storagePinned: Binding<Bool>,
-            previewingPath: String? = nil,
+            previewingTarget: BridgePreviewTarget? = nil,
             runtime: BridgeCandidateRuntimeSnapshot? = nil
         ) -> some View {
             let store = ImportStore()
@@ -37,7 +37,7 @@
                 candidate: candidate,
                 runtime: runtime,
                 bindingOptions: PreviewData.sheetBindingOptions,
-                previewingPath: previewingPath,
+                previewingTarget: previewingTarget,
                 libraryStatus: nil,
                 hasCoverOptions: true,
                 coverContent: nil,
@@ -118,7 +118,11 @@
             candidate: PreviewData.mappingCandidate,
             storageCloud: $storageCloud,
             storagePinned: $storagePinned,
-            previewingPath: "/tmp/fake/Track 3.flac"
+            previewingTarget: BridgePreviewTarget(
+                path: "/tmp/fake/Track 3.flac",
+                startSample: 0,
+                endSample: nil
+            )
         )
         .frame(width: 1212, height: 900)
         .importPreviewEnvironment()

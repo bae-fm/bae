@@ -1,5 +1,34 @@
 use super::{BridgeImageRef, BridgeRepeatMode};
 
+/// One local source window to audition. Mirrors
+/// `bae_core::playback::PreviewTarget`; byte seek landings are unavailable for
+/// import candidates, so the bridge carries only exact sample bounds.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgePreviewTarget {
+    pub path: String,
+    pub start_sample: u64,
+    pub end_sample: Option<u64>,
+}
+
+impl BridgePreviewTarget {
+    pub(crate) fn from_core(target: bae_core::playback::PreviewTarget) -> Self {
+        let (path, start_sample, end_sample) = target.into_sample_range();
+        Self {
+            path,
+            start_sample,
+            end_sample,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::playback::PreviewTarget {
+        bae_core::playback::PreviewTarget::sample_range(
+            self.path,
+            self.start_sample,
+            self.end_sample,
+        )
+    }
+}
+
 /// The target track's display metadata, carried by a loading state once core
 /// has resolved it. Mirror of `bae_core::playback::LoadingTrack` across the
 /// uniffi boundary.
@@ -91,8 +120,14 @@ impl BridgePlaybackPauseReason {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgePreviewState {
     Idle,
-    Playing { path: String, duration_ms: u64 },
-    Paused { path: String, duration_ms: u64 },
+    Playing {
+        target: BridgePreviewTarget,
+        duration_ms: u64,
+    },
+    Paused {
+        target: BridgePreviewTarget,
+        duration_ms: u64,
+    },
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
@@ -209,12 +244,20 @@ impl BridgePreviewState {
     fn from_core(value: bae_core::playback::PreviewState) -> Self {
         match value {
             bae_core::playback::PreviewState::Idle => Self::Idle,
-            bae_core::playback::PreviewState::Playing { path, duration_ms } => {
-                Self::Playing { path, duration_ms }
-            }
-            bae_core::playback::PreviewState::Paused { path, duration_ms } => {
-                Self::Paused { path, duration_ms }
-            }
+            bae_core::playback::PreviewState::Playing {
+                target,
+                duration_ms,
+            } => Self::Playing {
+                target: BridgePreviewTarget::from_core(target),
+                duration_ms,
+            },
+            bae_core::playback::PreviewState::Paused {
+                target,
+                duration_ms,
+            } => Self::Paused {
+                target: BridgePreviewTarget::from_core(target),
+                duration_ms,
+            },
         }
     }
 }

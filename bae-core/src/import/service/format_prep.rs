@@ -157,11 +157,15 @@ fn cue_backed_audio_format(
         .pregap_start_cue_frames()
         .map(|pregap| cue_track.start_cue_frames.saturating_sub(pregap))
         .filter(|&frames| frames > 0)
-        .map(|frames| (frames * probe.sample_rate as u64 / 75) as i64);
+        .map(|frames| {
+            crate::cue_flac::cue_frames_to_samples(frames, probe.sample_rate as u64) as i64
+        });
     let generated_pregap_samples = cue_track
         .generated_pregap_frames()
         .filter(|&frames| frames > 0)
-        .map(|frames| (frames * probe.sample_rate as u64 / 75) as i64);
+        .map(|frames| {
+            crate::cue_flac::cue_frames_to_samples(frames, probe.sample_rate as u64) as i64
+        });
 
     Ok(DbAudioFormat::new(
         db_track_id,
@@ -230,7 +234,7 @@ fn cue_file_landing_bytes(
         .flat_map(|track| track.indexes.iter())
         .filter(|index| index.file_reference == file.file_reference)
         .filter(|index| matches!(index.number, 0 | 1))
-        .map(|index| index.frames * sample_rate as u64 / 75)
+        .map(|index| crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate as u64))
         .collect();
     let Some(path) = file_path.to_str() else {
         warn!("cue_track_start_bytes: non-UTF-8 path, cannot seek byte offsets: {file_path:?}");
@@ -319,13 +323,14 @@ impl ImportService {
                             "No DbFile registered for CUE pregap source {pregap_path:?}"
                         ),
                     })?;
-            let start_sample = index.frames * sample_rate / 75;
+            let start_sample = crate::cue_flac::cue_frames_to_samples(index.frames, sample_rate);
             let end_frames = if index.file_reference == cue_track.file_reference {
                 Some(cue_track.start_cue_frames)
             } else {
                 cue_segment_end_frames(cue_pair, cue_index, &index.file_reference)
             };
-            let end_sample = end_frames.map(|frames| frames * sample_rate / 75);
+            let end_sample = end_frames
+                .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate));
             let start_byte =
                 Self::cue_segment_byte(byte_landings_by_file, pregap_path, start_sample);
             let end_byte = end_sample.and_then(|sample| {
@@ -352,9 +357,10 @@ impl ImportService {
             .ok_or_else(|| ImportError::Internal {
                 detail: format!("No DbFile registered for CUE source {main_path:?}"),
             })?;
-        let start_sample = cue_track.start_cue_frames * sample_rate / 75;
+        let start_sample =
+            crate::cue_flac::cue_frames_to_samples(cue_track.start_cue_frames, sample_rate);
         let end_sample = cue_segment_end_frames(cue_pair, cue_index, &cue_track.file_reference)
-            .map(|frames| frames * sample_rate / 75);
+            .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate));
         let start_byte = Self::cue_segment_byte(byte_landings_by_file, main_path, start_sample);
         let end_byte = end_sample
             .and_then(|sample| Self::cue_segment_byte(byte_landings_by_file, main_path, sample));

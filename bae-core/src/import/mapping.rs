@@ -146,6 +146,8 @@ pub struct MappingFile {
     pub name: String,
     pub size: u64,
     pub path: PathBuf,
+    /// The whole-file audition target when this file currently supplies audio.
+    pub preview_target: Option<crate::playback::PreviewTarget>,
     /// Playing time from the scan's stored facts. `None` for non-audio files.
     pub duration_ms: Option<u64>,
     pub audio_format: Option<crate::album_detail::AudioFormat>,
@@ -175,6 +177,8 @@ pub struct MappingEntry {
     pub container_id: String,
     pub container_name: String,
     pub container_path: PathBuf,
+    /// The exact window of the container that auditioning this entry plays.
+    pub preview_target: crate::playback::PreviewTarget,
     pub audio_format: crate::album_detail::AudioFormat,
 }
 
@@ -463,6 +467,23 @@ impl RowBuilder<'_> {
                     index: index as u32,
                 };
                 let duration_ms = self.duration_ms(&unit);
+                let sample_rate = u64::try_from(
+                    sheet
+                        .audio
+                        .source_audio
+                        .as_ref()
+                        .expect("a scanned audio file has source facts")
+                        .format
+                        .sample_rate_hz,
+                )
+                .expect("a scanned audio file has a non-negative sample rate");
+                let preview_target = crate::playback::PreviewTarget::sample_range(
+                    sheet.audio.path.to_string_lossy().into_owned(),
+                    crate::cue_flac::cue_frames_to_samples(track.start_cue_frames, sample_rate),
+                    track
+                        .end_cue_frames
+                        .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate)),
+                );
                 self.unit(
                     &unit,
                     MappingSource::SheetEntry(MappingEntry {
@@ -481,6 +502,7 @@ impl RowBuilder<'_> {
                             .expect("a scanned audio file has source facts")
                             .format
                             .clone(),
+                        preview_target,
                     }),
                     duration_ms,
                 )
@@ -742,11 +764,15 @@ fn remove(mut table: MappingTable, should_remove: &dyn Fn(&MappingUnit) -> bool)
 /// The left half of a file's row: what the folder holds, and the roles it may
 /// be put in.
 fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u64>) -> MappingFile {
+    let preview_target = (role == MappingRole::Audio).then(|| {
+        crate::playback::PreviewTarget::whole_file(entry.file.path.to_string_lossy().into_owned())
+    });
     MappingFile {
         file_id: entry.file.relative_path.clone(),
         name: entry.file.file_name.clone(),
         size: entry.file.size,
         path: entry.file.path.clone(),
+        preview_target,
         duration_ms,
         audio_format: entry
             .file

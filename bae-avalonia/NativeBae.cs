@@ -839,7 +839,7 @@ internal static partial class NativeBae
     internal static void RerunIdentifyForCandidate(AppHandle handle, string candidateKey) =>
         handle.RerunIdentifyForCandidate(candidateKey);
 
-    internal static void PreviewPlay(AppHandle handle, string path) => handle.PreviewPlay(path);
+    internal static void PreviewPlay(AppHandle handle, BridgePreviewTarget target) => handle.PreviewPlay(target);
 
     internal static void PreviewStop(AppHandle handle) => handle.PreviewStop();
 

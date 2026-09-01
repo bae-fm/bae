@@ -399,8 +399,8 @@ impl AppHandle {
         self.services.playback_set_muted(muted);
     }
 
-    pub fn preview_play(&self, path: String) {
-        self.services.playback_preview_play(path);
+    pub fn preview_play(&self, target: BridgePreviewTarget) {
+        self.services.playback_preview_play(target.into_core());
     }
 
     pub fn preview_stop(&self) {

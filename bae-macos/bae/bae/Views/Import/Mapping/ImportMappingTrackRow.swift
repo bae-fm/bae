@@ -16,7 +16,7 @@ struct ImportMappingTrackRow: View {
     /// Every audio unit the folder offers — what a row with nothing behind it
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
-    let previewingPath: String?
+    let previewingTarget: BridgePreviewTarget?
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
@@ -160,7 +160,7 @@ struct ImportMappingTrackRow: View {
     private var sourceCell: some View {
         ImportMappingSourceCell(
             source: unit.source,
-            previewingPath: previewingPath,
+            previewingTarget: previewingTarget,
             evidence: evidence,
             showsFileSize: true,
             actions: actions,

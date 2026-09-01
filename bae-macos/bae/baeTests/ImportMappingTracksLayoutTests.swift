@@ -39,7 +39,7 @@ struct ImportMappingTracksLayoutTests {
                 unit: pairedUnit,
                 columns: columns.tracks,
                 audioChoices: [],
-                previewingPath: nil,
+                previewingTarget: nil,
                 evidence: [],
                 actions: actions(recording: recorder)
             )
@@ -65,7 +65,7 @@ struct ImportMappingTracksLayoutTests {
         )
         await Task.yield()
 
-        #expect(recorder.previewed == [audioPath])
+        #expect(recorder.previewed == [previewTarget])
         withExtendedLifetime(window) {}
     }
 
@@ -75,16 +75,33 @@ struct ImportMappingTracksLayoutTests {
         let tableWidth = ImportMappingColumns.idealTableWidth
         let stopped = try await hostedTrack(
             tableWidth: tableWidth,
-            previewingPath: nil
+            previewingTarget: nil
         )
         let playing = try await hostedTrack(
             tableWidth: tableWidth,
-            previewingPath: audioPath
+            previewingTarget: previewTarget
         )
 
         #expect(stopped.height == playing.height)
-        #expect(stopped.recorder.previewed == [audioPath])
+        #expect(stopped.recorder.previewed == [previewTarget])
         #expect(playing.recorder.stops == 1)
+    }
+
+    @MainActor
+    @Test("another CUE window in the same file does not mark this row playing")
+    func cueWindowsHaveDistinctPreviewIdentity() async throws {
+        let otherWindow = BridgePreviewTarget(
+            path: audioPath,
+            startSample: 44_100,
+            endSample: 88_200
+        )
+        let hosted = try await hostedTrack(
+            tableWidth: ImportMappingColumns.idealTableWidth,
+            previewingTarget: otherWindow
+        )
+
+        #expect(hosted.recorder.previewed == [previewTarget])
+        #expect(hosted.recorder.stops == 0)
     }
 
     @MainActor
@@ -96,7 +113,7 @@ struct ImportMappingTracksLayoutTests {
         )
         let playing = sourceCellHeight(
             source: pairedUnit.source,
-            previewing: audioPath
+            previewing: previewTarget
         )
         let unavailable = sourceCellHeight(source: .missing, previewing: nil)
 
@@ -129,7 +146,7 @@ struct ImportMappingTracksLayoutTests {
                 unit: unit,
                 columns: columns.tracks,
                 audioChoices: [],
-                previewingPath: nil,
+                previewingTarget: nil,
                 evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder())
             )
@@ -180,7 +197,7 @@ struct ImportMappingTracksLayoutTests {
                 unit: unit,
                 columns: columns.tracks,
                 audioChoices: [],
-                previewingPath: nil,
+                previewingTarget: nil,
                 evidence: [],
                 actions: actions(recording: recorder)
             )
@@ -203,7 +220,7 @@ struct ImportMappingTracksLayoutTests {
         )
         await Task.yield()
 
-        #expect(recorder.previewed == [audioPath])
+        #expect(recorder.previewed == [previewTarget])
         #expect(unit.displayedDuration == "3:00")
         withExtendedLifetime(window) {}
     }
@@ -292,7 +309,7 @@ extension ImportMappingTracksLayoutTests {
         let host = NSHostingView(
             rootView: ImportMappingSourceCell(
                 source: sheetEntryUnit(number: 42, title: nil).source,
-                previewingPath: nil,
+                previewingTarget: nil,
                 evidence: [],
                 showsFileSize: true,
                 actions: actions(recording: MappingTrackActionRecorder())
@@ -325,6 +342,9 @@ extension ImportMappingTracksLayoutTests {
     }
 
     fileprivate var audioPath: String { "/tmp/source/track.flac" }
+    fileprivate var previewTarget: BridgePreviewTarget {
+        BridgePreviewTarget(path: audioPath, startSample: 0, endSample: nil)
+    }
     fileprivate var longAudioName: String {
         "A very long source filename that must remain inside its column.flac"
     }
@@ -337,6 +357,7 @@ extension ImportMappingTracksLayoutTests {
                     name: "track.flac",
                     size: 24_000_000,
                     localPath: audioPath,
+                    previewTarget: previewTarget,
                     durationMs: 180_000,
                     audioFormat: MappingFixtures.audioFormat,
                     role: .audio,
@@ -396,6 +417,11 @@ extension ImportMappingTracksLayoutTests {
             containerId: longAudioName,
             containerName: longAudioName,
             containerLocalPath: audioPath,
+            previewTarget: BridgePreviewTarget(
+                path: audioPath,
+                startSample: UInt64(number - 1) * 44_100,
+                endSample: UInt64(number) * 44_100
+            ),
             audioFormat: MappingFixtures.audioFormat
         )
         return BridgeMappingUnit(
@@ -424,7 +450,7 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func hostedTrack(
         tableWidth: CGFloat,
-        previewingPath: String?
+        previewingTarget: BridgePreviewTarget?
     ) async throws -> (height: CGFloat, recorder: MappingTrackActionRecorder) {
         let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
         let size = NSSize(width: tableWidth, height: 40)
@@ -434,7 +460,7 @@ extension ImportMappingTracksLayoutTests {
                 unit: pairedUnit,
                 columns: columns.tracks,
                 audioChoices: [],
-                previewingPath: previewingPath,
+                previewingTarget: previewingTarget,
                 evidence: [],
                 actions: actions(recording: recorder)
             )
@@ -463,12 +489,12 @@ extension ImportMappingTracksLayoutTests {
     @MainActor
     private func sourceCellHeight(
         source: BridgeMappingSource,
-        previewing: String?
+        previewing: BridgePreviewTarget?
     ) -> CGFloat {
         let host = NSHostingView(
             rootView: ImportMappingSourceCell(
                 source: source,
-                previewingPath: previewing,
+                previewingTarget: previewing,
                 evidence: [],
                 showsFileSize: true,
                 actions: actions(recording: MappingTrackActionRecorder())
@@ -492,9 +518,9 @@ extension ImportMappingTracksLayoutTests {
             setSheetDisc: { _, _ in },
             openDocument: { _, _ in },
             openImages: { _, _ in },
-            preview: { path in
+            preview: { target in
                 MainActor.assumeIsolated {
-                    recorder.previewed.append(path)
+                    recorder.previewed.append(target)
                 }
             },
             stopPreview: {
@@ -531,6 +557,6 @@ extension ImportMappingTracksLayoutTests {
 
 @MainActor
 private final class MappingTrackActionRecorder {
-    var previewed: [String] = []
+    var previewed: [BridgePreviewTarget] = []
     var stops = 0
 }
