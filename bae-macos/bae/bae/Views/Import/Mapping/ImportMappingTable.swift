@@ -47,7 +47,7 @@ struct ImportMappingTable: View {
         VStack(alignment: .leading, spacing: 18) {
             tracksSection
             if !table.files.isEmpty {
-                section(title: coreString("ui.import.mapping.files_title")) {
+                section {
                     fileHeaderRow
                     ForEach(table.files, id: \.rowId) { row in
                         fileBody(of: row)
@@ -57,25 +57,23 @@ struct ImportMappingTable: View {
         }
     }
 
-    /// One titled run of rows. A pane too narrow for the columns scrolls
-    /// sideways rather than squeezing a column past the point it says
-    /// anything, and both sections scroll as one so their columns stay aligned.
+    /// One run of rows. Each section is named by its own leading column
+    /// header, not a heading above the table. A pane too narrow for the
+    /// columns scrolls sideways rather than squeezing a column past the point
+    /// it says anything, and both sections scroll as one so their columns stay
+    /// aligned.
     @ViewBuilder
     private func section<Rows: View>(
-        title: String,
         @ViewBuilder rows: () -> Rows
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: title, ruled: true)
-            ScrollView(.horizontal) {
-                rowStack(rows)
-            }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-            .onGeometryChange(for: CGFloat.self) { geo in
-                geo.size.width
-            } action: {
-                paneWidth = $0
-            }
+        ScrollView(.horizontal) {
+            rowStack(rows)
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .onGeometryChange(for: CGFloat.self) { geo in
+            geo.size.width
+        } action: {
+            paneWidth = $0
         }
     }
 
@@ -104,29 +102,21 @@ struct ImportMappingTable: View {
     // MARK: - Tracks
 
     private var tracksSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(
-                title: coreString("ui.import.mapping.tracks_title"),
-                trailing: table.reconciliation
-                    .flatMap(bridgeSlotReconciliationText),
-                ruled: true
-            )
-            ScrollView(.horizontal) {
-                artistFillRows {
-                    trackHeaderRow
-                    ForEach(
-                        table.trackGroups,
-                        id: \.rowId,
-                        content: trackGroup
-                    )
-                }
+        ScrollView(.horizontal) {
+            artistFillRows {
+                trackHeaderRow
+                ForEach(
+                    table.trackGroups,
+                    id: \.rowId,
+                    content: trackGroup
+                )
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-            .onGeometryChange(for: CGFloat.self) { geo in
-                geo.size.width
-            } action: {
-                paneWidth = $0
-            }
+        }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .onGeometryChange(for: CGFloat.self) { geo in
+            geo.size.width
+        } action: {
+            paneWidth = $0
         }
     }
 
@@ -168,12 +158,26 @@ struct ImportMappingTable: View {
         )
     }
 
-    // The leading header cell is blank in both sections: the row under it is
-    // a filename, and naming that column says nothing the rows don't.
+    // Each section's leading header cell carries the section's name — the
+    // rows under it are filenames, so the cell names the section rather than
+    // the column. The tracks cell also states how the folder and the release
+    // disagree about the count, when they do.
     private var trackHeaderRow: some View {
         headerRow {
-            Color.clear
-                .frame(width: columns.tracks.source, height: 1)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                eyebrow("ui.import.mapping.tracks_title")
+                if let reconciliation = table.reconciliation
+                    .flatMap(bridgeSlotReconciliationText)
+                {
+                    Text(reconciliation)
+                        .font(.system(size: 11))
+                        .monospacedDigit()
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(width: columns.tracks.source, alignment: .leading)
             FormEyebrow(text: Text(verbatim: "#"))
                 .frame(
                     width: ImportMappingColumns.position,
@@ -227,8 +231,8 @@ struct ImportMappingTable: View {
 
     private var fileHeaderRow: some View {
         headerRow {
-            Color.clear
-                .frame(width: columns.files.name, height: 1)
+            eyebrow("ui.import.mapping.files_title")
+                .frame(width: columns.files.name, alignment: .leading)
             FormEyebrow(text: Text("Size"))
                 .frame(width: columns.files.size, alignment: .trailing)
         }
