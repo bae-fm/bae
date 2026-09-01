@@ -44,7 +44,7 @@
         ) -> BridgeMappingFile {
             BridgeMappingFile(
                 fileId: file.file.name,
-                name: file.file.fileName,
+                name: file.file.name,
                 size: file.file.size,
                 localPath: file.file.localPath,
                 previewTarget: role == .audio
@@ -98,7 +98,7 @@
         ) -> BridgeMappingImage {
             BridgeMappingImage(
                 fileId: file.file.name,
-                name: file.file.fileName,
+                name: file.file.name,
                 size: file.file.size,
                 localPath: file.file.localPath,
             )
@@ -146,8 +146,7 @@
                     )
                 ),
                 files: [moreTracksAudio.file]
-            ),
-            collapsedDirectories: []
+            )
         )
 
         static let moreTracksEditValues: BridgeRawReleaseEdit = {
@@ -311,7 +310,9 @@
                     entries: (0..<9).map(sheetEntryUnit)
                 )
             ],
-            files: [.directory(directory: previewLogsDirectory)],
+            files: previewLogDocuments.map {
+                carriedRow($0, role: .document)
+            },
             reconciliation: .agrees(count: 9)
         )
 
@@ -331,10 +332,14 @@
             ],
             files: [
                 carriedRow(infoLog, role: .document),
-                .directory(directory: previewLogsDirectory),
                 carriedRow(notesDocument, role: .document),
-                carriedRow(supplementalVideo, role: .other),
-            ],
+            ]
+                + previewLogDocuments.map {
+                    carriedRow($0, role: .document)
+                }
+                + [
+                    carriedRow(supplementalVideo, role: .other)
+                ],
             reconciliation: .agrees(count: 9)
         )
 
@@ -675,8 +680,10 @@
             files: [
                 carriedRow(infoLog, role: .document),
                 carriedRow(notesDocument, role: .document),
-                .directory(directory: previewLogsDirectory),
-            ],
+            ]
+                + previewLogDocuments.map {
+                    carriedRow($0, role: .document)
+                },
             reconciliation: nil
         )
 

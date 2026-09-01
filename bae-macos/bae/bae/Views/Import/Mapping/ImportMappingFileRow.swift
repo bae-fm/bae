@@ -10,7 +10,6 @@ import SwiftUI
 /// in the track list.
 struct ImportMappingFileRow: View {
     let file: BridgeMappingFile
-    let columns: ImportMappingColumns.Files
     let previewingTarget: BridgePreviewTarget?
     /// Identifying signals extracted from this file — the rip log a disc ID
     /// was computed from wears its chip here.
@@ -19,27 +18,15 @@ struct ImportMappingFileRow: View {
 
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
-            HStack(spacing: ImportMappingColumns.spacing) {
-                ImportMappingSourceCell(
-                    source: .file(file: file),
-                    previewingTarget: previewingTarget,
-                    evidence: evidence,
-                    showsFileSize: false,
-                    actions: actions,
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                roleControl
-            }
-            .frame(width: columns.name, alignment: .leading)
-            Text(sizeText)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .frame(width: columns.size, alignment: .trailing)
-            // The tracks section's action slot, empty: it keeps Size's right
-            // edge level with Length and the row full-width.
-            Color.clear
-                .frame(width: ImportMappingColumns.action, height: 1)
+            ImportMappingSourceCell(
+                source: .file(file: file),
+                previewingTarget: previewingTarget,
+                evidence: evidence,
+                showsFileSize: true,
+                actions: actions,
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
+            roleControl
         }
     }
 
@@ -52,9 +39,5 @@ struct ImportMappingFileRow: View {
                 onPick: { actions.setRole(file.fileId, $0) },
             )
         }
-    }
-
-    private var sizeText: String {
-        return file.sizeText
     }
 }

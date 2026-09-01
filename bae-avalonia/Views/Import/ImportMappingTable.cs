@@ -142,9 +142,6 @@ internal sealed partial class ImportMappingTable
                 case BridgeMappingFileRow.Sheet sheet:
                     rows.Add(SheetRow(sheet.SheetValue, headsTracks: false));
                     break;
-                case BridgeMappingFileRow.Directory directory:
-                    rows.Add(DirectoryRow(directory.DirectoryValue));
-                    break;
             }
         }
         return rows;
@@ -917,36 +914,4 @@ internal sealed partial class ImportMappingTable
         doneFilling();
     }
 
-    // ── A directory whose files all do the same job ──────────────────────────
-
-    // As the one row core decided it should be, each fact under the header it
-    // belongs to: the directory and its size where a file's name and size go,
-    // what it holds where a role goes, and what becomes of it where every other
-    // row says so.
-    private Control DirectoryRow(BridgeCollapsedDirectory directory)
-    {
-        var grid = Grid();
-        var name = ImportPaneUi.FileName(
-            null,
-            directory.DirPrefix,
-            checked((long)directory.TotalSize),
-            showsSize: false);
-        Avalonia.Controls.Grid.SetColumn(name, 0);
-        Avalonia.Controls.Grid.SetColumnSpan(name, 3);
-        grid.Children.Add(name);
-        var size = ImportPaneUi.Cell(
-            Loc.Bytes(checked((long)directory.TotalSize)), secondary: true);
-        size.HorizontalAlignment = HorizontalAlignment.Right;
-        Avalonia.Controls.Grid.SetColumn(size, 3);
-        grid.Children.Add(size);
-        var kind = ImportPaneUi.Cell(
-            Loc.Core(
-                BaeBridgeMethods.BridgeFileRowKindKey(directory.Kind),
-                "count",
-                (long)directory.Count),
-            secondary: true);
-        Avalonia.Controls.Grid.SetColumn(kind, 4);
-        grid.Children.Add(kind);
-        return HostOf(grid, target: null);
-    }
 }

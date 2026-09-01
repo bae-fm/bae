@@ -143,47 +143,6 @@ impl BridgeFileBecomes {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeCollapsedDirectory {
-    fn from_core(directory: bae_core::import::folder_scanner::CollapsedDirectory) -> Self {
-        use bae_core::import::folder_scanner::{CollapsedDirectory, FileRowKind};
-        let CollapsedDirectory {
-            dir_prefix,
-            kind,
-            count,
-            total_size,
-        } = directory;
-        BridgeCollapsedDirectory {
-            dir_prefix,
-            kind: match kind {
-                FileRowKind::Document => BridgeFileRowKind::Document,
-                FileRowKind::Other => BridgeFileRowKind::Other,
-            },
-            count,
-            total_size,
-        }
-    }
-
-    fn into_core(self) -> bae_core::import::folder_scanner::CollapsedDirectory {
-        use bae_core::import::folder_scanner::{CollapsedDirectory, FileRowKind};
-        let BridgeCollapsedDirectory {
-            dir_prefix,
-            kind,
-            count,
-            total_size,
-        } = self;
-        CollapsedDirectory {
-            dir_prefix,
-            kind: match kind {
-                BridgeFileRowKind::Document => FileRowKind::Document,
-                BridgeFileRowKind::Other => FileRowKind::Other,
-            },
-            count,
-            total_size,
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
 impl BridgeSheetBindingOption {
     pub(crate) fn from_core(option: bae_core::import::folder_scanner::SheetBindingOption) -> Self {
         use bae_core::import::folder_scanner::{SheetBindingOffer, SheetBindingOption};
@@ -206,15 +165,9 @@ impl BridgeSheetBindingOption {
 #[cfg(feature = "desktop")]
 impl BridgeCandidateFiles {
     pub(crate) fn from_core(files: bae_core::import::folder_scanner::CategorizedFiles) -> Self {
-        // Both derived from the whole set before it is taken apart: which slots
-        // a file backs and which directories collapse are facts about the
-        // folder, not about any one file.
+        // Derived from the whole set before it is taken apart: which slots a
+        // file backs is a fact about the folder, not about any one file.
         let becomes = files.becomes();
-        let collapsed_directories = files
-            .collapsed_directories()
-            .into_iter()
-            .map(BridgeCollapsedDirectory::from_core)
-            .collect();
         let source_audio = files
             .source_audio()
             .map(BridgeCandidateSourceAudio::from_core);
@@ -228,7 +181,6 @@ impl BridgeCandidateFiles {
                 .map(|(entry, becomes)| BridgeCandidateFile::from_core(entry, becomes))
                 .collect(),
             source_audio,
-            collapsed_directories,
         }
     }
 }
@@ -779,9 +731,6 @@ impl BridgeMappingFileRow {
             MappingFileRow::Sheet(sheet) => Self::Sheet {
                 sheet: BridgeSheetGroup::from_core(sheet),
             },
-            MappingFileRow::Directory(directory) => Self::Directory {
-                directory: BridgeCollapsedDirectory::from_core(directory),
-            },
         }
     }
 
@@ -790,7 +739,6 @@ impl BridgeMappingFileRow {
         match self {
             Self::File { file } => MappingFileRow::File(file.into_core()),
             Self::Sheet { sheet } => MappingFileRow::Sheet(sheet.into_core()),
-            Self::Directory { directory } => MappingFileRow::Directory(directory.into_core()),
         }
     }
 }

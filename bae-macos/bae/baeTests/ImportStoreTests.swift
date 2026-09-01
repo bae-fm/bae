@@ -31,8 +31,7 @@ private func emptyBridgeFiles() -> BridgeCandidateFiles {
     BridgeCandidateFiles(
         fileTagsIdentity: "empty-audio-files",
         files: [],
-        sourceAudio: nil,
-        collapsedDirectories: []
+        sourceAudio: nil
     )
 }
 
@@ -55,8 +54,7 @@ private func bridgeFiles(fileTagsIdentity: String) -> BridgeCandidateFiles {
                 roleChoice: .audio
             )
         ],
-        sourceAudio: nil,
-        collapsedDirectories: []
+        sourceAudio: nil
     )
 }
 

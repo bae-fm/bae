@@ -429,45 +429,6 @@ fn becomes_names_the_slots_each_file_backs() {
     );
 }
 
-/// A directory of nothing but documents collapses to one row. A directory of
-/// images does not — every image belongs to the gallery, which shows it — and
-/// neither does one holding two different jobs.
-#[test]
-fn a_homogeneous_directory_collapses_to_one_row() {
-    let tmp = tempfile::tempdir().unwrap();
-    let album = tmp.path().join("Album");
-    std::fs::create_dir_all(album.join("scans")).unwrap();
-    std::fs::create_dir_all(album.join("logs")).unwrap();
-    std::fs::write(album.join("01.flac"), fake_flac()).unwrap();
-    std::fs::write(album.join("cover.jpg"), fake_jpeg()).unwrap();
-    for index in 1..=4 {
-        std::fs::write(album.join(format!("scans/page-{index}.jpg")), fake_jpeg()).unwrap();
-    }
-    std::fs::write(album.join("logs/rip.log"), b"log").unwrap();
-    std::fs::write(album.join("logs/notes.txt"), b"notes").unwrap();
-    // A directory holding two different jobs stays expanded.
-    std::fs::create_dir_all(album.join("extras")).unwrap();
-    std::fs::write(album.join("extras/back.jpg"), fake_jpeg()).unwrap();
-    std::fs::write(album.join("extras/info.txt"), b"info").unwrap();
-
-    let files = collect_release_candidate_files_with_scope(
-        &album,
-        crate::import::ReleaseFileScope::Recursive,
-        &StoredCandidateEdits::none(),
-    )
-    .expect("scan");
-    let collapsed: Vec<(String, FileRowKind, u32)> = files
-        .collapsed_directories()
-        .into_iter()
-        .map(|dir| (dir.dir_prefix, dir.kind, dir.count))
-        .collect();
-
-    assert_eq!(
-        collapsed,
-        vec![("logs/".to_string(), FileRowKind::Document, 2)],
-    );
-}
-
 /// Taking a file out of the tracklist stops it producing a slot, and the file
 /// stays in the release: the folder is the release, so it still imports. The
 /// content hash is what the decision is stored under, so it must not move.

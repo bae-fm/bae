@@ -173,7 +173,7 @@ struct ImportMappingTrackRow: View {
             source: unit.source,
             previewingTarget: previewingTarget,
             evidence: evidence,
-            showsFileSize: true,
+            showsFileSize: false,
             actions: actions,
         )
         .frame(width: columns.source, alignment: .leading)

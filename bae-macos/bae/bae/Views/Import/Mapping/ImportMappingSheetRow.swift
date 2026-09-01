@@ -19,30 +19,11 @@ struct ImportMappingSheetRow: View {
     /// computed from. Empty otherwise.
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
-    var fileColumns: ImportMappingColumns.Files?
-
     @ViewBuilder
     var body: some View {
-        if let fileColumns {
-            HStack(spacing: ImportMappingColumns.spacing) {
-                HStack(spacing: 8) {
-                    sourceCell(showsSize: false)
-                    discMenu
-                }
-                .frame(width: fileColumns.name, alignment: .leading)
-                Text(Int64(sheet.size).formatted(.byteCount(style: .file)))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                    .frame(width: fileColumns.size, alignment: .trailing)
-                Color.clear
-                    .frame(width: ImportMappingColumns.action, height: 1)
-            }
-        }
-        else {
-            HStack(spacing: ImportMappingColumns.spacing) {
-                sourceCell(showsSize: true)
-                discMenu
-            }
+        HStack(spacing: ImportMappingColumns.spacing) {
+            sourceCell(showsSize: true)
+            discMenu
         }
     }
 

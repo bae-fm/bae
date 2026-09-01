@@ -215,39 +215,6 @@ pub fn bridge_file_becomes_key(becomes: BridgeFileBecomes) -> String {
     .to_string()
 }
 
-/// The job a collapsed directory's files share. Mirror of bae-core's
-/// `FileRowKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeFileRowKind {
-    Document,
-    Other,
-}
-
-/// The catalog key naming a collapsed directory's contents. Takes a `count`
-/// argument in every language.
-#[cfg_attr(feature = "desktop", uniffi::export)]
-pub fn bridge_file_row_kind_key(kind: BridgeFileRowKind) -> String {
-    match kind {
-        BridgeFileRowKind::Document => "core.import.files.documents",
-        BridgeFileRowKind::Other => "core.import.files.other",
-    }
-    .to_string()
-}
-
-/// A directory whose files all do the same job, which the roles table shows as
-/// one row instead of one row each. Mirror of bae-core's `CollapsedDirectory`.
-///
-/// Core decides which directories these are; a UI renders the group row in
-/// place of the files whose `dir_prefix` equals this one, and lists nothing
-/// else for them.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCollapsedDirectory {
-    pub dir_prefix: String,
-    pub kind: BridgeFileRowKind,
-    pub count: u32,
-    pub total_size: u64,
-}
-
 /// One file of a candidate, with the role in force for it and what that role
 /// makes of it.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -285,9 +252,6 @@ pub struct BridgeCandidateFiles {
     pub files: Vec<BridgeCandidateFile>,
     /// Core-derived aggregate and physical files for the effective source audio.
     pub source_audio: Option<BridgeCandidateSourceAudio>,
-    /// The directories the roles table shows as one row. Every file whose
-    /// `dir_prefix` matches one of these is stood for by its group row.
-    pub collapsed_directories: Vec<BridgeCollapsedDirectory>,
 }
 
 /// Phase-0 preparation step, mirroring bae-core's `PrepareStep`. The UI

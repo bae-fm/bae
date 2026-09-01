@@ -7,8 +7,7 @@ import SwiftUI
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
 /// where the pairing is visible. A track sheet describes how playable rows are
-/// carved, so its source controls head the exact rows it owns. A collapsed
-/// directory is one row, because the roles of fourteen rip logs are one fact.
+/// carved, so its source controls head the exact rows it owns.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// What each track sheet may be bound to, by the sheet's file id. Core
@@ -209,7 +208,6 @@ struct ImportMappingTable: View {
         case .file(let file):
             ImportMappingFileRow(
                 file: file,
-                columns: columns.files,
                 previewingTarget: previewingTarget,
                 evidence: ImportEvidence.of(file.fileId, in: evidence),
                 actions: actions,
@@ -221,29 +219,15 @@ struct ImportMappingTable: View {
                 options: bindingOptions[sheet.sheetId],
                 evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
                 actions: actions,
-                fileColumns: columns.files,
-            )
-            .rowChrome()
-        case .directory(let directory):
-            ImportMappingDirectoryRow(
-                directory: directory,
-                columns: columns.files
             )
             .rowChrome()
         }
     }
 
-    // The trailing clear cell mirrors the tracks section's action slot, so
-    // the Size column's right edge lines up with Length and the row spans the
-    // full table — its divider with it.
     private var fileHeaderRow: some View {
         headerRow {
             eyebrow("ui.import.mapping.files_title")
-                .frame(width: columns.files.name, alignment: .leading)
-            FormEyebrow(text: Text("Size"))
-                .frame(width: columns.files.size, alignment: .trailing)
-            Color.clear
-                .frame(width: ImportMappingColumns.action, height: 1)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -309,10 +293,8 @@ extension View {
 
 /// The widths the mapping table resolves for one pane.
 ///
-/// Tracks have five columns and a trailing action slot. Files have a flexible
-/// Name and fixed Size column. Keeping those section shapes explicit prevents
-/// track-only columns from reserving width for values the Files section does
-/// not show.
+/// Tracks have five columns and a trailing action slot. Files rows are not
+/// columnar: each is the file's name with its size and role beside it.
 ///
 /// Source leads because the file is the origin of every mapping row. `#`,
 /// Length and the action slot are fixed — a track number, a duration and one
@@ -326,19 +308,12 @@ struct ImportMappingColumns {
         let artist: CGFloat
     }
 
-    struct Files {
-        let name: CGFloat
-        let size: CGFloat
-    }
-
     let tracks: Tracks
-    let files: Files
 
     static let position: CGFloat = 34
     static let length: CGFloat = 88
     /// The slot at the row's far right where a row is taken out of the list.
     static let action: CGFloat = 24
-    static let fileSize: CGFloat = 64
     static let spacing: CGFloat = 10
     /// The rows' inset from the table's edges. The table is open on the pane,
     /// so this matches the section heading's inset and the rows line up under
@@ -382,13 +357,6 @@ struct ImportMappingColumns {
                 ),
                 title: title,
                 artist: artist
-            ),
-            files: Files(
-                // The Size column's right edge lines up with Length's in the
-                // tracks section above, so the name column also leaves room
-                // for the action slot and its gap.
-                name: width - rowPadding * 2 - spacing * 2 - fileSize - action,
-                size: fileSize
             )
         )
     }
@@ -399,39 +367,6 @@ struct ImportMappingColumns {
         by given: CGFloat
     ) -> CGFloat {
         max(floor, ideal - (ideal - floor) * given)
-    }
-}
-
-/// A collapsed directory as the one Files row core decided it should be: its
-/// path and aggregate size in the section's Name and Size columns.
-struct ImportMappingDirectoryRow: View {
-    let directory: BridgeCollapsedDirectory
-    let columns: ImportMappingColumns.Files
-
-    var body: some View {
-        HStack(spacing: ImportMappingColumns.spacing) {
-            HStack(spacing: 8) {
-                Image(systemName: "folder")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-                Text(directory.dirPrefix)
-                    .font(.system(size: 12, design: .monospaced))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Spacer(minLength: 0)
-            }
-            .frame(width: columns.name, alignment: .leading)
-            Text(
-                Int64(directory.totalSize)
-                    .formatted(.byteCount(style: .file))
-            )
-            .font(.caption)
-            .foregroundStyle(.tertiary)
-            .lineLimit(1)
-            .frame(width: columns.size, alignment: .trailing)
-            Color.clear
-                .frame(width: ImportMappingColumns.action, height: 1)
-        }
     }
 }
 
@@ -452,7 +387,6 @@ extension BridgeMappingFileRow {
         switch self {
         case .file(let file): "file:\(file.fileId)"
         case .sheet(let sheet): "sheet:\(sheet.sheetId)"
-        case .directory(let directory): "dir:\(directory.dirPrefix)"
         }
     }
 }

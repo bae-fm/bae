@@ -412,8 +412,7 @@ extension MappingFixtures {
     static let emptyFiles = BridgeCandidateFiles(
         fileTagsIdentity: "empty-audio-files",
         files: [],
-        sourceAudio: nil,
-        collapsedDirectories: []
+        sourceAudio: nil
     )
 
     /// The value the per-candidate read answers with for the fixture folder:

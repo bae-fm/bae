@@ -115,13 +115,6 @@ struct ImportPreviewDataTests {
                 representedFileIDs.insert(file.fileId)
             case .sheet(let sheet):
                 representedFileIDs.insert(sheet.sheetId)
-            case .directory(let directory):
-                representedFileIDs.formUnion(
-                    candidate.files.files.compactMap { file in
-                        file.file.dirPrefix == directory.dirPrefix
-                            ? file.file.name : nil
-                    }
-                )
             }
         }
 

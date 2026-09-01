@@ -493,9 +493,6 @@ pub enum BridgeMappingFileRow {
     Sheet {
         sheet: BridgeSheetGroup,
     },
-    Directory {
-        directory: BridgeCollapsedDirectory,
-    },
 }
 
 /// The mapping table: every source unit the folder offers, alongside the track

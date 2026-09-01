@@ -700,7 +700,7 @@
             role: .other
         )
 
-        private static let previewLogDocuments = [
+        static let previewLogDocuments = [
             "checksum.txt",
             "drive.txt",
             "read.txt",
@@ -714,13 +714,6 @@
                 dirPrefix: "logs/"
             )
         }
-
-        static let previewLogsDirectory = BridgeCollapsedDirectory(
-            dirPrefix: "logs/",
-            kind: .document,
-            count: UInt32(previewLogDocuments.count),
-            totalSize: previewLogDocuments.map(\.file.size).reduce(0, +)
-        )
 
         static let bridgeCandidateFiles = BridgeCandidateFiles(
             fileTagsIdentity: "cue-backed-preview-audio",
@@ -743,8 +736,7 @@
                     )
                 ),
                 files: [mappedAudioContainer.file]
-            ),
-            collapsedDirectories: [previewLogsDirectory]
+            )
         )
 
         static let releaseDetailBridge: BridgeReleaseDetail = {
@@ -863,8 +855,7 @@
                     )
                 ),
                 files: trackAudioFiles.map(\.file)
-            ),
-            collapsedDirectories: []
+            )
         )
 
     }

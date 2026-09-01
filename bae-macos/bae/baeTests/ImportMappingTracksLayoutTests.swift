@@ -322,26 +322,6 @@ extension ImportMappingTracksLayoutTests {
         #expect(host.fittingSize.width < 46)
     }
 
-    @Test(
-        "Files reserve a fixed trailing Size column",
-        arguments: [
-            ImportMappingColumns.minimumTableWidth,
-            ImportMappingColumns.idealTableWidth,
-            1200,
-        ] as [CGFloat]
-    )
-    func filesReserveTrailingSizeColumn(tableWidth: CGFloat) {
-        let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
-        let innerWidth = tableWidth - ImportMappingColumns.rowPadding * 2
-
-        #expect(
-            columns.files.name
-                == innerWidth - ImportMappingColumns.spacing * 2
-                - columns.files.size - ImportMappingColumns.action
-        )
-        #expect(columns.files.size == 64)
-    }
-
     fileprivate var audioPath: String { "/tmp/source/track.flac" }
     fileprivate var previewTarget: BridgePreviewTarget {
         BridgePreviewTarget(path: audioPath, startSample: 0, endSample: nil)

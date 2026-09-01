@@ -206,16 +206,6 @@ fn produced_keys() -> Vec<String> {
         keys.push(expected.to_string());
     }
 
-    // bridge_file_row_kind_key — what a collapsed directory holds.
-    for kind in [BridgeFileRowKind::Document, BridgeFileRowKind::Other] {
-        let expected = match kind {
-            BridgeFileRowKind::Document => "core.import.files.documents",
-            BridgeFileRowKind::Other => "core.import.files.other",
-        };
-        assert_eq!(bridge_file_row_kind_key(kind), expected);
-        keys.push(expected.to_string());
-    }
-
     // bridge_slot_reconciliation_key — the tally above the slot table.
     for reconciliation in [
         BridgeSlotReconciliation::Agrees { count: 12 },

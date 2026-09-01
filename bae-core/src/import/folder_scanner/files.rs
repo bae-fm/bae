@@ -422,27 +422,6 @@ pub enum FileBecomes {
 /// are deliberately absent: a folder of tracks is exactly what the roles table
 /// exists to show one row at a time, and images live in one gallery however
 /// many directories they sit in.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FileRowKind {
-    Document,
-    Other,
-}
-
-/// A directory whose files all do the same job, which the roles table shows as
-/// one row — `logs/ — 14 documents` — instead of one row each. Nothing in it
-/// needs a decision, so listing every file buys nothing and costs the table its
-/// readability.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CollapsedDirectory {
-    /// The prefix its files carry in [`ScannedFile::dir_prefix`], e.g.
-    /// `logs/` — which is also how a renderer tells which files it stands
-    /// for.
-    pub dir_prefix: String,
-    pub kind: FileRowKind,
-    pub count: u32,
-    pub total_size: u64,
-}
-
 /// A track sheet the scan parsed, with whatever its `FILE` directive resolved to.
 #[derive(Debug, Clone, Copy)]
 pub struct TrackSheetFile<'a> {
@@ -826,63 +805,6 @@ impl CategorizedFiles {
                     _ => FileBecomes::NoSlots,
                 }
             })
-            .collect()
-    }
-
-    /// The directories the roles table shows as one row instead of one row per
-    /// file.
-    ///
-    /// Collapsing is decided here rather than by each UI, because two UIs
-    /// deciding it separately is two answers to one question about the
-    /// release's shape. Audio and track sheets never collapse — one row per
-    /// track is the point of the table — and neither do images, which the
-    /// gallery shows whole wherever in the folder they sit.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub fn collapsed_directories(&self) -> Vec<CollapsedDirectory> {
-        let mut collapsible: BTreeMap<&str, (FileRowKind, u32, u64)> = BTreeMap::new();
-        let mut mixed: BTreeSet<&str> = BTreeSet::new();
-        for entry in &self.files {
-            let Some(dir_prefix) = entry.file.dir_prefix.as_deref() else {
-                continue;
-            };
-            let kind = match entry.role {
-                FileRole::Document => Some(FileRowKind::Document),
-                FileRole::Other => Some(FileRowKind::Other),
-                FileRole::Audio | FileRole::TrackSheet { .. } | FileRole::Artwork => None,
-            };
-            // A directory holding anything that needs its own row, or holding
-            // two different jobs, is not homogeneous — every one of its files
-            // gets a row. Recorded rather than removed, because a later file
-            // in the same directory would otherwise start the group again.
-            let Some(kind) = kind else {
-                mixed.insert(dir_prefix);
-                continue;
-            };
-            match collapsible.get_mut(dir_prefix) {
-                Some((seen, count, size)) if *seen == kind => {
-                    *count += 1;
-                    *size += entry.file.size;
-                }
-                Some(_) => {
-                    mixed.insert(dir_prefix);
-                }
-                None => {
-                    collapsible.insert(dir_prefix, (kind, 1, entry.file.size));
-                }
-            }
-        }
-        collapsible
-            .into_iter()
-            // One file is not a group worth hiding.
-            .filter(|(dir_prefix, (_, count, _))| *count > 1 && !mixed.contains(dir_prefix))
-            .map(
-                |(dir_prefix, (kind, count, total_size))| CollapsedDirectory {
-                    dir_prefix: dir_prefix.to_string(),
-                    kind,
-                    count,
-                    total_size,
-                },
-            )
             .collect()
     }
 }

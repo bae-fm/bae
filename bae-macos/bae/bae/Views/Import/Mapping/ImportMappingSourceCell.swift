@@ -12,8 +12,9 @@ struct ImportMappingSourceCell: View {
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
-    /// Track rows keep the size beside their source. Files rows put it in the
-    /// table's dedicated Size column instead.
+    /// Files rows say the file's size beside its name; track rows don't — a
+    /// track's row is about the release, and Length already carries its one
+    /// per-row measurement.
     let showsFileSize: Bool
     let actions: ImportMappingActions
 

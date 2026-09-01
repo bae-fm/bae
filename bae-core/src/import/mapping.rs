@@ -8,8 +8,8 @@
 
 use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{
-    BoundTrackSheet, CandidateFile, CategorizedFiles, CollapsedDirectory, FileRole, FileRoleChoice,
-    ScannedFile, SheetBinding, SheetDisc,
+    BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, FileRoleChoice, ScannedFile,
+    SheetBinding, SheetDisc,
 };
 use crate::import::probe::SourceDurations;
 use crate::import::track_slots::{
@@ -85,8 +85,6 @@ pub enum MappingFileRow {
     File(MappingFile),
     /// A sheet that currently carves no track rows and can be assigned audio.
     Sheet(SheetGroup),
-    /// A directory whose files all do the same job, shown as one row.
-    Directory(CollapsedDirectory),
 }
 
 /// One of the folder's images, as the gallery shows it.
@@ -143,6 +141,9 @@ pub enum MappingRole {
 #[derive(Debug, Clone, PartialEq)]
 pub struct MappingFile {
     pub file_id: String,
+    /// The file's identity within the release — its relative path, the same
+    /// name the storage manager lists it under. Every file lists flat; a
+    /// directory shows up only as the prefix its files carry.
     pub name: String,
     pub size: u64,
     pub path: PathBuf,
@@ -323,7 +324,6 @@ pub fn mapping_table(
         .map(|sheet| sheet.file.relative_path.as_str())
         .collect();
 
-    let collapsed = files.collapsed_directories();
     let disc_options = disc_options(files, picked.as_ref());
 
     let multi_side = picked.as_ref().is_some_and(|picked| {
@@ -340,18 +340,11 @@ pub fn mapping_table(
     };
     let mut track_groups = Vec::with_capacity(units.len());
     let mut file_rows = Vec::with_capacity(files.files.len().saturating_sub(units.len()));
-    let mut opened: BTreeSet<&str> = BTreeSet::new();
     // The folder's images become one gallery beside the rows while retaining
     // the scan's order.
     let mut images: Vec<MappingImage> = Vec::new();
 
     for entry in &files.files {
-        if let Some(directory) = collapsed_row(&collapsed, entry) {
-            if opened.insert(directory.dir_prefix.as_str()) {
-                file_rows.push(MappingFileRow::Directory(directory.clone()));
-            }
-            continue;
-        }
         match &entry.role {
             // A carving sheet is named at the position its run occupies, which
             // the assignment decides and the sheet's own place on disk does not.
@@ -362,7 +355,7 @@ pub fn mapping_table(
                 disc,
             } => file_rows.push(MappingFileRow::Sheet(SheetGroup {
                 sheet_id: entry.file.relative_path.clone(),
-                name: entry.file.file_name.clone(),
+                name: entry.file.relative_path.clone(),
                 size: entry.file.size,
                 path: entry.file.path.clone(),
                 bound: bound_of(files, sheet, binding),
@@ -375,7 +368,7 @@ pub fn mapping_table(
                         track_groups.push(MappingTrackGroup::Sheet {
                             sheet: SheetGroup {
                                 sheet_id: sheet.file.relative_path.clone(),
-                                name: sheet.file.file_name.clone(),
+                                name: sheet.file.relative_path.clone(),
                                 size: sheet.file.size,
                                 path: sheet.file.path.clone(),
                                 bound: SheetBound::Describes(container(sheet.audio)),
@@ -634,17 +627,6 @@ fn mapping_image(entry: &CandidateFile) -> MappingImage {
     }
 }
 
-/// The collapsed-directory row a file is stood for by, where it is in one.
-fn collapsed_row<'a>(
-    collapsed: &'a [CollapsedDirectory],
-    entry: &CandidateFile,
-) -> Option<&'a CollapsedDirectory> {
-    let dir_prefix = entry.file.dir_prefix.as_deref()?;
-    collapsed
-        .iter()
-        .find(|directory| directory.dir_prefix == dir_prefix)
-}
-
 /// One of the folder's audio files, as the container a sheet's header names.
 fn container(audio: &ScannedFile) -> MappingContainer {
     MappingContainer {
@@ -797,7 +779,7 @@ fn mapping_file(entry: &CandidateFile, role: MappingRole, duration_ms: Option<u6
     });
     MappingFile {
         file_id: entry.file.relative_path.clone(),
-        name: entry.file.file_name.clone(),
+        name: entry.file.relative_path.clone(),
         size: entry.file.size,
         path: entry.file.path.clone(),
         preview_target,

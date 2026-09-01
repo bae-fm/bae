@@ -598,8 +598,7 @@ public sealed class ImportMappingPaneTests
                     new BridgeSourceAudioSummary.Uniform(
                         new BridgeSourceAudioDescriptor(
                             BridgeSourceAudioLayout.File,
-                            SourceAudio)),
-                    Array.Empty<BridgeCollapsedDirectory>()),
+                            SourceAudio))),
                 TrackCount: 2,
                 Skipped: false,
                 IsAdded: false),

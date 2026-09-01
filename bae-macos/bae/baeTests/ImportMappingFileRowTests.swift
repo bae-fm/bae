@@ -16,11 +16,6 @@ struct ImportMappingFileRowTests {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingFileRow(
                 file: excludedAudioFile,
-                columns:
-                    ImportMappingColumns.resolved(
-                        tableWidth: tableWidth
-                    )
-                    .files,
                 previewingTarget: nil,
                 evidence: [],
                 actions: actions(recording: choice)
