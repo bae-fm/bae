@@ -5,10 +5,6 @@ extension ImportMappingTable {
         table.units.compactMap(\.track?.id)
     }
 
-    func selectArtist(_ trackId: String) {
-        artistFillSelection = ArtistFillSelection(sourceTrackId: trackId)
-    }
-
     private var artistFillFrame: CGRect? {
         guard let selection = artistFillSelection else { return nil }
         return selection.trackIds(in: artistTrackIds)
@@ -18,15 +14,23 @@ extension ImportMappingTable {
             }
     }
 
+    /// The spreadsheet fill: a handle at the corner of the hovered row's
+    /// artist cell; dragging it selects downward, an accent frame shows the
+    /// range while the drag is live, and release applies the source row's
+    /// artists to every selected row. Nothing persists past the drag — the
+    /// handle exists under the pointer and the frame only while dragging, so
+    /// no selection chrome is left standing after the fill.
     @ViewBuilder
     var artistFillOverlay: some View {
-        if let frame = artistFillFrame {
+        if let anchor = fillHandleAnchor {
             ZStack(alignment: .topLeading) {
-                Rectangle()
-                    .stroke(Color.accentColor, lineWidth: 2)
-                    .frame(width: frame.width, height: frame.height)
-                    .position(x: frame.midX, y: frame.midY)
-                    .allowsHitTesting(false)
+                if let frame = artistFillFrame {
+                    Rectangle()
+                        .stroke(Color.accentColor, lineWidth: 2)
+                        .frame(width: frame.width, height: frame.height)
+                        .position(x: frame.midX, y: frame.midY)
+                        .allowsHitTesting(false)
+                }
                 ZStack {
                     RoundedRectangle(cornerRadius: 1.5)
                         .fill(Color.accentColor)
@@ -34,20 +38,42 @@ extension ImportMappingTable {
                 }
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
-                .position(x: frame.maxX, y: frame.maxY)
+                .position(x: anchor.x, y: anchor.y)
                 .highPriorityGesture(
                     DragGesture(
                         minimumDistance: 0,
                         coordinateSpace: .named(artistFillCoordinateSpace)
                     )
-                    .onChanged { extendArtistFill(to: $0.location.y) }
-                    .onEnded {
-                        extendArtistFill(to: $0.location.y)
+                    .onChanged { value in
+                        if artistFillSelection == nil,
+                            let hovered = hoveredFillTrackId
+                        {
+                            artistFillSelection = ArtistFillSelection(
+                                sourceTrackId: hovered
+                            )
+                        }
+                        extendArtistFill(to: value.location.y)
+                    }
+                    .onEnded { value in
+                        extendArtistFill(to: value.location.y)
                         commitArtistFill()
+                        artistFillSelection = nil
                     }
                 )
             }
         }
+    }
+
+    /// Where the fill handle sits: the live selection's corner while a drag
+    /// runs, else the hovered artist cell's.
+    private var fillHandleAnchor: CGPoint? {
+        if let frame = artistFillFrame {
+            return CGPoint(x: frame.maxX, y: frame.maxY)
+        }
+        guard let hovered = hoveredFillTrackId,
+            let cell = artistCellFrames[hovered]
+        else { return nil }
+        return CGPoint(x: cell.maxX, y: cell.maxY)
     }
 
     private func extendArtistFill(to y: CGFloat) {

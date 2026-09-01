@@ -31,6 +31,9 @@ struct ImportMappingTable: View {
     var artistFillSelection: ArtistFillSelection?
     @State
     var artistCellFrames: [String: CGRect] = [:]
+    /// The track row under the pointer — where the artist fill handle shows.
+    @State
+    var hoveredFillTrackId: String?
 
     let artistFillCoordinateSpace = "ImportMappingTable.artistFill"
 
@@ -149,7 +152,15 @@ struct ImportMappingTable: View {
             evidence: evidenceFor(unit),
             actions: actions,
             artistFillCoordinateSpace: artistFillCoordinateSpace,
-            onSelectArtist: selectArtist,
+            onArtistFillHover: { hovering in
+                guard let trackId = unit.track?.id else { return }
+                if hovering {
+                    hoveredFillTrackId = trackId
+                }
+                else if hoveredFillTrackId == trackId {
+                    hoveredFillTrackId = nil
+                }
+            },
         )
         .rowChrome(
             background: unit.source.previewTarget == previewingTarget

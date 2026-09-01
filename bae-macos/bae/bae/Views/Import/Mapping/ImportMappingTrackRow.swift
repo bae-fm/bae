@@ -22,7 +22,9 @@ struct ImportMappingTrackRow: View {
     var evidence: [BridgeFileEvidence]
     let actions: ImportMappingActions
     var artistFillCoordinateSpace: String?
-    var onSelectArtist: (String) -> Void = { _ in }
+    /// Whether the pointer is on this row — where the table shows the artist
+    /// fill handle.
+    var onArtistFillHover: (Bool) -> Void = { _ in }
 
     @State
     private var hovering = false
@@ -84,7 +86,10 @@ struct ImportMappingTrackRow: View {
         // own — without this, the pointer crossing a gap on its way to the
         // removal X ends the hover that shows the X.
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
+        .onHover {
+            hovering = $0
+            onArtistFillHover($0)
+        }
         .contextMenu {
             if let track, !audioChoices.isEmpty {
                 chooseFileButtons(track)
@@ -143,9 +148,6 @@ struct ImportMappingTrackRow: View {
             )
             .modifier(FieldChrome(focused: false, style: .inline))
             .frame(width: columns.artist)
-            .simultaneousGesture(
-                TapGesture().onEnded { onSelectArtist(track.id) }
-            )
             .background {
                 if let artistFillCoordinateSpace {
                     GeometryReader { geometry in
