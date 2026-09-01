@@ -74,8 +74,8 @@ struct ImportAlbumIdentityEditor: View {
     }
 }
 
-/// The disclosure that keeps the editable release fields attached to the
-/// metadata text column.
+/// The disclosure that keeps the editable pressing fields attached to the
+/// album identity.
 struct ImportReleaseDetails: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
@@ -93,7 +93,7 @@ struct ImportReleaseDetails: View {
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)
                         .rotationEffect(.degrees(expanded ? 90 : 0))
-                    Text("Details")
+                    Text("Release")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
@@ -106,6 +106,7 @@ struct ImportReleaseDetails: View {
                     values: values,
                     writer: writer,
                     sections: [.pressing],
+                    showsSectionHeaders: false,
                     editingCommands: editingCommands
                 )
             }
@@ -125,7 +126,7 @@ struct ImportReleaseHeader: View {
     let hasCoverOptions: Bool
     @Binding
     var detailsExpanded: Bool
-    /// The album fields stay visible; pressing fields fold under Details.
+    /// The album fields stay visible; pressing fields fold under Release.
     /// `nil` when there is no release to edit.
     let editValues: BridgeRawReleaseEdit?
     /// Where a typed field's value goes.
@@ -242,13 +243,6 @@ struct ImportReleaseHeader: View {
     /// the same draft by choosing where its metadata comes from.
     private var sourceActionControl: some View {
         VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 6) {
-                FormEyebrow(text: Text("Metadata"))
-                Spacer(minLength: 0)
-                ProgressView()
-                    .controlSize(.small)
-                    .opacity(isReading ? 1 : 0)
-            }
             if draftIsBlank, !releaseSummary.hasMatchedRelease {
                 findOnlineButton.buttonStyle(.borderedProminent)
             }
@@ -279,7 +273,7 @@ struct ImportReleaseHeader: View {
                 Text("Change release…")
             }
             else {
-                Text("Match release…")
+                Text("Find release…")
             }
             Spacer(minLength: 0)
         }

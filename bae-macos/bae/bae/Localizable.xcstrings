@@ -1529,193 +1529,193 @@
         }
       }
     },
-    "Match release…" : {
-      "comment" : "Import metadata: match the candidate to a catalog release",
+    "Find release…" : {
+      "comment" : "Import metadata: find a catalog release for the candidate",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مطابقة الإصدار…"
+            "value" : "العثور على إصدار…"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Съпоставяне на издание…"
+            "value" : "Намиране на издание…"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "রিলিজ মেলান…"
+            "value" : "রিলিজ খুঁজুন…"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přiřadit vydání…"
+            "value" : "Najít vydání…"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Veröffentlichung abgleichen…"
+            "value" : "Veröffentlichung suchen…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Match release…"
+            "value" : "Find release…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Buscar una edición coincidente…"
+            "value" : "Buscar edición…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Associer une parution…"
+            "value" : "Rechercher une parution…"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "રિલીઝ મેળવો…"
+            "value" : "રિલીઝ શોધો…"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "התאמת מהדורה…"
+            "value" : "חיפוש מהדורה…"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "रिलीज़ मिलाएँ…"
+            "value" : "रिलीज़ खोजें…"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uskladi izdanje…"
+            "value" : "Pronađi izdanje…"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Abbina pubblicazione…"
+            "value" : "Trova pubblicazione…"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "リリースを照合…"
+            "value" : "リリースを検索…"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಬಿಡುಗಡೆಯನ್ನು ಹೊಂದಿಸಿ…"
+            "value" : "ಬಿಡುಗಡೆಯನ್ನು ಹುಡುಕಿ…"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "릴리스 일치시키기…"
+            "value" : "릴리스 찾기…"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "റിലീസ് പൊരുത്തപ്പെടുത്തുക…"
+            "value" : "റിലീസ് കണ്ടെത്തുക…"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "प्रकाशन जुळवा…"
+            "value" : "प्रकाशन शोधा…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uitgave koppelen…"
+            "value" : "Uitgave zoeken…"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਰਿਲੀਜ਼ ਮਿਲਾਓ…"
+            "value" : "ਰਿਲੀਜ਼ ਲੱਭੋ…"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dopasuj wydanie…"
+            "value" : "Znajdź wydanie…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Associar lançamento…"
+            "value" : "Buscar lançamento…"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "வெளியீட்டை பொருத்து…"
+            "value" : "வெளியீட்டைக் கண்டறி…"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "విడుదలను సరిపోల్చు…"
+            "value" : "విడుదలను కనుగొను…"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "จับคู่รุ่นวางจำหน่าย…"
+            "value" : "ค้นหารุ่นวางจำหน่าย…"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sürümü eşleştir…"
+            "value" : "Sürüm bul…"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Зіставити видання…"
+            "value" : "Знайти видання…"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ریلیز ملائیں…"
+            "value" : "ریلیز تلاش کریں…"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Khớp bản phát hành…"
+            "value" : "Tìm bản phát hành…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "匹配发行版本…"
+            "value" : "查找发行版本…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "比對發行版本…"
+            "value" : "尋找發行版本…"
           }
         }
       }

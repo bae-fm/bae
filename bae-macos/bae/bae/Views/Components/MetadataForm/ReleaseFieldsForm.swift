@@ -60,17 +60,20 @@ struct ReleaseFieldsForm: View {
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
     let sections: Set<Section>
+    let showsSectionHeaders: Bool
     var editingCommands: EditingCommitCommands?
 
     init(
         values: BridgeRawReleaseEdit,
         writer: ReleaseFieldWriter,
         sections: Set<Section> = [.album, .pressing],
+        showsSectionHeaders: Bool = true,
         editingCommands: EditingCommitCommands? = nil
     ) {
         self.values = values
         self.writer = writer
         self.sections = sections
+        self.showsSectionHeaders = showsSectionHeaders
         self.editingCommands = editingCommands
     }
 
@@ -79,6 +82,7 @@ struct ReleaseFieldsForm: View {
         values = form.wrappedValue
         writer = .binding(form)
         sections = [.album, .pressing]
+        showsSectionHeaders = true
         editingCommands = nil
     }
 
@@ -115,7 +119,9 @@ struct ReleaseFieldsForm: View {
 
     private var albumGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: String(localized: "Album"))
+            if showsSectionHeaders {
+                FormSectionHeader(title: String(localized: "Album"))
+            }
             VStack(spacing: 0) {
                 fieldRow(
                     row(
@@ -169,7 +175,9 @@ struct ReleaseFieldsForm: View {
 
     private var pressingGroup: some View {
         groupCard(
-            title: String(localized: "Release pressing"),
+            title:
+                showsSectionHeaders
+                ? String(localized: "Release pressing") : nil,
             rows: [
                 row(
                     .pressingYear,
@@ -221,9 +229,11 @@ struct ReleaseFieldsForm: View {
 
     /// A titled inset card of label-left / value-right rows separated by
     /// hairlines.
-    private func groupCard(title: String, rows: [FieldRow]) -> some View {
+    private func groupCard(title: String?, rows: [FieldRow]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: title)
+            if let title {
+                FormSectionHeader(title: title)
+            }
             VStack(spacing: 0) {
                 ForEach(Array(rows.enumerated()), id: \.element.label) {
                     index,

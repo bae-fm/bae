@@ -8,7 +8,6 @@ struct ImportReleaseSummary {
     let titleIsPlaceholder: Bool
     let artist: String?
     let factsLine: String
-    let contextLine: String?
     let sourceAudio: BridgeCandidateSourceAudio?
     let provenance: BridgeMetadataProvenance?
     let hasMatchedRelease: Bool
@@ -29,7 +28,6 @@ struct ImportReleaseSummary {
             ? nil : ListFormatter.localizedString(byJoining: artistNames)
         let count = candidate.mapping.willWriteCount
         let trackText = String(localized: "\(count) tracks")
-        contextLine = trackText
         switch provenance {
         case .externalRelease:
             factsLine = Self.factsLine([
@@ -64,7 +62,6 @@ struct ImportReleaseSummary {
             coreString("ui.import.metadata.from_file_tags"),
             String(localized: "\(values.tracks.count) tracks"),
         ])
-        contextLine = String(localized: "\(values.tracks.count) tracks")
         provenance = .fileTags
         sourceAudio = candidate.files.sourceAudio
         hasMatchedRelease = false
@@ -80,7 +77,6 @@ struct ImportReleaseSummary {
                 artistNames.isEmpty
                 ? nil : ListFormatter.localizedString(byJoining: artistNames)
             factsLine = ""
-            contextLine = nil
             provenance = nil
             sourceAudio = nil
             hasMatchedRelease = false
@@ -101,11 +97,9 @@ struct ImportReleaseSummary {
                 },
                 trackText,
             ])
-            contextLine = trackText
         }
         else {
             factsLine = ""
-            contextLine = nil
         }
         provenance = nil
         sourceAudio = nil
@@ -166,25 +160,14 @@ struct ImportReleaseSummaryView: View {
 
 }
 
-/// The non-editable context that remains beside the album fields: how many
-/// tracks the draft maps and which metadata source supplied it. Pressing values
-/// live under Details; source audio sits below the cover.
+/// The metadata source attached to the editable album identity. Pressing values
+/// live under Release; source audio sits below the cover.
 struct ImportReleaseContextView: View {
     let summary: ImportReleaseSummary
 
-    @ViewBuilder
     var body: some View {
-        if summary.contextLine != nil || summary.provenance != nil {
-            HStack(spacing: 6) {
-                if let contextLine = summary.contextLine {
-                    Text(contextLine)
-                        .font(.system(size: 11.5))
-                        .foregroundStyle(.tertiary)
-                }
-                if let provenance = summary.provenance {
-                    ImportMetadataProvenanceChip(provenance: provenance)
-                }
-            }
+        if let provenance = summary.provenance {
+            ImportMetadataProvenanceChip(provenance: provenance)
         }
     }
 }
