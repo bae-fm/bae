@@ -7,7 +7,8 @@ import SwiftUI
 /// One table, not two: the file a track comes from and the track it becomes are
 /// the same row, so re-pointing, excluding, naming and role changes all happen
 /// where the pairing is visible. A track sheet describes how playable rows are
-/// carved, so its source controls head the exact rows it owns.
+/// carved, so its caption sits over the exact rows it owns, outside the
+/// columns.
 struct ImportMappingTable: View {
     let table: BridgeMappingTable
     /// What each track sheet may be bound to, by the sheet's file id. Core
@@ -103,15 +104,28 @@ struct ImportMappingTable: View {
 
     // MARK: - Tracks
 
+    /// The column headers are one row, over the first track row. A sheet's
+    /// caption sits above its rows, so a sheet that leads the section puts its
+    /// caption above the headers too, and every later sheet's caption sits
+    /// between its neighbour's last row and its own first.
     private var tracksSection: some View {
         ScrollView(.horizontal) {
             artistFillRows {
-                trackHeaderRow
+                if table.trackGroups.isEmpty {
+                    trackHeaderRow
+                }
                 ForEach(
-                    table.trackGroups,
-                    id: \.rowId,
-                    content: trackGroup
-                )
+                    Array(table.trackGroups.enumerated()),
+                    id: \.element.rowId
+                ) { index, group in
+                    if case .sheet(let sheet, _) = group {
+                        sheetCaption(sheet)
+                    }
+                    if index == 0 {
+                        trackHeaderRow
+                    }
+                    trackGroupRows(group)
+                }
             }
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
@@ -123,24 +137,30 @@ struct ImportMappingTable: View {
     }
 
     @ViewBuilder
-    private func trackGroup(_ group: BridgeMappingTrackGroup) -> some View {
+    private func trackGroupRows(_ group: BridgeMappingTrackGroup) -> some View {
         switch group {
         case .unit(let unit):
             trackRow(unit)
-        case .sheet(let sheet, let entries):
-            sheetRow(sheet)
+        case .sheet(_, let entries):
             ForEach(entries, id: \.rowId, content: trackRow)
         }
     }
 
-    private func sheetRow(_ sheet: BridgeSheetGroup) -> some View {
-        ImportMappingSheetRow(
+    private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
+        sheetCaptionRow(sheet)
+            .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .padding(.top, 2)
+            .padding(.bottom, 10)
+    }
+
+    private func sheetCaptionRow(_ sheet: BridgeSheetGroup) -> some View {
+        ImportSheetCaptionRow(
             sheet: sheet,
             options: bindingOptions[sheet.sheetId],
             evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
+            showsDiscMenu: table.sheetCount > 1 || sheet.assignment == .ignored,
             actions: actions,
         )
-        .sheetGroupHeaderChrome()
     }
 
     private func trackRow(_ unit: BridgeMappingUnit) -> some View {
@@ -225,13 +245,8 @@ struct ImportMappingTable: View {
             )
             .rowChrome()
         case .sheet(let sheet):
-            ImportMappingSheetRow(
-                sheet: sheet,
-                options: bindingOptions[sheet.sheetId],
-                evidence: ImportEvidence.of(sheet.sheetId, in: evidence),
-                actions: actions,
-            )
-            .rowChrome()
+            sheetCaptionRow(sheet)
+                .rowChrome()
         }
     }
 
@@ -281,23 +296,6 @@ extension View {
                 Rectangle()
                     .fill(.white.opacity(0.07))
                     .frame(height: 1)
-            }
-    }
-
-    /// A sheet is the heading for the track rows immediately below it: a
-    /// raised band with an accent edge, inset so the edge stands clear of the
-    /// sheet's name.
-    fileprivate func sheetGroupHeaderChrome() -> some View {
-        padding(.leading, ImportMappingColumns.rowPadding + 10)
-            .padding(.trailing, ImportMappingColumns.rowPadding)
-            .padding(.vertical, 8)
-            .frame(minHeight: 44)
-            .background(Theme.surfaceElevated)
-            .overlay(alignment: .leading) {
-                Rectangle().fill(Theme.accent).frame(width: 3)
-            }
-            .overlay(alignment: .top) {
-                Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
             }
     }
 }
@@ -378,6 +376,22 @@ struct ImportMappingColumns {
         by given: CGFloat
     ) -> CGFloat {
         max(floor, ideal - (ideal - floor) * given)
+    }
+}
+
+extension BridgeMappingTable {
+    /// How many track sheets the folder holds, carving rows or not.
+    var sheetCount: Int {
+        trackGroups.filter {
+            if case .sheet = $0 { return true }
+            return false
+        }
+        .count
+            + files.filter {
+                if case .sheet = $0 { return true }
+                return false
+            }
+            .count
     }
 }
 

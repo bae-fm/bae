@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// The sheet header's binding control: what audio this track sheet describes,
+/// The sheet caption's binding control: what audio this track sheet describes,
 /// or that it describes nothing.
 ///
 /// The scan proposes a pairing from the sheet's `FILE` directive; when the
@@ -9,45 +9,66 @@ import SwiftUI
 /// user is the only one who knows the answer, and this is where they give it.
 /// Core decides what may be offered — it probes each file — so this places the
 /// answer rather than working one out.
+///
+/// The label is the audio's name and nothing else: no caret, so the line reads
+/// "sheet → audio" and the menu is found by the hover. Why a sheet is on
+/// nothing — the directive's own text, or the codec bae cannot carve — is the
+/// label's tooltip.
 struct ImportSheetBindingMenu: View {
     let sheet: BridgeSheetGroup
     /// The audio this sheet may be bound to, each already offered or refused by
-    /// core. `nil` until it has been asked for; empty means there is nothing to
-    /// offer, so no menu appears.
-    let options: [BridgeSheetBindingOption]?
+    /// core.
+    let options: [BridgeSheetBindingOption]
     /// Name the audio this sheet describes, or `nil` to leave it describing
     /// nothing.
     let onBind: (String?) -> Void
 
+    @State
+    private var hovering = false
+
+    @ViewBuilder
     var body: some View {
-        if let options, !options.isEmpty {
-            Menu {
-                ForEach(options, id: \.fileId) { option in
-                    bindButton(option)
-                }
-                Divider()
-                Button {
-                    onBind(nil)
-                } label: {
-                    checkable(
-                        coreString("ui.import.sheet.describes_nothing"),
-                        selected: sheet.bound.containerId == nil
-                    )
-                }
-            } label: {
-                Label(
-                    sheet.bound.containerName
-                        ?? coreString("ui.import.sheet.choose_audio"),
-                    systemImage: "link"
-                )
-                .font(.caption2)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            }
-            .menuStyle(.borderlessButton)
-            .frame(minWidth: 24)
-            .foregroundStyle(.secondary)
+        if let reason = sheet.bound.reasonLine {
+            menu.help(reason)
         }
+        else {
+            menu
+        }
+    }
+
+    private var menu: some View {
+        Menu {
+            ForEach(options, id: \.fileId) { option in
+                bindButton(option)
+            }
+            Divider()
+            Button {
+                onBind(nil)
+            } label: {
+                checkable(
+                    coreString("ui.import.sheet.describes_nothing"),
+                    selected: sheet.bound.containerId == nil
+                )
+            }
+        } label: {
+            Text(
+                sheet.bound.containerName
+                    ?? coreString("ui.import.sheet.choose_audio")
+            )
+            .font(.system(size: 11, design: .monospaced))
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(
+                .white.opacity(hovering ? 0.07 : 0),
+                in: RoundedRectangle(cornerRadius: 4)
+            )
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .frame(minWidth: 24)
+        .onHover { hovering = $0 }
     }
 
     /// One offered file, or a refused one shown disabled with core's reason —

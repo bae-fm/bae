@@ -134,8 +134,6 @@ extension BridgeSheetBound {
 
     var containerName: String? { container?.name }
 
-    var containerSizeText: String? { container?.sizeText }
-
     /// Why the sheet is on no audio, in the user's language — what its
     /// directive asked for, or the codec bae cannot carve tracks out of. `nil`
     /// when it is on audio and there is nothing to explain.

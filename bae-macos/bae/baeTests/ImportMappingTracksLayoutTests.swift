@@ -226,9 +226,16 @@ struct ImportMappingTracksLayoutTests {
         withExtendedLifetime(window) {}
     }
 
+}
+
+/// The sheet caption over a group of carved rows.
+extension ImportMappingTracksLayoutTests {
+    /// The caption reads left to right: the disc pill leads, the binding menu
+    /// follows the sheet's name, and a long name squeezes neither control out
+    /// of the line.
     @MainActor
     @Test(
-        "sheet source and disc controls stay separated",
+        "sheet caption keeps the disc pill leading and the binding after it",
         arguments: [
             (ImportMappingColumns.minimumTableWidth, false),
             (ImportMappingColumns.minimumTableWidth, true),
@@ -236,13 +243,13 @@ struct ImportMappingTracksLayoutTests {
             (1200, true),
         ] as [(CGFloat, Bool)]
     )
-    func sheetControlsStaySeparated(
+    func sheetCaptionControlsKeepTheirOrder(
         tableWidth: CGFloat,
         associated: Bool
     ) async throws {
         let size = NSSize(width: tableWidth, height: 40)
         let (window, host) = SnapshotTestSupport.hostInWindow(
-            ImportMappingSheetRow(
+            ImportSheetCaptionRow(
                 sheet: sheet(associated: associated),
                 options: [
                     BridgeSheetBindingOption(
@@ -251,6 +258,7 @@ struct ImportMappingTracksLayoutTests {
                     )
                 ],
                 evidence: [],
+                showsDiscMenu: true,
                 actions: actions(recording: MappingTrackActionRecorder())
             )
             .padding(.horizontal, ImportMappingColumns.rowPadding)
@@ -267,17 +275,49 @@ struct ImportMappingTracksLayoutTests {
                     < $1.convert($1.bounds, to: host).minX
             }
         try #require(controls.count == 2)
-        let associationFrame = controls[0].convert(controls[0].bounds, to: host)
-        let discFrame = controls[1].convert(controls[1].bounds, to: host)
+        let discFrame = controls[0].convert(controls[0].bounds, to: host)
+        let bindingFrame = controls[1].convert(controls[1].bounds, to: host)
 
-        #expect(associationFrame.maxX < discFrame.minX)
-        #expect(associationFrame.width >= 24)
+        #expect(discFrame.minX <= ImportMappingColumns.rowPadding + 1)
+        #expect(discFrame.maxX < bindingFrame.minX)
+        #expect(bindingFrame.width >= 24)
         #expect(
-            discFrame.maxX >= tableWidth - ImportMappingColumns.rowPadding - 6
+            bindingFrame.maxX <= tableWidth - ImportMappingColumns.rowPadding
         )
         withExtendedLifetime(window) {}
     }
 
+    /// One sheet is one disc, so the pill would only restate it.
+    @MainActor
+    @Test("a lone sheet's caption has no disc pill")
+    func loneSheetCaptionHasNoDiscPill() async throws {
+        let size = NSSize(
+            width: ImportMappingColumns.idealTableWidth,
+            height: 40
+        )
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ImportSheetCaptionRow(
+                sheet: sheet(associated: true),
+                options: [
+                    BridgeSheetBindingOption(
+                        fileId: longAudioName,
+                        offer: .offered
+                    )
+                ],
+                evidence: [],
+                showsDiscMenu: false,
+                actions: actions(recording: MappingTrackActionRecorder())
+            )
+            .frame(width: size.width, height: size.height, alignment: .leading),
+            size: size
+        )
+        host.layoutSubtreeIfNeeded()
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+
+        #expect(buttons(in: host).count == 1)
+        withExtendedLifetime(window) {}
+    }
 }
 
 extension ImportMappingTracksLayoutTests {
