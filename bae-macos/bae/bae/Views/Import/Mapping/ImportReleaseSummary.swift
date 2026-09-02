@@ -226,7 +226,7 @@ extension BridgeMetadataProvenance {
 extension ImportReleaseSummaryView.Style {
     fileprivate var stackSpacing: CGFloat {
         switch self {
-        case .sidebar: 0
+        case .sidebar: 3
         case .card: 2
         }
     }

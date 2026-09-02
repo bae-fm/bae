@@ -191,7 +191,7 @@ struct TriageRowView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .padding(.top, 1)
+                .padding(.top, 3)
         }
     }
 
