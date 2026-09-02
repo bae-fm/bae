@@ -48,10 +48,7 @@ struct ImportConfirmationCardAction: View {
         if isComplete {
             VStack(alignment: .trailing, spacing: 2) {
                 if case .active(let progress) = uploadObservation {
-                    ProgressLine(
-                        progress: progress.bar?.fraction,
-                        detail: progress.bar?.text
-                    ) {
+                    ProgressLine(progress: progress.bar?.fraction) {
                         UploadActivityLabel(progress: progress)
                     }
                     .font(.callout)

@@ -163,8 +163,7 @@ struct TriageRowView: View {
             if let uploadObservation {
                 ProgressLine(
                     uploadObservation.phaseText,
-                    progress: uploadObservation.progressBar.fraction,
-                    detail: uploadObservation.progressDetailText
+                    progress: uploadObservation.progressBar.fraction
                 )
                 .font(.system(size: 11.5))
             }

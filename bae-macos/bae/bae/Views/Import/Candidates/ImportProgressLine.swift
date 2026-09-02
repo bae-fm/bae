@@ -1,8 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// A running import's line under a triage row: the phase it is in, the bar,
-/// and how far through it is.
+/// A running import's line under a triage row: the phase it is in and the
+/// bar. The bar is how far through it is; a number beside it would say the
+/// same thing again in a row that has no room for it.
 ///
 /// A leaf of its own because it is the only part of a row that changes by the
 /// second. It subscribes to the candidate-runtime signal and filters to its
@@ -13,11 +14,12 @@ struct ImportProgressLine: View {
 
     var body: some View {
         CandidateRuntimeReader(key: key) { runtime in
-            let percent = runtime?.import?.progressPercent
             ProgressLine(
                 phaseText(step: runtime?.import?.step),
-                progress: percent.map { Double($0) / 100 },
-                detail: percent.map { (Double($0) / 100).formatted(.percent) }
+                progress: runtime?.import?.progressPercent
+                    .map {
+                        Double($0) / 100
+                    }
             )
         }
     }
