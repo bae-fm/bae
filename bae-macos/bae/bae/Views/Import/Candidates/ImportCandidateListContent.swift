@@ -12,19 +12,19 @@ func releaseGroupDisclosureID(
 /// membership, not dividers.
 enum ImportListHierarchyLayout {
     /// The horizontal padding every list row carries, member or not.
-    static let rowEdgePadding: CGFloat = 14
+    static let rowEdgePadding: CGFloat = 12
     /// Where the rail runs, from the list edge — under the header's chevron.
-    static let railInset: CGFloat = 21
+    static let railInset: CGFloat = 17
     /// Where a member row's content starts, from the list edge — 10pt past
     /// the rail.
-    static let memberContentInset: CGFloat = 31
+    static let memberContentInset: CGFloat = 28
     /// The leading padding a member row adds on top of its own edge padding
     /// so its content lands at `memberContentInset`.
     static var memberInset: CGFloat { memberContentInset - rowEdgePadding }
     /// Air over a group boundary — a header, or the first top-level row
     /// after a group's members. Rendered as its own spacer row so every real
     /// row keeps a symmetric box for selection and highlight chrome to trace.
-    static let groupBoundaryAir: CGFloat = 6
+    static let groupBoundaryAir: CGFloat = 7
 }
 
 extension View {

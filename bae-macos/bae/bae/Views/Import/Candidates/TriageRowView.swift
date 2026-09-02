@@ -13,7 +13,7 @@ struct TriageRowView: View {
     /// The cover's edge, in points. Named because it is also the size the
     /// sidebar warms Ready covers at — a decode cached at another size is a
     /// different entry and would not spare this row its placeholder.
-    static let coverPointSize: CGFloat = 44
+    static let coverPointSize: CGFloat = 50
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
@@ -191,7 +191,7 @@ struct TriageRowView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .padding(.top, 3)
+                .padding(.top, 0)
         }
     }
 
@@ -364,11 +364,11 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     .strokeBorder(.white.opacity(0.3), lineWidth: 1.5)
                     .opacity(configuration.isOn ? 0 : 1)
                 Image(systemName: "checkmark")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Theme.background)
                     .opacity(configuration.isOn ? 1 : 0)
             }
-            .frame(width: 14, height: 14)
+            .frame(width: 18, height: 18)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
