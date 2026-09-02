@@ -172,6 +172,18 @@ final class ImportListSlot {
         updateView { $0.collapsedGroups = uiStore.collapsedReleaseGroupKeys }
     }
 
+    /// Fold every group in `keys` open or shut as one change to the request.
+    func setGroupsExpanded(
+        _ keys: [BridgeFolderReleaseDecisionKey],
+        _ expanded: Bool
+    ) {
+        uiStore.setReleaseGroupsExpanded(
+            keys.map(ReleaseGroupDisclosureID.init(key:)),
+            expanded
+        )
+        updateView { $0.collapsedGroups = uiStore.collapsedReleaseGroupKeys }
+    }
+
     /// Keep disclosure state only for the groups the queue still has. A group
     /// that is gone takes its folded state with it, which can change the
     /// request.

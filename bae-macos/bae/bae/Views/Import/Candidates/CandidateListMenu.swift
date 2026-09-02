@@ -2,7 +2,8 @@ import BaeKit
 import SwiftUI
 
 /// The watched folders the candidate list is built from: add a root, or
-/// refresh, reveal, and remove one already being watched.
+/// refresh, reveal, and remove one already being watched. And the list's
+/// folder groups, all at once: open every one, or fold every one shut.
 ///
 /// `Equatable` over the folders, their refresh state and their scans alone,
 /// and rendered through `.equatable()`: the queue summary this is built from is
@@ -23,7 +24,12 @@ struct CandidateListMenu: View, Equatable {
     /// moment it changes — and an album added on the server that has not
     /// appeared yet is otherwise a mystery.
     let networkFolders: Set<String>
+    /// Whether the queue has folder groups to fold. Without any, the two
+    /// group entries have nothing to act on and say so by being disabled.
+    let hasGroups: Bool
     let onAddFolder: () -> Void
+    /// Fold every folder group in the queue open (`true`) or shut (`false`).
+    let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
     let onRefreshFolder: (_ folder: BridgeWatchedFolder) -> Void
     /// Stop watching `path`. Release grouping belongs to the queue below;
     /// removing a root stays an action here.
@@ -39,6 +45,7 @@ struct CandidateListMenu: View, Equatable {
         lhs.watchedFolders == rhs.watchedFolders
             && lhs.refreshingFolders == rhs.refreshingFolders
             && lhs.networkFolders == rhs.networkFolders
+            && lhs.hasGroups == rhs.hasGroups
             && hasFailedScan(in: lhs.scanStatuses)
                 == hasFailedScan(in: rhs.scanStatuses)
             && lhs.watchedFolders.allSatisfy { folder in
@@ -93,6 +100,20 @@ struct CandidateListMenu: View, Equatable {
                 ForEach(watchedFolders, id: \.path) { folder in
                     folderMenu(folder)
                 }
+            }
+            Section("Groups") {
+                Button {
+                    onSetAllGroupsExpanded(true)
+                } label: {
+                    Label("Expand All", systemImage: "chevron.down")
+                }
+                .disabled(!hasGroups)
+                Button {
+                    onSetAllGroupsExpanded(false)
+                } label: {
+                    Label("Collapse All", systemImage: "chevron.right")
+                }
+                .disabled(!hasGroups)
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -207,7 +228,9 @@ struct CandidateListMenu: View, Equatable {
                 ),
             ],
             networkFolders: ["/Volumes/Vault"],
+            hasGroups: true,
             onAddFolder: {},
+            onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },
             onRemoveFolder: { _ in }
         )

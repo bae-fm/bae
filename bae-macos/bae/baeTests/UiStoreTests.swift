@@ -204,9 +204,7 @@ struct UiStoreLibraryBrowserModeTests {
         let first = store.pendingAlbumReveal?.seq
         store.navigateToAlbum("album-2")
         let second = store.pendingAlbumReveal?.seq
-        #expect(first != nil)
-        #expect(second != nil)
-        #expect(try #require(second) > first!)
+        #expect(try #require(second) > #require(first))
     }
 
     @Test(
@@ -300,6 +298,23 @@ struct UiStoreImportQueueInteractionTests {
                 == ["first"]
         )
         store.setReleaseGroupExpanded(key, true)
+        #expect(store.collapsedReleaseGroupKeys.isEmpty)
+    }
+
+    @Test("folding every group at once overrides each group's own choice")
+    func disclosureStateFoldsAllGroupsAtOnce() {
+        let store = UiStore()
+        let first = groupDisclosureID(relativePath: "first")
+        let second = groupDisclosureID(relativePath: "second")
+        store.setReleaseGroupExpanded(second, false)
+
+        store.setReleaseGroupsExpanded([first, second], false)
+        #expect(
+            store.collapsedReleaseGroupKeys.map(\.relativeFolderPath)
+                == ["first", "second"]
+        )
+
+        store.setReleaseGroupsExpanded([first, second], true)
         #expect(store.collapsedReleaseGroupKeys.isEmpty)
     }
 

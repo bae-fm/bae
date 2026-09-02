@@ -340,6 +340,16 @@ class UiStore: @unchecked Sendable {
         releaseGroupDisclosureState[id] = expanded
     }
 
+    /// Fold every one of `ids` the same way at once.
+    func setReleaseGroupsExpanded(
+        _ ids: some Sequence<ReleaseGroupDisclosureID>,
+        _ expanded: Bool
+    ) {
+        for id in ids {
+            releaseGroupDisclosureState[id] = expanded
+        }
+    }
+
     func retainReleaseGroupDisclosureIDs(
         _ ids: Set<ReleaseGroupDisclosureID>
     ) {

@@ -29,7 +29,9 @@ final class CandidateListMenuTests: XCTestCase {
             refreshingFolders: [],
             scanStatuses: ["/Imports": status],
             networkFolders: [],
+            hasGroups: false,
             onAddFolder: {},
+            onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },
             onRemoveFolder: { _ in }
         )

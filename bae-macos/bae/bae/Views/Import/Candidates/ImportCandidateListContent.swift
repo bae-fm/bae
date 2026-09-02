@@ -317,7 +317,15 @@ struct ImportCandidateListContent: View {
                             refreshingFolders: uiStore.refreshingWatchedFolders,
                             scanStatuses: scanStatuses,
                             networkFolders: networkFolders,
+                            hasGroups: !summary.groupKeys.isEmpty,
                             onAddFolder: onAddFolder,
+                            onSetAllGroupsExpanded: { expanded in
+                                cancelReveal()
+                                listSlot.setGroupsExpanded(
+                                    summary.groupKeys,
+                                    expanded
+                                )
+                            },
                             onRefreshFolder: onRefreshFolder,
                             onRemoveFolder: onRemoveFolder
                         )
