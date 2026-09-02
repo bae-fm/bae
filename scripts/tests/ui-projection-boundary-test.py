@@ -53,7 +53,6 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}: TriageRowView changed its construction contract",
                     f"{relative}:{injected_line}: TriageRowView reaches secondary "
                     "entity projection Candidate",
                 ],
@@ -88,22 +87,50 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             )
 
     def test_projection_presentation_inputs_and_local_state_pass(self) -> None:
-        contracts = BOUNDARY.load_contracts()["leaves"]
-        triage_key = (
-            "swift|bae-macos/bae/bae/Views/Import/Candidates/"
-            "TriageRowView.swift|TriageRowView"
-        )
-        triage_contract = contracts[triage_key]
-        self.assertIn("let row: BridgeTriageRow", triage_contract)
-        self.assertIn("let selection: Binding<Bool>?", triage_contract)
-        self.assertIn("let onSkip: (_ skipped: Bool) -> Void", triage_contract)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            relative = Path("bae-macos/bae/bae/Views/FixturePresentationList.swift")
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                """
+import SwiftUI
 
-        track_key = (
-            "swift|bae-macos/bae/bae/Views/Library/AlbumDetail/"
-            "TrackRowView.swift|TrackRowView"
-        )
-        self.assertIn("@State private var isHovered = false", contracts[track_key])
-        self.assertEqual(BOUNDARY.check(ROOT), [])
+struct FixturePresentationRow: View {
+    static let coverPointSize: CGFloat = 44
+    let row: FixtureProjection
+    let coverContent: ImageContent?
+    let selection: Binding<Bool>?
+    let onSkip: (_ skipped: Bool) -> Void
+    @State private var isHovered = false
+    @Environment(\\.displayScale) private var displayScale
+    @Environment(UiStore.self) private var uiStore
+    var body: some View { Text(row.title) }
+}
+
+struct FixturePresentationList: View {
+    let rows: [FixtureProjection]
+    var body: some View {
+        ForEach(rows) { row in
+            FixturePresentationRow(
+                row: row,
+                coverContent: nil,
+                selection: nil,
+                onSkip: { _ in }
+            )
+        }
+    }
+}
+"""
+            )
+            self.assertEqual(BOUNDARY.check(root), [])
+            path.write_text(
+                path.read_text().replace(
+                    "coverPointSize: CGFloat = 44", "coverPointSize: CGFloat = 50"
+                )
+            )
+            self.assertEqual(BOUNDARY.check(root), [])
 
     def test_entity_projection_in_local_state_fails(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -124,7 +151,6 @@ class UiProjectionBoundaryTests(unittest.TestCase):
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}: TriageRowView changed its construction contract",
                     f"{relative}:{injected_line}: TriageRowView reaches secondary "
                     "entity projection Candidate",
                 ],
@@ -160,9 +186,48 @@ struct FixtureProjectionList: View {
             self.assertEqual(
                 BOUNDARY.check(root),
                 [
-                    f"{relative}: FixtureProjectionRow has no construction contract",
                     f"{relative}:6: FixtureProjectionRow reaches entity-data owner "
                     "ImportStore",
+                    f"{relative}:6: FixtureProjectionRow takes ImportStore from the "
+                    "environment",
+                ],
+            )
+
+    def test_environment_object_of_any_type_is_an_undeclared_input(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.copied_inventory(root)
+            relative = Path("bae-macos/bae/bae/Views/FixtureEnvironmentList.swift")
+            path = root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(
+                """
+import SwiftUI
+
+struct FixtureEnvironmentRow: View {
+    let row: FixtureProjection
+    @Environment(Automation.self) private var automation
+    @ObservedObject var legacy: LegacyModel
+    var body: some View { Text(row.title) }
+}
+
+struct FixtureEnvironmentList: View {
+    let rows: [FixtureProjection]
+    var body: some View {
+        ForEach(rows) { row in
+            FixtureEnvironmentRow(row: row, legacy: LegacyModel())
+        }
+    }
+}
+"""
+            )
+            self.assertEqual(
+                BOUNDARY.check(root),
+                [
+                    f"{relative}:6: FixtureEnvironmentRow takes Automation from the "
+                    "environment",
+                    f"{relative}:7: FixtureEnvironmentRow takes LegacyModel from the "
+                    "environment",
                 ],
             )
 
@@ -230,23 +295,20 @@ internal fun FixtureProjectionList(rows: List<FixtureProjection>) {
 """
             )
             violations = BOUNDARY.check(root)
-            self.assertIn(
-                f"{kotlin_relative}: fixtureProjectionRow has no construction contract",
-                violations,
-            )
-            self.assertIn(
-                f"{swift_relative}: FixtureContentProjectionRow has no construction "
-                "contract",
-                violations,
-            )
-            self.assertIn(
-                f"{swift_relative}: fixtureLowerProjectionRow has no construction "
-                "contract",
-                violations,
-            )
-            self.assertTrue(
-                any("secondary entity projection Candidate" in item for item in violations)
-            )
+            for relative, symbol in (
+                (kotlin_relative, "fixtureProjectionRow"),
+                (swift_relative, "FixtureContentProjectionRow"),
+                (swift_relative, "fixtureLowerProjectionRow"),
+            ):
+                self.assertTrue(
+                    any(
+                        item.startswith(f"{relative}:")
+                        and f"{symbol} reaches secondary entity projection Candidate"
+                        in item
+                        for item in violations
+                    ),
+                    violations,
+                )
 
     def test_same_named_swift_children_are_scoped_per_platform(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -281,10 +343,6 @@ struct FixtureDuplicateList: View {
                 )
             violations = BOUNDARY.check(root)
             for relative in relative_paths:
-                self.assertIn(
-                    f"{relative}: DuplicateProjectionRow has no construction contract",
-                    violations,
-                )
                 self.assertTrue(
                     any(
                         item.startswith(f"{relative}:")
@@ -319,7 +377,7 @@ struct FixtureDuplicateList: View {
                 ],
             )
 
-    def test_classified_avalonia_template_is_contract_checked(self) -> None:
+    def test_classified_avalonia_template_is_owner_checked(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             self.copied_inventory(root)

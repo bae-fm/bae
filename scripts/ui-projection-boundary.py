@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import sys
 from dataclasses import dataclass
@@ -166,6 +165,7 @@ ENTITY_DATA_OWNERS = {
     "swift": (
         "AppService",
         "CandidateRuntime",
+        "Cast",
         "ConfigStore",
         "Database",
         "Discogs",
@@ -179,7 +179,10 @@ ENTITY_DATA_OWNERS = {
         "OutboxStore",
         "OutputStore",
         "Outputs",
+        "Playback",
         "PlaybackStore",
+        "PreviewAudio",
+        "Queue",
         "ReleaseEditor",
         "StorageStore",
         "Sync",
@@ -214,6 +217,18 @@ NON_ENTITY_UI_OWNERS = {
     "UiStore",
 }
 
+# A leaf's inputs are what its parent passes in. Pulling an object out of the
+# SwiftUI environment is the one way a leaf can grow an input its call site
+# never shows, so every environment object a leaf takes is checked by type,
+# whatever the type is named. Key-path environment values (`\.displayScale`,
+# `\.dismiss`) are presentation values and are not matched.
+SWIFT_ENVIRONMENT_OBJECT = re.compile(
+    r"@Environment\s*\(\s*([A-Z][A-Za-z0-9_]*)\.self\s*\)"
+    r"|@(?:EnvironmentObject|ObservedObject|StateObject)\b"
+    r"(?:\s+(?:private|fileprivate|internal|public)(?:\(set\))?)*"
+    r"\s+var\s+[A-Za-z_][A-Za-z0-9_]*\s*:\s*([A-Z][A-Za-z0-9_]*)"
+)
+
 SWIFT_SOURCE_ROOTS = (
     "bae-macos/bae/bae",
     "bae-ios/bae/bae",
@@ -244,7 +259,7 @@ DISCOVERED_OWNER_EXEMPTIONS = {
         "swift",
         "bae-ios/bae/bae/Views/AlbumDetail/TrackList.swift",
         "TrackRow",
-    ): ({"PlaybackStore"}, "playback-connected control"),
+    ): ({"Playback", "PlaybackStore"}, "playback-connected control"),
 }
 
 AVALONIA_ITEM_TEMPLATES = {
@@ -255,7 +270,6 @@ AVALONIA_ITEM_TEMPLATES = {
     ("bae-avalonia/Views/Library/AlbumGridView.cs", "AlbumRowControl"): "paging slot",
 }
 
-CONTRACTS_PATH = Path(__file__).with_name("ui-projection-contracts.json")
 FORBIDDEN_SECONDARY_PROJECTIONS = (
     "Candidate",
     "BridgeImportCandidateDetail",
@@ -471,6 +485,28 @@ def fragment_owner_violations(
     return violations
 
 
+def fragment_environment_violations(
+    fragment: SourceFragment,
+    leaf: RenderLeaf,
+    allowed_owners: set[str],
+) -> list[str]:
+    if leaf.language != "swift":
+        return []
+    masked = mask_comments_and_literals(fragment.source)
+    violations: list[str] = []
+    for match in SWIFT_ENVIRONMENT_OBJECT.finditer(masked):
+        injected = match.group(1) or match.group(2)
+        if injected in NON_ENTITY_UI_OWNERS or injected in allowed_owners:
+            continue
+        root_offset = fragment.offset + match.start()
+        source_line = fragment.full_source.count("\n", 0, root_offset) + 1
+        violations.append(
+            f"{fragment.path}:{source_line}: {leaf.symbol} takes {injected} "
+            "from the environment"
+        )
+    return violations
+
+
 def fragment_projection_violations(
     fragment: SourceFragment, leaf: RenderLeaf
 ) -> list[str]:
@@ -487,64 +523,6 @@ def fragment_projection_violations(
             f"projection {projection}"
         )
     return violations
-
-
-def normalized(source: str) -> str:
-    return " ".join(mask_comments_and_literals(source).split())
-
-
-def swift_construction_source(declaration: str, leaf: RenderLeaf) -> str:
-    masked = mask_comments_and_literals(declaration)
-    if leaf.callable_declaration:
-        match = re.search(leaf.declaration, masked)
-        if match is None:
-            raise ValueError(f"missing callable declaration for {leaf.symbol}")
-        parameters = masked.find("(", match.start(), match.end() + 1)
-        parameters_end = matching_delimiter(masked, parameters, "(", ")")
-        return declaration[match.start() : parameters_end + 1]
-
-    body_start = masked.find("{")
-    depth = 0
-    body_match: re.Match[str] | None = None
-    for match in re.finditer(r"\bvar\s+body\s*:\s*some\s+View\b", masked):
-        depth = 0
-        for character in masked[body_start : match.start()]:
-            depth += character == "{"
-            depth -= character == "}"
-        if depth == 1:
-            body_match = match
-            break
-    if body_match is None:
-        raise ValueError(f"missing top-level body for {leaf.symbol}")
-    return declaration[: body_match.start()]
-
-
-def construction_contract(source: str, leaf: RenderLeaf) -> str:
-    declaration, _ = declaration_source(source, leaf)
-    if leaf.language == "swift":
-        construction = swift_construction_source(declaration, leaf)
-    else:
-        masked = mask_comments_and_literals(declaration)
-        match = re.search(leaf.declaration, masked)
-        if match is None:
-            raise ValueError(f"missing callable declaration for {leaf.symbol}")
-        parameters = masked.find("(", match.start(), match.end() + 1)
-        parameters_end = matching_delimiter(masked, parameters, "(", ")")
-        construction = declaration[match.start() : parameters_end + 1]
-    return normalized(construction)
-
-
-def load_contracts() -> dict[str, dict[str, str]]:
-    if not CONTRACTS_PATH.is_file():
-        return {"leaves": {}, "avalonia_templates": {}}
-    value = json.loads(CONTRACTS_PATH.read_text())
-    if not isinstance(value, dict):
-        raise ValueError(f"{CONTRACTS_PATH} must contain an object")
-    return value
-
-
-def leaf_key(leaf: RenderLeaf) -> str:
-    return f"{leaf.language}|{leaf.path}|{leaf.symbol}"
 
 
 def declaration_indexes(root: Path) -> dict[str, dict[str, list[RenderLeaf]]]:
@@ -795,19 +773,11 @@ def avalonia_template_assignments(
     return assignments
 
 
-def avalonia_template_key(path: str, target: str) -> str:
-    return f"{path}|{target}"
-
-
-def avalonia_template_violations(
-    root: Path, contracts: dict[str, str]
-) -> list[str]:
+def avalonia_template_violations(root: Path) -> list[str]:
     seen: set[tuple[str, str]] = set()
     violations: list[str] = []
     for path, target, line, assignment in avalonia_template_assignments(root):
         key = (path, target)
-        contract_key = avalonia_template_key(path, target)
-        construction = normalized(assignment)
         masked = mask_comments_and_literals(assignment)
         owner = next(
             (
@@ -827,28 +797,12 @@ def avalonia_template_violations(
                 f"{path}:{line}: repeated Avalonia child {target} reaches "
                 f"entity-data owner {owner}"
             )
-        elif contracts.get(contract_key) != construction:
-            if contract_key not in contracts:
-                violations.append(
-                    f"{path}:{line}: repeated Avalonia child {target} has no "
-                    "construction contract"
-                )
-            else:
-                violations.append(
-                    f"{path}:{line}: repeated Avalonia child {target} changed its "
-                    "construction contract"
-                )
         seen.add(key)
     return violations
 
 
-def check(
-    root: Path,
-    contracts: dict[str, dict[str, str]] | None = None,
-) -> list[str]:
+def check(root: Path) -> list[str]:
     violations: list[str] = []
-    if contracts is None:
-        contracts = load_contracts()
     try:
         leaves = all_render_leaves(root)
     except ValueError as error:
@@ -865,24 +819,15 @@ def check(
         except ValueError as error:
             violations.append(f"{leaf.path}: {error}")
             continue
-        expected_contract = contracts["leaves"].get(leaf_key(leaf))
-        actual_contract = construction_contract(path.read_text(), leaf)
-        if expected_contract is None:
-            violations.append(
-                f"{leaf.path}: {leaf.symbol} has no construction contract"
-            )
-        elif expected_contract != actual_contract:
-            violations.append(
-                f"{leaf.path}: {leaf.symbol} changed its construction contract"
-            )
         for fragment in fragments:
             violations.extend(
                 fragment_owner_violations(fragment, leaf, allowed_owners)
             )
+            violations.extend(
+                fragment_environment_violations(fragment, leaf, allowed_owners)
+            )
             violations.extend(fragment_projection_violations(fragment, leaf))
-    violations.extend(
-        avalonia_template_violations(root, contracts["avalonia_templates"])
-    )
+    violations.extend(avalonia_template_violations(root))
     return violations
 
 
