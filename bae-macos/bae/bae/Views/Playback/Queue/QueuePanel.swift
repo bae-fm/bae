@@ -50,18 +50,12 @@ struct QueuePanel: View {
         )
         .frame(width: 420)
         .frame(maxHeight: .infinity)
-        // Sidebar chrome: an elevated-surface gradient that lifts it off the
-        // darker content beside it, and a hairline on the docked edge.
-        .background(
-            LinearGradient(
-                colors: [Theme.surfaceElevated, Theme.surface],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        // Sidebar chrome: one surface step above the content beside it, and
+        // a hairline on the docked edge.
+        .background(Theme.surface)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(.white.opacity(0.16))
+                .fill(.white.opacity(0.07))
                 .frame(width: 1)
         }
     }

@@ -264,17 +264,7 @@ struct QueueView: View {
         }
         .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Theme.accent.opacity(0.04),
-                            Theme.placeholder.opacity(0.3),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            RoundedRectangle(cornerRadius: 12).fill(Theme.surfaceElevated)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)

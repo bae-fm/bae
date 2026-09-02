@@ -123,11 +123,7 @@ struct AlbumExpansionContent: View {
         }
         .padding(32)
         .background(
-            LinearGradient(
-                colors: [Theme.surfaceElevated, Theme.surface],
-                startPoint: .top,
-                endPoint: .bottom
-            ),
+            Theme.surfaceElevated,
             in: RoundedRectangle(cornerRadius: 18)
         )
         .overlay(

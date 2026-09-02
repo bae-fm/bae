@@ -46,13 +46,7 @@ struct TriageFootBar: View {
         }
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
         .padding(.vertical, 12)
-        .background(
-            LinearGradient(
-                colors: [Theme.surfaceElevated, Theme.surface],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .background(Theme.surface)
     }
 }
 

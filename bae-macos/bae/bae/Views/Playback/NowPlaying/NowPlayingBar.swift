@@ -58,15 +58,9 @@ struct NowPlayingBar: View {
         .padding(.vertical, 14)
         .padding(.horizontal, 22)
         // Docked strip: the bar sits in the window's bottom row (below the
-        // content and the queue column), so nothing scrolls beneath it —
-        // a flat gradient fill under the Divider above, no card chrome.
-        .background(
-            LinearGradient(
-                colors: [Theme.surfaceElevated, Theme.surface],
-                startPoint: .top,
-                endPoint: .bottom,
-            ),
-        )
+        // content and the queue column), so nothing scrolls beneath it — a
+        // flat surface under the Divider above, no card chrome.
+        .background(Theme.surface)
     }
 
     // MARK: - Left: track info
