@@ -133,3 +133,4 @@ AGENTS.md
 *.profraw
 bae-android/.kotlin/
 bae-ios/.build/
+__pycache__/
