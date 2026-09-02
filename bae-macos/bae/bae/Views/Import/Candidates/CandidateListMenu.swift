@@ -96,6 +96,7 @@ struct CandidateListMenu: View, Equatable {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
+                .font(.system(size: ImportFilterBarLayout.glyphSize))
                 .overlay(alignment: .topTrailing) {
                     if hasFailedScan {
                         Image(systemName: "exclamationmark.triangle.fill")
@@ -104,6 +105,7 @@ struct CandidateListMenu: View, Equatable {
                             .offset(x: 3, y: -3)
                     }
                 }
+                .filterBarControl()
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)

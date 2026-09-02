@@ -61,7 +61,7 @@ struct QueueProgressIndicator: View {
         } label: {
             ring
                 .foregroundStyle(.secondary)
-                .contentShape(Rectangle())
+                .filterBarControl()
         }
         .buttonStyle(.plain)
         .help("Identifying")
@@ -89,7 +89,10 @@ struct QueueProgressIndicator: View {
                 )
                 .rotationEffect(.degrees(-90))
         }
-        .frame(width: 11, height: 11)
+        .frame(
+            width: ImportFilterBarLayout.glyphSize,
+            height: ImportFilterBarLayout.glyphSize
+        )
     }
 }
 
@@ -108,9 +111,12 @@ struct FolderScanProgressIndicator: View {
         } label: {
             ProgressView()
                 .controlSize(.small)
-                .frame(width: 11, height: 11)
+                .frame(
+                    width: ImportFilterBarLayout.glyphSize,
+                    height: ImportFilterBarLayout.glyphSize
+                )
                 .foregroundStyle(.secondary)
-                .contentShape(Rectangle())
+                .filterBarControl()
         }
         .buttonStyle(.plain)
         .help(coreString("ui.import.scan.activity"))

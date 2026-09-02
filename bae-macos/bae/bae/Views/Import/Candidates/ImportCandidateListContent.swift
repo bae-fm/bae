@@ -27,7 +27,28 @@ enum ImportListHierarchyLayout {
     static let groupBoundaryAir: CGFloat = 7
 }
 
+/// The filter row's geometry: every control at its end is one hit box, and
+/// the glyph inside it is one size, whichever indicator it is.
+enum ImportFilterBarLayout {
+    /// The clickable square each trailing control occupies.
+    static let controlHitSize: CGFloat = 24
+    /// The glyph drawn inside that square.
+    static let glyphSize: CGFloat = 14
+    /// The row's height — the field is the row, so a click anywhere on it
+    /// lands in the field.
+    static let rowHeight: CGFloat = 36
+}
+
 extension View {
+    /// A trailing filter-row control: a square hit box around its glyph.
+    func filterBarControl() -> some View {
+        frame(
+            width: ImportFilterBarLayout.controlHitSize,
+            height: ImportFilterBarLayout.controlHitSize
+        )
+        .contentShape(Rectangle())
+    }
+
     func groupMemberRail(_ isGroupMember: Bool) -> some View {
         padding(
             .leading,
@@ -166,6 +187,8 @@ struct ImportCandidateListContent: View {
     private var viewport = ImportCandidateListViewport()
     @State
     private var revealOperation: ImportCandidateRevealOperation?
+    @FocusState
+    private var filterFocused: Bool
 
     private var filterTextBinding: Binding<String> {
         Binding(
@@ -255,14 +278,22 @@ struct ImportCandidateListContent: View {
                             .foregroundStyle(.tertiary)
                         TextField("Filter...", text: filterTextBinding)
                             .textFieldStyle(.plain)
-                            .font(.system(size: 12.5))
+                            .font(.system(size: 13))
+                            .focused($filterFocused)
                         if !uiStore.importCandidateFilterText.isEmpty {
                             Button {
                                 cancelReveal()
                                 listSlot.setFilterText("")
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
+                                    .font(
+                                        .system(
+                                            size: ImportFilterBarLayout
+                                                .glyphSize
+                                        )
+                                    )
                                     .foregroundStyle(.tertiary)
+                                    .filterBarControl()
                             }
                             .buttonStyle(.plain)
                         }
@@ -293,7 +324,13 @@ struct ImportCandidateListContent: View {
                         .equatable()
                     }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
+                    .frame(height: ImportFilterBarLayout.rowHeight)
+                    // The row is the field: a plain text field's own hit
+                    // area is its one line of text, so the row takes the
+                    // click and puts the caret in the field. The controls at
+                    // the end keep their own clicks.
+                    .contentShape(Rectangle())
+                    .onTapGesture { filterFocused = true }
                 }
             } content: {
                 if activeTabIsEmpty {
