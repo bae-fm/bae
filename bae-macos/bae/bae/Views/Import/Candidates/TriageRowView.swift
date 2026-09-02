@@ -13,7 +13,7 @@ struct TriageRowView: View {
     /// The cover's edge, in points. Named because it is also the size the
     /// sidebar warms Ready covers at — a decode cached at another size is a
     /// different entry and would not spare this row its placeholder.
-    static let coverPointSize: CGFloat = 40
+    static let coverPointSize: CGFloat = 44
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
@@ -97,7 +97,7 @@ struct TriageRowView: View {
             trailing
             checkboxControl
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
     }
 
@@ -127,29 +127,16 @@ struct TriageRowView: View {
         }
     }
 
-    /// The matched release's cover, or a dim tile carrying the folder name's
-    /// initial for a folder no release has been read from yet — the tile
-    /// keeps every row's text starting at one x whether or not there is art.
-    @ViewBuilder
+    /// The matched release's cover, or the image placeholder when there is
+    /// none yet — the tile keeps every row's text starting at one x whether
+    /// or not there is art.
     private var cover: some View {
-        if releaseSummary == nil, coverContent == nil {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Theme.placeholder)
-                .frame(width: Self.coverPointSize, height: Self.coverPointSize)
-                .overlay {
-                    Text(String(row.folderName.prefix(1)).uppercased())
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.tertiary)
-                }
-        }
-        else {
-            ImageView(
-                content: coverContent,
-                pointSize: Self.coverPointSize
-            )
-            .frame(width: Self.coverPointSize, height: Self.coverPointSize)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
+        ImageView(
+            content: coverContent,
+            pointSize: Self.coverPointSize
+        )
+        .frame(width: Self.coverPointSize, height: Self.coverPointSize)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 
     // MARK: - Meta
