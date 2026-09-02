@@ -474,14 +474,13 @@ extension ImportCandidateListContent {
                 !expanded
             )
         } label: {
+            // The chevron and the name alone mark a folder — a glyph would
+            // repeat what the indent and rail below already say.
             HStack(spacing: 7) {
                 Image(systemName: expanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.tertiary)
                     .frame(width: 9)
-                Image(systemName: "folder")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
                 Text(group.name)
                     .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(.secondary)

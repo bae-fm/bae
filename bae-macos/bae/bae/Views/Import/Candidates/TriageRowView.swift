@@ -128,9 +128,9 @@ struct TriageRowView: View {
         }
     }
 
-    /// The matched release's cover, or a dim folder tile for a folder no
-    /// release has been read from yet — the tile keeps every row's text
-    /// starting at one x whether or not there is art.
+    /// The matched release's cover, or a dim tile carrying the folder name's
+    /// initial for a folder no release has been read from yet — the tile
+    /// keeps every row's text starting at one x whether or not there is art.
     @ViewBuilder
     private var cover: some View {
         if releaseSummary == nil, coverContent == nil {
@@ -138,8 +138,8 @@ struct TriageRowView: View {
                 .fill(Theme.placeholder)
                 .frame(width: Self.coverPointSize, height: Self.coverPointSize)
                 .overlay {
-                    Image(systemName: "folder")
-                        .font(.system(size: 14))
+                    Text(String(row.folderName.prefix(1)).uppercased())
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(.tertiary)
                 }
         }
