@@ -23,37 +23,34 @@ struct StorageStatusBand: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            storageStatus
+            // A cloud transition in flight is the release's storage state
+            // while it runs: its phase, bar, and count are one line.
+            if let observation = uploadObservation {
+                ProgressLine(
+                    progress: observation.progressBar.fraction,
+                    detail: observation.progressDetailText
+                ) {
+                    uploadLabel(observation)
+                }
+                .font(.callout)
+            }
+            else {
+                storageStatus
+            }
             // Read the live transfer state off the identity-stable summary so a
             // running pin/unpin/cloud/local transition updates the bar in place.
             if let transfer = release.summary.transfer {
-                progressBar(
-                    label: transfer.label
-                )
+                ProgressLine(transfer.label, progress: nil)
+                    .font(.callout)
             }
             else if Self.showsTransferActions(
                 uploadObservation: uploadObservation
             ) {
                 transferActions
             }
-            else if let observation = uploadObservation {
-                progressBar(
-                    value: observation.progressBar.fraction,
-                    label: observation.transitionStatusText
-                )
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-    }
-
-    private func progressBar(value: Double? = nil, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ProgressTrackBar(progress: value)
-            Text(label)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-        }
     }
 
     /// Storage actions are available only at rest. Publication and
@@ -65,33 +62,36 @@ struct StorageStatusBand: View {
         uploadObservation == nil
     }
 
+    @ViewBuilder
+    private func uploadLabel(
+        _ observation: StorageUploadObservation
+    ) -> some View {
+        switch observation {
+        case .active(let progress, _):
+            UploadActivityLabel(progress: progress)
+        case .queueing, .awaiting:
+            Label(
+                observation.transitionPhaseText,
+                systemImage: "icloud.and.arrow.up"
+            )
+        }
+    }
+
+    /// The resting storage state.
     private var storageStatus: some View {
         HStack(spacing: 6) {
-            if let observation = uploadObservation {
-                switch observation {
-                case .active(let progress, _):
-                    UploadActivityLabel(progress: progress)
-                case .queueing, .awaiting:
-                    Label(
-                        observation.transitionStatusText,
-                        systemImage: "icloud.and.arrow.up"
-                    )
+            switch release.summary.storageState {
+            case .local:
+                Image(systemName: "folder")
+                Text("Local")
+            case .remote:
+                if release.summary.pinned {
+                    Image(systemName: "pin.fill")
+                    Text("Pinned")
                 }
-            }
-            else {
-                switch release.summary.storageState {
-                case .local:
-                    Image(systemName: "folder")
-                    Text("Local")
-                case .remote:
-                    if release.summary.pinned {
-                        Image(systemName: "pin.fill")
-                        Text("Pinned")
-                    }
-                    else {
-                        Image(systemName: "cloud")
-                        Text("Cloud")
-                    }
+                else {
+                    Image(systemName: "cloud")
+                    Text("Cloud")
                 }
             }
         }

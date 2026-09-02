@@ -51,16 +51,9 @@ enum ProgressTrackDrawing {
 /// `nil` runs an indeterminate marching pill, animated by Core Animation so
 /// nothing ticks the view hierarchy.
 final class ProgressTrackNSView: NSView {
-    /// Height of the drawn track. Also the view's intrinsic height.
-    var trackHeight: CGFloat {
-        didSet {
-            if trackHeight != oldValue {
-                invalidateIntrinsicContentSize()
-                needsLayout = true
-                needsDisplay = true
-            }
-        }
-    }
+    /// Height of the drawn track, the same on every surface that draws one.
+    /// Also the view's intrinsic height.
+    static let trackHeight: CGFloat = 4
 
     var progress: Double? {
         didSet {
@@ -75,8 +68,7 @@ final class ProgressTrackNSView: NSView {
     private let indeterminatePill = CAGradientLayer()
     private static let marchAnimationKey = "march"
 
-    init(trackHeight: CGFloat = 5) {
-        self.trackHeight = trackHeight
+    init() {
         super.init(frame: .zero)
         wantsLayer = true
 
@@ -99,15 +91,15 @@ final class ProgressTrackNSView: NSView {
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: NSView.noIntrinsicMetric, height: trackHeight)
+        NSSize(width: NSView.noIntrinsicMetric, height: Self.trackHeight)
     }
 
     private var trackRect: NSRect {
         NSRect(
             x: 0,
-            y: (bounds.height - trackHeight) / 2,
+            y: (bounds.height - Self.trackHeight) / 2,
             width: bounds.width,
-            height: trackHeight
+            height: Self.trackHeight
         )
     }
 
@@ -163,21 +155,20 @@ final class ProgressTrackNSView: NSView {
     }
 }
 
-/// SwiftUI wrapper for the value-driven sites (storage band, outbox rows,
-/// import card): the value arrives as a prop, the rendering stays in AppKit.
+/// SwiftUI wrapper for the value-driven sites: the value arrives as a prop,
+/// the rendering stays in AppKit. A bar with text describing it is drawn by
+/// `ProgressLine`; this alone is for a bar that stands by itself.
 struct ProgressTrackBar: NSViewRepresentable {
     /// 0...1 for a determinate fill; nil for the indeterminate marching pill.
     var progress: Double?
-    var trackHeight: CGFloat = 5
 
     func makeNSView(context _: Context) -> ProgressTrackNSView {
-        let view = ProgressTrackNSView(trackHeight: trackHeight)
+        let view = ProgressTrackNSView()
         view.progress = progress
         return view
     }
 
     func updateNSView(_ view: ProgressTrackNSView, context _: Context) {
-        view.trackHeight = trackHeight
         view.progress = progress
     }
 
@@ -188,7 +179,7 @@ struct ProgressTrackBar: NSViewRepresentable {
     ) -> CGSize? {
         CGSize(
             width: proposal.width ?? 0,
-            height: trackHeight
+            height: ProgressTrackNSView.trackHeight
         )
     }
 }
@@ -201,7 +192,7 @@ struct ProgressTrackBar: NSViewRepresentable {
             ProgressTrackBar(progress: 0.4)
             ProgressTrackBar(progress: 1)
             ProgressTrackBar(progress: nil)
-            ProgressTrackBar(progress: 0.4, trackHeight: 4)
+            ProgressTrackBar(progress: 0.4)
                 .frame(width: 140)
         }
         .padding()

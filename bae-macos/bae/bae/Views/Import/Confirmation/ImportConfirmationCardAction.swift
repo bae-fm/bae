@@ -48,18 +48,14 @@ struct ImportConfirmationCardAction: View {
         if isComplete {
             VStack(alignment: .trailing, spacing: 2) {
                 if case .active(let progress) = uploadObservation {
-                    VStack(alignment: .trailing, spacing: 4) {
+                    ProgressLine(
+                        progress: progress.bar?.fraction,
+                        detail: progress.bar?.text
+                    ) {
                         UploadActivityLabel(progress: progress)
-                            .font(.callout)
-                        if let bar = progress.bar {
-                            Text(bar.text)
-                                .font(.caption)
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                            ProgressTrackBar(progress: bar.fraction)
-                                .frame(width: 160)
-                        }
                     }
+                    .font(.callout)
+                    .frame(width: 200)
                 }
                 else {
                     Label("Imported", systemImage: "checkmark.circle.fill")

@@ -3,9 +3,9 @@ import Foundation
 import SwiftUI
 
 /// One file inside an expanded release row: state icon, name, and — while the
-/// file transfers — a live determinate bar with the byte progress of the phase
-/// it is in. Completed files read as a checkmark with their size; a failed file
-/// carries its error as a tooltip and waits for the next retry.
+/// file transfers — a line naming the phase with its byte progress and bar.
+/// Completed files read as a checkmark with their size; a failed file carries
+/// its error as a tooltip and waits for the next retry.
 struct OutboxFileRow: View {
     let file: BridgeUploadFileOp
 
@@ -31,17 +31,12 @@ struct OutboxFileRow: View {
                 }
             }
 
-            if file.bar != nil {
-                HStack(spacing: 8) {
-                    ProgressTrackBar(progress: file.bar?.fraction ?? 0)
-                    Text(bytesText)
-                        .font(.caption)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .foregroundStyle(.tertiary)
-                        .fixedSize()
-                }
-                .padding(.leading, 28)
+            // The bar's own text names the phase and counts its bytes, so it
+            // is the whole of the label.
+            if let bar = file.bar {
+                ProgressLine(bar.text, progress: bar.fraction)
+                    .font(.caption)
+                    .padding(.leading, 28)
             }
         }
         .padding(.leading, 44)
@@ -94,13 +89,9 @@ struct OutboxFileRow: View {
         return error
     }
 
-    /// "Uploading 6.2 MB of 12.4 MB" while a phase is counting this file's
-    /// bytes — the same numbers the bar beside it fills with. A file at rest
-    /// has no bar and reads as its own size.
+    /// A file at rest reads as its own size.
     private var bytesText: String {
-        file.bar?.text
-            ?? Int64(file.sourceBytesTotal)
-            .formatted(.byteCount(style: .file))
+        Int64(file.sourceBytesTotal).formatted(.byteCount(style: .file))
     }
 }
 

@@ -234,10 +234,17 @@ public enum UploadObservation: Equatable {
     case awaiting
     case active(BridgeUploadProgress)
 
-    /// What the transition is doing. Active work names the dominant phase and,
-    /// while a phase is counting bytes, that phase's own numerator and
-    /// denominator.
+    /// What the transition is doing: the dominant phase, and, while a phase
+    /// is counting bytes, that phase's own numerator and denominator.
     public var statusText: String {
+        [phaseText, progressDetailText]
+            .compactMap { $0 }
+            .joined(separator: " \u{00B7} ")
+    }
+
+    /// The dominant phase alone, for a line that puts the bar between the
+    /// phase and its count.
+    public var phaseText: String {
         switch self {
         case .awaiting:
             return QueueSummary.countLabel("core.queue.queued", 1)
@@ -247,9 +254,17 @@ public enum UploadObservation: Equatable {
                     "an active cloud upload has no projected activity"
                 )
             }
-            return [phase, progress.bar?.text]
-                .compactMap { $0 }
-                .joined(separator: " \u{00B7} ")
+            return phase
+        }
+    }
+
+    /// The bytes the counting phase has moved, while one is counting.
+    public var progressDetailText: String? {
+        switch self {
+        case .awaiting:
+            return nil
+        case .active(let progress):
+            return progress.bar?.text
         }
     }
 
@@ -284,6 +299,14 @@ public enum StorageUploadObservation: Equatable {
     }
 
     public var transitionStatusText: String {
+        [transitionPhaseText, progressDetailText]
+            .compactMap { $0 }
+            .joined(separator: " \u{00B7} ")
+    }
+
+    /// The transition's phase alone, for a line that puts the bar between
+    /// the phase and its count.
+    public var transitionPhaseText: String {
         switch self {
         case .queueing:
             return NSLocalizedString(
@@ -293,9 +316,19 @@ public enum StorageUploadObservation: Equatable {
                 comment: ""
             )
         case .awaiting:
-            return UploadObservation.awaiting.statusText
+            return UploadObservation.awaiting.phaseText
         case .active(let progress, _):
-            return UploadObservation.active(progress).statusText
+            return UploadObservation.active(progress).phaseText
+        }
+    }
+
+    /// The bytes the counting phase has moved, while one is counting.
+    public var progressDetailText: String? {
+        switch self {
+        case .queueing, .awaiting:
+            return nil
+        case .active(let progress, _):
+            return UploadObservation.active(progress).progressDetailText
         }
     }
 

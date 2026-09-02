@@ -160,12 +160,13 @@ struct TriageRowView: View {
                 folderTitle
             }
             stateLine
-            if let progress = uploadObservation?.progressBar {
-                ProgressTrackBar(
-                    progress: progress.fraction,
-                    trackHeight: 3
+            if let uploadObservation {
+                ProgressLine(
+                    uploadObservation.phaseText,
+                    progress: uploadObservation.progressBar.fraction,
+                    detail: uploadObservation.progressDetailText
                 )
-                .padding(.top, 7)
+                .font(.system(size: 11.5))
             }
         }
     }
@@ -184,6 +185,7 @@ struct TriageRowView: View {
         // subscribes to the candidate-runtime signal at this leaf.
         if case .importing = row.importStatus {
             ImportProgressLine(key: row.candidateKey)
+                .font(.system(size: 11.5))
         }
         else if let statusLine {
             Text(statusLine)
@@ -257,7 +259,8 @@ extension TriageRowView {
         case .needsYou(let group, let reason):
             needsYouTrailing(group: group, reason: reason)
         case .importing:
-            ProgressView().controlSize(.small)
+            // The line under the title carries the bar; nothing trails it.
+            EmptyView()
         case .failed, .done:
             importTrailing
         case .skipped:
@@ -300,14 +303,14 @@ extension TriageRowView {
         }
     }
 
-    /// What a row past the point of being asked anything shows: the running
-    /// import's spinner, the failure's tag, or the completed import's mark and
-    /// its cloud transition.
+    /// What a row past the point of being asked anything shows: the failure's
+    /// tag, or the completed import's mark and its cloud transition. A running
+    /// import's bar is on the line under the title.
     @ViewBuilder
     private var importTrailing: some View {
         switch row.importStatus {
         case .importing:
-            ProgressView().controlSize(.small)
+            EmptyView()
         case .complete:
             if case .active = uploadObservation {
                 // Still going up to the cloud — the same arrow the storage

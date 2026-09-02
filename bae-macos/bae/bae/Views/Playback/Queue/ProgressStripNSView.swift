@@ -10,7 +10,7 @@ import SwiftUI
 /// input: the queue panel's now-playing card shows where playback is; seeking
 /// stays with the transport bar.
 final class ProgressStripNSView: NSView {
-    private let bar = ProgressTrackNSView(trackHeight: 4)
+    private let bar = ProgressTrackNSView()
     private let elapsedField: NSTextField
 
     private var positionMs: UInt64 = 0
@@ -39,7 +39,9 @@ final class ProgressStripNSView: NSView {
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
-            bar.heightAnchor.constraint(equalToConstant: 4),
+            bar.heightAnchor.constraint(
+                equalToConstant: ProgressTrackNSView.trackHeight
+            ),
             // Fixed label slot so the bar doesn't resize as digits change.
             elapsedField.widthAnchor.constraint(equalToConstant: 34),
         ])

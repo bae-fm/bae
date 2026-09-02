@@ -1,8 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// The "Identifying N / total" line and thin bar, fed by the queue sweep's
-/// progress event. Reached through `QueueProgressIndicator`'s popover: a
+/// The "Identifying [bar] N / total" line, fed by the queue sweep's progress
+/// event. Reached through `QueueProgressIndicator`'s popover: a
 /// sweep that finishes on its own does not earn a permanent row above every
 /// tab. The caller shows this only while there is something left to say —
 /// see `ImportCandidateListContent` — rather than this view deciding that
@@ -27,22 +27,12 @@ struct QueueProgressView: View {
         Button {
             onGoToUnidentified?()
         } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text("Identifying")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(
-                        verbatim:
-                            "\(identified.formatted()) / \(total.formatted())"
-                    )
-                    .font(.system(size: 12))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-                }
-                ProgressTrackBar(progress: fraction, trackHeight: 3)
-            }
+            ProgressLine(
+                String(localized: "Identifying"),
+                progress: fraction,
+                detail: "\(identified.formatted()) / \(total.formatted())"
+            )
+            .font(.system(size: 12))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
