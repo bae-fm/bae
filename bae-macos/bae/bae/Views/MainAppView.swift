@@ -139,7 +139,7 @@ struct MainAppView: View {
                     } action: {
                         searchCardFrame = $0
                     }
-                    .padding(.leading, rect.maxX - 572)
+                    .padding(.leading, rect.maxX - SearchView.width)
                     .padding(.top, rect.maxY + 5)
                     .frame(
                         maxWidth: .infinity,

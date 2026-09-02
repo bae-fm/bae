@@ -2,6 +2,10 @@ import BaeKit
 import SwiftUI
 
 struct SearchView: View {
+    /// The card's width. The overlay that places it under the search field
+    /// reads this to align their trailing edges.
+    static let width: CGFloat = 440
+
     let results: SearchResults?
     let onSelectAlbum: (String) -> Void
     let onSelectArtist: (String) -> Void
@@ -38,23 +42,16 @@ struct SearchView: View {
                 }
             }
         }
-        .frame(width: 572)
+        .frame(width: Self.width)
         .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(
-                    LinearGradient(
-                        colors: [Theme.surfaceElevated, Theme.surface],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+            RoundedRectangle(cornerRadius: 12).fill(Theme.surfaceElevated)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 12)
                 .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.5), radius: 24, y: 12)
+        .shadow(color: .black.opacity(0.7), radius: 30, y: 22)
         // The result list's height is measured (`contentHeight` above), so on
         // the mount frame the card would render as a zero-height sliver of
         // chrome before the measurement lands. Hold it invisible until then;
@@ -77,7 +74,7 @@ struct SearchView: View {
         VStack(alignment: .leading, spacing: 2) {
             resultsSection("Albums", results.albums, id: \.id) { album in
                 SearchResultRow(
-                    cover: album.cover,
+                    leading: .picture(album.cover),
                     title: album.title,
                     subtitle: albumSubtitle(album),
                     action: { onSelectAlbum(album.id) }
@@ -85,16 +82,19 @@ struct SearchView: View {
             }
             resultsSection("Artists", results.artists, id: \.id) { artist in
                 SearchResultRow(
-                    cover: artist.image,
+                    leading: .picture(artist.image),
                     title: artist.name,
                     subtitle:
                         "\(artist.albumCount) \(String(localized: "Albums"))",
                     action: { onSelectArtist(artist.artistId) }
                 )
             }
+            // A track's row leads with a waveform, not its album's cover: the
+            // albums above already show the art, and the glyph says which
+            // kind of hit this is.
             resultsSection("Tracks", results.tracks, id: \.id) { track in
                 SearchResultRow(
-                    cover: track.cover,
+                    leading: .waveform,
                     title: track.title,
                     subtitle: trackSubtitle(track),
                     trailing: track.durationLabel.isEmpty
@@ -105,7 +105,7 @@ struct SearchView: View {
             resultsSection("Composers", results.composers, id: \.id) {
                 composer in
                 SearchResultRow(
-                    cover: composer.image,
+                    leading: .picture(composer.image),
                     title: composer.name,
                     subtitle:
                         "\(composer.workCount) \(String(localized: "Works"))",
@@ -114,7 +114,7 @@ struct SearchView: View {
             }
             resultsSection("Works", results.works, id: \.id) { work in
                 SearchResultRow(
-                    cover: work.representativeCover,
+                    leading: .picture(work.representativeCover),
                     title: work.title,
                     subtitle: work.composerNames,
                     action: { onSelectWork(work.id) }
@@ -142,12 +142,12 @@ struct SearchView: View {
     private func sectionHeader(_ title: LocalizedStringKey) -> some View {
         Text(title)
             .font(.system(size: 12, weight: .heavy))
-            .tracking(0.5)
-            .foregroundStyle(.secondary)
+            .tracking(0.4)
+            .foregroundStyle(.primary.opacity(0.9))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 8)
-            .padding(.top, 18)
-            .padding(.bottom, 4)
+            .padding(.horizontal, 12)
+            .padding(.top, 14)
+            .padding(.bottom, 8)
     }
 
     private func albumSubtitle(_ album: AlbumSearchResult) -> String {
@@ -168,11 +168,18 @@ struct SearchView: View {
     }
 }
 
-/// One search hit: 46×46 cover art (placeholder when absent), a title over an
-/// optional subtitle, an optional trailing label (a track's duration), with a
-/// subtle hover fill.
+/// One search hit: 46×46 cover art where the hit has a picture, a waveform
+/// glyph where it is a track, a title over an optional subtitle, an optional
+/// trailing label (a track's duration), with a subtle hover fill.
 private struct SearchResultRow: View {
-    let cover: BridgeImageRef?
+    /// What leads the row: a 46pt picture (the placeholder when the hit has
+    /// none yet), or the waveform glyph that marks a track.
+    enum Leading {
+        case picture(BridgeImageRef?)
+        case waveform
+    }
+
+    let leading: Leading
     let title: String
     let subtitle: String?
     var trailing: String?
@@ -183,14 +190,22 @@ private struct SearchResultRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                ImageView(imageRef: cover, pointSize: 46)
-                    .frame(width: 46, height: 46)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            HStack(spacing: 14) {
+                switch leading {
+                case .picture(let cover):
+                    ImageView(imageRef: cover, pointSize: 46)
+                        .frame(width: 46, height: 46)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                case .waveform:
+                    Image(systemName: "waveform")
+                        .font(.system(size: 18, weight: .regular))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20)
+                }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .lineLimit(1)
                     StableOptionalText(
                         text: subtitle,
@@ -205,17 +220,20 @@ private struct SearchResultRow: View {
 
                 if let trailing {
                     Text(trailing)
-                        .font(.system(size: 14).monospacedDigit())
+                        .font(
+                            .system(size: 13.5, weight: .medium)
+                                .monospacedDigit()
+                        )
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.white.opacity(hovering ? 0.06 : 0))
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.white.opacity(hovering ? 0.05 : 0))
             )
         }
         .buttonStyle(.plain)

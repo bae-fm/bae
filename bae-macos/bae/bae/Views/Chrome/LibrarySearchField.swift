@@ -10,13 +10,13 @@ struct LibrarySearchField: View {
     var onEscape: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.tertiary)
+                .font(.system(size: 13, weight: .semibold))
             TextField(prompt, text: $text)
                 .textFieldStyle(.plain)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 13.5, weight: .medium))
                 .focused(focused)
                 .onKeyPress(.escape) {
                     onEscape()
@@ -24,24 +24,31 @@ struct LibrarySearchField: View {
                 }
             if !text.isEmpty {
                 Button(action: { text = "" }) {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(.secondary)
-                        .font(.system(size: 13))
+                        .frame(width: 20, height: 20)
+                        .background(
+                            Circle().fill(Color.white.opacity(0.12))
+                        )
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 10)
-        .frame(height: 38)
+        .padding(.horizontal, 12)
+        .frame(height: 36)
+        // A sunken well like the section control's; the accent edge appears
+        // only while the field has focus.
         .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Theme.field)
+            RoundedRectangle(cornerRadius: 9)
+                .fill(TitleBarChrome.well)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 9)
                         .strokeBorder(
-                            focused.wrappedValue
-                                ? Theme.accent.opacity(0.7)
-                                : Color.white.opacity(0.08),
+                            Theme.accent.opacity(
+                                focused.wrappedValue ? 0.6 : 0
+                            ),
                             lineWidth: 1
                         )
                 )

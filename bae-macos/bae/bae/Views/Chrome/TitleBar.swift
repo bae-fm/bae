@@ -51,7 +51,7 @@ struct TitleBar: View {
 
                 Button(action: { openSettings() }) {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 17, weight: .medium))
                         .frame(width: 34, height: 34)
                         .contentShape(Rectangle())
                 }
@@ -63,17 +63,15 @@ struct TitleBar: View {
         .padding(.trailing, titleBarTrailingPadding)
         .frame(height: 56)
         .background { WindowDragArea() }
+        // The bar is the window's own ground with a hairline under it, not a
+        // raised band: the controls on it are what set it apart.
         .background {
-            LinearGradient(
-                colors: [Theme.surfaceElevated, Theme.surface],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(Color.white.opacity(0.08))
-                    .frame(height: 1)
-            }
+            Theme.background
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(Color.white.opacity(0.07))
+                        .frame(height: 1)
+                }
         }
         .onChange(of: searchText, initial: true) { oldValue, newValue in
             libraryProjections.deactivateSearch(oldValue)
@@ -115,9 +113,9 @@ struct TitleBar: View {
     }
 }
 
-/// The Library/Import selector: a pill of two segments, the active one filled
-/// with the accent. Reads as a segmented group to assistive tech; the caller
-/// owns the section switch (and its animation).
+/// The Library/Import selector: a sunken pill of two segments, the active one
+/// raised on a neutral tile. Reads as a segmented group to assistive tech; the
+/// caller owns the section switch (and its animation).
 private struct SectionSegmentedControl: View {
     let selection: MainSection
     let onSelect: (MainSection) -> Void
@@ -127,14 +125,10 @@ private struct SectionSegmentedControl: View {
             segment("Library", section: .library)
             segment("Import", section: .importing)
         }
-        .padding(4)
+        .padding(3)
         .background(
-            RoundedRectangle(cornerRadius: 11)
-                .fill(Theme.field)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 11)
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 9)
+                .fill(TitleBarChrome.well)
         )
         .accessibilityElement(children: .contain)
     }
@@ -148,17 +142,17 @@ private struct SectionSegmentedControl: View {
             onSelect(section)
         } label: {
             Text(title)
-                .font(.system(size: 14.5, weight: .bold))
-                .foregroundStyle(active ? Color.white : Color.secondary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 7)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(active ? Color.primary : Color.secondary)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 6)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(active ? Theme.accent : Color.clear)
+                    RoundedRectangle(cornerRadius: 6.5)
+                        .fill(active ? TitleBarChrome.tile : Color.clear)
                         .shadow(
-                            color: active ? Theme.accent.opacity(0.4) : .clear,
-                            radius: active ? 6 : 0,
-                            y: active ? 2 : 0
+                            color: .black.opacity(active ? 0.45 : 0),
+                            radius: 1.5,
+                            y: 1
                         )
                 )
                 .contentShape(Rectangle())
@@ -169,6 +163,13 @@ private struct SectionSegmentedControl: View {
             active ? [.isButton, .isSelected] : .isButton
         )
     }
+}
+
+/// The title bar's two fills: the sunken well the segmented control and the
+/// search field sit in, and the raised tile the active segment stands on.
+enum TitleBarChrome {
+    static let well = Color.black.opacity(0.28)
+    static let tile = Color(red: 0.165, green: 0.165, blue: 0.192)
 }
 
 #if DEBUG
