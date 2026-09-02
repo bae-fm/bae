@@ -11,11 +11,20 @@ func releaseGroupDisclosureID(
 /// thin rail that runs down the members — whitespace and the rail say the
 /// membership, not dividers.
 enum ImportListHierarchyLayout {
-    /// How far a member row's content starts in from the list edge.
-    static let memberInset: CGFloat = 32
-    /// Where the rail runs, from the list edge — under the header's folder
-    /// glyph.
+    /// The horizontal padding every list row carries, member or not.
+    static let rowEdgePadding: CGFloat = 14
+    /// Where the rail runs, from the list edge — under the header's chevron.
     static let railInset: CGFloat = 21
+    /// Where a member row's content starts, from the list edge — 10pt past
+    /// the rail.
+    static let memberContentInset: CGFloat = 31
+    /// The leading padding a member row adds on top of its own edge padding
+    /// so its content lands at `memberContentInset`.
+    static var memberInset: CGFloat { memberContentInset - rowEdgePadding }
+    /// Air over a group boundary — a header, or the first top-level row
+    /// after a group's members. Rendered as its own spacer row so every real
+    /// row keeps a symmetric box for selection and highlight chrome to trace.
+    static let groupBoundaryAir: CGFloat = 6
 }
 
 extension View {
@@ -351,20 +360,25 @@ struct ImportCandidateListContent: View {
             case .pending:
                 VStack(spacing: 0) {
                     entryList(list, proxy: proxy)
-                    Divider()
-                    TriageFootBar(
-                        selectedCount: selectedReadyKeys.count,
-                        readyCount: summary.ready.count,
-                        onSelectAll: {
-                            uiStore.selectAllReady(
-                                summary.ready.map(\.candidateKey)
-                            )
-                        },
-                        onSelectNone: { uiStore.clearReadySelection() },
-                        onImport: {
-                            onImportSelected(Array(selectedReadyKeys))
-                        }
-                    )
+                    // The bar exists to act on a selection; with none there
+                    // is nothing to act on, and the first checkbox brings
+                    // it up.
+                    if !selectedReadyKeys.isEmpty {
+                        Divider()
+                        TriageFootBar(
+                            selectedCount: selectedReadyKeys.count,
+                            readyCount: summary.ready.count,
+                            onSelectAll: {
+                                uiStore.selectAllReady(
+                                    summary.ready.map(\.candidateKey)
+                                )
+                            },
+                            onSelectNone: { uiStore.clearReadySelection() },
+                            onImport: {
+                                onImportSelected(Array(selectedReadyKeys))
+                            }
+                        )
+                    }
                 }
             case .done, .skipped:
                 entryList(list, proxy: proxy)
@@ -390,6 +404,13 @@ extension ImportCandidateListContent {
         List(selection: candidateSelectionBinding) {
             ForEach(0..<list.totalCount, id: \.self) { index in
                 let stableKey = list.idAt(index)
+                let air = airAbove(index, in: list)
+                if air > 0 {
+                    Color.clear
+                        .frame(height: air)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                }
                 entry(at: index, in: list)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
@@ -421,6 +442,12 @@ extension ImportCandidateListContent {
             }
         }
         .listStyle(.plain)
+        // The list's default minimum row height (~24pt) would inflate the
+        // 6pt boundary spacer rows into wide bands of air.
+        .environment(
+            \.defaultMinListRowHeight,
+            ImportListHierarchyLayout.groupBoundaryAir
+        )
         .coordinateSpace(name: importCandidateListCoordinateSpace)
         .onPreferenceChange(ImportCandidateListRowBoundsKey.self) { rows in
             if let target = viewport.update(
@@ -460,6 +487,46 @@ extension ImportCandidateListContent {
         }
     }
 
+    /// The air over the row at `index`: every header past the top, and the
+    /// first top-level row after a group's members. Zero while a page it
+    /// reads has not landed, like the placeholder row that holds its spot.
+    private func airAbove(
+        _ index: Int,
+        in list: PaginatedList<BridgeImportListItem>
+    ) -> CGFloat {
+        guard index > 0, let key = list.idAt(index),
+            let item = importStore.items[key]
+        else { return 0 }
+        let boundary =
+            switch item {
+            case .groupHeader:
+                true
+            case .candidate, .invalid:
+                isGroupMember(at: index, in: list) == false
+                    && isGroupMember(at: index - 1, in: list) == true
+            }
+        return boundary ? ImportListHierarchyLayout.groupBoundaryAir : 0
+    }
+
+    /// Whether the item at `index` is a group member; `nil` while its page
+    /// has not landed.
+    private func isGroupMember(
+        at index: Int,
+        in list: PaginatedList<BridgeImportListItem>
+    ) -> Bool? {
+        guard index >= 0, let key = list.idAt(index),
+            let item = importStore.items[key]
+        else { return nil }
+        switch item {
+        case .groupHeader:
+            return false
+        case .candidate(_, _, let isMember):
+            return isMember
+        case .invalid(_, _, let isMember):
+            return isMember
+        }
+    }
+
     /// A folder group renders as a header row followed by sibling list items,
     /// rather than a `DisclosureGroup`. Core marks the actual members so only
     /// those siblings receive the child inset.
@@ -488,9 +555,8 @@ extension ImportCandidateListContent {
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 10)
-            .padding(.bottom, 4)
+            .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
+            .padding(.vertical, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

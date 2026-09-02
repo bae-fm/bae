@@ -9,7 +9,7 @@ struct ImportPreviewDataTests {
     func importListHierarchyRail() {
         #expect(
             ImportListHierarchyLayout.railInset
-                < ImportListHierarchyLayout.memberInset
+                < ImportListHierarchyLayout.memberContentInset
         )
     }
 

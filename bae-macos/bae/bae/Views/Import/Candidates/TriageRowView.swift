@@ -98,7 +98,7 @@ struct TriageRowView: View {
             checkboxControl
         }
         .padding(.vertical, 4)
-        .padding(.horizontal, 14)
+        .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
     }
 
     /// The folders this row is the whole of, read as one release. Each offers
@@ -123,8 +123,7 @@ struct TriageRowView: View {
         if let selection {
             Toggle(isOn: selection) {}
                 .labelsHidden()
-                .toggleStyle(.checkbox)
-                .controlSize(.small)
+                .toggleStyle(TriageCheckboxToggleStyle())
         }
     }
 
@@ -359,6 +358,33 @@ extension TriageRowView {
             .background(
                 RoundedRectangle(cornerRadius: 5).fill(tint.opacity(0.14))
             )
+    }
+}
+
+/// The bulk-select checkbox, drawn by hand: the system checkbox is a filled
+/// square that disappears against the dark list, so this one is an open
+/// outline at rest and the accent tile with a mark when set.
+private struct TriageCheckboxToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            configuration.isOn = !configuration.isOn
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Theme.accent)
+                    .opacity(configuration.isOn ? 1 : 0)
+                RoundedRectangle(cornerRadius: 4)
+                    .strokeBorder(.white.opacity(0.3), lineWidth: 1.5)
+                    .opacity(configuration.isOn ? 0 : 1)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(Theme.background)
+                    .opacity(configuration.isOn ? 1 : 0)
+            }
+            .frame(width: 14, height: 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 

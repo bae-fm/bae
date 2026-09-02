@@ -913,9 +913,24 @@ final class ImportCandidateViewportTests: XCTestCase {
         "/library/release-\(index)"
     }
 
+    /// The list position of the topmost visible entry. Table rows are not
+    /// list positions: the list interleaves group-boundary spacer rows, so
+    /// the mapping skips a spacer at the top edge and discounts the spacers
+    /// above. Spacers are the only rows as short as the boundary air.
     private func topRow(in table: NSTableView) -> Int {
         let y = table.enclosingScrollView?.contentView.bounds.minY ?? 0
-        return table.row(at: NSPoint(x: 0, y: y + 1))
+        var row = table.row(at: NSPoint(x: 0, y: y + 1))
+        while isSpacerRow(row, in: table) {
+            row += 1
+        }
+        let spacersAbove = (0..<row)
+            .count { isSpacerRow($0, in: table) }
+        return row - spacersAbove
+    }
+
+    private func isSpacerRow(_ row: Int, in table: NSTableView) -> Bool {
+        table.rect(ofRow: row).height
+            <= ImportListHierarchyLayout.groupBoundaryAir
     }
 
     private func descendants(of view: NSView) -> [NSView] {

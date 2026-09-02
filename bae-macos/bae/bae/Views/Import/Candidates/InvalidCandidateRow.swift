@@ -29,6 +29,7 @@ struct InvalidCandidateRow: View {
             Spacer()
         }
         .padding(.vertical, 4)
+        .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
         .contentShape(Rectangle())
         .help(reason.localizedText)
         .contextMenu {

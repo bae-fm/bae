@@ -119,12 +119,23 @@ struct ImportCandidateCheckboxTests {
         await Task.yield()
         host.layoutSubtreeIfNeeded()
 
-        let buttons: [NSButton] = SnapshotTestSupport.descendants(of: host)
-            .compactMap {
-                $0 as? NSButton
-            }
-        let checkbox = try #require(buttons.first)
-        try click(checkbox, in: window)
+        // SwiftUI's List is table-backed, so the table's own geometry says
+        // where the row is; the checkbox sits centered in the row's trailing
+        // edge padding.
+        let tableView = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTableView }
+                .first
+        )
+        let cell = try #require(
+            tableView.view(atColumn: 0, row: 0, makeIfNecessary: false)
+        )
+        let cellRect = cell.convert(cell.bounds, to: nil)
+        let point = NSPoint(
+            x: cellRect.maxX - ImportListHierarchyLayout.rowEdgePadding - 7,
+            y: cellRect.midY
+        )
+        try click(at: point, in: window)
         await Task.yield()
 
         #expect(
@@ -134,16 +145,12 @@ struct ImportCandidateCheckboxTests {
     }
 
     @MainActor
-    private func click(_ checkbox: NSButton, in window: NSWindow) throws {
-        let checkboxCenter = checkbox.convert(
-            NSPoint(x: checkbox.bounds.midX, y: checkbox.bounds.midY),
-            to: nil
-        )
+    private func click(at point: NSPoint, in window: NSWindow) throws {
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             let event = try #require(
                 NSEvent.mouseEvent(
                     with: type,
-                    location: checkboxCenter,
+                    location: point,
                     modifierFlags: [],
                     timestamp: ProcessInfo.processInfo.systemUptime,
                     windowNumber: window.windowNumber,

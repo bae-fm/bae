@@ -34,17 +34,18 @@ struct TriageFootBar: View {
             Button(action: onImport) {
                 Text(String(localized: "Import \(selectedCount)"))
                     .font(.system(size: 12.5, weight: .semibold))
-                    .padding(.horizontal, 15)
-                    .padding(.vertical, 6)
-                    .foregroundStyle(Theme.background)
-                    .background(Capsule().fill(Theme.accent))
+                    .foregroundStyle(
+                        selectedCount == 0
+                            ? AnyShapeStyle(.tertiary)
+                            : AnyShapeStyle(Theme.accent)
+                    )
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(selectedCount == 0)
-            .opacity(selectedCount == 0 ? 0.5 : 1)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
+        .padding(.vertical, 12)
         .background(
             LinearGradient(
                 colors: [Theme.surfaceElevated, Theme.surface],
