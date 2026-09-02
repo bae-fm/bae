@@ -233,14 +233,14 @@ extension ImportReleaseSummaryView.Style {
 
     fileprivate var titleFont: Font {
         switch self {
-        case .sidebar: .system(size: 14, weight: .semibold)
+        case .sidebar: .system(size: 13, weight: .semibold)
         case .card: .system(size: 17, weight: .semibold)
         }
     }
 
     fileprivate var artistFont: Font {
         switch self {
-        case .sidebar: .system(size: 12.5)
+        case .sidebar: .system(size: 11.5)
         case .card: .system(size: 13)
         }
     }

@@ -18,27 +18,19 @@ struct TriageFootBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Text(String(localized: "\(selectedCount) selected"))
-                .font(.system(size: 12.5))
-                .foregroundStyle(.secondary)
-            Spacer()
             Button(action: allSelected ? onSelectNone : onSelectAll) {
                 Text(
                     allSelected
                         ? String(localized: "Select None")
                         : String(localized: "Select All")
                 )
-                .font(.system(size: 12.5, weight: .medium))
-                .padding(.horizontal, 13)
-                .padding(.vertical, 6)
-                .overlay(
-                    Capsule().strokeBorder(Color.secondary.opacity(0.35))
-                )
+                .font(.system(size: 12))
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .disabled(readyCount == 0)
-
+            Spacer()
             Button(action: onImport) {
                 Text(String(localized: "Import \(selectedCount)"))
                     .font(.system(size: 12.5, weight: .semibold))

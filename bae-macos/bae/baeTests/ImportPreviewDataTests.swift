@@ -5,19 +5,12 @@ import Testing
 
 @Suite("Import preview data")
 struct ImportPreviewDataTests {
-    @Test("only group members receive the child indent")
-    func importListHierarchyInsets() {
-        let root = ImportListHierarchyLayout.insets(isGroupMember: false)
-        #expect(root.top == 0)
-        #expect(root.leading == 0)
-        #expect(root.bottom == 0)
-        #expect(root.trailing == 0)
-
-        let member = ImportListHierarchyLayout.insets(isGroupMember: true)
-        #expect(member.top == 0)
-        #expect(member.leading == 32)
-        #expect(member.bottom == 0)
-        #expect(member.trailing == 0)
+    @Test("the member rail runs inside the child indent")
+    func importListHierarchyRail() {
+        #expect(
+            ImportListHierarchyLayout.railInset
+                < ImportListHierarchyLayout.memberInset
+        )
     }
 
     @MainActor

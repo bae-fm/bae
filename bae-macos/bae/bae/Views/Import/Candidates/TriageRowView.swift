@@ -13,7 +13,7 @@ struct TriageRowView: View {
     /// The cover's edge, in points. Named because it is also the size the
     /// sidebar warms Ready covers at — a decode cached at another size is a
     /// different entry and would not spare this row its placeholder.
-    static let coverPointSize: CGFloat = 44
+    static let coverPointSize: CGFloat = 40
 
     let row: BridgeTriageRow
     let coverContent: ImageContent?
@@ -55,61 +55,50 @@ struct TriageRowView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            rowContent
-            checkboxControl
-                .padding(.top, 10)
-                .padding(.leading, 9)
-        }
-        .padding(
-            ImportListHierarchyLayout.insets(
-                isGroupMember: isGroupMember
-            )
-        )
-        .opacity(isPending ? 0.6 : 1)
-        .contentShape(Rectangle())
-        .contextMenu {
-            if let skipAction = row.skipAction {
-                switch skipAction {
-                case .skip:
-                    Button("Skip") { onSkip(true) }
-                case .unskip:
-                    Button("Unskip") { onSkip(false) }
+        rowContent
+            .groupMemberRail(isGroupMember)
+            .opacity(isPending ? 0.6 : 1)
+            .contentShape(Rectangle())
+            .contextMenu {
+                if let skipAction = row.skipAction {
+                    switch skipAction {
+                    case .skip:
+                        Button("Skip") { onSkip(true) }
+                    case .unskip:
+                        Button("Unskip") { onSkip(false) }
+                    }
+                    Divider()
                 }
-                Divider()
-            }
-            Button("Reveal in Finder") {
-                SystemActions.revealInFinder(path: row.candidateKey)
-            }
-            // A folder read as one release is this row and nothing else, so
-            // its row is the only place left to say otherwise. A folder read
-            // as several is a group of rows, and its header carries that
-            // choice — a row is a release, not a place to answer a question
-            // about the folder holding it.
-            ForEach(combinedBoundaries, id: \.key) { boundary in
-                Divider()
-                Button("Keep as Separate Releases") {
-                    onReleaseDecision(
-                        boundary.key,
-                        .keepAsSeparateReleases
-                    )
+                Button("Reveal in Finder") {
+                    SystemActions.revealInFinder(path: row.candidateKey)
+                }
+                // A folder read as one release is this row and nothing else, so
+                // its row is the only place left to say otherwise. A folder read
+                // as several is a group of rows, and its header carries that
+                // choice — a row is a release, not a place to answer a question
+                // about the folder holding it.
+                ForEach(combinedBoundaries, id: \.key) { boundary in
+                    Divider()
+                    Button("Keep as Separate Releases") {
+                        onReleaseDecision(
+                            boundary.key,
+                            .keepAsSeparateReleases
+                        )
+                    }
                 }
             }
-        }
     }
 
     private var rowContent: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Color.clear.frame(width: 18)
+        HStack(alignment: .center, spacing: 10) {
             cover
             meta
             Spacer(minLength: 4)
             trailing
-                .padding(.top, 2)
+            checkboxControl
         }
-        .padding(.vertical, 7)
-        .padding(.leading, 9)
-        .padding(.trailing, 10)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 14)
     }
 
     /// The folders this row is the whole of, read as one release. Each offers
@@ -127,6 +116,8 @@ struct TriageRowView: View {
 
     // MARK: - Leading
 
+    /// Trailing, and only on rows that can join the bulk import: a row with
+    /// nothing to select reserves nothing.
     @ViewBuilder
     private var checkboxControl: some View {
         if let selection {
@@ -134,21 +125,32 @@ struct TriageRowView: View {
                 .labelsHidden()
                 .toggleStyle(.checkbox)
                 .controlSize(.small)
-                .frame(width: 18, height: 18)
-                .padding(.top, 3)
-        }
-        else {
-            Color.clear.frame(width: 18)
         }
     }
 
+    /// The matched release's cover, or a dim folder tile for a folder no
+    /// release has been read from yet — the tile keeps every row's text
+    /// starting at one x whether or not there is art.
+    @ViewBuilder
     private var cover: some View {
-        ImageView(
-            content: coverContent,
-            pointSize: Self.coverPointSize
-        )
-        .frame(width: Self.coverPointSize, height: Self.coverPointSize)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        if releaseSummary == nil, coverContent == nil {
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Theme.placeholder)
+                .frame(width: Self.coverPointSize, height: Self.coverPointSize)
+                .overlay {
+                    Image(systemName: "folder")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.tertiary)
+                }
+        }
+        else {
+            ImageView(
+                content: coverContent,
+                pointSize: Self.coverPointSize
+            )
+            .frame(width: Self.coverPointSize, height: Self.coverPointSize)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
     }
 
     // MARK: - Meta
@@ -183,15 +185,11 @@ struct TriageRowView: View {
     }
 
     private var folderTitle: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "folder")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Text(row.folderName)
-                .font(.system(size: 14, weight: .semibold))
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
+        Text(row.folderName)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
     }
 
     @ViewBuilder
@@ -203,7 +201,7 @@ struct TriageRowView: View {
         }
         else if let statusLine {
             Text(statusLine)
-                .font(.system(size: 12.5))
+                .font(.system(size: 11.5))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)

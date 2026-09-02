@@ -7,12 +7,31 @@ func releaseGroupDisclosureID(
     ReleaseGroupDisclosureID(key: key)
 }
 
+/// A group member's place under its folder header: the child inset, plus the
+/// thin rail that runs down the members — whitespace and the rail say the
+/// membership, not dividers.
 enum ImportListHierarchyLayout {
-    static func insets(isGroupMember: Bool) -> EdgeInsets {
-        if isGroupMember {
-            return EdgeInsets(top: 0, leading: 32, bottom: 0, trailing: 0)
+    /// How far a member row's content starts in from the list edge.
+    static let memberInset: CGFloat = 32
+    /// Where the rail runs, from the list edge — under the header's folder
+    /// glyph.
+    static let railInset: CGFloat = 21
+}
+
+extension View {
+    func groupMemberRail(_ isGroupMember: Bool) -> some View {
+        padding(
+            .leading,
+            isGroupMember ? ImportListHierarchyLayout.memberInset : 0
+        )
+        .overlay(alignment: .leading) {
+            if isGroupMember {
+                Rectangle()
+                    .fill(.white.opacity(0.08))
+                    .frame(width: 1)
+                    .padding(.leading, ImportListHierarchyLayout.railInset)
+            }
         }
-        return EdgeInsets()
     }
 }
 
@@ -372,6 +391,8 @@ extension ImportCandidateListContent {
             ForEach(0..<list.totalCount, id: \.self) { index in
                 let stableKey = list.idAt(index)
                 entry(at: index, in: list)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
                     .id(index)
                     .background {
                         if let stableKey {
@@ -399,6 +420,7 @@ extension ImportCandidateListContent {
                     }
             }
         }
+        .listStyle(.plain)
         .coordinateSpace(name: importCandidateListCoordinateSpace)
         .onPreferenceChange(ImportCandidateListRowBoundsKey.self) { rows in
             if let target = viewport.update(
@@ -452,16 +474,24 @@ extension ImportCandidateListContent {
                 !expanded
             )
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 7) {
                 Image(systemName: expanded ? "chevron.down" : "chevron.right")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundStyle(.tertiary)
                     .frame(width: 9)
-                Label(group.name, systemImage: "folder")
+                Image(systemName: "folder")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                Text(group.name)
                     .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, 6)
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            .padding(.bottom, 4)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -552,7 +582,7 @@ extension ImportCandidateListContent {
                 }
             }
         }
-        .padding(ImportListHierarchyLayout.insets(isGroupMember: isGroupMember))
+        .groupMemberRail(isGroupMember)
     }
 }
 
