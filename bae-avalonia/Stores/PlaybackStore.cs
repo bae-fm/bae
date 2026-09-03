@@ -201,38 +201,25 @@ internal sealed class PlaybackStore
         _contextSubscriptionIdentities.TryGetValue(key, out var current) &&
         ReferenceEquals(current, identity);
 
-    public void ApplyValues(BridgePlaybackValues values, IMediaControl mediaControls)
+    public void ApplyValues(BridgePlaybackValues values)
     {
         switch (values.State)
         {
             case BridgePlaybackValueState.Stopped:
                 ApplyStopped();
-                mediaControls.UpdateNowPlayingStopped();
                 break;
             case BridgePlaybackValueState.Loading loading:
                 ApplyLoading(loading.TrackId, loading.Track);
-                if (loading.Track is { } loadingTrack)
-                {
-                    mediaControls.UpdateNowPlayingLoading(
-                        loadingTrack.TrackTitle, loadingTrack.ArtistNames, loadingTrack.AlbumTitle,
-                        loadingTrack.CoverImage, loadingTrack.DurationMs);
-                }
                 break;
             case BridgePlaybackValueState.Playing playing:
                 ApplyPlaying(
                     playing.AlbumId, playing.TrackId, playing.TrackTitle,
                     playing.ArtistNames, playing.CoverImage);
-                mediaControls.UpdateNowPlayingPlaying(
-                    playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle,
-                    playing.CoverImage, playing.DurationMs);
                 break;
             case BridgePlaybackValueState.Paused paused:
                 ApplyPaused(
                     paused.AlbumId, paused.TrackId, paused.TrackTitle,
                     paused.ArtistNames, paused.CoverImage, paused.Reason);
-                mediaControls.UpdateNowPlayingPaused(
-                    paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle,
-                    paused.CoverImage, paused.DurationMs);
                 break;
         }
         if (values.Position is { } position)
@@ -240,19 +227,16 @@ internal sealed class PlaybackStore
             if (values.SeekRevision != _lastSeekRevision)
             {
                 ApplySeeked(position.TrackId, position.PositionMs, position.DurationMs, position.Progress);
-                mediaControls.UpdateSeekedPosition(position.PositionMs, position.DurationMs);
             }
             else
             {
                 ApplyProgress(position.TrackId, position.PositionMs, position.DurationMs, position.Progress);
-                mediaControls.UpdatePosition(position.PositionMs, position.DurationMs);
             }
         }
         _lastSeekRevision = values.SeekRevision;
         ApplyVolume(values.Volume);
         ApplyMute(values.IsMuted);
         ApplyRepeat(values.RepeatMode);
-        mediaControls.UpdateVolume(values.Volume, values.IsMuted);
     }
 
     public void ApplyPlaying(string albumId, string trackId, string trackTitle, string artistNames, BridgeImageRef? coverImage)

@@ -3,14 +3,9 @@ import BaeKit
 @MainActor
 final class DesktopEventHandler {
     private let importStore: ImportStore
-    private let mediaControlService: MediaControlService
 
-    init(
-        importStore: ImportStore,
-        mediaControlService: MediaControlService
-    ) {
+    init(importStore: ImportStore) {
         self.importStore = importStore
-        self.mediaControlService = mediaControlService
     }
 
     func apply(_ event: BridgeUiEvent) {
@@ -40,16 +35,13 @@ final class DesktopEventHandler {
                 target: target,
                 durationMs: durationMs
             )
-            mediaControlService.updateNowPlayingForPreview(state: values.state)
         case .paused(let target, let durationMs):
             importStore.previewState = .paused(
                 target: target,
                 durationMs: durationMs
             )
-            mediaControlService.updateNowPlayingForPreview(state: values.state)
         case .idle:
             importStore.previewState = .idle
-            mediaControlService.updateNowPlayingForPreview(state: .idle)
         }
         importStore.previewProgressSubject.send(
             values.state == .idle
@@ -59,6 +51,5 @@ final class DesktopEventHandler {
                     positionMs: values.positionMs
                 )
         )
-        mediaControlService.updatePreviewPosition(positionMs: values.positionMs)
     }
 }

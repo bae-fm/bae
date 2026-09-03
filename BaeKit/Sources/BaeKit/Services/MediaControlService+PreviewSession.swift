@@ -165,28 +165,19 @@
 
         // MARK: - Preview Now Playing
 
-        public func updateNowPlayingForPreview(state: BridgePreviewState) {
-            switch state {
-            case .playing(let target, let durationMs),
-                .paused(let target, let durationMs):
-                let playbackRate: Double =
-                    if case .playing = state {
-                        1.0
-                    }
-                    else {
-                        0.0
-                    }
-                setPreviewNowPlaying(
-                    path: target.path,
-                    durationMs: durationMs,
-                    playbackRate: playbackRate
-                )
-            case .idle:
-                clearNowPlaying()
-            }
+        func updatePreviewNowPlaying(
+            target: BridgePreviewTarget,
+            durationMs: UInt64,
+            isPlaying: Bool
+        ) {
+            setPreviewNowPlaying(
+                path: target.path,
+                durationMs: durationMs,
+                playbackRate: isPlaying ? 1.0 : 0.0
+            )
         }
 
-        public func updatePreviewPosition(positionMs: UInt64) {
+        func updatePreviewPosition(positionMs: UInt64) {
             guard isShowingPreview else {
                 return
             }

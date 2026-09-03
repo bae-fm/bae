@@ -2,6 +2,8 @@ package fm.bae.app.playback
 
 import uniffi.bae_bridge.BridgeImageRef
 import uniffi.bae_bridge.BridgeLoadingTrackInfo
+import uniffi.bae_bridge.BridgeMediaControlPlayback
+import uniffi.bae_bridge.BridgeMediaControlValues
 import uniffi.bae_bridge.BridgePlaybackPauseReason
 import uniffi.bae_bridge.BridgePlaybackPosition
 import uniffi.bae_bridge.BridgePlaybackValueState
@@ -27,6 +29,12 @@ internal fun playbackValues(
         repeatMode = repeatMode,
         remoteDeviceName = null,
         preview = BridgePreviewValues(BridgePreviewState.Idle, 0uL, 0.0),
+        mediaControl =
+            BridgeMediaControlValues(
+                playback = BridgeMediaControlPlayback.Library(state, position, seekRevision),
+                volume = volume,
+                isMuted = isMuted,
+            ),
     )
 
 internal fun playingState(

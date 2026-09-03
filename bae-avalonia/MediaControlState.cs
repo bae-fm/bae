@@ -52,12 +52,10 @@ internal sealed class MediaControlState
     /// shown. The seek handler projects the optimistic timeline against it.</summary>
     internal ulong? CurrentDurationMs => _currentDurationMs;
 
-    /// <summary>The display for a library track, or null while a preview is
-    /// showing (a preview clip takes over the now-playing slot). The caller only
-    /// invokes this for a playing or paused track, or a loading target whose
-    /// metadata core has resolved; a bare loading event keeps the existing
-    /// display untouched.</summary>
-    internal MediaControlDisplay? UpdateForTrack(
+    /// <summary>The display for a library track. Core selects library or preview
+    /// before this state receives the value; the caller invokes this only for a
+    /// playing or paused track, or a loading target whose metadata is resolved.</summary>
+    internal MediaControlDisplay UpdateForTrack(
         string trackTitle,
         string artistNames,
         string albumTitle,
@@ -65,11 +63,6 @@ internal sealed class MediaControlState
         ulong durationMs,
         MediaControlPlaybackStatus status)
     {
-        if (_isShowingPreview)
-        {
-            return null;
-        }
-
         _currentDurationMs = durationMs;
         _hasDisplay = true;
         return new MediaControlDisplay(status, trackTitle, artistNames, albumTitle, ArtworkFor(coverToken));
@@ -79,6 +72,7 @@ internal sealed class MediaControlState
     /// unconditionally, so this returns nothing.</summary>
     internal void Clear()
     {
+        _isShowingPreview = false;
         _hasDisplay = false;
         _currentDurationMs = null;
         _artworkToken = null;
@@ -110,14 +104,6 @@ internal sealed class MediaControlState
         _artworkToken = null;
         var status = isPlaying ? MediaControlPlaybackStatus.Playing : MediaControlPlaybackStatus.Paused;
         return new MediaControlDisplay(status, FileName(path), string.Empty, string.Empty, new MediaControlArtwork.Clear());
-    }
-
-    /// <summary>Leaves preview mode and resets every tracked field, like
-    /// <see cref="Clear"/>.</summary>
-    internal void ClearPreview()
-    {
-        _isShowingPreview = false;
-        Clear();
     }
 
     /// <summary>A timeline push for the current preview clip, or null when nothing

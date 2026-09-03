@@ -191,10 +191,8 @@ open class AppService: @unchecked Sendable, Observable {
         downloads = components.downloads
         cast = components.cast
         playbackValues = PlaybackValueHandler(
-            appHandle: appHandle,
             playbackStore: components.playbackStore,
-            castStore: components.castStore,
-            mediaControlService: mediaControlService
+            castStore: components.castStore
         )
         #if DEBUG
             testAccess = AppServiceTestAccess(
@@ -332,11 +330,21 @@ open class AppService: @unchecked Sendable, Observable {
     public func startCommonSubscriptions() {
         commonSubscriptions.start(
             applyPlayback: { [weak self] values in
-                self?.playbackValues.apply(values)
-                self?.applyPlatformPlaybackValues(values)
+                guard let self else { return }
+                playbackValues.apply(values)
+                mediaControlService.applyMediaControlValues(
+                    values.mediaControl,
+                    appHandle: appHandle
+                )
+                applyPlatformPlaybackValues(values)
             },
             applyQueue: { [weak self] snapshot in
                 self?.playbackValues.applyQueueSnapshot(snapshot)
+                self?.mediaControlService
+                    .updateCommandAvailability(
+                        hasNext: snapshot.hasNext,
+                        hasPrevious: snapshot.hasPrevious
+                    )
             },
             onError: { [weak self] error in self?.showError(error) }
         )

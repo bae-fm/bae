@@ -191,7 +191,7 @@ struct PlaybackAudioSessionTests {
 
 private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
 
-private func playingState(trackId: String = "t1") -> BridgePlaybackState {
+private func playingState(trackId: String = "t1") -> BridgePlaybackValueState {
     .playing(
         trackId: trackId,
         trackTitle: "Track Title",
@@ -204,7 +204,7 @@ private func playingState(trackId: String = "t1") -> BridgePlaybackState {
     )
 }
 
-private func pausedState(trackId: String = "t1") -> BridgePlaybackState {
+private func pausedState(trackId: String = "t1") -> BridgePlaybackValueState {
     .paused(
         trackId: trackId,
         trackTitle: "Track Title",
@@ -213,7 +213,8 @@ private func pausedState(trackId: String = "t1") -> BridgePlaybackState {
         albumId: "album-1",
         albumTitle: "Album Title",
         coverImage: nil,
-        durationMs: 200_000
+        durationMs: 200_000,
+        reason: .manual
     )
 }
 

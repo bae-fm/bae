@@ -52,6 +52,31 @@ pub struct PreviewValues {
     pub progress: f64,
 }
 
+/// The one playback presentation an operating-system media surface should
+/// show. Core resolves library versus preview ownership so platform adapters
+/// never race two independent players onto one system slot.
+#[derive(Debug, Clone)]
+pub struct MediaControlValues {
+    pub playback: MediaControlPlayback,
+    pub volume: f32,
+    pub is_muted: bool,
+}
+
+#[derive(Debug, Clone)]
+pub enum MediaControlPlayback {
+    Library {
+        state: PlaybackState,
+        position: Option<PlaybackPosition>,
+        seek_revision: u64,
+    },
+    Preview {
+        target: crate::playback::PreviewTarget,
+        duration_ms: u64,
+        position_ms: u64,
+        is_playing: bool,
+    },
+}
+
 #[derive(Debug, Clone)]
 pub struct PlaybackValues {
     pub state: PlaybackState,
@@ -151,6 +176,39 @@ impl PlaybackValues {
         }
         Some(next)
     }
+
+    pub fn media_control_values(&self) -> MediaControlValues {
+        let playback = match &self.preview.state {
+            PreviewState::Playing {
+                target,
+                duration_ms,
+            } => MediaControlPlayback::Preview {
+                target: target.clone(),
+                duration_ms: *duration_ms,
+                position_ms: self.preview.position_ms,
+                is_playing: true,
+            },
+            PreviewState::Paused {
+                target,
+                duration_ms,
+            } => MediaControlPlayback::Preview {
+                target: target.clone(),
+                duration_ms: *duration_ms,
+                position_ms: self.preview.position_ms,
+                is_playing: false,
+            },
+            PreviewState::Idle => MediaControlPlayback::Library {
+                state: self.state.clone(),
+                position: self.position.clone(),
+                seek_revision: self.seek_revision,
+            },
+        };
+        MediaControlValues {
+            playback,
+            volume: self.volume,
+            is_muted: self.is_muted,
+        }
+    }
 }
 
 fn playback_track_id(state: &PlaybackState) -> Option<&str> {
@@ -247,5 +305,54 @@ pub(crate) fn emit_progress(
 ) {
     if let Err(err) = tx.send(event) {
         warn!("playback progress channel closed; dropped {:?}", err.0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn media_control_uses_preview_only_while_preview_is_active() {
+        let library = PlaybackValues::initial();
+        assert!(matches!(
+            library.media_control_values().playback,
+            MediaControlPlayback::Library {
+                state: PlaybackState::Stopped,
+                ..
+            }
+        ));
+
+        let preview = library
+            .applying(&PlaybackProgress::PreviewStateChanged(
+                PreviewState::Playing {
+                    target: crate::playback::PreviewTarget::sample_range(
+                        "/tmp/preview.flac".into(),
+                        0,
+                        None,
+                    ),
+                    duration_ms: 120_000,
+                },
+            ))
+            .expect("preview state is retained");
+        assert!(matches!(
+            preview.media_control_values().playback,
+            MediaControlPlayback::Preview {
+                duration_ms: 120_000,
+                is_playing: true,
+                ..
+            }
+        ));
+
+        let idle = preview
+            .applying(&PlaybackProgress::PreviewStateChanged(PreviewState::Idle))
+            .expect("idle state is retained");
+        assert!(matches!(
+            idle.media_control_values().playback,
+            MediaControlPlayback::Library {
+                state: PlaybackState::Stopped,
+                ..
+            }
+        ));
     }
 }

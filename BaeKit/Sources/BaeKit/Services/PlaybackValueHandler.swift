@@ -1,21 +1,15 @@
 @MainActor
 final class PlaybackValueHandler {
-    private let appHandle: AppHandle
     private let playbackStore: PlaybackStore
     private let castStore: CastStore
-    private let mediaControlService: MediaControlService
     private var lastSeekRevision: UInt64 = 0
 
     init(
-        appHandle: AppHandle,
         playbackStore: PlaybackStore,
-        castStore: CastStore,
-        mediaControlService: MediaControlService
+        castStore: CastStore
     ) {
-        self.appHandle = appHandle
         self.playbackStore = playbackStore
         self.castStore = castStore
-        self.mediaControlService = mediaControlService
     }
 
     func apply(_ values: BridgePlaybackValues) {
@@ -33,42 +27,35 @@ final class PlaybackValueHandler {
         switch state {
         case .stopped:
             playbackStore.stop()
-            mediaControlService.updateNowPlaying(
-                state: .stopped,
-                appHandle: appHandle
-            )
         case .loading(let trackId, let track):
             applyLoading(trackId: trackId, track: track)
         case .playing(
             let trackId,
             let trackTitle,
             let artistNames,
-            let artistId,
+            _,
             let albumId,
-            let albumTitle,
+            _,
             let coverImage,
             let durationMs
         ):
-            applyNowPlaying(
+            applyPlaying(
                 NowPlayingFields(
                     trackId: trackId,
                     trackTitle: trackTitle,
                     artistNames: artistNames,
-                    artistId: artistId,
                     albumId: albumId,
-                    albumTitle: albumTitle,
                     coverImage: coverImage,
                     durationMs: durationMs
-                ),
-                isPlaying: true
+                )
             )
         case .paused(
             let trackId,
             let trackTitle,
             let artistNames,
-            let artistId,
+            _,
             let albumId,
-            let albumTitle,
+            _,
             let coverImage,
             let durationMs,
             let reason
@@ -77,38 +64,33 @@ final class PlaybackValueHandler {
                 trackId: trackId,
                 trackTitle: trackTitle,
                 artistNames: artistNames,
-                artistId: artistId,
                 albumId: albumId,
-                albumTitle: albumTitle,
                 coverImage: coverImage,
                 durationMs: durationMs
             )
             playbackStore.pause(track: fields.nowPlayingTrack(), reason: reason)
-            mediaControlService.updateNowPlaying(
-                state: fields.bridgeState(isPlaying: false),
-                appHandle: appHandle
-            )
         }
     }
 
     private func applyPosition(_ values: BridgePlaybackValues) {
         if let position = values.position {
             let didSeek = values.seekRevision != lastSeekRevision
-            updateMediaPosition(
-                didSeek
-                    ? playbackStore.updatePlaybackSeeked(
-                        trackId: position.trackId,
-                        positionMs: position.positionMs,
-                        durationMs: position.durationMs,
-                        progress: position.progress
-                    )
-                    : playbackStore.updatePlaybackProgress(
-                        trackId: position.trackId,
-                        positionMs: position.positionMs,
-                        durationMs: position.durationMs,
-                        progress: position.progress
-                    )
-            )
+            if didSeek {
+                playbackStore.updatePlaybackSeeked(
+                    trackId: position.trackId,
+                    positionMs: position.positionMs,
+                    durationMs: position.durationMs,
+                    progress: position.progress
+                )
+            }
+            else {
+                playbackStore.updatePlaybackProgress(
+                    trackId: position.trackId,
+                    positionMs: position.positionMs,
+                    durationMs: position.durationMs,
+                    progress: position.progress
+                )
+            }
         }
     }
 
@@ -118,18 +100,10 @@ final class PlaybackValueHandler {
 
     func applyQueueSnapshot(_ snapshot: BridgeQueueSnapshot) {
         playbackStore.applyQueueSnapshot(snapshot)
-        mediaControlService.updateCommandAvailability(
-            hasNext: snapshot.hasNext,
-            hasPrevious: snapshot.hasPrevious
-        )
     }
 
-    private func applyNowPlaying(_ fields: NowPlayingFields, isPlaying: Bool) {
+    private func applyPlaying(_ fields: NowPlayingFields) {
         playbackStore.play(track: fields.nowPlayingTrack())
-        mediaControlService.updateNowPlaying(
-            state: fields.bridgeState(isPlaying: isPlaying),
-            appHandle: appHandle
-        )
     }
 
     private func applyLoading(
@@ -152,18 +126,6 @@ final class PlaybackValueHandler {
         else {
             playbackStore.beginLoading(trackId: trackId)
         }
-        mediaControlService.updateNowPlaying(
-            state: .loading(trackId: trackId, track: track),
-            appHandle: appHandle
-        )
-    }
-
-    private func updateMediaPosition(_ snapshot: PlaybackPositionSnapshot?) {
-        guard let snapshot else { return }
-        mediaControlService.updatePosition(
-            positionMs: snapshot.positionMs,
-            durationMs: snapshot.durationMs
-        )
     }
 }
 
@@ -171,35 +133,9 @@ private struct NowPlayingFields {
     let trackId: String
     let trackTitle: String
     let artistNames: String
-    let artistId: String
     let albumId: String
-    let albumTitle: String
     let coverImage: BridgeImageRef?
     let durationMs: UInt64
-
-    func bridgeState(isPlaying: Bool) -> BridgePlaybackState {
-        isPlaying
-            ? .playing(
-                trackId: trackId,
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                artistId: artistId,
-                albumId: albumId,
-                albumTitle: albumTitle,
-                coverImage: coverImage,
-                durationMs: durationMs
-            )
-            : .paused(
-                trackId: trackId,
-                trackTitle: trackTitle,
-                artistNames: artistNames,
-                artistId: artistId,
-                albumId: albumId,
-                albumTitle: albumTitle,
-                coverImage: coverImage,
-                durationMs: durationMs
-            )
-    }
 
     func nowPlayingTrack() -> NowPlayingTrack {
         NowPlayingTrack(

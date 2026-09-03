@@ -128,10 +128,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
             outputStore: outputStore,
             uiStore: uiStore
         )
-        desktopEvents = DesktopEventHandler(
-            importStore: importStore,
-            mediaControlService: mediaControlService
-        )
+        desktopEvents = DesktopEventHandler(importStore: importStore)
         mainAppMenuTarget = MainAppMenuTarget(
             playbackStore: playbackStore,
             configStore: configStore,

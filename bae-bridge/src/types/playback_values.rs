@@ -44,37 +44,6 @@ pub struct BridgeLoadingTrackInfo {
     pub duration_ms: u64,
 }
 
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgePlaybackState {
-    Stopped,
-    Loading {
-        track_id: String,
-        /// The target track's metadata, once resolved. `None` until core's
-        /// prepare step completes.
-        track: Option<BridgeLoadingTrackInfo>,
-    },
-    Playing {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        artist_id: String,
-        album_id: String,
-        album_title: String,
-        cover_image: Option<BridgeImageRef>,
-        duration_ms: u64,
-    },
-    Paused {
-        track_id: String,
-        track_title: String,
-        artist_names: String,
-        artist_id: String,
-        album_id: String,
-        album_title: String,
-        cover_image: Option<BridgeImageRef>,
-        duration_ms: u64,
-    },
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSidePausePrompt {
     pub id: String,
@@ -146,6 +115,28 @@ pub struct BridgePreviewValues {
 }
 
 #[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMediaControlValues {
+    pub playback: BridgeMediaControlPlayback,
+    pub volume: f32,
+    pub is_muted: bool,
+}
+
+#[derive(Debug, Clone, uniffi::Enum)]
+pub enum BridgeMediaControlPlayback {
+    Library {
+        state: BridgePlaybackValueState,
+        position: Option<BridgePlaybackPosition>,
+        seek_revision: u64,
+    },
+    Preview {
+        target: BridgePreviewTarget,
+        duration_ms: u64,
+        position_ms: u64,
+        is_playing: bool,
+    },
+}
+
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackValues {
     pub state: BridgePlaybackValueState,
     pub position: Option<BridgePlaybackPosition>,
@@ -155,6 +146,7 @@ pub struct BridgePlaybackValues {
     pub repeat_mode: BridgeRepeatMode,
     pub remote_device_name: Option<String>,
     pub preview: BridgePreviewValues,
+    pub media_control: BridgeMediaControlValues,
 }
 
 #[derive(Debug, Clone, uniffi::Enum)]
@@ -240,6 +232,17 @@ impl BridgePlaybackValueState {
     }
 }
 
+impl BridgePlaybackPosition {
+    fn from_core(position: bae_core::playback::PlaybackPosition) -> Self {
+        Self {
+            track_id: position.track_id,
+            position_ms: position.position_ms,
+            duration_ms: position.duration_ms,
+            progress: position.progress,
+        }
+    }
+}
+
 impl BridgePreviewState {
     fn from_core(value: bae_core::playback::PreviewState) -> Self {
         match value {
@@ -264,14 +267,10 @@ impl BridgePreviewState {
 
 impl BridgePlaybackValues {
     pub(crate) fn from_core(value: bae_core::playback::PlaybackValues) -> Self {
+        let media_control = BridgeMediaControlValues::from_core(value.media_control_values());
         Self {
             state: BridgePlaybackValueState::from_core(value.state),
-            position: value.position.map(|position| BridgePlaybackPosition {
-                track_id: position.track_id,
-                position_ms: position.position_ms,
-                duration_ms: position.duration_ms,
-                progress: position.progress,
-            }),
+            position: value.position.map(BridgePlaybackPosition::from_core),
             seek_revision: value.seek_revision,
             volume: value.volume,
             is_muted: value.is_muted,
@@ -281,6 +280,44 @@ impl BridgePlaybackValues {
                 state: BridgePreviewState::from_core(value.preview.state),
                 position_ms: value.preview.position_ms,
                 progress: value.preview.progress,
+            },
+            media_control,
+        }
+    }
+}
+
+impl BridgeMediaControlValues {
+    fn from_core(value: bae_core::playback::MediaControlValues) -> Self {
+        Self {
+            playback: BridgeMediaControlPlayback::from_core(value.playback),
+            volume: value.volume,
+            is_muted: value.is_muted,
+        }
+    }
+}
+
+impl BridgeMediaControlPlayback {
+    fn from_core(value: bae_core::playback::MediaControlPlayback) -> Self {
+        match value {
+            bae_core::playback::MediaControlPlayback::Library {
+                state,
+                position,
+                seek_revision,
+            } => Self::Library {
+                state: BridgePlaybackValueState::from_core(state),
+                position: position.map(BridgePlaybackPosition::from_core),
+                seek_revision,
+            },
+            bae_core::playback::MediaControlPlayback::Preview {
+                target,
+                duration_ms,
+                position_ms,
+                is_playing,
+            } => Self::Preview {
+                target: BridgePreviewTarget::from_core(target),
+                duration_ms,
+                position_ms,
+                is_playing,
             },
         }
     }

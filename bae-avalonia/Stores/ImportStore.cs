@@ -20,7 +20,6 @@ internal sealed class ImportStore : IDisposable
 {
     private readonly ImportService _import;
     private readonly Action<string, string> _showError;
-    private readonly IMediaControl _mediaControls;
     private readonly Action<Action> _dispatch;
     private IDisposable? _releaseLibraryStatusSubscription;
     private long _releaseLibraryStatusGeneration;
@@ -119,12 +118,10 @@ internal sealed class ImportStore : IDisposable
     public ImportStore(
         ImportService import,
         Action<string, string> showError,
-        IMediaControl mediaControls,
         Action<Action> dispatch)
     {
         _import = import;
         _showError = showError;
-        _mediaControls = mediaControls;
         _dispatch = dispatch;
         SortOrder = ImportSortStore.Load();
         View = BuildView();
@@ -816,29 +813,20 @@ internal sealed class ImportStore : IDisposable
             case BridgePreviewState.Playing playing:
                 _previewDurationLabel = BridgeDisplay.Clock(playing.DurationMs);
                 PreviewingTarget = playing.Target;
-                _mediaControls.UpdateNowPlayingForPreview(
-                    playing.Target.Path, playing.DurationMs, isPlaying: true);
                 break;
             case BridgePreviewState.Paused paused:
                 _previewDurationLabel = BridgeDisplay.Clock(paused.DurationMs);
                 PreviewingTarget = paused.Target;
-                _mediaControls.UpdateNowPlayingForPreview(
-                    paused.Target.Path, paused.DurationMs, isPlaying: false);
                 break;
             case BridgePreviewState.Idle:
                 _previewDurationLabel = null;
                 PreviewingTarget = null;
-                _mediaControls.UpdatePreviewIdle();
                 break;
         }
         PreviewElapsedText = values.State is BridgePreviewState.Idle
             ? string.Empty
             : $"{BridgeDisplay.Clock(values.PositionMs)} / {_previewDurationLabel}";
         PreviewElapsedChanged?.Invoke();
-        if (values.State is not BridgePreviewState.Idle)
-        {
-            _mediaControls.UpdatePreviewPosition(values.PositionMs);
-        }
     }
 
     // Reset the preview label when the pane leaves the folder whose audio was

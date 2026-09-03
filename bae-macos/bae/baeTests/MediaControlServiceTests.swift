@@ -14,30 +14,38 @@ struct MediaControlServiceTests {
         MPRemoteCommandCenter.shared().changePlaybackPositionCommand.isEnabled
     }
 
-    @Test("preview idle clears Now Playing")
-    func previewIdleClearsNowPlaying() {
+    @Test("preview owns Now Playing only while active")
+    func previewOwnsNowPlayingOnlyWhileActive() {
         let infoCenter = MPNowPlayingInfoCenter.default()
         infoCenter.nowPlayingInfo = nil
-        defer {
-            infoCenter.nowPlayingInfo = nil
-        }
+        defer { infoCenter.nowPlayingInfo = nil }
         let service = MediaControlService()
 
-        service.updateNowPlayingForPreview(
-            state: .playing(
-                target: BridgePreviewTarget(
-                    path: "/tmp/Preview Track.flac",
-                    startSample: 0,
-                    endSample: nil
-                ),
-                durationMs: 120_000
-            )
+        service.applyMediaControlValues(
+            mediaControlValues(
+                playback: .preview(
+                    target: previewTarget,
+                    durationMs: 120_000,
+                    positionMs: 10_000,
+                    isPlaying: true
+                )
+            ),
+            appHandle: fakeAppHandle
         )
-        #expect(infoCenter.nowPlayingInfo != nil)
+        #expect(
+            infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
+                == "Preview Track.flac"
+        )
 
-        service.updateNowPlayingForPreview(state: .idle)
+        service.applyMediaControlValues(
+            mediaControlValues(playback: libraryPlayback),
+            appHandle: fakeAppHandle
+        )
 
-        #expect(infoCenter.nowPlayingInfo == nil)
+        #expect(
+            infoCenter.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String
+                == "Track Title"
+        )
     }
 
     @Test("a zero duration drops the length and disables the scrubber")
@@ -77,16 +85,55 @@ struct MediaControlServiceTests {
         service.clearNowPlaying()
         #expect(!scrubberEnabled)
 
-        service.updateNowPlayingForPreview(
-            state: .playing(
-                target: BridgePreviewTarget(
-                    path: "/tmp/Preview Track.flac",
-                    startSample: 0,
-                    endSample: nil
-                ),
-                durationMs: 90_000
-            )
+        service.applyMediaControlValues(
+            mediaControlValues(
+                playback: .preview(
+                    target: previewTarget,
+                    durationMs: 90_000,
+                    positionMs: 10_000,
+                    isPlaying: true
+                )
+            ),
+            appHandle: fakeAppHandle
         )
         #expect(scrubberEnabled)
     }
+}
+
+private let fakeAppHandle = AppHandle(noHandle: AppHandle.NoHandle())
+
+private let previewTarget = BridgePreviewTarget(
+    path: "/tmp/Preview Track.flac",
+    startSample: 0,
+    endSample: nil
+)
+
+private let libraryPlayback = BridgeMediaControlPlayback.library(
+    state: .playing(
+        trackId: "track-1",
+        trackTitle: "Track Title",
+        artistNames: "Artist Name",
+        artistId: "artist-1",
+        albumId: "album-1",
+        albumTitle: "Album Title",
+        coverImage: nil,
+        durationMs: 200_000
+    ),
+    position: BridgePlaybackPosition(
+        trackId: "track-1",
+        positionMs: 30_000,
+        durationMs: 200_000,
+        progress: 0.15
+    ),
+    seekRevision: 0
+)
+
+private func mediaControlValues(
+    playback: BridgeMediaControlPlayback
+) -> BridgeMediaControlValues {
+    BridgeMediaControlValues(
+        playback: playback,
+        volume: 1,
+        isMuted: false
+    )
 }

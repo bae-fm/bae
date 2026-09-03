@@ -5,9 +5,9 @@ namespace Bae.Desktop.Tests;
 
 /// <summary>
 /// Locks the decision logic in <see cref="MediaControlState"/> — the pure state
-/// machine that decides what the system transport controls show and whether a
-/// command acts on the library queue or a preview clip. The WinRT shell that
-/// applies these decisions is verified by compilation, not here.
+/// machine that turns core's selected playback into the system display and
+/// remembers whether commands act on the library queue or a preview clip. The
+/// WinRT shell that applies these decisions is verified by compilation, not here.
 /// </summary>
 public sealed class MediaControlStateTests
 {
@@ -16,7 +16,7 @@ public sealed class MediaControlStateTests
     private const string AlbumTitle = "Album Title";
     private const ulong DurationMs = 200_000;
 
-    private static MediaControlDisplay? Track(
+    private static MediaControlDisplay Track(
         MediaControlState state,
         string? coverToken = "img-1",
         ulong durationMs = DurationMs,
@@ -41,8 +41,7 @@ public sealed class MediaControlStateTests
 
         var display = Track(state, status: status);
 
-        Assert.NotNull(display);
-        Assert.Equal(status, display!.Status);
+        Assert.Equal(status, display.Status);
         Assert.Equal(TrackTitle, display.Title);
         Assert.Equal(ArtistName, display.Artist);
         Assert.Equal(AlbumTitle, display.AlbumTitle);
@@ -55,10 +54,10 @@ public sealed class MediaControlStateTests
     {
         var state = new MediaControlState();
 
-        Assert.Equal("img-1", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork).Token);
-        Assert.IsType<MediaControlArtwork.Keep>(Track(state, "img-1")!.Artwork);
-        Assert.Equal("img-2", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-2")!.Artwork).Token);
-        Assert.IsType<MediaControlArtwork.Clear>(Track(state, null)!.Artwork);
+        Assert.Equal("img-1", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1").Artwork).Token);
+        Assert.IsType<MediaControlArtwork.Keep>(Track(state, "img-1").Artwork);
+        Assert.Equal("img-2", Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-2").Artwork).Token);
+        Assert.IsType<MediaControlArtwork.Clear>(Track(state, null).Artwork);
     }
 
     [Fact]
@@ -66,9 +65,9 @@ public sealed class MediaControlStateTests
     {
         var state = new MediaControlState();
 
-        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork);
+        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1").Artwork);
         state.Clear();
-        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork);
+        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1").Artwork);
     }
 
     // ── Stale-artwork guard ────────────────────────────────────────────────────
@@ -78,14 +77,14 @@ public sealed class MediaControlStateTests
     {
         var state = new MediaControlState();
 
-        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork);
+        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1").Artwork);
         state.ArtworkLoadFailed("img-1");
-        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1")!.Artwork);
+        Assert.IsType<MediaControlArtwork.Load>(Track(state, "img-1").Artwork);
 
         Track(state, "img-2");
         state.ArtworkLoadFailed("img-1");
         Assert.True(state.ArtworkLoadIsCurrent("img-2"));
-        Assert.IsType<MediaControlArtwork.Keep>(Track(state, "img-2")!.Artwork);
+        Assert.IsType<MediaControlArtwork.Keep>(Track(state, "img-2").Artwork);
     }
 
     [Fact]
@@ -161,14 +160,14 @@ public sealed class MediaControlStateTests
     // ── Preview takeover ───────────────────────────────────────────────────────
 
     [Fact]
-    public void Preview_SuppressesLibraryUpdates()
+    public void Preview_TracksCommandRoutingAndTimeline()
     {
         var state = new MediaControlState();
 
         state.UpdateForPreview("C:\\clips\\preview-clip.flac", 120_000, isPlaying: true);
 
         Assert.True(state.IsShowingPreview);
-        Assert.Null(Track(state));
+        Assert.Equal(120_000ul, state.CurrentDurationMs);
         Assert.Null(state.UpdatePosition(1_000, DurationMs));
     }
 
@@ -212,15 +211,15 @@ public sealed class MediaControlStateTests
     // ── Leaving preview ────────────────────────────────────────────────────────
 
     [Fact]
-    public void ClearPreview_RestoresLibraryUpdates()
+    public void Clear_RestoresLibraryUpdates()
     {
         var state = new MediaControlState();
 
         state.UpdateForPreview("C:\\clips\\preview-clip.flac", 120_000, isPlaying: true);
-        state.ClearPreview();
+        state.Clear();
 
         Assert.False(state.IsShowingPreview);
-        Assert.NotNull(Track(state));
+        Assert.Equal(MediaControlPlaybackStatus.Playing, Track(state).Status);
     }
 
     [Fact]
@@ -235,5 +234,6 @@ public sealed class MediaControlStateTests
         // preview timeline no longer has a duration to report.
         Assert.Null(state.SeekRatio(30_000));
         Assert.Null(state.UpdatePreviewPosition(30_000));
+        Assert.False(state.IsShowingPreview);
     }
 }

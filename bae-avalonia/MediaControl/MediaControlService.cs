@@ -10,9 +10,8 @@ namespace Bae.Desktop;
 /// Applies the decisions of <see cref="MediaControlState"/> to the platform's
 /// now-playing surface: metadata and status pushes, timeline updates, the async
 /// artwork fetch, and the command / seek / volume callbacks (marshalled onto the
-/// UI thread). All decision logic lives in the state and every platform call
-/// lives behind <see cref="IMediaSession"/>; this shell only translates between
-/// the two.
+/// UI thread). Core selects library or preview playback; every platform call
+/// lives behind <see cref="IMediaSession"/>.
 /// </summary>
 internal sealed class MediaControlService : IMediaControl
 {
@@ -21,6 +20,7 @@ internal sealed class MediaControlService : IMediaControl
     private readonly PlaybackService _playback;
     private readonly Func<BridgeImageRef, byte[]?> _fetchLibraryImageBytes;
     private readonly MediaControlState _state = new();
+    private ulong _lastSeekRevision;
 
     // The last mute state core reported, so a volume written by an OS client knows
     // whether it has to unmute first.
@@ -74,69 +74,90 @@ internal sealed class MediaControlService : IMediaControl
 
     public void SetWindow(Window? window) => _session.SetWindow(window);
 
-    public void UpdateNowPlayingPlaying(
-        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
-        Apply(
-            _state.UpdateForTrack(
-                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
-                MediaControlPlaybackStatus.Playing),
-            coverImage);
-
-    public void UpdateNowPlayingPaused(
-        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
-        Apply(
-            _state.UpdateForTrack(
-                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
-                MediaControlPlaybackStatus.Paused),
-            coverImage);
-
-    public void UpdateNowPlayingLoading(
-        string trackTitle, string artistNames, string albumTitle, BridgeImageRef? coverImage, ulong durationMs) =>
-        Apply(
-            _state.UpdateForTrack(
-                trackTitle, artistNames, albumTitle, ArtworkToken(coverImage), durationMs,
-                MediaControlPlaybackStatus.Changing),
-            coverImage);
-
-    public void UpdateNowPlayingStopped()
+    public void ApplyMediaControlValues(BridgeMediaControlValues values)
     {
-        _state.Clear();
-        _session.Clear();
+        _isMuted = values.IsMuted;
+        _session.SetVolume(values.IsMuted ? 0.0 : values.Volume);
+
+        switch (values.Playback)
+        {
+            case BridgeMediaControlPlayback.Preview preview:
+                Apply(_state.UpdateForPreview(
+                    preview.Target.Path, preview.DurationMs, preview.IsPlaying));
+                if (_state.UpdatePreviewPosition(preview.PositionMs) is { } previewTimeline)
+                {
+                    _session.SetTimeline(previewTimeline, seeked: false);
+                }
+                break;
+            case BridgeMediaControlPlayback.Library library:
+                ApplyLibrary(library);
+                break;
+        }
     }
-
-    public void UpdatePosition(ulong positionMs, ulong durationMs) =>
-        PushPosition(positionMs, durationMs, seeked: false);
-
-    public void UpdateSeekedPosition(ulong positionMs, ulong durationMs) =>
-        PushPosition(positionMs, durationMs, seeked: true);
 
     public void UpdateCommandAvailability(bool hasNext, bool hasPrevious) =>
         _session.SetCommandAvailability(hasNext, hasPrevious);
 
-    public void UpdateVolume(float volume, bool isMuted)
+    private void ApplyLibrary(BridgeMediaControlPlayback.Library library)
     {
-        _isMuted = isMuted;
-        // Muted output reads as silence on the surface rather than as a volume the
-        // user set: a client showing the slider shows what is actually audible.
-        _session.SetVolume(isMuted ? 0.0 : volume);
-    }
-
-    public void UpdateNowPlayingForPreview(string path, ulong durationMs, bool isPlaying) =>
-        Apply(_state.UpdateForPreview(path, durationMs, isPlaying));
-
-    public void UpdatePreviewIdle()
-    {
-        _state.ClearPreview();
-        _session.Clear();
-    }
-
-    public void UpdatePreviewPosition(ulong positionMs)
-    {
-        if (_state.UpdatePreviewPosition(positionMs) is { } timeline)
+        var previewEnded = _state.IsShowingPreview;
+        if (previewEnded)
         {
-            _session.SetTimeline(timeline, seeked: false);
+            _state.Clear();
         }
+
+        switch (library.State)
+        {
+            case BridgePlaybackValueState.Stopped:
+                _state.Clear();
+                _session.Clear();
+                break;
+            case BridgePlaybackValueState.Loading { Track: { } track }:
+                ApplyTrack(track.TrackTitle, track.ArtistNames, track.AlbumTitle,
+                    track.CoverImage, track.DurationMs, MediaControlPlaybackStatus.Changing);
+                break;
+            case BridgePlaybackValueState.Loading:
+                if (previewEnded)
+                {
+                    _session.Clear();
+                }
+                break;
+            case BridgePlaybackValueState.Playing playing:
+                ApplyTrack(playing.TrackTitle, playing.ArtistNames, playing.AlbumTitle,
+                    playing.CoverImage, playing.DurationMs, MediaControlPlaybackStatus.Playing);
+                break;
+            case BridgePlaybackValueState.Paused paused:
+                ApplyTrack(paused.TrackTitle, paused.ArtistNames, paused.AlbumTitle,
+                    paused.CoverImage, paused.DurationMs, MediaControlPlaybackStatus.Paused);
+                break;
+        }
+
+        if (library.Position is { } position)
+        {
+            PushPosition(
+                position.PositionMs,
+                position.DurationMs,
+                seeked: library.SeekRevision != _lastSeekRevision);
+        }
+        _lastSeekRevision = library.SeekRevision;
     }
+
+    private void ApplyTrack(
+        string trackTitle,
+        string artistNames,
+        string albumTitle,
+        BridgeImageRef? coverImage,
+        ulong durationMs,
+        MediaControlPlaybackStatus status) =>
+        Apply(
+            _state.UpdateForTrack(
+                trackTitle,
+                artistNames,
+                albumTitle,
+                ArtworkToken(coverImage),
+                durationMs,
+                status),
+            coverImage);
 
     // Called on library teardown and window close. Idempotent, so a close after a
     // library close is fine.
@@ -155,14 +176,9 @@ internal sealed class MediaControlService : IMediaControl
     }
 
     // Pushes a display's metadata, artwork action, and status to the surface, and
-    // marks the session live. Null while a preview suppresses library updates.
-    private void Apply(MediaControlDisplay? display, BridgeImageRef? coverImage = null)
+    // marks the session live.
+    private void Apply(MediaControlDisplay display, BridgeImageRef? coverImage = null)
     {
-        if (display is null)
-        {
-            return;
-        }
-
         _session.Apply(display);
         if (display.Artwork is MediaControlArtwork.Load load)
         {

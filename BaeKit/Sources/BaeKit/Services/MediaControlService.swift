@@ -76,18 +76,56 @@ public final class MediaControlService: @unchecked Sendable {
 
     public init() {}
 
+    // MARK: - Retained media-control values
+
+    /// Translate core's resolved media-control presentation onto the platform's
+    /// single Now Playing surface.
+    public func applyMediaControlValues(
+        _ values: BridgeMediaControlValues,
+        appHandle: AppHandle
+    ) {
+        switch values.playback {
+        case .preview(
+            let target,
+            let durationMs,
+            let positionMs,
+            let isPlaying
+        ):
+            #if os(macOS)
+                updatePreviewNowPlaying(
+                    target: target,
+                    durationMs: durationMs,
+                    isPlaying: isPlaying
+                )
+                updatePreviewPosition(positionMs: positionMs)
+            #endif
+        case .library(let state, let position, _):
+            #if os(macOS)
+                let previewEnded = isShowingPreview
+                isShowingPreview = false
+                if previewEnded, case .loading(_, nil) = state {
+                    clearNowPlaying()
+                }
+            #endif
+            updateNowPlaying(state: state, appHandle: appHandle)
+            if let position {
+                updatePosition(
+                    positionMs: position.positionMs,
+                    durationMs: position.durationMs
+                )
+            }
+        }
+    }
+
     // MARK: - Library Now Playing
 
     /// Push the Now Playing info for a library playback state. A `.stopped`
     /// state clears; a bare `.loading` without resolved metadata keeps the
-    /// current info on screen. A preview clip on macOS takes precedence.
+    /// current info on screen.
     public func updateNowPlaying(
-        state: BridgePlaybackState,
+        state: BridgePlaybackValueState,
         appHandle: AppHandle
     ) {
-        guard !isShowingPreview else {
-            return
-        }
         #if os(iOS)
             applyAudioSessionTransition(for: state)
         #endif
@@ -112,7 +150,7 @@ public final class MediaControlService: @unchecked Sendable {
     /// landed). The `playing` rate is 1.0; `paused` and a resolved `loading`
     /// target are 0.0 (no audio is flowing yet for the latter).
     private static func libraryMetadata(
-        for state: BridgePlaybackState
+        for state: BridgePlaybackValueState
     ) -> NowPlayingMetadata? {
         switch state {
         case .playing(
@@ -133,7 +171,8 @@ public final class MediaControlService: @unchecked Sendable {
                 _,
                 let albumTitle,
                 let coverImage,
-                let durationMs
+                let durationMs,
+                _
             ):
             let playbackRate: Double =
                 if case .playing = state {
@@ -191,9 +230,6 @@ public final class MediaControlService: @unchecked Sendable {
     }
 
     public func updatePosition(positionMs: UInt64, durationMs: UInt64) {
-        guard !isShowingPreview else {
-            return
-        }
         let infoCenter = MPNowPlayingInfoCenter.default()
         guard var info = infoCenter.nowPlayingInfo else {
             return
@@ -251,7 +287,7 @@ public final class MediaControlService: @unchecked Sendable {
     }
 
     /// Wipe Now Playing and disable every transport command. Called when
-    /// playback stops (or a macOS preview goes idle / the library is torn down).
+    /// playback stops or the library is torn down.
     public func clearNowPlaying() {
         isShowingPreview = false
         currentDurationMs = nil

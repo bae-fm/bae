@@ -40,9 +40,10 @@ internal sealed class ValueSubscriptions : IDisposable
             _subscriptions.Add(handle.SubscribePlaybackValues(new PlaybackSink(value =>
                 dispatcher.Post(() =>
                 {
-                    playback.ApplyValues(value, mediaControls);
+                    playback.ApplyValues(value);
                     cast.ApplyStatus(value.RemoteDeviceName);
                     import.ApplyPreviewValues(value.Preview);
+                    mediaControls.ApplyMediaControlValues(value.MediaControl);
                 }))));
             _subscriptions.Add(handle.SubscribeOutbox(new OutboxSink(
                 value => dispatcher.Post(() => storage.ApplyOutbox(value)),

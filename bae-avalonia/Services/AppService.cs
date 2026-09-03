@@ -132,7 +132,6 @@ internal sealed class AppService : IDisposable
         ImportStore = new ImportStore(
             Import,
             ShowError,
-            MediaControl,
             action => dispatcher.Post(action));
         UiEventRouter = new UiEventRouter(
             PlaybackStore,

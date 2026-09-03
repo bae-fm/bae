@@ -71,7 +71,6 @@ public sealed class LiveQueryOwnershipTests
         using var store = new ImportStore(
             import,
             (_, _) => reportedErrors += 1,
-            new NoopMediaControl(),
             apply => apply());
 
         store.ObserveReleaseLibraryStatus(

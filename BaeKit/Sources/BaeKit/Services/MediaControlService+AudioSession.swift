@@ -184,7 +184,7 @@
         /// transition still pauses core and auto-resumes on `.ended`.
         /// `.stopped` is handled by the shared clear path instead: nothing to do
         /// here.
-        func applyAudioSessionTransition(for state: BridgePlaybackState) {
+        func applyAudioSessionTransition(for state: BridgePlaybackValueState) {
             switch state {
             case .playing, .loading:
                 lastKnownIsPlaying = true
