@@ -102,6 +102,8 @@ impl ImportServiceHandle {
         // Same rule as `set_sheet_disc`: re-stating the binding in force
         // decides nothing, and must not clear the verdict.
         if bound == audio_file_id {
+            let _commit = self.folder_state_commit.lock().await;
+            self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{sheet_file_id} already binds {audio_file_id:?}; nothing to write");
             return Ok(());
         }
@@ -198,6 +200,8 @@ impl ImportServiceHandle {
         // a write here would clear the stored verdict and re-identify a
         // folder whose shape did not change.
         if in_force == disc {
+            let _commit = self.folder_state_commit.lock().await;
+            self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{sheet_file_id} is already disc {disc:?}; nothing to write");
             return Ok(());
         }
@@ -322,6 +326,13 @@ impl ImportServiceHandle {
                     &snapshot_candidate.files,
                     &snapshot,
                 );
+                let _commit = self.folder_state_commit.lock().await;
+                self.editable_candidate_revision_for_commit(
+                    &candidate_key,
+                    &content_hash,
+                    current.file_edit_revision,
+                )
+                .await?;
                 return Ok(self
                     .library_manager
                     .replace_candidate_file_tags_metadata(
@@ -357,6 +368,13 @@ impl ImportServiceHandle {
                     metadata.track_mappings,
                     &current.track_mappings,
                 );
+                let _commit = self.folder_state_commit.lock().await;
+                self.editable_candidate_revision_for_commit(
+                    &candidate_key,
+                    &content_hash,
+                    current.file_edit_revision,
+                )
+                .await?;
                 return Ok(self
                     .library_manager
                     .replace_candidate_metadata_prepared(
@@ -398,6 +416,13 @@ impl ImportServiceHandle {
             source_draft.track_mappings,
             &current.track_mappings,
         );
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            &candidate_key,
+            &content_hash,
+            current.file_edit_revision,
+        )
+        .await?;
         Ok(self
             .library_manager
             .replace_candidate_metadata_prepared(
@@ -473,6 +498,8 @@ impl ImportServiceHandle {
         // Same rule as `set_sheet_disc`: re-stating the role in force decides
         // nothing, and must not clear the verdict.
         if entry.role_choice() == Some(choice) {
+            let _commit = self.folder_state_commit.lock().await;
+            self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{file_id} is already {choice:?}; nothing to write");
             return Ok(());
         }
@@ -499,13 +526,9 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
         let content_hash = files.content_hash();
-        let (current_files, expected_revision) = self
-            .stored_actionable_candidate(candidate_key)
-            .await?
-            .map(|candidate| (candidate.files, candidate.file_edit_revision))
-            .ok_or_else(|| crate::import::ImportError::FileRole {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            })?;
+        let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
+        let current_files = current_candidate.files;
+        let expected_revision = current_candidate.file_edit_revision;
         if current_files.content_hash() != content_hash {
             return Err(crate::import::ImportError::FileRole {
                 detail: format!("{candidate_key} changed before its file decision was written"),

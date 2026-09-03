@@ -214,7 +214,7 @@ impl AppHandle {
             this.services
                 .import_select_candidate_metadata_provenance(candidate_key, provenance.into_core())
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -229,7 +229,7 @@ impl AppHandle {
             this.services
                 .import_clear_candidate_metadata(candidate_key)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -242,7 +242,7 @@ impl AppHandle {
     /// Returns the album id the release lives on after the commit, which may have
     /// changed if the new identity vec didn't fit the source album
     /// (`set_identity` move semantics). Reseeding metadata is the caller's call:
-    /// `reset_metadata_to_source` + `update_release_metadata_user_edit`.
+    /// `reset_release_edit_to_source` + `update_release_metadata_user_edit`.
     pub async fn re_identify_release(
         self: std::sync::Arc<Self>,
         release_id: String,
@@ -406,7 +406,7 @@ impl AppHandle {
             this.services
                 .import_set_sheet_binding(candidate_key, sheet_file_id, audio_file_id)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -431,7 +431,7 @@ impl AppHandle {
             this.services
                 .import_set_sheet_disc(candidate_key, sheet_file_id, disc.into_core())
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -458,7 +458,7 @@ impl AppHandle {
             this.services
                 .import_set_file_role(candidate_key, file_id, choice.into_core())
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -571,7 +571,7 @@ impl AppHandle {
             this.services
                 .import_set_candidate_cover(&candidate_key, cover.into_core())
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -588,7 +588,7 @@ impl AppHandle {
             this.services
                 .import_set_candidate_edit_field(&candidate_key, field.into_core(), value)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -603,7 +603,7 @@ impl AppHandle {
             this.services
                 .import_set_candidate_track_edit(&candidate_key, track.into_core())
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -623,7 +623,7 @@ impl AppHandle {
                     assignments.into_core(),
                 )
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -645,7 +645,7 @@ impl AppHandle {
                         .collect(),
                 )
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -660,7 +660,7 @@ impl AppHandle {
             this.services
                 .import_drop_candidate_track(&candidate_key, track_id)
                 .await
-                .map_err(BridgeError::import)
+                .map_err(BridgeError::candidate_mutation)
         })
         .await
     }
@@ -702,21 +702,21 @@ impl AppHandle {
     }
 
     /// Re-project a release's metadata from its stored provenance. Returns the
-    /// projected `ReleaseUserEdit` without writing — the editor populates its
+    /// projected raw edit without writing — the editor populates its
     /// form with the result; the user re-edits or saves via
     /// `update_release_metadata_user_edit`. Identity and provenance are not
     /// touched.
-    pub async fn reset_metadata_to_source(
+    pub async fn reset_release_edit_to_source(
         self: std::sync::Arc<Self>,
         release_id: String,
-    ) -> Result<crate::types::BridgeReleaseUserEdit, BridgeError> {
+    ) -> Result<crate::types::BridgeRawReleaseEdit, BridgeError> {
         self.run_exported(move |this| async move {
             let edit = this
                 .services
-                .reset_metadata_to_source(&release_id)
+                .reset_release_edit_to_source(&release_id)
                 .await
                 .map_err(BridgeError::import)?;
-            Ok(crate::types::BridgeReleaseUserEdit::from_core(edit))
+            Ok(crate::types::BridgeRawReleaseEdit::from_core(edit))
         })
         .await
     }

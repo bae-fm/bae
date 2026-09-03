@@ -52,6 +52,7 @@ internal sealed partial class ImportMappingPane : UserControl
     private ImportCandidate? _candidate;
     private string _candidatePresentationFingerprint = string.Empty;
     private BridgeCandidateRuntimeSnapshot? _runtime;
+    private string _importStatusFingerprint = string.Empty;
 
     // Whether a pick is in flight. The control that started it says so; the
     // pane behind it keeps showing whatever is stored until the pick lands.
@@ -114,6 +115,8 @@ internal sealed partial class ImportMappingPane : UserControl
         _key = row.CandidateKey;
         _candidate = _import.Candidate(row.CandidateKey);
         _candidatePresentationFingerprint = CandidatePresentationFingerprint(_candidate);
+        _importStatusFingerprint = ImportStatusFingerprint(
+            _candidate?.Detail?.Row.ImportStatus ?? row.ImportStatus);
         // The subscription is already open, so this read cannot be undone by a
         // change that was on its way.
         _runtime = _import.CandidateRuntime(row.CandidateKey);
@@ -135,9 +138,12 @@ internal sealed partial class ImportMappingPane : UserControl
         }
         var refreshed = _import.Candidate(key);
         var presentationFingerprint = CandidatePresentationFingerprint(refreshed);
+        var importStatusFingerprint = ImportStatusFingerprint(
+            refreshed?.Detail?.Row.ImportStatus);
         if (Equals(refreshed?.Detail, _candidate?.Detail)
             && IdentifyFingerprint(refreshed) == IdentifyFingerprint(_candidate)
-            && presentationFingerprint == _candidatePresentationFingerprint)
+            && presentationFingerprint == _candidatePresentationFingerprint
+            && importStatusFingerprint == _importStatusFingerprint)
         {
             return;
         }
@@ -146,6 +152,7 @@ internal sealed partial class ImportMappingPane : UserControl
             _candidate?.MetadataProvenance);
         _candidate = refreshed;
         _candidatePresentationFingerprint = presentationFingerprint;
+        _importStatusFingerprint = importStatusFingerprint;
         if (_applyingProvenance is { } applying
             && Equals(refreshed?.MetadataProvenance, applying))
         {
@@ -225,6 +232,19 @@ internal sealed partial class ImportMappingPane : UserControl
             : $"{candidate.MetadataPresentation}|{candidate.FileTagsPreviewStatus}"
                 + $"|{candidate.FileTagsPreviewError}";
 
+    private static string ImportStatusFingerprint(
+        BridgeTriageImportStatus? status) => status switch
+        {
+            BridgeTriageImportStatus.Importing => "importing",
+            BridgeTriageImportStatus.Complete complete =>
+                $"complete:{complete.ReleaseId}:{complete.AlbumId}",
+            BridgeTriageImportStatus.Error error =>
+                $"error:{BridgeDisplay.LocalizedLine(error.ErrorValue)}",
+            null => string.Empty,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(status), status, "Unknown import status"),
+        };
+
     // Watch the picked release's library membership, so the banner above the
     // table says when this folder is already in the library.
     private void ObserveRelease()
@@ -252,6 +272,7 @@ internal sealed partial class ImportMappingPane : UserControl
         _key = null;
         _candidate = null;
         _candidatePresentationFingerprint = string.Empty;
+        _importStatusFingerprint = string.Empty;
         ResetSession();
         Render();
         Cleared?.Invoke();
@@ -395,6 +416,16 @@ internal sealed partial class ImportMappingPane : UserControl
             // that is picked, and it was flashing on every click.
             _content.Content = PendingState();
             return;
+        }
+
+        switch (_candidate.Detail?.Row.ImportStatus)
+        {
+            case BridgeTriageImportStatus.Importing:
+                _content.Content = BuildReadOnlyImportPane(completed: null);
+                return;
+            case BridgeTriageImportStatus.Complete complete:
+                _content.Content = BuildReadOnlyImportPane(complete);
+                return;
         }
 
         var sections = new StackPanel { Spacing = 18, Margin = new Thickness(20, 16, 20, 16) };

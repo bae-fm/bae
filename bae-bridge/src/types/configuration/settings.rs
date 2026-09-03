@@ -199,6 +199,8 @@ pub enum BridgeErrorCategory {
     Config,
     Internal,
     Import,
+    CandidateImportInProgress,
+    CandidateAlreadyImported,
     Export,
     Save,
     CloudSetup {
@@ -297,6 +299,19 @@ impl BridgeError {
     pub(crate) fn import(detail: impl std::fmt::Display) -> Self {
         Self::diagnostic(BridgeErrorCategory::Import, detail)
     }
+    #[cfg(feature = "desktop")]
+    pub(crate) fn candidate_mutation(error: bae_core::import::ImportError) -> Self {
+        let category = match &error {
+            bae_core::import::ImportError::CandidateImportInProgress => {
+                BridgeErrorCategory::CandidateImportInProgress
+            }
+            bae_core::import::ImportError::CandidateAlreadyImported => {
+                BridgeErrorCategory::CandidateAlreadyImported
+            }
+            _ => BridgeErrorCategory::Import,
+        };
+        Self::diagnostic(category, error)
+    }
     /// Desktop-only with the output surface it reports on: iOS/Android compile
     /// out the output queue and the track saver entirely.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -339,6 +354,12 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Config => "core.error.category.config",
         BridgeErrorCategory::Internal => "core.error.category.internal",
         BridgeErrorCategory::Import => "core.error.category.import",
+        BridgeErrorCategory::CandidateImportInProgress => {
+            "core.import.error.candidate_import_in_progress"
+        }
+        BridgeErrorCategory::CandidateAlreadyImported => {
+            "core.import.error.candidate_already_imported"
+        }
         BridgeErrorCategory::Export => "core.error.category.export",
         BridgeErrorCategory::Save => "core.error.category.save",
         BridgeErrorCategory::CloudSetup { failure } => match failure {

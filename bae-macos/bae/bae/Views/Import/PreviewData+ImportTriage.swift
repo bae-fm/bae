@@ -774,47 +774,22 @@
             )
         }()
 
-        /// The picked release’s editor seed, as the decided-identity answer carries it:
-        /// projected from the release the way the commit worker maps it, so every
-        /// credited album artist is present.
-        static let releaseSeedBridge: BridgeReleaseUserEdit = {
-            let tracks: [BridgeTrackUserEdit] = (1...9)
-                .map { i in
-                    BridgeTrackUserEdit(
-                        title: "Track Title \(i)",
-                        side: 1,
-                        trackNumber: Int32(i),
-                        artistAssignments: i == 5
-                            ? .explicit(
-                                assignments: [newArtist("Featured Artist")]
-                            )
-                            : .albumArtists,
-                        file: .standalone(fileId: "Track \(i).flac")
-                    )
-                }
-            return BridgeReleaseUserEdit(
-                albumTitle: "Album Title One",
-                albumArtistAssignments: [newArtist("Artist Name")],
-                albumYear: 1983,
-                pressing: BridgePressingEdit(
-                    year: 1996,
-                    format: "CD",
-                    label: "Label Name",
-                    catalogNumber: "6006-2",
-                    country: "US",
-                    barcode: nil
-                ),
-                tracks: tracks
-            )
-        }()
-
         /// Editor seed for the confirming previews — the raw release edit the
         /// prefetch's seed projects into.
-        static let confirmEditValues: BridgeRawReleaseEdit =
-            rawReleaseEditFromUserEdit(
-                edit: releaseSeedBridge,
-                trackIdPrefix: "import-track"
-            )
+        static let confirmEditValues = editMetadataDraft(trackCount: 9)
+
+        /// The same values shaped through the production boundary for previews
+        /// that show metadata before it becomes the candidate's raw draft.
+        static let releaseSeedBridge: BridgeReleaseUserEdit = {
+            guard
+                case .valid(let edit) = shapeReleaseEdit(
+                    raw: confirmEditValues
+                )
+            else {
+                preconditionFailure("Preview release metadata must be valid")
+            }
+            return edit
+        }()
 
         /// Per-track audio candidate (nine FLAC files) plus one cover image, two
         /// documents, and a sheet describing nothing yet — the file-per-track

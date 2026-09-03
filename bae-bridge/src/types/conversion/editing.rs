@@ -280,15 +280,76 @@ impl BridgeRawReleaseEdit {
 }
 
 #[cfg(feature = "desktop")]
+impl BridgeReleaseEditTrackSource {
+    fn from_core(source: bae_core::album_detail::ReleaseEditTrackSource) -> Self {
+        let bae_core::album_detail::ReleaseEditTrackSource {
+            file_id,
+            name,
+            layout,
+        } = source;
+        Self {
+            file_id,
+            name,
+            layout: BridgeSourceAudioLayout::from_core(layout),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeReleaseEditTrackContext {
+    fn from_core(context: bae_core::album_detail::ReleaseEditTrackContext) -> Self {
+        let bae_core::album_detail::ReleaseEditTrackContext {
+            track_id,
+            sources,
+            duration_ms,
+            side,
+        } = context;
+        let side = BridgeTrackSide::from_core(side);
+        let side_header_key = side.header_key().map(str::to_string);
+        Self {
+            track_id,
+            sources: sources
+                .into_iter()
+                .map(BridgeReleaseEditTrackSource::from_core)
+                .collect(),
+            duration_ms,
+            side,
+            side_header_key,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeReleaseEditDisplayContext {
+    fn from_core(context: bae_core::album_detail::ReleaseEditDisplayContext) -> Self {
+        let bae_core::album_detail::ReleaseEditDisplayContext {
+            source_audio,
+            tracks,
+        } = context;
+        Self {
+            source_audio: source_audio.map(BridgeSourceAudioSummary::from_core),
+            tracks: tracks
+                .into_iter()
+                .map(BridgeReleaseEditTrackContext::from_core)
+                .collect(),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl BridgeReleaseEditSeed {
     pub(crate) fn from_core(seed: bae_core::import::ReleaseEditSeed) -> Self {
         let bae_core::import::ReleaseEditSeed {
             edit,
             can_reset_to_source,
+            cover,
+            display,
         } = seed;
         Self {
             edit: BridgeRawReleaseEdit::from_core(edit),
             can_reset_to_source,
+            cover: cover.map(BridgeImageRef::from_core),
+            display: BridgeReleaseEditDisplayContext::from_core(display),
         }
     }
 }

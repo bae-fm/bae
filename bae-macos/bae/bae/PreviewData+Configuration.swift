@@ -60,10 +60,9 @@
             )
         }
 
-        /// A raw release edit for the EditMetadataForm / EditMetadataSheet previews:
-        /// the album + pressing fields plus `trackCount` tracks. Blank track artists
-        /// (the default) exercise the "track artist falls back to album artist"
-        /// placeholder path the form renders — both previews wrap that form.
+        /// A raw release edit for metadata-editor previews: the album and
+        /// pressing fields plus `trackCount` tracks. Blank track artists
+        /// exercise the album-artist inheritance path.
         static func editMetadataDraft(
             trackCount: Int,
             blankTrackArtists: Bool = true
@@ -100,6 +99,61 @@
                             file: .standalone(fileId: "\(n).flac")
                         )
                     }
+            )
+        }
+
+        static func releaseEditSeed(trackCount: Int) -> BridgeReleaseEditSeed {
+            let edit = editMetadataDraft(trackCount: trackCount)
+            let format = BridgeAudioFormat(
+                codec: "FLAC",
+                sampleRateHz: 44_100,
+                bitsPerSample: 16,
+                bitrateKbps: nil,
+                channels: 2
+            )
+            return BridgeReleaseEditSeed(
+                edit: edit,
+                canResetToSource: true,
+                cover: nil,
+                display: BridgeReleaseEditDisplayContext(
+                    sourceAudio: .uniform(
+                        descriptor: BridgeSourceAudioDescriptor(
+                            layout: .file,
+                            format: format
+                        )
+                    ),
+                    tracks: edit.tracks.enumerated()
+                        .map { index, track in
+                            BridgeReleaseEditTrackContext(
+                                trackId: track.id,
+                                sources: [
+                                    BridgeReleaseEditTrackSource(
+                                        fileId: "file-\(index + 1)",
+                                        name: "Track \(index + 1).flac",
+                                        layout: .file
+                                    )
+                                ],
+                                durationMs: Int64(180_000 + index * 12_000),
+                                side: .flat,
+                                sideHeaderKey: nil
+                            )
+                        }
+                )
+            )
+        }
+
+        @MainActor
+        static func releaseEditor() -> ReleaseEditor {
+            ReleaseEditor(
+                outboxStore: OutboxStore(
+                    snapshot: OutboxStore.emptySnapshot
+                ),
+                seedReleaseEdit: { _ in
+                    releaseEditSeed(trackCount: 5)
+                },
+                resetReleaseEditToSource: { _ in
+                    releaseEditSeed(trackCount: 5).edit
+                }
             )
         }
 

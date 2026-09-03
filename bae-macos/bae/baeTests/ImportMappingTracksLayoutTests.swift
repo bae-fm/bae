@@ -25,21 +25,24 @@ struct ImportMappingTracksLayoutTests {
     @Test(
         "playable source leads the row with the standard playback target",
         arguments: [
-            ImportMappingColumns.minimumTableWidth,
-            ImportMappingColumns.idealTableWidth,
+            ReleaseMetadataTrackColumns.minimumTableWidth,
+            ReleaseMetadataTrackColumns.idealTableWidth,
             1200,
         ] as [CGFloat]
     )
     func playableSourceLeadsTheRow(tableWidth: CGFloat) async throws {
-        let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
+        let columns = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: tableWidth
+        )
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: tableWidth, height: 40)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingTrackRow(
                 mapping: pairedMapping,
-                columns: columns.tracks,
+                columns: columns,
                 audioChoices: [],
                 previewingTarget: nil,
+                editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: recorder)
             )
@@ -72,7 +75,7 @@ struct ImportMappingTracksLayoutTests {
     @MainActor
     @Test("preview state keeps the playable row geometry stable")
     func previewStateKeepsRowGeometryStable() async throws {
-        let tableWidth = ImportMappingColumns.idealTableWidth
+        let tableWidth = ReleaseMetadataTrackColumns.idealTableWidth
         let stopped = try await hostedTrack(
             tableWidth: tableWidth,
             previewingTarget: nil
@@ -96,7 +99,7 @@ struct ImportMappingTracksLayoutTests {
             endSample: 88_200
         )
         let hosted = try await hostedTrack(
-            tableWidth: ImportMappingColumns.idealTableWidth,
+            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth,
             previewingTarget: otherWindow
         )
 
@@ -125,8 +128,8 @@ struct ImportMappingTracksLayoutTests {
     @MainActor
     @Test("probed duration renders when metadata names no duration")
     func probedDurationRendersWithoutMetadataDuration() async throws {
-        let columns = ImportMappingColumns.resolved(
-            tableWidth: ImportMappingColumns.idealTableWidth
+        let columns = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
         )
         let track = try #require(pairedMapping.track)
         let mapping = BridgeTrackMapping(
@@ -139,15 +142,16 @@ struct ImportMappingTracksLayoutTests {
             durationMs: 180_000
         )
         let size = NSSize(
-            width: ImportMappingColumns.idealTableWidth,
+            width: ReleaseMetadataTrackColumns.idealTableWidth,
             height: 40
         )
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingTrackRow(
                 mapping: mapping,
-                columns: columns.tracks,
+                columns: columns,
                 audioChoices: [],
                 previewingTarget: nil,
+                editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: MappingTrackActionRecorder())
             )
@@ -180,12 +184,14 @@ struct ImportMappingTracksLayoutTests {
     @Test(
         "awaiting release keeps Source in the same leading cell",
         arguments: [
-            ImportMappingColumns.minimumTableWidth,
-            ImportMappingColumns.idealTableWidth,
+            ReleaseMetadataTrackColumns.minimumTableWidth,
+            ReleaseMetadataTrackColumns.idealTableWidth,
         ] as [CGFloat]
     )
     func awaitingReleaseKeepsSourceLeading(tableWidth: CGFloat) async throws {
-        let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
+        let columns = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: tableWidth
+        )
         let recorder = MappingTrackActionRecorder()
         let size = NSSize(width: tableWidth, height: 40)
         let mapping = BridgeTrackMapping(
@@ -196,9 +202,10 @@ struct ImportMappingTracksLayoutTests {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingTrackRow(
                 mapping: mapping,
-                columns: columns.tracks,
+                columns: columns,
                 audioChoices: [],
                 previewingTarget: nil,
+                editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: recorder)
             )
@@ -237,9 +244,9 @@ extension ImportMappingTracksLayoutTests {
     @Test(
         "sheet caption keeps the disc pill leading and the binding after it",
         arguments: [
-            (ImportMappingColumns.minimumTableWidth, false),
-            (ImportMappingColumns.minimumTableWidth, true),
-            (ImportMappingColumns.idealTableWidth, false),
+            (ReleaseMetadataTrackColumns.minimumTableWidth, false),
+            (ReleaseMetadataTrackColumns.minimumTableWidth, true),
+            (ReleaseMetadataTrackColumns.idealTableWidth, false),
             (1200, true),
         ] as [(CGFloat, Bool)]
     )
@@ -292,7 +299,7 @@ extension ImportMappingTracksLayoutTests {
     @Test("a lone sheet's caption has no disc pill")
     func loneSheetCaptionHasNoDiscPill() async throws {
         let size = NSSize(
-            width: ImportMappingColumns.idealTableWidth,
+            width: ReleaseMetadataTrackColumns.idealTableWidth,
             height: 40
         )
         let (window, host) = SnapshotTestSupport.hostInWindow(
@@ -485,15 +492,18 @@ extension ImportMappingTracksLayoutTests {
         tableWidth: CGFloat,
         previewingTarget: BridgePreviewTarget?
     ) async throws -> (height: CGFloat, recorder: MappingTrackActionRecorder) {
-        let columns = ImportMappingColumns.resolved(tableWidth: tableWidth)
+        let columns = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: tableWidth
+        )
         let size = NSSize(width: tableWidth, height: 40)
         let recorder = MappingTrackActionRecorder()
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportMappingTrackRow(
                 mapping: pairedMapping,
-                columns: columns.tracks,
+                columns: columns,
                 audioChoices: [],
                 previewingTarget: previewingTarget,
+                editingCommands: EditingCommitCommands(),
                 evidence: [],
                 actions: actions(recording: recorder)
             )

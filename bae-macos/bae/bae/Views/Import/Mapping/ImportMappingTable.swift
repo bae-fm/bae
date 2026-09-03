@@ -21,13 +21,15 @@ struct ImportMappingTable: View {
     /// file carries the chip independently of the selected pressing.
     var evidence: [BridgeFileEvidence] = []
     let actions: ImportMappingActions
+    let editingCommands: EditingCommitCommands
 
     /// The width the pane leaves the table. The columns are resolved against
     /// it, and the table is laid out at it or at its own minimum, whichever is
     /// wider — so the pane never has more table than it has room for, and the
     /// row never has less than its columns need.
     @State
-    private var paneWidth: CGFloat = ImportMappingColumns.minimumTableWidth
+    private var paneWidth: CGFloat = ReleaseMetadataTrackColumns
+        .minimumTableWidth
     @State
     var artistFillSelection: ArtistFillSelection?
     @State
@@ -39,11 +41,11 @@ struct ImportMappingTable: View {
     let artistFillCoordinateSpace = "ImportMappingTable.artistFill"
 
     private var tableWidth: CGFloat {
-        max(paneWidth, ImportMappingColumns.minimumTableWidth)
+        max(paneWidth, ReleaseMetadataTrackColumns.minimumTableWidth)
     }
 
-    private var columns: ImportMappingColumns {
-        ImportMappingColumns.resolved(tableWidth: tableWidth)
+    private var columns: ReleaseMetadataTrackColumns {
+        ReleaseMetadataTrackColumns.resolved(tableWidth: tableWidth)
     }
 
     var body: some View {
@@ -181,9 +183,10 @@ struct ImportMappingTable: View {
     private func trackRow(_ mapping: BridgeTrackMapping) -> some View {
         ImportMappingTrackRow(
             mapping: mapping,
-            columns: columns.tracks,
+            columns: columns,
             audioChoices: table.audioChoices,
             previewingTarget: previewingTarget,
+            editingCommands: editingCommands,
             evidence: evidenceFor(mapping),
             actions: actions,
             artistFillCoordinateSpace: artistFillCoordinateSpace,
@@ -210,7 +213,7 @@ struct ImportMappingTable: View {
     private var trackHeaderRow: some View {
         headerRow {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                eyebrow("ui.import.mapping.tracks_title")
+                FormEyebrow(text: Text("Source"))
                 if let reconciliation = table.reconciliation
                     .flatMap(bridgeSlotReconciliationText)
                 {
@@ -222,22 +225,30 @@ struct ImportMappingTable: View {
                 }
                 Spacer(minLength: 0)
             }
-            .frame(width: columns.tracks.source, alignment: .leading)
-            FormEyebrow(text: Text(verbatim: "#"))
+            .frame(width: columns.source, alignment: .leading)
+            FormEyebrow(text: Text(verbatim: table.positionHeaderText))
                 .frame(
-                    width: ImportMappingColumns.position,
+                    width: ReleaseMetadataTrackColumns.side,
+                    alignment: .leading
+                )
+            FormEyebrow(text: Text("Track"))
+                .frame(
+                    width: ReleaseMetadataTrackColumns.track,
                     alignment: .leading
                 )
             // Inset to the fields' text, which sits an inline chrome-pad
             // inside each column.
             eyebrow("ui.import.mapping.column.title")
                 .padding(.leading, FieldChrome.inlineHorizontalPadding)
-                .frame(width: columns.tracks.title, alignment: .leading)
+                .frame(width: columns.title, alignment: .leading)
             eyebrow("ui.import.mapping.column.artist")
                 .padding(.leading, FieldChrome.inlineHorizontalPadding)
-                .frame(width: columns.tracks.artist, alignment: .leading)
+                .frame(width: columns.artist, alignment: .leading)
             eyebrow("ui.import.slots.column.length")
-                .frame(width: ImportMappingColumns.length, alignment: .trailing)
+                .frame(
+                    width: ReleaseMetadataTrackColumns.length,
+                    alignment: .trailing
+                )
             Color.clear
                 .frame(width: ImportMappingColumns.action)
         }
@@ -316,83 +327,10 @@ extension View {
     }
 }
 
-/// The widths the mapping table resolves for one pane.
-///
-/// Tracks have five columns and a trailing action slot. Files rows are not
-/// columnar: each is the file's name with its size and role beside it.
-///
-/// Source leads because the file is the origin of every mapping row. `#`,
-/// Length and the action slot are fixed — a track number, a duration and one
-/// glyph have a known size and squeezing them says nothing. Source, Title, and
-/// Artist give up width in proportion as the pane narrows, each down to a
-/// floor below which it stops being a column and starts being an ellipsis.
-struct ImportMappingColumns {
-    struct Tracks {
-        let source: CGFloat
-        let title: CGFloat
-        let artist: CGFloat
-    }
-
-    let tracks: Tracks
-
-    static let position: CGFloat = 34
-    static let length: CGFloat = 88
-    /// The slot at the row's far right where a row is taken out of the list.
-    static let action: CGFloat = 24
-    static let spacing: CGFloat = 10
-    /// The rows' inset from the table's edges. The table is open on the pane,
-    /// so this matches the section heading's inset and the rows line up under
-    /// it.
-    static let rowPadding: CGFloat = 2
-
-    private static let idealTitle: CGFloat = 220
-    private static let floorTitle: CGFloat = 96
-    private static let idealArtist: CGFloat = 180
-    private static let floorArtist: CGFloat = 72
-    private static let idealSource: CGFloat = 260
-    private static let floorSource: CGFloat = 140
-
-    private static let chrome: CGFloat = rowPadding * 2 + spacing * 5
-    private static let rigid: CGFloat = position + length + action
-
-    static let idealTableWidth: CGFloat =
-        idealTitle + idealArtist + idealSource + rigid + chrome
-
-    static let minimumTableWidth: CGFloat =
-        floorTitle + floorArtist + floorSource + rigid + chrome
-
-    static func resolved(tableWidth: CGFloat) -> ImportMappingColumns {
-        let width = max(tableWidth, minimumTableWidth)
-        let given =
-            width < idealTableWidth
-            ? (idealTableWidth - width)
-                / ((idealTitle - floorTitle) + (idealArtist - floorArtist)
-                    + (idealSource - floorSource))
-            : 0
-        let title = shrunk(idealTitle, to: floorTitle, by: given)
-        let artist = shrunk(idealArtist, to: floorArtist, by: given)
-        return ImportMappingColumns(
-            tracks: Tracks(
-                // What the others leave. Stating the leading flexible share as
-                // the remainder keeps every column summing to the table's
-                // width at every size.
-                source: max(
-                    floorSource,
-                    width - rigid - chrome - title - artist
-                ),
-                title: title,
-                artist: artist
-            )
-        )
-    }
-
-    private static func shrunk(
-        _ ideal: CGFloat,
-        to floor: CGFloat,
-        by given: CGFloat
-    ) -> CGFloat {
-        max(floor, ideal - (ideal - floor) * given)
-    }
+enum ImportMappingColumns {
+    static let action = ReleaseMetadataTrackColumns.action
+    static let spacing = ReleaseMetadataTrackColumns.spacing
+    static let rowPadding = ReleaseMetadataTrackColumns.rowPadding
 }
 
 extension BridgeMappingTable {

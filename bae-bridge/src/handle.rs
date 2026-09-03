@@ -96,9 +96,7 @@ impl Drop for AppRuntime {
 }
 
 #[cfg(feature = "desktop")]
-pub use editing_projection::{
-    bridge_validation_reason_key, raw_release_edit_from_user_edit, shape_release_edit,
-};
+pub use editing_projection::{bridge_validation_reason_key, shape_release_edit};
 
 impl AppHandle {
     pub(crate) fn start(

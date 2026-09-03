@@ -12,11 +12,12 @@ struct ImportMappingTrackRow: View {
     let mapping: BridgeTrackMapping
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
-    let columns: ImportMappingColumns.Tracks
+    let columns: ReleaseMetadataTrackColumns
     /// Every audio unit the folder offers — what a row with nothing behind it
     /// is offered to point at.
     let audioChoices: [ImportAudioChoice]
     let previewingTarget: BridgePreviewTarget?
+    let editingCommands: EditingCommitCommands
     /// Identifying signals extracted from this row's file. Empty for every
     /// other row.
     var evidence: [BridgeFileEvidence]
@@ -53,32 +54,20 @@ struct ImportMappingTrackRow: View {
     var body: some View {
         HStack(spacing: ImportMappingColumns.spacing) {
             sourceCell
-            Text(position)
-                .font(.system(size: 12))
-                .monospacedDigit()
-                .foregroundStyle(.tertiary)
-                .frame(
-                    width: ImportMappingColumns.position,
-                    alignment: .leading
+            if let track {
+                ReleaseMetadataTrackRow(
+                    track: track,
+                    duration: mapping.displayedDuration,
+                    durationDiverges: lengthsDiverge,
+                    columns: columns,
+                    editingCommands: editingCommands,
+                    onChange: { actions.editTrack($0) },
+                    artistFillCoordinateSpace: artistFillCoordinateSpace
                 )
-            titleCell
-            artistCell
-            Text(mapping.displayedDuration)
-                .font(.system(size: 12))
-                .monospacedDigit()
-                .accessibilityLabel(
-                    coreString("ui.import.slots.column.length")
-                )
-                .accessibilityValue(mapping.displayedDuration)
-                .foregroundStyle(
-                    lengthsDiverge
-                        ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary)
-                )
-                .help(lengthsDiverge ? String(localized: "Lengths differ") : "")
-                .frame(
-                    width: ImportMappingColumns.length,
-                    alignment: .trailing
-                )
+            }
+            else {
+                awaitingTrackCells
+            }
             removalCell
         }
         // The whole row is the hover shape, gaps included. Hover follows
@@ -97,75 +86,23 @@ struct ImportMappingTrackRow: View {
         }
     }
 
-    private var position: String {
-        if case .track(_, let position, _) = mapping.becomes {
-            return position
-        }
-        return ""
-    }
-
-    /// The title, editable where there is a track to edit. Before a release is
-    /// picked there is none, and the cell says what the row is waiting for.
     @ViewBuilder
-    private var titleCell: some View {
-        if let track {
-            // The field's chrome fills the column, so its text sits an
-            // inline chrome-pad inside it; the Title header carries the same
-            // inset, keeping the two aligned without the chrome spilling into
-            // the neighbouring column.
-            CommittedTextField(
-                placeholder: coreString("ui.import.slots.untitled"),
-                value: track.title,
-                chrome: .inline,
-                onCommit: { commit(track, \.title, $0) },
+    private var awaitingTrackCells: some View {
+        Color.clear.frame(width: ReleaseMetadataTrackColumns.side)
+        Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
+        Text(coreString("ui.import.becomes.awaiting_pick"))
+            .font(.system(size: 12))
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+            .frame(width: columns.title, alignment: .leading)
+        Color.clear.frame(width: columns.artist)
+        Text(mapping.displayedDuration)
+            .font(.system(size: 12))
+            .monospacedDigit()
+            .frame(
+                width: ReleaseMetadataTrackColumns.length,
+                alignment: .trailing
             )
-            .frame(width: columns.title)
-        }
-        else {
-            Text(coreString("ui.import.becomes.awaiting_pick"))
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .frame(width: columns.title, alignment: .leading)
-        }
-    }
-
-    @ViewBuilder
-    private var artistCell: some View {
-        if let track {
-            ArtistAssignmentsField(
-                assignments: explicitArtists(track.artistAssignments),
-                placeholder: coreString("ui.import.mapping.column.artist"),
-                inheritsAlbumArtists: inheritsAlbumArtists(
-                    track.artistAssignments
-                ),
-                onUseAlbumArtists: {
-                    commitArtists(track, .albumArtists)
-                },
-                onChange: {
-                    commitArtists(track, .explicit(assignments: $0))
-                },
-            )
-            .modifier(FieldChrome(focused: false, style: .inline))
-            .frame(width: columns.artist)
-            .background {
-                if let artistFillCoordinateSpace {
-                    GeometryReader { geometry in
-                        Color.clear.preference(
-                            key: ArtistCellFramePreferenceKey.self,
-                            value: [
-                                track.id: geometry.frame(
-                                    in: .named(artistFillCoordinateSpace)
-                                )
-                            ]
-                        )
-                    }
-                }
-            }
-        }
-        else {
-            Spacer().frame(width: columns.artist)
-        }
     }
 
     /// What the folder offers for this track, and — while the row has nothing
@@ -275,40 +212,4 @@ struct ImportMappingTrackRow: View {
         }
     }
 
-    /// Store one field of this row's track. A row is edited as a mapping, so the
-    /// whole row goes — the field the user left is the one that changed.
-    private func commit(
-        _ track: BridgeRawTrackEdit,
-        _ path: WritableKeyPath<BridgeRawTrackEdit, String>,
-        _ value: String
-    ) {
-        var edited = track
-        edited[keyPath: path] = value
-        actions.editTrack(edited)
-    }
-
-    private func commitArtists(
-        _ track: BridgeRawTrackEdit,
-        _ assignments: BridgeTrackArtistAssignments
-    ) {
-        var edited = track
-        edited.artistAssignments = assignments
-        actions.editTrack(edited)
-    }
-
-    private func explicitArtists(
-        _ assignments: BridgeTrackArtistAssignments
-    ) -> [BridgeArtistAssignment] {
-        switch assignments {
-        case .albumArtists: []
-        case .explicit(let artists): artists
-        }
-    }
-
-    private func inheritsAlbumArtists(
-        _ assignments: BridgeTrackArtistAssignments
-    ) -> Bool {
-        if case .albumArtists = assignments { return true }
-        return false
-    }
 }

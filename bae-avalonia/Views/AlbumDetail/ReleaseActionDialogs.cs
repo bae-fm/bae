@@ -102,7 +102,7 @@ internal sealed class ReleaseActionDialogs
             var reset = new Button { Content = Loc.Chrome("album.edit.reset") };
             reset.Click += async (_, _) =>
             {
-                var (current, result) = await _app.ReleaseEditor.ResetMetadataToSource(releaseId);
+                var (current, result) = await _app.ReleaseEditor.ResetReleaseEditToSource(releaseId);
                 if (!current)
                 {
                     return;

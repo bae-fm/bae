@@ -44,20 +44,3 @@ impl crate::types::BridgeValidationReason {
 pub fn bridge_validation_reason_key(reason: crate::types::BridgeValidationReason) -> String {
     reason.loc_key().to_string()
 }
-
-/// Seed the editor's raw form from a wire edit — the inverse of
-/// `shape_release_edit`: joins artist lists into comma text and renders absent
-/// pressing fields as empty. `track_id_prefix` supplies the editor row
-/// identities the wire edit lacks. Stateless type translation around
-/// [`bae_core::import::RawReleaseEdit::from_user_edit`]. Used by reset-to-source
-/// to repopulate the form from the projected edit.
-#[cfg(feature = "desktop")]
-#[uniffi::export]
-pub fn raw_release_edit_from_user_edit(
-    edit: crate::types::BridgeReleaseUserEdit,
-    track_id_prefix: String,
-) -> crate::types::BridgeRawReleaseEdit {
-    let core_edit = edit.into_core();
-    let raw = bae_core::import::RawReleaseEdit::from_user_edit(core_edit, &track_id_prefix);
-    crate::types::BridgeRawReleaseEdit::from_core(raw)
-}

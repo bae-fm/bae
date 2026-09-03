@@ -295,7 +295,7 @@ pub struct FileDetail {
 /// stereo"): the codec is a proper noun, the channel count maps to a localized word,
 /// and the numbers format per locale. A present `bits_per_sample` means lossless —
 /// show the bit depth; absent means lossy — show `bitrate_kbps` instead.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct AudioFormat {
     pub codec: String,
     pub sample_rate_hz: i64,
@@ -310,7 +310,7 @@ pub enum SourceAudioLayout {
     Cue,
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SourceAudioDescriptor {
     pub layout: SourceAudioLayout,
     pub format: AudioFormat,
@@ -336,7 +336,7 @@ impl SourceAudioFile {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SourceAudioSummary {
     Uniform {
         descriptor: SourceAudioDescriptor,

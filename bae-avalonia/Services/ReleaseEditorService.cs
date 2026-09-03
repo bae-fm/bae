@@ -43,8 +43,8 @@ internal sealed class ReleaseEditorService
     /// <summary>Discard in-progress edits and re-seed the form from the release's
     /// stored metadata source (its original identity), without writing. Async — it
     /// re-projects from the source.</summary>
-    public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ResetMetadataToSource { get; init; }
-        = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetMetadataToSource not wired");
+    public Func<string, Task<(bool Current, (BridgeRawReleaseEdit? Edit, string? Error) Result)>> ResetReleaseEditToSource { get; init; }
+        = _ => throw new InvalidOperationException("ReleaseEditorService stub: ResetReleaseEditToSource not wired");
 
     /// <summary>Commit a re-identify: point the release at a chosen source
     /// pressing or reseed it from its file tags. Open subscriptions deliver the
@@ -78,8 +78,8 @@ internal sealed class ReleaseEditorService
             session.RunForCurrentHandle(handle => NativeBae.ReleaseEditSeed(handle, releaseId)),
         ApplyReleaseEdit = (releaseId, edit) =>
             session.RunForCurrentHandle(handle => NativeBae.ApplyReleaseEdit(handle, releaseId, edit)),
-        ResetMetadataToSource = releaseId =>
-            session.RunForCurrentHandle(handle => NativeBae.ResetMetadataToSource(handle, releaseId)),
+        ResetReleaseEditToSource = releaseId =>
+            session.RunForCurrentHandle(handle => NativeBae.ResetReleaseEditToSource(handle, releaseId)),
         ReidentifyRelease = (releaseId, choice) =>
             session.RunForCurrentHandle(handle => NativeBae.ReidentifyRelease(handle, releaseId, choice)),
         RefreshMetadataFromSource = releaseId =>

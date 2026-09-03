@@ -120,6 +120,17 @@ pub enum ImportError {
     #[error("This release is already in your library as \"{album_title}\"")]
     AlreadyInLibrary { album_title: String },
 
+    /// Candidate preparation is immutable from the moment import owns it.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("This release is being imported and can no longer be edited")]
+    CandidateImportInProgress,
+
+    /// A completed import is edited through the persisted release editor, not
+    /// through the candidate preparation it was created from.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    #[error("This release has already been imported; edit it in the library")]
+    CandidateAlreadyImported,
+
     /// The user-edit overlay is invalid (reuses the editor's typed error).
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     #[error(transparent)]

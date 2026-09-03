@@ -571,6 +571,55 @@ impl ImportServiceHandle {
         )
     }
 
+    /// The stored candidate whose preparation may still be changed. Callers
+    /// hold `folder_state_commit` across this check and the ensuing write, so
+    /// an import claim cannot land between them.
+    pub(super) async fn editable_candidate_for_commit(
+        &self,
+        key: &str,
+    ) -> Result<FolderCandidate, crate::import::ImportError> {
+        let candidate = self
+            .stored_actionable_candidate(key)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{key} is not an actionable folder candidate"),
+            })?;
+        if self
+            .runtime
+            .get(key)
+            .is_some_and(|runtime| runtime.import.is_some())
+        {
+            return Err(crate::import::ImportError::CandidateImportInProgress);
+        }
+        if self
+            .library_manager
+            .is_content_hash_imported(&candidate.files.content_hash())
+            .await?
+        {
+            return Err(crate::import::ImportError::CandidateAlreadyImported);
+        }
+        Ok(candidate)
+    }
+
+    /// Recheck the exact candidate revision an edit was prepared from while
+    /// holding `folder_state_commit`.
+    pub(super) async fn editable_candidate_revision_for_commit(
+        &self,
+        key: &str,
+        expected_content_hash: &str,
+        expected_file_edit_revision: u64,
+    ) -> Result<FolderCandidate, crate::import::ImportError> {
+        let candidate = self.editable_candidate_for_commit(key).await?;
+        if candidate.files.content_hash() != expected_content_hash
+            || candidate.file_edit_revision != expected_file_edit_revision
+        {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{key} changed before its edit could be stored"),
+            });
+        }
+        Ok(candidate)
+    }
+
     /// Claim `candidate_key` for an import that is about to be queued.
     ///
     /// Takes the folder-state commit lock, which

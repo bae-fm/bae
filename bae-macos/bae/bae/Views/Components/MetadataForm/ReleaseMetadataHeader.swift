@@ -1,12 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// Where one field's typed value goes.
-///
-/// The library's release editor holds its form in memory and saves it whole,
-/// so its fields write into a binding. The import pane holds nothing: each
-/// field is a row under the candidate, and typing in one writes that row. Both
-/// hand this the same album and pressing fields.
+/// Where one release field's settled value goes. Candidate drafts persist each
+/// field independently; persisted-release sessions update their working form.
 struct ReleaseFieldWriter {
     let setField: @MainActor (BridgeCandidateEditField, String) async -> Void
     let setAlbumArtists: @MainActor ([BridgeArtistAssignment]) async -> Void
@@ -25,7 +21,6 @@ struct ReleaseFieldWriter {
         self.setAlbumArtists = setAlbumArtists
     }
 
-    /// Write into a form held in memory.
     static func binding(_ form: Binding<BridgeRawReleaseEdit>) -> Self {
         Self(
             setField: { field, value in
@@ -48,209 +43,198 @@ struct ReleaseFieldWriter {
     }
 }
 
-/// The album and pressing fields of a release, as one form.
-///
-/// It reads values and reports edits; where those values live is the caller's.
-struct ReleaseFieldsForm: View {
+/// The shared editable release header: cover, album identity, source context,
+/// and pressing facts. Its callers supply the cover and context so candidate
+/// and persisted-release ownership never leaks into this component.
+struct ReleaseMetadataHeader<Cover: View, Context: View, SourceAudio: View>:
+    View
+{
+    static var coverSize: CGFloat { 200 }
+    static var coverSpacing: CGFloat { 24 }
+
     let values: BridgeRawReleaseEdit
     let writer: ReleaseFieldWriter
-    var editingCommands: EditingCommitCommands?
-
-    init(
-        values: BridgeRawReleaseEdit,
-        writer: ReleaseFieldWriter,
-        editingCommands: EditingCommitCommands? = nil
-    ) {
-        self.values = values
-        self.writer = writer
-        self.editingCommands = editingCommands
-    }
-
-    /// A form over a value held in memory — the library's release editor.
-    init(form: Binding<BridgeRawReleaseEdit>) {
-        values = form.wrappedValue
-        writer = .binding(form)
-        editingCommands = nil
-    }
+    let editingCommands: EditingCommitCommands
+    @ViewBuilder
+    let cover: () -> Cover
+    @ViewBuilder
+    let context: () -> Context
+    @ViewBuilder
+    let sourceAudio: () -> SourceAudio
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            albumGroup
-            pressingGroup
+        HStack(alignment: .top, spacing: Self.coverSpacing) {
+            cover()
+                .frame(width: Self.coverSize, height: Self.coverSize)
+            VStack(alignment: .leading, spacing: 22) {
+                ReleaseAlbumIdentityEditor(
+                    values: values,
+                    writer: writer,
+                    editingCommands: editingCommands,
+                    context: context,
+                    sourceAudio: sourceAudio
+                )
+                ReleasePressingFieldsGrid(
+                    values: values,
+                    writer: writer,
+                    editingCommands: editingCommands
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Album identity rendered as a document heading that becomes editable on
+/// hover and focus.
+struct ReleaseAlbumIdentityEditor<Context: View, SourceAudio: View>: View {
+    let values: BridgeRawReleaseEdit
+    let writer: ReleaseFieldWriter
+    let editingCommands: EditingCommitCommands
+    @ViewBuilder
+    let context: () -> Context
+    @ViewBuilder
+    let sourceAudio: () -> SourceAudio
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            CommittedTextField(
+                placeholder: String(localized: "Album title"),
+                value: values.albumTitle,
+                chrome: .inline,
+                font: .system(size: 24, weight: .semibold),
+                editingCommands: editingCommands,
+                onCommit: { await writer.setField(.albumTitle, $0) },
+            )
+            HStack(alignment: .center, spacing: 6) {
+                ArtistAssignmentsField(
+                    assignments: values.albumArtistAssignments,
+                    placeholder: String(localized: "Album artist"),
+                    onChange: { assignments in
+                        Task { await writer.setAlbumArtists(assignments) }
+                    },
+                )
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: true, vertical: false)
+                .modifier(FieldChrome(focused: false, style: .inline))
+                Text(verbatim: "\u{00b7}")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.quaternary)
+                CommittedTextField(
+                    placeholder: String(localized: "Year"),
+                    value: values.albumYear,
+                    chrome: .inline,
+                    font: .system(size: 13),
+                    editingCommands: editingCommands,
+                    onCommit: { await writer.setField(.albumYear, $0) },
+                )
+                .foregroundStyle(.secondary)
+                .frame(width: 72)
+                context()
+            }
+            sourceAudio()
+                .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
+        }
+        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Editable pressing facts in the compact two-column grid used by Import and
+/// the persisted release editor.
+struct ReleasePressingFieldsGrid: View {
+    let values: BridgeRawReleaseEdit
+    let writer: ReleaseFieldWriter
+    let editingCommands: EditingCommitCommands
+
+    static let labelWidth: CGFloat = 64
+    static let valueWidth: CGFloat = 150
+    static let columnGap: CGFloat = 20
+    static let labelGap: CGFloat = 12
+    static let rowSpacing: CGFloat = 10
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            FormSectionHeader(title: String(localized: "Release"), ruled: true)
+            Grid(
+                alignment: .leadingFirstTextBaseline,
+                horizontalSpacing: Self.columnGap
+                    - FieldChrome.inlineHorizontalPadding,
+                verticalSpacing: Self.rowSpacing
+            ) {
+                GridRow {
+                    field(
+                        .pressingYear,
+                        label: String(localized: "Year"),
+                        text: values.pressing.year
+                    )
+                    field(
+                        .format,
+                        label: coreString("core.release.media"),
+                        text: values.pressing.format
+                    )
+                }
+                GridRow {
+                    field(
+                        .label,
+                        label: String(localized: "Label"),
+                        text: values.pressing.label
+                    )
+                    field(
+                        .country,
+                        label: String(localized: "Country"),
+                        text: values.pressing.country
+                    )
+                }
+                GridRow {
+                    field(
+                        .catalogNumber,
+                        label: String(localized: "Catalog"),
+                        text: values.pressing.catalogNumber,
+                        monospaced: true
+                    )
+                    field(
+                        .barcode,
+                        label: String(localized: "Barcode"),
+                        text: values.pressing.barcode,
+                        monospaced: true
+                    )
+                }
+            }
         }
     }
 
-    private func row(
+    private func field(
         _ field: BridgeCandidateEditField,
         label: String,
-        hint: String? = nil,
-        placeholder: String,
         text: String,
-        width: FieldWidth,
         monospaced: Bool = false
-    ) -> FieldRow {
-        FieldRow(
-            label: label,
-            hint: hint,
-            placeholder: placeholder,
-            text: text,
-            onCommit: { await writer.setField(field, $0) },
-            width: width,
-            monospaced: monospaced,
-        )
-    }
-
-    private var albumGroup: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: String(localized: "Album"))
-            VStack(spacing: 0) {
-                fieldRow(
-                    row(
-                        .albumTitle,
-                        label: String(localized: "Title"),
-                        placeholder: String(localized: "Album title"),
-                        text: values.albumTitle,
-                        width: .long,
-                    )
-                )
-                Rectangle()
-                    .fill(.white.opacity(0.07))
-                    .frame(height: 1)
-                albumArtistsRow
-                Rectangle()
-                    .fill(.white.opacity(0.07))
-                    .frame(height: 1)
-                fieldRow(
-                    row(
-                        .albumYear,
-                        label: String(localized: "Year"),
-                        placeholder: String(localized: "Year"),
-                        text: values.albumYear,
-                        width: .short,
-                        monospaced: true,
-                    )
-                )
-            }
-            .formGroupCard()
-        }
-    }
-
-    private var albumArtistsRow: some View {
-        HStack(spacing: 16) {
-            Text("Artist")
-                .font(.system(size: 13))
-                .frame(width: 150, alignment: .leading)
-            ArtistAssignmentsField(
-                assignments: values.albumArtistAssignments,
-                placeholder: String(localized: "Album artist"),
-                onChange: { assignments in
-                    Task { await writer.setAlbumArtists(assignments) }
-                },
-            )
-            .frame(maxWidth: FieldWidth.long.maxWidth)
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-    }
-
-    private var pressingGroup: some View {
-        groupCard(
-            title: String(localized: "Release pressing"),
-            rows: [
-                row(
-                    .pressingYear,
-                    label: String(localized: "Year"),
-                    placeholder: String(localized: "Year"),
-                    text: values.pressing.year,
-                    width: .short,
-                    monospaced: true,
-                ),
-                row(
-                    .format,
-                    label: coreString("core.release.media"),
-                    placeholder: coreString("core.release.media"),
-                    text: values.pressing.format,
-                    width: .short,
-                ),
-                row(
-                    .label,
-                    label: String(localized: "Label"),
-                    placeholder: String(localized: "Label"),
-                    text: values.pressing.label,
-                    width: .long,
-                ),
-                row(
-                    .country,
-                    label: String(localized: "Country"),
-                    placeholder: String(localized: "Country"),
-                    text: values.pressing.country,
-                    width: .short,
-                ),
-                row(
-                    .catalogNumber,
-                    label: String(localized: "Catalog number"),
-                    placeholder: String(localized: "Catalog number"),
-                    text: values.pressing.catalogNumber,
-                    width: .medium,
-                ),
-                row(
-                    .barcode,
-                    label: String(localized: "Barcode"),
-                    placeholder: String(localized: "Barcode"),
-                    text: values.pressing.barcode,
-                    width: .medium,
-                    monospaced: true,
-                ),
-            ],
-        )
-    }
-
-    /// A titled inset card of label-left / value-right rows separated by
-    /// hairlines.
-    private func groupCard(title: String, rows: [FieldRow]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            FormSectionHeader(title: title)
-            VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.element.label) {
-                    index,
-                    row in
-                    fieldRow(row)
-                    if index < rows.count - 1 {
-                        Rectangle()
-                            .fill(.white.opacity(0.07))
-                            .frame(height: 1)
-                    }
-                }
-            }
-            .formGroupCard()
-        }
-    }
-
-    private func fieldRow(_ row: FieldRow) -> some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(row.label)
-                    .font(.system(size: 13))
-                if let hint = row.hint {
-                    Text(hint)
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(.quaternary)
-                }
-            }
-            .frame(width: 150, alignment: .leading)
+    ) -> some View {
+        HStack(
+            alignment: .firstTextBaseline,
+            spacing: Self.labelGap - FieldChrome.inlineHorizontalPadding
+        ) {
+            Text(label)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(width: Self.labelWidth, alignment: .trailing)
             CommittedTextField(
-                placeholder: row.placeholder,
-                value: row.text,
-                monospaced: row.monospaced,
+                placeholder: "\u{2014}",
+                value: text,
+                monospaced: monospaced,
+                chrome: .inline,
+                font: .system(
+                    size: 12.5,
+                    design: monospaced ? .monospaced : .default
+                ),
+                placeholderRole: .emptyMark,
                 editingCommands: editingCommands,
-                onCommit: row.onCommit,
+                onCommit: { await writer.setField(field, $0) },
             )
-            .frame(maxWidth: row.width.maxWidth)
-            Spacer(minLength: 0)
+            .frame(width: Self.valueWidth)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
     }
 }
 
@@ -270,8 +254,6 @@ extension BridgeArtistAssignment {
     }
 }
 
-/// One assigned artist's name and its source-owned identity kind. The badge
-/// switches on the bridge enum itself, so equal names never imply linkage.
 struct ArtistAssignmentLabel: View {
     let assignment: BridgeArtistAssignment
 
@@ -291,7 +273,6 @@ struct ArtistAssignmentLabel: View {
     }
 }
 
-/// The display name for an existing artist search result.
 struct ArtistSearchResultLabel: View {
     let artist: BridgeExistingArtist
 
@@ -301,10 +282,6 @@ struct ArtistSearchResultLabel: View {
     }
 }
 
-/// Ordered artist choices shared by the library editor and import mapping.
-/// Existing artists are selected from the library; typed names remain explicit
-/// new-artist seeds. The compact field opens a popover so track-row dimensions
-/// never change while searching.
 struct ArtistAssignmentsField: View {
     let assignments: [BridgeArtistAssignment]
     let placeholder: String
@@ -353,12 +330,10 @@ struct ArtistAssignmentsField: View {
     @ViewBuilder
     private var fieldValue: some View {
         if inheritsAlbumArtists {
-            Text("Album artist")
-                .foregroundStyle(.tertiary)
+            Text("Album artist").foregroundStyle(.tertiary)
         }
         else if assignments.isEmpty {
-            Text(placeholder)
-                .foregroundStyle(.tertiary)
+            Text(placeholder).foregroundStyle(.tertiary)
         }
         else {
             HStack(spacing: 8) {
@@ -403,13 +378,10 @@ struct ArtistAssignmentsField: View {
                     .disabled(trimmedQuery.isEmpty)
             }
             if isSearching {
-                ProgressView()
-                    .controlSize(.small)
+                ProgressView().controlSize(.small)
             }
             if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+                Text(errorMessage).font(.caption).foregroundStyle(.red)
             }
             ForEach(results, id: \.artist.artistId) { result in
                 VStack(alignment: .leading, spacing: 1) {
@@ -432,9 +404,7 @@ struct ArtistAssignmentsField: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .task(id: query) {
-            await search()
-        }
+        .task(id: query) { await search() }
     }
 
     private var trimmedQuery: String {
@@ -484,17 +454,24 @@ struct ArtistAssignmentsField: View {
 }
 
 #if DEBUG
-    #Preview("Release fields") {
+    #Preview("Release metadata header") {
         @Previewable
         @State
         var form = PreviewData.editMetadataDraft(trackCount: 3)
-        ScrollView {
-            ReleaseFieldsForm(form: $form)
-                .padding(20)
-        }
-        .frame(width: 640, height: 520)
+        ReleaseMetadataHeader(
+            values: form,
+            writer: .binding($form),
+            editingCommands: EditingCommitCommands(),
+            cover: {
+                ImageView(imageRef: nil, pointSize: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            },
+            context: { EmptyView() },
+            sourceAudio: { EmptyView() }
+        )
+        .padding(24)
+        .frame(width: 900, height: 360)
         .background(Theme.background)
-        .preferredColorScheme(.dark)
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(UiStore())
     }

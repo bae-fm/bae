@@ -459,14 +459,17 @@ final class MetadataApplicationEditingTests: XCTestCase {
         let editingCommands = EditingCommitCommands()
         let size = NSSize(width: 700, height: 560)
         let (window, host) = SnapshotTestSupport.hostInWindow(
-            ReleaseFieldsForm(
+            ReleaseMetadataHeader(
                 values: model.edit,
                 writer: ReleaseFieldWriter(
                     setField: { field, value in
                         model.commit(field: field, value: value)
                     }
                 ),
-                editingCommands: editingCommands
+                editingCommands: editingCommands,
+                cover: { EmptyView() },
+                context: { EmptyView() },
+                sourceAudio: { EmptyView() }
             )
             .environment(Library.stub())
             .environment(UiStore())

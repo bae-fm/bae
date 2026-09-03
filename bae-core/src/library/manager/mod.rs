@@ -86,6 +86,7 @@ mod locality;
 mod output;
 mod playback_state;
 mod release;
+mod release_edit;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod save;
 mod storage;
@@ -129,6 +130,8 @@ pub enum LibraryError {
     /// the same rule rather than its own hand-written sentence.
     #[error(transparent)]
     Edit(#[from] crate::import::EditValidationError),
+    #[error("Release editor cannot load: {0}")]
+    ReleaseEditLoad(#[from] crate::album_detail::ReleaseEditLoadError),
     #[error("Track mapping error: {0}")]
     TrackMapping(String),
     #[error("Encryption error: {0}")]
@@ -271,6 +274,7 @@ impl LibraryError {
             LibraryError::MasterKey(_) | LibraryError::Identity(_) => C::Keyring,
             LibraryError::Io(_)
             | LibraryError::TrackMapping(_)
+            | LibraryError::ReleaseEditLoad(_)
             | LibraryError::Encryption(_)
             | LibraryError::Storage(_)
             | LibraryError::Playback(_)

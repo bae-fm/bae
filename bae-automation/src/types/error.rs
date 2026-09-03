@@ -77,6 +77,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::Encryption(e) => Self::Unavailable(e.to_string()),
             LibraryError::Storage(e) => Self::Unavailable(e),
             LibraryError::Playback(e) => Self::Unavailable(e),
+            LibraryError::ReleaseEditLoad(e) => Self::Internal(e.to_string()),
             LibraryError::Internal(e) => Self::Internal(e),
             LibraryError::Config(e) => Self::Internal(e.to_string()),
             LibraryError::Keyring(e) => Self::Unavailable(e.to_string()),

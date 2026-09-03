@@ -28,8 +28,8 @@ final class ReleaseEditor: Observable {
     let updateReleaseMetadataUserEdit:
         @Sendable (_ releaseId: String, _ edit: BridgeReleaseUserEdit)
             async throws -> Void
-    let resetMetadataToSource:
-        @Sendable (_ releaseId: String) async throws -> BridgeReleaseUserEdit
+    let resetReleaseEditToSource:
+        @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
     let fetchRemoteCovers:
         @Sendable (_ releaseId: String) async throws -> [BridgeRemoteCover]
 
@@ -64,8 +64,8 @@ final class ReleaseEditor: Observable {
         updateReleaseMetadataUserEdit:
             @escaping @Sendable (String, BridgeReleaseUserEdit) async throws ->
             Void = { _, _ in },
-        resetMetadataToSource:
-            @escaping @Sendable (String) async throws -> BridgeReleaseUserEdit =
+        resetReleaseEditToSource:
+            @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit =
             { _ in throw StubError.notImplemented },
         fetchRemoteCovers:
             @escaping @Sendable (String) async throws -> [BridgeRemoteCover] = {
@@ -81,7 +81,7 @@ final class ReleaseEditor: Observable {
         self.reIdentifyRelease = reIdentifyRelease
         self.seedReleaseEdit = seedReleaseEdit
         self.updateReleaseMetadataUserEdit = updateReleaseMetadataUserEdit
-        self.resetMetadataToSource = resetMetadataToSource
+        self.resetReleaseEditToSource = resetReleaseEditToSource
         self.fetchRemoteCovers = fetchRemoteCovers
     }
 
@@ -122,8 +122,8 @@ final class ReleaseEditor: Observable {
                     edit: $1
                 )
             },
-            resetMetadataToSource: {
-                try await handle.resetMetadataToSource(releaseId: $0)
+            resetReleaseEditToSource: {
+                try await handle.resetReleaseEditToSource(releaseId: $0)
             },
             fetchRemoteCovers: {
                 try await handle.fetchRemoteCovers(releaseId: $0)

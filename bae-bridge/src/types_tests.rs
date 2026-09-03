@@ -390,7 +390,7 @@ mod conversion_roundtrip {
 
     #[cfg(feature = "desktop")]
     #[test]
-    fn release_edit_seed_keeps_cores_reset_eligibility() {
+    fn release_edit_seed_carries_the_persisted_editor_projection() {
         let edit = bae_core::import::RawReleaseEdit {
             album_title: "Album Title".to_string(),
             album_artist_assignments: vec![bae_core::import::ArtistAssignment::new("Artist Name")],
@@ -403,16 +403,44 @@ mod conversion_roundtrip {
                 country: String::new(),
                 barcode: String::new(),
             },
-            tracks: Vec::new(),
+            tracks: vec![bae_core::import::RawTrackEdit {
+                id: "track-id".to_string(),
+                title: "Track Title".to_string(),
+                artist_assignments: bae_core::import::TrackArtistAssignments::AlbumArtists,
+                side: 2,
+                track_number: Some(3),
+                file: None,
+            }],
         };
 
         for expected in [false, true] {
             let bridge = BridgeReleaseEditSeed::from_core(bae_core::import::ReleaseEditSeed {
                 edit: edit.clone(),
                 can_reset_to_source: expected,
+                cover: None,
+                display: bae_core::album_detail::ReleaseEditDisplayContext {
+                    source_audio: None,
+                    tracks: vec![bae_core::album_detail::ReleaseEditTrackContext {
+                        track_id: "track-id".to_string(),
+                        sources: vec![bae_core::album_detail::ReleaseEditTrackSource {
+                            file_id: "file-id".to_string(),
+                            name: "source.flac".to_string(),
+                            layout: bae_core::album_detail::SourceAudioLayout::File,
+                        }],
+                        duration_ms: Some(123_000),
+                        side: bae_core::album_detail::TrackSide::Disc { disc: 2 },
+                    }],
+                },
             });
             assert_eq!(bridge.can_reset_to_source, expected);
             assert_eq!(bridge.edit.album_title, edit.album_title);
+            assert_eq!(bridge.display.tracks[0].track_id, "track-id");
+            assert_eq!(bridge.display.tracks[0].sources[0].name, "source.flac");
+            assert_eq!(bridge.display.tracks[0].duration_ms, Some(123_000));
+            assert_eq!(
+                bridge.display.tracks[0].side_header_key.as_deref(),
+                Some("core.track.disc")
+            );
         }
     }
 

@@ -443,6 +443,8 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::Config,
         BridgeErrorCategory::Internal,
         BridgeErrorCategory::Import,
+        BridgeErrorCategory::CandidateImportInProgress,
+        BridgeErrorCategory::CandidateAlreadyImported,
         BridgeErrorCategory::Export,
         BridgeErrorCategory::Save,
         BridgeErrorCategory::CloudSetup {
@@ -500,6 +502,12 @@ fn produced_keys() -> Vec<String> {
             BridgeErrorCategory::Config => "core.error.category.config",
             BridgeErrorCategory::Internal => "core.error.category.internal",
             BridgeErrorCategory::Import => "core.error.category.import",
+            BridgeErrorCategory::CandidateImportInProgress => {
+                "core.import.error.candidate_import_in_progress"
+            }
+            BridgeErrorCategory::CandidateAlreadyImported => {
+                "core.import.error.candidate_already_imported"
+            }
             BridgeErrorCategory::Export => "core.error.category.export",
             BridgeErrorCategory::Save => "core.error.category.save",
             BridgeErrorCategory::CloudSetup { failure } => match failure {

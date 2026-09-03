@@ -43,6 +43,13 @@ impl ImportServiceHandle {
             crate::import::CoverSelection::Local(_)
             | crate::import::CoverSelection::Embedded(_) => None,
         };
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            candidate_key,
+            &hash,
+            candidate.file_edit_revision,
+        )
+        .await?;
         self.library_manager
             .save_import_candidate_prepared_cover(
                 &candidate.watched_folder_path,
@@ -66,6 +73,13 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
         let hash = candidate.files.content_hash();
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            candidate_key,
+            &hash,
+            candidate.file_edit_revision,
+        )
+        .await?;
         self.library_manager
             .save_import_candidate_edit_field_prepared(
                 &candidate.watched_folder_path,
@@ -93,6 +107,13 @@ impl ImportServiceHandle {
                 draft.album_artist_assignments = replacement;
             })
             .await?;
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            candidate_key,
+            &prepared.content_hash,
+            prepared.file_edit_revision,
+        )
+        .await?;
         self.library_manager
             .replace_import_candidate_album_artists_prepared(
                 &prepared.watched_folder_path,
@@ -152,6 +173,13 @@ impl ImportServiceHandle {
         if let Some(displaced) = displaced {
             edits.push(crate::import::CandidateTrackEdit::edited(displaced));
         }
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            candidate_key,
+            &prepared.content_hash,
+            prepared.file_edit_revision,
+        )
+        .await?;
         self.library_manager
             .save_import_candidate_track_edits_prepared(
                 &prepared.watched_folder_path,
@@ -186,6 +214,13 @@ impl ImportServiceHandle {
                 }
             })
             .await?;
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            candidate_key,
+            &prepared.content_hash,
+            prepared.file_edit_revision,
+        )
+        .await?;
         self.library_manager
             .replace_import_candidate_track_artists_prepared(
                 &prepared.watched_folder_path,
@@ -215,6 +250,13 @@ impl ImportServiceHandle {
                 draft.tracks.retain(|track| track.id != dropped_id);
             })
             .await?;
+        let _commit = self.folder_state_commit.lock().await;
+        self.editable_candidate_revision_for_commit(
+            candidate_key,
+            &prepared.content_hash,
+            prepared.file_edit_revision,
+        )
+        .await?;
         self.library_manager
             .save_import_candidate_track_edits_prepared(
                 &prepared.watched_folder_path,

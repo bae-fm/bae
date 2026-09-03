@@ -11,7 +11,7 @@ struct ImportMappingGallery: View {
     /// Extracted identifying signals by their source file. A tile whose image
     /// supplied one says so, independently of the selected pressing.
     var evidence: [BridgeFileEvidence] = []
-    let actions: ImportMappingActions
+    let onOpen: ([BridgeMappingImage], String) -> Void
 
     static let tileSize: CGFloat = 128
 
@@ -35,7 +35,7 @@ struct ImportMappingGallery: View {
                     image: image,
                     images: images,
                     evidence: ImportEvidence.of(image.fileId, in: evidence),
-                    actions: actions
+                    onOpen: onOpen
                 )
             }
         }
@@ -52,7 +52,7 @@ struct ImportMappingGalleryTile: View {
     /// one.
     let images: [BridgeMappingImage]
     let evidence: [BridgeFileEvidence]
-    let actions: ImportMappingActions
+    let onOpen: ([BridgeMappingImage], String) -> Void
 
     @State
     private var hovering = false
@@ -61,7 +61,7 @@ struct ImportMappingGalleryTile: View {
 
     var body: some View {
         Button {
-            actions.openImages(images, image.localPath)
+            onOpen(images, image.localPath)
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 ImageView(

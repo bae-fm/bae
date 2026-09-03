@@ -33,7 +33,55 @@ extension ImportView {
         .id(candidate.key)
     }
 
+    @ViewBuilder
     private func mappingPane(
+        for candidate: Candidate,
+        runtime: BridgeCandidateRuntimeSnapshot?
+    ) -> some View {
+        switch candidate.row?.importStatus {
+        case .complete(let releaseId, let albumId):
+            let releaseEditor = releaseEditor
+            let mappingActions = mappingActions(for: candidate)
+            ImportedReleasePane(
+                candidate: candidate,
+                releaseId: releaseId,
+                albumId: albumId,
+                seedReleaseEdit: releaseEditor.seedReleaseEdit,
+                saveReleaseEdit: releaseEditor
+                    .updateReleaseMetadataUserEdit,
+                resetReleaseEdit: releaseEditor
+                    .resetReleaseEditToSource,
+                changeCover: releaseEditor.changeCover,
+                fetchRemoteCovers: releaseEditor.fetchRemoteCovers,
+                onViewInLibrary: { uiStore.navigateToAlbum($0) },
+                onOpenImages: mappingActions.openImages,
+                onOpenDocument: mappingActions.openDocument,
+                onPlayTrack: { index in
+                    playback.playRelease(
+                        releaseId,
+                        UInt32(index),
+                        false
+                    )
+                }
+            )
+        case .importing:
+            let mappingActions = mappingActions(for: candidate)
+            ImportingCandidatePane(
+                candidate: candidate,
+                runtime: runtime,
+                coverContent: candidate.cover?.thumbnailContent,
+                onOpenImages: mappingActions.openImages,
+                onOpenDocument: mappingActions.openDocument,
+                onPreview: mappingActions.preview,
+                onStopPreview: mappingActions.stopPreview,
+                previewingTarget: importStore.previewState.active?.target
+            )
+        case .error, nil:
+            preparingMappingPane(for: candidate, runtime: runtime)
+        }
+    }
+
+    private func preparingMappingPane(
         for candidate: Candidate,
         runtime: BridgeCandidateRuntimeSnapshot?
     ) -> some View {

@@ -1,5 +1,6 @@
 #[cfg(feature = "desktop")]
 use super::*;
+use super::{BridgeImageRef, BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide};
 
 /// Returned from `search_for_candidate`. The caller retains the submitted
 /// query while awaiting this payload and routes it to the matching form slot.
@@ -591,6 +592,33 @@ pub struct BridgeRawReleaseEdit {
 pub struct BridgeReleaseEditSeed {
     pub edit: BridgeRawReleaseEdit,
     pub can_reset_to_source: bool,
+    pub cover: Option<BridgeImageRef>,
+    pub display: BridgeReleaseEditDisplayContext,
+}
+
+/// One persisted file that supplies samples for a track in the release editor.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditTrackSource {
+    pub file_id: String,
+    pub name: String,
+    pub layout: BridgeSourceAudioLayout,
+}
+
+/// Persisted, read-only context beside one editable track row.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditTrackContext {
+    pub track_id: String,
+    pub sources: Vec<BridgeReleaseEditTrackSource>,
+    pub duration_ms: Option<i64>,
+    pub side: BridgeTrackSide,
+    pub side_header_key: Option<String>,
+}
+
+/// Persisted release facts used to render the shared metadata editor.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeReleaseEditDisplayContext {
+    pub source_audio: Option<BridgeSourceAudioSummary>,
+    pub tracks: Vec<BridgeReleaseEditTrackContext>,
 }
 
 /// Raw pressing fields as the editor holds them. Mirrors

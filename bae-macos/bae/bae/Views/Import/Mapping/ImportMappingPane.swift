@@ -69,6 +69,7 @@ struct ImportMappingPane: View {
                         previewingTarget: previewingTarget,
                         evidence: candidate.fileEvidence,
                         actions: mappingActions,
+                        editingCommands: editingCommands,
                     )
                 }
             }
@@ -86,7 +87,7 @@ struct ImportMappingPane: View {
             ImportMappingGallery(
                 images: mapping.images,
                 evidence: candidate.fileEvidence,
-                actions: mappingActions
+                onOpen: mappingActions.openImages
             )
         }
     }

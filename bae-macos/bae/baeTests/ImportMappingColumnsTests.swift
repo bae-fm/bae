@@ -12,24 +12,26 @@ import Testing
 struct ImportMappingColumnsTests {
     /// Every column, the action slot, the gaps between them and the row's two
     /// leading edges, as the row lays them out.
-    private func rowWidth(_ columns: ImportMappingColumns) -> CGFloat {
-        columns.tracks.title + columns.tracks.artist + columns.tracks.source
-            + ImportMappingColumns.position + ImportMappingColumns.length
-            + ImportMappingColumns.action
-            + ImportMappingColumns.spacing * 5
-            + ImportMappingColumns.rowPadding * 2
+    private func rowWidth(_ columns: ReleaseMetadataTrackColumns) -> CGFloat {
+        columns.title + columns.artist + columns.source
+            + ReleaseMetadataTrackColumns.side
+            + ReleaseMetadataTrackColumns.track
+            + ReleaseMetadataTrackColumns.length
+            + ReleaseMetadataTrackColumns.action
+            + ReleaseMetadataTrackColumns.spacing * 6
+            + ReleaseMetadataTrackColumns.rowPadding * 2
     }
 
     @Test(
         arguments: [
-            ImportMappingColumns.minimumTableWidth,
-            660, 700, 733.5, 800, 900,
-            ImportMappingColumns.idealTableWidth,
+            ReleaseMetadataTrackColumns.minimumTableWidth,
+            700, 733.5, 800, 900,
+            ReleaseMetadataTrackColumns.idealTableWidth,
             1200, 1600, 2400,
         ] as [CGFloat]
     )
     func theRowIsExactlyTheTableWide(width: CGFloat) {
-        let columns = ImportMappingColumns.resolved(tableWidth: width)
+        let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: width)
 
         #expect(rowWidth(columns) == width)
     }
@@ -43,35 +45,38 @@ struct ImportMappingColumnsTests {
     @Test(
         arguments: [
             0,
-            ImportMappingColumns.minimumTableWidth / 4,
-            ImportMappingColumns.minimumTableWidth / 2,
-            ImportMappingColumns.minimumTableWidth - 1,
+            ReleaseMetadataTrackColumns.minimumTableWidth / 4,
+            ReleaseMetadataTrackColumns.minimumTableWidth / 2,
+            ReleaseMetadataTrackColumns.minimumTableWidth - 1,
         ] as [CGFloat]
     )
     func aTableTooNarrowForItsColumnsIsLaidOutAtItsMinimum(width: CGFloat) {
-        let columns = ImportMappingColumns.resolved(tableWidth: width)
+        let columns = ReleaseMetadataTrackColumns.resolved(tableWidth: width)
 
-        let atMinimum = ImportMappingColumns.resolved(
-            tableWidth: ImportMappingColumns.minimumTableWidth
+        let atMinimum = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: ReleaseMetadataTrackColumns.minimumTableWidth
         )
 
-        #expect(rowWidth(columns) == ImportMappingColumns.minimumTableWidth)
-        #expect(columns.tracks.source == atMinimum.tracks.source)
-        #expect(columns.tracks.title == atMinimum.tracks.title)
-        #expect(columns.tracks.artist == atMinimum.tracks.artist)
+        #expect(
+            rowWidth(columns)
+                == ReleaseMetadataTrackColumns.minimumTableWidth
+        )
+        #expect(columns.source == atMinimum.source)
+        #expect(columns.title == atMinimum.title)
+        #expect(columns.artist == atMinimum.artist)
     }
 
     /// Wide enough and every Tracks column has the width it asks for, with the
     /// surplus going to Source and nowhere else.
     @Test(arguments: [0, 1, 200, 900] as [CGFloat])
     func theSurplusAboveTheIdealWidthIsAllTheSource(surplus: CGFloat) {
-        let columns = ImportMappingColumns.resolved(
-            tableWidth: ImportMappingColumns.idealTableWidth + surplus
+        let columns = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth + surplus
         )
 
-        #expect(columns.tracks.title == 220)
-        #expect(columns.tracks.artist == 180)
-        #expect(columns.tracks.source == 260 + surplus)
+        #expect(columns.title == 220)
+        #expect(columns.artist == 180)
+        #expect(columns.source == 260 + surplus)
     }
 
     /// Narrowing takes from all three at once. A column that kept its width
@@ -79,23 +84,23 @@ struct ImportMappingColumnsTests {
     /// row still fits, and one cell has stopped saying anything.
     @Test
     func narrowingTakesFromEveryColumnThatHasGive() {
-        let wide = ImportMappingColumns.resolved(
-            tableWidth: ImportMappingColumns.idealTableWidth
+        let wide = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: ReleaseMetadataTrackColumns.idealTableWidth
         )
-        let middle = ImportMappingColumns.resolved(
-            tableWidth: (ImportMappingColumns.idealTableWidth
-                + ImportMappingColumns.minimumTableWidth) / 2
+        let middle = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: (ReleaseMetadataTrackColumns.idealTableWidth
+                + ReleaseMetadataTrackColumns.minimumTableWidth) / 2
         )
-        let narrow = ImportMappingColumns.resolved(
-            tableWidth: ImportMappingColumns.minimumTableWidth
+        let narrow = ReleaseMetadataTrackColumns.resolved(
+            tableWidth: ReleaseMetadataTrackColumns.minimumTableWidth
         )
 
-        #expect(middle.tracks.source < wide.tracks.source)
-        #expect(middle.tracks.title < wide.tracks.title)
-        #expect(middle.tracks.artist < wide.tracks.artist)
-        #expect(narrow.tracks.source < middle.tracks.source)
-        #expect(narrow.tracks.title < middle.tracks.title)
-        #expect(narrow.tracks.artist < middle.tracks.artist)
+        #expect(middle.source < wide.source)
+        #expect(middle.title < wide.title)
+        #expect(middle.artist < wide.artist)
+        #expect(narrow.source < middle.source)
+        #expect(narrow.title < middle.title)
+        #expect(narrow.artist < middle.artist)
     }
 
     /// Widening never narrows a column and narrowing never widens one, at every
@@ -103,12 +108,14 @@ struct ImportMappingColumnsTests {
     /// as it is dragged.
     @Test
     func everyColumnFollowsTheTableWidthOneWay() {
-        var previous = ImportMappingColumns.resolved(tableWidth: 300)
+        var previous = ReleaseMetadataTrackColumns.resolved(tableWidth: 300)
         for width in stride(from: 301.0, through: 2000.0, by: 1) {
-            let columns = ImportMappingColumns.resolved(tableWidth: width)
-            #expect(columns.tracks.source >= previous.tracks.source)
-            #expect(columns.tracks.title >= previous.tracks.title)
-            #expect(columns.tracks.artist >= previous.tracks.artist)
+            let columns = ReleaseMetadataTrackColumns.resolved(
+                tableWidth: width
+            )
+            #expect(columns.source >= previous.source)
+            #expect(columns.title >= previous.title)
+            #expect(columns.artist >= previous.artist)
             previous = columns
         }
     }

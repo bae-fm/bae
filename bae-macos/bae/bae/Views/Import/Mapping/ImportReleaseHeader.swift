@@ -22,188 +22,6 @@ struct ImportReleaseSourceActions {
     let clearMetadata: () -> Void
 }
 
-/// The album as a document heading: the title large, the artist and year
-/// under it, the folder's audio facts under those. Every line is the field it
-/// reads — the chrome arrives on hover and focus, so at rest it reads as a
-/// heading and under the pointer it reads as the editor it is.
-struct ImportAlbumIdentityEditor: View {
-    let values: BridgeRawReleaseEdit
-    let summary: ImportReleaseSummary
-    let writer: ReleaseFieldWriter
-    let editingCommands: EditingCommitCommands
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            CommittedTextField(
-                placeholder: String(localized: "Album title"),
-                value: values.albumTitle,
-                chrome: .inline,
-                font: .system(size: 24, weight: .semibold),
-                editingCommands: editingCommands,
-                onCommit: {
-                    await writer.setField(.albumTitle, $0)
-                },
-            )
-            // Centered, not baseline-aligned: the artist is an AppKit-backed
-            // button and the year an AppKit text field, and SwiftUI's baseline
-            // for such controls is unreliable — bottom-as-baseline fallbacks
-            // skewed the pair. Both wear the same chrome padding at
-            // near-equal sizes, so centering puts their text on one line.
-            HStack(alignment: .center, spacing: 6) {
-                ArtistAssignmentsField(
-                    assignments: values.albumArtistAssignments,
-                    placeholder: String(localized: "Album artist"),
-                    onChange: { assignments in
-                        Task { await writer.setAlbumArtists(assignments) }
-                    },
-                )
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: true, vertical: false)
-                .modifier(FieldChrome(focused: false, style: .inline))
-                Text(verbatim: "\u{00b7}")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.quaternary)
-                CommittedTextField(
-                    placeholder: String(localized: "Year"),
-                    value: values.albumYear,
-                    chrome: .inline,
-                    font: .system(size: 13),
-                    editingCommands: editingCommands,
-                    onCommit: {
-                        await writer.setField(.albumYear, $0)
-                    },
-                )
-                .foregroundStyle(.secondary)
-                .frame(width: 72)
-                ImportReleaseContextView(summary: summary)
-            }
-            if let sourceAudio = summary.sourceAudio {
-                ImportSourceAudioSummaryView(sourceAudio: sourceAudio)
-                    .padding(.horizontal, FieldChrome.inlineHorizontalPadding)
-            }
-        }
-        // The fields are inline, so their text sits a chrome-pad in from the
-        // column's edge. Pull the block back by that pad: the heading text
-        // lines up with the Release eyebrow and labels under it, and the chrome
-        // that appears on hover reaches into the gutter beside the cover.
-        .padding(.leading, -FieldChrome.inlineHorizontalPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// The pressing fields of the release being written, two to a row under a
-/// ruled Release heading. They are always in view: a pressing is half of what
-/// the import commits, and a fold hid the half most often worth checking.
-///
-/// The grid is a fact sheet: fixed label and value columns that hug the
-/// leading edge, rows one text line apart, no rules between them. An empty
-/// value is an em dash in the tertiary color. The field chrome arrives on
-/// hover and focus — at rest the grid reads as facts, under the pointer as
-/// the form.
-struct ImportReleaseFieldsGrid: View {
-    let values: BridgeRawReleaseEdit
-    let writer: ReleaseFieldWriter
-    let editingCommands: EditingCommitCommands
-
-    static let labelWidth: CGFloat = 64
-    /// The value field, chrome included: it hugs the value column.
-    static let valueWidth: CGFloat = 150
-    /// From the end of a value to the start of the next label.
-    static let columnGap: CGFloat = 20
-    /// From the end of a label to the start of its value.
-    static let labelGap: CGFloat = 12
-    static let rowSpacing: CGFloat = 10
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            FormSectionHeader(title: String(localized: "Release"), ruled: true)
-            // The value text sits a chrome-pad inside its inline field, so the
-            // grid's gaps are what remain of the stated distances once that
-            // pad is taken off.
-            Grid(
-                alignment: .leadingFirstTextBaseline,
-                horizontalSpacing: Self.columnGap
-                    - FieldChrome.inlineHorizontalPadding,
-                verticalSpacing: Self.rowSpacing
-            ) {
-                GridRow {
-                    field(
-                        .pressingYear,
-                        label: String(localized: "Year"),
-                        text: values.pressing.year
-                    )
-                    field(
-                        .format,
-                        label: coreString("core.release.media"),
-                        text: values.pressing.format
-                    )
-                }
-                GridRow {
-                    field(
-                        .label,
-                        label: String(localized: "Label"),
-                        text: values.pressing.label
-                    )
-                    field(
-                        .country,
-                        label: String(localized: "Country"),
-                        text: values.pressing.country
-                    )
-                }
-                GridRow {
-                    field(
-                        .catalogNumber,
-                        label: String(localized: "Catalog"),
-                        text: values.pressing.catalogNumber,
-                        monospaced: true
-                    )
-                    field(
-                        .barcode,
-                        label: String(localized: "Barcode"),
-                        text: values.pressing.barcode,
-                        monospaced: true
-                    )
-                }
-            }
-        }
-    }
-
-    private func field(
-        _ field: BridgeCandidateEditField,
-        label: String,
-        text: String,
-        monospaced: Bool = false
-    ) -> some View {
-        HStack(
-            alignment: .firstTextBaseline,
-            spacing: Self.labelGap - FieldChrome.inlineHorizontalPadding
-        ) {
-            // Right-aligned against its value, so each label-value pair
-            // reads as one unit instead of two ragged columns.
-            Text(label)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .frame(width: Self.labelWidth, alignment: .trailing)
-            CommittedTextField(
-                placeholder: "\u{2014}",
-                value: text,
-                monospaced: monospaced,
-                chrome: .inline,
-                font: .system(
-                    size: 12.5,
-                    design: monospaced ? .monospaced : .default
-                ),
-                placeholderRole: .emptyMark,
-                editingCommands: editingCommands,
-                onCommit: { await writer.setField(field, $0) },
-            )
-            .frame(width: Self.valueWidth)
-        }
-    }
-}
-
 /// The editable metadata draft card: where the draft's metadata comes from,
 /// then the cover beside the album heading and its release fields, then the
 /// commit row once there is something to commit.
@@ -233,7 +51,10 @@ struct ImportReleaseHeader: View {
     /// The cover the card leads with. Big enough to read the artwork as
     /// artwork — the cover is the thing being confirmed, and the heading
     /// beside it is sized to match.
-    static let coverSize: CGFloat = 200
+    static let coverSize = ReleaseMetadataHeader<
+        EmptyView, EmptyView, EmptyView
+    >
+    .coverSize
 
     @Environment(ConfigStore.self)
     private var configStore
@@ -247,24 +68,23 @@ struct ImportReleaseHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             actionRow
-            HStack(alignment: .top, spacing: 24) {
-                cover
-                VStack(alignment: .leading, spacing: 22) {
-                    if let editValues {
-                        ImportAlbumIdentityEditor(
-                            values: editValues,
-                            summary: releaseSummary,
-                            writer: editActions,
-                            editingCommands: editingCommands
-                        )
-                        ImportReleaseFieldsGrid(
-                            values: editValues,
-                            writer: editActions,
-                            editingCommands: editingCommands
-                        )
+            if let editValues {
+                ReleaseMetadataHeader(
+                    values: editValues,
+                    writer: editActions,
+                    editingCommands: editingCommands,
+                    cover: { cover },
+                    context: {
+                        ImportReleaseContextView(summary: releaseSummary)
+                    },
+                    sourceAudio: {
+                        if let sourceAudio = releaseSummary.sourceAudio {
+                            ImportSourceAudioSummaryView(
+                                sourceAudio: sourceAudio
+                            )
+                        }
                     }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                )
             }
         }
         .padding(16)

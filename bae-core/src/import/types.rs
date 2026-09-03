@@ -555,6 +555,8 @@ impl RawReleaseEdit {
 pub struct ReleaseEditSeed {
     pub edit: RawReleaseEdit,
     pub can_reset_to_source: bool,
+    pub cover: Option<crate::album_detail::ImageRef>,
+    pub display: crate::album_detail::ReleaseEditDisplayContext,
 }
 
 /// Raw pressing fields as the editor holds them: each is the text the user

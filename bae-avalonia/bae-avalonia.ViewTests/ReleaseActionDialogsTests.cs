@@ -31,7 +31,13 @@ public sealed class ReleaseActionDialogsTests
 
     private static async Task<string[]> Buttons(bool canResetToSource)
     {
-        var seed = new BridgeReleaseEditSeed(Edit(), canResetToSource);
+        var seed = new BridgeReleaseEditSeed(
+            Edit(),
+            canResetToSource,
+            null,
+            new BridgeReleaseEditDisplayContext(
+                null,
+                Array.Empty<BridgeReleaseEditTrackContext>()));
         var releaseEditor = new ReleaseEditorService
         {
             ReleaseEditSeed = _ => Task.FromResult(

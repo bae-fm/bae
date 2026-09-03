@@ -341,22 +341,18 @@ extension AlbumDetailView {
                 )
                 uiStore.presentModal {
                     EditMetadataSheet(
+                        releaseId: releaseId,
                         seed: seed,
                         onSave: { edit in
                             try await releaseEditor
                                 .updateReleaseMetadataUserEdit(releaseId, edit)
-                            uiStore.dismissModal()
                         },
                         onReset: {
-                            let edit =
-                                try await releaseEditor.resetMetadataToSource(
-                                    releaseId
-                                )
-                            return rawReleaseEditFromUserEdit(
-                                edit: edit,
-                                trackIdPrefix: "reset-track"
+                            try await releaseEditor.resetReleaseEditToSource(
+                                releaseId
                             )
                         },
+                        onSaved: { uiStore.dismissModal() },
                         onCancel: { uiStore.dismissModal() },
                     )
                 }

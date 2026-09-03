@@ -359,9 +359,16 @@ extension ReIdentifySheet {
         let releaseId = self.releaseId
         commitTask = Task { @MainActor in
             do {
-                let edit = try await releaseEditor.resetMetadataToSource(
+                let raw = try await releaseEditor.resetReleaseEditToSource(
                     releaseId
                 )
+                let shaped = shapeReleaseEdit(raw: raw)
+                guard case .valid(let edit) = shaped else {
+                    if case .invalid(let reason) = shaped {
+                        phase = .error(reason.localizedMessage)
+                    }
+                    return
+                }
                 try await releaseEditor.updateReleaseMetadataUserEdit(
                     releaseId,
                     edit

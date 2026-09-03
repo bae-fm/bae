@@ -425,6 +425,37 @@ public sealed class ImportMappingPaneTests
         Assert.Contains(texts, text => text.Contains("37", StringComparison.Ordinal));
     }
 
+    [AvaloniaFact]
+    public void ImportingUsesTheReadOnlySourcePane()
+    {
+        var (pane, _) = Show(Detail(
+            importStatus: new BridgeTriageImportStatus.Importing()));
+
+        Assert.Empty(Fields(pane));
+        Assert.Contains("01.flac", Texts(pane));
+        Assert.DoesNotContain(
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(
+                button.Content,
+                Loc.Chrome("import.metadata.find_online_ellipsis")));
+    }
+
+    [AvaloniaFact]
+    public void CompletedImportKeepsSourceContextAndOpensItsAlbum()
+    {
+        var openedAlbums = new List<string>();
+        var (pane, _) = Show(
+            Detail(importStatus: new BridgeTriageImportStatus.Complete(
+                "release-1", "album-1")),
+            openedAlbums: openedAlbums);
+
+        Assert.Empty(Fields(pane));
+        Assert.Contains("01.flac", Texts(pane));
+        Click(pane, Loc.Chrome("import.view_in_library"));
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal(new[] { "album-1" }, openedAlbums);
+    }
+
     // ── Building the pane ────────────────────────────────────────────────────
 
     private static (ImportMappingPane Pane, AppService App) Show(
@@ -439,7 +470,8 @@ public sealed class ImportMappingPaneTests
         ImportMetadataPresentation? initialPresentation = null,
         ulong applicationRevision = 1,
         List<Action<BridgeImportCandidateDetail?>>? detailCallbacks = null,
-        List<BridgeSearchQuery>? searches = null)
+        List<BridgeSearchQuery>? searches = null,
+        List<string>? openedAlbums = null)
     {
         // Controls may only be built on the headless session's dispatcher
         // thread, which [AvaloniaFact] is what supplies.
@@ -549,7 +581,11 @@ public sealed class ImportMappingPaneTests
                 new ModalHost(),
                 new LightboxOverlay(),
                 app.Images,
-                _ => Task.CompletedTask));
+                albumId =>
+                {
+                    openedAlbums?.Add(albumId);
+                    return Task.CompletedTask;
+                }));
         // Showing a candidate renders more than once — clearing the previous
         // release's library-status watch renders, and ShowCandidate renders
         // again after it — so every test here also exercises a rebuild.
@@ -575,18 +611,22 @@ public sealed class ImportMappingPaneTests
     /// <summary>One folder picked as a release, with a title and a year typed
     /// over what the release states, two measured tracks, and a chosen cover.
     /// </summary>
-    private static BridgeImportCandidateDetail Detail(BridgeImportFailure? failure = null) =>
+    private static BridgeImportCandidateDetail Detail(
+        BridgeImportFailure? failure = null,
+        BridgeTriageImportStatus? importStatus = null) =>
         Detail(
             new BridgeMetadataProvenance.ExternalRelease(
                 BridgeMetadataSource.MusicBrainz,
                 "rel-1"),
-            failure: failure);
+            failure: failure,
+            importStatus: importStatus);
 
     private static BridgeImportCandidateDetail Detail(
         BridgeMetadataProvenance? metadataProvenance,
         BridgeImportFailure? failure = null,
         BridgeRawReleaseEdit? edit = null,
-        ulong metadataRevision = 1) =>
+        ulong metadataRevision = 1,
+        BridgeTriageImportStatus? importStatus = null) =>
         new(
             Candidate: new BridgeFolderCandidate(
                 FolderPath: CandidateKey,
@@ -606,7 +646,7 @@ public sealed class ImportMappingPaneTests
                 IsAdded: false),
             Actionable: true,
             ResumedIdentifyState: new BridgeIdentifyState.Idle(),
-            Row: Row(metadataProvenance),
+            Row: Row(metadataProvenance, importStatus),
             Release: null,
             PickedLibraryStatus: null,
             FileEvidence: Array.Empty<BridgeFileEvidence>(),
@@ -646,7 +686,8 @@ public sealed class ImportMappingPaneTests
             Failure: failure);
 
     private static BridgeTriageRow Row(
-        BridgeMetadataProvenance? metadataProvenance) => new(
+        BridgeMetadataProvenance? metadataProvenance,
+        BridgeTriageImportStatus? importStatus) => new(
         CandidateKey: CandidateKey,
         FolderName: "Album",
         WatchedFolderPath: "/Music/Incoming",
@@ -660,7 +701,7 @@ public sealed class ImportMappingPaneTests
         MetadataSummary: null,
         CoverThumbnail: null,
         Selectable: true,
-        ImportStatus: null,
+        ImportStatus: importStatus,
         MetadataProvenance: metadataProvenance);
 
     private static BridgeRawReleaseEdit BlankEdit() => new(

@@ -730,10 +730,10 @@ internal static partial class NativeBae
     internal static (BridgeReleaseEditSeed? Seed, string? Error) ReleaseEditSeed(AppHandle handle, string releaseId) =>
         CaptureBridgeValue(() => Await(() => handle.SeedReleaseEdit(releaseId)));
 
-    internal static (BridgeRawReleaseEdit? Edit, string? Error) ResetMetadataToSource(AppHandle handle, string releaseId) =>
-        CaptureBridgeValue(() => BaeBridgeMethods.RawReleaseEditFromUserEdit(
-            Await(() => handle.ResetMetadataToSource(releaseId)),
-            "reset-track"));
+    internal static (BridgeRawReleaseEdit? Edit, string? Error) ResetReleaseEditToSource(
+        AppHandle handle,
+        string releaseId) =>
+        CaptureBridgeValue(() => Await(() => handle.ResetReleaseEditToSource(releaseId)));
 
     internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, BridgeRawReleaseEdit edit) =>
         CaptureError(() => Await(() => handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(edit))));
@@ -830,7 +830,8 @@ internal static partial class NativeBae
     /// </summary>
     internal static string? RefreshMetadataFromSource(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(async () => await handle.UpdateReleaseMetadataUserEdit(
-            releaseId, await handle.ResetMetadataToSource(releaseId))));
+            releaseId,
+            ReleaseUserEdit(await handle.ResetReleaseEditToSource(releaseId)))));
 
     internal static void ToggleSignalForCandidate(AppHandle handle, string candidateKey, string kind, string value) =>
         handle.ToggleSignalForCandidate(candidateKey, SignalToggle(kind, value));

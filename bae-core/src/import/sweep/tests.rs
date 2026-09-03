@@ -780,3 +780,4 @@ include!("tests/metadata_modes.rs");
 include!("tests/imports_and_progress.rs");
 include!("tests/persistence.rs");
 include!("tests/persistence_late.rs");
+include!("tests/candidate_decisions.rs");

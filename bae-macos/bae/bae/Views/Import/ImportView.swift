@@ -12,6 +12,10 @@ struct ImportView: View {
     var library
     @Environment(PreviewAudio.self)
     var previewAudio
+    @Environment(Playback.self)
+    var playback
+    @Environment(ReleaseEditor.self)
+    var releaseEditor
     @Environment(ImportStore.self)
     var importStore
     @Environment(ConfigStore.self)

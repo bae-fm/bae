@@ -105,6 +105,143 @@ pub struct ReleaseDetail {
     pub gallery_items: Vec<GalleryItem>,
 }
 
+/// One physical source file that supplies a persisted track. A track can span
+/// several files; callers retain this order from the stored audio segments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditTrackSource {
+    pub file_id: String,
+    pub name: String,
+    pub layout: SourceAudioLayout,
+}
+
+/// Display-only facts that accompany one persisted metadata row in the shared
+/// editor. `track_id` is the database row identity, not a positional join.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditTrackContext {
+    pub track_id: String,
+    pub sources: Vec<ReleaseEditTrackSource>,
+    pub duration_ms: Option<i64>,
+    pub side: TrackSide,
+}
+
+/// Release-backed context needed by the shared metadata editor in addition to
+/// its writable raw form.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReleaseEditDisplayContext {
+    pub source_audio: Option<SourceAudioSummary>,
+    pub tracks: Vec<ReleaseEditTrackContext>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ReleaseEditLoadError {
+    #[error("track '{track_id}' has no stored audio format")]
+    MissingAudioFormat { track_id: String },
+    #[error("track '{track_id}' has more than one stored audio format")]
+    MultipleAudioFormats { track_id: String },
+    #[error("track '{track_id}' has no stored audio segments")]
+    MissingAudioSegments { track_id: String },
+    #[error("track '{track_id}' references missing source file '{file_id}'")]
+    MissingSourceFile { track_id: String, file_id: String },
+    #[error("track '{track_id}' source file '{file_id}' has no stored audio layout")]
+    MissingSourceAudio { track_id: String, file_id: String },
+}
+
+impl ReleaseEditDisplayContext {
+    pub(crate) fn from_raw(raw: &DbReleaseDetail) -> Result<Self, ReleaseEditLoadError> {
+        let has_multiple_sides = raw
+            .tracks
+            .iter()
+            .map(|entry| entry.track.side)
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+            > 1;
+        let mut contexts = Vec::with_capacity(raw.tracks.len());
+        for entry in &raw.tracks {
+            let formats = raw
+                .audio_formats
+                .iter()
+                .filter(|format| format.track_id == entry.track.id)
+                .collect::<Vec<_>>();
+            let format = match formats.as_slice() {
+                [] => {
+                    return Err(ReleaseEditLoadError::MissingAudioFormat {
+                        track_id: entry.track.id.clone(),
+                    });
+                }
+                [format] => *format,
+                _ => {
+                    return Err(ReleaseEditLoadError::MultipleAudioFormats {
+                        track_id: entry.track.id.clone(),
+                    });
+                }
+            };
+            let mut segments = raw
+                .audio_segments
+                .iter()
+                .filter(|segment| segment.audio_format_id == format.id)
+                .collect::<Vec<_>>();
+            segments.sort_by_key(|segment| segment.segment_index);
+            if segments.is_empty() {
+                return Err(ReleaseEditLoadError::MissingAudioSegments {
+                    track_id: entry.track.id.clone(),
+                });
+            }
+
+            let mut sources = Vec::new();
+            for segment in segments {
+                if sources
+                    .iter()
+                    .any(|source: &ReleaseEditTrackSource| source.file_id == segment.file_id)
+                {
+                    continue;
+                }
+                let file = raw
+                    .files
+                    .iter()
+                    .find(|file| file.id == segment.file_id)
+                    .ok_or_else(|| ReleaseEditLoadError::MissingSourceFile {
+                        track_id: entry.track.id.clone(),
+                        file_id: segment.file_id.clone(),
+                    })?;
+                let layout = file
+                    .source_audio
+                    .as_ref()
+                    .and_then(|audio| audio.layout)
+                    .ok_or_else(|| ReleaseEditLoadError::MissingSourceAudio {
+                        track_id: entry.track.id.clone(),
+                        file_id: segment.file_id.clone(),
+                    })?;
+                sources.push(ReleaseEditTrackSource {
+                    file_id: file.id.clone(),
+                    name: file.original_filename.clone(),
+                    layout,
+                });
+            }
+            let position = crate::util::format::compute_track_position(
+                raw.release.pressing.format.as_deref(),
+                entry.track.side,
+                entry.track.track_number,
+                has_multiple_sides,
+            );
+            contexts.push(ReleaseEditTrackContext {
+                track_id: entry.track.id.clone(),
+                sources,
+                duration_ms: entry.track.duration_ms,
+                side: crate::util::format::track_side(&position),
+            });
+        }
+
+        Ok(Self {
+            source_audio: SourceAudioSummary::from_descriptors(
+                raw.files
+                    .iter()
+                    .filter_map(|file| file.source_audio.as_ref()?.descriptor()),
+            ),
+            tracks: contexts,
+        })
+    }
+}
+
 impl ReleaseDetail {
     /// Joins per-track artist names (falling back to the album's), projects each
     /// file's stored scan facts, groups tracks by side, builds the gallery, derives
@@ -253,5 +390,60 @@ impl ReleaseDetail {
             gallery_items: gallery,
         };
         (detail, audio_format_orphans)
+    }
+}
+
+#[cfg(test)]
+mod release_edit_display_tests {
+    use super::*;
+
+    #[test]
+    fn missing_segment_file_is_an_editor_load_error() {
+        let release = crate::db::DbRelease::new_test("album-id", "release-id");
+        let track = crate::db::DbTrack::new_test(&release.id, "track-id", "Track Title", Some(1));
+        let now = chrono::Utc::now();
+        let format = crate::db::DbAudioFormat {
+            id: "format-id".to_string(),
+            track_id: track.id.clone(),
+            content_type: crate::util::content_type::ContentType::Flac,
+            pregap_ms: None,
+            generated_pregap_ms: None,
+            pregap_samples: None,
+            generated_pregap_samples: None,
+            sample_rate: 44_100,
+            bits_per_sample: Some(16),
+            channels: 2,
+            track_loudness_lufs: None,
+            track_peak_linear: None,
+            created_at: now,
+        };
+        let raw = crate::db::DbReleaseDetail {
+            release,
+            tracks: vec![crate::db::DbTrackWithArtists {
+                track,
+                artists: Vec::new(),
+            }],
+            files: Vec::new(),
+            audio_formats: vec![format.clone()],
+            audio_segments: vec![crate::db::DbAudioSegment {
+                id: "segment-id".to_string(),
+                audio_format_id: format.id,
+                segment_index: 0,
+                role: crate::db::DbAudioSegmentRole::Main,
+                file_id: "missing-file-id".to_string(),
+                start_sample: 0,
+                end_sample: None,
+                start_byte: None,
+                end_byte: None,
+                created_at: now,
+            }],
+            identities: Vec::new(),
+        };
+
+        assert!(matches!(
+            ReleaseEditDisplayContext::from_raw(&raw),
+            Err(ReleaseEditLoadError::MissingSourceFile { file_id, .. })
+                if file_id == "missing-file-id"
+        ));
     }
 }

@@ -32,6 +32,15 @@ extension BridgeTrackMapping {
     }
 }
 
+extension BridgeMappingTable {
+    var positionHeaderText: String {
+        guard let key = trackSections.compactMap(\.headerKey).first else {
+            return String(localized: "Disc")
+        }
+        return coreString(key)
+    }
+}
+
 extension BridgeMappingSource {
     /// The playing time the folder itself offers for this row: measured off
     /// the file, or stated by the sheet for one of its entries.
@@ -199,12 +208,6 @@ func bridgeSlotReconciliationText(
 /// A duration in milliseconds as a clock label, or an em dash where there is no
 /// number. Never a zero: an unknown length and a zero-length file are different
 /// facts, and only one of them is real.
-func importDurationText(_ ms: UInt64?) -> String {
-    guard let ms else { return "\u{2014}" }
-    let label = DurationClock.text(Int64(ms))
-    return label.isEmpty ? "\u{2014}" : label
-}
-
 extension BridgeTrackMapping {
     /// Whether the source probe and selected metadata disagree by more than
     /// core's tolerance.
@@ -221,13 +224,13 @@ extension BridgeTrackMapping {
         switch (source.durationMs, durationMs) {
         case (let sourceMs?, let metadataMs?) where durationsDiverge:
             return
-                "\(importDurationText(sourceMs)) → \(importDurationText(metadataMs))"
+                "\(releaseDurationText(sourceMs)) → \(releaseDurationText(metadataMs))"
         case (_, let metadataMs?):
-            return importDurationText(metadataMs)
+            return releaseDurationText(metadataMs)
         case (let sourceMs?, nil):
-            return importDurationText(sourceMs)
+            return releaseDurationText(sourceMs)
         case (nil, nil):
-            return importDurationText(nil)
+            return releaseDurationText(nil as UInt64?)
         }
     }
 }
