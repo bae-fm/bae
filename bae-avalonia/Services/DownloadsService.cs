@@ -64,7 +64,7 @@ internal sealed class DownloadsService
     /// pinned copies. The macOS ReleaseEditor's moveReleasesToCloud analog; folded
     /// here beside pin/unpin since Windows has no
     /// release-editor service yet.</summary>
-    public Func<IReadOnlyList<string>, bool, Task<(bool Current, (ulong? Revision, string? Error) Result)>> MakeReleasesRemote { get; init; }
+    public Func<IReadOnlyList<string>, bool, Task<(bool Current, (BridgeMakeReleasesRemoteOutcome? Outcome, string? Error) Result)>> MakeReleasesRemote { get; init; }
         = (_, _) => throw new InvalidOperationException("DownloadsService stub: MakeReleasesRemote not wired");
 
     /// <summary>Make a release local at a destination folder. The macOS

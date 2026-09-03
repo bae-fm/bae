@@ -401,6 +401,7 @@ internal static class ShotCapture
     private static BridgeReleaseUserEdit PreviewMetadata() => new(
         "Album Title",
         PreviewArtists(),
+        1991,
         new BridgePressingEdit(
             1996,
             "CD",
@@ -413,6 +414,7 @@ internal static class ShotCapture
     private static BridgeRawReleaseEdit PreviewRawMetadata() => new(
         "Album Title",
         PreviewArtists(),
+        "1991",
         new BridgeRawPressingEdit(
             "1996",
             "CD",
@@ -425,6 +427,7 @@ internal static class ShotCapture
     private static BridgeRawReleaseEdit PreviewBlankMetadata() => new(
         string.Empty,
         Array.Empty<BridgeArtistAssignment>(),
+        string.Empty,
         new BridgeRawPressingEdit(
             string.Empty,
             string.Empty,

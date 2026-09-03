@@ -14,6 +14,7 @@ internal sealed class StorageStore
 {
     private readonly DownloadsService _downloads;
     private readonly Func<bool> _loadPinPreference;
+    private readonly Func<BridgeException, string?> _failureLine;
     private BridgeOutboxSnapshot? _outbox;
     private BridgeDownloadSnapshot? _downloadsSnapshot;
     private BridgeOutputSnapshot? _outputSnapshot;
@@ -21,10 +22,14 @@ internal sealed class StorageStore
     private readonly Dictionary<string, HashSet<CloudUploadCommand>> _cloudUploadCommands = new();
     public event Action? Changed;
 
-    public StorageStore(DownloadsService downloads, Func<bool> loadPinPreference)
+    public StorageStore(
+        DownloadsService downloads,
+        Func<bool> loadPinPreference,
+        Func<BridgeException, string?> failureLine)
     {
         _downloads = downloads;
         _loadPinPreference = loadPinPreference;
+        _failureLine = failureLine;
     }
 
     public void ApplyOutbox(BridgeOutboxSnapshot snapshot)
@@ -160,28 +165,38 @@ internal sealed class StorageStore
         return command;
     }
 
-    private void CloudUploadsQueued(CloudUploadCommand command, ulong revision)
+    private void FinishCloudUploads(
+        CloudUploadCommand command,
+        BridgeMakeRemoteReceipt? receipt)
     {
-        foreach (var releaseId in command.ReleaseIds)
+        var admittedReleaseIds = receipt?.ReleaseIds.ToHashSet() ?? [];
+        if (receipt is not null
+            && (admittedReleaseIds.Count != receipt.ReleaseIds.Length
+                || !admittedReleaseIds.IsSubsetOf(command.ReleaseIds)))
         {
-            _cloudUploadCommands.Remove(releaseId);
-            if (_outbox?.Revision >= revision)
-            {
-                _cloudUploadHandoffs.Remove(releaseId);
-            }
-            else
-            {
-                _cloudUploadHandoffs[releaseId] = new CloudUploadHandoff.Awaiting(revision);
-            }
+            throw new InvalidOperationException(
+                "a cloud-upload receipt must name unique releases from its command");
         }
-        Changed?.Invoke();
-    }
 
-    private void EndCloudUploadBatchWithoutReceipt(CloudUploadCommand command)
-    {
         var changed = false;
         foreach (var releaseId in command.ReleaseIds)
         {
+            if (admittedReleaseIds.Contains(releaseId))
+            {
+                changed |= _cloudUploadCommands.Remove(releaseId);
+                if (_outbox?.Revision >= receipt!.OutboxRevision)
+                {
+                    changed |= _cloudUploadHandoffs.Remove(releaseId);
+                }
+                else
+                {
+                    _cloudUploadHandoffs[releaseId] =
+                        new CloudUploadHandoff.Awaiting(receipt.OutboxRevision);
+                    changed = true;
+                }
+                continue;
+            }
+
             if (!_cloudUploadCommands.TryGetValue(releaseId, out var commands))
             {
                 continue;
@@ -269,21 +284,33 @@ internal sealed class StorageStore
             _loadPinPreference());
         if (!current)
         {
-            EndCloudUploadBatchWithoutReceipt(command);
+            FinishCloudUploads(command, receipt: null);
             return null;
         }
         if (result.Error is { } error)
         {
-            EndCloudUploadBatchWithoutReceipt(command);
+            FinishCloudUploads(command, receipt: null);
             return error;
         }
-        if (result.Revision is not { } revision)
+        if (result.Outcome is null)
         {
-            EndCloudUploadBatchWithoutReceipt(command);
-            return null;
+            throw new InvalidOperationException(
+                "a current move-to-cloud command returned no outcome or error");
         }
-        CloudUploadsQueued(command, revision);
-        return null;
+        switch (result.Outcome)
+        {
+            case BridgeMakeReleasesRemoteOutcome.Complete complete:
+                FinishCloudUploads(command, complete.Receipt);
+                return null;
+            case BridgeMakeReleasesRemoteOutcome.Partial partial:
+                FinishCloudUploads(command, partial.Receipt);
+                return _failureLine(partial.Failure.Error)
+                    ?? throw new InvalidOperationException(
+                        "a partial move-to-cloud outcome cannot be cancellation");
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(result.Outcome), result.Outcome, "Unknown move-to-cloud outcome");
+        }
     }
 
     // Run a per-release transition across the selection, stopping at the first

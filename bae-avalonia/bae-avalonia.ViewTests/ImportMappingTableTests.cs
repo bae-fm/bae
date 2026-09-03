@@ -95,10 +95,12 @@ public sealed class ImportMappingTableTests
 
         Assert.Contains(
             Rows(table)[0].GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == Loc.Core("ui.import.slots.column.length"));
+            text => text.Text == Loc.Core("ui.import.slots.column.length")
+                .ToUpper(System.Globalization.CultureInfo.CurrentUICulture));
         Assert.Contains(
             FileRows(table)[0].GetLogicalDescendants().OfType<TextBlock>(),
-            text => text.Text == Loc.Chrome("storage.column.size"));
+            text => text.Text == Loc.Chrome("storage.column.size")
+                .ToUpper(System.Globalization.CultureInfo.CurrentUICulture));
     }
 
     // The sheet a disc ID was computed from wears the chip on its own row, and

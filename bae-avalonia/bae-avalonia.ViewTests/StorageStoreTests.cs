@@ -6,6 +6,8 @@ namespace Bae.Desktop.ViewTests;
 
 public sealed class StorageStoreTests
 {
+    private const string FailureLine = "Cloud operation failed";
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -19,10 +21,11 @@ public sealed class StorageStoreTests
                 requestedPin = pin;
                 return Task.FromResult((
                     true,
-                    (Revision: (ulong?)2, Error: (string?)null)));
+                    (Outcome: (BridgeMakeReleasesRemoteOutcome?)Complete(2, "release-a"),
+                        Error: (string?)null)));
             },
         };
-        var store = new StorageStore(downloads, () => rememberedPin);
+        var store = Store(downloads, () => rememberedPin);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var error = await store.RunStorageActionForReleases(
@@ -40,9 +43,11 @@ public sealed class StorageStoreTests
         var downloads = new DownloadsService
         {
             MakeReleasesRemote = (_, _) =>
-                Task.FromResult((true, (Revision: (ulong?)2, Error: (string?)null))),
+                Task.FromResult((true,
+                    (Outcome: (BridgeMakeReleasesRemoteOutcome?)Complete(2, "release-a"),
+                        Error: (string?)null))),
         };
-        var store = new StorageStore(downloads, () => true);
+        var store = Store(downloads, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var error = await store.RunStorageActionForReleases(
@@ -66,12 +71,12 @@ public sealed class StorageStoreTests
     {
         var receipt = new TaskCompletionSource<(
             bool Current,
-            (ulong? Revision, string? Error) Result)>();
+            (BridgeMakeReleasesRemoteOutcome? Outcome, string? Error) Result)>();
         var downloads = new DownloadsService
         {
             MakeReleasesRemote = (_, _) => receipt.Task,
         };
-        var store = new StorageStore(downloads, () => true);
+        var store = Store(downloads, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var command = store.RunStorageActionForReleases(
@@ -83,7 +88,7 @@ public sealed class StorageStoreTests
             store.UploadHandoff("release-a"));
         receipt.SetResult((
             true,
-            (Revision: (ulong?)2, Error: (string?)null)));
+            (Outcome: Complete(2, "release-a"), Error: (string?)null)));
         Assert.Null(await command);
         Assert.IsType<CloudUploadHandoff.Awaiting>(
             store.UploadHandoff("release-a"));
@@ -93,14 +98,16 @@ public sealed class StorageStoreTests
     public async Task SelectionIsSubmittedOnceAndEveryHandoffMovesTogether()
     {
         var calls = new List<IReadOnlyList<string>>();
-        var store = new StorageStore(new DownloadsService
+        var store = Store(new DownloadsService
         {
             MakeReleasesRemote = (releaseIds, _) =>
             {
                 calls.Add(releaseIds.ToArray());
                 return Task.FromResult((
                     true,
-                    (Revision: (ulong?)2, Error: (string?)null)));
+                    (Outcome: (BridgeMakeReleasesRemoteOutcome?)Complete(
+                        2, "release-a", "release-b"),
+                        Error: (string?)null)));
             },
         }, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
@@ -120,13 +127,43 @@ public sealed class StorageStoreTests
     }
 
     [Fact]
-    public async Task ActiveTargetRefusesEveryForegroundHandoff()
+    public async Task PartialAdmissionHandsOffAcceptedReleasesAndReleasesRefusedOnes()
     {
-        var store = new StorageStore(new DownloadsService
+        var failure = Failure("release-b");
+        var store = Store(new DownloadsService
         {
             MakeReleasesRemote = (_, _) => Task.FromResult((
                 true,
-                (Revision: (ulong?)null, Error: (string?)"already active"))),
+                (Outcome: (BridgeMakeReleasesRemoteOutcome?)new BridgeMakeReleasesRemoteOutcome.Partial(
+                    new BridgeMakeRemoteReceipt(2, ["release-a"]),
+                    failure),
+                    Error: (string?)null))),
+        }, () => true);
+        store.ApplyOutbox(EmptyOutbox(revision: 1));
+
+        var error = await store.RunStorageActionForReleases(
+            BridgeReleaseStorageAction.MakeRemote,
+            ["release-a", "release-b"],
+            () => Task.FromResult<string?>(null));
+
+        Assert.Equal(FailureLine, error);
+        Assert.IsType<CloudUploadHandoff.Awaiting>(
+            store.UploadHandoff("release-a"));
+        Assert.Null(store.UploadHandoff("release-b"));
+    }
+
+    [Fact]
+    public async Task ActiveTargetRefusesEveryForegroundHandoff()
+    {
+        var failure = Failure("release-a", "release-b");
+        var store = Store(new DownloadsService
+        {
+            MakeReleasesRemote = (_, _) => Task.FromResult((
+                true,
+                (Outcome: (BridgeMakeReleasesRemoteOutcome?)new BridgeMakeReleasesRemoteOutcome.Partial(
+                    null,
+                    failure),
+                    Error: (string?)null))),
         }, () => true);
         store.ApplyOutbox(OutboxWithRelease(revision: 1, releaseId: "release-b"));
 
@@ -135,7 +172,7 @@ public sealed class StorageStoreTests
             ["release-a", "release-b"],
             () => Task.FromResult<string?>(null));
 
-        Assert.Equal("already active", error);
+        Assert.Equal(FailureLine, error);
         Assert.Null(store.UploadHandoff("release-a"));
         Assert.Null(store.UploadHandoff("release-b"));
         var (transitioning, readError) = await store.TransitioningReleases(
@@ -151,12 +188,12 @@ public sealed class StorageStoreTests
     {
         var firstReceipt = new TaskCompletionSource<(
             bool Current,
-            (ulong? Revision, string? Error) Result)>();
+            (BridgeMakeReleasesRemoteOutcome? Outcome, string? Error) Result)>();
         var secondReceipt = new TaskCompletionSource<(
             bool Current,
-            (ulong? Revision, string? Error) Result)>();
+            (BridgeMakeReleasesRemoteOutcome? Outcome, string? Error) Result)>();
         var invocation = 0;
-        var store = new StorageStore(new DownloadsService
+        var store = Store(new DownloadsService
         {
             MakeReleasesRemote = (_, _) =>
                 ++invocation == 1 ? firstReceipt.Task : secondReceipt.Task,
@@ -171,16 +208,17 @@ public sealed class StorageStoreTests
             BridgeReleaseStorageAction.MakeRemote,
             ["release-a"],
             () => Task.FromResult<string?>(null));
-        firstReceipt.SetResult((
-            true,
-            (Revision: (ulong?)null, Error: (string?)"already active")));
-        Assert.Equal("already active", await first);
+        var failure = Failure("release-a");
+        firstReceipt.SetResult((true,
+            (Outcome: new BridgeMakeReleasesRemoteOutcome.Partial(null, failure),
+                Error: (string?)null)));
+        Assert.Equal(FailureLine, await first);
 
         Assert.IsType<CloudUploadHandoff.Queueing>(
             store.UploadHandoff("release-a"));
         secondReceipt.SetResult((
             true,
-            (Revision: (ulong?)2, Error: (string?)null)));
+            (Outcome: Complete(2, "release-a"), Error: (string?)null)));
         Assert.Null(await second);
         Assert.IsType<CloudUploadHandoff.Awaiting>(
             store.UploadHandoff("release-a"));
@@ -234,18 +272,22 @@ public sealed class StorageStoreTests
     [Fact]
     public async Task FailedCommandReturnsTheReleaseToRest()
     {
+        var failure = Failure("release-a");
         var downloads = new DownloadsService
         {
             MakeReleasesRemote = (_, _) => Task.FromResult((
                 true,
-                (Revision: (ulong?)null, Error: (string?)"provider refused"))),
+                (Outcome: (BridgeMakeReleasesRemoteOutcome?)new BridgeMakeReleasesRemoteOutcome.Partial(
+                    null,
+                    failure),
+                    Error: (string?)null))),
         };
-        var store = new StorageStore(downloads, () => true);
+        var store = Store(downloads, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
 
         var error = await MoveToCloud(store);
 
-        Assert.Equal("provider refused", error);
+        Assert.Equal(FailureLine, error);
         Assert.Null(store.UploadHandoff("release-a"));
     }
 
@@ -254,8 +296,8 @@ public sealed class StorageStoreTests
     {
         var receipt = new TaskCompletionSource<(
             bool Current,
-            (ulong? Revision, string? Error) Result)>();
-        var store = new StorageStore(new DownloadsService
+            (BridgeMakeReleasesRemoteOutcome? Outcome, string? Error) Result)>();
+        var store = Store(new DownloadsService
         {
             MakeReleasesRemote = (_, _) => receipt.Task,
         }, () => true);
@@ -263,7 +305,7 @@ public sealed class StorageStoreTests
 
         var command = MoveToCloud(store);
         store.ApplyOutbox(OutboxWithRelease(revision: 2));
-        receipt.SetResult((false, (Revision: null, Error: null)));
+        receipt.SetResult((false, (Outcome: null, Error: null)));
 
         Assert.Null(await command);
         Assert.Null(store.UploadHandoff("release-a"));
@@ -284,21 +326,41 @@ public sealed class StorageStoreTests
 
     private static StorageStore StoreReturningRevision(ulong revision)
     {
-        var store = new StorageStore(new DownloadsService
+        var store = Store(new DownloadsService
         {
             MakeReleasesRemote = (_, _) => Task.FromResult((
                 true,
-                (Revision: (ulong?)revision, Error: (string?)null))),
+                (Outcome: (BridgeMakeReleasesRemoteOutcome?)Complete(
+                    revision, "release-a"),
+                    Error: (string?)null))),
         }, () => true);
         store.ApplyOutbox(EmptyOutbox(revision: 1));
         return store;
     }
+
+    private static StorageStore Store(
+        DownloadsService downloads,
+        Func<bool> loadPinPreference) =>
+        new(downloads, loadPinPreference, _ => FailureLine);
 
     private static Task<string?> MoveToCloud(StorageStore store) =>
         store.RunStorageActionForReleases(
             BridgeReleaseStorageAction.MakeRemote,
             ["release-a"],
             () => Task.FromResult<string?>(null));
+
+    private static BridgeMakeReleasesRemoteOutcome Complete(
+        ulong revision,
+        params string[] releaseIds) =>
+        new BridgeMakeReleasesRemoteOutcome.Complete(
+            new BridgeMakeRemoteReceipt(revision, releaseIds));
+
+    private static BridgeMakeRemoteBatchFailure Failure(params string[] releaseIds) =>
+        new(
+            releaseIds,
+            new BridgeException.Diagnostic(
+                new BridgeErrorCategory.Network(),
+                "provider refused"));
 
     private static BridgeOutboxSnapshot OutboxWithRelease(
         ulong revision,

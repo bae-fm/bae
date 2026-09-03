@@ -626,7 +626,7 @@ internal sealed partial class ImportMappingPane : UserControl
     }
 
     private static string SourceAudioLine(BridgeCandidateFiles? files) =>
-        BridgeDisplay.SourceAudio(files?.SourceAudio);
+        BridgeDisplay.SourceAudio(files?.SourceAudio?.Summary);
 
     private string? ProvenanceLabel() => _candidate?.MetadataProvenance switch
     {

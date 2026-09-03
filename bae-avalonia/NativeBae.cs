@@ -514,16 +514,12 @@ internal static partial class NativeBae
     internal static string? UnpinRelease(AppHandle handle, string releaseId) =>
         CaptureError(() => Await(() => handle.UnpinRelease(releaseId)));
 
-    internal static (ulong? Revision, string? Error) MakeReleasesRemote(
+    internal static (BridgeMakeReleasesRemoteOutcome? Outcome, string? Error) MakeReleasesRemote(
         AppHandle handle,
         IReadOnlyList<string> releaseIds,
-        bool pin)
-    {
-        ulong? revision = null;
-        var error = CaptureError(() =>
-            revision = Await(() => handle.MakeReleasesRemote(releaseIds.ToArray(), pin)));
-        return (revision, error);
-    }
+        bool pin) =>
+        CaptureBridgeValue(() =>
+            Await(() => handle.MakeReleasesRemote(releaseIds.ToArray(), pin)));
 
     internal static string? MakeReleaseLocal(AppHandle handle, string releaseId, string newPath) =>
         CaptureError(() => Await(() => handle.MakeReleaseLocal(releaseId, newPath)));

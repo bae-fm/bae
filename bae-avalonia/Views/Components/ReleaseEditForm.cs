@@ -25,6 +25,7 @@ internal sealed class ReleaseEditForm
 
     private readonly TextBox _titleBox;
     private readonly ArtistAssignmentsField _artistField;
+    private readonly TextBox _albumYearBox;
     private readonly TextBox _yearBox;
     private readonly TextBox _formatBox;
     private readonly TextBox _labelBox;
@@ -56,6 +57,7 @@ internal sealed class ReleaseEditForm
         Panel.Children.Add(LabeledControl(
             Loc.Chrome("edit.field.album_artists"),
             _artistField));
+        Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.year"), out _albumYearBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.year"), out _yearBox));
         Panel.Children.Add(DialogUi.Field(Loc.Core("core.release.media"), out _formatBox));
         Panel.Children.Add(DialogUi.Field(Loc.Chrome("edit.field.label"), out _labelBox));
@@ -109,6 +111,7 @@ internal sealed class ReleaseEditForm
         _edit = edit;
         _titleBox.Text = edit.AlbumTitle;
         _artistField.SetAssignments(edit.AlbumArtistAssignments);
+        _albumYearBox.Text = edit.AlbumYear;
         _yearBox.Text = edit.Pressing.Year;
         _formatBox.Text = edit.Pressing.Format;
         _labelBox.Text = edit.Pressing.Label;
@@ -179,6 +182,7 @@ internal sealed class ReleaseEditForm
         _edit = new BridgeRawReleaseEdit(
             _titleBox.Text ?? string.Empty,
             _artistField.Assignments.ToArray(),
+            _albumYearBox.Text ?? string.Empty,
             new BridgeRawPressingEdit(
                 _yearBox.Text ?? string.Empty,
                 _formatBox.Text ?? string.Empty,

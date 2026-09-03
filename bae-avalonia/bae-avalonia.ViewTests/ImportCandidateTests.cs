@@ -38,8 +38,7 @@ public sealed class ImportCandidateTests
                     [],
                     null),
             ],
-            SourceAudio: null,
-            CollapsedDirectories: []),
+            SourceAudio: null),
     };
 
     private static BridgeReleaseUserEdit FileTagsEdit() => new(
@@ -48,6 +47,7 @@ public sealed class ImportCandidateTests
             new BridgeArtistAssignment.New(
                 new BridgeNewArtistSeed("Artist Name", null, null, null)),
         ],
+        1991,
         new BridgePressingEdit(2001, "CD", "Label Name", "CAT-1", "US", "0123456789012"),
         Array.Empty<BridgeTrackUserEdit>());
 }

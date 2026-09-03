@@ -156,7 +156,7 @@ public sealed class ImportMetadataSourceSectionTests
         year.RaiseEvent(new RoutedEventArgs(InputElement.LostFocusEvent));
 
         Assert.Equal(
-            new[] { (BridgeCandidateEditField.Year, "2011") },
+            new[] { (BridgeCandidateEditField.PressingYear, "2011") },
             written);
     }
 
@@ -167,12 +167,14 @@ public sealed class ImportMetadataSourceSectionTests
             new BridgeArtistAssignment.New(
                 new BridgeNewArtistSeed("Artist Name", null, null, null)),
         },
+        "1991",
         new BridgeRawPressingEdit("1996", "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
         Array.Empty<BridgeRawTrackEdit>());
 
     private static BridgeRawReleaseEdit BlankEdit() => new(
         string.Empty,
         Array.Empty<BridgeArtistAssignment>(),
+        string.Empty,
         new BridgeRawPressingEdit(
             string.Empty,
             string.Empty,
@@ -189,6 +191,7 @@ public sealed class ImportMetadataSourceSectionTests
             new BridgeArtistAssignment.New(
                 new BridgeNewArtistSeed("Artist Name", null, null, null)),
         },
+        1991,
         new BridgePressingEdit(1996, "CD", "Label Name", "CAT-1", "UK", "0123456789012"),
         Array.Empty<BridgeTrackUserEdit>());
 

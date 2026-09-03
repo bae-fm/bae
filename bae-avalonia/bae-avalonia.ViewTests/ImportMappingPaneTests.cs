@@ -398,7 +398,7 @@ public sealed class ImportMappingPaneTests
         year.RaiseEvent(new RoutedEventArgs(InputElement.LostFocusEvent));
 
         Assert.Equal(
-            new[] { (CandidateKey, BridgeCandidateEditField.Year, "2011") },
+            new[] { (CandidateKey, BridgeCandidateEditField.PressingYear, "2011") },
             written);
     }
 
@@ -595,10 +595,12 @@ public sealed class ImportMappingPaneTests
                 Files: new BridgeCandidateFiles(
                     "mapping-pane-audio",
                     Array.Empty<BridgeCandidateFile>(),
-                    new BridgeSourceAudioSummary.Uniform(
-                        new BridgeSourceAudioDescriptor(
-                            BridgeSourceAudioLayout.File,
-                            SourceAudio))),
+                    new BridgeCandidateSourceAudio(
+                        new BridgeSourceAudioSummary.Uniform(
+                            new BridgeSourceAudioDescriptor(
+                                BridgeSourceAudioLayout.File,
+                                SourceAudio)),
+                        Array.Empty<BridgeFileInfo>())),
                 TrackCount: 2,
                 Skipped: false,
                 IsAdded: false),
@@ -612,6 +614,7 @@ public sealed class ImportMappingPaneTests
                 ?? new BridgeRawReleaseEdit(
                     "Typed Over The Release",
                     ArtistAssignments(),
+                    "1991",
                     new BridgeRawPressingEdit(
                         "1996", "CD", "Label Name", "CAT-1", "UK", string.Empty),
                     Array.Empty<BridgeRawTrackEdit>()),
@@ -653,6 +656,7 @@ public sealed class ImportMappingPaneTests
     private static BridgeRawReleaseEdit BlankEdit() => new(
         string.Empty,
         Array.Empty<BridgeArtistAssignment>(),
+        string.Empty,
         new BridgeRawPressingEdit(
             string.Empty,
             string.Empty,
@@ -697,6 +701,7 @@ public sealed class ImportMappingPaneTests
     private static BridgeReleaseUserEdit FileTagsEdit() => new(
         "Album Title",
         ArtistAssignments(),
+        1991,
         new BridgePressingEdit(1996, "CD", "Label Name", "CAT-1", "UK", null),
         Array.Empty<BridgeTrackUserEdit>());
 

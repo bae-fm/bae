@@ -445,7 +445,7 @@ internal sealed class ImportMetadataSourceSection
         var column = new StackPanel { Spacing = 8, Margin = new Thickness(0, 8, 0, 0) };
         var album = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,*"),
+            ColumnDefinitions = new ColumnDefinitions("*,*,Auto"),
             ColumnSpacing = 8,
         };
         Add(album, 0, 0, "edit.field.album_title", edit.AlbumTitle,
@@ -463,6 +463,8 @@ internal sealed class ImportMetadataSourceSection
                 artists,
             },
         }.WithGridColumn(1));
+        Add(album, 2, 0, Loc.Chrome("edit.field.year"), edit.AlbumYear,
+            BridgeCandidateEditField.AlbumYear);
         column.Children.Add(album);
 
         var pressing = edit.Pressing;
@@ -473,7 +475,7 @@ internal sealed class ImportMetadataSourceSection
             ColumnSpacing = 8,
             RowSpacing = 6,
         };
-        Add(grid, 0, 0, Loc.Chrome("edit.field.year"), pressing.Year, BridgeCandidateEditField.Year);
+        Add(grid, 0, 0, Loc.Chrome("edit.field.year"), pressing.Year, BridgeCandidateEditField.PressingYear);
         Add(grid, 1, 0, Loc.Core("core.release.media"), pressing.Format, BridgeCandidateEditField.Format);
         Add(grid, 2, 0, Loc.Chrome("edit.field.label"), pressing.Label, BridgeCandidateEditField.Label);
         Add(grid, 0, 1, Loc.Chrome("edit.field.country"), pressing.Country, BridgeCandidateEditField.Country);
