@@ -25,10 +25,14 @@ impl ImportServiceHandle {
     /// A search already running for this key is superseded — one search per
     /// candidate at a time, because the pane shows one result area.
     pub fn start_candidate_search(&self, candidate_key: String, query: SearchQuery) {
-        let run = self.claim_candidate_search(&candidate_key);
         let search =
             CandidateSearch::started(query.clone(), self.library_manager.discogs_is_usable());
         let sources = search.searching_sources();
+        let run = self
+            .candidate_searches
+            .lock()
+            .unwrap()
+            .start(&candidate_key, search.clone());
         self.publish_candidate_search(candidate_key.clone(), Some(search));
         for source in sources {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
@@ -38,21 +42,21 @@ impl ImportServiceHandle {
     /// Re-ask only the sources that failed, keeping what the others found. A
     /// no-op when the candidate has no search, or none of its sources failed.
     pub fn retry_candidate_search(&self, candidate_key: String) {
-        let Some(mut search) = self
-            .runtime
-            .get(&candidate_key)
-            .and_then(|runtime| runtime.search)
-        else {
-            debug!("retry_candidate_search: {candidate_key} has no search to retry");
-            return;
+        let (search, sources, run) = {
+            let mut searches = self.candidate_searches.lock().unwrap();
+            let Some(mut search) = searches.current(&candidate_key).cloned() else {
+                debug!("retry_candidate_search: {candidate_key} has no search to retry");
+                return;
+            };
+            search.restart_failed();
+            let sources = search.searching_sources();
+            if sources.is_empty() {
+                return;
+            }
+            let run = searches.start(&candidate_key, search.clone());
+            (search, sources, run)
         };
-        search.restart_failed();
-        let sources = search.searching_sources();
-        if sources.is_empty() {
-            return;
-        }
         let query = search.query.clone();
-        let run = self.claim_candidate_search(&candidate_key);
         self.publish_candidate_search(candidate_key.clone(), Some(search));
         for source in sources {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
@@ -62,18 +66,11 @@ impl ImportServiceHandle {
     /// Drop a candidate's search: its lookups stop mattering and the result
     /// area goes back to the identify verdict.
     pub fn clear_candidate_search(&self, candidate_key: String) {
-        super::drop_candidate_search(&self.candidate_searches, &candidate_key);
+        self.candidate_searches
+            .lock()
+            .unwrap()
+            .clear(&candidate_key);
         self.publish_candidate_search(candidate_key, None);
-    }
-
-    /// Put this key on a new run, superseding whatever it was on. The number
-    /// it answers with is what a landing proves it is still current by.
-    fn claim_candidate_search(&self, candidate_key: &str) -> u64 {
-        let mut searches = self.candidate_searches.lock().unwrap();
-        let run = searches.next_run;
-        searches.next_run += 1;
-        searches.running.insert(candidate_key.to_string(), run);
-        run
     }
 
     fn publish_candidate_search(&self, candidate_key: String, search: Option<CandidateSearch>) {
@@ -89,10 +86,11 @@ impl ImportServiceHandle {
     /// Run one source's part of a search and land it on the candidate's
     /// current run.
     ///
-    /// The landing is published while holding the running-search lock, and only
-    /// while `run` is still the key's run. Superseding a run replaces that
-    /// number under the same lock, so a run this one has replaced cannot write
-    /// over it.
+    /// The landing folds into the search the driver holds, under its lock, and
+    /// only while `run` is still the key's run. Superseding or clearing a run
+    /// happens under the same lock, so a run this one has replaced cannot
+    /// write over it — and the other source's landing, which folded into the
+    /// same held value, is still there.
     fn spawn_source_search(
         &self,
         candidate_key: String,
@@ -101,14 +99,13 @@ impl ImportServiceHandle {
         run: u64,
     ) {
         let library_manager = self.library_manager.clone();
-        let runtime = self.runtime.clone();
         let searches = self.candidate_searches.clone();
         let event_tx = self.event_tx.clone();
         self.runtime_handle.spawn(async move {
             let found =
                 search_source(&library_manager, source, &query, CallPriority::Interactive).await;
             // Superseded already: skip the library check nothing will read.
-            if !super::is_current_candidate_search(&searches, &candidate_key, run) {
+            if !searches.lock().unwrap().is_current(&candidate_key, run) {
                 return;
             }
             let outcome = match found {
@@ -120,20 +117,10 @@ impl ImportServiceHandle {
                 Err(failure) => Err(failure),
             };
 
-            let landed = {
-                let searches = searches.lock().unwrap();
-                if searches.running.get(&candidate_key) != Some(&run) {
-                    None
-                } else {
-                    runtime
-                        .get(&candidate_key)
-                        .and_then(|runtime| runtime.search)
-                        .map(|mut search| {
-                            search.record(source, outcome);
-                            search
-                        })
-                }
-            };
+            let landed = searches
+                .lock()
+                .unwrap()
+                .land(&candidate_key, run, source, outcome);
             match landed {
                 Some(search) => send_event(
                     &event_tx,

@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, info, warn};
 
+mod candidate_searches;
 mod edits;
 mod import;
 mod scan;
@@ -135,12 +136,10 @@ pub struct ImportServiceHandle {
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
     watcher_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     runtime_handle: tokio::runtime::Handle,
-    /// Which run each candidate's typed search is on.
-    ///
-    /// Superseding a run under this lock — and checking, under the same lock,
-    /// that a landing's run is still the key's before publishing it — is what
-    /// keeps a superseded run from writing over the run that replaced it.
-    candidate_searches: Arc<Mutex<RunningCandidateSearches>>,
+    /// Every candidate's typed search in flight — the value each source's
+    /// landing folds into, under this lock. The runtime's copy is filled from
+    /// what is published here and lags it, so nothing folds into that one.
+    candidate_searches: Arc<Mutex<candidate_searches::RunningCandidateSearches>>,
 }
 
 #[derive(Debug, Clone)]
@@ -255,7 +254,9 @@ impl ImportServiceHandle {
             watcher_tx,
             watcher_thread: Arc::new(Mutex::new(Some(watcher_thread))),
             runtime_handle,
-            candidate_searches: Arc::new(Mutex::new(RunningCandidateSearches::default())),
+            candidate_searches: Arc::new(Mutex::new(
+                candidate_searches::RunningCandidateSearches::default(),
+            )),
         };
         handle.start_runtime_recorder();
         handle
@@ -279,7 +280,7 @@ impl ImportServiceHandle {
                         // this stops the lookups that would otherwise land and
                         // put it back.
                         if let Some(key) = search_invalidating_key(&event) {
-                            drop_candidate_search(&candidate_searches, &key);
+                            candidate_searches.lock().unwrap().clear(&key);
                         }
                         runtime.record_event(&event);
                     }
@@ -729,28 +730,6 @@ fn search_invalidating_key(event: &ImportEvent) -> Option<String> {
         }
         _ => None,
     }
-}
-
-/// Which run each candidate's typed search is on, and the number the next run
-/// takes. A key with no entry has no search, so a landing for it is stale.
-#[derive(Default)]
-struct RunningCandidateSearches {
-    running: HashMap<String, u64>,
-    next_run: u64,
-}
-
-/// Take `key` off whatever run it is on, so nothing that run has out can land.
-fn drop_candidate_search(searches: &Mutex<RunningCandidateSearches>, key: &str) {
-    searches.lock().unwrap().running.remove(key);
-}
-
-/// Whether `run` is still the run `key`'s search is on.
-fn is_current_candidate_search(
-    searches: &Mutex<RunningCandidateSearches>,
-    key: &str,
-    run: u64,
-) -> bool {
-    searches.lock().unwrap().running.get(key) == Some(&run)
 }
 
 /// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.
