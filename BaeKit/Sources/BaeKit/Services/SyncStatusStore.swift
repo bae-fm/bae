@@ -26,6 +26,14 @@ public final class SyncStatusStore {
         snapshot?.error.flatMap { DisplayError($0) }
     }
 
+    /// The durable sync operations the last completed cycle left waiting on a
+    /// person. Empty until a cycle reports some — including before the first
+    /// status arrives, when nothing is known to be waiting. Each is retried by
+    /// handing its `id` to `Sync.retryBlockedSyncOperation`.
+    public var blocked: [BridgeBlockedSyncOperation] {
+        snapshot?.blocked ?? []
+    }
+
     public func apply(_ snapshot: BridgeSyncStatusSnapshot) {
         self.snapshot = snapshot
     }

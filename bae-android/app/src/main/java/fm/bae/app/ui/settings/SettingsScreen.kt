@@ -62,6 +62,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import uniffi.bae_bridge.BridgeBlockedSyncOperation
 import uniffi.bae_bridge.BridgeConfig
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeLibrary
@@ -89,6 +90,7 @@ fun SettingsScreen(
     val syncSnapshot by session.syncStatusStore.snapshot.collectAsState()
     val syncIndicator by session.syncStatusStore.indicator.collectAsState()
     val syncError by session.syncStatusStore.error.collectAsState()
+    val syncBlocked by session.syncStatusStore.blocked.collectAsState()
     val allLibraries by libraries.collectAsState()
     var confirmLeave by remember { mutableStateOf(false) }
     var showRecoveryCode by remember { mutableStateOf(false) }
@@ -101,6 +103,7 @@ fun SettingsScreen(
         libraries = allLibraries,
         syncIndicator = syncIndicator,
         syncError = syncError,
+        syncBlocked = syncBlocked,
         syncReady = syncSnapshot?.syncReady == true,
         ioDispatcher = ioDispatcher,
         onBack = onBack,
@@ -133,6 +136,7 @@ private fun SettingsSections(
     libraries: List<BridgeLibrary>,
     syncIndicator: BridgeSyncIndicator,
     syncError: String?,
+    syncBlocked: List<BridgeBlockedSyncOperation>,
     syncReady: Boolean,
     ioDispatcher: CoroutineDispatcher,
     onBack: () -> Unit,
@@ -156,6 +160,7 @@ private fun SettingsSections(
             config = config,
             syncIndicator = syncIndicator,
             syncError = syncError,
+            syncBlocked = syncBlocked,
         )
         HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         SettingsPlaybackSection(
@@ -300,6 +305,7 @@ private fun SettingsConfigSection(
     config: BridgeConfig,
     syncIndicator: BridgeSyncIndicator,
     syncError: String?,
+    syncBlocked: List<BridgeBlockedSyncOperation>,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -317,6 +323,7 @@ private fun SettingsConfigSection(
                 sync = sync,
                 indicator = syncIndicator,
                 syncError = syncError,
+                blocked = syncBlocked,
             )
         }
     }

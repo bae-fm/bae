@@ -84,6 +84,11 @@
     <string name="settings_syncing">مطابقت پذیری</string>
     <string name="settings_sync_disconnected">منقطع</string>
     <string name="settings_reconnect">دوبارہ جوڑیں</string>
+    <string name="settings_retry">دوبارہ کوشش</string>
+    <string name="settings_sync_waiting">مطابقت پذیری آپ کا انتظار کر رہی ہے</string>
+    <string name="sync_blocked_write">لائبریری میں تبدیلی</string>
+    <string name="sync_blocked_circle_operation">اشتراک میں تبدیلی</string>
+    <string name="sync_blocked_reclaim">کلاؤڈ کی صفائی</string>
     <string name="settings_pause_between_sides">اطراف کے درمیان وقفہ</string>
     <string name="settings_restore_on_launch">شروع ہونے پر بحال کریں</string>
     <string name="settings_restore_on_launch_help">ایپ کھلنے پر پچھلے سیشن کا ٹریک، پوزیشن، قطار اور والیوم بحال کرتا ہے۔</string>

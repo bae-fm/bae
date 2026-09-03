@@ -84,6 +84,11 @@
     <string name="settings_syncing">جارٍ المزامنة…</string>
     <string name="settings_sync_disconnected">غير متصل</string>
     <string name="settings_reconnect">إعادة الاتصال</string>
+    <string name="settings_retry">إعادة المحاولة</string>
+    <string name="settings_sync_waiting">المزامنة في انتظارك</string>
+    <string name="sync_blocked_write">تغيير في المكتبة</string>
+    <string name="sync_blocked_circle_operation">تغيير في المشاركة</string>
+    <string name="sync_blocked_reclaim">تنظيف السحابة</string>
     <string name="settings_pause_between_sides">إيقاف مؤقت بين الجانبين</string>
     <string name="settings_restore_on_launch">الاستعادة عند التشغيل</string>
     <string name="settings_restore_on_launch_help">يستعيد المقطع والموضع وقائمة الانتظار ومستوى الصوت من الجلسة الأخيرة عند فتح التطبيق.</string>

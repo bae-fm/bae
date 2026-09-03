@@ -62,7 +62,10 @@ struct LibrarySettingsTab: View {
                 // rendering it on error alone would leave a stale banner over the
                 // set-up button. iOS and Android already gate it this way.
                 if let syncConfig = configStore.config.sync {
-                    SyncErrorBanner(onReconnect: reconnectSync)
+                    SyncErrorBanner(
+                        onReconnect: reconnectSync,
+                        onRetryBlocked: sync.retryBlockedSyncOperation
+                    )
 
                     ConnectedProviderControls(
                         config: syncConfig,
@@ -374,6 +377,7 @@ private struct RecoveryCodeSection: View {
                 SyncStatusStore(
                     snapshot: BridgeSyncStatusSnapshot(
                         error: nil,
+                        blocked: [],
                         lastSyncTime: nil,
                         syncing: false,
                         syncReady: syncReady

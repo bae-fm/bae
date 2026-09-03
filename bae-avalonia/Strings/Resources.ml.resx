@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>സംഭരണം</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>സിങ്ക് പിശക്</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>വീണ്ടും ബന്ധിപ്പിക്കുക</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുക</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>സിങ്ക് നിങ്ങൾക്കായി കാത്തിരിക്കുന്നു</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>ലൈബ്രറി മാറ്റം</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>പങ്കിടൽ മാറ്റം</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>ക്ലൗഡ് വൃത്തിയാക്കൽ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} സിങ്ക് ചെയ്തു</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>സിങ്ക് ചെയ്യുന്നു…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>കയറ്റുമതി തയ്യാറാക്കാനായില്ല.</value></data>

@@ -84,6 +84,11 @@
     <string name="settings_syncing">ஒத்திசைவு</string>
     <string name="settings_sync_disconnected">இணைப்பு துண்டிக்கப்பட்டது</string>
     <string name="settings_reconnect">மீண்டும் இணை</string>
+    <string name="settings_retry">மீண்டும் முயற்சி</string>
+    <string name="settings_sync_waiting">ஒத்திசைவு உங்களுக்காகக் காத்திருக்கிறது</string>
+    <string name="sync_blocked_write">நூலக மாற்றம்</string>
+    <string name="sync_blocked_circle_operation">பகிர்வு மாற்றம்</string>
+    <string name="sync_blocked_reclaim">மேகச் சுத்தம் செய்தல்</string>
     <string name="settings_pause_between_sides">பக்கங்களுக்கு இடையில் இடைநிறுத்து</string>
     <string name="settings_restore_on_launch">தொடக்கத்தில் மீட்டமை</string>
     <string name="settings_restore_on_launch_help">ஆப்ஸ் திறக்கும்போது கடந்த அமர்வின் டிராக், நிலை, வரிசை மற்றும் ஒலியளவை மீட்டமைக்கிறது.</string>

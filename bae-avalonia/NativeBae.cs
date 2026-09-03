@@ -557,6 +557,9 @@ internal static partial class NativeBae
     internal static string? ReconnectSync(AppHandle handle) =>
         CaptureError(() => Await(() => handle.ReconnectSync()));
 
+    internal static string? RetryBlockedSyncOperation(AppHandle handle, string id) =>
+        CaptureError(() => Await(() => handle.RetryBlockedSyncOperation(id)));
+
     internal static string? SetSyncPaused(AppHandle handle, bool paused) =>
         CaptureError(() => Await(() => handle.SetSyncPaused(paused)));
 

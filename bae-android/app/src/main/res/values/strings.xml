@@ -117,6 +117,11 @@
     <string name="settings_syncing">Syncing…</string>
     <string name="settings_sync_disconnected">Disconnected</string>
     <string name="settings_reconnect">Reconnect</string>
+    <string name="settings_retry">Retry</string>
+    <string name="settings_sync_waiting">Sync is waiting on you</string>
+    <string name="sync_blocked_write">Library change</string>
+    <string name="sync_blocked_circle_operation">Sharing change</string>
+    <string name="sync_blocked_reclaim">Cloud cleanup</string>
     <string name="settings_pause_between_sides">Pause between sides</string>
     <string name="settings_restore_on_launch">Restore on launch</string>
     <string name="settings_restore_on_launch_help">Restores the last session\'s track, position, queue, and volume when the app opens.</string>

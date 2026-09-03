@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>ಸಂಗ್ರಹಣೆ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>ಸಿಂಕ್ ದೋಷ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>ಮತ್ತೆ ಸಂಪರ್ಕಿಸಿ</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>ಸಿಂಕ್ ನಿಮಗಾಗಿ ಕಾಯುತ್ತಿದೆ</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>ಗ್ರಂಥಾಲಯದ ಬದಲಾವಣೆ</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>ಹಂಚಿಕೆಯ ಬದಲಾವಣೆ</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>ಕ್ಲೌಡ್ ಸ್ವಚ್ಛಗೊಳಿಸುವಿಕೆ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} ಸಿಂಕ್ ಆಗಿದೆ</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>ಸಿಂಕ್ ಆಗುತ್ತಿದೆ…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ರಫ್ತನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗಲಿಲ್ಲ.</value></data>

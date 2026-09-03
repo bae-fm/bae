@@ -545,12 +545,17 @@ impl crate::types::BridgeSyncStatusSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
         let bae_core::library::SyncStatusSnapshot {
             error,
+            blocked,
             last_sync_time,
             syncing,
             sync_ready,
         } = snapshot;
         crate::types::BridgeSyncStatusSnapshot {
             error: error.map(crate::types::BridgeError::from_core),
+            blocked: blocked
+                .into_iter()
+                .map(crate::types::BridgeBlockedSyncOperation::from_core)
+                .collect(),
             last_sync_time,
             syncing,
             sync_ready,

@@ -53,6 +53,13 @@ public final class Sync: Sendable, Observable {
     /// shows why the retry didn't take; it also throws so the caller can end its
     /// in-progress state.
     public let reconnectSync: @Sendable () async throws -> Void
+    /// Hand one operation from the sync status's blocked list back to the sync
+    /// loop, which revalidates it and runs a cycle. Takes the operation's `id`.
+    /// The operation leaves the list on the next status the UI receives; one
+    /// whose cause still stands simply blocks again, and it throws when the id
+    /// names nothing blocked so the caller can end its in-progress state.
+    public let retryBlockedSyncOperation:
+        @Sendable (_ id: String) async throws -> Void
     /// Delete the active library's encryption key from the OS keyring.
     /// The current session keeps working (the key stays in memory);
     /// the next launch lands on the unlock screen.
@@ -100,6 +107,8 @@ public final class Sync: Sendable, Observable {
         },
         triggerSync: @escaping @Sendable () -> Void = {},
         reconnectSync: @escaping @Sendable () async throws -> Void = {},
+        retryBlockedSyncOperation:
+            @escaping @Sendable (String) async throws -> Void = { _ in },
         lockActiveLibrary: @escaping @Sendable () async throws -> Void = {
             throw StubError.notImplemented
         },
@@ -117,6 +126,7 @@ public final class Sync: Sendable, Observable {
         self.retryOutbox = retryOutbox
         self.triggerSync = triggerSync
         self.reconnectSync = reconnectSync
+        self.retryBlockedSyncOperation = retryBlockedSyncOperation
         self.renameLibrary = renameLibrary
         self.cancelReleaseTransition = cancelReleaseTransition
         self.setSyncPaused = setSyncPaused
@@ -147,6 +157,9 @@ public final class Sync: Sendable, Observable {
             setSyncPaused: { try await handle.setSyncPaused(paused: $0) },
             triggerSync: { handle.triggerSync() },
             reconnectSync: { try await handle.reconnectSync() },
+            retryBlockedSyncOperation: {
+                try await handle.retryBlockedSyncOperation(id: $0)
+            },
             lockActiveLibrary: { try await handle.lockActiveLibrary() },
             setMaxConcurrentUploads: {
                 try handle.setMaxConcurrentUploads(n: $0)

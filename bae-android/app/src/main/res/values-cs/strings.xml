@@ -84,6 +84,11 @@
     <string name="settings_syncing">Synchronizace…</string>
     <string name="settings_sync_disconnected">Odpojeno</string>
     <string name="settings_reconnect">Znovu připojit</string>
+    <string name="settings_retry">Zopakovat</string>
+    <string name="settings_sync_waiting">Synchronizace čeká na vás</string>
+    <string name="sync_blocked_write">Změna knihovny</string>
+    <string name="sync_blocked_circle_operation">Změna sdílení</string>
+    <string name="sync_blocked_reclaim">Úklid v cloudu</string>
     <string name="settings_pause_between_sides">Pauza mezi stranami</string>
     <string name="settings_restore_on_launch">Obnovit při spuštění</string>
     <string name="settings_restore_on_launch_help">Při otevření aplikace obnoví skladbu, pozici, frontu a hlasitost z poslední relace.</string>

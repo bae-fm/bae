@@ -39,6 +39,13 @@ impl Database {
         self.inner.handle.sync_now();
     }
 
+    pub(crate) async fn retry_blocked_operation(
+        &self,
+        operation: coven::BlockedOperationId,
+    ) -> Result<(), coven::RetryBlockedOperationError> {
+        self.inner.handle.retry_blocked_operation(operation).await
+    }
+
     pub(crate) async fn connect_sync(&self) -> Result<(), coven::SyncError> {
         self.inner.handle.connect_sync().await
     }

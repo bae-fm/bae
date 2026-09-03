@@ -717,6 +717,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
                  has an unresolved foreign-key dependency";
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: Some(bae_core::ui::UiError::internal(fault)),
+        blocked: Vec::new(),
         last_sync_time: None,
         syncing: false,
         sync_ready: false,
@@ -739,6 +740,7 @@ fn a_failed_sync_status_crosses_with_its_fault() {
 fn a_healthy_sync_status_crosses_without_an_error() {
     let snapshot = bae_core::library::SyncStatusSnapshot {
         error: None,
+        blocked: Vec::new(),
         last_sync_time: Some(1_700_000_000_000),
         syncing: false,
         sync_ready: true,

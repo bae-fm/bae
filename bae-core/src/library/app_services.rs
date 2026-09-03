@@ -863,6 +863,13 @@ impl AppServices {
         self.inner.manager.subscribe_sync_status_values()
     }
 
+    pub async fn retry_blocked_sync_operation(
+        &self,
+        id: &str,
+    ) -> Result<(), crate::library::LibraryError> {
+        self.inner.manager.retry_blocked_sync_operation(id).await
+    }
+
     pub fn subscribe_eager_cache_fill_status(
         &self,
     ) -> tokio::sync::watch::Receiver<crate::library::EagerCacheFillStatus> {

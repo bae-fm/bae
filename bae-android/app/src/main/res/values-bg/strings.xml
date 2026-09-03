@@ -84,6 +84,11 @@
     <string name="settings_syncing">Синхронизиране…</string>
     <string name="settings_sync_disconnected">Връзката е прекъсната</string>
     <string name="settings_reconnect">Свържи отново</string>
+    <string name="settings_retry">Повторен опит</string>
+    <string name="settings_sync_waiting">Синхронизирането чака вас</string>
+    <string name="sync_blocked_write">Промяна в библиотеката</string>
+    <string name="sync_blocked_circle_operation">Промяна в споделянето</string>
+    <string name="sync_blocked_reclaim">Почистване в облака</string>
     <string name="settings_pause_between_sides">Пауза между страните</string>
     <string name="settings_restore_on_launch">Възстановяване при стартиране</string>
     <string name="settings_restore_on_launch_help">При отваряне на приложението възстановява песента, позицията, опашката и силата на звука от последната сесия.</string>

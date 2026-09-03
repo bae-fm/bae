@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>ਸਟੋਰੇਜ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>ਸਿੰਕ ਗਲਤੀ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>ਮੁੜ ਕਨੈਕਟ ਕਰੋ</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>ਸਿੰਕ ਤੁਹਾਡੀ ਉਡੀਕ ਕਰ ਰਿਹਾ ਹੈ</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਤਬਦੀਲੀ</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>ਸਾਂਝਾ ਕਰਨ ਵਿੱਚ ਤਬਦੀਲੀ</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>ਕਲਾਊਡ ਦੀ ਸਫ਼ਾਈ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} ਸਿੰਕ ਹੋਇਆ</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>ਸਿੰਕ ਹੋ ਰਿਹਾ ਹੈ…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ਨਿਰਯਾਤ ਤਿਆਰ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ।</value></data>

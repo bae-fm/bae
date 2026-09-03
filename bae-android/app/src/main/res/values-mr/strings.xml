@@ -84,6 +84,11 @@
     <string name="settings_syncing">समक्रमण</string>
     <string name="settings_sync_disconnected">कनेक्शन तुटले</string>
     <string name="settings_reconnect">पुन्हा कनेक्ट करा</string>
+    <string name="settings_retry">पुन्हा प्रयत्न करा</string>
+    <string name="settings_sync_waiting">समक्रमण तुमची वाट पाहत आहे</string>
+    <string name="sync_blocked_write">लायब्ररीतील बदल</string>
+    <string name="sync_blocked_circle_operation">शेअरिंगमधील बदल</string>
+    <string name="sync_blocked_reclaim">क्लाउड साफसफाई</string>
     <string name="settings_pause_between_sides">बाजूंमध्ये विराम</string>
     <string name="settings_restore_on_launch">सुरुवातीला पुनर्संचयित करा</string>
     <string name="settings_restore_on_launch_help">अ‍ॅप उघडताना मागील सत्रातील ट्रॅक, स्थिती, रांग आणि आवाज पुनर्संचयित करते.</string>

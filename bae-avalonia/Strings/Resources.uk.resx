@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>сховище</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>помилка синхронізації</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Підключити знову</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Повторити</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>синхронізація чекає на вас</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>зміна бібліотеки</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>зміна спільного доступу</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>очищення у хмарі</value></data>
   <data name="sync.synced" xml:space="preserve"><value>синхронізовано {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>синхронізація…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Не вдалося підготувати експорт.</value></data>

@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>التخزين</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>خطأ في المزامنة</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>إعادة الاتصال</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>المزامنة في انتظارك</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>تغيير في المكتبة</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>تغيير في المشاركة</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>تنظيف السحابة</value></data>
   <data name="sync.synced" xml:space="preserve"><value>تمت المزامنة {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>جارٍ المزامنة…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>تعذر تحضير التصدير.</value></data>

@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>אחסון</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>שגיאת סנכרון</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>התחבר מחדש</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>נסה שוב</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>הסנכרון ממתין לך</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>שינוי בספרייה</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>שינוי בשיתוף</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>ניקוי בענן</value></data>
   <data name="sync.synced" xml:space="preserve"><value>סונכרן {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>מסנכרן…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>לא ניתן להכין את הייצוא.</value></data>

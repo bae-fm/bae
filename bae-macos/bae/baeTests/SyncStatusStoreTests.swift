@@ -31,6 +31,7 @@ struct SyncStatusStoreTests {
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
+                blocked: [],
                 lastSyncTime: nil,
                 syncing: false,
                 syncReady: false
@@ -46,6 +47,37 @@ struct SyncStatusStoreTests {
         )
     }
 
+    /// A cycle that completed but left an operation waiting on a person is not
+    /// "Synced" — core decides that, so no surface re-derives it — and the
+    /// operation reaches the settings row that offers to retry it.
+    @MainActor
+    @Test("a blocked operation reads as the error state and reaches the UI")
+    func blockedOperationReadsAsError() throws {
+        let sync = SyncStatusStore()
+
+        sync.apply(
+            BridgeSyncStatusSnapshot(
+                error: nil,
+                blocked: [
+                    BridgeBlockedSyncOperation(
+                        id: "write:write-1",
+                        kind: .write,
+                        description: "releases/release-3",
+                        error: "blob release_files/file-7 is missing"
+                    )
+                ],
+                lastSyncTime: 1_700_000_000_000,
+                syncing: false,
+                syncReady: true
+            )
+        )
+
+        #expect(sync.indicator == .error)
+        let operation = try #require(sync.blocked.first)
+        #expect(operation.id == "write:write-1")
+        #expect(operation.error == "blob release_files/file-7 is missing")
+    }
+
     @MainActor
     @Test("a healthy sync has no error to render")
     func healthySyncHasNoError() {
@@ -57,6 +89,7 @@ struct SyncStatusStoreTests {
     private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             error: nil,
+            blocked: [],
             lastSyncTime: nil,
             syncing: false,
             syncReady: syncReady

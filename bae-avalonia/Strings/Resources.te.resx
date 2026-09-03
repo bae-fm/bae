@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>నిల్వ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>సింక్ లోపం</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>మళ్లీ కనెక్ట్</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>మళ్లీ ప్రయత్నించు</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>సింక్ మీ కోసం వేచి ఉంది</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>లైబ్రరీ మార్పు</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>భాగస్వామ్య మార్పు</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>క్లౌడ్ శుభ్రపరచడం</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time}కి సింక్ చేయబడింది</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>సింక్ చేస్తోంది…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>ఎగుమతిని సిద్ధం చేయలేకపోయింది.</value></data>

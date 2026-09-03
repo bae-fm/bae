@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>úložiště</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>chyba synchronizace</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Znovu připojit</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Zopakovat</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>synchronizace čeká na vás</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>změna knihovny</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>změna sdílení</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>úklid v cloudu</value></data>
   <data name="sync.synced" xml:space="preserve"><value>synchronizováno {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>synchronizace…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Export se nepodařilo připravit.</value></data>

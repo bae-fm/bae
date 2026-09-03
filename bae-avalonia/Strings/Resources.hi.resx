@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>स्टोरेज</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>सिंक त्रुटि</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>फिर कनेक्ट करें</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>फिर कोशिश करें</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>सिंक आपका इंतज़ार कर रहा है</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>लाइब्रेरी में बदलाव</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>साझा करने में बदलाव</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>क्लाउड की सफ़ाई</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} सिंक हुआ</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>सिंक हो रहा है…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>निर्यात तैयार नहीं किया जा सका।</value></data>

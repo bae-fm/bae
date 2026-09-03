@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>સંગ્રહ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>સિંક ભૂલ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>ફરી જોડો</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>ફરી પ્રયત્ન કરો</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>સિંક તમારી રાહ જુએ છે</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>લાઇબ્રેરીમાં ફેરફાર</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>શેરિંગમાં ફેરફાર</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>ક્લાઉડ સફાઈ</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} સિંક થયું</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>સિંક થઈ રહ્યું છે…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>નિકાસ તૈયાર કરી શકાયી નહીં.</value></data>

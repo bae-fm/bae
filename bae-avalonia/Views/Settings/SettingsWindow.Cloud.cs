@@ -184,8 +184,17 @@ internal sealed partial class SettingsWindow
             }
         });
 
+        // The retry returns the refusal (or null); the row that started it renders
+        // it. Nothing else here needs to know, so it does not touch syncStatus.
+        var syncBlocked = new BlockedSyncOperationsView(async id =>
+        {
+            var (current, error) = await _app.Sync.RetryBlockedSyncOperation(id);
+            return current ? error : null;
+        });
+
         content.Children.Add(syncStatus);
         content.Children.Add(syncFailure);
+        content.Children.Add(syncBlocked);
         content.Children.Add(ButtonRow(disconnect, syncNow));
         var storageColumn = new StackPanel { Spacing = 4 };
         var storageCaption = SecondaryLabel(Loc.Chrome("settings.storage.mode"));
@@ -203,6 +212,10 @@ internal sealed partial class SettingsWindow
             syncFailure.Render(
                 fresh.SyncProvider is null ? null : _app.SyncStatusStore.ErrorText,
                 _app.SyncStatusStore.ErrorDetail);
+            syncBlocked.Render(
+                fresh.SyncProvider is null
+                    ? Array.Empty<uniffi.bae_bridge.BridgeBlockedSyncOperation>()
+                    : _app.SyncStatusStore.Blocked);
         });
     }
 

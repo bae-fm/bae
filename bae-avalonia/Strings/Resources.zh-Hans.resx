@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>存储</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>同步错误</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>重新连接</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>重试</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>同步正在等待你的处理</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>库更改</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>共享更改</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>云端清理</value></data>
   <data name="sync.synced" xml:space="preserve"><value>已同步 {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>同步中…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>无法准备导出。</value></data>

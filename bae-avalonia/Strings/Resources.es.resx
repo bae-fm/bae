@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>almacenamiento</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>error de sincronización</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Reconectar</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Reintentar</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>la sincronización te está esperando</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>cambio en la biblioteca</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>cambio en el uso compartido</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>limpieza en la nube</value></data>
   <data name="sync.synced" xml:space="preserve"><value>sincronizado {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>sincronizando…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>No se pudo preparar la exportación.</value></data>

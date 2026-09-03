@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>Opslag</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>synchronisatiefout</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Opnieuw verbinden</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Opnieuw proberen</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>Synchronisatie wacht op jou</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>Bibliotheekwijziging</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>Wijziging in delen</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>Cloudopruiming</value></data>
   <data name="sync.synced" xml:space="preserve"><value>gesynchroniseerd {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>synchroniseren…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Kan de export niet voorbereiden.</value></data>

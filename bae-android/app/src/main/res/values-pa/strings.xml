@@ -84,6 +84,11 @@
     <string name="settings_syncing">ਸਿੰਕ</string>
     <string name="settings_sync_disconnected">ਡਿਸਕਨੈਕਟ ਹੋ ਗਿਆ</string>
     <string name="settings_reconnect">ਮੁੜ ਕਨੈਕਟ ਕਰੋ</string>
+    <string name="settings_retry">ਮੁੜ ਕੋਸ਼ਿਸ਼</string>
+    <string name="settings_sync_waiting">ਸਿੰਕ ਤੁਹਾਡੀ ਉਡੀਕ ਕਰ ਰਿਹਾ ਹੈ</string>
+    <string name="sync_blocked_write">ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ ਤਬਦੀਲੀ</string>
+    <string name="sync_blocked_circle_operation">ਸਾਂਝਾ ਕਰਨ ਵਿੱਚ ਤਬਦੀਲੀ</string>
+    <string name="sync_blocked_reclaim">ਕਲਾਊਡ ਦੀ ਸਫ਼ਾਈ</string>
     <string name="settings_pause_between_sides">ਸਾਈਡਾਂ ਵਿਚਕਾਰ ਠਹਿਰਾਓ</string>
     <string name="settings_restore_on_launch">ਸ਼ੁਰੂ ਹੋਣ ਤੇ ਮੁੜ-ਬਹਾਲ ਕਰੋ</string>
     <string name="settings_restore_on_launch_help">ਐਪ ਖੁੱਲ੍ਹਣ \'ਤੇ ਪਿਛਲੇ ਸੈਸ਼ਨ ਦਾ ਟ੍ਰੈਕ, ਸਥਿਤੀ, ਕਤਾਰ ਅਤੇ ਵਾਲੀਅਮ ਬਹਾਲ ਕਰਦਾ ਹੈ।</string>

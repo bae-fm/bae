@@ -84,6 +84,11 @@
     <string name="settings_syncing">സിങ്ക്</string>
     <string name="settings_sync_disconnected">വിച്ഛേദിച്ചു</string>
     <string name="settings_reconnect">വീണ്ടും ബന്ധിപ്പിക്കുക</string>
+    <string name="settings_retry">വീണ്ടും ശ്രമിക്കുക</string>
+    <string name="settings_sync_waiting">സിങ്ക് നിങ്ങൾക്കായി കാത്തിരിക്കുന്നു</string>
+    <string name="sync_blocked_write">ലൈബ്രറി മാറ്റം</string>
+    <string name="sync_blocked_circle_operation">പങ്കിടൽ മാറ്റം</string>
+    <string name="sync_blocked_reclaim">ക്ലൗഡ് വൃത്തിയാക്കൽ</string>
     <string name="settings_pause_between_sides">വശങ്ങൾക്കിടയിൽ താൽക്കാലികമായി നിർത്തുക</string>
     <string name="settings_restore_on_launch">ആരംഭിക്കുമ്പോൾ പുനഃസ്ഥാപിക്കുക</string>
     <string name="settings_restore_on_launch_help">ആപ്പ് തുറക്കുമ്പോൾ അവസാന സെഷനിലെ ട്രാക്ക്, സ്ഥാനം, ക്യൂ, വോളിയം എന്നിവ പുനഃസ്ഥാപിക്കുന്നു.</string>

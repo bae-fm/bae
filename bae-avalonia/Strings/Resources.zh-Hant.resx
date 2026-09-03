@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>儲存空間</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>同步錯誤</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>重新連接</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>重試</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>同步正在等待你的處理</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>資料庫變更</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>分享變更</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>雲端清理</value></data>
   <data name="sync.synced" xml:space="preserve"><value>已同步 {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>正在同步…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>無法準備匯出。</value></data>

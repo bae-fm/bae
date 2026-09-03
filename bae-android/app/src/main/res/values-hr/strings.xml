@@ -84,6 +84,11 @@
     <string name="settings_syncing">Sinkronizacija…</string>
     <string name="settings_sync_disconnected">Veza prekinuta</string>
     <string name="settings_reconnect">Ponovno poveži</string>
+    <string name="settings_retry">Pokušaj ponovno</string>
+    <string name="settings_sync_waiting">Sinkronizacija čeka na vas</string>
+    <string name="sync_blocked_write">Promjena u fonoteci</string>
+    <string name="sync_blocked_circle_operation">Promjena dijeljenja</string>
+    <string name="sync_blocked_reclaim">Čišćenje u oblaku</string>
     <string name="settings_pause_between_sides">Pauza između strana</string>
     <string name="settings_restore_on_launch">Vrati pri pokretanju</string>
     <string name="settings_restore_on_launch_help">Pri otvaranju aplikacije vraća pjesmu, poziciju, red čekanja i glasnoću zadnje sesije.</string>

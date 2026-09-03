@@ -29,6 +29,7 @@ import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import kotlinx.coroutines.launch
+import uniffi.bae_bridge.BridgeBlockedSyncOperation
 import uniffi.bae_bridge.BridgeException
 import uniffi.bae_bridge.BridgeSyncConfig
 import uniffi.bae_bridge.BridgeSyncIndicator
@@ -79,6 +80,7 @@ internal fun SyncConnectedControls(
     sync: BridgeSyncConfig,
     indicator: BridgeSyncIndicator,
     syncError: String?,
+    blocked: List<BridgeBlockedSyncOperation>,
 ) {
     val scope = rememberCoroutineScope()
     val flow = rememberDisconnectSyncFlow(session)
@@ -91,6 +93,10 @@ internal fun SyncConnectedControls(
         onReconnect = {
             scope.launch { reconnectFailedSync(session.appHandle) }
         },
+    )
+    BlockedSyncOperations(
+        operations = blocked,
+        onRetry = { session.appHandle.retryBlockedSyncOperation(it) },
     )
 
     SyncUploadPauseControl(session)

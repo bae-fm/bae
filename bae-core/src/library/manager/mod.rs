@@ -90,10 +90,13 @@ mod release;
 mod save;
 mod storage;
 mod sync;
+mod sync_status;
 mod track;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::discogs_validation_from_result;
+pub use sync_status::{BlockedSyncOperation, BlockedSyncOperationKind};
+use sync_status::{SyncStatusState, SyncStatusUpdate};
 
 /// Outcome of `resolve_identity_target_album` — where a release should
 /// land after a `set_identity` call. `new_album` carries the album row
@@ -156,6 +159,10 @@ pub enum LibraryError {
     /// A sync-manager connection or membership operation failed.
     #[error("Sync error: {0}")]
     Sync(#[from] coven::SyncError),
+    /// Handing one blocked sync operation back to the sync loop failed — most
+    /// often because it is no longer blocked, so there is nothing to retry.
+    #[error("Retry blocked operation error: {0}")]
+    RetryBlockedOperation(#[source] Box<coven::RetryBlockedOperationError>),
     #[error("Device pairing start error: {0}")]
     DevicePairingStart(#[from] coven::StartDevicePairingError),
     #[error("Device pairing approval error: {0}")]
@@ -176,6 +183,12 @@ pub enum LibraryError {
     /// Establishing this store's device identity failed.
     #[error("Identity error: {0}")]
     Identity(#[from] coven::IdentityError),
+}
+
+impl From<coven::RetryBlockedOperationError> for LibraryError {
+    fn from(error: coven::RetryBlockedOperationError) -> Self {
+        Self::RetryBlockedOperation(Box::new(error))
+    }
 }
 
 impl From<coven::ApproveDevicePairingError> for LibraryError {
@@ -242,6 +255,11 @@ impl LibraryError {
             LibraryError::CloudSetup(error) => cloud_setup_category(error),
             LibraryError::CloudUnlock(error) => cloud_unlock_category(error),
             LibraryError::Sync(e) => sync_category(e),
+            LibraryError::RetryBlockedOperation(error) => match error.as_ref() {
+                coven::RetryBlockedOperationError::Write(_) => C::Database,
+                coven::RetryBlockedOperationError::Circle(_) => C::Membership,
+                coven::RetryBlockedOperationError::Reclaim(error) => sync_category(error),
+            },
             LibraryError::DevicePairingStart(_)
             | LibraryError::DevicePairingApproval(_)
             | LibraryError::DevicePairingTransport(_) => C::Membership,
@@ -332,6 +350,7 @@ fn sync_category(error: &coven::SyncError) -> crate::ui::UiErrorCategory {
         | SyncError::Database(_)
         | SyncError::RoutingEncryption(_)
         | SyncError::BlobUpload(_)
+        | SyncError::StuckReclaim(_)
         | SyncError::Loop(_) => C::Internal,
     }
 }
@@ -352,6 +371,10 @@ impl From<crate::import::ImportError> for LibraryError {
 #[derive(Debug, Clone)]
 pub struct SyncStatusSnapshot {
     pub error: Option<crate::ui::UiError>,
+    /// The durable operations the last completed cycle left waiting on a person.
+    /// A cycle that completes clean clears the list; a cycle that fails leaves it
+    /// as it stood, because a cycle that never finished has no verdict on it.
+    pub blocked: Vec<BlockedSyncOperation>,
     pub last_sync_time: Option<i64>,
     pub syncing: bool,
     pub sync_ready: bool,
@@ -363,8 +386,10 @@ pub struct SyncStatusSnapshot {
 /// timestamp read as "Synced" on a loop that never came up).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SyncIndicator {
-    /// A sync error is present. The banner shows its line; the badge shows the
-    /// error state.
+    /// A sync error is present, or an operation is blocked waiting on a person.
+    /// The banner shows the line; the badge shows the error state. A cycle that
+    /// completes while leaving an operation stopped is not "Synced": the library
+    /// is not fully published until the person resolves it.
     Error,
     /// A sync cycle is actively running.
     Syncing,
@@ -377,16 +402,18 @@ pub enum SyncIndicator {
 }
 
 impl SyncIndicator {
-    /// The one place the indicator's precedence lives. Error over an active cycle
-    /// over a running-and-idle loop over nothing. `last_sync_time` reaches the
-    /// result only through `Synced`, so it cannot surface for a stopped loop.
+    /// The one place the indicator's precedence lives. A fault — a failed cycle
+    /// or an operation blocked waiting on a person — over an active cycle over a
+    /// running-and-idle loop over nothing. `last_sync_time` reaches the result
+    /// only through `Synced`, so it cannot surface for a stopped loop.
     pub fn resolve(
         has_error: bool,
+        has_blocked_operation: bool,
         syncing: bool,
         sync_ready: bool,
         last_sync_time: Option<i64>,
     ) -> SyncIndicator {
-        if has_error {
+        if has_error || has_blocked_operation {
             SyncIndicator::Error
         } else if syncing {
             SyncIndicator::Syncing
@@ -403,6 +430,7 @@ impl SyncStatusSnapshot {
     pub fn indicator(&self) -> SyncIndicator {
         SyncIndicator::resolve(
             self.error.is_some(),
+            !self.blocked.is_empty(),
             self.syncing,
             self.sync_ready,
             self.last_sync_time,
@@ -430,6 +458,7 @@ mod sync_indicator_tests {
                 category: crate::ui::UiErrorCategory::Network,
                 detail: "boom".to_string(),
             }),
+            blocked: Vec::new(),
             last_sync_time: time,
             syncing,
             sync_ready,
@@ -465,6 +494,24 @@ mod sync_indicator_tests {
         );
     }
 
+    /// A cycle that completed but left an operation waiting on a person is not
+    /// "Synced": the library is not fully published until someone resolves it,
+    /// and the badge has to say so without the front-ends deciding it themselves.
+    #[test]
+    fn a_blocked_operation_shows_the_error_state() {
+        let mut snapshot = snapshot(true, false, false, Some(100));
+        snapshot.blocked.push(BlockedSyncOperation {
+            id: "reclaim:abc".to_string(),
+            kind: BlockedSyncOperationKind::Reclaim,
+            description: "a published batch of library changes".to_string(),
+            error: "object store-v1/library/packages/1.json: the slot already holds \
+                    another object"
+                .to_string(),
+        });
+
+        assert_eq!(snapshot.indicator(), SyncIndicator::Error);
+    }
+
     /// The bug this replaces: a loop that never came up is Idle, not Synced —
     /// even with a stale timestamp from a previous session.
     #[test]
@@ -473,25 +520,6 @@ mod sync_indicator_tests {
             snapshot(false, false, false, Some(100)).indicator(),
             SyncIndicator::Idle
         );
-    }
-}
-
-#[derive(Debug, Clone)]
-struct SyncStatusState {
-    error: Option<String>,
-    last_sync_time_raw: Option<String>,
-    last_sync_time: Option<i64>,
-    syncing: bool,
-}
-
-impl SyncStatusState {
-    fn initial(database: &Database) -> Self {
-        Self {
-            error: None,
-            last_sync_time_raw: None,
-            last_sync_time: None,
-            syncing: database.is_syncing(),
-        }
     }
 }
 

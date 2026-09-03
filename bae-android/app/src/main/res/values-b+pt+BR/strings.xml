@@ -84,6 +84,11 @@
     <string name="settings_syncing">Sincronizando…</string>
     <string name="settings_sync_disconnected">Desconectado</string>
     <string name="settings_reconnect">Reconectar</string>
+    <string name="settings_retry">Tentar novamente</string>
+    <string name="settings_sync_waiting">A sincronização está esperando por você</string>
+    <string name="sync_blocked_write">Alteração na biblioteca</string>
+    <string name="sync_blocked_circle_operation">Alteração no compartilhamento</string>
+    <string name="sync_blocked_reclaim">Limpeza na nuvem</string>
     <string name="settings_pause_between_sides">Pausa entre lados</string>
     <string name="settings_restore_on_launch">Restaurar ao abrir</string>
     <string name="settings_restore_on_launch_help">Restaura a faixa, a posição, a fila e o volume da última sessão ao abrir o app.</string>

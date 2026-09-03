@@ -84,6 +84,11 @@
     <string name="settings_syncing">מסנכרן…</string>
     <string name="settings_sync_disconnected">מנותק</string>
     <string name="settings_reconnect">התחבר מחדש</string>
+    <string name="settings_retry">נסה שוב</string>
+    <string name="settings_sync_waiting">הסנכרון ממתין לך</string>
+    <string name="sync_blocked_write">שינוי בספרייה</string>
+    <string name="sync_blocked_circle_operation">שינוי בשיתוף</string>
+    <string name="sync_blocked_reclaim">ניקוי בענן</string>
     <string name="settings_pause_between_sides">השהיה בין צדדים</string>
     <string name="settings_restore_on_launch">שחזר בהפעלה</string>
     <string name="settings_restore_on_launch_help">משחזר את הרצועה, המיקום, התור ועוצמת השמע מההפעלה הקודמת עם פתיחת האפליקציה.</string>

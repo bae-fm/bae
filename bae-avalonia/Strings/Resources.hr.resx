@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>pohrana</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>pogreška sinkronizacije</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Ponovno poveži</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Pokušaj ponovno</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>sinkronizacija čeka na vas</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>promjena u fonoteci</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>promjena dijeljenja</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>čišćenje u oblaku</value></data>
   <data name="sync.synced" xml:space="preserve"><value>sinkronizirano {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>sinkronizacija…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Nije moguće pripremiti izvoz.</value></data>

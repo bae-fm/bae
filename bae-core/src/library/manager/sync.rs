@@ -40,10 +40,22 @@ impl LibraryManager {
         let state = self.sync_status.lock().unwrap().clone();
         SyncStatusSnapshot {
             error: state.error.map(crate::ui::UiError::internal),
+            blocked: state.blocked,
             last_sync_time: state.last_sync_time,
             syncing: state.syncing,
             sync_ready: self.is_sync_ready(),
         }
+    }
+
+    /// Hand one operation from `SyncStatusSnapshot::blocked` back to the sync
+    /// loop, which revalidates it from scratch and runs a cycle. An id that names
+    /// no operation, or one that is no longer blocked, is refused — a stale retry
+    /// cannot pass as a fresh decision, so the caller is told rather than left
+    /// watching a list that never changes.
+    pub async fn retry_blocked_sync_operation(&self, id: &str) -> Result<(), LibraryError> {
+        let operation = super::sync_status::decode_id(id)?;
+        self.database.retry_blocked_operation(operation).await?;
+        Ok(())
     }
 
     pub fn trigger_sync(&self) {

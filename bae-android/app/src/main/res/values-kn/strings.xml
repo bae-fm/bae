@@ -84,6 +84,11 @@
     <string name="settings_syncing">ಸಿಂಕ್</string>
     <string name="settings_sync_disconnected">ಸಂಪರ್ಕ ಕಡಿತಗೊಂಡಿದೆ</string>
     <string name="settings_reconnect">ಮರುಸಂಪರ್ಕಿಸಿ</string>
+    <string name="settings_retry">ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ</string>
+    <string name="settings_sync_waiting">ಸಿಂಕ್ ನಿಮಗಾಗಿ ಕಾಯುತ್ತಿದೆ</string>
+    <string name="sync_blocked_write">ಗ್ರಂಥಾಲಯದ ಬದಲಾವಣೆ</string>
+    <string name="sync_blocked_circle_operation">ಹಂಚಿಕೆಯ ಬದಲಾವಣೆ</string>
+    <string name="sync_blocked_reclaim">ಕ್ಲೌಡ್ ಸ್ವಚ್ಛಗೊಳಿಸುವಿಕೆ</string>
     <string name="settings_pause_between_sides">ಬದಿಗಳ ನಡುವೆ ವಿರಾಮ</string>
     <string name="settings_restore_on_launch">ಪ್ರಾರಂಭಿಸುವಾಗ ಮರುಸ್ಥಾಪಿಸಿ</string>
     <string name="settings_restore_on_launch_help">ಆ್ಯಪ್ ತೆರೆದಾಗ ಕೊನೆಯ ಸೆಷನ್‌ನ ಟ್ರ್ಯಾಕ್, ಸ್ಥಾನ, ಸರತಿ ಮತ್ತು ವಾಲ್ಯೂಮ್ ಅನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ.</string>

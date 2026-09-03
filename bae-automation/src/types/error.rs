@@ -84,6 +84,7 @@ impl From<LibraryError> for AutomationError {
             LibraryError::CloudSetup(e) => Self::Unavailable(e.to_string()),
             LibraryError::CloudUnlock(e) => Self::Unavailable(e.to_string()),
             LibraryError::Sync(e) => Self::Unavailable(e.to_string()),
+            LibraryError::RetryBlockedOperation(e) => Self::Unavailable(e.to_string()),
             LibraryError::DevicePairingStart(e) => Self::Unavailable(e.to_string()),
             LibraryError::DevicePairingApproval(e) => Self::Unavailable(e.to_string()),
             LibraryError::DevicePairingTransport(e) => Self::Unavailable(e.to_string()),

@@ -84,6 +84,11 @@
     <string name="settings_syncing">Eşzamanlanıyor…</string>
     <string name="settings_sync_disconnected">Bağlantı kesildi</string>
     <string name="settings_reconnect">Yeniden bağlan</string>
+    <string name="settings_retry">Yeniden dene</string>
+    <string name="settings_sync_waiting">Eşzamanlama sizi bekliyor</string>
+    <string name="sync_blocked_write">Kitaplık değişikliği</string>
+    <string name="sync_blocked_circle_operation">Paylaşım değişikliği</string>
+    <string name="sync_blocked_reclaim">Bulut temizliği</string>
     <string name="settings_pause_between_sides">Yüzler arasında duraklat</string>
     <string name="settings_restore_on_launch">Açılışta geri yükle</string>
     <string name="settings_restore_on_launch_help">Uygulama açıldığında son oturumun parçasını, konumunu, kuyruğunu ve ses düzeyini geri yükler.</string>

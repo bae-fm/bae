@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>Lưu trữ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>lỗi đồng bộ</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Kết nối lại</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Thử lại</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>Đồng bộ đang chờ bạn</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>Thay đổi thư viện</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>Thay đổi chia sẻ</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>Dọn dẹp đám mây</value></data>
   <data name="sync.synced" xml:space="preserve"><value>đã đồng bộ {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>đang đồng bộ…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Không thể chuẩn bị xuất.</value></data>

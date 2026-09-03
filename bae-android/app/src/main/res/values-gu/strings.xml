@@ -84,6 +84,11 @@
     <string name="settings_syncing">સિંક</string>
     <string name="settings_sync_disconnected">જોડાણ તૂટ્યું</string>
     <string name="settings_reconnect">ફરી જોડો</string>
+    <string name="settings_retry">ફરી પ્રયત્ન કરો</string>
+    <string name="settings_sync_waiting">સિંક તમારી રાહ જુએ છે</string>
+    <string name="sync_blocked_write">લાઇબ્રેરીમાં ફેરફાર</string>
+    <string name="sync_blocked_circle_operation">શેરિંગમાં ફેરફાર</string>
+    <string name="sync_blocked_reclaim">ક્લાઉડ સફાઈ</string>
     <string name="settings_pause_between_sides">બાજુઓ વચ્ચે વિરામ</string>
     <string name="settings_restore_on_launch">શરૂઆત પર પુનઃસ્થાપિત કરો</string>
     <string name="settings_restore_on_launch_help">ઍપ ખૂલે ત્યારે છેલ્લા સત્રનો ટ્રૅક, સ્થિતિ, કતાર અને વૉલ્યુમ પુનઃસ્થાપિત કરે છે.</string>

@@ -75,6 +75,15 @@ internal sealed class SyncService
     public Func<Task<(bool Current, string? Error)>> ReconnectSync { get; init; }
         = () => throw new InvalidOperationException("SyncService stub: ReconnectSync not wired");
 
+    /// <summary>
+    /// Hand one operation from the sync status's blocked list back to the sync
+    /// loop, which revalidates it and runs a cycle. Takes the operation's id. The
+    /// operation leaves the list on the next status; one whose cause still stands
+    /// blocks again, and an id naming nothing blocked comes back as an error.
+    /// </summary>
+    public Func<string, Task<(bool Current, string? Error)>> RetryBlockedSyncOperation { get; init; }
+        = _ => throw new InvalidOperationException("SyncService stub: RetryBlockedSyncOperation not wired");
+
     /// <summary>Rename a library by id.</summary>
     public Func<string, string, (bool Current, string? Error)> RenameLibrary { get; init; }
         = (_, _) => throw new InvalidOperationException("SyncService stub: RenameLibrary not wired");
@@ -151,6 +160,8 @@ internal sealed class SyncService
         CloudOnlyReleaseCount = () => session.RunForCurrentHandle(NativeBae.CloudOnlyReleaseCount),
         RetryOutbox = () => session.RunForCurrentHandle(NativeBae.RetryOutbox),
         ReconnectSync = () => session.RunForCurrentHandle(NativeBae.ReconnectSync),
+        RetryBlockedSyncOperation = id =>
+            session.RunForCurrentHandle(handle => NativeBae.RetryBlockedSyncOperation(handle, id)),
         RenameLibrary = (libraryId, newName) =>
             session.WithCurrentHandle(handle => NativeBae.RenameLibrary(handle, libraryId, newName)),
         CancelReleaseTransition = releaseId =>

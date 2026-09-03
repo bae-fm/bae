@@ -66,6 +66,7 @@ mod library_projection;
 mod playback_persistence;
 mod queue_projection;
 mod service_status;
+mod sync_status;
 mod ui_events;
 use queue_projection::pump_ui_events;
 use ui_events::convert_ui_event;

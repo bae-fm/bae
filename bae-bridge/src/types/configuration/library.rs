@@ -324,9 +324,56 @@ pub struct BridgePlaybackContext {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
+    /// The durable sync operations waiting on a person. Each is shown with its
+    /// kind, description, and error, and retried by handing `id` back to
+    /// `AppHandle::retry_blocked_sync_operation`. Empty once a cycle completes
+    /// with nothing left waiting.
+    pub blocked: Vec<BridgeBlockedSyncOperation>,
     pub last_sync_time: Option<i64>,
     pub syncing: bool,
     pub sync_ready: bool,
+}
+
+/// One durable sync operation that stopped on a fault running it again cannot
+/// change, and runs again only when the person asks. Mirror of bae-core's
+/// `BlockedSyncOperation`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeBlockedSyncOperation {
+    /// Names this operation to `AppHandle::retry_blocked_sync_operation`. Opaque
+    /// to the UI, which only carries it back.
+    pub id: String,
+    pub kind: BridgeBlockedSyncOperationKind,
+    /// Which operation this is, in coven's own vocabulary — the rows a write
+    /// touches, what a reclaim was going to delete. Technical detail shown
+    /// under the localized kind; never translated.
+    pub description: String,
+    /// coven's reason the operation stopped. Never translated.
+    pub error: String,
+}
+
+/// Which of coven's durable operation journals a blocked operation came from.
+/// The UI names the kind in its own locale; all three retry the same way.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeBlockedSyncOperationKind {
+    Write,
+    CircleOperation,
+    Reclaim,
+}
+
+impl BridgeBlockedSyncOperation {
+    pub(crate) fn from_core(operation: bae_core::library::BlockedSyncOperation) -> Self {
+        use bae_core::library::BlockedSyncOperationKind as Kind;
+        Self {
+            id: operation.id,
+            kind: match operation.kind {
+                Kind::Write => BridgeBlockedSyncOperationKind::Write,
+                Kind::CircleOperation => BridgeBlockedSyncOperationKind::CircleOperation,
+                Kind::Reclaim => BridgeBlockedSyncOperationKind::Reclaim,
+            },
+            description: operation.description,
+            error: operation.error,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
@@ -437,6 +484,7 @@ impl BridgeSyncIndicator {
 pub fn bridge_sync_indicator(snapshot: &BridgeSyncStatusSnapshot) -> BridgeSyncIndicator {
     BridgeSyncIndicator::from_core(bae_core::library::SyncIndicator::resolve(
         snapshot.error.is_some(),
+        !snapshot.blocked.is_empty(),
         snapshot.syncing,
         snapshot.sync_ready,
         snapshot.last_sync_time,

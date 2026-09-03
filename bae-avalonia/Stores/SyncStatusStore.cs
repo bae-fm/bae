@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
@@ -30,6 +31,12 @@ internal sealed class SyncStatusStore
 
     public bool? SyncReady { get; private set; }
 
+    // The durable sync operations the last completed cycle left waiting on a
+    // person. Empty while there is nothing waiting; each is retried by handing
+    // its Id back through SyncService.RetryBlockedSyncOperation.
+    public IReadOnlyList<BridgeBlockedSyncOperation> Blocked { get; private set; } =
+        Array.Empty<BridgeBlockedSyncOperation>();
+
     public event Action? Changed;
 
     public SyncStatusStore()
@@ -54,6 +61,7 @@ internal sealed class SyncStatusStore
             ? SyncIndicatorModel.FormatSyncTime(synced.LastSyncTime)
             : null;
         SyncReady = status.SyncReady;
+        Blocked = status.Blocked;
         Changed?.Invoke();
     }
 

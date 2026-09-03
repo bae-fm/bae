@@ -371,6 +371,8 @@ private struct SyncConnectedControls: View {
                 )
             }
 
+            BlockedSyncOperationRows(retry: sync.retryBlockedSyncOperation)
+
             Toggle(
                 "Pause uploads",
                 isOn: Binding(

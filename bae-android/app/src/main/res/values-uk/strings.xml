@@ -84,6 +84,11 @@
     <string name="settings_syncing">Синхронізація…</string>
     <string name="settings_sync_disconnected">Відключено</string>
     <string name="settings_reconnect">Підключити знову</string>
+    <string name="settings_retry">Повторити</string>
+    <string name="settings_sync_waiting">Синхронізація чекає на вас</string>
+    <string name="sync_blocked_write">Зміна бібліотеки</string>
+    <string name="sync_blocked_circle_operation">Зміна спільного доступу</string>
+    <string name="sync_blocked_reclaim">Очищення у хмарі</string>
     <string name="settings_pause_between_sides">Пауза між сторонами</string>
     <string name="settings_restore_on_launch">Відновлювати під час запуску</string>
     <string name="settings_restore_on_launch_help">Під час відкриття застосунку відновлює трек, позицію, чергу та гучність останнього сеансу.</string>

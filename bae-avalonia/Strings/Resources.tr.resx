@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>Depolama</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>eşzamanlama hatası</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Yeniden bağlan</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Yeniden dene</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>Eşzamanlama sizi bekliyor</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>Kitaplık değişikliği</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>Paylaşım değişikliği</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>Bulut temizliği</value></data>
   <data name="sync.synced" xml:space="preserve"><value>{time} eşzamanlandı</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>eşzamanlanıyor…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Dışa aktarım hazırlanamadı.</value></data>

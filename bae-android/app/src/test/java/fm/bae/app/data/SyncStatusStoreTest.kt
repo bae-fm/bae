@@ -34,6 +34,7 @@ class SyncStatusStoreTest {
     private fun status(syncReady: Boolean) =
         BridgeSyncStatusSnapshot(
             error = null,
+            blocked = emptyList(),
             lastSyncTime = null,
             syncing = false,
             syncReady = syncReady,

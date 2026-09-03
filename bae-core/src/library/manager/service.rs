@@ -63,6 +63,7 @@ impl LibraryManager {
         let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
         let (sync_status_values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
             error: None,
+            blocked: Vec::new(),
             last_sync_time: None,
             syncing: database.is_syncing(),
             sync_ready: database.is_syncing(),
@@ -152,6 +153,7 @@ impl LibraryManager {
         let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
         let (sync_status_values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
             error: None,
+            blocked: Vec::new(),
             last_sync_time: None,
             syncing: database.is_syncing(),
             sync_ready: database.is_syncing(),
@@ -436,42 +438,34 @@ impl LibraryManager {
         self.spawn_supervised_task("sync status subscription", async move {
             loop {
                 let status = rx.borrow_and_update().clone();
-                // Fold coven's sync-loop status onto bae's flat banner state: a
-                // cycle in progress (CheckingStorage / Publishing) shows the
-                // spinner; a terminal status ends it, clearing the banner and
-                // recording the sync time on Synchronized/Blocked, or setting the
-                // banner on Failed. `error_update` is `None` when the status has no
-                // verdict on the banner (in progress, or Offline).
+                // A cycle in progress (CheckingStorage / Publishing) shows the
+                // spinner; a terminal status ends it. `SyncStatusUpdate` holds
+                // what the status says about the rest of the banner.
                 let syncing = matches!(
                     status,
                     SyncLoopStatus::CheckingStorage | SyncLoopStatus::Publishing
                 );
-                let (error_update, last_sync_update): (Option<Option<String>>, Option<String>) =
-                    match &status {
-                        SyncLoopStatus::CheckingStorage
-                        | SyncLoopStatus::Publishing
-                        | SyncLoopStatus::Offline => (None, None),
-                        SyncLoopStatus::Synchronized(success)
-                        | SyncLoopStatus::Blocked { success, .. } => {
-                            (Some(None), Some(success.last_sync_time.clone()))
-                        }
-                        SyncLoopStatus::Failed { error } => {
-                            // The loop itself never logs its fault (it only
-                            // ships it into this watch), and the UI localizes
-                            // it down to a generic line — without this record
-                            // a failing cycle is invisible in the log.
-                            tracing::warn!("sync loop failed: {error}");
-                            (Some(Some(error.to_string())), None)
-                        }
-                    };
+                let SyncStatusUpdate {
+                    error: error_update,
+                    last_sync_time: last_sync_update,
+                    blocked: blocked_update,
+                } = SyncStatusUpdate::from_loop_status(&status);
                 let mut changed = false;
                 let mut new_failure = false;
+                let mut newly_blocked: Option<usize> = None;
                 {
                     let mut state = lm.sync_status.lock().unwrap();
                     if let Some(error) = error_update {
                         if error != state.error {
                             state.error = error.clone();
                             new_failure = error.is_some();
+                            changed = true;
+                        }
+                    }
+                    if let Some(blocked) = blocked_update {
+                        if blocked != state.blocked {
+                            newly_blocked = (!blocked.is_empty()).then_some(blocked.len());
+                            state.blocked = blocked;
                             changed = true;
                         }
                     }
@@ -498,6 +492,12 @@ impl LibraryManager {
                             }
                         }
                     }
+                }
+                // Blocked operations wait on a person indefinitely, and the UI
+                // reports them as one localized line — without this record the
+                // reason coven gave lives nowhere a log reader can find it.
+                if let Some(count) = newly_blocked {
+                    warn!("sync cycle left {count} operation(s) waiting on a decision");
                 }
                 if new_failure {
                     let provider = lm.config_handle.config().cloud_home.provider.clone();

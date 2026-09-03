@@ -84,6 +84,11 @@
     <string name="settings_syncing">Sincronizzazione…</string>
     <string name="settings_sync_disconnected">Disconnesso</string>
     <string name="settings_reconnect">Riconnetti</string>
+    <string name="settings_retry">Riprova</string>
+    <string name="settings_sync_waiting">La sincronizzazione ti sta aspettando</string>
+    <string name="sync_blocked_write">Modifica alla libreria</string>
+    <string name="sync_blocked_circle_operation">Modifica alla condivisione</string>
+    <string name="sync_blocked_reclaim">Pulizia del cloud</string>
     <string name="settings_pause_between_sides">Pausa tra i lati</string>
     <string name="settings_restore_on_launch">Ripristina all\'avvio</string>
     <string name="settings_restore_on_launch_help">Ripristina traccia, posizione, coda e volume dell\'ultima sessione all\'apertura dell\'app.</string>

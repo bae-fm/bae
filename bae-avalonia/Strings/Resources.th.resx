@@ -231,6 +231,11 @@
   <data name="storage.title" xml:space="preserve"><value>พื้นที่จัดเก็บ</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>ข้อผิดพลาดการซิงค์</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>เชื่อมต่ออีกครั้ง</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>ลองอีกครั้ง</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>การซิงค์กำลังรอคุณอยู่</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>การเปลี่ยนแปลงคลัง</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>การเปลี่ยนแปลงการแชร์</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>การล้างข้อมูลบนคลาวด์</value></data>
   <data name="sync.synced" xml:space="preserve"><value>ซิงค์แล้ว {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>กำลังซิงค์…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>เตรียมการส่งออกไม่ได้</value></data>

@@ -84,6 +84,11 @@
     <string name="settings_syncing">Synchronisierung …</string>
     <string name="settings_sync_disconnected">Getrennt</string>
     <string name="settings_reconnect">Erneut verbinden</string>
+    <string name="settings_retry">Erneut versuchen</string>
+    <string name="settings_sync_waiting">Sync wartet auf dich</string>
+    <string name="sync_blocked_write">Bibliotheksänderung</string>
+    <string name="sync_blocked_circle_operation">Freigabeänderung</string>
+    <string name="sync_blocked_reclaim">Cloud-Bereinigung</string>
     <string name="settings_pause_between_sides">Pause zwischen Seiten</string>
     <string name="settings_restore_on_launch">Beim Start wiederherstellen</string>
     <string name="settings_restore_on_launch_help">Stellt beim Öffnen der App den Titel, die Position, die Warteschlange und die Lautstärke der letzten Sitzung wieder her.</string>

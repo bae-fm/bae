@@ -84,6 +84,11 @@
     <string name="settings_syncing">同期中…</string>
     <string name="settings_sync_disconnected">切断されました</string>
     <string name="settings_reconnect">再接続</string>
+    <string name="settings_retry">再試行</string>
+    <string name="settings_sync_waiting">同期があなたの操作を待っています</string>
+    <string name="sync_blocked_write">ライブラリの変更</string>
+    <string name="sync_blocked_circle_operation">共有の変更</string>
+    <string name="sync_blocked_reclaim">クラウドの整理</string>
     <string name="settings_pause_between_sides">面の間で一時停止</string>
     <string name="settings_restore_on_launch">起動時に復元</string>
     <string name="settings_restore_on_launch_help">アプリを開いたときに、前回のセッションのトラック、再生位置、キュー、音量を復元します。</string>

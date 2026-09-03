@@ -84,6 +84,11 @@
     <string name="settings_syncing">ซิงค์</string>
     <string name="settings_sync_disconnected">ตัดการเชื่อมต่อแล้ว</string>
     <string name="settings_reconnect">เชื่อมต่อใหม่</string>
+    <string name="settings_retry">ลองอีกครั้ง</string>
+    <string name="settings_sync_waiting">การซิงค์กำลังรอคุณอยู่</string>
+    <string name="sync_blocked_write">การเปลี่ยนแปลงคลัง</string>
+    <string name="sync_blocked_circle_operation">การเปลี่ยนแปลงการแชร์</string>
+    <string name="sync_blocked_reclaim">การล้างข้อมูลบนคลาวด์</string>
     <string name="settings_pause_between_sides">หยุดพักระหว่างด้าน</string>
     <string name="settings_restore_on_launch">คืนค่าเมื่อเปิดแอป</string>
     <string name="settings_restore_on_launch_help">กู้คืนแทร็ก ตำแหน่ง คิว และระดับเสียงของเซสชันล่าสุดเมื่อเปิดแอป</string>

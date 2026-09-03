@@ -232,6 +232,11 @@
   <data name="storage.title" xml:space="preserve"><value>storage</value></data>
   <data name="sync.error_title" xml:space="preserve"><value>sync error</value></data>
   <data name="sync.reconnect" xml:space="preserve"><value>Reconnect</value></data>
+  <data name="sync.retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="sync.waiting_title" xml:space="preserve"><value>sync is waiting on you</value></data>
+  <data name="sync.blocked.write" xml:space="preserve"><value>library change</value></data>
+  <data name="sync.blocked.circle_operation" xml:space="preserve"><value>sharing change</value></data>
+  <data name="sync.blocked.reclaim" xml:space="preserve"><value>cloud cleanup</value></data>
   <data name="sync.synced" xml:space="preserve"><value>synced {time}</value></data>
   <data name="sync.syncing" xml:space="preserve"><value>syncing…</value></data>
   <data name="track.export.prepare_failed" xml:space="preserve"><value>Couldn't prepare the export.</value></data>
