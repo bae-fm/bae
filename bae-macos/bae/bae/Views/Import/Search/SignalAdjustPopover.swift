@@ -5,17 +5,24 @@ import SwiftUI
 /// way to run the lookups again.
 ///
 /// The disc ID and the barcode are checkboxes — they are in the run until
-/// unchecked. The catalog is a menu over the numbers found in the folder,
-/// because a folder can carry thirty of them and the run looks up the one it
-/// is told to. A verdict resumed from the store has no signals to show, so the
-/// popover is Run again alone.
+/// unchecked. The catalog opens the numbers found in the folder, because the
+/// run looks up the one it is told to. A verdict resumed from the store has no
+/// signals to show, so the popover is Run again alone.
+///
+/// Every row draws itself: an AppKit checkbox or menu renders its label as a
+/// control title, which would drop the value and the count.
 struct SignalAdjustPopover: View {
     let toolbar: BridgeSignalsToolbar
     let onToggle: (BridgeSignalToggle) -> Void
     let onRerun: () -> Void
 
+    /// Which signal's options are open. The catalog's numbers expand in place
+    /// rather than in a second popover over this one.
+    @State
+    private var expanded: String?
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 6) {
             ForEach(toolbar.signals) { signal in
                 if signal.kind == .catalog {
                     catalogRow(signal)
@@ -41,41 +48,50 @@ struct SignalAdjustPopover: View {
 
     /// A one-value signal: checked while it is in the run.
     private func checkboxRow(_ signal: BridgeToolbarSignal) -> some View {
-        Toggle(
-            isOn: Binding(
-                get: { !signal.excluded },
-                set: { _ in
-                    guard let toggle = BridgeSignalToggle(signal: signal)
-                    else { return }
-                    onToggle(toggle)
-                }
-            )
-        ) {
-            rowLabel(signal, value: signal.value)
+        Button {
+            guard let toggle = BridgeSignalToggle(signal: signal) else {
+                return
+            }
+            onToggle(toggle)
+        } label: {
+            HStack(spacing: 7) {
+                SignalCheckbox(isOn: !signal.excluded)
+                rowLabel(signal, value: signal.value)
+            }
+            .contentShape(Rectangle())
         }
-        .toggleStyle(.checkbox)
+        .buttonStyle(.plain)
         .help(helpLine(signal))
     }
 
-    /// The catalog: a menu over every number extracted from the folder. At
-    /// most one is chosen — choosing another replaces it.
+    /// The catalog: its numbers open under it, and picking one closes them.
+    @ViewBuilder
     private func catalogRow(_ signal: BridgeToolbarSignal) -> some View {
-        Menu {
-            ForEach(signal.options, id: \.value) { option in
-                Toggle(
-                    option.value,
-                    isOn: Binding(
-                        get: { option.chosen },
-                        set: { _ in onToggle(.catalog(value: option.value)) }
-                    )
-                )
-            }
+        Button {
+            expanded = expanded == signal.id ? nil : signal.id
         } label: {
-            rowLabel(signal, value: signal.value)
+            HStack(spacing: 7) {
+                SignalCheckbox(isOn: signal.value != nil && !signal.excluded)
+                rowLabel(signal, value: signal.value)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(
+                        .degrees(expanded == signal.id ? 180 : 0)
+                    )
+            }
+            .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        .buttonStyle(.plain)
         .disabled(signal.options.isEmpty)
         .help(helpLine(signal))
+        if expanded == signal.id {
+            CatalogOptionsList(options: signal.options) { value in
+                expanded = nil
+                onToggle(.catalog(value: value))
+            }
+            .padding(.leading, 20)
+        }
     }
 
     /// The name, the value it carries, and how many releases it named — the
@@ -87,6 +103,7 @@ struct SignalAdjustPopover: View {
         HStack(spacing: 7) {
             Text(SignalBadgeStyle.label(for: signal.kind))
                 .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.primary)
                 .fixedSize()
             if let value {
                 Text(value)

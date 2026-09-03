@@ -67,8 +67,6 @@ const DIRECT_KEYS: &[&str] = &[
     "core.audio.bit_depth",
     "core.audio.channels.count",
     "core.release.media",
-    // Release-group card pressing count.
-    "core.import.pressings",
     // Disconnect-sync confirmation: releases that live only in the cloud (the
     // UI composes the count into its own base sentence).
     "core.sync.cloud_only_releases",

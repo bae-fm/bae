@@ -5,7 +5,11 @@ import SwiftUI
 /// beneath on a connecting rule. Picking a pressing reports it via `onSelect`;
 /// the surrounding flow opens the docked confirm pane. The currently-docked
 /// pressing (if any) renders selected.
-struct ReleaseGroupListView: View {
+///
+/// `trailing` closes the list from inside the scroll, so what the list has to
+/// say about itself — a source whose results are missing, a source still
+/// answering — scrolls with the results rather than hovering under them.
+struct ReleaseGroupListView<Trailing: View>: View {
     let groups: [ReleaseGroup]
     let isImporting: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
@@ -16,10 +20,9 @@ struct ReleaseGroupListView: View {
     let selectedReleaseId: String?
     /// Release id whose candidate detail is being fetched, if any.
     let loadingReleaseId: String?
-    /// Lines closing the list — one per source whose results are missing from
-    /// it. Empty when every source answered.
-    var trailingNotes: [String] = []
     let onSelect: (BridgeMetadataResult) -> Void
+    @ViewBuilder
+    let trailing: () -> Trailing
 
     var body: some View {
         ScrollView {
@@ -35,16 +38,24 @@ struct ReleaseGroupListView: View {
                         onSelect: onSelect,
                     )
                 }
-                ForEach(trailingNotes, id: \.self) { note in
-                    Text(note)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                        .padding(.leading, 28)
-                }
+                trailing()
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+/// A line closing a result list: what is not in it, and why. Sits where the
+/// next group would be, in the same indent as the pressing rows.
+struct MissingSourceNote: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 11))
+            .foregroundStyle(.tertiary)
+            .padding(.leading, 28)
     }
 }
 
@@ -119,6 +130,7 @@ struct ReleaseGroupSection: View {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },
+            trailing: { EmptyView() },
         )
         .frame(width: 620, height: 520)
         .importPreviewEnvironment()
@@ -132,6 +144,7 @@ struct ReleaseGroupSection: View {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },
+            trailing: { EmptyView() },
         )
         .frame(width: 620, height: 520)
         .importPreviewEnvironment()
@@ -145,13 +158,15 @@ struct ReleaseGroupSection: View {
             provenance: PreviewData.searchProvenanceExact,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            trailingNotes: [
-                String(
-                    localized:
-                        "\(bridgeMetadataSourceName(source: .discogs)) results are missing from this list."
-                )
-            ],
             onSelect: { _ in },
+            trailing: {
+                MissingSourceNote(
+                    text: String(
+                        localized:
+                            "\(bridgeMetadataSourceName(source: .discogs)) results are missing from this list."
+                    )
+                )
+            },
         )
         .frame(width: 620, height: 520)
         .importPreviewEnvironment()

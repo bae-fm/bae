@@ -46,4 +46,13 @@ enum FindOnlineResultArea: Equatable {
             self = groups.isEmpty ? .failureLines : .groups
         }
     }
+
+    /// Whether the pane spends a row on the signal chips.
+    ///
+    /// Only while the run is going: a settled verdict says what identified the
+    /// folder in one line, and Adjust holds the toggles. A resumed verdict has
+    /// no signals to show either — they were never stored.
+    func showsSignalChips(toolbar: BridgeSignalsToolbar) -> Bool {
+        self == .identifying && !toolbar.signals.isEmpty
+    }
 }

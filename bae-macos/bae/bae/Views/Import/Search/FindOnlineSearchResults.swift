@@ -26,8 +26,21 @@ struct FindOnlineSearchResults: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             queryLine
-            results
-            sourceLines
+            // The sources' own lines close the list from inside it: a source
+            // still answering belongs under what the others found, not
+            // hovering over the form while the results scroll past it.
+            ReleaseGroupListView(
+                groups: groups,
+                isImporting: isImporting,
+                libraryStatuses: libraryStatuses,
+                selectedReleaseId: selectedReleaseId,
+                loadingReleaseId: loadingReleaseId,
+                onSelect: onSelect,
+                trailing: {
+                    emptyLine
+                    sourceLines
+                },
+            )
         }
     }
 
@@ -58,26 +71,14 @@ struct FindOnlineSearchResults: View {
 
     // MARK: - What came back
 
+    /// Every source has answered and none of them knew anything. Only then:
+    /// while one is still out, what it will say is not yet "nothing".
     @ViewBuilder
-    private var results: some View {
-        if !groups.isEmpty {
-            ReleaseGroupListView(
-                groups: groups,
-                isImporting: isImporting,
-                libraryStatuses: libraryStatuses,
-                selectedReleaseId: selectedReleaseId,
-                loadingReleaseId: loadingReleaseId,
-                onSelect: onSelect,
-            )
-        }
-        else if search.settled, search.failures.isEmpty {
+    private var emptyLine: some View {
+        if groups.isEmpty, search.settled, search.failures.isEmpty {
             Text("No matches \u{2014} try different terms")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        else {
-            Spacer(minLength: 0)
         }
     }
 
@@ -120,8 +121,6 @@ struct FindOnlineSearchResults: View {
         }
         .font(.system(size: 12))
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 14)
-        .padding(.bottom, 10)
     }
 }
 

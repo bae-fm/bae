@@ -111,8 +111,7 @@ impl LibraryManager {
     ///
     /// The count is the domain fact; the sentence is not. Each surface renders it
     /// with its own locale's plural rules from the `core.sync.cloud_only_releases`
-    /// catalog key, the same way the release-group card renders
-    /// `core.import.pressings`.
+    /// catalog key.
     ///
     /// Asks coven's cache per remote release (a representative blob in
     /// `storage/pinned/`); pinned-ness is coven cache state, never a bae column.

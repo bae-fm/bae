@@ -358,6 +358,51 @@
             ),
         ])
 
+        /// Mid-run: the disc ID has landed, the barcode is still out, and the
+        /// catalog is waiting to be told which number to look up.
+        static let toolbarIdentifying = BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
+                kind: .discId,
+                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                origin: .discToc,
+                state: .found(count: 1),
+                excluded: false,
+                options: []
+            ),
+            BridgeToolbarSignal(
+                kind: .barcode,
+                value: "0123456789012",
+                origin: .artwork,
+                state: .lookingUp,
+                excluded: false,
+                options: []
+            ),
+            BridgeToolbarSignal(
+                kind: .catalog,
+                value: nil,
+                origin: .folderName,
+                state: .skipped,
+                excluded: false,
+                options: [
+                    BridgeSignalOption(
+                        value: "WPCR-80001",
+                        origin: .folderName,
+                        chosen: false
+                    ),
+                    BridgeSignalOption(
+                        value: "LBL 999",
+                        origin: .artwork,
+                        chosen: false
+                    ),
+                    BridgeSignalOption(
+                        value: "A2 16018",
+                        origin: .textFile,
+                        chosen: false
+                    ),
+                ]
+            ),
+        ])
+
         /// A catalog waiting to be told which of the folder's numbers to use.
         static let toolbarCatalogChoices = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
@@ -481,13 +526,19 @@
         /// Find online before an automatic run starts.
         static let searchStateIdle = searchState(identifyState: .idle)
 
-        /// Auto-lookup in progress: disc ID looking up, barcode skipped.
+        /// Auto-lookup in progress: the disc ID has landed, the barcode is
+        /// still out, and the catalog waits for a pick.
         static let searchStateTriangulating = searchState(
             identifyState: .triangulating(
-                discid: .lookingUp,
-                barcode: .skipped
+                discid: .done(nResults: 1),
+                barcode: .lookingUp(
+                    current: "0123456789012",
+                    position: 1,
+                    total: 2
+                )
             ),
-            toolbar: toolbarBothRunning
+            toolbar: toolbarIdentifying,
+            signals: settledSignals
         )
 
         /// The terminal Found verdict: one album, both sources cross-linked.
@@ -579,6 +630,32 @@
                 provenance: searchProvenanceExact
             ),
             search: manualSearchRun,
+            toolbar: toolbarBothMatched,
+            signals: settledSignals
+        )
+
+        /// A typed search one source dropped, over the Found verdict.
+        static let searchStateSearchFailed = searchState(
+            identifyState: .found(
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                provenance: searchProvenanceExact
+            ),
+            search: searchRunSourceFailed,
+            toolbar: toolbarBothMatched,
+            signals: settledSignals
+        )
+
+        /// A typed search both sources answered with nothing.
+        static let searchStateSearchEmpty = searchState(
+            identifyState: .found(
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                provenance: searchProvenanceExact
+            ),
+            search: searchRunEmpty,
             toolbar: toolbarBothMatched,
             signals: settledSignals
         )

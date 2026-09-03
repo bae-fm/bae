@@ -72,6 +72,7 @@ struct ImportSearchPane: View {
                 onRerun: onRerun,
             )
             Divider()
+            identifyingChips
             errorLine
             resultArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -99,6 +100,20 @@ struct ImportSearchPane: View {
             if let seed = state.signals?.text.freeText.first {
                 searchArtist = seed
             }
+        }
+    }
+
+    /// While the run is going, the signals it is looking up. A settled verdict
+    /// says the same thing in one line, so the row goes with the run — and a
+    /// resumed verdict, whose signals were never stored, never had one.
+    @ViewBuilder
+    private var identifyingChips: some View {
+        if area.showsSignalChips(toolbar: state.signalsToolbar) {
+            IdentifyingSignalChips(
+                toolbar: state.signalsToolbar,
+                onToggle: onToggleSignal,
+            )
+            Divider()
         }
     }
 
@@ -132,8 +147,12 @@ struct ImportSearchPane: View {
                 provenance: state.identifiedProvenance,
                 selectedReleaseId: state.selectedReleaseId,
                 loadingReleaseId: state.loadingReleaseId,
-                trailingNotes: missingSourceNotes,
                 onSelect: onSelect,
+                trailing: {
+                    ForEach(missingSourceNotes, id: \.self) { note in
+                        MissingSourceNote(text: note)
+                    }
+                },
             )
         case .nothingFound:
             FindOnlineNotice(
@@ -309,6 +328,22 @@ struct ImportSearchPane: View {
             state: PreviewData.searchStateManual,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
+        )
+        .frame(width: 900, height: 620)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — a searched source dropped") {
+        ImportSearchPane.preview(state: PreviewData.searchStateSearchFailed)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — search matched nothing") {
+        ImportSearchPane.preview(
+            state: PreviewData.searchStateSearchEmpty,
+            searchArtist: "Artist Name",
+            searchAlbum: "Album Title",
         )
         .frame(width: 900, height: 620)
         .importPreviewEnvironment()
