@@ -87,11 +87,13 @@ struct ImportPreviewDataTests {
         let candidateFileIDs = Set(candidate.files.files.map(\.file.name))
         var representedFileIDs = Set(mapping.images.map(\.fileId))
 
-        for group in mapping.trackGroups {
-            switch group {
-            case .unit(let unit):
-                if case .file(let file) = unit.source {
-                    representedFileIDs.insert(file.fileId)
+        for section in mapping.trackSections {
+            switch section.content {
+            case .tracks(let mappings):
+                for mapping in mappings {
+                    if case .file(let file) = mapping.source {
+                        representedFileIDs.insert(file.fileId)
+                    }
                 }
             case .sheet(let sheet, let entries):
                 representedFileIDs.insert(sheet.sheetId)
@@ -119,12 +121,12 @@ struct ImportPreviewDataTests {
     func trackMismatchPreviewRepresentsTheSettledMapping() throws {
         let candidate = PreviewData.moreTracksMappingCandidate
         let mapping = try #require(candidate.mapping)
-        let units = mapping.units
-        let fileSources = units.compactMap { unit -> BridgeMappingFile? in
-            guard case .file(let file) = unit.source else { return nil }
+        let mappings = mapping.trackMappings
+        let fileSources = mappings.compactMap { mapping -> BridgeMappingFile? in
+            guard case .file(let file) = mapping.source else { return nil }
             return file
         }
-        let missingSources = units.count {
+        let missingSources = mappings.count {
             if case .missing = $0.source { return true }
             return false
         }

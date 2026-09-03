@@ -106,14 +106,21 @@ internal sealed partial class ImportMappingTable
     private List<Control> TrackRows()
     {
         var rows = new List<Control>();
-        foreach (var group in _table.TrackGroups)
+        foreach (var section in _table.TrackSections)
         {
-            switch (group)
+            if (section.HeaderText() is { } header)
             {
-                case BridgeMappingTrackGroup.Unit unit:
-                    rows.Add(TrackRow(unit.UnitValue));
+                rows.Add(TrackSectionHeader(header));
+            }
+            switch (section.Content)
+            {
+                case BridgeMappingTrackSectionContent.Tracks tracks:
+                    foreach (var mapping in tracks.Mappings)
+                    {
+                        rows.Add(TrackRow(mapping));
+                    }
                     break;
-                case BridgeMappingTrackGroup.Sheet sheet:
+                case BridgeMappingTrackSectionContent.Sheet sheet:
                     rows.Add(SheetRow(sheet.SheetValue, headsTracks: true));
                     foreach (var entry in sheet.Entries)
                     {
@@ -123,6 +130,23 @@ internal sealed partial class ImportMappingTable
             }
         }
         return rows;
+    }
+
+    private static Control TrackSectionHeader(string text)
+    {
+        var header = new TextBlock
+        {
+            Text = text.ToUpper(System.Globalization.CultureInfo.CurrentUICulture),
+            FontSize = 10,
+            FontWeight = FontWeight.Bold,
+            LetterSpacing = 1.2,
+        };
+        header[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        return new Border
+        {
+            Padding = new Thickness(0, 14, 0, 6),
+            Child = header,
+        };
     }
 
     /// <summary>The rows carried with the release that are not its tracks.
@@ -299,13 +323,13 @@ internal sealed partial class ImportMappingTable
     // another file is not a column: it appears over the Source cell when the
     // pointer is on the row, and stays put on a row that has no file, which is
     // the one row that has to be answered.
-    private Control TrackRow(BridgeMappingUnit unit)
+    private Control TrackRow(BridgeTrackMapping mapping)
     {
         var grid = Grid();
-        var lengthsDiverge = LengthsDiverge(unit);
-        var track = (unit.Becomes as BridgeMappingBecomes.Track)?.TrackValue;
+        var lengthsDiverge = LengthsDiverge(mapping);
+        var track = (mapping.Becomes as BridgeMappingBecomes.Track)?.TrackValue;
 
-        if (unit.Becomes is BridgeMappingBecomes.Track becomes)
+        if (mapping.Becomes is BridgeMappingBecomes.Track becomes)
         {
             AddTrackCells(grid, becomes);
         }
@@ -316,35 +340,35 @@ internal sealed partial class ImportMappingTable
             Avalonia.Controls.Grid.SetColumn(waiting, 1);
             grid.Children.Add(waiting);
         }
-        AddDurationCell(grid, unit, lengthsDiverge);
+        AddDurationCell(grid, mapping, lengthsDiverge);
 
-        var source = SourceCell(unit.Source, lengthsDiverge);
+        var source = SourceCell(mapping.Source, lengthsDiverge);
         var cell = new Panel();
         cell.Children.Add(source);
         if (track is { } editable)
         {
-            var actions = RowActions(unit, editable);
+            var actions = RowActions(mapping, editable);
             actions.HorizontalAlignment = HorizontalAlignment.Right;
             actions.VerticalAlignment = VerticalAlignment.Center;
             // A row with no file behind it is the one that has to be answered,
             // so its picker does not wait to be hovered.
-            actions.IsVisible = NeedsAnswer(unit, editable);
+            actions.IsVisible = NeedsAnswer(mapping, editable);
             cell.Children.Add(actions);
-            var host = HostOf(grid, unit.Source.PreviewTarget());
+            var host = HostOf(grid, mapping.Source.PreviewTarget());
             host.PointerEntered += (_, _) => actions.IsVisible = true;
             host.PointerExited += (_, _) =>
-                actions.IsVisible = NeedsAnswer(unit, editable);
+                actions.IsVisible = NeedsAnswer(mapping, editable);
             Avalonia.Controls.Grid.SetColumn(cell, 4);
             grid.Children.Add(cell);
             return host;
         }
         Avalonia.Controls.Grid.SetColumn(cell, 4);
         grid.Children.Add(cell);
-        return HostOf(grid, unit.Source.PreviewTarget());
+        return HostOf(grid, mapping.Source.PreviewTarget());
     }
 
-    private static bool NeedsAnswer(BridgeMappingUnit unit, BridgeRawTrackEdit track) =>
-        unit.Source is BridgeMappingSource.Missing || track.File is null;
+    private static bool NeedsAnswer(BridgeTrackMapping mapping, BridgeRawTrackEdit track) =>
+        mapping.Source is BridgeMappingSource.Missing || track.File is null;
 
     // ── One file carried with the release ────────────────────────────────────
 
@@ -373,9 +397,9 @@ internal sealed partial class ImportMappingTable
     /// row runs. Core decides how far apart is far enough — it is a judgement
     /// about how much two rips of one track may legitimately differ, and the
     /// other desktop surface has to reach the same answer.</summary>
-    private static bool LengthsDiverge(BridgeMappingUnit unit) =>
-        unit.Becomes is BridgeMappingBecomes.Track
-        && BaeBridgeMethods.BridgeLengthsDisagree(unit.Source.DurationMs(), unit.DurationMs);
+    private static bool LengthsDiverge(BridgeTrackMapping mapping) =>
+        mapping.Becomes is BridgeMappingBecomes.Track
+        && BaeBridgeMethods.BridgeLengthsDisagree(mapping.Source.DurationMs(), mapping.DurationMs);
 
     // The track this row commits, edited in place: the position the release
     // gives it, its title and artist. Length belongs to every audio row,
@@ -447,12 +471,12 @@ internal sealed partial class ImportMappingTable
 
     private static void AddDurationCell(
         Grid grid,
-        BridgeMappingUnit unit,
+        BridgeTrackMapping mapping,
         bool lengthsDiverge)
     {
         var length = new TextBlock
         {
-            Text = MappingTableReading.DurationText(unit.DurationMs),
+            Text = MappingTableReading.DurationText(mapping.DurationMs),
             FontSize = 12,
             FontFamily = new FontFamily("monospace"),
             HorizontalAlignment = HorizontalAlignment.Right,
@@ -484,7 +508,7 @@ internal sealed partial class ImportMappingTable
     // second interaction design per toolkit, has no keyboard or accessibility
     // path, and buys nothing over picking from the folder's audio by name —
     // which is what re-pointing a row and swapping two rows both come down to.
-    private StackPanel RowActions(BridgeMappingUnit unit, BridgeRawTrackEdit track)
+    private StackPanel RowActions(BridgeTrackMapping mapping, BridgeRawTrackEdit track)
     {
         var actions = new StackPanel
         {
@@ -496,7 +520,7 @@ internal sealed partial class ImportMappingTable
         {
             actions.Children.Add(ChooseFileButton(track));
         }
-        if (unit.Source is BridgeMappingSource.File file)
+        if (mapping.Source is BridgeMappingSource.File file)
         {
             var exclude = ImportPaneUi.RowButton(Loc.Core("ui.import.slots.exclude"));
             var fileId = file.FileValue.FileId;

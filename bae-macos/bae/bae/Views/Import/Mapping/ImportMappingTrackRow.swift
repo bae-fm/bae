@@ -9,7 +9,7 @@ import SwiftUI
 /// Source. Re-pairing a settled row remains available from its context menu
 /// without occupying the table.
 struct ImportMappingTrackRow: View {
-    let unit: BridgeMappingUnit
+    let mapping: BridgeTrackMapping
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
     let columns: ImportMappingColumns.Tracks
@@ -34,19 +34,19 @@ struct ImportMappingTrackRow: View {
     /// how much two rips of one track may legitimately differ, and the other
     /// desktop surface has to reach the same answer.
     private var lengthsDiverge: Bool {
-        unit.durationsDiverge
+        mapping.durationsDiverge
     }
 
     /// The track this row writes, where a release has named one.
     private var track: BridgeRawTrackEdit? {
-        if case .track(let track, _, _) = unit.becomes { return track }
+        if case .track(let track, _, _) = mapping.becomes { return track }
         return nil
     }
 
     /// A row with no file behind it is the one that has to be answered, so its
     /// picker does not wait to be hovered.
     private var needsAnswer: Bool {
-        if case .missing = unit.source { return true }
+        if case .missing = mapping.source { return true }
         return track?.file == nil
     }
 
@@ -63,13 +63,13 @@ struct ImportMappingTrackRow: View {
                 )
             titleCell
             artistCell
-            Text(unit.displayedDuration)
+            Text(mapping.displayedDuration)
                 .font(.system(size: 12))
                 .monospacedDigit()
                 .accessibilityLabel(
                     coreString("ui.import.slots.column.length")
                 )
-                .accessibilityValue(unit.displayedDuration)
+                .accessibilityValue(mapping.displayedDuration)
                 .foregroundStyle(
                     lengthsDiverge
                         ? AnyShapeStyle(.orange) : AnyShapeStyle(.primary)
@@ -98,8 +98,8 @@ struct ImportMappingTrackRow: View {
     }
 
     private var position: String {
-        if case .track(_, let position, _) = unit.becomes {
-            return position ?? ""
+        if case .track(_, let position, _) = mapping.becomes {
+            return position
         }
         return ""
     }
@@ -172,7 +172,7 @@ struct ImportMappingTrackRow: View {
     /// — the picker that answers it.
     private var sourceCell: some View {
         ImportMappingSourceCell(
-            source: unit.source,
+            source: mapping.source,
             previewingTarget: previewingTarget,
             evidence: evidence,
             showsFileSize: false,
@@ -186,7 +186,7 @@ struct ImportMappingTrackRow: View {
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
-                    if let target = unit.source.previewTarget {
+                    if let target = mapping.source.previewTarget {
                         actions.preview(target)
                     }
                 }
@@ -230,7 +230,7 @@ struct ImportMappingTrackRow: View {
     private func removal(
         _ track: BridgeRawTrackEdit
     ) -> ImportMappingRowRemoval? {
-        if case .file(let file) = unit.source {
+        if case .file(let file) = mapping.source {
             return ImportMappingRowRemoval(
                 label: coreString("ui.import.slots.exclude"),
                 help: coreString("ui.import.slots.exclude_help")
@@ -275,7 +275,7 @@ struct ImportMappingTrackRow: View {
         }
     }
 
-    /// Store one field of this row's track. A row is edited as a unit, so the
+    /// Store one field of this row's track. A row is edited as a mapping, so the
     /// whole row goes — the field the user left is the one that changed.
     private func commit(
         _ track: BridgeRawTrackEdit,

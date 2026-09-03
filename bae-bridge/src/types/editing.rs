@@ -379,9 +379,9 @@ pub enum BridgeMappingBecomes {
     Track {
         track: BridgeRawTrackEdit,
         /// The position this row commits, rendered by core from the track's
-        /// own side and number and the release's format — `8`, `A1`, `2-3`.
-        /// `None` where the track has no number.
-        position: Option<String>,
+        /// own side and number and the release's format — `8`, `A1`, or `3`
+        /// beneath a `Disc 2` heading.
+        position: String,
         /// Whether the source's tracklist contains this track — false exactly
         /// for a row that exists only because audio was found for it.
         named_by_source: bool,
@@ -390,11 +390,10 @@ pub enum BridgeMappingBecomes {
     AwaitingPick,
 }
 
-/// One source unit and the track committing makes of it. Mirror of bae-core's
-/// `MappingUnit`.
+/// One source-to-track mapping row. Mirror of bae-core's `TrackMapping`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMappingUnit {
+pub struct BridgeTrackMapping {
     pub source: BridgeMappingSource,
     pub becomes: BridgeMappingBecomes,
     /// The duration to render: metadata's value where present, otherwise the
@@ -469,17 +468,30 @@ pub struct BridgeMappingImage {
     pub local_path: String,
 }
 
-/// One group in the track section. Mirror of bae-core's `MappingTrackGroup`.
+/// What supplies the rows of one side or disc. Mirror of bae-core's
+/// `MappingTrackSectionContent`.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeMappingTrackGroup {
-    /// One source unit and what it becomes.
-    Unit { unit: BridgeMappingUnit },
+pub enum BridgeMappingTrackSectionContent {
+    /// Rows supplied independently rather than carved by a track sheet.
+    Tracks { mappings: Vec<BridgeTrackMapping> },
     /// A track sheet and the entries it carves, which are its child rows.
     Sheet {
         sheet: BridgeSheetGroup,
-        entries: Vec<BridgeMappingUnit>,
+        entries: Vec<BridgeTrackMapping>,
     },
+}
+
+/// One side or disc in the track table. Mirror of bae-core's
+/// `MappingTrackSection`.
+#[cfg(feature = "desktop")]
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMappingTrackSection {
+    pub side: BridgeTrackSide,
+    /// Localization key for the section header word, or `None` when the
+    /// section has no heading.
+    pub header_key: Option<String>,
+    pub content: BridgeMappingTrackSectionContent,
 }
 
 /// One row in the files section. Mirror of bae-core's `MappingFileRow`.
@@ -506,7 +518,7 @@ pub enum BridgeMappingFileRow {
 pub struct BridgeMappingTable {
     /// Every image the folder holds, in the scan's authoritative order.
     pub images: Vec<BridgeMappingImage>,
-    pub track_groups: Vec<BridgeMappingTrackGroup>,
+    pub track_sections: Vec<BridgeMappingTrackSection>,
     pub files: Vec<BridgeMappingFileRow>,
     /// The tally over the rows that become tracks. `None` when there is nothing
     /// to reconcile the folder against — no release is picked, or the tracklist

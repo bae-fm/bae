@@ -792,7 +792,7 @@ internal sealed partial class ImportMappingPane : UserControl
         {
             return;
         }
-        var track = candidate.Mapping.Units()
+        var track = candidate.Mapping.Mappings()
             .Select(MappingTableReading.Track)
             .OfType<BridgeRawTrackEdit>()
             .FirstOrDefault(row => row.Id == trackId);

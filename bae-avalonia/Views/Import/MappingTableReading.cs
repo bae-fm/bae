@@ -13,48 +13,66 @@ namespace Bae.Desktop;
 /// </summary>
 internal static class MappingTableReading
 {
-    /// <summary>The units a track group carries: itself, or the entries a track
-    /// sheet carves.</summary>
-    internal static IReadOnlyList<BridgeMappingUnit> Units(
-        this BridgeMappingTrackGroup group) => group switch
+    /// <summary>The mappings a track section carries: independent rows, or the
+    /// entries one track sheet carves.</summary>
+    internal static IReadOnlyList<BridgeTrackMapping> Mappings(
+        this BridgeMappingTrackSection section) => section.Content switch
         {
-            BridgeMappingTrackGroup.Unit unit => new[] { unit.UnitValue },
-            BridgeMappingTrackGroup.Sheet sheet => sheet.Entries,
+            BridgeMappingTrackSectionContent.Tracks tracks => tracks.Mappings,
+            BridgeMappingTrackSectionContent.Sheet sheet => sheet.Entries,
             _ => throw new ArgumentOutOfRangeException(
-                nameof(group), group, "Unknown mapping track group"),
+                nameof(section), section, "Unknown mapping track section content"),
         };
 
-    /// <summary>Every unit the table carries, top-level rows and sheet entries
+    /// <summary>Every mapping the table carries, independent rows and sheet entries
     /// alike, in the order the table lays them out.</summary>
-    internal static IEnumerable<BridgeMappingUnit> Units(this BridgeMappingTable table) =>
-        table.TrackGroups.SelectMany(Units);
+    internal static IEnumerable<BridgeTrackMapping> Mappings(this BridgeMappingTable table) =>
+        table.TrackSections.SelectMany(Mappings);
+
+    /// <summary>The localized heading core chose for a side or disc, or null
+    /// for an ungrouped single-disc section.</summary>
+    internal static string? HeaderText(this BridgeMappingTrackSection section)
+    {
+        if (section.HeaderKey is not { } key)
+        {
+            return null;
+        }
+        return section.Side switch
+        {
+            BridgeTrackSide.Sided sided => Loc.Core(key, "letter", sided.SideLetter),
+            BridgeTrackSide.Disc disc => Loc.Core(key, "disc", (long)disc.DiscValue),
+            BridgeTrackSide.Flat => null,
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(section), section, "Unknown mapping track side"),
+        };
+    }
 
     /// <summary>The track this row commits, where it commits one.</summary>
-    internal static BridgeRawTrackEdit? Track(this BridgeMappingUnit unit) =>
-        unit.Becomes is BridgeMappingBecomes.Track track ? track.TrackValue : null;
+    internal static BridgeRawTrackEdit? Track(this BridgeTrackMapping mapping) =>
+        mapping.Becomes is BridgeMappingBecomes.Track track ? track.TrackValue : null;
 
     /// <summary>Rows that will write a track: the ones carrying audio. A track
     /// the release names that the folder has nothing for writes nothing.</summary>
     internal static int WillWriteCount(this BridgeMappingTable table) =>
-        table.Units().Count(unit => unit.Track()?.File is not null);
+        table.Mappings().Count(mapping => mapping.Track()?.File is not null);
 
     /// <summary>Rows that will write a track nobody has named.</summary>
     internal static int UnansweredCount(this BridgeMappingTable table) =>
-        table.Units().Count(unit =>
-            unit.Track() is { File: not null } track && string.IsNullOrWhiteSpace(track.Title));
+        table.Mappings().Count(mapping =>
+            mapping.Track() is { File: not null } track && string.IsNullOrWhiteSpace(track.Title));
 
     /// <summary>Every audio unit the table's rows carry, in table order — what a
     /// row with nothing behind it is offered to point at.</summary>
     internal static IReadOnlyList<ImportAudioChoice> AudioChoices(this BridgeMappingTable table) =>
-        table.Units().Select(AudioChoice).OfType<ImportAudioChoice>().ToList();
+        table.Mappings().Select(AudioChoice).OfType<ImportAudioChoice>().ToList();
 
-    private static ImportAudioChoice? AudioChoice(BridgeMappingUnit unit)
+    private static ImportAudioChoice? AudioChoice(BridgeTrackMapping mapping)
     {
-        if (unit.Track()?.File is not { } audio)
+        if (mapping.Track()?.File is not { } audio)
         {
             return null;
         }
-        return unit.Source switch
+        return mapping.Source switch
         {
             BridgeMappingSource.File file => new ImportAudioChoice(
                 audio,

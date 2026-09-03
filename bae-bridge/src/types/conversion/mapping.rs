@@ -513,27 +513,27 @@ impl BridgeMappingBecomes {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeMappingUnit {
-    fn from_core(unit: bae_core::import::MappingUnit) -> Self {
-        let bae_core::import::MappingUnit {
+impl BridgeTrackMapping {
+    fn from_core(mapping: bae_core::import::TrackMapping) -> Self {
+        let bae_core::import::TrackMapping {
             source,
             becomes,
             duration_ms,
-        } = unit;
-        BridgeMappingUnit {
+        } = mapping;
+        BridgeTrackMapping {
             source: BridgeMappingSource::from_core(source),
             becomes: BridgeMappingBecomes::from_core(becomes),
             duration_ms,
         }
     }
 
-    fn into_core(self) -> bae_core::import::MappingUnit {
-        let BridgeMappingUnit {
+    fn into_core(self) -> bae_core::import::TrackMapping {
+        let BridgeTrackMapping {
             source,
             becomes,
             duration_ms,
         } = self;
-        bae_core::import::MappingUnit {
+        bae_core::import::TrackMapping {
             source: source.into_core(),
             becomes: becomes.into_core(),
             duration_ms,
@@ -688,34 +688,62 @@ impl BridgeMappingImage {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeMappingTrackGroup {
-    fn from_core(group: bae_core::import::MappingTrackGroup) -> Self {
-        use bae_core::import::MappingTrackGroup;
-        match group {
-            MappingTrackGroup::Unit(unit) => Self::Unit {
-                unit: BridgeMappingUnit::from_core(unit),
+impl BridgeMappingTrackSectionContent {
+    fn from_core(content: bae_core::import::MappingTrackSectionContent) -> Self {
+        use bae_core::import::MappingTrackSectionContent;
+        match content {
+            MappingTrackSectionContent::Tracks(mappings) => Self::Tracks {
+                mappings: mappings
+                    .into_iter()
+                    .map(BridgeTrackMapping::from_core)
+                    .collect(),
             },
-            MappingTrackGroup::Sheet { sheet, entries } => Self::Sheet {
+            MappingTrackSectionContent::Sheet { sheet, entries } => Self::Sheet {
                 sheet: BridgeSheetGroup::from_core(sheet),
                 entries: entries
                     .into_iter()
-                    .map(BridgeMappingUnit::from_core)
+                    .map(BridgeTrackMapping::from_core)
                     .collect(),
             },
         }
     }
 
-    fn into_core(self) -> bae_core::import::MappingTrackGroup {
-        use bae_core::import::MappingTrackGroup;
+    fn into_core(self) -> bae_core::import::MappingTrackSectionContent {
+        use bae_core::import::MappingTrackSectionContent;
         match self {
-            Self::Unit { unit } => MappingTrackGroup::Unit(unit.into_core()),
-            Self::Sheet { sheet, entries } => MappingTrackGroup::Sheet {
+            Self::Tracks { mappings } => MappingTrackSectionContent::Tracks(
+                mappings
+                    .into_iter()
+                    .map(BridgeTrackMapping::into_core)
+                    .collect(),
+            ),
+            Self::Sheet { sheet, entries } => MappingTrackSectionContent::Sheet {
                 sheet: sheet.into_core(),
                 entries: entries
                     .into_iter()
-                    .map(BridgeMappingUnit::into_core)
+                    .map(BridgeTrackMapping::into_core)
                     .collect(),
             },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMappingTrackSection {
+    fn from_core(section: bae_core::import::MappingTrackSection) -> Self {
+        let bae_core::import::MappingTrackSection { side, content } = section;
+        let side = BridgeTrackSide::from_core(side);
+        Self {
+            header_key: side.header_key().map(str::to_string),
+            side,
+            content: BridgeMappingTrackSectionContent::from_core(content),
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::MappingTrackSection {
+        bae_core::import::MappingTrackSection {
+            side: self.side.into_core(),
+            content: self.content.into_core(),
         }
     }
 }
@@ -748,7 +776,7 @@ impl BridgeMappingTable {
     pub(crate) fn from_core(table: bae_core::import::MappingTable) -> Self {
         let bae_core::import::MappingTable {
             images,
-            track_groups,
+            track_sections,
             files,
             reconciliation,
         } = table;
@@ -757,9 +785,9 @@ impl BridgeMappingTable {
                 .into_iter()
                 .map(BridgeMappingImage::from_core)
                 .collect(),
-            track_groups: track_groups
+            track_sections: track_sections
                 .into_iter()
-                .map(BridgeMappingTrackGroup::from_core)
+                .map(BridgeMappingTrackSection::from_core)
                 .collect(),
             files: files
                 .into_iter()
@@ -772,7 +800,7 @@ impl BridgeMappingTable {
     pub(crate) fn into_core(self) -> bae_core::import::MappingTable {
         let BridgeMappingTable {
             images,
-            track_groups,
+            track_sections,
             files,
             reconciliation,
         } = self;
@@ -781,9 +809,9 @@ impl BridgeMappingTable {
                 .into_iter()
                 .map(BridgeMappingImage::into_core)
                 .collect(),
-            track_groups: track_groups
+            track_sections: track_sections
                 .into_iter()
-                .map(BridgeMappingTrackGroup::into_core)
+                .map(BridgeMappingTrackSection::into_core)
                 .collect(),
             files: files
                 .into_iter()

@@ -51,7 +51,7 @@ extension ImportMappingFlow {
     ) async {
         guard
             var track = services.importStore.candidate(forKey: key)?
-                .mapping.units
+                .mapping.trackMappings
                 .compactMap(\.track)
                 .first(where: { $0.id == trackId })
         else { return }

@@ -625,7 +625,17 @@ public sealed class ImportMappingPaneTests
             InitialMetadataSource: BridgeDefaultImportMetadataSource.None,
             Mapping: new BridgeMappingTable(
                 Array.Empty<BridgeMappingImage>(),
-                new[] { TrackRow("01.flac", "Track One"), TrackRow("02.flac", "Track Two") },
+                new[]
+                {
+                    new BridgeMappingTrackSection(
+                        new BridgeTrackSide.Flat(),
+                        HeaderKey: null,
+                        new BridgeMappingTrackSectionContent.Tracks(new[]
+                        {
+                            TrackRow("01.flac", "Track One"),
+                            TrackRow("02.flac", "Track Two"),
+                        })),
+                },
                 Array.Empty<BridgeMappingFileRow>(),
                 Reconciliation: null),
             Cover: new BridgeCoverChoice(
@@ -666,8 +676,8 @@ public sealed class ImportMappingPaneTests
             string.Empty),
         Array.Empty<BridgeRawTrackEdit>());
 
-    private static BridgeMappingTrackGroup TrackRow(string fileId, string title) =>
-        new BridgeMappingTrackGroup.Unit(new BridgeMappingUnit(
+    private static BridgeTrackMapping TrackRow(string fileId, string title) =>
+        new(
             new BridgeMappingSource.File(new BridgeMappingFile(
                 FileId: fileId,
                 Name: fileId,
@@ -688,9 +698,9 @@ public sealed class ImportMappingPaneTests
                     1,
                     null,
                     new BridgeAudioFile.Standalone(fileId)),
-                Position: null,
+                Position: "1",
                 NamedBySource: true),
-            DurationMs: 180_000));
+            DurationMs: 180_000);
 
     private static BridgeArtistAssignment[] ArtistAssignments() =>
     [

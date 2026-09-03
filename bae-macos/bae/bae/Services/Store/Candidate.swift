@@ -389,7 +389,7 @@ struct Candidate: Equatable, Identifiable {
         detail?.mapping
             ?? BridgeMappingTable(
                 images: [],
-                trackGroups: [],
+                trackSections: [],
                 files: [],
                 reconciliation: nil
             )

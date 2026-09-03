@@ -1,6 +1,7 @@
 use super::*;
 use crate::import::folder_scanner::{
-    collect_release_candidate_files_with_scope, StoredCandidateEdits,
+    collect_release_candidate_files_with_scope, CandidateFileEdits, SheetDiscEdits,
+    StoredCandidateEdits,
 };
 use crate::import::probe::{source_durations, SourceDurations};
 use crate::import::track_slots::{slot_table, SourceTrack};
@@ -76,21 +77,33 @@ fn source_tracks(count: usize) -> Vec<SourceTrack> {
         .collect()
 }
 
-fn becomes(group: &MappingTrackGroup) -> Vec<&MappingBecomes> {
-    match group {
-        MappingTrackGroup::Unit(unit) => vec![&unit.becomes],
-        MappingTrackGroup::Sheet { entries, .. } => {
-            entries.iter().map(|entry| &entry.becomes).collect()
-        }
+fn assign_discs(files: &mut CategorizedFiles, assignments: &[(&str, u32)]) {
+    let mut sheet_discs = SheetDiscEdits::default();
+    for (sheet_id, number) in assignments {
+        sheet_discs.set((*sheet_id).to_string(), SheetDisc::Disc { number: *number });
     }
+    files
+        .apply_candidate_file_edits(&CandidateFileEdits {
+            sheet_discs,
+            ..Default::default()
+        })
+        .expect("disc assignments preserve a valid candidate");
 }
 
-fn track_file(group: &MappingTrackGroup) -> &MappingFile {
-    match group {
-        MappingTrackGroup::Unit(MappingUnit {
+fn mappings(table: &MappingTable) -> Vec<&TrackMapping> {
+    table
+        .track_sections
+        .iter()
+        .flat_map(MappingTrackSection::mappings)
+        .collect()
+}
+
+fn track_file(mapping: &TrackMapping) -> &MappingFile {
+    match mapping {
+        TrackMapping {
             source: MappingSource::File(file),
             ..
-        }) => file,
+        } => file,
         other => panic!("expected a file row, got {other:?}"),
     }
 }
@@ -107,26 +120,21 @@ fn with_no_pick_the_audio_rows_await_one_and_the_rest_still_say_what_they_become
     fs::write(tmp.path().join("rip.log"), b"log").expect("write log");
 
     let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
+    let mappings = mappings(&table);
 
     assert!(table.reconciliation.is_none());
     assert_eq!(table.images.len(), 1);
-    assert!(matches!(
-        becomes(&table.track_groups[0])[0],
-        MappingBecomes::AwaitingPick
-    ));
-    assert_eq!(track_file(&table.track_groups[0]).name, "01.flac");
-    assert!(matches!(
-        becomes(&table.track_groups[1])[0],
-        MappingBecomes::AwaitingPick
-    ));
-    assert_eq!(track_file(&table.track_groups[1]).name, "02.flac");
+    assert!(matches!(mappings[0].becomes, MappingBecomes::AwaitingPick));
+    assert_eq!(track_file(mappings[0]).name, "01.flac");
+    assert!(matches!(mappings[1].becomes, MappingBecomes::AwaitingPick));
+    assert_eq!(track_file(mappings[1]).name, "02.flac");
     let MappingFileRow::File(file) = &table.files[0] else {
         panic!("expected a carried file, got {:?}", table.files[0]);
     };
     assert_eq!(file.name, "rip.log");
     // A row nothing has opened has no probed length to show.
-    assert_eq!(track_file(&table.track_groups[0]).duration_ms, None);
-    assert_eq!(track_file(&table.track_groups[0]).role, MappingRole::Audio);
+    assert_eq!(track_file(mappings[0]).duration_ms, None);
+    assert_eq!(track_file(mappings[0]).role, MappingRole::Audio);
     assert_eq!(file.role, MappingRole::Document);
 }
 
@@ -151,11 +159,9 @@ fn a_track_without_a_metadata_duration_uses_its_stored_probe() {
         &durations,
     );
 
-    let MappingTrackGroup::Unit(unit) = &table.track_groups[0] else {
-        panic!("expected a unit row")
-    };
-    assert!(matches!(unit.becomes, MappingBecomes::Track { .. }));
-    assert_eq!(unit.duration_ms, Some(1_000));
+    let mapping = mappings(&table)[0];
+    assert!(matches!(mapping.becomes, MappingBecomes::Track { .. }));
+    assert_eq!(mapping.duration_ms, Some(1_000));
 }
 
 #[test]
@@ -167,11 +173,9 @@ fn a_track_awaiting_metadata_uses_its_stored_probe() {
 
     let table = mapping_table(&files, None, &durations);
 
-    let MappingTrackGroup::Unit(unit) = &table.track_groups[0] else {
-        panic!("expected a unit row")
-    };
-    assert_eq!(unit.becomes, MappingBecomes::AwaitingPick);
-    assert_eq!(unit.duration_ms, Some(1_000));
+    let mapping = mappings(&table)[0];
+    assert_eq!(mapping.becomes, MappingBecomes::AwaitingPick);
+    assert_eq!(mapping.duration_ms, Some(1_000));
 }
 
 /// The folder's images are one gallery beside the table rows, with the one that
@@ -211,8 +215,8 @@ fn the_folder_s_images_are_a_gallery_beside_the_table_rows() {
         .images
         .iter()
         .any(|image| image.file_id == "scans/scan1.jpg" && image.path.exists()));
-    assert_eq!(table.track_groups.len(), 1);
-    assert_eq!(track_file(&table.track_groups[0]).name, "01.flac");
+    assert_eq!(table.track_sections.len(), 1);
+    assert_eq!(track_file(mappings(&table)[0]).name, "01.flac");
 }
 
 /// A bound sheet is one group row over its entries: the entries carry the
@@ -243,12 +247,16 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     );
 
     assert_eq!(
-        table.track_groups.len(),
+        table.track_sections.len(),
         1,
         "the sheet is the folder's only group"
     );
-    let MappingTrackGroup::Sheet { sheet, entries } = &table.track_groups[0] else {
-        panic!("expected a sheet group, got {:?}", table.track_groups[0]);
+    let MappingTrackSectionContent::Sheet { sheet, entries } = &table.track_sections[0].content
+    else {
+        panic!(
+            "expected a sheet section, got {:?}",
+            table.track_sections[0]
+        );
     };
     assert_eq!(sheet.sheet_id, "CDImage.cue");
     assert_eq!(sheet.assignment, SheetDisc::Disc { number: 1 });
@@ -294,6 +302,118 @@ fn a_sheet_s_entries_carry_its_own_titles_and_bind_to_its_slices() {
     );
 }
 
+#[test]
+fn standalone_tracks_are_sectioned_by_release_side() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    for number in 1..=4 {
+        write_flac(&tmp.path().join(format!("{number:02}.flac")));
+    }
+
+    let files = scan(tmp.path());
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
+    let mut tracks = source_tracks(4);
+    for (track, (side, number)) in tracks.iter_mut().zip([(1, 1), (1, 2), (2, 1), (2, 2)]) {
+        track.edit.side = side;
+        track.edit.track_number = Some(number);
+    }
+    let slots = slot_table(&tracks, &files, &durations);
+
+    let table = mapping_table(
+        &files,
+        Some(PickedTracklist {
+            slots: &slots,
+            track_id_prefix: "import-track",
+            source: TracklistSource::ExternalRelease,
+            format: Some("Vinyl"),
+        }),
+        &durations,
+    );
+
+    assert_eq!(table.track_sections.len(), 2);
+    assert_eq!(
+        table.track_sections[0].side,
+        crate::album_detail::TrackSide::Sided {
+            side_letter: "A".to_string(),
+        }
+    );
+    assert_eq!(
+        table.track_sections[1].side,
+        crate::album_detail::TrackSide::Sided {
+            side_letter: "B".to_string(),
+        }
+    );
+    fn positions(section: &MappingTrackSection) -> Vec<&str> {
+        section
+            .mappings()
+            .iter()
+            .map(|mapping| match &mapping.becomes {
+                MappingBecomes::Track { position, .. } => position.as_str(),
+                MappingBecomes::AwaitingPick => panic!("picked tracks have positions"),
+            })
+            .collect::<Vec<_>>()
+    }
+    assert_eq!(positions(&table.track_sections[0]), ["A1", "A2"]);
+    assert_eq!(positions(&table.track_sections[1]), ["B1", "B2"]);
+}
+
+#[test]
+fn each_cue_is_one_section_on_its_assigned_disc() {
+    let tmp = tempfile::TempDir::new().expect("tempdir");
+    for stem in ["alpha", "beta"] {
+        write_flac(&tmp.path().join(format!("{stem}.flac")));
+        fs::write(
+            tmp.path().join(format!("{stem}.cue")),
+            cue_sheet_text(&format!("{stem}.flac"), 2),
+        )
+        .expect("write cue");
+    }
+
+    let mut files = scan(tmp.path());
+    assign_discs(&mut files, &[("alpha.cue", 2), ("beta.cue", 1)]);
+    let durations = source_durations(&files).expect("scanned fixture audio has durations");
+    let mut tracks = source_tracks(4);
+    for (track, (side, number)) in tracks.iter_mut().zip([(1, 1), (1, 2), (2, 1), (2, 2)]) {
+        track.edit.side = side;
+        track.edit.track_number = Some(number);
+    }
+    let slots = slot_table(&tracks, &files, &durations);
+
+    let table = mapping_table(
+        &files,
+        Some(PickedTracklist {
+            slots: &slots,
+            track_id_prefix: "import-track",
+            source: TracklistSource::ExternalRelease,
+            format: Some("2xCD"),
+        }),
+        &durations,
+    );
+
+    assert_eq!(table.track_sections.len(), 2);
+    for (section, (disc, sheet_id)) in table
+        .track_sections
+        .iter()
+        .zip([(1, "beta.cue"), (2, "alpha.cue")])
+    {
+        assert_eq!(section.side, crate::album_detail::TrackSide::Disc { disc });
+        let MappingTrackSectionContent::Sheet { sheet, entries } = &section.content else {
+            panic!("a CUE disc is represented by its sheet and entries");
+        };
+        assert_eq!(sheet.sheet_id, sheet_id);
+        assert_eq!(entries.len(), 2);
+        assert_eq!(
+            entries
+                .iter()
+                .map(|entry| match &entry.becomes {
+                    MappingBecomes::Track { position, .. } => position.as_str(),
+                    MappingBecomes::AwaitingPick => panic!("picked tracks have positions"),
+                })
+                .collect::<Vec<_>>(),
+            ["1", "2"],
+        );
+    }
+}
+
 /// A release naming more tracks than the folder holds closes the table with
 /// one empty-left row per track nothing backs.
 #[test]
@@ -316,20 +436,22 @@ fn tracks_the_folder_has_nothing_for_close_the_table() {
         &durations,
     );
 
-    assert_eq!(table.track_groups.len(), 4);
+    assert_eq!(table.track_sections.len(), 1);
+    let mappings = mappings(&table);
+    assert_eq!(mappings.len(), 4);
     assert!(matches!(
-        table.track_groups[2],
-        MappingTrackGroup::Unit(MappingUnit {
+        mappings[2],
+        TrackMapping {
             source: MappingSource::Missing,
             ..
-        }),
+        },
     ));
-    let MappingTrackGroup::Unit(MappingUnit {
+    let TrackMapping {
         becomes: MappingBecomes::Track { track, .. },
         ..
-    }) = &table.track_groups[3]
+    } = mappings[3]
     else {
-        panic!("expected a track row, got {:?}", table.track_groups[3]);
+        panic!("expected a track row, got {:?}", mappings[3]);
     };
     assert_eq!(track.title, "Track Title 4");
     assert_eq!(track.file, None, "nothing on disk backs it");
@@ -464,8 +586,11 @@ fn associated_sheets_group_tracks_and_unassociated_sheets_remain_files() {
     let table = mapping_table(&scan(tmp.path()), None, &SourceDurations::default());
 
     assert!(matches!(
-        table.track_groups.as_slice(),
-        [MappingTrackGroup::Sheet { sheet, entries }]
+        table.track_sections.as_slice(),
+        [MappingTrackSection {
+            content: MappingTrackSectionContent::Sheet { sheet, entries },
+            ..
+        }]
             if sheet.sheet_id == "disc.cue" && entries.len() == 2
     ));
     assert!(matches!(
@@ -546,7 +671,7 @@ fn without_track_drops_the_row_and_restates_the_tally() {
 
     let table = mapping_without_track(table, "import-track-2");
 
-    assert_eq!(table.track_groups.len(), 2);
+    assert_eq!(table.track_sections.len(), 1);
     assert_eq!(mapping_tracks(&table).len(), 2);
     assert_eq!(table.images[0].file_id, "cover.jpg");
     assert_eq!(

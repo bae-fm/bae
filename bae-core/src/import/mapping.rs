@@ -28,7 +28,7 @@ pub struct MappingTable {
     pub images: Vec<MappingImage>,
     /// The rows that can become release tracks, with a bound sheet retaining
     /// ownership of the slices it carves.
-    pub track_groups: Vec<MappingTrackGroup>,
+    pub track_sections: Vec<MappingTrackSection>,
     /// Files carried with the release but not represented by track rows.
     pub files: Vec<MappingFileRow>,
     /// The tally over the rows that become tracks. `None` when there is nothing
@@ -43,38 +43,48 @@ impl MappingTable {
     pub fn empty() -> Self {
         Self {
             images: Vec::new(),
-            track_groups: Vec::new(),
+            track_sections: Vec::new(),
             files: Vec::new(),
             reconciliation: None,
         }
     }
 }
 
-/// One group in the track section of the mapping table.
+/// One side or disc in the track table.
+///
+/// Its content makes the physical source shape explicit: a side is either
+/// independent track rows or the entries carved by one track sheet.
 #[derive(Debug, Clone, PartialEq)]
-pub enum MappingTrackGroup {
-    /// One source unit and what it becomes.
-    Unit(MappingUnit),
+pub struct MappingTrackSection {
+    pub side: crate::album_detail::TrackSide,
+    pub content: MappingTrackSectionContent,
+}
+
+/// What supplies the rows of one side or disc.
+#[derive(Debug, Clone, PartialEq)]
+pub enum MappingTrackSectionContent {
+    /// Rows supplied independently rather than carved by a track sheet.
+    Tracks(Vec<TrackMapping>),
     /// A track sheet and the entries it carves, which are its child rows.
     Sheet {
         sheet: SheetGroup,
-        entries: Vec<MappingUnit>,
+        entries: Vec<TrackMapping>,
     },
 }
 
-impl MappingTrackGroup {
-    /// The units this group carries: itself, or the entries a sheet carves.
-    pub fn units(&self) -> &[MappingUnit] {
-        match self {
-            Self::Unit(unit) => std::slice::from_ref(unit),
-            Self::Sheet { entries, .. } => entries.as_slice(),
+impl MappingTrackSection {
+    /// The source-to-track mappings this section carries.
+    pub fn mappings(&self) -> &[TrackMapping] {
+        match &self.content {
+            MappingTrackSectionContent::Tracks(mappings) => mappings,
+            MappingTrackSectionContent::Sheet { entries, .. } => entries,
         }
     }
 
-    fn units_mut(&mut self) -> &mut [MappingUnit] {
-        match self {
-            Self::Unit(unit) => std::slice::from_mut(unit),
-            Self::Sheet { entries, .. } => entries.as_mut_slice(),
+    fn mappings_mut(&mut self) -> &mut [TrackMapping] {
+        match &mut self.content {
+            MappingTrackSectionContent::Tracks(mappings) => mappings,
+            MappingTrackSectionContent::Sheet { entries, .. } => entries,
         }
     }
 }
@@ -99,9 +109,9 @@ pub struct MappingImage {
     pub path: PathBuf,
 }
 
-/// One source unit, and the track committing makes of it.
+/// One source-to-track mapping row.
 #[derive(Debug, Clone, PartialEq)]
-pub struct MappingUnit {
+pub struct TrackMapping {
     pub source: MappingSource,
     pub becomes: MappingBecomes,
     /// The duration this row displays: the metadata source's value where one
@@ -190,10 +200,10 @@ pub enum MappingBecomes {
     Track {
         track: RawTrackEdit,
         /// The position this row commits, rendered from the track's own side
-        /// and number and the release's format — `8`, `A1`, `2-3`. `None`
-        /// where the track has no number. The same fact in every metadata
-        /// mode, because it reads the draft rather than the picked source.
-        position: Option<String>,
+        /// and number and the release's format — `8`, `A1`, or `3` beneath a
+        /// `Disc 2` heading. The same fact in every metadata mode, because it
+        /// reads the draft rather than the picked source.
+        position: String,
         /// Whether the source's tracklist contains this track. False exactly
         /// for a row that exists only because audio was found for it.
         named_by_source: bool,
@@ -338,7 +348,7 @@ pub fn mapping_table(
         next_track: 0,
         multi_side,
     };
-    let mut track_groups = Vec::with_capacity(units.len());
+    let mut track_sections = Vec::with_capacity(units.len());
     let mut file_rows = Vec::with_capacity(files.files.len().saturating_sub(units.len()));
     // The folder's images become one gallery beside the rows while retaining
     // the scan's order.
@@ -365,22 +375,27 @@ pub fn mapping_table(
             FileRole::Audio => match contributions.get(entry.file.relative_path.as_str()) {
                 Some(UnitContribution::Runs(sheets)) => {
                     for sheet in sheets.iter() {
-                        track_groups.push(MappingTrackGroup::Sheet {
-                            sheet: SheetGroup {
-                                sheet_id: sheet.file.relative_path.clone(),
-                                name: sheet.file.relative_path.clone(),
-                                size: sheet.file.size,
-                                path: sheet.file.path.clone(),
-                                bound: SheetBound::Describes(container(sheet.audio)),
-                                assignment: sheet.disc,
-                                disc_options: disc_options.clone(),
+                        let side = builder.side_for_sheet(sheet.disc);
+                        track_sections.push(MappingTrackSection {
+                            side,
+                            content: MappingTrackSectionContent::Sheet {
+                                sheet: SheetGroup {
+                                    sheet_id: sheet.file.relative_path.clone(),
+                                    name: sheet.file.relative_path.clone(),
+                                    size: sheet.file.size,
+                                    path: sheet.file.path.clone(),
+                                    bound: SheetBound::Describes(container(sheet.audio)),
+                                    assignment: sheet.disc,
+                                    disc_options: disc_options.clone(),
+                                },
+                                entries: builder.sheet_entries(sheet),
                             },
-                            entries: builder.sheet_entries(sheet),
                         });
                     }
                 }
                 Some(UnitContribution::Whole) => {
-                    track_groups.push(MappingTrackGroup::Unit(builder.audio_row(entry)))
+                    let projected = builder.audio_row(entry);
+                    push_track_mapping(&mut track_sections, projected);
                 }
                 // A carving sheet speaks for this file, so the sheet's rows are
                 // what it contributes and it has none of its own.
@@ -405,21 +420,17 @@ pub fn mapping_table(
     // every unit in the slot table, so they close the table.
     if let Some(picked) = picked {
         for index in units.len()..picked.slots.rows.len() {
-            let (becomes, metadata_duration_ms) = builder.track_at(index);
-            track_groups.push(MappingTrackGroup::Unit(MappingUnit {
-                source: MappingSource::Missing,
-                becomes,
-                duration_ms: metadata_duration_ms,
-            }));
+            let projected = builder.track_at(index, MappingSource::Missing, None);
+            push_track_mapping(&mut track_sections, projected);
         }
     }
 
     let reconciliation = picked
         .filter(|picked| picked.source == TracklistSource::ExternalRelease)
-        .map(|_| tally(&track_groups));
+        .map(|_| tally(&track_sections));
     MappingTable {
         images,
-        track_groups,
+        track_sections,
         files: file_rows,
         reconciliation,
     }
@@ -429,10 +440,10 @@ pub fn mapping_table(
 /// release it writes.
 pub fn mapping_tracks(table: &MappingTable) -> Vec<RawTrackEdit> {
     table
-        .track_groups
+        .track_sections
         .iter()
-        .flat_map(MappingTrackGroup::units)
-        .filter_map(|unit| match &unit.becomes {
+        .flat_map(MappingTrackSection::mappings)
+        .filter_map(|mapping| match &mapping.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
             MappingBecomes::AwaitingPick => None,
         })
@@ -451,14 +462,19 @@ struct RowBuilder<'a> {
     multi_side: bool,
 }
 
+struct PositionedTrackMapping {
+    side: crate::album_detail::TrackSide,
+    mapping: TrackMapping,
+}
+
 impl RowBuilder<'_> {
     /// One row for a loose audio file.
-    fn audio_row(&mut self, entry: &CandidateFile) -> MappingUnit {
+    fn audio_row(&mut self, entry: &CandidateFile) -> PositionedTrackMapping {
         let unit = AudioFile::Standalone {
             file_id: entry.file.relative_path.clone(),
         };
         let duration_ms = self.duration_ms(&unit);
-        self.unit(
+        self.mapping(
             &unit,
             MappingSource::File(mapping_file(entry, MappingRole::Audio, duration_ms)),
             duration_ms,
@@ -466,7 +482,7 @@ impl RowBuilder<'_> {
     }
 
     /// One row per entry a carving sheet describes.
-    fn sheet_entries(&mut self, sheet: &BoundTrackSheet<'_>) -> Vec<MappingUnit> {
+    fn sheet_entries(&mut self, sheet: &BoundTrackSheet<'_>) -> Vec<TrackMapping> {
         sheet
             .sheet
             .playable_tracks()
@@ -495,7 +511,7 @@ impl RowBuilder<'_> {
                         .end_cue_frames
                         .map(|frames| crate::cue_flac::cue_frames_to_samples(frames, sample_rate)),
                 );
-                self.unit(
+                self.mapping(
                     &unit,
                     MappingSource::SheetEntry(MappingEntry {
                         sheet_id: sheet.file.relative_path.clone(),
@@ -517,6 +533,7 @@ impl RowBuilder<'_> {
                     }),
                     duration_ms,
                 )
+                .mapping
             })
             .collect()
     }
@@ -527,39 +544,49 @@ impl RowBuilder<'_> {
         self.durations.duration_of(unit)
     }
 
-    /// What the unit becomes: the track the picked tracklist puts on it, or the
-    /// open question a folder with no pick leaves.
-    fn unit(
+    /// Pair one source unit with the picked track occupying its slot, or leave
+    /// it awaiting a pick.
+    fn mapping(
         &mut self,
         unit: &AudioFile,
         source: MappingSource,
         probed_duration_ms: Option<u64>,
-    ) -> MappingUnit {
-        let (becomes, metadata_duration_ms) = self.becomes_for(unit);
-        MappingUnit {
-            source,
-            becomes,
-            duration_ms: metadata_duration_ms.or(probed_duration_ms),
-        }
-    }
-
-    fn becomes_for(&mut self, unit: &AudioFile) -> (MappingBecomes, Option<u64>) {
+    ) -> PositionedTrackMapping {
         if self.picked.is_none() {
-            return (MappingBecomes::AwaitingPick, None);
+            return PositionedTrackMapping {
+                side: crate::album_detail::TrackSide::Flat,
+                mapping: TrackMapping {
+                    source,
+                    becomes: MappingBecomes::AwaitingPick,
+                    duration_ms: probed_duration_ms,
+                },
+            };
         }
         let Some(&index) = self.slot_of.get(unit) else {
             // Every unit this asks about was read off the same layout the index
             // was built from, so a unit missing from it cannot be produced.
             warn!("{unit:?} is not one of this folder's audio units");
-            return (MappingBecomes::AwaitingPick, None);
+            return PositionedTrackMapping {
+                side: crate::album_detail::TrackSide::Flat,
+                mapping: TrackMapping {
+                    source,
+                    becomes: MappingBecomes::AwaitingPick,
+                    duration_ms: probed_duration_ms,
+                },
+            };
         };
-        self.track_at(index)
+        self.track_at(index, source, probed_duration_ms)
     }
 
     /// The track at slot row `index`, taking the next row identity.
-    fn track_at(&mut self, index: usize) -> (MappingBecomes, Option<u64>) {
+    fn track_at(
+        &mut self,
+        index: usize,
+        source: MappingSource,
+        probed_duration_ms: Option<u64>,
+    ) -> PositionedTrackMapping {
         let Some(picked) = self.picked else {
-            return (MappingBecomes::AwaitingPick, None);
+            unreachable!("track_at is called only with a picked tracklist");
         };
         let Some(slot) = picked.slots.rows.get(index) else {
             // Slot row `i` is audio unit `i` and the table is never shorter
@@ -568,7 +595,14 @@ impl RowBuilder<'_> {
             warn!(
                 "the picked tracklist has no row {index}; it does not describe this folder's audio"
             );
-            return (MappingBecomes::AwaitingPick, None);
+            return PositionedTrackMapping {
+                side: crate::album_detail::TrackSide::Flat,
+                mapping: TrackMapping {
+                    source,
+                    becomes: MappingBecomes::AwaitingPick,
+                    duration_ms: probed_duration_ms,
+                },
+            };
         };
         let id = format!("{}-{}", picked.track_id_prefix, self.next_track);
         self.next_track += 1;
@@ -586,23 +620,58 @@ impl RowBuilder<'_> {
             TrackSlot::FileOnly { .. } => (false, None),
         };
         let edit = slot.track();
-        let position = crate::util::format::ungrouped_track_position_text(
-            &crate::util::format::compute_track_position(
-                picked.format,
-                edit.side,
-                edit.track_number,
-                self.multi_side,
-            ),
+        let position = crate::util::format::compute_track_position(
+            picked.format,
+            edit.side,
+            edit.track_number,
+            self.multi_side,
         );
-        (
-            MappingBecomes::Track {
-                track: RawTrackEdit::from_user_edit(edit.clone(), id),
-                position,
-                named_by_source,
+        PositionedTrackMapping {
+            side: crate::util::format::track_side(&position),
+            mapping: TrackMapping {
+                source,
+                becomes: MappingBecomes::Track {
+                    track: RawTrackEdit::from_user_edit(edit.clone(), id),
+                    position: crate::util::format::track_position_text(&position),
+                    named_by_source,
+                },
+                duration_ms: source_duration_ms.or(probed_duration_ms),
             },
-            source_duration_ms,
-        )
+        }
     }
+
+    fn side_for_sheet(&self, assignment: SheetDisc) -> crate::album_detail::TrackSide {
+        let Some(picked) = self.picked else {
+            return crate::album_detail::TrackSide::Flat;
+        };
+        let SheetDisc::Disc { number } = assignment else {
+            unreachable!("only a sheet assigned to a disc can carve track rows");
+        };
+        let side = i32::try_from(number).expect("a sheet disc number fits in i32");
+        crate::util::format::track_side(&crate::util::format::compute_track_position(
+            picked.format,
+            side,
+            None,
+            self.multi_side,
+        ))
+    }
+}
+
+fn push_track_mapping(sections: &mut Vec<MappingTrackSection>, projected: PositionedTrackMapping) {
+    if let Some(MappingTrackSection {
+        side,
+        content: MappingTrackSectionContent::Tracks(mappings),
+    }) = sections.last_mut()
+    {
+        if *side == projected.side {
+            mappings.push(projected.mapping);
+            return;
+        }
+    }
+    sections.push(MappingTrackSection {
+        side: projected.side,
+        content: MappingTrackSectionContent::Tracks(vec![projected.mapping]),
+    });
 }
 
 /// One row for a file that is not one of the release's tracks: something the
@@ -688,17 +757,20 @@ fn bound_of(files: &CategorizedFiles, sheet: &CueSheet, binding: &SheetBinding) 
 /// over its own two sides, asked of the rows that are left — so a table nobody
 /// has edited restates the number it was built with, and one a row has left
 /// restates it without re-opening the folder.
-fn tally(groups: &[MappingTrackGroup]) -> SlotReconciliation {
-    let units: Vec<&MappingUnit> = groups.iter().flat_map(MappingTrackGroup::units).collect();
-    let files = units
+fn tally(sections: &[MappingTrackSection]) -> SlotReconciliation {
+    let mappings: Vec<&TrackMapping> = sections
         .iter()
-        .filter(|unit| matches!(&unit.becomes, MappingBecomes::Track { track, .. } if track.file.is_some()))
+        .flat_map(MappingTrackSection::mappings)
+        .collect();
+    let files = mappings
+        .iter()
+        .filter(|mapping| matches!(&mapping.becomes, MappingBecomes::Track { track, .. } if track.file.is_some()))
         .count() as u32;
-    let tracks = units
+    let tracks = mappings
         .iter()
-        .filter(|unit| {
+        .filter(|mapping| {
             matches!(
-                &unit.becomes,
+                &mapping.becomes,
                 MappingBecomes::Track {
                     named_by_source: true,
                     ..
@@ -720,14 +792,14 @@ fn tally(groups: &[MappingTrackGroup]) -> SlotReconciliation {
 /// table no longer has is editing something that has already left it.
 pub fn mapping_with_track(mut table: MappingTable, track: RawTrackEdit) -> MappingTable {
     let mut wrote = false;
-    for unit in table
-        .track_groups
+    for mapping in table
+        .track_sections
         .iter_mut()
-        .flat_map(MappingTrackGroup::units_mut)
+        .flat_map(MappingTrackSection::mappings_mut)
     {
         let MappingBecomes::Track {
             track: existing, ..
-        } = &mut unit.becomes
+        } = &mut mapping.becomes
         else {
             continue;
         };
@@ -750,23 +822,28 @@ pub fn mapping_with_track(mut table: MappingTable, track: RawTrackEdit) -> Mappi
 pub fn mapping_without_track(table: MappingTable, track_id: &str) -> MappingTable {
     remove(
         table,
-        &|unit| matches!(&unit.becomes, MappingBecomes::Track { track, .. } if track.id == track_id),
+        &|mapping| matches!(&mapping.becomes, MappingBecomes::Track { track, .. } if track.id == track_id),
     )
 }
 
-/// Drop every unit the predicate names, wherever it sits, and restate the tally
+/// Drop every mapping the predicate names, wherever it sits, and restate the tally
 /// over what is left. A table with no tally keeps none — the folder's own tags
 /// cannot disagree with the folder.
-fn remove(mut table: MappingTable, should_remove: &dyn Fn(&MappingUnit) -> bool) -> MappingTable {
-    table.track_groups.retain_mut(|group| match group {
-        MappingTrackGroup::Unit(unit) => !should_remove(unit),
-        MappingTrackGroup::Sheet { entries, .. } => {
-            entries.retain(|entry| !should_remove(entry));
-            true
-        }
-    });
+fn remove(mut table: MappingTable, should_remove: &dyn Fn(&TrackMapping) -> bool) -> MappingTable {
+    table
+        .track_sections
+        .retain_mut(|section| match &mut section.content {
+            MappingTrackSectionContent::Tracks(mappings) => {
+                mappings.retain(|mapping| !should_remove(mapping));
+                !mappings.is_empty()
+            }
+            MappingTrackSectionContent::Sheet { entries, .. } => {
+                entries.retain(|entry| !should_remove(entry));
+                true
+            }
+        });
     if table.reconciliation.is_some() {
-        table.reconciliation = Some(tally(&table.track_groups));
+        table.reconciliation = Some(tally(&table.track_sections));
     }
     table
 }

@@ -389,6 +389,15 @@ impl BridgeTrackSide {
         }
     }
 
+    #[cfg(feature = "desktop")]
+    pub(crate) fn into_core(self) -> bae_core::album_detail::TrackSide {
+        match self {
+            Self::Sided { side_letter } => bae_core::album_detail::TrackSide::Sided { side_letter },
+            Self::Disc { disc } => bae_core::album_detail::TrackSide::Disc { disc },
+            Self::Flat => bae_core::album_detail::TrackSide::Flat,
+        }
+    }
+
     /// Localization key for this side's header word ("Side" / "Disc"), or `None`
     /// for `Flat` (single-disc digital has no header). Pre-computed onto
     /// [`BridgeTrackGroup::header_key`] at conversion; the UI resolves the key

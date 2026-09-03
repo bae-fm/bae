@@ -232,7 +232,7 @@ struct ImportMappingPaneTests {
             candidate: settled,
             runtime: runtime(.manualOnly(trackCount: 11))
         )
-        #expect(settledConflict == settledWithoutConflict)
+        #expect(settledConflict.elementsEqual(settledWithoutConflict))
     }
 
     // 1. Binding a track sheet is a decision about the folder, so it goes to
@@ -278,9 +278,13 @@ struct ImportMappingPaneTests {
             )
         )
         let after = MappingFixtures.mapping(of: store)
-        #expect(after.trackGroups.count == 1)
-        guard case .sheet(let sheet, let entries) = after.trackGroups[0] else {
-            Issue.record("expected a sheet group, got \(after.trackGroups[0])")
+        #expect(after.trackSections.count == 1)
+        guard
+            case .sheet(let sheet, let entries) = after.trackSections[0].content
+        else {
+            Issue.record(
+                "expected a sheet section, got \(after.trackSections[0])"
+            )
             return
         }
         #expect(sheet.bound.containerId == MappingFixtures.containerId)
@@ -302,7 +306,7 @@ struct ImportMappingPaneTests {
         #expect(MappingFixtures.mapping(of: store).unansweredCount == 1)
 
         let unnamed = try #require(
-            MappingFixtures.mapping(of: store).units.last?.track
+            MappingFixtures.mapping(of: store).trackMappings.last?.track
         )
         var named = unnamed
         named.title = "Hidden Track"
@@ -341,7 +345,7 @@ struct ImportMappingPaneTests {
         )
         let recorder = Recorder()
         let target = try #require(
-            MappingFixtures.mapping(of: store).units.first?.track
+            MappingFixtures.mapping(of: store).trackMappings.first?.track
         )
 
         await ImportMappingFlow.chooseFile(
@@ -369,7 +373,7 @@ struct ImportMappingPaneTests {
         )
         let recorder = Recorder()
         let target = try #require(
-            MappingFixtures.mapping(of: store).units.last?.track
+            MappingFixtures.mapping(of: store).trackMappings.last?.track
         )
 
         await ImportMappingFlow.drop(
@@ -534,7 +538,8 @@ extension ImportMappingPaneTests {
             services: recorder.services(store)
         )
         let entry = try #require(
-            MappingFixtures.mapping(of: store).units[4].source.previewTarget
+            MappingFixtures.mapping(of: store).trackMappings[4].source
+                .previewTarget
         )
 
         actions.preview(entry)
@@ -575,7 +580,7 @@ extension ImportMappingPaneTests {
         )
         guard
             case .sheet(let sheet, _) = MappingFixtures.mapping(of: store)
-                .trackGroups[0]
+                .trackSections[0].content
         else {
             Issue.record("expected a sheet row")
             return
@@ -647,7 +652,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == .fileTags)
-        #expect(candidate.mapping.trackGroups.count == 2)
+        #expect(candidate.mapping.trackMappings.count == 2)
         #expect(candidate.mapping.reconciliation == nil)
         #expect(candidate.pickedRelease == nil)
 
@@ -674,7 +679,7 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)
-        #expect(candidate.mapping.trackGroups.count == 13)
+        #expect(candidate.mapping.trackMappings.count == 13)
         #expect(candidate.mapping.willWriteCount == 13)
         #expect(
             candidate.pickedRelease?.releaseId == MappingFixtures.releaseId

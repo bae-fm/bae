@@ -6,7 +6,7 @@ import Foundation
 /// catalog message names the tally — or a count over the table's own rows.
 /// Nothing here works out a pairing.
 
-extension BridgeMappingUnit {
+extension BridgeTrackMapping {
     /// The track this row commits, where it commits one.
     var track: BridgeRawTrackEdit? {
         guard case .track(let track, _, _) = becomes else { return nil }
@@ -54,31 +54,38 @@ extension BridgeMappingSource {
 
 }
 
-extension BridgeMappingTrackGroup {
-    /// The units this group carries: itself, or the entries a sheet carves.
-    var units: [BridgeMappingUnit] {
-        switch self {
-        case .unit(let unit): [unit]
+extension BridgeMappingTrackSection {
+    /// The source-to-track mappings this section carries.
+    var mappings: [BridgeTrackMapping] {
+        switch content {
+        case .tracks(let mappings): mappings
         case .sheet(_, let entries): entries
         }
+    }
+
+    var sideHeaderText: String {
+        side.headerText(key: headerKey)
     }
 }
 
 extension BridgeMappingTable {
-    /// Every unit the table carries, top-level rows and sheet entries alike, in
-    /// the order the table lays them out.
-    var units: [BridgeMappingUnit] { trackGroups.flatMap(\.units) }
+    /// Every source-to-track mapping in table order.
+    var trackMappings: [BridgeTrackMapping] {
+        trackSections.flatMap(\.mappings)
+    }
 
     /// Rows that will write a track.
-    var willWriteCount: Int { units.count(where: \.writesTrack) }
+    var willWriteCount: Int { trackMappings.count(where: \.writesTrack) }
 
     /// Rows that will write a track whose title is still blank.
-    var unansweredCount: Int { units.count(where: \.isUnanswered) }
+    var unansweredCount: Int {
+        trackMappings.count(where: \.isUnanswered)
+    }
 
     /// Every audio unit the table's rows carry, in table order — what a row
     /// with nothing behind it is offered to point at.
     var audioChoices: [ImportAudioChoice] {
-        units.compactMap(ImportAudioChoice.init(unit:))
+        trackMappings.compactMap(ImportAudioChoice.init(mapping:))
     }
 
 }
@@ -92,10 +99,10 @@ struct ImportAudioChoice: Identifiable {
 
     var id: BridgeAudioFile { audio }
 
-    init?(unit: BridgeMappingUnit) {
-        guard let audio = unit.track?.file else { return nil }
+    init?(mapping: BridgeTrackMapping) {
+        guard let audio = mapping.track?.file else { return nil }
         self.audio = audio
-        switch unit.source {
+        switch mapping.source {
         case .file(let file):
             label = "\(file.name), \(file.sizeText)"
         case .sheetEntry(let entry):
@@ -198,7 +205,7 @@ func importDurationText(_ ms: UInt64?) -> String {
     return label.isEmpty ? "\u{2014}" : label
 }
 
-extension BridgeMappingUnit {
+extension BridgeTrackMapping {
     /// Whether the source probe and selected metadata disagree by more than
     /// core's tolerance.
     var durationsDiverge: Bool {

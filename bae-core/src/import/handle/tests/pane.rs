@@ -681,12 +681,12 @@ async fn a_scan_that_moves_during_tag_reading_refuses_the_snapshot() {
 
 /// The rows of the table that become tracks, in order — what a person edits.
 fn track_rows(table: &crate::import::MappingTable) -> Vec<crate::import::RawTrackEdit> {
-    use crate::import::mapping::{MappingBecomes, MappingTrackGroup};
+    use crate::import::mapping::{MappingBecomes, MappingTrackSection};
     table
-        .track_groups
+        .track_sections
         .iter()
-        .flat_map(MappingTrackGroup::units)
-        .filter_map(|unit| match &unit.becomes {
+        .flat_map(MappingTrackSection::mappings)
+        .filter_map(|mapping| match &mapping.becomes {
             MappingBecomes::Track { track, .. } => Some(track.clone()),
             _ => None,
         })

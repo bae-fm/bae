@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// Section 2 of the mapping pane: every source unit the folder offers, paired
+/// Section 2 of the mapping pane: every source the folder offers, paired
 /// with the track committing makes of it.
 ///
 /// One table, not two: the file a track comes from and the track it becomes are
@@ -104,27 +104,29 @@ struct ImportMappingTable: View {
 
     // MARK: - Tracks
 
-    /// The column headers are one row, over the first track row. A sheet's
-    /// caption sits above its rows, so a sheet that leads the section puts its
-    /// caption above the headers too, and every later sheet's caption sits
-    /// between its neighbour's last row and its own first.
+    /// Core supplies one section per side or disc. Each section contains either
+    /// independent track mappings or one sheet and its entries; this view only
+    /// renders that shape.
     private var tracksSection: some View {
         ScrollView(.horizontal) {
             artistFillRows {
-                if table.trackGroups.isEmpty {
+                if table.trackSections.isEmpty {
                     trackHeaderRow
                 }
                 ForEach(
-                    Array(table.trackGroups.enumerated()),
-                    id: \.element.rowId
-                ) { index, group in
-                    if case .sheet(let sheet, _) = group {
+                    Array(table.trackSections.enumerated()),
+                    id: \.offset
+                ) { index, section in
+                    if !section.sideHeaderText.isEmpty {
+                        sideHeader(section.sideHeaderText, index: index)
+                    }
+                    if case .sheet(let sheet, _) = section.content {
                         sheetCaption(sheet)
                     }
                     if index == 0 {
                         trackHeaderRow
                     }
-                    trackGroupRows(group)
+                    trackSectionRows(section)
                 }
             }
         }
@@ -137,13 +139,26 @@ struct ImportMappingTable: View {
     }
 
     @ViewBuilder
-    private func trackGroupRows(_ group: BridgeMappingTrackGroup) -> some View {
-        switch group {
-        case .unit(let unit):
-            trackRow(unit)
+    private func trackSectionRows(_ section: BridgeMappingTrackSection)
+        -> some View
+    {
+        switch section.content {
+        case .tracks(let mappings):
+            ForEach(mappings, id: \.rowId, content: trackRow)
         case .sheet(_, let entries):
             ForEach(entries, id: \.rowId, content: trackRow)
         }
+    }
+
+    private func sideHeader(_ text: String, index: Int) -> some View {
+        Text(verbatim: text)
+            .font(.system(size: 10, weight: .bold))
+            .tracking(1.2)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .padding(.top, index == 0 ? 2 : 18)
+            .padding(.bottom, 6)
     }
 
     private func sheetCaption(_ sheet: BridgeSheetGroup) -> some View {
@@ -163,17 +178,17 @@ struct ImportMappingTable: View {
         )
     }
 
-    private func trackRow(_ unit: BridgeMappingUnit) -> some View {
+    private func trackRow(_ mapping: BridgeTrackMapping) -> some View {
         ImportMappingTrackRow(
-            unit: unit,
+            mapping: mapping,
             columns: columns.tracks,
             audioChoices: table.audioChoices,
             previewingTarget: previewingTarget,
-            evidence: evidenceFor(unit),
+            evidence: evidenceFor(mapping),
             actions: actions,
             artistFillCoordinateSpace: artistFillCoordinateSpace,
             onArtistFillHover: { hovering in
-                guard let trackId = unit.track?.id else { return }
+                guard let trackId = mapping.track?.id else { return }
                 if hovering {
                     hoveredFillTrackId = trackId
                 }
@@ -183,7 +198,7 @@ struct ImportMappingTable: View {
             },
         )
         .rowChrome(
-            background: unit.source.previewTarget == previewingTarget
+            background: mapping.source.previewTarget == previewingTarget
                 ? Theme.accentSoft : .clear
         )
     }
@@ -274,9 +289,10 @@ struct ImportMappingTable: View {
         .padding(.bottom, 6)
     }
 
-    private func evidenceFor(_ unit: BridgeMappingUnit) -> [BridgeFileEvidence]
+    private func evidenceFor(_ mapping: BridgeTrackMapping)
+        -> [BridgeFileEvidence]
     {
-        guard case .file(let file) = unit.source else { return [] }
+        guard case .file(let file) = mapping.source else { return [] }
         return ImportEvidence.of(file.fileId, in: evidence)
     }
 }
@@ -382,8 +398,8 @@ struct ImportMappingColumns {
 extension BridgeMappingTable {
     /// How many track sheets the folder holds, carving rows or not.
     var sheetCount: Int {
-        trackGroups.filter {
-            if case .sheet = $0 { return true }
+        trackSections.filter {
+            if case .sheet = $0.content { return true }
             return false
         }
         .count
@@ -392,18 +408,6 @@ extension BridgeMappingTable {
                 return false
             }
             .count
-    }
-}
-
-extension BridgeMappingTrackGroup {
-    /// This group's identity in the table. A file and a sheet are named by what
-    /// they are; a row the release names with nothing behind it is named by the
-    /// track it commits, which core makes unique across the table.
-    var rowId: String {
-        switch self {
-        case .unit(let unit): unit.rowId
-        case .sheet(let sheet, _): "sheet:\(sheet.sheetId)"
-        }
     }
 }
 
@@ -416,8 +420,8 @@ extension BridgeMappingFileRow {
     }
 }
 
-extension BridgeMappingUnit {
-    /// This unit's identity in the table.
+extension BridgeTrackMapping {
+    /// This mapping's identity in the table.
     var rowId: String {
         switch source {
         case .file(let file): "file:\(file.fileId)"

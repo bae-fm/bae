@@ -12,7 +12,7 @@
 use crate::import::edits::{apply_track_edits, CandidateEditOverlay, CandidateTrackEdit};
 use crate::import::folder_scanner::CategorizedFiles;
 use crate::import::mapping::{
-    mapping_table, MappingBecomes, MappingTable, MappingTrackGroup, PickedTracklist,
+    mapping_table, MappingBecomes, MappingTable, MappingTrackSection, PickedTracklist,
     TracklistSource,
 };
 use crate::import::payloads::ReleasePayloads;
@@ -85,10 +85,10 @@ pub(crate) fn candidate_draft_from_source(pane: PanePick) -> CandidateSourceDraf
         .retain(|assignment| !assignment.is_blank());
     let track_rows = pane
         .mapping
-        .track_groups
+        .track_sections
         .iter()
-        .flat_map(MappingTrackGroup::units)
-        .filter_map(|unit| match &unit.becomes {
+        .flat_map(MappingTrackSection::mappings)
+        .filter_map(|mapping| match &mapping.becomes {
             MappingBecomes::Track {
                 track,
                 named_by_source,

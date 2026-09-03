@@ -262,7 +262,7 @@ private func detail(
         initialMetadataSource: .none,
         mapping: BridgeMappingTable(
             images: [],
-            trackGroups: [],
+            trackSections: [],
             files: [],
             reconciliation: nil
         ),

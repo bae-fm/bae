@@ -2,7 +2,7 @@ import SwiftUI
 
 extension ImportMappingTable {
     var artistTrackIds: [String] {
-        table.units.compactMap(\.track?.id)
+        table.trackMappings.compactMap(\.track?.id)
     }
 
     private var artistFillFrame: CGRect? {
@@ -100,7 +100,7 @@ extension ImportMappingTable {
         guard let selection = artistFillSelection else { return }
         let trackIds = selection.trackIds(in: artistTrackIds)
         guard trackIds.count > 1,
-            let assignments = table.units.compactMap(\.track)
+            let assignments = table.trackMappings.compactMap(\.track)
                 .first(where: { $0.id == selection.sourceTrackId })?
                 .artistAssignments
         else { return }

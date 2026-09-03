@@ -77,21 +77,29 @@ extension MappingFixtures {
     }
 
     /// One loose audio file and the track the release puts on it.
-    static func pairedRow(_ index: Int) -> BridgeMappingTrackGroup {
-        .unit(
-            unit: BridgeMappingUnit(
-                source: .file(file: audioFile(index)),
-                becomes: .track(
-                    track: trackEdit(
-                        index - 1,
-                        title: "Track \(index)",
-                        file: .standalone(fileId: "\(index).flac")
-                    ),
-                    position: "\(index)",
-                    namedBySource: true
+    static func pairedRow(_ index: Int) -> BridgeTrackMapping {
+        BridgeTrackMapping(
+            source: .file(file: audioFile(index)),
+            becomes: .track(
+                track: trackEdit(
+                    index - 1,
+                    title: "Track \(index)",
+                    file: .standalone(fileId: "\(index).flac")
                 ),
-                durationMs: UInt64(200_000 + index * 1000)
-            )
+                position: "\(index)",
+                namedBySource: true
+            ),
+            durationMs: UInt64(200_000 + index * 1000)
+        )
+    }
+
+    static func flatSection(
+        _ mappings: [BridgeTrackMapping]
+    ) -> BridgeMappingTrackSection {
+        BridgeMappingTrackSection(
+            side: .flat,
+            headerKey: nil,
+            content: .tracks(mappings: mappings)
         )
     }
 
@@ -102,24 +110,26 @@ extension MappingFixtures {
     static func thirteenFileTable(lastTitle: String) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
-            trackGroups: (1...12).map(pairedRow)
-                + [
-                    .unit(
-                        unit: BridgeMappingUnit(
-                            source: .file(file: audioFile(13)),
-                            becomes: .track(
-                                track: trackEdit(
-                                    12,
-                                    title: lastTitle,
-                                    file: .standalone(fileId: "13.flac")
+            trackSections: [
+                flatSection(
+                    (1...12).map(pairedRow)
+                        + [
+                            BridgeTrackMapping(
+                                source: .file(file: audioFile(13)),
+                                becomes: .track(
+                                    track: trackEdit(
+                                        12,
+                                        title: lastTitle,
+                                        file: .standalone(fileId: "13.flac")
+                                    ),
+                                    position: "13",
+                                    namedBySource: false
                                 ),
-                                position: "13",
-                                namedBySource: false
-                            ),
-                            durationMs: audioFile(13).durationMs
-                        )
-                    )
-                ],
+                                durationMs: audioFile(13).durationMs
+                            )
+                        ]
+                )
+            ],
             files: [],
             reconciliation: .moreFiles(files: 13, tracks: 12)
         )
@@ -172,50 +182,51 @@ extension MappingFixtures {
     }
 
     /// A track the release names that the folder has nothing for.
-    static func missingRow(_ index: Int) -> BridgeMappingTrackGroup {
-        .unit(
-            unit: BridgeMappingUnit(
-                source: .missing,
-                becomes: .track(
-                    track: trackEdit(
-                        index,
-                        title: "Track \(index + 1)",
-                        file: nil
-                    ),
-                    position: "\(index + 1)",
-                    namedBySource: true
+    static func missingRow(_ index: Int) -> BridgeTrackMapping {
+        BridgeTrackMapping(
+            source: .missing,
+            becomes: .track(
+                track: trackEdit(
+                    index,
+                    title: "Track \(index + 1)",
+                    file: nil
                 ),
-                durationMs: UInt64(200_000 + index * 1000)
-            )
+                position: "\(index + 1)",
+                namedBySource: true
+            ),
+            durationMs: UInt64(200_000 + index * 1000)
         )
     }
 
     /// The container as one loose audio file taking the release's first track,
     /// with the other eleven left with nothing behind them.
-    private static var looseContainerTrackGroups: [BridgeMappingTrackGroup] {
+    private static var looseContainerTrackSections: [BridgeMappingTrackSection]
+    {
         [
-            .unit(
-                unit: BridgeMappingUnit(
-                    source: .file(file: containerFile),
-                    becomes: .track(
-                        track: trackEdit(
-                            0,
-                            title: "Track 1",
-                            file: .standalone(fileId: containerId)
+            flatSection(
+                [
+                    BridgeTrackMapping(
+                        source: .file(file: containerFile),
+                        becomes: .track(
+                            track: trackEdit(
+                                0,
+                                title: "Track 1",
+                                file: .standalone(fileId: containerId)
+                            ),
+                            position: "1",
+                            namedBySource: true
                         ),
-                        position: "1",
-                        namedBySource: true
-                    ),
-                    durationMs: 201_000
-                )
+                        durationMs: 201_000
+                    )
+                ] + (1..<12).map(missingRow)
             )
-        ] + (1..<12).map(missingRow)
+        ]
     }
 
     /// The sheet describes nothing, so it carves nothing.
     static let unboundSheetTable = BridgeMappingTable(
         images: [],
-        trackGroups: looseContainerTrackGroups,
+        trackSections: looseContainerTrackSections,
         files: [
             .sheet(
                 sheet: sheetGroup(
@@ -231,7 +242,7 @@ extension MappingFixtures {
     /// audio again.
     static let ignoredSheetTable = BridgeMappingTable(
         images: [],
-        trackGroups: looseContainerTrackGroups,
+        trackSections: looseContainerTrackSections,
         files: [
             .sheet(
                 sheet: sheetGroup(container: container, assignment: .ignored)
@@ -241,14 +252,14 @@ extension MappingFixtures {
     )
 
     /// One entry of the bound sheet, carved out of the container.
-    static func entry(_ index: Int) -> BridgeMappingUnit {
+    static func entry(_ index: Int) -> BridgeTrackMapping {
         let startSample = UInt64(index) * 200 * 44_100
         let previewTarget = BridgePreviewTarget(
             path: containerPath,
             startSample: startSample,
             endSample: startSample + 200 * 44_100
         )
-        return BridgeMappingUnit(
+        return BridgeTrackMapping(
             source: .sheetEntry(
                 entry: BridgeMappingEntry(
                     sheetId: sheetId,
@@ -286,13 +297,17 @@ extension MappingFixtures {
     ) -> BridgeMappingTable {
         BridgeMappingTable(
             images: [],
-            trackGroups: [
-                .sheet(
-                    sheet: sheetGroup(
-                        container: container,
-                        assignment: assignment
-                    ),
-                    entries: (0..<12).map(entry)
+            trackSections: [
+                BridgeMappingTrackSection(
+                    side: .flat,
+                    headerKey: nil,
+                    content: .sheet(
+                        sheet: sheetGroup(
+                            container: container,
+                            assignment: assignment
+                        ),
+                        entries: (0..<12).map(entry)
+                    )
                 )
             ],
             files: [],
@@ -304,27 +319,29 @@ extension MappingFixtures {
     /// them, so the table carries no tally.
     static let fileTagsTable = BridgeMappingTable(
         images: [],
-        trackGroups: (1...2)
-            .map { index in
-                BridgeMappingTrackGroup.unit(
-                    unit: BridgeMappingUnit(
-                        source: .file(file: audioFile(index)),
-                        becomes: .track(
-                            track: BridgeRawTrackEdit(
-                                id: "file-tags-track-\(index - 1)",
-                                title: "Track \(index)",
-                                artistAssignments: .albumArtists,
-                                side: 1,
-                                trackNumber: Int32(index),
-                                file: .standalone(fileId: "\(index).flac")
+        trackSections: [
+            flatSection(
+                (1...2)
+                    .map { index in
+                        BridgeTrackMapping(
+                            source: .file(file: audioFile(index)),
+                            becomes: .track(
+                                track: BridgeRawTrackEdit(
+                                    id: "file-tags-track-\(index - 1)",
+                                    title: "Track \(index)",
+                                    artistAssignments: .albumArtists,
+                                    side: 1,
+                                    trackNumber: Int32(index),
+                                    file: .standalone(fileId: "\(index).flac")
+                                ),
+                                position: "\(index)",
+                                namedBySource: true
                             ),
-                            position: "\(index)",
-                            namedBySource: true
-                        ),
-                        durationMs: audioFile(index).durationMs
-                    )
-                )
-            },
+                            durationMs: audioFile(index).durationMs
+                        )
+                    }
+            )
+        ],
         files: [],
         reconciliation: nil
     )
@@ -475,7 +492,7 @@ extension MappingFixtures {
             mapping: mapping
                 ?? BridgeMappingTable(
                     images: [],
-                    trackGroups: [],
+                    trackSections: [],
                     files: [],
                     reconciliation: nil
                 ),
@@ -513,7 +530,7 @@ extension MappingFixtures {
         store.selectedCandidates[candidateKey]?.mapping
             ?? BridgeMappingTable(
                 images: [],
-                trackGroups: [],
+                trackSections: [],
                 files: [],
                 reconciliation: nil
             )

@@ -161,8 +161,8 @@ pub use list::{
 pub use mapping::{
     mapping_table, mapping_tracks, mapping_with_track, mapping_without_track, MappingBecomes,
     MappingContainer, MappingEntry, MappingFile, MappingFileRow, MappingImage, MappingRole,
-    MappingSource, MappingTable, MappingTrackGroup, MappingUnit, PickedTracklist, SheetBound,
-    SheetGroup, TracklistSource,
+    MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent, PickedTracklist,
+    SheetBound, SheetGroup, TrackMapping, TracklistSource,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;

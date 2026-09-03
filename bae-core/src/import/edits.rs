@@ -5,7 +5,9 @@
 //! per-candidate query, so the pane holds no copy of its own: the control
 //! writes, the query redraws.
 
-use crate::import::mapping::{mapping_with_track, mapping_without_track, MappingTable};
+use crate::import::mapping::{
+    mapping_with_track, mapping_without_track, MappingTable, MappingTrackSection,
+};
 use crate::import::types::{ArtistAssignment, AudioFile, RawReleaseEdit, RawTrackEdit};
 use chrono::{DateTime, Utc};
 
@@ -208,10 +210,10 @@ pub(crate) fn apply_track_mapping_edits(
             return mapping_without_track(table, &edit.track_id);
         }
         let track = table
-            .track_groups
+            .track_sections
             .iter()
-            .flat_map(|group| group.units())
-            .find_map(|unit| match &unit.becomes {
+            .flat_map(MappingTrackSection::mappings)
+            .find_map(|mapping| match &mapping.becomes {
                 crate::import::mapping::MappingBecomes::Track { track, .. }
                     if track.id == edit.track_id =>
                 {

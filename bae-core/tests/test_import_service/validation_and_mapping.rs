@@ -352,12 +352,12 @@ async fn pick_release_for_folder(
 /// read off a row.
 fn mapping_rows(
     pane: &bae_core::import::ImportCandidateDetail,
-) -> Vec<(bae_core::import::RawTrackEdit, Option<String>, bool)> {
+) -> Vec<(bae_core::import::RawTrackEdit, String, bool)> {
     pane.mapping
-        .track_groups
+        .track_sections
         .iter()
-        .flat_map(bae_core::import::MappingTrackGroup::units)
-        .filter_map(|unit| match &unit.becomes {
+        .flat_map(bae_core::import::MappingTrackSection::mappings)
+        .filter_map(|mapping| match &mapping.becomes {
             bae_core::import::MappingBecomes::Track {
                 track,
                 position,
@@ -396,7 +396,7 @@ async fn thirteen_files_against_a_twelve_track_source_commits_thirteen_tracks() 
     // not — which still numbers itself by continuing the tracklist.
     assert_eq!(rows.iter().filter(|(_, _, named)| *named).count(), 12);
     assert!(!rows[12].2);
-    assert_eq!(rows[12].1.as_deref(), Some("13"));
+    assert_eq!(rows[12].1, "13");
 
     let import_id = f
         .handle
@@ -445,7 +445,7 @@ async fn a_track_with_no_audio_commits_as_the_user_left_it() {
     assert_eq!(rows.len(), 14);
     // The fourteenth track the source names has no audio behind it.
     assert!(rows[13].2);
-    assert_eq!(rows[13].1.as_deref(), Some("14"));
+    assert_eq!(rows[13].1, "14");
     assert_eq!(rows[13].0.file, None);
 
     let import_id = f
