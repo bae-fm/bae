@@ -16,7 +16,9 @@
                 format: "CD",
                 label: "Label Name",
                 catalogNumber: "6006-2",
-                country: "US"
+                country: "US",
+                barcode: nil,
+                sourceGroupId: nil
             ),
             BridgeMetadataResult(
                 source: .musicBrainz,
@@ -25,22 +27,28 @@
                 format: "CD",
                 label: "Label Name",
                 catalogNumber: "1871-2",
-                country: "US"
+                country: "US",
+                barcode: nil,
+                sourceGroupId: nil
             ),
         ]
 
         static let searchGroupExact = ReleaseGroup(
             bridge: BridgeReleaseGroup(
                 id: "group-preview",
-                sourceGroupId: "group-preview",
                 title: "Album Title",
                 artist: "Artist Name",
                 coverArt: nil,
-                sourceLabel: "MusicBrainz",
-                groupUrl: "https://musicbrainz.org/release-group/group-preview",
+                sources: [
+                    BridgeReleaseGroupSource(
+                        source: .musicBrainz,
+                        groupUrl:
+                            "https://musicbrainz.org/release-group/group-preview"
+                    )
+                ],
                 yearMin: 1988,
                 yearMax: 1996,
-                pressings: exactPressings
+                pressings: exactPressings.map { BridgePressing(releases: [$0]) }
             )
         )
 
@@ -59,19 +67,23 @@
             )
 
         /// Two distinct release groups — the manual-search results state.
-        static let searchGroupsManual: [ReleaseGroup] = [
-            ReleaseGroup(
-                bridge: BridgeReleaseGroup(
-                    id: "grp-1",
-                    sourceGroupId: "grp-1",
-                    title: "Album Title One",
-                    artist: "Artist Name",
-                    coverArt: nil,
-                    sourceLabel: "MusicBrainz",
-                    groupUrl: "https://musicbrainz.org/release-group/grp-1",
-                    yearMin: 1996,
-                    yearMax: 1996,
-                    pressings: [
+        static let searchGroupsManualBridge: [BridgeReleaseGroup] = [
+            BridgeReleaseGroup(
+                id: "grp-1",
+                title: "Album Title One",
+                artist: "Artist Name",
+                coverArt: nil,
+                sources: [
+                    BridgeReleaseGroupSource(
+                        source: .musicBrainz,
+                        groupUrl:
+                            "https://musicbrainz.org/release-group/grp-1"
+                    )
+                ],
+                yearMin: 1996,
+                yearMax: 1996,
+                pressings: [
+                    BridgePressing(releases: [
                         BridgeMetadataResult(
                             source: .musicBrainz,
                             releaseId: "rel-aaa",
@@ -79,8 +91,12 @@
                             format: "CD",
                             label: "Label Name",
                             catalogNumber: "6006-2",
-                            country: "US"
-                        ),
+                            country: "US",
+                            barcode: "0123456789012",
+                            sourceGroupId: "grp-1"
+                        )
+                    ]),
+                    BridgePressing(releases: [
                         BridgeMetadataResult(
                             source: .musicBrainz,
                             releaseId: "rel-bbb",
@@ -88,23 +104,33 @@
                             format: "CD",
                             label: "Another Label",
                             catalogNumber: "AL-1234",
-                            country: "JP"
-                        ),
-                    ]
-                )
+                            country: "JP",
+                            barcode: nil,
+                            sourceGroupId: "grp-1"
+                        )
+                    ]),
+                ]
             ),
-            ReleaseGroup(
-                bridge: BridgeReleaseGroup(
-                    id: "grp-2",
-                    sourceGroupId: "grp-2",
-                    title: "Album Title One (Remaster)",
-                    artist: "Artist Name",
-                    coverArt: nil,
-                    sourceLabel: "MusicBrainz",
-                    groupUrl: "https://musicbrainz.org/release-group/grp-2",
-                    yearMin: 2005,
-                    yearMax: 2005,
-                    pressings: [
+            BridgeReleaseGroup(
+                id: "grp-2",
+                title: "Album Title One (Remaster)",
+                artist: "Artist Name",
+                coverArt: nil,
+                sources: [
+                    BridgeReleaseGroupSource(
+                        source: .musicBrainz,
+                        groupUrl:
+                            "https://musicbrainz.org/release-group/grp-2"
+                    ),
+                    BridgeReleaseGroupSource(
+                        source: .discogs,
+                        groupUrl: "https://www.discogs.com/master/master-7"
+                    ),
+                ],
+                yearMin: 2005,
+                yearMax: 2005,
+                pressings: [
+                    BridgePressing(releases: [
                         BridgeMetadataResult(
                             source: .musicBrainz,
                             releaseId: "rel-ccc",
@@ -112,12 +138,28 @@
                             format: "CD",
                             label: "Reissue Records",
                             catalogNumber: "RR-500",
-                            country: "EU"
-                        )
-                    ]
-                )
+                            country: "EU",
+                            barcode: "0123456789029",
+                            sourceGroupId: "grp-2"
+                        ),
+                        BridgeMetadataResult(
+                            source: .discogs,
+                            releaseId: "rel-ddd",
+                            year: 2005,
+                            format: "CD",
+                            label: "Reissue Records",
+                            catalogNumber: "RR-500",
+                            country: "EU",
+                            barcode: "0123456789029",
+                            sourceGroupId: "master-7"
+                        ),
+                    ])
+                ]
             ),
         ]
+
+        static let searchGroupsManual: [ReleaseGroup] =
+            searchGroupsManualBridge.map(ReleaseGroup.init(bridge:))
 
         /// The releases the disc ID and the barcode each named when they share
         /// none — one card per release group.
@@ -129,7 +171,9 @@
                 format: "CD",
                 label: "Label A",
                 catalogNumber: "AAA-001",
-                country: "US"
+                country: "US",
+                barcode: nil,
+                sourceGroupId: nil
             )
         ]
 
@@ -141,34 +185,42 @@
                 format: "CD",
                 label: "Label B",
                 catalogNumber: "BBB-002",
-                country: "JP"
+                country: "JP",
+                barcode: nil,
+                sourceGroupId: nil
             )
         ]
 
         static let discidOnlyGroup = BridgeReleaseGroup(
             id: "group-disc",
-            sourceGroupId: "group-disc",
             title: "Album Title",
             artist: "Artist Name",
             coverArt: nil,
-            sourceLabel: "MusicBrainz",
-            groupUrl: "https://musicbrainz.org/release-group/group-disc",
+            sources: [
+                BridgeReleaseGroupSource(
+                    source: .musicBrainz,
+                    groupUrl: "https://musicbrainz.org/release-group/group-disc"
+                )
+            ],
             yearMin: 1996,
             yearMax: 1996,
-            pressings: discidOnlyResults
+            pressings: discidOnlyResults.map { BridgePressing(releases: [$0]) }
         )
 
         static let barcodeOnlyGroup = BridgeReleaseGroup(
             id: "group-bar",
-            sourceGroupId: "group-bar",
             title: "Other Album Title",
             artist: "Artist Name",
             coverArt: nil,
-            sourceLabel: "MusicBrainz",
-            groupUrl: "https://musicbrainz.org/release-group/group-bar",
+            sources: [
+                BridgeReleaseGroupSource(
+                    source: .musicBrainz,
+                    groupUrl: "https://musicbrainz.org/release-group/group-bar"
+                )
+            ],
             yearMin: 2001,
             yearMax: 2001,
-            pressings: barcodeOnlyResults
+            pressings: barcodeOnlyResults.map { BridgePressing(releases: [$0]) }
         )
 
         /// Each row says which signal produced it — the whole of what tells
@@ -339,11 +391,9 @@
         static let searchStateIdle = ImportSearchState(
             identifyState: .idle,
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -361,11 +411,9 @@
                 provenance: searchProvenanceExact
             ),
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -390,6 +438,16 @@
             ])
         )
 
+        /// A settled typed search over both providers, with results.
+        static let manualSearchRun = BridgeCandidateSearch(
+            query: .general(artist: "Artist Name", album: "Album Title One"),
+            musicbrainz: .done(count: 3),
+            discogs: .notConfigured,
+            groups: searchGroupsManualBridge,
+            libraryStatuses: [:],
+            settled: true
+        )
+
         /// Manual-search display state: results listed, the form open.
         static let searchStateManual = ImportSearchState(
             identifyState: .found(
@@ -399,11 +457,9 @@
                 provenance: [:]
             ),
             error: nil,
-            searchGroups: searchGroupsManual,
+            search: manualSearchRun,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: true,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -444,11 +500,9 @@
         static let searchStateDisagreement = ImportSearchState(
             identifyState: IdentifyState(bridge: bridgeDisagreementState),
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -480,11 +534,9 @@
                 barcode: .skipped
             ),
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: false,
@@ -513,11 +565,9 @@
         static let searchStateNotFound = ImportSearchState(
             identifyState: .notFoundAnywhere,
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,

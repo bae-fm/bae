@@ -141,6 +141,10 @@ pub struct DiscogsSearchResult {
     pub country: Option<String>,
     pub label: Option<Vec<String>>,
     pub catno: Option<String>,
+    /// Every barcode Discogs holds for the pressing, in the order it lists
+    /// them. Absent from the response for a release with none.
+    #[serde(default)]
+    pub barcode: Vec<String>,
     #[serde(
         default,
         deserialize_with = "crate::serde_helpers::empty_string_as_none"

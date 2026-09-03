@@ -1,8 +1,5 @@
 import BaeKit
 import SwiftUI
-import os.log
-
-private let logger = Logger.bae("ImportSearchFlow")
 
 enum ImportSearchFlow {
     // MARK: - Bindings that read/write Candidate.search on the store
@@ -18,23 +15,6 @@ enum ImportSearchFlow {
             set: { newValue in
                 importStore.mutateCandidate(forKey: key) {
                     $0.search.activeTab = newValue
-                }
-            },
-        )
-    }
-
-    @MainActor
-    static func makeSearchSourceBinding(
-        importStore: ImportStore,
-        key: String,
-        candidate: Candidate,
-        field: WritableKeyPath<CandidateSearchState, Bool>
-    ) -> Binding<Bool> {
-        Binding(
-            get: { candidate.search[keyPath: field] },
-            set: { newValue in
-                importStore.mutateCandidate(forKey: key) {
-                    $0.search[keyPath: field] = newValue
                 }
             },
         )
@@ -59,132 +39,35 @@ enum ImportSearchFlow {
 
     // MARK: - Search dispatch
 
+    /// Submit the form's query. Fire-and-forget: every configured provider is
+    /// asked at once and each answer lands on the candidate's runtime, which
+    /// the pane draws — so nothing here waits for a result or holds one.
     @MainActor
-    static func dispatchSearch(
+    static func startSearch(
         importer: Importer,
         importStore: ImportStore,
-        key: String,
-        discogsAvailable: Bool
+        key: String
     ) {
         guard let snapshot = importStore.candidate(forKey: key) else {
             return
         }
-        let slot = snapshot.search.activeSlot(
-            discogsAvailable: discogsAvailable
-        )
-        guard let bridgeSources = slot.sources.bridgeSources else {
-            return
-        }
-        let query = searchQuery(
-            from: snapshot.search,
-            sources: bridgeSources
-        )
-
-        markSearching(importStore: importStore, key: key, slot: slot)
-
-        let task = Task { @MainActor in
-            do {
-                let response = try await importer.searchForCandidate(query)
-                applySearchResults(
-                    response,
-                    importer: importer,
-                    importStore: importStore,
-                    key: key,
-                    slot: slot
-                )
-            }
-            catch is CancellationError {
-                logger.debug(
-                    "Search cancelled for key: \(key)"
-                )
-                clearSearching(
-                    importStore: importStore,
-                    key: key,
-                    slot: slot,
-                    error: nil
-                )
-            }
-            catch {
-                logger.error(
-                    "Search failed: \(error.localizedDescription)"
-                )
-                clearSearching(
-                    importStore: importStore,
-                    key: key,
-                    slot: slot,
-                    error: error.displayLine.map {
-                        String(localized: "Search failed: \($0)")
-                    }
-                )
-            }
-        }
-
-        importStore.mutateCandidate(forKey: key) { candidate in
-            candidate.searchTask = CancelOnDeinit(task)
-        }
-    }
-
-    @MainActor
-    private static func markSearching(
-        importStore: ImportStore,
-        key: String,
-        slot: CandidateSearchSlot
-    ) {
-        importStore.mutateCandidate(forKey: key) { candidate in
-            var tabResults = candidate.search.results(for: slot)
-            tabResults.isSearching = true
-            candidate.search.setResults(tabResults, for: slot)
-            candidate.error = nil
-        }
+        importStore.mutateCandidate(forKey: key) { $0.error = nil }
+        importer.startCandidateSearch(key, searchQuery(from: snapshot.search))
     }
 
     /// The bridge query for the active tab: the general (artist/album),
-    /// catalog-number, or barcode field set, scoped to the selected providers.
+    /// catalog-number, or barcode field set.
     @MainActor
     private static func searchQuery(
-        from search: CandidateSearchState,
-        sources: BridgeSearchSources
+        from search: CandidateSearchState
     ) -> BridgeSearchQuery {
         switch search.activeTab {
         case .general:
-            .general(
-                artist: search.searchArtist,
-                album: search.searchAlbum,
-                sources: sources
-            )
+            .general(artist: search.searchArtist, album: search.searchAlbum)
         case .catalogNumber:
-            .catalogNumber(
-                catalogNumber: search.searchCatalog,
-                sources: sources
-            )
+            .catalogNumber(catalogNumber: search.searchCatalog)
         case .barcode:
-            .barcode(
-                barcode: search.searchBarcode,
-                sources: sources
-            )
-        }
-    }
-
-    /// Clear the in-flight spinner on the captured tab (cancel or failure). On
-    /// failure, `error` is set and the search task is dropped; on cancel both
-    /// stay as-is (a fresh search owns the task).
-    @MainActor
-    private static func clearSearching(
-        importStore: ImportStore,
-        key: String,
-        slot: CandidateSearchSlot,
-        error: String?
-    ) {
-        importStore.mutateCandidate(forKey: key) { candidate in
-            if let error {
-                candidate.error = error
-            }
-            var tabResults = candidate.search.results(for: slot)
-            tabResults.isSearching = false
-            candidate.search.setResults(tabResults, for: slot)
-            if error != nil {
-                candidate.searchTask = nil
-            }
+            .barcode(barcode: search.searchBarcode)
         }
     }
 }

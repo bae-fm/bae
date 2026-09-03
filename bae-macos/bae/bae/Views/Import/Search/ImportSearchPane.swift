@@ -14,10 +14,6 @@ struct ImportSearchPane: View {
     @Binding
     var activeTab: SearchTab
     @Binding
-    var musicBrainzSelected: Bool
-    @Binding
-    var discogsSelected: Bool
-    @Binding
     var searchArtist: String
     @Binding
     var searchAlbum: String
@@ -26,6 +22,10 @@ struct ImportSearchPane: View {
     @Binding
     var searchBarcode: String
     let onSearch: () -> Void
+    /// Drop the submitted search, giving the result area back to identify.
+    let onClearSearch: () -> Void
+    /// Re-ask only the providers whose part of the search failed.
+    let onRetrySearch: () -> Void
     let onOpenSettings: () -> Void
     /// Re-identifying an existing library release can still use its local file
     /// tags directly. Folder import source changes live on the draft card.
@@ -83,7 +83,7 @@ struct ImportSearchPane: View {
     }
 
     private var automaticFailures: [BridgeIdentifyFailure] {
-        guard case .failed(let failures) = state.identifyState else {
+        guard case .failed(let failures, _, _, _) = state.identifyState else {
             return []
         }
         return failures
@@ -253,56 +253,6 @@ struct ImportSearchPane: View {
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
-
-    // MARK: - Manual
-
-    @ViewBuilder
-    private var manualForm: some View {
-        ImportSearchFormView(
-            activeTab: $activeTab,
-            musicBrainzSelected: $musicBrainzSelected,
-            discogsSelected: $discogsSelected,
-            searchArtist: $searchArtist,
-            searchAlbum: $searchAlbum,
-            searchCatalog: $searchCatalog,
-            searchBarcode: $searchBarcode,
-            discogsEnabled: state.discogsEnabled,
-            signals: state.signals,
-            onSearch: onSearch,
-            onOpenSettings: onOpenSettings,
-        )
-        if state.isSearching || state.hasSearched
-            || !state.searchGroups.isEmpty
-        {
-            Divider()
-            if state.isSearching {
-                ProgressView("Searching...")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 32)
-            }
-            else if state.searchGroups.isEmpty {
-                ContentUnavailableView(
-                    "No matches found",
-                    systemImage: "magnifyingglass",
-                    description: Text(
-                        "Try different search terms or another source"
-                    ),
-                )
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 32)
-            }
-            else {
-                ReleaseGroupListView(
-                    groups: state.searchGroups,
-                    isImporting: state.isImporting,
-                    libraryStatuses: state.libraryStatuses,
-                    selectedReleaseId: state.selectedReleaseId,
-                    loadingReleaseId: state.loadingReleaseId,
-                    onSelect: onSelect,
-                )
-            }
-        }
-    }
 }
 
 #if DEBUG
@@ -322,13 +272,13 @@ struct ImportSearchPane: View {
                 state: state,
                 mode: .constant(mode),
                 activeTab: .constant(.general),
-                musicBrainzSelected: .constant(true),
-                discogsSelected: .constant(true),
                 searchArtist: .constant(searchArtist),
                 searchAlbum: .constant(searchAlbum),
                 searchCatalog: .constant(""),
                 searchBarcode: .constant(""),
                 onSearch: {},
+                onClearSearch: {},
+                onRetrySearch: {},
                 onOpenSettings: {},
                 onUseFileTags: nil,
                 onToggleSignal: { _ in },

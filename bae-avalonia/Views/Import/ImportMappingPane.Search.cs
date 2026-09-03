@@ -10,52 +10,25 @@ namespace Bae.Desktop;
 
 internal sealed partial class ImportMappingPane
 {
-    // Find online keeps both methods alive and renders only the selected one.
+    // Find online is one page: the result area on top, the typed search form
+    // docked below it. The identify verdict and a submitted search share that
+    // result area — a search takes it over while it is running, and clearing
+    // the search gives it back.
     private Control BuildSearchEditor()
     {
         var column = new StackPanel { Spacing = 8 };
-        column.Children.Add(SearchMethodSelector());
-        column.Children.Add(_findOnlineMethod == BridgeDefaultFindOnlineMode.Automatic
-            ? AutomaticHalf()
-            : ManualHalf());
+        column.Children.Add(SearchResultArea());
+        column.Children.Add(SearchForm());
         return column;
     }
 
-    private Control SearchMethodSelector()
-    {
-        var methods = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        methods.Children.Add(MethodButton(
-            Loc.Chrome("import.search.auto"),
-            BridgeDefaultFindOnlineMode.Automatic));
-        methods.Children.Add(MethodButton(
-            Loc.Chrome("import.row.search_manually"),
-            BridgeDefaultFindOnlineMode.SearchManually));
-        return methods;
-    }
+    private Control SearchResultArea() =>
+        _runtime?.Search is { } search ? SearchRunArea(search) : IdentifyArea();
 
-    private Button MethodButton(string label, BridgeDefaultFindOnlineMode method)
-    {
-        var button = ImportPaneUi.RowButton(label);
-        button.IsEnabled = _findOnlineMethod != method;
-        button.Click += (_, _) =>
-        {
-            _findOnlineMethod = method;
-            if (method == BridgeDefaultFindOnlineMode.Automatic
-                && _key is { } key)
-            {
-                _ = _import.StartInteractiveLookup(key);
-            }
-            Render();
-        };
-        return button;
-    }
-
-    private Control AutomaticHalf()
+    // What identification has to say: its badge row, the pressings it found,
+    // and the sources that failed. A failed identify still lists what the
+    // provider that did answer found.
+    private Control IdentifyArea()
     {
         var column = new StackPanel { Spacing = 8 };
         var signals = _import.ProjectRun(_runtime).Signals;
@@ -72,7 +45,7 @@ internal sealed partial class ImportMappingPane
         {
             column.Children.Add(ChoiceList(matches));
         }
-        else if (ShownIdentifyState is BridgeIdentifyState.Failed failed)
+        if (ShownIdentifyState is BridgeIdentifyState.Failed failed)
         {
             foreach (var failure in failed.Failures)
             {
@@ -81,18 +54,16 @@ internal sealed partial class ImportMappingPane
                     secondary: true));
             }
         }
-        else if (ShownIdentifyState is not BridgeIdentifyState.Idle
+        else if (matches.Count == 0
+            && ShownIdentifyState is not BridgeIdentifyState.Idle
             and not BridgeIdentifyState.Triangulating)
         {
             column.Children.Add(ImportPaneUi.Cell(
                 Loc.Chrome("import.search.no_automatic_matches"),
                 secondary: true));
         }
-        if (ShownIdentifyState is BridgeIdentifyState.Triangulating)
-        {
-            column.Children.Add(new Spinner { Width = 16, Height = 16 });
-        }
-        else if (ShownIdentifyState is BridgeIdentifyState.Idle)
+        if (ShownIdentifyState is BridgeIdentifyState.Triangulating
+            or BridgeIdentifyState.Idle)
         {
             column.Children.Add(new Spinner { Width = 16, Height = 16 });
         }
@@ -111,8 +82,122 @@ internal sealed partial class ImportMappingPane
         return column;
     }
 
-    // The typed search owns only its source, fields, submission, and results.
-    private Control ManualHalf()
+    // A submitted search, as its providers land. Whatever has answered draws
+    // straight away; a provider still looking says so, and one that failed says
+    // so with its own Retry.
+    private Control SearchRunArea(BridgeCandidateSearch search)
+    {
+        var column = new StackPanel { Spacing = 8 };
+
+        var header = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+        };
+        header.Children.Add(ImportPaneUi.Cell(
+            Loc.Chrome("import.search.results_for", "query", SearchQuerySummary(search.Query)),
+            secondary: true));
+        var clear = ImportPaneUi.RowButton(Loc.Chrome("action.clear"));
+        clear.Click += (_, _) =>
+        {
+            if (_key is { } key)
+            {
+                _import.ClearCandidateSearch(key);
+            }
+        };
+        header.Children.Add(clear);
+        column.Children.Add(header);
+
+        var choices = _app.Import.GroupChoices(search.Groups);
+        if (choices.Count > 0)
+        {
+            column.Children.Add(ChoiceList(choices));
+        }
+
+        foreach (var (source, state) in new[]
+        {
+            (BridgeMetadataSource.MusicBrainz, search.Musicbrainz),
+            (BridgeMetadataSource.Discogs, search.Discogs),
+        })
+        {
+            switch (state)
+            {
+                case BridgeSourceSearch.Searching:
+                    column.Children.Add(ImportPaneUi.Cell(
+                        Loc.Chrome(
+                            "import.search.searching_source",
+                            "source",
+                            BaeBridgeMethods.BridgeMetadataSourceName(source)),
+                        secondary: true));
+                    break;
+                case BridgeSourceSearch.Failed failure:
+                    column.Children.Add(SourceFailureRow(source, failure.Failure));
+                    break;
+                case BridgeSourceSearch.NotConfigured:
+                    column.Children.Add(ImportPaneUi.Cell(
+                        Loc.Chrome(
+                            "import.search.source_not_configured",
+                            "source",
+                            BaeBridgeMethods.BridgeMetadataSourceName(source)),
+                        secondary: true));
+                    break;
+            }
+        }
+
+        if (search.Settled && choices.Count == 0)
+        {
+            column.Children.Add(ImportPaneUi.Cell(
+                Loc.Chrome("search.no_matches"), secondary: true));
+        }
+        return column;
+    }
+
+    private Control SourceFailureRow(
+        BridgeMetadataSource source,
+        BridgeLookupFailure failure)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+        };
+        row.Children.Add(ImportPaneUi.Cell(
+            Loc.Chrome(
+                "import.search.source_failed",
+                new Dictionary<string, object?>
+                {
+                    ["source"] = BaeBridgeMethods.BridgeMetadataSourceName(source),
+                    ["reason"] = BridgeDisplay.LocalizedLine(failure),
+                }),
+            secondary: true));
+        var retry = ImportPaneUi.RowButton(Loc.Chrome("action.retry"));
+        retry.Click += (_, _) =>
+        {
+            if (_key is { } key)
+            {
+                _import.RetryCandidateSearch(key);
+            }
+        };
+        row.Children.Add(retry);
+        return row;
+    }
+
+    /// <summary>What the search asked for, as the header line's subject.</summary>
+    private static string SearchQuerySummary(BridgeSearchQuery query) => query switch
+    {
+        BridgeSearchQuery.General general => string.Join(
+            " · ",
+            new[] { general.Artist, general.Album }
+                .Where(part => !string.IsNullOrWhiteSpace(part))),
+        BridgeSearchQuery.CatalogNumber catalog => catalog.CatalogNumberValue,
+        BridgeSearchQuery.Barcode barcode => barcode.BarcodeValue,
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(query), query, "Unknown search query"),
+    };
+
+    // The typed form, docked below the result area whatever the result area is
+    // showing. No source selection: every configured provider is asked.
+    private Control SearchForm()
     {
         var column = new StackPanel { Spacing = 8 };
 
@@ -132,99 +217,34 @@ internal sealed partial class ImportMappingPane
             ManualSearchType.Barcode));
         column.Children.Add(types);
 
-        var availableSources = _searchSources with
-        {
-            Discogs = _searchSources.Discogs
-                && _app.SettingsStore.Current?.DiscogsConfigured == true,
-        };
-        var sourceToggles = ImportPaneUi.MetadataSourceToggles(
-            availableSources,
-            _app.SettingsStore.Current?.DiscogsConfigured == true,
-            out var musicBrainz,
-            out var discogs);
-        musicBrainz.IsCheckedChanged += (_, _) =>
-        {
-            _searchSources = _searchSources with
-            {
-                MusicBrainz = musicBrainz.IsChecked == true,
-            };
-            Render();
-        };
-        discogs.IsCheckedChanged += (_, _) =>
-        {
-            _searchSources = _searchSources with
-            {
-                Discogs = discogs.IsChecked == true,
-            };
-            Render();
-        };
-        var sourceField = new StackPanel { Spacing = 4 };
-        sourceField.Children.Add(DialogUi.SectionLabel(Loc.Chrome("search.field.source")));
-        sourceField.Children.Add(sourceToggles);
-
         Control fields = _manualSearchType switch
         {
-            ManualSearchType.General => GeneralSearchFields(sourceField),
+            ManualSearchType.General => GeneralSearchFields(),
             ManualSearchType.Catalog => SearchValueField(
                 Loc.Chrome("signal.kind.catalog"),
                 _searchCatalog,
-                value => _searchCatalog = value,
-                sourceField),
+                value => _searchCatalog = value),
             ManualSearchType.Barcode => SearchValueField(
                 Loc.Chrome("signal.kind.barcode"),
                 _searchBarcode,
-                value => _searchBarcode = value,
-                sourceField),
+                value => _searchBarcode = value),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(_manualSearchType), _manualSearchType, "Unknown manual search type"),
         };
         column.Children.Add(fields);
 
         var search = ImportPaneUi.RowButton(Loc.Chrome("action.search"));
-        search.IsEnabled = availableSources.QuerySources is not null;
-        search.Click += async (_, _) =>
+        search.Click += (_, _) =>
         {
-            var querySources = availableSources.QuerySources;
-            if (querySources is null)
+            if (_key is { } key)
             {
-                return;
+                _import.StartCandidateSearch(key, ManualSearchQuery());
             }
-            search.IsEnabled = false;
-            var key = new ManualSearchKey(_manualSearchType, availableSources);
-            var query = ManualSearchQuery(querySources);
-            var (current, found) = await _app.Import.SearchReleases(query);
-            search.IsEnabled = true;
-            if (!current)
-            {
-                return;
-            }
-            _manualSearchResults[key] = new ManualSearchResult(
-                found.Candidates ?? new List<ReleaseCandidateChoice>(),
-                found.Error);
-            Render();
         };
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(search);
         column.Children.Add(actions);
-
-        var resultKey = new ManualSearchKey(_manualSearchType, availableSources);
-        if (_manualSearchResults.TryGetValue(resultKey, out var result))
-        {
-            if (result.Error is { Length: > 0 } error)
-            {
-                column.Children.Add(ImportPaneUi.Cell(error, secondary: true));
-            }
-            else if (result.Candidates.Count > 0)
-            {
-                column.Children.Add(ChoiceList(result.Candidates));
-            }
-            else
-            {
-                column.Children.Add(ImportPaneUi.Cell(
-                    Loc.Chrome("search.no_matches"), secondary: true));
-            }
-        }
         return column;
     }
 
@@ -242,7 +262,7 @@ internal sealed partial class ImportMappingPane
         return button;
     }
 
-    private Control GeneralSearchFields(Control sourceField)
+    private Control GeneralSearchFields()
     {
         var artistField = DialogUi.Field(Loc.Chrome("import.field.artist_manual"), out var artistBox);
         artistBox.Text = _searchArtist;
@@ -252,52 +272,35 @@ internal sealed partial class ImportMappingPane
         albumBox.TextChanged += (_, _) => _searchAlbum = albumBox.Text ?? string.Empty;
         var fields = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,*,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("*,*"),
             ColumnSpacing = 8,
         };
         Grid.SetColumn(artistField, 0);
         Grid.SetColumn(albumField, 1);
-        Grid.SetColumn(sourceField, 2);
         fields.Children.Add(artistField);
         fields.Children.Add(albumField);
-        fields.Children.Add(sourceField);
         return fields;
     }
 
     private static Control SearchValueField(
         string label,
         string value,
-        Action<string> onChange,
-        Control sourceField)
+        Action<string> onChange)
     {
         var valueField = DialogUi.Field(label, out var valueBox);
         valueBox.Text = value;
         valueBox.TextChanged += (_, _) => onChange(valueBox.Text ?? string.Empty);
-        var fields = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            ColumnSpacing = 8,
-        };
-        Grid.SetColumn(valueField, 0);
-        Grid.SetColumn(sourceField, 1);
-        fields.Children.Add(valueField);
-        fields.Children.Add(sourceField);
-        return fields;
+        return valueField;
     }
 
-    private BridgeSearchQuery ManualSearchQuery(BridgeSearchSources sources) =>
+    private BridgeSearchQuery ManualSearchQuery() =>
         _manualSearchType switch
         {
             ManualSearchType.General => new BridgeSearchQuery.General(
                 _searchArtist,
-                _searchAlbum,
-                sources),
-            ManualSearchType.Catalog => new BridgeSearchQuery.CatalogNumber(
-                _searchCatalog,
-                sources),
-            ManualSearchType.Barcode => new BridgeSearchQuery.Barcode(
-                _searchBarcode,
-                sources),
+                _searchAlbum),
+            ManualSearchType.Catalog => new BridgeSearchQuery.CatalogNumber(_searchCatalog),
+            ManualSearchType.Barcode => new BridgeSearchQuery.Barcode(_searchBarcode),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(_manualSearchType), _manualSearchType, "Unknown manual search type"),
         };

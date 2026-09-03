@@ -364,6 +364,7 @@ fn found_verdict(track_count: u32, source: Option<SourceTracks>) -> TerminalVerd
             label: None,
             catalog_number: None,
             country: None,
+            barcode: None,
             cover_art: None,
             source_group_id: Some("rg-1".to_string()),
             source_tracks: source,

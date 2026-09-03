@@ -13,19 +13,6 @@ namespace Bae.Desktop;
 /// Split out so the pane's two sections read as their own structure rather than
 /// as two copies of the same Border-and-TextBlock spelling.
 /// </summary>
-internal readonly record struct ManualSearchSourceSelection(
-    bool MusicBrainz,
-    bool Discogs)
-{
-    internal BridgeSearchSources? QuerySources => (MusicBrainz, Discogs) switch
-    {
-        (true, true) => new BridgeSearchSources.Both(),
-        (true, false) => new BridgeSearchSources.One(BridgeMetadataSource.MusicBrainz),
-        (false, true) => new BridgeSearchSources.One(BridgeMetadataSource.Discogs),
-        (false, false) => null,
-    };
-}
-
 internal static class ImportPaneUi
 {
     /// <summary>A section's heading, with an optional plain note beside it (the
@@ -145,30 +132,5 @@ internal static class ImportPaneUi
         button[!Button.BorderBrushProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         return button;
-    }
-
-    internal static StackPanel MetadataSourceToggles(
-        ManualSearchSourceSelection selection,
-        bool discogsEnabled,
-        out CheckBox musicBrainz,
-        out CheckBox discogs)
-    {
-        musicBrainz = new CheckBox
-        {
-            Content = "MusicBrainz",
-            IsChecked = selection.MusicBrainz,
-        };
-        discogs = new CheckBox
-        {
-            Content = "Discogs",
-            IsChecked = discogsEnabled && selection.Discogs,
-            IsEnabled = discogsEnabled,
-        };
-        return new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 12,
-            Children = { musicBrainz, discogs },
-        };
     }
 }

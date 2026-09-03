@@ -192,9 +192,10 @@ impl Automation {
         &self,
         query: AutomationSearchQuery,
     ) -> Result<AutomationSearchResults, AutomationError> {
+        let (query, source) = search_query(query);
         let results = self
             .services
-            .import_search_with_status(search_query(query))
+            .import_search_with_status(query, source)
             .await?;
         Ok(automation_search_results(results))
     }

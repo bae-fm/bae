@@ -21,25 +21,6 @@ enum SearchTab: Hashable {
     case barcode
 }
 
-struct SearchSourceSelection: Hashable {
-    let musicBrainz: Bool
-    let discogs: Bool
-
-    var bridgeSources: BridgeSearchSources? {
-        switch (musicBrainz, discogs) {
-        case (true, true): .both
-        case (true, false): .one(source: .musicBrainz)
-        case (false, true): .one(source: .discogs)
-        case (false, false): nil
-        }
-    }
-}
-
-struct CandidateSearchSlot: Hashable {
-    let tab: SearchTab
-    let sources: SearchSourceSelection
-}
-
 struct ReleaseLibraryStatusSubscriptionKey: Hashable {
     let source: BridgeMetadataSource
     let releaseId: String
@@ -167,67 +148,16 @@ enum CandidateFileTagsPreviewState: Equatable {
 
 // MARK: - CandidateSearchState
 
-/// Per-tab search state plus form fields and the selected providers.
+/// The typed-search form: which query it is asking and what has been typed
+/// into it. What the search turned up is not here — every configured provider
+/// answers it separately, so the run lives on the candidate's runtime and the
+/// pane draws it as each provider lands.
 struct CandidateSearchState: Equatable {
-    /// Search results for one (tab, provider selection) combination, grouped into
-    /// release-group cards by core.
-    struct TabResults: Equatable {
-        var groups: [ReleaseGroup] = []
-        var libraryStatusSubscriptionKeys:
-            Set<ReleaseLibraryStatusSubscriptionKey> = []
-        var hasSearched: Bool = false
-        var isSearching: Bool = false
-    }
-
-    /// Results keyed by tab, then provider selection. A missing key is a combination the
-    /// user hasn't searched yet — identical to `TabResults()`'s initial state.
-    private var resultsByTabSources:
-        [SearchTab: [SearchSourceSelection: TabResults]] = [:]
-
     var searchArtist: String = ""
     var searchAlbum: String = ""
     var searchCatalog: String = ""
     var searchBarcode: String = ""
     var activeTab: SearchTab = .general
-    var musicBrainzSelected: Bool = true
-    var discogsSelected: Bool = true
-
-    func selectedSources(discogsAvailable: Bool) -> SearchSourceSelection {
-        SearchSourceSelection(
-            musicBrainz: musicBrainzSelected,
-            discogs: discogsAvailable && discogsSelected
-        )
-    }
-
-    func activeResults(discogsAvailable: Bool) -> TabResults {
-        results(for: activeSlot(discogsAvailable: discogsAvailable))
-    }
-
-    func activeSlot(discogsAvailable: Bool) -> CandidateSearchSlot {
-        CandidateSearchSlot(
-            tab: activeTab,
-            sources: selectedSources(discogsAvailable: discogsAvailable)
-        )
-    }
-
-    func results(for slot: CandidateSearchSlot) -> TabResults {
-        resultsByTabSources[slot.tab]?[slot.sources] ?? TabResults()
-    }
-
-    mutating func setResults(_ state: TabResults, for slot: CandidateSearchSlot)
-    {
-        resultsByTabSources[slot.tab, default: [:]][slot.sources] = state
-    }
-
-    func libraryStatusSubscriptionKeys()
-        -> Set<ReleaseLibraryStatusSubscriptionKey>
-    {
-        resultsByTabSources.values
-            .flatMap { bySource in
-                bySource.values.flatMap(\.libraryStatusSubscriptionKeys)
-            }
-            .reduce(into: []) { $0.insert($1) }
-    }
 }
 
 // MARK: - Candidate
@@ -292,12 +222,6 @@ struct Candidate: Equatable, Identifiable {
         return releaseId
     }
     var search: CandidateSearchState = .init()
-    // periphery:ignore
-    /// In-flight search task. Replacing it cancels the old one via the
-    /// previous wrapper's `deinit`; clearing it after the task completes
-    /// lets the wrapper drop without re-cancelling. Removing the candidate
-    /// from the store drops the wrapper too, cancelling the request.
-    var searchTask: CancelOnDeinit?
 
     var id: String {
         key
@@ -339,7 +263,6 @@ struct Candidate: Equatable, Identifiable {
             files.fileTagsIdentity == existing.files.fileTagsIdentity
             ? existing.fileTagsPreview : .unloaded
         copy.search = existing.search
-        copy.searchTask = existing.searchTask
         return copy
     }
 

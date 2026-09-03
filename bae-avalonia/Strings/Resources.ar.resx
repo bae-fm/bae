@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>فشل البحث</value></data>
   <data name="search.field.album" xml:space="preserve"><value>الألبوم</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>الفنان</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>المصدر</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>لا توجد تطابقات</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>رمز Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>إعادة التحقق</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>بلا</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
+  <data name="action.clear" xml:space="preserve"><value>مسح</value></data>
+  <data name="action.retry" xml:space="preserve"><value>إعادة المحاولة</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>نتائج {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>جارٍ البحث في {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>لم يستجب {source}: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>لم يتم إعداد {source}</value></data>
 </root>

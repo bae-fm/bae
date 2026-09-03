@@ -56,8 +56,9 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
         barcode_results: Vec::new(),
         catalog_results: Vec::new(),
         discid_failure: None,
-        barcode_failure: None,
-        catalog_failure: None,
+        barcode_failures: Vec::new(),
+        barcode_scan_failure: None,
+        catalog_failures: Vec::new(),
         matched_barcode: None,
         track_count,
     }

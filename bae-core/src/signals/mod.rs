@@ -32,7 +32,7 @@ pub mod barcode;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod cancellation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod candidate_text;
+pub(crate) mod candidate_text;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod disc_id;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -186,10 +186,19 @@ internal static class BridgeDisplay
         {
             BridgeIdentifyFailure.DiscId discId =>
                 $"{Loc.Chrome("signal.kind.disc_id")}: {LocalizedLine(discId.Failure)}",
+            BridgeIdentifyFailure.BarcodeScan scan =>
+                $"{Loc.Chrome("signal.kind.barcode")}: {LocalizedLine(scan.Failure)}",
+            // The barcode and catalog lookups ask every configured provider, so
+            // a failure names the one that did not answer — the other may well
+            // have, and its matches are on the same state.
             BridgeIdentifyFailure.Barcode barcode =>
-                $"{Loc.Chrome("signal.kind.barcode")}: {LocalizedLine(barcode.Failure)}",
+                $"{Loc.Chrome("signal.kind.barcode")} · "
+                    + $"{BaeBridgeMethods.BridgeMetadataSourceName(barcode.Source)}: "
+                    + LocalizedLine(barcode.Failure),
             BridgeIdentifyFailure.Catalog catalog =>
-                $"{Loc.Chrome("signal.kind.catalog")}: {LocalizedLine(catalog.Failure)}",
+                $"{Loc.Chrome("signal.kind.catalog")} · "
+                    + $"{BaeBridgeMethods.BridgeMetadataSourceName(catalog.Source)}: "
+                    + LocalizedLine(catalog.Failure),
             BridgeIdentifyFailure.ReleaseDetails details =>
                 $"{Loc.Chrome("import.error.load_release")}: {LocalizedLine(details.Failure)}",
             _ => throw new ArgumentOutOfRangeException(nameof(failure)),

@@ -863,6 +863,18 @@ internal sealed class ImportStore : IDisposable
     public System.Threading.Tasks.Task<bool> StartInteractiveLookup(string candidateKey) =>
         _import.IdentifyFolderForLookup(candidateKey);
 
+    // A candidate's typed search. Every configured provider is asked at once
+    // and each answer lands on the candidate's runtime, so these return
+    // nothing: whoever draws the key sees the run advance.
+    public bool StartCandidateSearch(string candidateKey, BridgeSearchQuery query) =>
+        _import.StartCandidateSearch(candidateKey, query);
+
+    public bool RetryCandidateSearch(string candidateKey) =>
+        _import.RetryCandidateSearch(candidateKey);
+
+    public bool ClearCandidateSearch(string candidateKey) =>
+        _import.ClearCandidateSearch(candidateKey);
+
     // Scan candidates, watched folders, and selection are per-library in-memory
     // state; clear them on teardown so the next library doesn't inherit the
     // previous one's list, and reset the tab to Pending. The sort order persists

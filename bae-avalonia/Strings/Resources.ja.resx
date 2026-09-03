@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>検索に失敗しました</value></data>
   <data name="search.field.album" xml:space="preserve"><value>アルバム</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>アーティスト</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>ソース</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>一致なし</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogsトークン</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>再確認</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>なし</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>オンライン検索</value></data>
+  <data name="action.clear" xml:space="preserve"><value>クリア</value></data>
+  <data name="action.retry" xml:space="preserve"><value>再試行</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} の検索結果</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source} を検索中…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} が応答しませんでした: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} は設定されていません</value></data>
 </root>

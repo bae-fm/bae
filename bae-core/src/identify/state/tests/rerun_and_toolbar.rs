@@ -31,6 +31,7 @@ fn driven_disagreement() -> IdentifyState {
                 pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y")),
                 pair("rel-3", Some("g-y")),
             ],
+            failures: Vec::new(),
         },
     );
     // Nothing intersects, so the set is the union: one disc-ID result and two
@@ -146,6 +147,7 @@ fn toggle_during_triangulation_keeps_looking_up() {
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
             results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
+            failures: Vec::new(),
         },
     );
     match state {
@@ -201,6 +203,7 @@ fn excluded_in_flight_disc_failure_does_not_fail_the_barcode_answer() {
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
             results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
+            failures: Vec::new(),
         },
     );
 
@@ -241,6 +244,7 @@ fn rerun_re_dispatches_lookups() {
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
             results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
+            failures: Vec::new(),
         },
     );
     assert!(matches!(state, IdentifyState::Found { .. }));
@@ -361,6 +365,7 @@ fn rerun_preserves_exclusions() {
                 pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y")),
                 pair("rel-3", Some("g-y")),
             ],
+            failures: Vec::new(),
         },
     );
     match state {
@@ -507,6 +512,7 @@ fn choosing_a_catalog_number_looks_it_up_and_intersects() {
         IdentifyEvent::CatalogLookupCompleted {
             for_catalog: "LBL 001".to_string(),
             results: vec![pair("rel-b", Some("g-x"))],
+            failures: Vec::new(),
         },
     );
     match state {
@@ -569,6 +575,7 @@ fn checking_the_chosen_catalog_number_again_clears_it() {
         IdentifyEvent::CatalogLookupCompleted {
             for_catalog: "LBL 001".to_string(),
             results: vec![pair("rel-b", Some("g-x"))],
+            failures: Vec::new(),
         },
     );
     let (state, effects) = step(
@@ -648,11 +655,15 @@ fn toolbar_shows_failed_barcode_lookup() {
     let failure = LookupFailure::Diagnostic {
         detail: "provider lookup failed".to_string(),
     };
+    let source_failure = SourceFailure {
+        source: MetadataSource::MusicBrainz,
+        failure: failure.clone(),
+    };
     let (state, _) = step(
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "012345678905".to_string(),
-            failure: failure.clone(),
+            failures: vec![source_failure.clone()],
         },
     );
     let barcode = state
@@ -678,11 +689,15 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
     let failure = LookupFailure::Diagnostic {
         detail: "provider lookup failed".to_string(),
     };
+    let source_failure = SourceFailure {
+        source: MetadataSource::MusicBrainz,
+        failure: failure.clone(),
+    };
     let (state, _) = step(
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "012345678905".to_string(),
-            failure: failure.clone(),
+            failures: vec![source_failure.clone()],
         },
     );
     assert!(matches!(state, IdentifyState::Failed { .. }));
@@ -888,11 +903,15 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     );
 
     let failure = LookupFailure::Provider { status: Some(500) };
+    let source_failure = SourceFailure {
+        source: MetadataSource::MusicBrainz,
+        failure: failure.clone(),
+    };
     let (state, _) = step(
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "BAR".to_string(),
-            failure: failure.clone(),
+            failures: vec![source_failure.clone()],
         },
     );
     // Disc-ID hasn't settled yet — the barcode failure alone can't terminate.
@@ -912,7 +931,7 @@ fn barcode_failure_before_disc_settles_is_retained_through_combine() {
     assert!(matches!(
         &state,
         IdentifyState::Failed { failures, .. }
-            if failures == &vec![crate::identify::IdentifyFailure::Barcode(failure.clone())]
+            if failures == &vec![crate::identify::IdentifyFailure::Barcode(source_failure.clone())]
     ));
     // The terminal toolbar surfaces the retained barcode failure.
     let barcode = state

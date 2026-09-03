@@ -62,6 +62,7 @@ fn sample_verdict() -> TerminalVerdict {
             label: Some("Label".to_string()),
             catalog_number: Some("CAT-1".to_string()),
             country: Some("US".to_string()),
+            barcode: None,
             cover_art: None,
             source_group_id: Some("group-1".to_string()),
             source_tracks: None,

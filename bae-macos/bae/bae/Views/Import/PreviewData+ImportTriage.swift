@@ -122,16 +122,19 @@
         private static let trackMismatchGroup = ReleaseGroup(
             bridge: BridgeReleaseGroup(
                 id: "group-track-mismatch",
-                sourceGroupId: "group-track-mismatch",
                 title: "Album Title Seven",
                 artist: "Artist Name",
                 coverArt: nil,
-                sourceLabel: "MusicBrainz",
-                groupUrl:
-                    "https://musicbrainz.org/release-group/group-track-mismatch",
+                sources: [
+                    BridgeReleaseGroupSource(
+                        source: .musicBrainz,
+                        groupUrl:
+                            "https://musicbrainz.org/release-group/group-track-mismatch"
+                    )
+                ],
                 yearMin: 1994,
                 yearMax: 1994,
-                pressings: [exactPressings[0]]
+                pressings: [BridgePressing(releases: [exactPressings[0]])]
             )
         )
 
@@ -580,7 +583,8 @@
                     return BridgeCandidateRuntimeSnapshot(
                         identifyState: .idle,
                         signalsToolbar: BridgeSignalsToolbar(signals: []),
-                        import: inFlight
+                        import: inFlight,
+                        search: nil
                     )
                 }
             )

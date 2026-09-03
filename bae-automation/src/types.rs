@@ -1,9 +1,11 @@
 use super::*;
 
 mod error;
+mod identify;
 mod metadata_edit;
 
 pub use error::AutomationError;
+pub use identify::*;
 pub use metadata_edit::*;
 
 #[derive(Debug, Clone, Serialize)]
@@ -283,83 +285,6 @@ pub struct AutomationToolbarSignal {
     pub options: Vec<AutomationSignalOption>,
 }
 
-/// Projects bae-core's `identify::DiscidProgress` — mid-flight result payloads
-/// reduce to a count; the full match set surfaces only in a terminal state.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationDiscidProgress {
-    Computing,
-    LookingUp,
-    Done { n_results: u32 },
-    Skipped,
-    Failed { failure: AutomationLookupFailure },
-}
-
-/// Projects bae-core's `identify::BarcodeProgress` — mid-flight result payloads
-/// reduce to a count; the full match set surfaces only in a terminal state.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationBarcodeProgress {
-    Scanning,
-    LookingUp {
-        current: String,
-        position: u32,
-        total: u32,
-    },
-    Done {
-        n_results: u32,
-    },
-    Failed {
-        failure: AutomationLookupFailure,
-    },
-    Skipped,
-}
-
-/// Mirrors bae-core's `identify::ResultProvenance`, paired with the release id
-/// it aligns to (the core type is index-aligned with the match list).
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationResultProvenance {
-    pub release_id: String,
-    pub by_disc_id: bool,
-    pub by_barcode: bool,
-    pub by_catalog: bool,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationIdentifyFailure {
-    DiscId { failure: AutomationLookupFailure },
-    Barcode { failure: AutomationLookupFailure },
-    Catalog { failure: AutomationLookupFailure },
-    ReleaseDetails { failure: AutomationLookupFailure },
-}
-
-/// Projects bae-core's `identify::IdentifyState`. The `SignalsContext`
-/// internals that drive core triangulation don't cross; terminal states carry
-/// the full match data an MCP client acts on.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationIdentifyState {
-    Idle,
-    Triangulating {
-        discid: AutomationDiscidProgress,
-        barcode: AutomationBarcodeProgress,
-    },
-    Found {
-        groups: Vec<AutomationReleaseGroup>,
-        library_statuses: Vec<AutomationLibraryStatus>,
-        track_count: u32,
-        provenance: Vec<AutomationResultProvenance>,
-    },
-    NotFoundAnywhere,
-    ManualOnly {
-        track_count: u32,
-    },
-    Failed {
-        failures: Vec<AutomationIdentifyFailure>,
-    },
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationSearchQuery {
@@ -425,11 +350,25 @@ pub struct AutomationReleaseGroup {
     pub title: String,
     pub artist: Option<String>,
     pub cover_art: Option<AutomationRemoteCover>,
-    pub source_label: String,
-    pub group_url: Option<String>,
+    /// Every source carrying this group, MusicBrainz first.
+    pub sources: Vec<AutomationReleaseGroupSource>,
     pub year_min: Option<i32>,
     pub year_max: Option<i32>,
-    pub pressings: Vec<AutomationMetadataResult>,
+    pub pressings: Vec<AutomationPressing>,
+}
+
+/// One source carrying a group, and its editorial page for it.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationReleaseGroupSource {
+    pub source: AutomationMetadataSource,
+    pub group_url: Option<String>,
+}
+
+/// One physical pressing, on every source that lists it. `releases[0]` is what
+/// picking the row picks.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationPressing {
+    pub releases: Vec<AutomationMetadataResult>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -443,6 +382,8 @@ pub struct AutomationMetadataResult {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
+    /// The barcode this source prints for the pressing, where it prints one.
+    pub barcode: Option<String>,
     pub cover_art: Option<AutomationRemoteCover>,
     pub source_group_id: Option<String>,
 }

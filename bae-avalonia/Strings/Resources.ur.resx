@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>تلاش ناکام</value></data>
   <data name="search.field.album" xml:space="preserve"><value>album</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>ماخذ</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>کوئی میل نہیں</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ٹوکن</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>دوبارہ جانچیں</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>آن لائن تلاش کریں</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>کوئی نہیں</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>آن لائن تلاش</value></data>
+  <data name="action.clear" xml:space="preserve"><value>صاف کریں</value></data>
+  <data name="action.retry" xml:space="preserve"><value>دوبارہ کوشش کریں</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} کے نتائج</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source} میں تلاش ہو رہی ہے…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} نے جواب نہیں دیا: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ترتیب نہیں دیا گیا</value></data>
 </root>

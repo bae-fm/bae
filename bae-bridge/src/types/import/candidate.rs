@@ -332,21 +332,6 @@ pub fn bridge_import_phase_key(phase: BridgeImportPhase) -> String {
     phase.loc_key().to_string()
 }
 
-/// One pressing under a release-group card. The card carries the album's title,
-/// artist, and cover, so this keeps only the pressing-distinguishing fields the
-/// row renders plus the id/source the import commit needs. Grouping happens in
-/// core, so the group id isn't surfaced.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeMetadataResult {
-    pub source: BridgeMetadataSource,
-    pub release_id: String,
-    pub year: Option<i32>,
-    pub format: Option<String>,
-    pub label: Option<String>,
-    pub catalog_number: Option<String>,
-    pub country: Option<String>,
-}
-
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeLibraryStatus {
     pub release_id: String,
@@ -354,42 +339,6 @@ pub struct BridgeLibraryStatus {
     pub album_in_library: bool,
     pub album_title: Option<String>,
     pub album_id: Option<String>,
-}
-
-/// A non-empty provider selection for manual search. The UI may show an empty
-/// form selection, but it cannot send one across the bridge.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSearchSources {
-    One { source: BridgeMetadataSource },
-    Both,
-}
-
-#[cfg(feature = "desktop")]
-impl BridgeSearchSources {
-    pub(crate) fn into_core(self) -> bae_core::import::SearchSources {
-        match self {
-            Self::One { source } => bae_core::import::SearchSources::One(source.into_core()),
-            Self::Both => bae_core::import::SearchSources::Both,
-        }
-    }
-}
-
-/// Search query — one of the three search modes.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeSearchQuery {
-    General {
-        artist: String,
-        album: String,
-        sources: BridgeSearchSources,
-    },
-    CatalogNumber {
-        catalog_number: String,
-        sources: BridgeSearchSources,
-    },
-    Barcode {
-        barcode: String,
-        sources: BridgeSearchSources,
-    },
 }
 
 #[cfg(feature = "desktop")]
@@ -706,37 +655,35 @@ pub enum BridgeBarcodeProgress {
     Done {
         n_results: u32,
     },
+    /// No provider answered, each with its own reason.
     Failed {
+        failures: Vec<BridgeSourceFailure>,
+    },
+    /// Reading the candidate's barcodes failed, so no provider was asked.
+    ScanFailed {
         failure: BridgeLookupFailure,
     },
     /// No artwork to scan.
     Skipped,
 }
 
-/// An album's release group with the pressings the search/identify surfaced
-/// for it, plus the display labels the group card renders. Mirrors
-/// `bae_core::import::release_group::ReleaseGroup` — the grouping and label
-/// formatting happen in core; the UI just iterates and renders.
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeReleaseGroup {
-    /// Stable card identity (shared group id, or the lone pressing's release
-    /// id for an ungrouped result).
-    pub id: String,
-    pub source_group_id: Option<String>,
-    pub title: String,
-    pub artist: Option<String>,
-    /// Representative cover for the card.
-    pub cover_art: Option<BridgeRemoteCover>,
-    /// Human-readable source name ("MusicBrainz" / "Discogs").
-    pub source_label: String,
-    /// Editorial URL for the group on its source (release-group on
-    /// MusicBrainz, master on Discogs). `None` for an ungrouped result.
-    pub group_url: Option<String>,
-    /// Earliest and latest pressing year for the UI's "1992 – 2012" span; both
-    /// `None` when no pressing carries a year. Pressing count is `pressings.len()`.
-    pub year_min: Option<i32>,
-    pub year_max: Option<i32>,
-    pub pressings: Vec<BridgeMetadataResult>,
+/// One provider that failed one lookup, and how. Mirrors
+/// `bae_core::import::SourceFailure`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSourceFailure {
+    pub source: BridgeMetadataSource,
+    pub failure: BridgeLookupFailure,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSourceFailure {
+    pub(crate) fn from_core(failure: bae_core::import::SourceFailure) -> Self {
+        let bae_core::import::SourceFailure { source, failure } = failure;
+        Self {
+            source: BridgeMetadataSource::from_core(source),
+            failure: BridgeLookupFailure::from_core(failure),
+        }
+    }
 }
 
 /// The disc-ID signal. Mirrors `bae_core::signals::DiscIdSignal`.
@@ -851,18 +798,42 @@ pub enum BridgeIdentifyState {
     },
     /// At least one automatic provider lookup failed. The stored failure waits
     /// for an explicit re-run rather than being retried by the queue sweep.
+    ///
+    /// It still carries whatever the surviving evidence found: one provider
+    /// failing leaves the other's matches standing, and the pane shows them
+    /// with the failures named beside them. `groups` is empty when nothing
+    /// answered, and for a failure resumed from its stored verdict.
     Failed {
         failures: Vec<BridgeIdentifyFailure>,
+        groups: Vec<BridgeReleaseGroup>,
+        library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
+        provenance: std::collections::HashMap<String, BridgeResultProvenance>,
     },
 }
 
-/// Which automatic provider lookup failed.
+/// Which automatic lookup failed, and — where several providers answer one —
+/// which provider. The disc-ID endpoint is MusicBrainz's alone and release
+/// details come from the source that named the release, so those name none.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentifyFailure {
-    DiscId { failure: BridgeLookupFailure },
-    Barcode { failure: BridgeLookupFailure },
-    Catalog { failure: BridgeLookupFailure },
-    ReleaseDetails { failure: BridgeLookupFailure },
+    DiscId {
+        failure: BridgeLookupFailure,
+    },
+    /// Reading the candidate's barcodes failed, so no provider was asked.
+    BarcodeScan {
+        failure: BridgeLookupFailure,
+    },
+    Barcode {
+        source: BridgeMetadataSource,
+        failure: BridgeLookupFailure,
+    },
+    Catalog {
+        source: BridgeMetadataSource,
+        failure: BridgeLookupFailure,
+    },
+    ReleaseDetails {
+        failure: BridgeLookupFailure,
+    },
 }
 
 // ── Unified UI event system ─────────────────────────────────────────────

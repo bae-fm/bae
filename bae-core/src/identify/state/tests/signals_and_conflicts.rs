@@ -1,6 +1,6 @@
 use super::*;
 use crate::import::MetadataSource;
-use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
+use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, SourcedValue, TextSignal};
 
 fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
     MetadataResult {
@@ -13,6 +13,7 @@ fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
         label: None,
         catalog_number: None,
         country: None,
+        barcode: None,
         cover_art: None,
         source_group_id: group_id.map(str::to_string),
         source_tracks: None,
@@ -278,6 +279,7 @@ fn both_signals_intersect_to_found_combined() {
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
             results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-x"))],
+            failures: Vec::new(),
         },
     );
     match state {
@@ -325,6 +327,7 @@ fn empty_intersection_is_conflict() {
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "BAR".to_string(),
             results: vec![pair("e6cdc0f3-3a7b-458b-86aa-fd093cc5e79b", Some("g-y"))],
+            failures: Vec::new(),
         },
     );
     match state {
@@ -376,6 +379,7 @@ fn barcode_iteration_first_match_wins() {
         IdentifyEvent::BarcodeLookupMatched {
             for_barcode: "B".to_string(),
             results: vec![pair("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e", Some("g-x"))],
+            failures: Vec::new(),
         },
     );
     match state {
@@ -409,9 +413,12 @@ fn stale_barcode_response_is_ignored() {
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "A".to_string(),
-            failure: LookupFailure::Diagnostic {
-                detail: "provider lookup failed".to_string(),
-            },
+            failures: vec![SourceFailure {
+                source: MetadataSource::MusicBrainz,
+                failure: LookupFailure::Diagnostic {
+                    detail: "provider lookup failed".to_string(),
+                },
+            }],
         },
     );
     assert!(effects.is_empty());
@@ -447,19 +454,23 @@ fn barcode_lookup_failure_settles_failed() {
     let failure = LookupFailure::Diagnostic {
         detail: "provider lookup failed".to_string(),
     };
+    let source_failure = SourceFailure {
+        source: MetadataSource::MusicBrainz,
+        failure: failure.clone(),
+    };
     let (state, effects) = step(
         state,
         IdentifyEvent::BarcodeLookupFailed {
             for_barcode: "A".to_string(),
-            failure: failure.clone(),
+            failures: vec![source_failure.clone()],
         },
     );
     assert!(effects.is_empty());
     match &state {
         IdentifyState::Triangulating {
-            barcode: BarcodeProgress::Failed { failure: actual },
+            barcode: BarcodeProgress::Failed { failures: actual },
             ..
-        } => assert_eq!(actual, &failure),
+        } => assert_eq!(actual, &vec![source_failure]),
         other => panic!("expected failed barcode progress, got {other:?}"),
     }
 }

@@ -355,13 +355,16 @@ extension ImportStore {
         }
     }
 
+    /// Watch exactly the releases `desired` names for library membership,
+    /// dropping the subscriptions for releases no longer on offer. The caller
+    /// owns which releases those are — a search run's, as its providers land.
     @MainActor
     func refreshLibraryStatusSubscriptions(
         importer: Importer,
-        key: String
+        key: String,
+        desired: Set<ReleaseLibraryStatusSubscriptionKey>
     ) {
-        guard let current = candidate(forKey: key) else { return }
-        let desired = current.search.libraryStatusSubscriptionKeys()
+        guard candidate(forKey: key) != nil else { return }
 
         mutateCandidate(forKey: key) { candidate in
             candidate.libraryStatusSubscriptions =

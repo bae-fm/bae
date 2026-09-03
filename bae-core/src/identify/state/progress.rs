@@ -7,7 +7,7 @@
 
 use super::{Effect, SignalState, SignalsContext};
 use crate::db::LibraryStatus;
-use crate::import::search::MetadataResult;
+use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::{DiscIdSignal, LookupFailure, SourcedValue};
 
 /// The disc-ID signal's progress. `Done` / `Skipped` / `Failed` are the settled
@@ -66,8 +66,18 @@ pub enum BarcodeProgress {
         /// the value: "Barcode 5051961234567 matched 1 release."
         matched: Option<String>,
         results: Vec<(MetadataResult, LibraryStatus)>,
+        /// Providers that did not answer this lookup. `results` is what the
+        /// rest found, so a settled barcode can carry both.
+        failures: Vec<SourceFailure>,
     },
+    /// Nothing came back and at least one provider said why. Non-empty.
     Failed {
+        failures: Vec<SourceFailure>,
+    },
+    /// Reading the candidate's barcodes failed, so no provider was ever asked.
+    /// Not a provider's failure, and not a skip either: there was artwork to
+    /// read and reading it did not work.
+    ScanFailed {
         failure: LookupFailure,
     },
     /// No barcode source at all. Combine treats it like `Done { results: [] }`.
@@ -80,6 +90,7 @@ impl BarcodeProgress {
             self,
             BarcodeProgress::Done { .. }
                 | BarcodeProgress::Failed { .. }
+                | BarcodeProgress::ScanFailed { .. }
                 | BarcodeProgress::Skipped
         )
     }
@@ -88,6 +99,27 @@ impl BarcodeProgress {
         match self {
             BarcodeProgress::Done { results, .. } => results.clone(),
             _ => Vec::new(),
+        }
+    }
+
+    /// The providers that failed this lookup, whether or not any answered.
+    pub fn failures(&self) -> Vec<SourceFailure> {
+        match self {
+            BarcodeProgress::Done { failures, .. } | BarcodeProgress::Failed { failures } => {
+                failures.clone()
+            }
+            BarcodeProgress::Scanning
+            | BarcodeProgress::LookingUp { .. }
+            | BarcodeProgress::ScanFailed { .. }
+            | BarcodeProgress::Skipped => Vec::new(),
+        }
+    }
+
+    /// Why reading the candidate's barcodes failed, where it did.
+    pub fn scan_failure(&self) -> Option<&LookupFailure> {
+        match self {
+            BarcodeProgress::ScanFailed { failure } => Some(failure),
+            _ => None,
         }
     }
 
@@ -109,9 +141,12 @@ pub enum CatalogProgress {
     LookingUp,
     Done {
         results: Vec<(MetadataResult, LibraryStatus)>,
+        /// Providers that did not answer this lookup.
+        failures: Vec<SourceFailure>,
     },
+    /// Nothing came back and at least one provider said why. Non-empty.
     Failed {
-        failure: LookupFailure,
+        failures: Vec<SourceFailure>,
     },
 }
 
@@ -122,8 +157,18 @@ impl CatalogProgress {
 
     pub fn results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
         match self {
-            CatalogProgress::Done { results } => results.clone(),
+            CatalogProgress::Done { results, .. } => results.clone(),
             _ => Vec::new(),
+        }
+    }
+
+    /// The providers that failed this lookup, whether or not any answered.
+    pub fn failures(&self) -> Vec<SourceFailure> {
+        match self {
+            CatalogProgress::Done { failures, .. } | CatalogProgress::Failed { failures } => {
+                failures.clone()
+            }
+            CatalogProgress::Skipped | CatalogProgress::LookingUp => Vec::new(),
         }
     }
 }
@@ -139,11 +184,16 @@ pub(super) fn discid_progress_state(progress: &DiscidProgress) -> SignalState {
     }
 }
 
+/// A lookup that got results from one provider and a failure from another is
+/// `Found`: the badge says what the signal turned up, and the failure is named
+/// where the pane names failures. Only a lookup that turned up nothing reads
+/// as failed, and its badge carries the first provider's reason.
 pub(super) fn barcode_progress_state(progress: &BarcodeProgress) -> SignalState {
     match progress {
         BarcodeProgress::Scanning | BarcodeProgress::LookingUp { .. } => SignalState::LookingUp,
         BarcodeProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
-        BarcodeProgress::Failed { failure } => SignalState::Failed {
+        BarcodeProgress::Failed { failures } => failed_state(failures),
+        BarcodeProgress::ScanFailed { failure } => SignalState::Failed {
             failure: failure.clone(),
         },
         BarcodeProgress::Skipped => SignalState::Skipped,
@@ -154,10 +204,20 @@ pub(super) fn catalog_progress_state(progress: &CatalogProgress) -> SignalState 
     match progress {
         CatalogProgress::Skipped => SignalState::Skipped,
         CatalogProgress::LookingUp => SignalState::LookingUp,
-        CatalogProgress::Done { results } => found_or_no_match(results.len() as u32),
-        CatalogProgress::Failed { failure } => SignalState::Failed {
-            failure: failure.clone(),
+        CatalogProgress::Done { results, .. } => found_or_no_match(results.len() as u32),
+        CatalogProgress::Failed { failures } => failed_state(failures),
+    }
+}
+
+/// The badge for a lookup nothing answered. `Failed` is non-empty by
+/// construction; an empty list would mean the lookup settled on no results for
+/// no stated reason, which is a no-match.
+fn failed_state(failures: &[SourceFailure]) -> SignalState {
+    match failures.first() {
+        Some(first) => SignalState::Failed {
+            failure: first.failure.clone(),
         },
+        None => SignalState::NoMatch,
     }
 }
 
@@ -195,25 +255,34 @@ pub(super) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgres
 /// nothing settles as `Done` with no results — a no-match — while nothing to
 /// scan at all is a skip.
 pub(super) fn settled_barcode_progress(context: &SignalsContext) -> BarcodeProgress {
-    if let Some(failure) = &context.barcode_failure {
-        return BarcodeProgress::Failed {
+    if let Some(failure) = &context.barcode_scan_failure {
+        return BarcodeProgress::ScanFailed {
             failure: failure.clone(),
         };
     }
-    if context.barcode_codes.is_empty() && !context.had_barcode_source {
+    if context.barcode_results.is_empty() && !context.barcode_failures.is_empty() {
+        return BarcodeProgress::Failed {
+            failures: context.barcode_failures.clone(),
+        };
+    }
+    if context.barcode_codes.is_empty()
+        && !context.had_barcode_source
+        && context.barcode_failures.is_empty()
+    {
         return BarcodeProgress::Skipped;
     }
     BarcodeProgress::Done {
         matched: context.matched_barcode.clone(),
         results: context.barcode_results.clone(),
+        failures: context.barcode_failures.clone(),
     }
 }
 
 /// The catalog pipe a settled context stands back up as.
 pub(super) fn settled_catalog_progress(context: &SignalsContext) -> CatalogProgress {
-    if let Some(failure) = &context.catalog_failure {
+    if context.catalog_results.is_empty() && !context.catalog_failures.is_empty() {
         return CatalogProgress::Failed {
-            failure: failure.clone(),
+            failures: context.catalog_failures.clone(),
         };
     }
     if context.chosen_catalog.is_none() {
@@ -221,6 +290,7 @@ pub(super) fn settled_catalog_progress(context: &SignalsContext) -> CatalogProgr
     }
     CatalogProgress::Done {
         results: context.catalog_results.clone(),
+        failures: context.catalog_failures.clone(),
     }
 }
 
@@ -272,11 +342,21 @@ pub(super) fn start_discid_progress(
     }
 }
 
+/// Start (or restart) the barcode queue. A scan that failed has no codes to
+/// queue and never gets a lookup, so it settles as the failure it is rather
+/// than as the no-match an empty queue would otherwise read as — which is what
+/// a re-run over a failed scan used to produce.
 pub(super) fn start_barcode_progress(
     codes: &[SourcedValue],
     had_source: bool,
+    scan_failure: Option<&LookupFailure>,
     effects: &mut Vec<Effect>,
 ) -> BarcodeProgress {
+    if let Some(failure) = scan_failure {
+        return BarcodeProgress::ScanFailed {
+            failure: failure.clone(),
+        };
+    }
     if codes.is_empty() {
         // Nothing to look up. Whether that settles as "looked, found no match" or
         // "never looked" turns on whether a barcode source existed — the empty vec
@@ -285,6 +365,7 @@ pub(super) fn start_barcode_progress(
             BarcodeProgress::Done {
                 matched: None,
                 results: Vec::new(),
+                failures: Vec::new(),
             }
         } else {
             BarcodeProgress::Skipped

@@ -891,6 +891,7 @@ mod candidate_runtime {
                     progress_percent: None,
                     step: None,
                 }),
+                search: None,
             },
         );
 

@@ -71,23 +71,14 @@ internal sealed partial class ImportMappingPane : UserControl
         Barcode,
     }
 
-    private readonly record struct ManualSearchKey(
-        ManualSearchType Type,
-        ManualSearchSourceSelection Sources);
-
-    private sealed record ManualSearchResult(
-        List<ReleaseCandidateChoice> Candidates,
-        string? Error);
-
-    // The two methods keep their own state while the other is hidden.
-    private BridgeDefaultFindOnlineMode _findOnlineMethod;
+    // Only the form itself is the pane's: what a search turned up lives on the
+    // candidate's runtime, because its providers land one at a time and a value
+    // the pane owned would not survive a redraw.
     private ManualSearchType _manualSearchType;
-    private readonly Dictionary<ManualSearchKey, ManualSearchResult> _manualSearchResults = new();
     private string _searchArtist = string.Empty;
     private string _searchAlbum = string.Empty;
     private string _searchCatalog = string.Empty;
     private string _searchBarcode = string.Empty;
-    private ManualSearchSourceSelection _searchSources = new(true, true);
 
     private ImportMappingTable? _table;
 
@@ -217,8 +208,32 @@ internal sealed partial class ImportMappingPane : UserControl
             + "|"
             + string.Join(
                 ",",
-                signals.Select(badge => $"{badge.Kind}:{badge.State.Kind}:{badge.Excluded}"));
+                signals.Select(badge => $"{badge.Kind}:{badge.State.Kind}:{badge.Excluded}"))
+            + "|"
+            + SearchFingerprint(runtime?.Search);
     }
+
+    /// <summary>What the pane draws of a search run: which sources have landed
+    /// and what they turned up. A run that has not moved redraws nothing.
+    /// </summary>
+    private static string SearchFingerprint(BridgeCandidateSearch? search) =>
+        search is null
+            ? string.Empty
+            : $"{SourceSearchTag(search.Musicbrainz)}/{SourceSearchTag(search.Discogs)}|"
+                + string.Join(
+                    ",",
+                    search.Groups.SelectMany(group => group.Pressings
+                        .Select(pressing => pressing.Releases[0].ReleaseId)));
+
+    private static string SourceSearchTag(BridgeSourceSearch state) => state switch
+    {
+        BridgeSourceSearch.NotConfigured => "unconfigured",
+        BridgeSourceSearch.Searching => "searching",
+        BridgeSourceSearch.Done done => $"done:{done.Count}",
+        BridgeSourceSearch.Failed => "failed",
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(state), state, "Unknown source search state"),
+    };
 
     private static string IdentifyFingerprint(ImportCandidate? candidate) =>
         candidate is null
@@ -295,14 +310,11 @@ internal sealed partial class ImportMappingPane : UserControl
         _applyingProvenance = null;
         _applicationCommandRevision = null;
         _applicationDetailRevision = null;
-        _findOnlineMethod = BridgeDefaultFindOnlineMode.Automatic;
         _manualSearchType = ManualSearchType.General;
-        _manualSearchResults.Clear();
         _searchArtist = string.Empty;
         _searchAlbum = string.Empty;
         _searchCatalog = string.Empty;
         _searchBarcode = string.Empty;
-        _searchSources = new ManualSearchSourceSelection(true, true);
         _commitError = string.Empty;
     }
 
@@ -377,8 +389,7 @@ internal sealed partial class ImportMappingPane : UserControl
                 var settings = _app.SettingsStore.Current
                     ?? throw new InvalidOperationException(
                         "Find online cannot open before import settings load.");
-                _findOnlineMethod = settings.DefaultFindOnlineMode;
-                if (_findOnlineMethod == BridgeDefaultFindOnlineMode.Automatic)
+                if (settings.DefaultFindOnlineMode == BridgeDefaultFindOnlineMode.Automatic)
                 {
                     _ = _import.StartInteractiveLookup(key);
                 }

@@ -56,6 +56,13 @@ internal sealed class ImportService
         List<SignalBadge> Signals)> ProjectRun
     { get; init; } = NativeBae.ImportRun;
 
+    /// <summary>The pressing rows a set of album cards offers as choices, each
+    /// already picked down to the release committing it applies. A pure
+    /// projection over what the stream already delivered — it needs no handle,
+    /// so it stands whether or not a session is open.</summary>
+    public Func<IEnumerable<BridgeReleaseGroup>, List<ReleaseCandidateChoice>> GroupChoices
+    { get; init; } = NativeBae.GroupChoices;
+
     /// <summary>Scan a folder into the watched set (clearing the prior scan);
     /// candidates and watched folders arrive through the import-candidate stream.
     /// Returns the error line, or null on success.</summary>
@@ -128,10 +135,23 @@ internal sealed class ImportService
     public Func<string, bool> CancelAutoIdentify { get; init; }
         = _ => throw new InvalidOperationException("ImportService stub: CancelAutoIdentify not wired");
 
-    /// <summary>Typed metadata search (the re-identify dialog's fallback and the
-    /// import confirm's search). Async — it blocks on network / DB.</summary>
-    public Func<BridgeSearchQuery, Task<(bool Current, (List<ReleaseCandidateChoice>? Candidates, string? Error) Result)>> SearchReleases { get; init; }
-        = _ => throw new InvalidOperationException("ImportService stub: SearchReleases not wired");
+    /// <summary>Submit a candidate's typed search. Fire-and-forget: every
+    /// configured provider is asked at once and each answer lands on the
+    /// candidate's runtime, which the pane already watches.</summary>
+    public Func<string, BridgeSearchQuery, bool> StartCandidateSearch { get; init; }
+        = (_, _) => throw new InvalidOperationException(
+            "ImportService stub: StartCandidateSearch not wired");
+
+    /// <summary>Re-ask only the providers whose part of the search failed.</summary>
+    public Func<string, bool> RetryCandidateSearch { get; init; }
+        = _ => throw new InvalidOperationException(
+            "ImportService stub: RetryCandidateSearch not wired");
+
+    /// <summary>Drop a candidate's search, so its result area goes back to
+    /// whatever identification has to say.</summary>
+    public Func<string, bool> ClearCandidateSearch { get; init; }
+        = _ => throw new InvalidOperationException(
+            "ImportService stub: ClearCandidateSearch not wired");
 
     /// <summary>Replace the draft from an online release.</summary>
     public Func<string, BridgeMetadataSource, string,
@@ -266,8 +286,15 @@ internal sealed class ImportService
             session.WithCurrentHandle(handle => NativeBae.AutoIdentifyRelease(handle, candidateKey, releaseId)),
         CancelAutoIdentify = candidateKey =>
             session.WithCurrentHandle(handle => NativeBae.CancelAutoIdentify(handle, candidateKey)),
-        SearchReleases = query =>
-            session.RunForCurrentHandle(handle => NativeBae.SearchReleases(handle, query)),
+        StartCandidateSearch = (candidateKey, query) =>
+            session.WithCurrentHandle(handle =>
+                NativeBae.StartCandidateSearch(handle, candidateKey, query)),
+        RetryCandidateSearch = candidateKey =>
+            session.WithCurrentHandle(handle =>
+                NativeBae.RetryCandidateSearch(handle, candidateKey)),
+        ClearCandidateSearch = candidateKey =>
+            session.WithCurrentHandle(handle =>
+                NativeBae.ClearCandidateSearch(handle, candidateKey)),
         ApplyCandidateExternalMetadata = (candidateKey, source, releaseId) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.ApplyCandidateExternalMetadata(

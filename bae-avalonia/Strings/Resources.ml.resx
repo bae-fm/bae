@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>തിരയൽ പരാജയപ്പെട്ടു</value></data>
   <data name="search.field.album" xml:space="preserve"><value>album</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>ഉറവിടം</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>പൊരുത്തങ്ങളില്ല</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ടോക്കൺ</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>വീണ്ടും പരിശോധിക്കുക</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ഒന്നുമില്ല</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ഓൺലൈൻ തിരയൽ</value></data>
+  <data name="action.clear" xml:space="preserve"><value>മായ്ക്കുക</value></data>
+  <data name="action.retry" xml:space="preserve"><value>വീണ്ടും ശ്രമിക്കുക</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} എന്നതിനുള്ള ഫലങ്ങൾ</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source}-ൽ തിരയുന്നു…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} പ്രതികരിച്ചില്ല: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} സജ്ജീകരിച്ചിട്ടില്ല</value></data>
 </root>

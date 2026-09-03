@@ -173,10 +173,6 @@ internal static partial class NativeBae
             SubsonicStatus = subsonicStatus,
         };
 
-    private static List<ReleaseCandidateChoice> CandidateChoices(BridgeCandidateSearchResults results) =>
-        results.Groups
-            .SelectMany(group => group.Pressings.Select(pressing => new ReleaseCandidateChoice(group, pressing)))
-            .ToList();
 
     private static List<LocalArtwork> LocalArtwork(BridgeCandidateFiles files) =>
         files.Files.Select(LocalArtwork).OfType<LocalArtwork>().ToList();
@@ -310,12 +306,25 @@ internal static partial class NativeBae
             _ => throw new ArgumentOutOfRangeException(nameof(state), state, "Unknown identify state"),
         };
 
+    /// <summary>The pressings a state is offering. A failed state offers what
+    /// the provider that did answer found, so it lists its groups too.
+    /// </summary>
     private static List<ReleaseCandidateChoice> ImportMatches(BridgeIdentifyState state) =>
-        state is BridgeIdentifyState.Found found
-            ? found.Groups
-                .SelectMany(group => group.Pressings.Select(pressing => new ReleaseCandidateChoice(group, pressing)))
-                .ToList()
-            : [];
+        state switch
+        {
+            BridgeIdentifyState.Found found => GroupChoices(found.Groups),
+            BridgeIdentifyState.Failed failed => GroupChoices(failed.Groups),
+            _ => [],
+        };
+
+    /// <summary>One choice per pressing row, picking the row's first source's
+    /// release — core orders the row's releases, MusicBrainz first.</summary>
+    internal static List<ReleaseCandidateChoice> GroupChoices(
+        IEnumerable<BridgeReleaseGroup> groups) =>
+        groups
+            .SelectMany(group => group.Pressings
+                .Select(pressing => new ReleaseCandidateChoice(group, pressing.Releases[0])))
+            .ToList();
 
     private static SignalBadge SignalBadge(BridgeToolbarSignal signal) =>
         new()

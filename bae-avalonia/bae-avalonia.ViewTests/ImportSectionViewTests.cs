@@ -383,7 +383,8 @@ public sealed class ImportSectionViewTests
                 new BridgeCandidateRuntimeSnapshot(
                     new BridgeIdentifyState.Idle(),
                     new BridgeSignalsToolbar([]),
-                    new BridgeImportInFlight(40, null))));
+                    new BridgeImportInFlight(40, null),
+                    null)));
 
         Assert.Contains(
             CandidateRow(view).GetLogicalDescendants().OfType<TextBlock>(),

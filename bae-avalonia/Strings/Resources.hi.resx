@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>खोज विफल</value></data>
   <data name="search.field.album" xml:space="preserve"><value>album</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>artist</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>स्रोत</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>कोई मिलान नहीं</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs टोकन</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>दोबारा जांचें</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>कोई नहीं</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ऑनलाइन खोज</value></data>
+  <data name="action.clear" xml:space="preserve"><value>साफ़ करें</value></data>
+  <data name="action.retry" xml:space="preserve"><value>फिर कोशिश करें</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} के परिणाम</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source} में खोज रहे हैं…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} ने जवाब नहीं दिया: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} सेट अप नहीं है</value></data>
 </root>

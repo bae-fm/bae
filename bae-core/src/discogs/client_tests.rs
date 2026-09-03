@@ -69,6 +69,7 @@ fn search_result_with_cover_fields(
         country: None,
         label: None,
         catno: None,
+        barcode: Vec::new(),
         cover_image: cover_image.map(str::to_string),
         thumb: thumb.map(str::to_string),
         master_id: None,

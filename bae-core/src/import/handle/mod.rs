@@ -68,6 +68,13 @@ pub enum ImportEvent {
         /// [`ImportEvent::IdentifyStateChanged`]'s.
         priority: crate::util::rate_limiter::CallPriority,
     },
+    /// One candidate's typed search moved: submitted, a source landed, or it
+    /// was cleared. Carries the whole value, so the recorder writes it
+    /// wholesale; `None` clears the run.
+    CandidateSearchChanged {
+        candidate_key: String,
+        search: Option<crate::import::candidate_search::CandidateSearch>,
+    },
     /// How much of the import queue the background sweep has answered. Both
     /// counts are the sweep's own: `total` is how many candidates it is
     /// responsible for, which is a fact about the queue rather than something a
@@ -75,29 +82,6 @@ pub enum ImportEvent {
     QueueIdentifyProgress {
         identified: u32,
         total: u32,
-    },
-}
-
-/// Search query — one of the three search modes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SearchSources {
-    One(MetadataSource),
-    Both,
-}
-
-pub enum SearchQuery {
-    General {
-        artist: String,
-        album: String,
-        sources: SearchSources,
-    },
-    CatalogNumber {
-        catalog_number: String,
-        sources: SearchSources,
-    },
-    Barcode {
-        barcode: String,
-        sources: SearchSources,
     },
 }
 
@@ -151,6 +135,12 @@ pub struct ImportServiceHandle {
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
     watcher_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     runtime_handle: tokio::runtime::Handle,
+    /// Which run each candidate's typed search is on.
+    ///
+    /// Superseding a run under this lock — and checking, under the same lock,
+    /// that a landing's run is still the key's before publishing it — is what
+    /// keeps a superseded run from writing over the run that replaced it.
+    candidate_searches: Arc<Mutex<RunningCandidateSearches>>,
 }
 
 #[derive(Debug, Clone)]
@@ -265,6 +255,7 @@ impl ImportServiceHandle {
             watcher_tx,
             watcher_thread: Arc::new(Mutex::new(Some(watcher_thread))),
             runtime_handle,
+            candidate_searches: Arc::new(Mutex::new(RunningCandidateSearches::default())),
         };
         handle.start_runtime_recorder();
         handle
@@ -278,10 +269,20 @@ impl ImportServiceHandle {
         let mut events = self.event_tx.subscribe();
         let runtime = self.runtime.clone();
         let library_manager = self.library_manager.clone();
+        let candidate_searches = self.candidate_searches.clone();
         self.runtime_handle.spawn(async move {
             loop {
                 match events.recv().await {
-                    Ok(event) => runtime.record_event(&event),
+                    Ok(event) => {
+                        // A candidate that is gone, or whose files changed
+                        // shape, has no search: the runtime drops the value and
+                        // this stops the lookups that would otherwise land and
+                        // put it back.
+                        if let Some(key) = search_invalidating_key(&event) {
+                            drop_candidate_search(&candidate_searches, &key);
+                        }
+                        runtime.record_event(&event);
+                    }
                     Err(broadcast::error::RecvError::Lagged(count)) => {
                         warn!("candidate runtime recorder dropped {count} import events");
                         library_manager.record_telemetry(
@@ -710,6 +711,46 @@ impl ImportServiceHandle {
         }
         Ok(Some(candidate))
     }
+}
+
+/// The candidate whose search an event invalidates: it is gone, it failed
+/// validation, or its files were re-decided, so the answers to a query typed
+/// against the old shape are answers about something else.
+fn search_invalidating_key(event: &ImportEvent) -> Option<String> {
+    match event {
+        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
+            Some(candidate_key.clone())
+        }
+        ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)) => {
+            Some(candidate.path.to_string_lossy().into_owned())
+        }
+        ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
+            Some(candidate.path.to_string_lossy().into_owned())
+        }
+        _ => None,
+    }
+}
+
+/// Which run each candidate's typed search is on, and the number the next run
+/// takes. A key with no entry has no search, so a landing for it is stale.
+#[derive(Default)]
+struct RunningCandidateSearches {
+    running: HashMap<String, u64>,
+    next_run: u64,
+}
+
+/// Take `key` off whatever run it is on, so nothing that run has out can land.
+fn drop_candidate_search(searches: &Mutex<RunningCandidateSearches>, key: &str) {
+    searches.lock().unwrap().running.remove(key);
+}
+
+/// Whether `run` is still the run `key`'s search is on.
+fn is_current_candidate_search(
+    searches: &Mutex<RunningCandidateSearches>,
+    key: &str,
+    run: u64,
+) -> bool {
+    searches.lock().unwrap().running.get(key) == Some(&run)
 }
 
 /// Remap the parsed (temporary) IDs a link row points at to their actual DB IDs.

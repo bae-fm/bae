@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>не вдалося виконати пошук</value></data>
   <data name="search.field.album" xml:space="preserve"><value>альбом</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>виконавець</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>джерело</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>немає збігів</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Токен Discogs</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>перевірити знову</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>Знайти онлайн</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Немає</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Пошук онлайн</value></data>
+  <data name="action.clear" xml:space="preserve"><value>очистити</value></data>
+  <data name="action.retry" xml:space="preserve"><value>повторити</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>результати для {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>пошук у {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} не відповів: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} не налаштовано</value></data>
 </root>

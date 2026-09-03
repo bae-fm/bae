@@ -21,6 +21,7 @@ use super::combine::ResultProvenance;
 use super::state::{BarcodeProgress, DiscidProgress, IdentifyState};
 use crate::db::LibraryStatus;
 use crate::import::release_group::ReleaseGroup;
+use crate::import::search::SourceFailure;
 use crate::signals::LookupFailure;
 
 /// The disc-ID lookup's progress while triangulating. The results themselves are
@@ -49,7 +50,12 @@ pub enum BarcodeProgressView {
     Done {
         n_results: u32,
     },
+    /// No provider answered, each with its reason.
     Failed {
+        failures: Vec<SourceFailure>,
+    },
+    /// Reading the candidate's barcodes failed, so no provider was asked.
+    ScanFailed {
         failure: LookupFailure,
     },
     Skipped,
@@ -91,8 +97,16 @@ pub enum IdentifyStateView {
         track_count: u32,
     },
 
+    /// A lookup failed, with whatever the surviving evidence still combined
+    /// to. `groups` is folded exactly as `Found`'s is, so a surface renders one
+    /// result area either way and names the failures beside it. It is empty
+    /// when nothing answered, and for a failure resumed from its stored
+    /// verdict.
     Failed {
         failures: Vec<super::IdentifyFailure>,
+        groups: Vec<ReleaseGroup>,
+        library_statuses: Vec<LibraryStatus>,
+        provenance: Vec<(String, ResultProvenance)>,
     },
 }
 
@@ -120,16 +134,9 @@ impl From<IdentifyState> for IdentifyStateView {
                 provenance,
                 context: _,
             } => {
-                // `provenance` is index-aligned with `matches`. Key it by
-                // release id before the matches disappear into the group cards
-                // — after the fold, index alignment is no longer expressible.
-                let provenance = matches
-                    .iter()
-                    .map(|m| m.release_id.clone())
-                    .zip(provenance)
-                    .collect();
+                let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Found {
-                    groups: crate::import::release_group::group_results(matches),
+                    groups,
                     library_statuses,
                     track_count,
                     provenance,
@@ -145,11 +152,37 @@ impl From<IdentifyState> for IdentifyStateView {
 
             IdentifyState::Failed {
                 failures,
+                matches,
+                library_statuses,
+                provenance,
                 track_count: _,
                 context: _,
-            } => IdentifyStateView::Failed { failures },
+            } => {
+                let (groups, provenance) = fold_matches(matches, provenance);
+                IdentifyStateView::Failed {
+                    failures,
+                    groups,
+                    library_statuses,
+                    provenance,
+                }
+            }
         }
     }
+}
+
+/// Fold a match list into its group cards, keying the provenance by release id
+/// first: `combine` produces it index-aligned with the matches, and once the
+/// matches are inside the cards that alignment is no longer expressible.
+fn fold_matches(
+    matches: Vec<crate::import::search::MetadataResult>,
+    provenance: Vec<ResultProvenance>,
+) -> (Vec<ReleaseGroup>, Vec<(String, ResultProvenance)>) {
+    let keyed = matches
+        .iter()
+        .map(|result| result.release_id.clone())
+        .zip(provenance)
+        .collect();
+    (crate::import::release_group::group_results(matches), keyed)
 }
 
 impl From<DiscidProgress> for DiscidProgressView {
@@ -191,14 +224,18 @@ impl From<BarcodeProgress> for BarcodeProgressView {
                 total,
             },
             // Which code matched is named by the terminal state's
-            // `matched_barcode`, so progress only reports the count.
+            // `matched_barcode`, so progress only reports the count. A
+            // provider that failed while another answered is named by the
+            // terminal state's failures, not by a mid-flight count.
             BarcodeProgress::Done {
                 matched: _,
                 results,
+                failures: _,
             } => BarcodeProgressView::Done {
                 n_results: results.len() as u32,
             },
-            BarcodeProgress::Failed { failure } => BarcodeProgressView::Failed { failure },
+            BarcodeProgress::Failed { failures } => BarcodeProgressView::Failed { failures },
+            BarcodeProgress::ScanFailed { failure } => BarcodeProgressView::ScanFailed { failure },
             BarcodeProgress::Skipped => BarcodeProgressView::Skipped,
         }
     }

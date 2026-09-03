@@ -471,53 +471,29 @@ impl AppHandle {
             .map_err(BridgeError::import)
     }
 
-    /// Search for releases with library status check in one call. Cancelled
-    /// when the Swift caller drops the awaiting Task — uniffi forwards
-    /// cancellation to the Rust future, which drops the in-flight HTTP
-    /// request before it completes.
-    pub async fn search_for_candidate(
-        self: std::sync::Arc<Self>,
+    /// Submit a candidate's typed search. Fire-and-forget like
+    /// `rerun_identify_for_candidate`: every configured provider is asked at
+    /// once, and each answer lands on the candidate's runtime as it arrives.
+    /// A search already running for this candidate is superseded.
+    pub fn start_candidate_search(
+        &self,
+        candidate_key: String,
         query: crate::types::BridgeSearchQuery,
-    ) -> Result<crate::types::BridgeCandidateSearchResults, BridgeError> {
-        self.run_exported(move |this| async move {
-            use bae_core::import::SearchQuery;
+    ) {
+        self.services
+            .import_start_candidate_search(candidate_key, query.into_core());
+    }
 
-            let core_query = match query {
-                crate::types::BridgeSearchQuery::General {
-                    artist,
-                    album,
-                    sources,
-                } => SearchQuery::General {
-                    artist,
-                    album,
-                    sources: sources.into_core(),
-                },
-                crate::types::BridgeSearchQuery::CatalogNumber {
-                    catalog_number,
-                    sources,
-                } => SearchQuery::CatalogNumber {
-                    catalog_number,
-                    sources: sources.into_core(),
-                },
-                crate::types::BridgeSearchQuery::Barcode { barcode, sources } => {
-                    SearchQuery::Barcode {
-                        barcode,
-                        sources: sources.into_core(),
-                    }
-                }
-            };
+    /// Re-ask only the providers whose part of the search failed, keeping what
+    /// the others found. A no-op when the candidate has no search running.
+    pub fn retry_candidate_search(&self, candidate_key: String) {
+        self.services.import_retry_candidate_search(candidate_key);
+    }
 
-            let grouped = this
-                .services
-                .import_search_with_status(core_query)
-                .await
-                .map_err(BridgeError::import)?;
-
-            Ok(crate::types::BridgeCandidateSearchResults::from_core(
-                grouped,
-            ))
-        })
-        .await
+    /// Drop a candidate's search, so its result area goes back to whatever
+    /// identification has to say.
+    pub fn clear_candidate_search(&self, candidate_key: String) {
+        self.services.import_clear_candidate_search(candidate_key);
     }
 
     /// Commit a candidate. Nothing about the release rides in: the metadata

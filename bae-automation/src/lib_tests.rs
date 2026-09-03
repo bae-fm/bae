@@ -293,6 +293,7 @@ mod identify_mirrors {
             label: Some("Label Name".to_string()),
             catalog_number: Some("CAT-1".to_string()),
             country: Some("US".to_string()),
+            barcode: None,
             cover_art: None,
             source_group_id: Some(group_id.to_string()),
             // Nobody asked the source for its tracklist: these fixtures
@@ -324,8 +325,9 @@ mod identify_mirrors {
             barcode_results: Vec::new(),
             catalog_results: Vec::new(),
             discid_failure: None,
-            barcode_failure: None,
-            catalog_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
             matched_barcode: None,
             track_count: 0,
         }
@@ -361,8 +363,8 @@ mod identify_mirrors {
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 1, "both matches share one release group");
         let pressings = groups[0]["pressings"].as_array().unwrap();
-        assert_eq!(pressings[0]["release_id"], "rel-1");
-        assert_eq!(pressings[1]["release_id"], "rel-2");
+        assert_eq!(pressings[0]["releases"][0]["release_id"], "rel-1");
+        assert_eq!(pressings[1]["releases"][0]["release_id"], "rel-2");
         let provenance = json["provenance"].as_array().unwrap();
         assert_eq!(provenance[0]["release_id"], "rel-1");
         assert_eq!(provenance[0]["by_disc_id"], true);
@@ -405,8 +407,14 @@ mod identify_mirrors {
         assert_eq!(json["kind"], "found");
         let groups = json["groups"].as_array().unwrap();
         assert_eq!(groups.len(), 2, "the two releases are two release groups");
-        assert_eq!(groups[0]["pressings"][0]["release_id"], "rel-disc");
-        assert_eq!(groups[1]["pressings"][0]["release_id"], "rel-bar");
+        assert_eq!(
+            groups[0]["pressings"][0]["releases"][0]["release_id"],
+            "rel-disc"
+        );
+        assert_eq!(
+            groups[1]["pressings"][0]["releases"][0]["release_id"],
+            "rel-bar"
+        );
         let provenance = json["provenance"].as_array().unwrap();
         assert_eq!(provenance[0]["by_disc_id"], true);
         assert_eq!(provenance[1]["by_barcode"], true);

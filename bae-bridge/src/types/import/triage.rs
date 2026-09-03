@@ -135,6 +135,9 @@ pub struct BridgeCandidateRuntimeSnapshot {
     pub signals_toolbar: BridgeSignalsToolbar,
     /// The running import, or absent when none is.
     pub import: Option<BridgeImportInFlight>,
+    /// The typed search submitted for this candidate, as its sources land.
+    /// Absent before one is submitted and after it is cleared.
+    pub search: Option<BridgeCandidateSearch>,
 }
 
 /// How far a running import has got.

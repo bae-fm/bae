@@ -148,11 +148,12 @@ impl CandidateRuntime {
             let mut next = previous.clone().unwrap_or(CandidateRuntimeSnapshot {
                 identify: None,
                 import: None,
+                search: None,
             });
             mutate(&mut next);
             if Some(&next) == previous.as_ref() {
                 None
-            } else if next.identify.is_none() && next.import.is_none() {
+            } else if next.identify.is_none() && next.import.is_none() && next.search.is_none() {
                 inner.runtime.remove(key);
                 Some(CandidateRuntimeChange::Removed {
                     key: key.to_string(),
@@ -205,9 +206,9 @@ impl CandidateRuntime {
                     runtime.identify = None;
                 }
             }
-            inner
-                .runtime
-                .retain(|_, runtime| runtime.identify.is_some() || runtime.import.is_some());
+            inner.runtime.retain(|_, runtime| {
+                runtime.identify.is_some() || runtime.import.is_some() || runtime.search.is_some()
+            });
             for key in queued_keys {
                 let runtime = inner
                     .runtime
@@ -215,6 +216,7 @@ impl CandidateRuntime {
                     .or_insert(CandidateRuntimeSnapshot {
                         identify: None,
                         import: None,
+                        search: None,
                     });
                 if runtime.identify.is_none() {
                     runtime.identify = Some(CandidateIdentifyRuntime::automatic_queue());
@@ -387,6 +389,16 @@ impl CandidateRuntime {
             ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
                 self.inner.lock().unwrap().shapes.remove(candidate_key);
                 self.remove(candidate_key);
+            }
+            // The search run is published like the rest of the runtime: the
+            // pane draws it, and each source landing is a redraw.
+            ImportEvent::CandidateSearchChanged {
+                candidate_key,
+                search,
+            } => {
+                self.set(candidate_key, |runtime| {
+                    runtime.search = search.clone();
+                });
             }
             // Retained but not published: the form that reads these is fed by
             // the UI bus, and republishing the key here would wake every

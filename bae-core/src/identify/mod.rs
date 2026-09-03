@@ -50,12 +50,14 @@ pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{BarcodeProgressView, DiscidProgressView, IdentifyStateView};
 
 use crate::db::{LibraryCheck, LibraryStatus};
-use crate::import::search::MetadataResult;
+use crate::import::search::{MetadataResult, ProviderLookups, SourceFailure};
+use crate::import::MetadataSource;
 use crate::library::LibraryManager;
+use crate::signals::LookupFailure;
 
 /// Pair each result with whether it's already in the library — the payload the
 /// lookup-completion events carry.
-async fn annotate_with_library_status(
+pub(crate) async fn annotate_with_library_status(
     results: Vec<MetadataResult>,
     library_manager: &LibraryManager,
 ) -> Result<Vec<(MetadataResult, LibraryStatus)>, String> {
@@ -65,4 +67,41 @@ async fn annotate_with_library_status(
         .await
         .map_err(|e| format!("Failed to check library status: {e}"))?;
     Ok(results.into_iter().zip(statuses).collect())
+}
+
+/// Pair every provider's results with live library status, keeping the
+/// providers apart: what one source found stands whether or not the other
+/// answered, and each one that did not is named.
+///
+/// The library check is bae's own work rather than the provider's, so it is run
+/// per source: a check that fails over one source's results leaves the other
+/// source's results intact and names only the source whose part of the lookup
+/// produced nothing usable.
+async fn annotate_lookups(
+    lookups: ProviderLookups,
+    library_manager: &LibraryManager,
+) -> (Vec<(MetadataResult, LibraryStatus)>, Vec<SourceFailure>) {
+    let mut failures = lookups.failures();
+    let answered = [
+        (MetadataSource::MusicBrainz, lookups.musicbrainz.ok()),
+        (
+            MetadataSource::Discogs,
+            lookups.discogs.and_then(Result::ok),
+        ),
+    ];
+    let mut annotated = Vec::new();
+    for (source, results) in answered {
+        let Some(results) = results else { continue };
+        if results.is_empty() {
+            continue;
+        }
+        match annotate_with_library_status(results, library_manager).await {
+            Ok(results) => annotated.extend(results),
+            Err(detail) => failures.push(SourceFailure {
+                source,
+                failure: LookupFailure::Diagnostic { detail },
+            }),
+        }
+    }
+    (annotated, failures)
 }

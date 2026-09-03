@@ -22,15 +22,22 @@
 
 use super::combine::ResultProvenance;
 use super::state::{IdentifyState, SignalsContext};
-use crate::import::search::MetadataResult;
+use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::LookupFailure;
 
-/// Which lookup failed.
+/// Which lookup failed, and — where several providers answer it — which
+/// provider. The disc-ID endpoint is MusicBrainz's alone, and release details
+/// are fetched from the source that named the release, so those two name no
+/// provider; the barcode and catalog lookups ask every configured provider
+/// independently, so one failing is a fact about that provider.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IdentifyFailure {
     DiscId(LookupFailure),
-    Barcode(LookupFailure),
-    Catalog(LookupFailure),
+    /// Reading the candidate's barcodes failed, so no provider was asked. Not
+    /// a provider's failure, which is why it names none.
+    BarcodeScan(LookupFailure),
+    Barcode(SourceFailure),
+    Catalog(SourceFailure),
     ReleaseDetails(LookupFailure),
 }
 
@@ -106,9 +113,16 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 context: _,
             } => Ok(Self::ManualOnly { track_count }),
 
+            // The partial matches a failed state carries are live evidence of
+            // what the other source found, not a stored answer: the failure is
+            // what the next launch has to know, and re-running is what turns
+            // partial evidence into a verdict.
             IdentifyState::Failed {
                 failures,
                 track_count,
+                matches: _,
+                library_statuses: _,
+                provenance: _,
                 context: _,
             } => Ok(Self::Failed {
                 failures,
@@ -161,8 +175,9 @@ impl TerminalVerdict {
             barcode_results: Vec::new(),
             catalog_results: Vec::new(),
             discid_failure: None,
-            barcode_failure: None,
-            catalog_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
             matched_barcode: None,
             track_count,
         };
@@ -192,12 +207,18 @@ impl TerminalVerdict {
                 track_count,
                 context: empty_context(track_count),
             },
+            // A stored failure resumes with no matches: what one source found
+            // before the other failed was never stored, so a resumed failure
+            // offers the re-run rather than a partial list.
             Self::Failed {
                 failures,
                 track_count,
             } => IdentifyState::Failed {
                 failures,
                 track_count,
+                matches: Vec::new(),
+                library_statuses: Vec::new(),
+                provenance: Vec::new(),
                 context: empty_context(track_count),
             },
         }
@@ -222,6 +243,7 @@ mod tests {
             label: None,
             catalog_number: None,
             country: None,
+            barcode: None,
             cover_art: None,
             source_group_id: Some("group-1".to_string()),
             source_tracks: None,
@@ -254,8 +276,9 @@ mod tests {
             barcode_results: vec![],
             catalog_results: vec![],
             discid_failure: None,
-            barcode_failure: None,
-            catalog_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
             matched_barcode: None,
             track_count,
         }
@@ -376,8 +399,9 @@ mod tests {
             barcode_results: vec![(mk_result("rel-b"), mk_status("rel-b"))],
             catalog_results: vec![],
             discid_failure: None,
-            barcode_failure: None,
-            catalog_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
             matched_barcode: Some("012345".to_string()),
             track_count: 9,
         };
@@ -427,8 +451,9 @@ mod tests {
             ],
             catalog_results: vec![],
             discid_failure: Some(crate::signals::LookupFailure::Network),
-            barcode_failure: None,
-            catalog_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
             matched_barcode: None,
             track_count: 9,
         };
@@ -469,11 +494,14 @@ mod tests {
         ));
     }
 
-    /// Same for the barcode side.
+    /// Same for the barcode side, naming the provider that failed.
     #[test]
     fn barcode_failure_derives_to_failed() {
         let mut context = mk_context(7);
-        context.barcode_failure = Some(crate::signals::LookupFailure::Timeout);
+        context.barcode_failures = vec![SourceFailure {
+            source: MetadataSource::Discogs,
+            failure: crate::signals::LookupFailure::Timeout,
+        }];
         let state = crate::identify::state::re_derive_for_tests(context);
         assert!(matches!(state, IdentifyState::Failed { .. }));
         let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -482,15 +510,88 @@ mod tests {
             TerminalVerdict::Failed {
                 failures,
                 track_count: 7,
-            } if failures == vec![IdentifyFailure::Barcode(crate::signals::LookupFailure::Timeout)]
+            } if failures == vec![IdentifyFailure::Barcode(SourceFailure {
+                source: MetadataSource::Discogs,
+                failure: crate::signals::LookupFailure::Timeout,
+            })]
         ));
+    }
+
+    /// One provider failing on the barcode while the other answered is still a
+    /// failed verdict — but the live state keeps the answering provider's
+    /// match, so the pane shows it instead of blanking.
+    #[test]
+    fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
+        let mut context = mk_context(7);
+        context.had_barcode_source = true;
+        context.barcode_results = vec![(mk_result("rel-mb"), mk_status("rel-mb"))];
+        context.barcode_failures = vec![SourceFailure {
+            source: MetadataSource::Discogs,
+            failure: crate::signals::LookupFailure::Network,
+        }];
+        let state = crate::identify::state::re_derive_for_tests(context);
+        let IdentifyState::Failed {
+            matches, failures, ..
+        } = &state
+        else {
+            panic!("a provider failure is a failed state");
+        };
+        assert_eq!(matches.len(), 1, "the other provider's match still stands");
+        assert_eq!(
+            failures,
+            &vec![IdentifyFailure::Barcode(SourceFailure {
+                source: MetadataSource::Discogs,
+                failure: crate::signals::LookupFailure::Network,
+            })]
+        );
+        // What stores is the failure: the partial match is live evidence, and
+        // re-running is what turns it into an answer.
+        assert!(matches!(
+            TerminalVerdict::try_from(state).unwrap(),
+            TerminalVerdict::Failed { .. }
+        ));
+    }
+
+    /// Both providers answering the barcode is an ordinary `Found`, with no
+    /// failure recorded.
+    #[test]
+    fn both_providers_answering_the_barcode_is_found() {
+        let mut context = mk_context(7);
+        context.had_barcode_source = true;
+        context.barcode_results = vec![
+            (mk_result("rel-mb"), mk_status("rel-mb")),
+            (mk_result("rel-dg"), mk_status("rel-dg")),
+        ];
+        let state = crate::identify::state::re_derive_for_tests(context);
+        assert!(matches!(state, IdentifyState::Found { .. }));
+    }
+
+    /// A provider failing with nothing from anyone leaves a failure and no
+    /// matches at all.
+    #[test]
+    fn a_barcode_failure_with_no_results_carries_no_matches() {
+        let mut context = mk_context(7);
+        context.had_barcode_source = true;
+        context.barcode_failures = vec![SourceFailure {
+            source: MetadataSource::Discogs,
+            failure: crate::signals::LookupFailure::Network,
+        }];
+        let IdentifyState::Failed { matches, .. } =
+            crate::identify::state::re_derive_for_tests(context)
+        else {
+            panic!("a provider failure is a failed state");
+        };
+        assert!(matches.is_empty());
     }
 
     #[test]
     fn chosen_catalog_failure_derives_to_failed() {
         let mut context = mk_context(7);
         context.chosen_catalog = Some("CAT-7".to_string());
-        context.catalog_failure = Some(crate::signals::LookupFailure::Network);
+        context.catalog_failures = vec![SourceFailure {
+            source: MetadataSource::MusicBrainz,
+            failure: crate::signals::LookupFailure::Network,
+        }];
         let state = crate::identify::state::re_derive_for_tests(context);
         assert!(matches!(state, IdentifyState::Failed { .. }));
         let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -499,7 +600,10 @@ mod tests {
             TerminalVerdict::Failed {
                 failures,
                 track_count: 7,
-            } if failures == vec![IdentifyFailure::Catalog(crate::signals::LookupFailure::Network)]
+            } if failures == vec![IdentifyFailure::Catalog(SourceFailure {
+                source: MetadataSource::MusicBrainz,
+                failure: crate::signals::LookupFailure::Network,
+            })]
         ));
     }
 }

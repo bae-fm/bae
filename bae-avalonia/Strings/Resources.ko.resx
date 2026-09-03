@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>검색 실패</value></data>
   <data name="search.field.album" xml:space="preserve"><value>앨범</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>아티스트</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>소스</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>일치 없음</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs 토큰</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>다시 확인</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>온라인에서 찾기</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>없음</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>온라인 검색</value></data>
+  <data name="action.clear" xml:space="preserve"><value>지우기</value></data>
+  <data name="action.retry" xml:space="preserve"><value>다시 시도</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} 검색 결과</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source} 검색 중…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source}이(가) 응답하지 않았습니다: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source}이(가) 설정되지 않았습니다</value></data>
 </root>

@@ -217,10 +217,10 @@ fn insert_match(
     sql.execute(
         "INSERT INTO import_candidate_match \
              (content_hash, position, source, release_id, title, artist, year, format, \
-              label, catalog_number, country, cover_url, cover_thumbnail_url, cover_label, \
-              cover_source, source_group_id, source_tracks_kind, source_tracks_count, \
-              source_tracks_total_ms, by_disc_id, by_barcode, by_catalog) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              label, catalog_number, country, barcode, cover_url, cover_thumbnail_url, \
+              cover_label, cover_source, source_group_id, source_tracks_kind, \
+              source_tracks_count, source_tracks_total_ms, by_disc_id, by_barcode, by_catalog) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             content_hash,
             position,
@@ -233,6 +233,7 @@ fn insert_match(
             result.label,
             result.catalog_number,
             result.country,
+            result.barcode,
             cover.map(|cover| cover.url.as_str()),
             cover.map(|cover| cover.thumbnail_url.as_str()),
             cover.map(|cover| cover.label.as_str()),
@@ -319,6 +320,7 @@ pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
             label: row.get("label")?,
             catalog_number: row.get("catalog_number")?,
             country: row.get("country")?,
+            barcode: row.get("barcode")?,
             cover_art,
             source_group_id: row.get("source_group_id")?,
             source_tracks,

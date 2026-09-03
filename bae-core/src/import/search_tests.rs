@@ -64,11 +64,184 @@ fn result_with_title(title: &str) -> DiscogsSearchResult {
         country: None,
         label: None,
         catno: None,
+        barcode: Vec::new(),
         cover_image: None,
         thumb: None,
         master_id: None,
         result_type: "release".to_string(),
     }
+}
+
+fn metadata_result(source: MetadataSource, release_id: &str) -> MetadataResult {
+    MetadataResult {
+        source,
+        release_id: release_id.to_string(),
+        title: "Album Title".to_string(),
+        artist: None,
+        year: None,
+        format: None,
+        label: None,
+        catalog_number: None,
+        country: None,
+        barcode: None,
+        cover_art: None,
+        source_group_id: None,
+        source_tracks: None,
+    }
+}
+
+/// A Discogs search result states the barcodes Discogs holds; the first is the
+/// one the pressing projection keeps.
+#[test]
+fn discogs_search_result_keeps_its_first_barcode() {
+    let mut result = result_with_title("Artist Name - Album Title");
+    result.barcode = vec!["0 12345 67890 5".to_string(), "012345678905".to_string()];
+    assert_eq!(
+        discogs_search_result_to_metadata(result).barcode.as_deref(),
+        Some("0 12345 67890 5")
+    );
+    assert_eq!(
+        discogs_search_result_to_metadata(result_with_title("Artist Name - Album Title")).barcode,
+        None
+    );
+}
+
+#[test]
+fn lookups_report_musicbrainz_results_before_discogs() {
+    let lookups = ProviderLookups {
+        musicbrainz: Ok(vec![
+            metadata_result(MetadataSource::MusicBrainz, "mb-1"),
+            metadata_result(MetadataSource::MusicBrainz, "mb-2"),
+        ]),
+        discogs: Some(Ok(vec![metadata_result(MetadataSource::Discogs, "dg-1")])),
+    };
+    assert_eq!(
+        lookups
+            .results()
+            .iter()
+            .map(|result| (result.source, result.release_id.clone()))
+            .collect::<Vec<_>>(),
+        vec![
+            (MetadataSource::MusicBrainz, "mb-1".to_string()),
+            (MetadataSource::MusicBrainz, "mb-2".to_string()),
+            (MetadataSource::Discogs, "dg-1".to_string()),
+        ]
+    );
+    assert!(lookups.failures().is_empty());
+}
+
+/// With Discogs unconfigured, MusicBrainz is the complete configured lookup.
+#[test]
+fn lookups_without_discogs_are_musicbrainz_only() {
+    let lookups = ProviderLookups {
+        musicbrainz: Ok(vec![metadata_result(MetadataSource::MusicBrainz, "mb-1")]),
+        discogs: None,
+    };
+    assert_eq!(lookups.results().len(), 1);
+    assert!(lookups.failures().is_empty());
+}
+
+/// A provider that failed is named, and what the other found still stands.
+#[test]
+fn a_failed_provider_is_named_beside_the_other_provider_s_results() {
+    let lookups = ProviderLookups {
+        musicbrainz: Ok(vec![metadata_result(MetadataSource::MusicBrainz, "mb-1")]),
+        discogs: Some(Err(LookupFailure::Network)),
+    };
+    assert_eq!(lookups.results().len(), 1);
+    assert_eq!(
+        lookups.failures(),
+        vec![SourceFailure {
+            source: MetadataSource::Discogs,
+            failure: LookupFailure::Network,
+        }]
+    );
+}
+
+#[test]
+fn both_providers_failing_are_both_named_and_nothing_answered() {
+    let lookups = ProviderLookups {
+        musicbrainz: Err(LookupFailure::Timeout),
+        discogs: Some(Err(LookupFailure::Network)),
+    };
+    assert!(lookups.results().is_empty());
+    assert_eq!(
+        lookups.failures(),
+        vec![
+            SourceFailure {
+                source: MetadataSource::MusicBrainz,
+                failure: LookupFailure::Timeout,
+            },
+            SourceFailure {
+                source: MetadataSource::Discogs,
+                failure: LookupFailure::Network,
+            },
+        ]
+    );
+}
+
+/// `run` awaits both providers together rather than one after the other: with
+/// each future gated on the other having started, a sequential await would
+/// deadlock.
+#[tokio::test]
+async fn run_awaits_both_providers_concurrently() {
+    let (mb_started_tx, mb_started_rx) = tokio::sync::oneshot::channel::<()>();
+    let (discogs_started_tx, discogs_started_rx) = tokio::sync::oneshot::channel::<()>();
+    let lookups = ProviderLookups::run(
+        async move {
+            mb_started_tx.send(()).expect("Discogs awaits this");
+            discogs_started_rx.await.expect("Discogs starts");
+            Ok(vec![metadata_result(MetadataSource::MusicBrainz, "mb-1")])
+        },
+        Some(async move {
+            discogs_started_tx
+                .send(())
+                .expect("MusicBrainz awaits this");
+            mb_started_rx.await.expect("MusicBrainz starts");
+            Ok(vec![metadata_result(MetadataSource::Discogs, "dg-1")])
+        }),
+    )
+    .await;
+    assert_eq!(lookups.results().len(), 2);
+}
+
+/// A typed query builds one request per provider from the same fields.
+#[test]
+fn a_general_query_builds_both_providers_requests() {
+    let query = SearchQuery::General {
+        artist: "Artist Name".to_string(),
+        album: "Album Title".to_string(),
+    };
+    let musicbrainz = query.musicbrainz_params();
+    assert_eq!(musicbrainz.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(musicbrainz.album.as_deref(), Some("Album Title"));
+    let discogs = query.discogs_params();
+    assert_eq!(discogs.artist.as_deref(), Some("Artist Name"));
+    assert_eq!(discogs.release_title.as_deref(), Some("Album Title"));
+}
+
+#[test]
+fn catalog_and_barcode_queries_fill_their_own_provider_fields() {
+    let catalog = SearchQuery::CatalogNumber {
+        catalog_number: "CAT-7".to_string(),
+    };
+    assert_eq!(
+        catalog.musicbrainz_params().catalog_number.as_deref(),
+        Some("CAT-7")
+    );
+    assert_eq!(catalog.discogs_params().catno.as_deref(), Some("CAT-7"));
+
+    let barcode = SearchQuery::Barcode {
+        barcode: "012345678905".to_string(),
+    };
+    assert_eq!(
+        barcode.musicbrainz_params().barcode.as_deref(),
+        Some("012345678905")
+    );
+    assert_eq!(
+        barcode.discogs_params().barcode.as_deref(),
+        Some("012345678905")
+    );
 }
 
 #[test]

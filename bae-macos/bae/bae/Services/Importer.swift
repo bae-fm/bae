@@ -60,9 +60,9 @@ private struct ImportOperations: Sendable {
     let identifyForExplicitLookup: @MainActor @Sendable (String) -> Void
     let autoIdentifyRelease: @Sendable (String, String) -> Void
     let cancelAutoIdentify: @Sendable (String) -> Void
-    let searchForCandidate:
-        @Sendable (BridgeSearchQuery) async throws
-            -> BridgeCandidateSearchResults
+    let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
+    let retryCandidateSearch: @Sendable (String) -> Void
+    let clearCandidateSearch: @Sendable (String) -> Void
     let subscribeReleaseLibraryStatus:
         @Sendable (
             BridgeMetadataSource, String, String?, ReleaseLibraryStatusCallback
@@ -170,8 +170,14 @@ private struct ImportOperations: Sendable {
             cancelAutoIdentify: {
                 handle.cancelAutoIdentify(candidateKey: $0)
             },
-            searchForCandidate: {
-                try await handle.searchForCandidate(query: $0)
+            startCandidateSearch: {
+                handle.startCandidateSearch(candidateKey: $0, query: $1)
+            },
+            retryCandidateSearch: {
+                handle.retryCandidateSearch(candidateKey: $0)
+            },
+            clearCandidateSearch: {
+                handle.clearCandidateSearch(candidateKey: $0)
             },
             subscribeReleaseLibraryStatus: {
                 handle.subscribeReleaseLibraryStatus(
@@ -309,10 +315,11 @@ final class Importer: Sendable, Observable {
             _ in
         },
         cancelAutoIdentify: @escaping @Sendable (String) -> Void = { _ in },
-        searchForCandidate:
-            @escaping @Sendable (BridgeSearchQuery) async throws ->
-            BridgeCandidateSearchResults = { _ in throw StubError.notImplemented
+        startCandidateSearch:
+            @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
             },
+        retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
+        clearCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
         subscribeReleaseLibraryStatus:
             @escaping @Sendable (
                 BridgeMetadataSource, String, String?,
@@ -387,7 +394,9 @@ final class Importer: Sendable, Observable {
             identifyForExplicitLookup: identifyForExplicitLookup,
             autoIdentifyRelease: autoIdentifyRelease,
             cancelAutoIdentify: cancelAutoIdentify,
-            searchForCandidate: searchForCandidate,
+            startCandidateSearch: startCandidateSearch,
+            retryCandidateSearch: retryCandidateSearch,
+            clearCandidateSearch: clearCandidateSearch,
             subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
             toggleSignalForCandidate: toggleSignalForCandidate,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
@@ -511,10 +520,25 @@ extension Importer {
         operations.cancelAutoIdentify(candidateKey)
     }
 
-    func searchForCandidate(_ query: BridgeSearchQuery) async throws
-        -> BridgeCandidateSearchResults
-    {
-        try await operations.searchForCandidate(query)
+    /// Submit a candidate's typed search. Fire-and-forget: every configured
+    /// provider is asked at once and each answer lands on the candidate's
+    /// runtime, which the pane already watches.
+    func startCandidateSearch(
+        _ candidateKey: String,
+        _ query: BridgeSearchQuery
+    ) {
+        operations.startCandidateSearch(candidateKey, query)
+    }
+
+    /// Re-ask only the providers whose part of the search failed.
+    func retryCandidateSearch(_ candidateKey: String) {
+        operations.retryCandidateSearch(candidateKey)
+    }
+
+    /// Drop a candidate's search, so its result area goes back to whatever
+    /// identification has to say.
+    func clearCandidateSearch(_ candidateKey: String) {
+        operations.clearCandidateSearch(candidateKey)
     }
 
     func subscribeReleaseLibraryStatus(

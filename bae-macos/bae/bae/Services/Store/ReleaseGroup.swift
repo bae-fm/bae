@@ -1,22 +1,35 @@
 import BaeKit
 import Foundation
 
-/// An album's release group with the pressings the search / auto-identify
-/// surfaced for it, plus the display labels the group card renders. Mirrors
-/// `BridgeReleaseGroup` — grouping and label formatting happen in bae-core;
-/// the UI iterates the groups and their pressings and renders.
+/// An album, as one or both sources describe it, with the pressings they
+/// surfaced for it. Mirrors `BridgeReleaseGroup` — the grouping, the
+/// cross-source merge and the pressing pairing all happen in bae-core; the UI
+/// iterates the groups and their pressings and renders.
 struct ReleaseGroup: Equatable, Identifiable {
     let id: String
     let title: String
     let artist: String?
     let coverArt: BridgeRemoteCover?
-    /// Human-readable source name ("MusicBrainz" / "Discogs"), pre-built by core.
-    let sourceLabel: String
-    /// Editorial URL for the group on its source. `nil` for an ungrouped result.
-    let groupUrl: URL?
+    /// Every source carrying this group, MusicBrainz first.
+    let sources: [BridgeReleaseGroupSource]
     /// Pre-formatted year span + pressing count, e.g. "1992 – 2012 · 4 pressings".
     let metaLabel: String
+    /// One entry per pressing row, each already the release that picking the
+    /// row commits: core orders a pressing's sources, MusicBrainz first.
     let pressings: [BridgeMetadataResult]
+
+    /// The sources' names for the card's meta line ("MusicBrainz · Discogs").
+    var sourceLabel: String {
+        sources
+            .map { bridgeMetadataSourceName(source: $0.source) }
+            .joined(separator: " \u{00b7} ")
+    }
+
+    /// The editorial page to open from the card. The first source's, which is
+    /// MusicBrainz's whenever it carries this group.
+    var groupUrl: URL? {
+        sources.lazy.compactMap(\.groupUrl).first.flatMap(URL.init(string:))
+    }
 
     var coverImageContent: ImageContent? {
         coverArt?.coverChoice.thumbnailContent
@@ -27,9 +40,8 @@ struct ReleaseGroup: Equatable, Identifiable {
         title = bridge.title
         artist = bridge.artist
         coverArt = bridge.coverArt
-        sourceLabel = bridge.sourceLabel
-        groupUrl = bridge.groupUrl.flatMap(URL.init(string:))
+        sources = bridge.sources
         metaLabel = bridge.metaLabel
-        pressings = bridge.pressings
+        pressings = bridge.pressings.compactMap(\.releases.first)
     }
 }

@@ -7,6 +7,8 @@ mod assemble;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod candidate_runtime;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod candidate_search;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod candidates;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -120,6 +122,8 @@ pub struct ParsedAlbum {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use candidate_search::{CandidateSearch, SourceSearch};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidates::{
     CandidateIdentifyRuntime, CandidateRuntimeSnapshot, FolderScanStatus, ImportCandidateSnapshot,
     ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
@@ -148,7 +152,7 @@ pub use folder_scanner::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use handle::{
     parsed_album_to_user_edit, DiscogsSaveOutcome, GroupedSearchResults, ImportEvent,
-    ImportServiceHandle, ScanEvent, SearchQuery, SearchSources,
+    ImportServiceHandle, ScanEvent,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use list::{
@@ -164,6 +168,8 @@ pub use mapping::{
     MappingSource, MappingTable, MappingTrackSection, MappingTrackSectionContent, PickedTracklist,
     SheetBound, SheetGroup, TrackMapping, TracklistSource,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use search::{ProviderLookups, SearchQuery, SourceFailure, SourceLookup};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

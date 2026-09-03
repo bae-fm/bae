@@ -30,7 +30,16 @@ enum IdentifyState: Equatable {
     /// offers manual search. Distinct from `notFoundAnywhere`, where signals
     /// ran and matched nothing.
     case manualOnly(trackCount: UInt32)
-    case failed([BridgeIdentifyFailure])
+    /// A lookup failed, with whatever the surviving evidence still found: one
+    /// provider failing leaves the other's matches standing. `groups` is empty
+    /// when nothing answered, and for a failure resumed from its stored
+    /// verdict.
+    case failed(
+        failures: [BridgeIdentifyFailure],
+        groups: [ReleaseGroup],
+        libraryStatuses: [String: BridgeLibraryStatus],
+        provenance: [String: BridgeResultProvenance],
+    )
 
     init(bridge: BridgeIdentifyState) {
         switch bridge {
@@ -52,8 +61,18 @@ enum IdentifyState: Equatable {
         case .notFoundAnywhere: self = .notFoundAnywhere
         case .manualOnly(let trackCount):
             self = .manualOnly(trackCount: trackCount)
-        case .failed(let failures):
-            self = .failed(failures)
+        case .failed(
+            let failures,
+            let groups,
+            let libraryStatuses,
+            let provenance
+        ):
+            self = .failed(
+                failures: failures,
+                groups: groups.map(ReleaseGroup.init(bridge:)),
+                libraryStatuses: libraryStatuses,
+                provenance: provenance,
+            )
         }
     }
 

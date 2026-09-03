@@ -225,6 +225,8 @@ struct ImportSearchResultRow: View {
                     label: "Label Name",
                     catalogNumber: "CAT 3922 CD",
                     country: "BE",
+                    barcode: "0123456789012",
+                    sourceGroupId: "group-preview",
                 ),
                 isImporting: false,
                 libraryStatus: nil,
@@ -245,6 +247,8 @@ struct ImportSearchResultRow: View {
                     label: "Label Name",
                     catalogNumber: "CAT 92021 LP",
                     country: "UK",
+                    barcode: nil,
+                    sourceGroupId: "group-preview",
                 ),
                 isImporting: false,
                 libraryStatus: BridgeLibraryStatus(

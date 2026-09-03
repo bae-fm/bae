@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>搜索失败</value></data>
   <data name="search.field.album" xml:space="preserve"><value>专辑</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>艺术家</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>来源</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>无匹配项</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs 令牌</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>重新校验</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>在线查找</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>无</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>在线查找</value></data>
+  <data name="action.clear" xml:space="preserve"><value>清除</value></data>
+  <data name="action.retry" xml:space="preserve"><value>重试</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} 的结果</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>正在搜索 {source}…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} 没有响应：{reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} 尚未设置</value></data>
 </root>

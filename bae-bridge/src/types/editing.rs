@@ -2,18 +2,6 @@
 use super::*;
 use super::{BridgeImageRef, BridgeSourceAudioLayout, BridgeSourceAudioSummary, BridgeTrackSide};
 
-/// Returned from `search_for_candidate`. The caller retains the submitted
-/// query while awaiting this payload and routes it to the matching form slot.
-#[cfg(feature = "desktop")]
-#[derive(Debug, Clone, uniffi::Record)]
-pub struct BridgeCandidateSearchResults {
-    /// Results grouped into release-group cards, one card per group with its
-    /// pressings beneath.
-    pub groups: Vec<BridgeReleaseGroup>,
-    /// Per-release library dupe statuses, looked up by release id.
-    pub statuses: Vec<BridgeLibraryStatus>,
-}
-
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeReleaseDetail {

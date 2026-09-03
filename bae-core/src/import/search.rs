@@ -29,6 +29,10 @@ pub struct MetadataResult {
     pub label: Option<String>,
     pub catalog_number: Option<String>,
     pub country: Option<String>,
+    /// The barcode printed on the physical product, as the source states it.
+    /// `None` when the source lists none. Two sources agreeing on this is what
+    /// pairs their rows into one pressing.
+    pub barcode: Option<String>,
     pub cover_art: Option<RemoteCover>,
     pub source_group_id: Option<String>,
     /// What the source says about this release's own tracklist — the other half
@@ -149,6 +153,9 @@ pub fn discogs_search_result_to_metadata(
         label,
         catalog_number: r.catno,
         country: r.country,
+        // The search response lists every barcode Discogs holds for the
+        // pressing; the first is the one it prints first.
+        barcode: r.barcode.into_iter().next(),
         cover_art,
         source_group_id,
         // The Discogs search response describes no tracklist; a Discogs result
@@ -187,6 +194,7 @@ fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) 
         label: pressing.label,
         catalog_number: pressing.catalog_number,
         country: pressing.country,
+        barcode: pressing.barcode,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
         source_tracks,
@@ -205,6 +213,7 @@ fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) 
         label,
         catalog_number,
         country: r.country,
+        barcode: r.barcode,
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
         // `ws/2/release?query=…` takes no `inc`, so its response carries no
@@ -288,17 +297,151 @@ pub(crate) fn import_error_to_lookup_failure(error: &ImportError) -> LookupFailu
     }
 }
 
-/// Combine every configured provider's answer. `None` means Discogs was not a
-/// configured source; `Some(Err(_))` means it was part of this lookup and did
-/// not answer, so the combined lookup is incomplete.
-pub(crate) fn merge_provider_results(
-    mut musicbrainz: Vec<MetadataResult>,
-    discogs: Option<Result<Vec<MetadataResult>, LookupFailure>>,
-) -> Result<Vec<MetadataResult>, LookupFailure> {
-    if let Some(discogs) = discogs {
-        musicbrainz.extend(discogs?);
+/// One provider's answer to one lookup.
+pub type SourceLookup = Result<Vec<MetadataResult>, LookupFailure>;
+
+/// A provider that failed one lookup, and how. Serialized: it rides on
+/// [`crate::identify::IdentifyFailure`], which a failed verdict persists.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SourceFailure {
+    pub source: MetadataSource,
+    pub failure: LookupFailure,
+}
+
+/// Every configured provider's answer to one lookup, kept apart so a surface
+/// can show what one source found while naming the one that failed.
+#[derive(Debug, Clone)]
+pub struct ProviderLookups {
+    pub musicbrainz: SourceLookup,
+    /// `None` when Discogs is not configured.
+    pub discogs: Option<SourceLookup>,
+}
+
+impl ProviderLookups {
+    /// Both providers at once; neither waits on the other.
+    pub async fn run(
+        musicbrainz: impl std::future::Future<Output = SourceLookup>,
+        discogs: Option<impl std::future::Future<Output = SourceLookup>>,
+    ) -> Self {
+        match discogs {
+            Some(discogs) => {
+                let (musicbrainz, discogs) = tokio::join!(musicbrainz, discogs);
+                Self {
+                    musicbrainz,
+                    discogs: Some(discogs),
+                }
+            }
+            None => Self {
+                musicbrainz: musicbrainz.await,
+                discogs: None,
+            },
+        }
     }
-    Ok(musicbrainz)
+
+    /// What answered: MusicBrainz's results, then Discogs's.
+    pub fn results(&self) -> Vec<MetadataResult> {
+        let mut results = self.musicbrainz.as_deref().unwrap_or_default().to_vec();
+        if let Some(Ok(discogs)) = &self.discogs {
+            results.extend(discogs.iter().cloned());
+        }
+        results
+    }
+
+    /// Who failed.
+    pub fn failures(&self) -> Vec<SourceFailure> {
+        let mut failures = Vec::new();
+        if let Err(failure) = &self.musicbrainz {
+            failures.push(SourceFailure {
+                source: MetadataSource::MusicBrainz,
+                failure: failure.clone(),
+            });
+        }
+        if let Some(Err(failure)) = &self.discogs {
+            failures.push(SourceFailure {
+                source: MetadataSource::Discogs,
+                failure: failure.clone(),
+            });
+        }
+        failures
+    }
+}
+
+/// A typed manual search, one of three modes. Every configured provider is
+/// asked; [`search_source`] runs one of them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SearchQuery {
+    General { artist: String, album: String },
+    CatalogNumber { catalog_number: String },
+    Barcode { barcode: String },
+}
+
+impl SearchQuery {
+    pub fn musicbrainz_params(&self) -> ReleaseSearchParams {
+        match self {
+            SearchQuery::General { artist, album } => ReleaseSearchParams {
+                artist: Some(artist.clone()),
+                album: Some(album.clone()),
+                ..Default::default()
+            },
+            SearchQuery::CatalogNumber { catalog_number } => ReleaseSearchParams {
+                catalog_number: Some(catalog_number.clone()),
+                ..Default::default()
+            },
+            SearchQuery::Barcode { barcode } => ReleaseSearchParams {
+                barcode: Some(barcode.clone()),
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn discogs_params(&self) -> DiscogsSearchParams {
+        match self {
+            SearchQuery::General { artist, album } => DiscogsSearchParams {
+                artist: Some(artist.clone()),
+                release_title: Some(album.clone()),
+                ..Default::default()
+            },
+            SearchQuery::CatalogNumber { catalog_number } => DiscogsSearchParams {
+                catno: Some(catalog_number.clone()),
+                ..Default::default()
+            },
+            SearchQuery::Barcode { barcode } => DiscogsSearchParams {
+                barcode: Some(barcode.clone()),
+                ..Default::default()
+            },
+        }
+    }
+}
+
+/// Ask one provider a typed query, in the provider's own error type — for a
+/// caller that reports the provider's error as it is.
+pub async fn search_provider(
+    library_manager: &crate::library::LibraryManager,
+    source: MetadataSource,
+    query: &SearchQuery,
+    priority: CallPriority,
+) -> Result<Vec<MetadataResult>, ImportError> {
+    match source {
+        MetadataSource::MusicBrainz => search_mb(query.musicbrainz_params(), priority).await,
+        MetadataSource::Discogs => {
+            library_manager
+                .search_discogs(query.discogs_params(), priority)
+                .await
+        }
+    }
+}
+
+/// Ask one provider a typed query, in the typed failure a surface renders —
+/// the per-source primitive a candidate's manual search is built from.
+pub async fn search_source(
+    library_manager: &crate::library::LibraryManager,
+    source: MetadataSource,
+    query: &SearchQuery,
+    priority: CallPriority,
+) -> SourceLookup {
+    search_provider(library_manager, source, query, priority)
+        .await
+        .map_err(|error| import_error_to_lookup_failure(&error))
 }
 
 /// The releases MusicBrainz has for a disc ID, each with its cover art. Empty

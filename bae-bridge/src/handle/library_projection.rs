@@ -239,23 +239,6 @@ impl BridgeSearchResults {
     }
 }
 
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeCandidateSearchResults {
-    pub(super) fn from_core(grouped: bae_core::import::GroupedSearchResults) -> Self {
-        let bae_core::import::GroupedSearchResults { groups, statuses } = grouped;
-        crate::types::BridgeCandidateSearchResults {
-            groups: groups
-                .into_iter()
-                .map(crate::types::BridgeReleaseGroup::from_core)
-                .collect(),
-            statuses: statuses
-                .into_iter()
-                .map(crate::types::BridgeLibraryStatus::from_core)
-                .collect(),
-        }
-    }
-}
-
 impl BridgeStorageRow {
     pub(super) fn from_core(raw: bae_core::album_detail::StorageRow) -> Self {
         let bae_core::album_detail::StorageRow { release, album } = raw;

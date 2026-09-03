@@ -1,91 +1,7 @@
 use super::*;
+use crate::import::candidate_search::CandidateSearch;
+use crate::import::search::{search_source, SearchQuery};
 use crate::util::rate_limiter::CallPriority;
-
-enum ProviderSearchParams {
-    MusicBrainz(crate::musicbrainz::ReleaseSearchParams),
-    Discogs(crate::discogs::client::DiscogsSearchParams),
-    Both {
-        musicbrainz: crate::musicbrainz::ReleaseSearchParams,
-        discogs: crate::discogs::client::DiscogsSearchParams,
-    },
-}
-
-impl SearchQuery {
-    fn into_provider_params(self) -> ProviderSearchParams {
-        match self {
-            SearchQuery::General {
-                artist,
-                album,
-                sources,
-            } => provider_search_params(
-                sources,
-                mb_general_params(artist.clone(), album.clone()),
-                discogs_general_params(artist, album),
-            ),
-            SearchQuery::CatalogNumber {
-                catalog_number,
-                sources,
-            } => provider_search_params(
-                sources,
-                crate::musicbrainz::ReleaseSearchParams {
-                    catalog_number: Some(catalog_number.clone()),
-                    ..Default::default()
-                },
-                crate::discogs::client::DiscogsSearchParams {
-                    catno: Some(catalog_number),
-                    ..Default::default()
-                },
-            ),
-            SearchQuery::Barcode { barcode, sources } => provider_search_params(
-                sources,
-                crate::musicbrainz::ReleaseSearchParams {
-                    barcode: Some(barcode.clone()),
-                    ..Default::default()
-                },
-                crate::discogs::client::DiscogsSearchParams {
-                    barcode: Some(barcode),
-                    ..Default::default()
-                },
-            ),
-        }
-    }
-}
-
-fn provider_search_params(
-    sources: SearchSources,
-    musicbrainz: crate::musicbrainz::ReleaseSearchParams,
-    discogs: crate::discogs::client::DiscogsSearchParams,
-) -> ProviderSearchParams {
-    match sources {
-        SearchSources::One(MetadataSource::MusicBrainz) => {
-            ProviderSearchParams::MusicBrainz(musicbrainz)
-        }
-        SearchSources::One(MetadataSource::Discogs) => ProviderSearchParams::Discogs(discogs),
-        SearchSources::Both => ProviderSearchParams::Both {
-            musicbrainz,
-            discogs,
-        },
-    }
-}
-
-fn mb_general_params(artist: String, album: String) -> crate::musicbrainz::ReleaseSearchParams {
-    crate::musicbrainz::ReleaseSearchParams {
-        artist: Some(artist),
-        album: Some(album),
-        ..Default::default()
-    }
-}
-
-fn discogs_general_params(
-    artist: String,
-    album: String,
-) -> crate::discogs::client::DiscogsSearchParams {
-    crate::discogs::client::DiscogsSearchParams {
-        artist: Some(artist),
-        release_title: Some(album),
-        ..Default::default()
-    }
-}
 
 impl ImportServiceHandle {
     /// Bytes of provider art at `url` for previews and explicit selection.
@@ -102,36 +18,160 @@ impl ImportServiceHandle {
         self.library_manager.fetch_remote_image(&url).await
     }
 
-    /// Search for releases, check library status, and bundle the results into
-    /// release-group cards in one call.
+    /// Submit a candidate's typed search. Fire-and-forget: the run lands on
+    /// the candidate's runtime one source at a time, and every landing reaches
+    /// a surface as `ImportEvent::CandidateSearchChanged`.
+    ///
+    /// A search already running for this key is superseded — one search per
+    /// candidate at a time, because the pane shows one result area.
+    pub fn start_candidate_search(&self, candidate_key: String, query: SearchQuery) {
+        let run = self.claim_candidate_search(&candidate_key);
+        let search =
+            CandidateSearch::started(query.clone(), self.library_manager.discogs_is_usable());
+        let sources = search.searching_sources();
+        self.publish_candidate_search(candidate_key.clone(), Some(search));
+        for source in sources {
+            self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
+        }
+    }
+
+    /// Re-ask only the sources that failed, keeping what the others found. A
+    /// no-op when the candidate has no search, or none of its sources failed.
+    pub fn retry_candidate_search(&self, candidate_key: String) {
+        let Some(mut search) = self
+            .runtime
+            .get(&candidate_key)
+            .and_then(|runtime| runtime.search)
+        else {
+            debug!("retry_candidate_search: {candidate_key} has no search to retry");
+            return;
+        };
+        search.restart_failed();
+        let sources = search.searching_sources();
+        if sources.is_empty() {
+            return;
+        }
+        let query = search.query.clone();
+        let run = self.claim_candidate_search(&candidate_key);
+        self.publish_candidate_search(candidate_key.clone(), Some(search));
+        for source in sources {
+            self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
+        }
+    }
+
+    /// Drop a candidate's search: its lookups stop mattering and the result
+    /// area goes back to the identify verdict.
+    pub fn clear_candidate_search(&self, candidate_key: String) {
+        super::drop_candidate_search(&self.candidate_searches, &candidate_key);
+        self.publish_candidate_search(candidate_key, None);
+    }
+
+    /// Put this key on a new run, superseding whatever it was on. The number
+    /// it answers with is what a landing proves it is still current by.
+    fn claim_candidate_search(&self, candidate_key: &str) -> u64 {
+        let mut searches = self.candidate_searches.lock().unwrap();
+        let run = searches.next_run;
+        searches.next_run += 1;
+        searches.running.insert(candidate_key.to_string(), run);
+        run
+    }
+
+    fn publish_candidate_search(&self, candidate_key: String, search: Option<CandidateSearch>) {
+        send_event(
+            &self.event_tx,
+            ImportEvent::CandidateSearchChanged {
+                candidate_key,
+                search,
+            },
+        );
+    }
+
+    /// Run one source's part of a search and land it on the candidate's
+    /// current run.
+    ///
+    /// The landing is published while holding the running-search lock, and only
+    /// while `run` is still the key's run. Superseding a run replaces that
+    /// number under the same lock, so a run this one has replaced cannot write
+    /// over it.
+    fn spawn_source_search(
+        &self,
+        candidate_key: String,
+        query: SearchQuery,
+        source: MetadataSource,
+        run: u64,
+    ) {
+        let library_manager = self.library_manager.clone();
+        let runtime = self.runtime.clone();
+        let searches = self.candidate_searches.clone();
+        let event_tx = self.event_tx.clone();
+        self.runtime_handle.spawn(async move {
+            let found =
+                search_source(&library_manager, source, &query, CallPriority::Interactive).await;
+            // Superseded already: skip the library check nothing will read.
+            if !super::is_current_candidate_search(&searches, &candidate_key, run) {
+                return;
+            }
+            let outcome = match found {
+                Ok(results) => {
+                    crate::identify::annotate_with_library_status(results, &library_manager)
+                        .await
+                        .map_err(|detail| crate::signals::LookupFailure::Diagnostic { detail })
+                }
+                Err(failure) => Err(failure),
+            };
+
+            let landed = {
+                let searches = searches.lock().unwrap();
+                if searches.running.get(&candidate_key) != Some(&run) {
+                    None
+                } else {
+                    runtime
+                        .get(&candidate_key)
+                        .and_then(|runtime| runtime.search)
+                        .map(|mut search| {
+                            search.record(source, outcome);
+                            search
+                        })
+                }
+            };
+            match landed {
+                Some(search) => send_event(
+                    &event_tx,
+                    ImportEvent::CandidateSearchChanged {
+                        candidate_key,
+                        search: Some(search),
+                    },
+                ),
+                None => debug!(
+                    "{}'s {} search landed on no run; it was cleared or superseded",
+                    candidate_key,
+                    source.as_str()
+                ),
+            }
+        });
+    }
+
+    /// Ask one source a typed query, check library status, and bundle the
+    /// results into release-group cards in one call.
+    ///
+    /// The one-shot path: an automation client names the source, waits for the
+    /// answer, and holds no run of its own. A person's search is a run —
+    /// [`Self::start_candidate_search`] — because its two sources land
+    /// separately and the pane draws each as it does.
     pub async fn search_with_status(
         &self,
         query: SearchQuery,
+        source: MetadataSource,
     ) -> Result<GroupedSearchResults, crate::import::ImportError> {
         use crate::db::LibraryCheck;
 
-        let results = match query.into_provider_params() {
-            ProviderSearchParams::MusicBrainz(params) => {
-                crate::import::search::search_mb(params, CallPriority::Interactive).await?
-            }
-            ProviderSearchParams::Discogs(params) => {
-                self.library_manager
-                    .search_discogs(params, CallPriority::Interactive)
-                    .await?
-            }
-            ProviderSearchParams::Both {
-                musicbrainz,
-                discogs,
-            } => {
-                let (mut musicbrainz_results, discogs_results) = tokio::try_join!(
-                    crate::import::search::search_mb(musicbrainz, CallPriority::Interactive),
-                    self.library_manager
-                        .search_discogs(discogs, CallPriority::Interactive)
-                )?;
-                musicbrainz_results.extend(discogs_results);
-                musicbrainz_results
-            }
-        };
+        let results = crate::import::search::search_provider(
+            &self.library_manager,
+            source,
+            &query,
+            CallPriority::Interactive,
+        )
+        .await?;
 
         let checks: Vec<LibraryCheck> = results.iter().map(LibraryCheck::from).collect();
 
@@ -355,32 +395,5 @@ impl ImportServiceHandle {
             return Ok(None);
         }
         Ok(row.identify.map(|identify| identify.verdict))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn both_sources_builds_one_request_for_each_provider() {
-        let plan = SearchQuery::General {
-            artist: "Artist Name".to_string(),
-            album: "Album Title".to_string(),
-            sources: SearchSources::Both,
-        }
-        .into_provider_params();
-
-        let ProviderSearchParams::Both {
-            musicbrainz,
-            discogs,
-        } = plan
-        else {
-            panic!("both sources must build both provider requests");
-        };
-        assert_eq!(musicbrainz.artist.as_deref(), Some("Artist Name"));
-        assert_eq!(musicbrainz.album.as_deref(), Some("Album Title"));
-        assert_eq!(discogs.artist.as_deref(), Some("Artist Name"));
-        assert_eq!(discogs.release_title.as_deref(), Some("Album Title"));
     }
 }

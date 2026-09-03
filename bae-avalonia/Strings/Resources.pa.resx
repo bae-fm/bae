@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>ਖੋਜ ਅਸਫਲ</value></data>
   <data name="search.field.album" xml:space="preserve"><value>ਐਲਬਮ</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>ਸਰੋਤ</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>ਕੋਈ ਮੇਲ ਨਹੀਂ</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs ਟੋਕਨ</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>ਮੁੜ ਜਾਂਚੋ</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>ਆਨਲਾਈਨ ਲੱਭੋ</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ਕੋਈ ਨਹੀਂ</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ਆਨਲਾਈਨ ਖੋਜ</value></data>
+  <data name="action.clear" xml:space="preserve"><value>ਸਾਫ਼ ਕਰੋ</value></data>
+  <data name="action.retry" xml:space="preserve"><value>ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>{query} ਲਈ ਨਤੀਜੇ</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source} ਵਿੱਚ ਖੋਜ ਰਹੇ ਹਾਂ…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} ਨੇ ਜਵਾਬ ਨਹੀਂ ਦਿੱਤਾ: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ਸੈੱਟ ਅੱਪ ਨਹੀਂ ਹੈ</value></data>
 </root>

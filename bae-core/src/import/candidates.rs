@@ -67,6 +67,14 @@ pub struct CandidateRuntimeSnapshot {
     pub identify: Option<CandidateIdentifyRuntime>,
     /// The running import: claimed, preparing, or partway through a phase.
     pub import: Option<ImportInFlight>,
+    /// The typed search a person submitted for this candidate, as its sources
+    /// land. `None` before one is submitted and after it is cleared.
+    ///
+    /// It lives here rather than in the pane because its sources land one at a
+    /// time and the pane is rebuilt from stored state: a value the pane owned
+    /// would be lost on every redraw, and lost outright if the person looked
+    /// at another candidate while a provider was still answering.
+    pub search: Option<super::candidate_search::CandidateSearch>,
 }
 
 /// What currently exists for one candidate's identification.

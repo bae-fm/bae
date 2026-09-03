@@ -207,6 +207,13 @@ pub struct SearchRelease {
     pub title: String,
     pub date: Option<String>,
     pub country: Option<String>,
+    /// `ws/2/release?query=` states the pressing's barcode. An empty string
+    /// means the release carries none.
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    pub barcode: Option<String>,
     #[serde(rename = "artist-credit", default)]
     pub artist_credit: Vec<MbArtistCredit>,
     #[serde(rename = "release-group")]

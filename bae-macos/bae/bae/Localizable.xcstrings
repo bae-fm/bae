@@ -35851,6 +35851,197 @@
         }
       }
     },
+    "Discogs not configured" : {
+      "comment" : "Import search form: Discogs answers a search only with an API key",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لم يتم إعداد Discogs"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs не е настроен"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs সেট আপ করা নেই"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs není nastaven"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs ist nicht eingerichtet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs not configured"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs no está configurado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs n'est pas configuré"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs સેટ કરેલું નથી"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "‏Discogs לא הוגדר"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs सेट अप नहीं है"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs nije postavljen"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs non è configurato"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs は設定されていません"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs ಸಿದ್ಧಪಡಿಸಿಲ್ಲ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs가 설정되지 않았습니다"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs സജ്ജീകരിച്ചിട്ടില്ല"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs सेट केलेले नाही"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs is niet ingesteld"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs ਸੈੱਟ ਅੱਪ ਨਹੀਂ ਹੈ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs nie jest skonfigurowany"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs não está configurado"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs அமைக்கப்படவில்லை"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs సెటప్ చేయలేదు"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังไม่ได้ตั้งค่า Discogs"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs kurulmadı"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs не налаштовано"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs ترتیب نہیں دیا گیا"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs chưa được thiết lập"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未设置 Discogs"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未設定 Discogs"
+          }
+        }
+      }
+    },
     "Discogs rejected this key. Check it and save again." : {
       "comment" : "Discogs settings: 401 rejection of the typed key",
       "localizations" : {
@@ -101959,193 +102150,193 @@
         }
       }
     },
-    "Try different search terms or another source" : {
-      "comment" : "Import search: empty state description after a failed search",
+    "Try different search terms" : {
+      "comment" : "Import search: hint under the empty-results line for a typed search",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "جرّب مصطلحات بحث مختلفة أو مصدرًا آخر"
+            "value" : "جرّب مصطلحات بحث أخرى"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Опитайте други думи за търсене или друг източник"
+            "value" : "Опитайте с други думи за търсене"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ভিন্ন অনুসন্ধান শব্দ বা অন্য উৎস চেষ্টা করুন"
+            "value" : "অন্য অনুসন্ধান শব্দ ব্যবহার করে দেখুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zkuste jiné hledané výrazy nebo jiný zdroj"
+            "value" : "Zkuste jiné hledané výrazy"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Versuche andere Suchbegriffe oder eine andere Quelle"
+            "value" : "Versuchen Sie andere Suchbegriffe"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Try different search terms or another source"
+            "value" : "Try different search terms"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prueba con otros términos de búsqueda u otra fuente"
+            "value" : "Prueba con otros términos de búsqueda"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Essayez d'autres termes de recherche ou une autre source"
+            "value" : "Essayez d'autres termes de recherche"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "અલગ શોધ શબ્દો અથવા બીજો સ્રોત અજમાવો"
+            "value" : "અન્ય શોધ શબ્દો અજમાવો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נסו מונחי חיפוש אחרים או מקור אחר"
+            "value" : "נסה מונחי חיפוש אחרים"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "अलग खोज शब्द या कोई दूसरा स्रोत आजमाएं"
+            "value" : "दूसरे खोज शब्द आज़माएँ"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pokušajte s drugim pojmovima ili drugim izvorom"
+            "value" : "Pokušajte s drugim pojmovima za pretraživanje"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prova termini di ricerca diversi o un'altra sorgente"
+            "value" : "Prova con altri termini di ricerca"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "別の検索語句や別のソースをお試しください"
+            "value" : "別の検索語を試してください"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಬೇರೆ ಹುಡುಕಾಟ ಪದಗಳು ಅಥವಾ ಇನ್ನೊಂದು ಮೂಲ ಪ್ರಯತ್ನಿಸಿ"
+            "value" : "ಬೇರೆ ಹುಡುಕಾಟ ಪದಗಳನ್ನು ಪ್ರಯತ್ನಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "다른 검색어 또는 다른 소스를 사용하세요"
+            "value" : "다른 검색어를 사용해 보세요"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "വേറെ തിരയൽ വാക്കുകളോ മറ്റൊരു ഉറവിടമോ ശ്രമിക്കുക"
+            "value" : "മറ്റ് തിരയൽ പദങ്ങൾ പരീക്ഷിക്കുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "वेगळे शोध शब्द किंवा दुसरा स्रोत वापरून पाहा"
+            "value" : "वेगळे शोध शब्द वापरून पहा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Probeer andere zoektermen of een andere bron"
+            "value" : "Probeer andere zoektermen"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਵੱਖਰੇ ਖੋਜ ਸ਼ਬਦ ਜਾਂ ਹੋਰ ਸਰੋਤ ਅਜ਼ਮਾਓ"
+            "value" : "ਹੋਰ ਖੋਜ ਸ਼ਬਦ ਅਜ਼ਮਾਓ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spróbuj innych słów lub innego źródła"
+            "value" : "Spróbuj innych słów wyszukiwania"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tente outros termos de busca ou outra fonte"
+            "value" : "Tente outros termos de busca"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "வேறு தேடல் சொற்கள் அல்லது வேறு மூலம் முயற்சிக்கவும்"
+            "value" : "வேறு தேடல் சொற்களை முயற்சிக்கவும்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "వేరే శోధన పదాలు లేదా మరో మూలాన్ని ప్రయత్నించండి"
+            "value" : "వేరే శోధన పదాలను ప్రయత్నించండి"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ลองใช้คำค้นอื่นหรือแหล่งอื่น"
+            "value" : "ลองใช้คำค้นหาอื่น"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Farklı arama terimleri veya başka bir kaynak deneyin"
+            "value" : "Farklı arama terimleri deneyin"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Спробуйте інші пошукові запити або інше джерело"
+            "value" : "Спробуйте інші пошукові слова"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مختلف تلاش الفاظ یا دوسرا ماخذ آزمائیں"
+            "value" : "دوسرے تلاش الفاظ آزمائیں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thử từ khóa tìm kiếm khác hoặc nguồn khác"
+            "value" : "Thử từ khóa tìm kiếm khác"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尝试其他搜索词或其他来源"
+            "value" : "试试其他搜索词"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "試試不同搜尋詞或其他來源"
+            "value" : "試試其他搜尋字詞"
           }
         }
       }

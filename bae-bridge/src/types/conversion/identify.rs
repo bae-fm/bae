@@ -11,12 +11,13 @@ impl BridgeMetadataResult {
             label,
             catalog_number,
             country,
+            barcode,
+            source_group_id,
             // Dropped: the card carries the album's title/artist/cover, so a
             // pressing projection keeps only pressing-distinguishing fields.
             title: _,
             artist: _,
             cover_art: _,
-            source_group_id: _,
             // The source's own tracklist is Ready-rule evidence, not something
             // a pressing row renders; the sidebar reads the classification the
             // rule produced from it.
@@ -30,6 +31,8 @@ impl BridgeMetadataResult {
             label,
             catalog_number,
             country,
+            barcode,
+            source_group_id,
         }
     }
 }
@@ -243,7 +246,13 @@ impl BridgeBarcodeProgress {
                 total,
             },
             BarcodeProgressView::Done { n_results } => BridgeBarcodeProgress::Done { n_results },
-            BarcodeProgressView::Failed { failure } => BridgeBarcodeProgress::Failed {
+            BarcodeProgressView::Failed { failures } => BridgeBarcodeProgress::Failed {
+                failures: failures
+                    .into_iter()
+                    .map(BridgeSourceFailure::from_core)
+                    .collect(),
+            },
+            BarcodeProgressView::ScanFailed { failure } => BridgeBarcodeProgress::ScanFailed {
                 failure: BridgeLookupFailure::from_core(failure),
             },
             BarcodeProgressView::Skipped => BridgeBarcodeProgress::Skipped,
@@ -256,29 +265,37 @@ impl BridgeReleaseGroup {
     pub(crate) fn from_core(g: bae_core::import::release_group::ReleaseGroup) -> Self {
         let bae_core::import::release_group::ReleaseGroup {
             id,
-            source_group_id,
             title,
             artist,
             cover_art,
-            source_label,
-            group_url,
+            sources,
             year_min,
             year_max,
             pressings,
         } = g;
         BridgeReleaseGroup {
             id,
-            source_group_id,
             title,
             artist,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
-            source_label,
-            group_url,
+            sources: sources
+                .into_iter()
+                .map(|source| BridgeReleaseGroupSource {
+                    source: BridgeMetadataSource::from_core(source.source),
+                    group_url: source.group_url,
+                })
+                .collect(),
             year_min,
             year_max,
             pressings: pressings
                 .into_iter()
-                .map(BridgeMetadataResult::from_core)
+                .map(|pressing| BridgePressing {
+                    releases: pressing
+                        .releases
+                        .into_iter()
+                        .map(BridgeMetadataResult::from_core)
+                        .collect(),
+                })
                 .collect(),
         }
     }
@@ -428,33 +445,51 @@ impl BridgeIdentifyState {
             IdentifyStateView::ManualOnly { track_count } => {
                 BridgeIdentifyState::ManualOnly { track_count }
             }
-            IdentifyStateView::Failed { failures } => BridgeIdentifyState::Failed {
-                failures: failures
+            IdentifyStateView::Failed {
+                failures,
+                groups,
+                library_statuses,
+                provenance,
+            } => BridgeIdentifyState::Failed {
+                failures: failures.into_iter().map(identify_failure).collect(),
+                groups: groups
                     .into_iter()
-                    .map(|failure| match failure {
-                        bae_core::identify::IdentifyFailure::DiscId(failure) => {
-                            crate::types::BridgeIdentifyFailure::DiscId {
-                                failure: BridgeLookupFailure::from_core(failure),
-                            }
-                        }
-                        bae_core::identify::IdentifyFailure::Barcode(failure) => {
-                            crate::types::BridgeIdentifyFailure::Barcode {
-                                failure: BridgeLookupFailure::from_core(failure),
-                            }
-                        }
-                        bae_core::identify::IdentifyFailure::Catalog(failure) => {
-                            crate::types::BridgeIdentifyFailure::Catalog {
-                                failure: BridgeLookupFailure::from_core(failure),
-                            }
-                        }
-                        bae_core::identify::IdentifyFailure::ReleaseDetails(failure) => {
-                            crate::types::BridgeIdentifyFailure::ReleaseDetails {
-                                failure: BridgeLookupFailure::from_core(failure),
-                            }
-                        }
-                    })
+                    .map(BridgeReleaseGroup::from_core)
+                    .collect(),
+                library_statuses: status_map(library_statuses),
+                provenance: provenance
+                    .into_iter()
+                    .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
                     .collect(),
             },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+fn identify_failure(
+    failure: bae_core::identify::IdentifyFailure,
+) -> crate::types::BridgeIdentifyFailure {
+    use bae_core::identify::IdentifyFailure;
+    match failure {
+        IdentifyFailure::DiscId(failure) => crate::types::BridgeIdentifyFailure::DiscId {
+            failure: BridgeLookupFailure::from_core(failure),
+        },
+        IdentifyFailure::BarcodeScan(failure) => crate::types::BridgeIdentifyFailure::BarcodeScan {
+            failure: BridgeLookupFailure::from_core(failure),
+        },
+        IdentifyFailure::Barcode(failure) => crate::types::BridgeIdentifyFailure::Barcode {
+            source: BridgeMetadataSource::from_core(failure.source),
+            failure: BridgeLookupFailure::from_core(failure.failure),
+        },
+        IdentifyFailure::Catalog(failure) => crate::types::BridgeIdentifyFailure::Catalog {
+            source: BridgeMetadataSource::from_core(failure.source),
+            failure: BridgeLookupFailure::from_core(failure.failure),
+        },
+        IdentifyFailure::ReleaseDetails(failure) => {
+            crate::types::BridgeIdentifyFailure::ReleaseDetails {
+                failure: BridgeLookupFailure::from_core(failure),
+            }
         }
     }
 }
@@ -476,20 +511,48 @@ fn status_map(
 mod tests {
     use super::*;
 
+    /// A provider that failed the barcode lookup crosses with its name on it,
+    /// so a surface can say which one to retry.
     #[test]
-    fn barcode_progress_failure_crosses_bridge() {
+    fn barcode_progress_failure_crosses_bridge_with_its_provider() {
         let progress = bae_core::identify::BarcodeProgress::Failed {
-            failure: bae_core::signals::LookupFailure::Diagnostic {
-                detail: "provider lookup failed".to_string(),
-            },
+            failures: vec![bae_core::import::SourceFailure {
+                source: bae_core::import::MetadataSource::Discogs,
+                failure: bae_core::signals::LookupFailure::Diagnostic {
+                    detail: "provider lookup failed".to_string(),
+                },
+            }],
         };
 
         let view = bae_core::identify::BarcodeProgressView::from(progress);
         match BridgeBarcodeProgress::from_view(view) {
-            BridgeBarcodeProgress::Failed {
-                failure: BridgeLookupFailure::Diagnostic { detail },
-            } => assert_eq!(detail, "provider lookup failed"),
+            BridgeBarcodeProgress::Failed { failures } => assert_eq!(
+                failures,
+                vec![BridgeSourceFailure {
+                    source: BridgeMetadataSource::Discogs,
+                    failure: BridgeLookupFailure::Diagnostic {
+                        detail: "provider lookup failed".to_string(),
+                    },
+                }]
+            ),
             other => panic!("expected failed barcode progress, got {other:?}"),
         }
+    }
+
+    /// Reading the candidate's barcodes failing is not a provider's failure,
+    /// and crosses as its own variant rather than as an unattributed one.
+    #[test]
+    fn a_failed_barcode_scan_crosses_as_its_own_variant() {
+        let progress = bae_core::identify::BarcodeProgress::ScanFailed {
+            failure: bae_core::signals::LookupFailure::ArtworkAnalysis,
+        };
+
+        let view = bae_core::identify::BarcodeProgressView::from(progress);
+        assert!(matches!(
+            BridgeBarcodeProgress::from_view(view),
+            BridgeBarcodeProgress::ScanFailed {
+                failure: BridgeLookupFailure::ArtworkAnalysis
+            }
+        ));
     }
 }

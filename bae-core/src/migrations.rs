@@ -63,6 +63,11 @@ pub fn all() -> Vec<coven::Migration> {
             "track_mapping_named_by_source",
             include_str!("../migrations/011_track_mapping_named_by_source.sql"),
         ),
+        coven::Migration::sql(
+            12,
+            "import_candidate_match_barcode",
+            include_str!("../migrations/012_import_candidate_match_barcode.sql"),
+        ),
     ]
 }
 

@@ -6,6 +6,8 @@ use std::sync::Arc;
 
 #[path = "migrations_tests/migration_ten.rs"]
 mod migration_ten;
+#[path = "migrations_tests/migration_twelve.rs"]
+mod migration_twelve;
 
 fn config(store_id: &str) -> coven::Config {
     coven::Config::with_defaults(
@@ -87,6 +89,12 @@ fn version_eight() -> Vec<coven::Migration> {
 fn version_nine() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(9);
+    migrations
+}
+
+fn version_eleven() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(11);
     migrations
 }
 

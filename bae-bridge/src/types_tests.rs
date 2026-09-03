@@ -45,8 +45,9 @@ mod triage_tests {
             barcode_results: Vec::new(),
             catalog_results: Vec::new(),
             discid_failure: None,
-            barcode_failure: None,
-            catalog_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
             matched_barcode: None,
             track_count: 9,
         };
@@ -61,6 +62,7 @@ mod triage_tests {
             BridgeCandidateRuntimeSnapshot::from_core(bae_core::import::CandidateRuntimeSnapshot {
                 identify: bae_core::import::CandidateIdentifyRuntime::from_state(live),
                 import: None,
+                search: None,
             });
         assert_eq!(crossed.signals_toolbar.signals.len(), expected);
         assert!(crossed.import.is_none());
@@ -72,6 +74,7 @@ mod triage_tests {
                     progress_percent: Some(40),
                     step: None,
                 }),
+                search: None,
             });
         assert!(matches!(idle.identify_state, BridgeIdentifyState::Idle));
         assert!(idle.signals_toolbar.signals.is_empty());

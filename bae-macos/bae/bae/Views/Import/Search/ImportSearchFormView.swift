@@ -1,16 +1,13 @@
 import BaeKit
 import SwiftUI
 
-/// The manual-search form: source toggles, tab selector (General / Catalog # /
-/// Barcode), and the tab's fields with autocomplete seeded from the candidate's
-/// scanned text signals. Submits through `onSearch`.
+/// The manual-search form: the tab selector (General / Catalog # / Barcode) and
+/// the tab's fields, with autocomplete seeded from the candidate's scanned text
+/// signals. Submits through `onSearch`; every configured provider answers, so
+/// the form offers no source selection.
 struct ImportSearchFormView: View {
     @Binding
     var activeTab: SearchTab
-    @Binding
-    var musicBrainzSelected: Bool
-    @Binding
-    var discogsSelected: Bool
     @Binding
     var searchArtist: String
     @Binding
@@ -30,9 +27,6 @@ struct ImportSearchFormView: View {
     private var discogsKeyHoverTask: DispatchWorkItem?
 
     private var isSearchDisabled: Bool {
-        let hasSource =
-            musicBrainzSelected
-            || (discogsEnabled && discogsSelected)
         let hasTerms =
             switch activeTab {
             case .general:
@@ -42,7 +36,7 @@ struct ImportSearchFormView: View {
             case .barcode:
                 !searchBarcode.isEmpty
             }
-        return !hasSource || !hasTerms
+        return !hasTerms
     }
 
     private func submitSearch() {
@@ -75,7 +69,7 @@ struct ImportSearchFormView: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack {
-                sourceToggles
+                discogsHint
                 Picker("Search by", selection: $activeTab) {
                     Text("General").tag(SearchTab.general)
                     Text("Catalog #").tag(SearchTab.catalogNumber)
@@ -141,28 +135,26 @@ struct ImportSearchFormView: View {
         .animation(nil, value: activeTab)
     }
 
-    private var sourceToggles: some View {
-        SearchSourceToggles(
-            musicBrainzSelected: $musicBrainzSelected,
-            discogsSelected: $discogsSelected,
-            discogsEnabled: discogsEnabled,
-            showDiscogsInfo: $showDiscogsKeyInfo,
-            hoverTask: $discogsKeyHoverTask,
-        )
-        .fixedSize()
-        .overlay(alignment: .bottomTrailing) {
-            Color.clear
-                .frame(width: 100, height: 1)
-                .popover(isPresented: $showDiscogsKeyInfo, arrowEdge: .bottom) {
-                    DiscogsKeyPopover(
-                        isPresented: $showDiscogsKeyInfo,
-                        hoverTask: $discogsKeyHoverTask,
-                        onOpenSettings: { onOpenSettings() },
-                    )
-                    .popoverEntrance(anchor: .top)
-                    .background { PopoverBehavior() }
-                }
-                .allowsHitTesting(false)
+    /// Discogs answers a search only with a key. Say so where the search is
+    /// typed, with the way to set one up behind it.
+    @ViewBuilder
+    private var discogsHint: some View {
+        if !discogsEnabled {
+            Button("Discogs not configured") {
+                showDiscogsKeyInfo = true
+            }
+            .buttonStyle(.link)
+            .font(.system(size: 11.5))
+            .fixedSize()
+            .popover(isPresented: $showDiscogsKeyInfo, arrowEdge: .bottom) {
+                DiscogsKeyPopover(
+                    isPresented: $showDiscogsKeyInfo,
+                    hoverTask: $discogsKeyHoverTask,
+                    onOpenSettings: { onOpenSettings() },
+                )
+                .popoverEntrance(anchor: .top)
+                .background { PopoverBehavior() }
+            }
         }
     }
 }
@@ -173,8 +165,6 @@ struct ImportSearchFormView: View {
     #Preview("General search") {
         ImportSearchFormView(
             activeTab: .constant(.general),
-            musicBrainzSelected: .constant(true),
-            discogsSelected: .constant(true),
             searchArtist: .constant("Artist Name"),
             searchAlbum: .constant("Album Title"),
             searchCatalog: .constant(""),
@@ -191,8 +181,6 @@ struct ImportSearchFormView: View {
     #Preview("Catalog search") {
         ImportSearchFormView(
             activeTab: .constant(.catalogNumber),
-            musicBrainzSelected: .constant(true),
-            discogsSelected: .constant(false),
             searchArtist: .constant(""),
             searchAlbum: .constant(""),
             searchCatalog: .constant("WPCR-80001"),

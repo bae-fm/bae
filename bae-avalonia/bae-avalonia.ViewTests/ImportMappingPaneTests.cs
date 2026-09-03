@@ -130,8 +130,10 @@ public sealed class ImportMappingPaneTests
         Assert.Null(detail.MetadataProvenance);
     }
 
+    // Find online is one page. The setting says only whether identification
+    // starts on its own; the typed form is there either way.
     [AvaloniaFact]
-    public void OpeningFindOnlineUsesManualDefaultAndAutomaticSelectionStarts()
+    public void OpeningFindOnlineShowsTheFormWithoutStartingIdentification()
     {
         var identified = new List<string>();
         var (pane, _) = Show(
@@ -144,16 +146,23 @@ public sealed class ImportMappingPaneTests
         Assert.Empty(identified);
         Assert.Contains(
             pane.GetLogicalDescendants().OfType<Button>(),
-            button => Equals(button.Content, Loc.Chrome("import.search.auto")));
-        Assert.Contains(
-            pane.GetLogicalDescendants().OfType<Button>(),
-            button => Equals(
-                button.Content,
-                Loc.Chrome("import.row.search_manually")));
-        Click(pane, Loc.Chrome("import.search.auto"));
+            button => Equals(button.Content, Loc.Chrome("action.search")));
         Assert.DoesNotContain(
-            Loc.Chrome("import.search.no_automatic_matches"),
-            Texts(pane));
+            pane.GetLogicalDescendants().OfType<Button>(),
+            button => Equals(button.Content, Loc.Chrome("import.search.auto")));
+    }
+
+    [AvaloniaFact]
+    public void OpeningFindOnlineStartsIdentificationWhenTheSettingSaysSo()
+    {
+        var identified = new List<string>();
+        var (pane, _) = Show(
+            Detail(metadataProvenance: null, edit: BlankEdit()),
+            identified: identified,
+            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.Automatic);
+
+        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
+
         Assert.Equal(new[] { CandidateKey }, identified);
     }
 
@@ -172,6 +181,7 @@ public sealed class ImportMappingPaneTests
                     false,
                     Array.Empty<BridgeSignalOption>()),
             }),
+            null,
             null);
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
@@ -188,7 +198,7 @@ public sealed class ImportMappingPaneTests
     }
 
     [AvaloniaFact]
-    public void ManualSearchStartsBlankAndSurvivesMethodChanges()
+    public void TheSearchFormStartsBlankAndKeepsWhatIsTypedAcrossQueryTypes()
     {
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
@@ -204,14 +214,11 @@ public sealed class ImportMappingPaneTests
         Dispatcher.UIThread.RunJobs();
         Assert.Equal("Typed artist", artist.Text);
 
-        Click(pane, Loc.Chrome("import.search.auto"));
+        Click(pane, Loc.Chrome("signal.kind.catalog"));
         Assert.DoesNotContain("Typed artist", Fields(pane));
-        Click(pane, Loc.Chrome("import.row.search_manually"));
+        Click(pane, Loc.Chrome("import.search.general"));
 
         Assert.Contains("Typed artist", Fields(pane));
-        Assert.Contains(
-            pane.GetLogicalDescendants().OfType<Button>(),
-            button => Equals(button.Content, Loc.Chrome("import.search.general")));
         Assert.Contains(
             pane.GetLogicalDescendants().OfType<Button>(),
             button => Equals(button.Content, Loc.Chrome("signal.kind.catalog")));
@@ -220,37 +227,20 @@ public sealed class ImportMappingPaneTests
             button => Equals(button.Content, Loc.Chrome("signal.kind.barcode")));
     }
 
+    // Every configured provider answers a person's search, so the form offers
+    // no source selection to get wrong.
     [AvaloniaFact]
-    public void ManualSearchSourcesAreIndependentAndAtLeastOneIsRequired()
+    public void TheSearchFormOffersNoSourceSelection()
     {
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
             defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually);
 
         Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
-        FieldByLabel(pane, Loc.Chrome("import.field.artist_manual")).Text = "Artist Name";
-        Dispatcher.UIThread.RunJobs();
 
-        var musicBrainz = Assert.Single(
+        Assert.DoesNotContain(
             pane.GetLogicalDescendants().OfType<CheckBox>(),
-            check => Equals(check.Content, "MusicBrainz"));
-        var discogs = Assert.Single(
-            pane.GetLogicalDescendants().OfType<CheckBox>(),
-            check => Equals(check.Content, "Discogs"));
-        Assert.True(musicBrainz.IsChecked);
-        Assert.True(discogs.IsChecked);
-
-        musicBrainz.IsChecked = false;
-        discogs.IsChecked = false;
-        Dispatcher.UIThread.RunJobs();
-        Assert.False(
-            Assert.Single(
-                pane.GetLogicalDescendants().OfType<Button>(),
-                button => Equals(button.Content, Loc.Chrome("action.search")))
-            .IsEnabled);
-
-        discogs.IsChecked = true;
-        Dispatcher.UIThread.RunJobs();
+            check => Equals(check.Content, "MusicBrainz") || Equals(check.Content, "Discogs"));
         Assert.True(
             Assert.Single(
                 pane.GetLogicalDescendants().OfType<Button>(),
@@ -261,7 +251,7 @@ public sealed class ImportMappingPaneTests
     [AvaloniaFact]
     public void ManualSearchDispatchesTheSelectedQueryType()
     {
-        var searches = new List<BridgeSearchQuery>();
+        var searches = new List<(string Key, BridgeSearchQuery Query)>();
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
             defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually,
@@ -288,22 +278,18 @@ public sealed class ImportMappingPaneTests
 
         Assert.Collection(
             searches,
-            query => Assert.Equal(
-                new BridgeSearchQuery.General(
+            search => Assert.Equal(
+                (CandidateKey, (BridgeSearchQuery)new BridgeSearchQuery.General(
                     "Typed artist",
-                    "Typed album",
-                    new BridgeSearchSources.Both()),
-                query),
-            query => Assert.Equal(
-                new BridgeSearchQuery.CatalogNumber(
-                    "CAT-1",
-                    new BridgeSearchSources.Both()),
-                query),
-            query => Assert.Equal(
-                new BridgeSearchQuery.Barcode(
-                    "0123456789012",
-                    new BridgeSearchSources.Both()),
-                query));
+                    "Typed album")),
+                search),
+            search => Assert.Equal(
+                (CandidateKey, (BridgeSearchQuery)new BridgeSearchQuery.CatalogNumber("CAT-1")),
+                search),
+            search => Assert.Equal(
+                (CandidateKey,
+                    (BridgeSearchQuery)new BridgeSearchQuery.Barcode("0123456789012")),
+                search));
     }
 
     [AvaloniaFact]
@@ -321,6 +307,7 @@ public sealed class ImportMappingPaneTests
                 1,
                 new Dictionary<string, BridgeResultProvenance>()),
             new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
+            null,
             null);
         var (pane, _) = Show(
             Detail(provenance, metadataRevision: 1),
@@ -415,7 +402,8 @@ public sealed class ImportMappingPaneTests
                 new BridgeIdentifyState.Idle(),
                 new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
                 new BridgeImportInFlight(37, new BridgeImportStep.Running(
-                    BridgeImportPhase.ReadingFiles))));
+                    BridgeImportPhase.ReadingFiles)),
+                null));
 
         var texts = pane.GetLogicalDescendants().OfType<TextBlock>()
             .Select(text => text.Text ?? string.Empty).ToList();
@@ -470,7 +458,7 @@ public sealed class ImportMappingPaneTests
         ImportMetadataPresentation? initialPresentation = null,
         ulong applicationRevision = 1,
         List<Action<BridgeImportCandidateDetail?>>? detailCallbacks = null,
-        List<BridgeSearchQuery>? searches = null,
+        List<(string Key, BridgeSearchQuery Query)>? searches = null,
         List<string>? openedAlbums = null)
     {
         // Controls may only be built on the headless session's dispatcher
@@ -500,13 +488,13 @@ public sealed class ImportMappingPaneTests
                 identified?.Add(key);
                 return Task.FromResult(true);
             },
-            SearchReleases = query =>
+            StartCandidateSearch = (key, query) =>
             {
-                searches?.Add(query);
-                return Task.FromResult((
-                    true,
-                    ((List<ReleaseCandidateChoice>?)new(), (string?)null)));
+                searches?.Add((key, query));
+                return true;
             },
+            RetryCandidateSearch = _ => true,
+            ClearCandidateSearch = _ => true,
             PreviewFileTags = _ => Task.FromResult((
                 true,
                 ((BridgeReleaseUserEdit?)FileTagsEdit(), (string?)null))),
@@ -758,25 +746,30 @@ public sealed class ImportMappingPaneTests
 
     private static BridgeReleaseGroup ChoiceGroup(string releaseId)
     {
-        var pressing = new BridgeMetadataResult(
+        var release = new BridgeMetadataResult(
             BridgeMetadataSource.MusicBrainz,
             releaseId,
             1996,
             "CD",
             "Label Name",
             "CAT-1",
-            "UK");
+            "UK",
+            "012345678905",
+            "source-group-1");
         return new BridgeReleaseGroup(
                 "group-1",
-                "source-group-1",
                 "Album Title",
                 "Artist Name",
                 null,
-                "MusicBrainz",
-                "https://musicbrainz.org/release-group/source-group-1",
+                new[]
+                {
+                    new BridgeReleaseGroupSource(
+                        BridgeMetadataSource.MusicBrainz,
+                        "https://musicbrainz.org/release-group/source-group-1"),
+                },
                 1996,
                 1996,
-                new[] { pressing });
+                new[] { new BridgePressing(new[] { release }) });
     }
 
     private static void Click(Control pane, string label) =>

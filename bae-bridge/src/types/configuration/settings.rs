@@ -500,9 +500,8 @@ pub enum CloudKitError {
 // `handle.rs`, and in `bridge_utils.rs`: a conversion is an associated function
 // on the `Bridge*` type, `BridgeX::from_core(core) -> Self` and
 // `BridgeX::into_core(self) -> core::X`. Two exceptions: some `from_core`s take
-// extra bridge-only arguments (`BridgeReleaseDetail`,
-// `BridgeCandidateSearchResults`), and `LibraryError` crosses through a `From`
-// impl.
+// extra bridge-only arguments (`BridgeReleaseDetail`), and `LibraryError`
+// crosses through a `From` impl.
 //
 // Record converters exhaustively destructure their core input(s) — no `..` in
 // any struct or enum-variant pattern — so a new bae-core field fails the build

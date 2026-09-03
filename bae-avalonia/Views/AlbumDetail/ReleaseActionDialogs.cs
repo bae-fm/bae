@@ -146,32 +146,8 @@ internal sealed class ReleaseActionDialogs
             var albumField = DialogUi.Field(Loc.Chrome("search.field.album"), out var albumBox);
             artistBox.Text = seedArtist;
             albumBox.Text = seedAlbum;
-            var discogsAvailable = _app.SettingsStore.Current?.DiscogsConfigured == true;
-            var sourceSelection = new ManualSearchSourceSelection(true, discogsAvailable);
+            // Every configured provider is asked, so the dialog names none.
             var searchButton = new Button { Content = Loc.Chrome("action.search") };
-            var sourceToggles = ImportPaneUi.MetadataSourceToggles(
-                sourceSelection,
-                discogsAvailable,
-                out var musicBrainz,
-                out var discogs);
-            void SetSourceSelection(ManualSearchSourceSelection selection)
-            {
-                sourceSelection = selection;
-                searchButton.IsEnabled = sourceSelection.QuerySources is not null;
-            }
-            musicBrainz.IsCheckedChanged += (_, _) => SetSourceSelection(
-                sourceSelection with
-                {
-                    MusicBrainz = musicBrainz.IsChecked == true,
-                });
-            discogs.IsCheckedChanged += (_, _) => SetSourceSelection(
-                sourceSelection with
-                {
-                    Discogs = discogs.IsChecked == true,
-                });
-            var sourceCaption = new TextBlock { Text = Loc.Chrome("search.field.source"), FontSize = 12.5 };
-            sourceCaption[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-            var sourceField = new StackPanel { Spacing = 4, Children = { sourceCaption, sourceToggles } };
 
             // The pressing the user picked, pending the confirm that commits
             // it as the release's selected external metadata provenance.
@@ -183,16 +159,33 @@ internal sealed class ReleaseActionDialogs
             var confirm = DialogUi.Primary(Loc.Chrome("album.reidentify.confirm"));
             confirm.IsEnabled = false;
 
+            // A pipeline interaction takes the results list back from a typed
+            // search: the search run is dropped, and the pipeline's own matches
+            // draw again.
             void ToggleSignal(string kind, string value)
             {
+                _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
                 _ = _app.Import.ToggleSignalForCandidate(key, kind, value);
             }
 
             void Rerun()
             {
+                _app.Import.ClearCandidateSearch(key);
                 results.ResumePipeline();
                 _ = _app.Import.RerunIdentifyForCandidate(key);
+            }
+
+            // Replace the list, keeping the selection when the rows have not
+            // moved — rebuilding it drops whatever the user had picked.
+            void ShowChoices(List<ReleaseCandidateChoice> next)
+            {
+                candidates = next;
+                resultsList.ItemsSource = candidates
+                    .Select(candidate => candidate.Summary)
+                    .ToList();
+                pickedIndex = -1;
+                confirm.IsEnabled = false;
             }
 
             // The re-identify run has no candidate row anywhere — the release
@@ -200,8 +193,8 @@ internal sealed class ReleaseActionDialogs
             // candidate-runtime signal under this dialog's key.
             void ShowRun(BridgeCandidateRuntimeSnapshot? runtime)
             {
-                var (status, matches, badges) = _app.Import.ProjectRun(runtime);
-                var line = status?.LocalizedLine ?? string.Empty;
+                var (runStatus, matches, badges) = _app.Import.ProjectRun(runtime);
+                var line = runStatus?.LocalizedLine ?? string.Empty;
                 pipelineStatus.Text = line;
                 pipelineStatus.IsVisible = line.Length > 0;
                 badgeHost.Children.Clear();
@@ -209,10 +202,27 @@ internal sealed class ReleaseActionDialogs
                 {
                     badgeHost.Children.Add(SignalBadgeRow.Build(badges, ToggleSignal, Rerun));
                 }
+                // A submitted search owns the list while it exists; its
+                // providers land one at a time, so this runs once per landing.
+                if (runtime?.Search is { } search)
+                {
+                    results.ApplyManualResults();
+                    var found = _app.Import.GroupChoices(search.Groups);
+                    if (!found.Select(choice => choice.ReleaseId)
+                        .SequenceEqual(candidates.Select(choice => choice.ReleaseId)))
+                    {
+                        ShowChoices(found);
+                    }
+                    var failed = SearchFailureLine(search);
+                    status.Text = failed ?? Loc.Chrome("search.no_matches");
+                    status.IsVisible = failed is not null
+                        || (found.Count == 0 && search.Settled);
+                    searchButton.IsEnabled = true;
+                    return;
+                }
                 if (results.ApplyPipelineMatches(matches.Select(match => match.ReleaseId).ToList()))
                 {
-                    candidates = matches;
-                    resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
+                    ShowChoices(matches);
                 }
             }
 
@@ -234,37 +244,15 @@ internal sealed class ReleaseActionDialogs
             }
             onRuntimeChanged = OnRuntimeChanged;
 
-            searchButton.Click += async (_, _) =>
+            searchButton.Click += (_, _) =>
             {
-                var sources = sourceSelection.QuerySources;
-                if (sources is null)
-                {
-                    return;
-                }
                 searchButton.IsEnabled = false;
-                var (current, search) = await _app.Import.SearchReleases(
+                status.IsVisible = false;
+                _app.Import.StartCandidateSearch(
+                    key,
                     new BridgeSearchQuery.General(
                         artistBox.Text ?? string.Empty,
-                        albumBox.Text ?? string.Empty,
-                        sources));
-                searchButton.IsEnabled = sourceSelection.QuerySources is not null;
-                if (!current)
-                {
-                    return;
-                }
-                if (search.Error is not null)
-                {
-                    status.Text = search.Error;
-                    status.IsVisible = true;
-                    return;
-                }
-                results.ApplyManualResults();
-                pickedIndex = -1;
-                candidates = search.Candidates ?? new List<ReleaseCandidateChoice>();
-                resultsList.ItemsSource = candidates.Select(candidate => candidate.Summary).ToList();
-                status.Text = Loc.Chrome("search.no_matches");
-                status.IsVisible = candidates.Count == 0;
-                confirm.IsEnabled = false;
+                        albumBox.Text ?? string.Empty));
             };
 
             // Picking a row claims that pressing.
@@ -324,7 +312,6 @@ internal sealed class ReleaseActionDialogs
             column.Children.Add(resultsList);
             column.Children.Add(artistField);
             column.Children.Add(albumField);
-            column.Children.Add(sourceField);
             column.Children.Add(searchButton);
             column.Children.Add(status);
             column.Children.Add(DialogUi.Actions(cancel, skip, confirm));
@@ -514,5 +501,28 @@ internal sealed class ReleaseActionDialogs
         column.Children.Add(DialogUi.Actions(done));
 
         return new ScrollViewer { Content = column, MaxHeight = 520 };
+    }
+
+    /// <summary>The line naming the providers that did not answer a search, or
+    /// null when they all did. What one provider found still stands, so this is
+    /// a note beside the list rather than the list's replacement.</summary>
+    private static string? SearchFailureLine(BridgeCandidateSearch search)
+    {
+        var failed = new[]
+        {
+            (BridgeMetadataSource.MusicBrainz, search.Musicbrainz),
+            (BridgeMetadataSource.Discogs, search.Discogs),
+        }
+            .Where(entry => entry.Item2 is BridgeSourceSearch.Failed)
+            .Select(entry => Loc.Chrome(
+                "import.search.source_failed",
+                new Dictionary<string, object?>
+                {
+                    ["source"] = BaeBridgeMethods.BridgeMetadataSourceName(entry.Item1),
+                    ["reason"] = BridgeDisplay.LocalizedLine(
+                        ((BridgeSourceSearch.Failed)entry.Item2).Failure),
+                }))
+            .ToList();
+        return failed.Count == 0 ? null : string.Join("  ·  ", failed);
     }
 }

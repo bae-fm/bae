@@ -110,6 +110,7 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
             progress_percent: None,
             step: None,
         }),
+        search: None,
     };
     changes
         .send(CandidateRuntimeChange::Updated {
@@ -136,6 +137,7 @@ async fn only_a_change_that_moves_a_placement_reruns_the_query() {
                         progress_percent: Some(percent),
                         step: Some(ImportStep::Running(ImportPhase::MeasuringLoudness)),
                     }),
+                    search: None,
                 },
             })
             .expect("the merge task is listening");

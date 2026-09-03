@@ -1,8 +1,10 @@
 use super::*;
 
 mod candidates;
+mod identify;
 
 pub(crate) use candidates::*;
+pub(crate) use identify::*;
 
 pub(super) fn expect_no_args(args: Value, tool_name: &str) -> Result<(), AutomationError> {
     match args {
@@ -138,28 +140,24 @@ fn storage_action_name(action: &AutomationReleaseStorageAction) -> &'static str 
     }
 }
 
-pub(super) fn search_query(query: AutomationSearchQuery) -> SearchQuery {
+/// The typed query and the one source to ask it of. The query itself no longer
+/// names a source — every configured provider answers a person's search — so an
+/// automation client's single-source request splits into the two arguments the
+/// one-shot search takes.
+pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, MetadataSource) {
     match query {
         AutomationSearchQuery::General {
             artist,
             album,
             source,
-        } => SearchQuery::General {
-            artist,
-            album,
-            sources: bae_core::import::SearchSources::One(source.into()),
-        },
+        } => (SearchQuery::General { artist, album }, source.into()),
         AutomationSearchQuery::CatalogNumber {
             catalog_number,
             source,
-        } => SearchQuery::CatalogNumber {
-            catalog_number,
-            sources: bae_core::import::SearchSources::One(source.into()),
-        },
-        AutomationSearchQuery::Barcode { barcode, source } => SearchQuery::Barcode {
-            barcode,
-            sources: bae_core::import::SearchSources::One(source.into()),
-        },
+        } => (SearchQuery::CatalogNumber { catalog_number }, source.into()),
+        AutomationSearchQuery::Barcode { barcode, source } => {
+            (SearchQuery::Barcode { barcode }, source.into())
+        }
     }
 }
 
@@ -238,15 +236,63 @@ pub(super) fn automation_release_group(group: ReleaseGroup) -> AutomationRelease
         title: group.title,
         artist: group.artist,
         cover_art: group.cover_art.map(automation_remote_cover),
-        source_label: group.source_label,
-        group_url: group.group_url,
+        sources: group
+            .sources
+            .into_iter()
+            .map(|source| AutomationReleaseGroupSource {
+                source: source.source.into(),
+                group_url: source.group_url,
+            })
+            .collect(),
         year_min: group.year_min,
         year_max: group.year_max,
         pressings: group
             .pressings
             .into_iter()
-            .map(automation_metadata_result)
+            .map(|pressing| AutomationPressing {
+                releases: pressing
+                    .releases
+                    .into_iter()
+                    .map(automation_metadata_result)
+                    .collect(),
+            })
             .collect(),
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn automation_source_failure(
+    failure: bae_core::import::SourceFailure,
+) -> AutomationSourceFailure {
+    AutomationSourceFailure {
+        source: failure.source.into(),
+        failure: automation_lookup_failure(failure.failure),
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(super) fn automation_identify_failure(
+    failure: bae_core::identify::IdentifyFailure,
+) -> AutomationIdentifyFailure {
+    use bae_core::identify::IdentifyFailure;
+    match failure {
+        IdentifyFailure::DiscId(failure) => AutomationIdentifyFailure::DiscId {
+            failure: automation_lookup_failure(failure),
+        },
+        IdentifyFailure::BarcodeScan(failure) => AutomationIdentifyFailure::BarcodeScan {
+            failure: automation_lookup_failure(failure),
+        },
+        IdentifyFailure::Barcode(failure) => AutomationIdentifyFailure::Barcode {
+            source: failure.source.into(),
+            failure: automation_lookup_failure(failure.failure),
+        },
+        IdentifyFailure::Catalog(failure) => AutomationIdentifyFailure::Catalog {
+            source: failure.source.into(),
+            failure: automation_lookup_failure(failure.failure),
+        },
+        IdentifyFailure::ReleaseDetails(failure) => AutomationIdentifyFailure::ReleaseDetails {
+            failure: automation_lookup_failure(failure),
+        },
     }
 }
 
@@ -261,6 +307,7 @@ pub(super) fn automation_metadata_result(result: MetadataResult) -> AutomationMe
         label: result.label,
         catalog_number: result.catalog_number,
         country: result.country,
+        barcode: result.barcode,
         cover_art: result.cover_art.map(automation_remote_cover),
         source_group_id: result.source_group_id,
     }
@@ -671,132 +718,6 @@ pub(super) fn automation_toolbar_signal(
             .into_iter()
             .map(automation_signal_option)
             .collect(),
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_discid_progress(
-    progress: bae_core::identify::DiscidProgressView,
-) -> AutomationDiscidProgress {
-    use bae_core::identify::DiscidProgressView;
-    match progress {
-        DiscidProgressView::Computing => AutomationDiscidProgress::Computing,
-        DiscidProgressView::LookingUp => AutomationDiscidProgress::LookingUp,
-        DiscidProgressView::Done { n_results } => AutomationDiscidProgress::Done { n_results },
-        DiscidProgressView::Skipped => AutomationDiscidProgress::Skipped,
-        DiscidProgressView::Failed { failure } => AutomationDiscidProgress::Failed {
-            failure: automation_lookup_failure(failure),
-        },
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_barcode_progress(
-    progress: bae_core::identify::BarcodeProgressView,
-) -> AutomationBarcodeProgress {
-    use bae_core::identify::BarcodeProgressView;
-    match progress {
-        BarcodeProgressView::Scanning => AutomationBarcodeProgress::Scanning,
-        BarcodeProgressView::LookingUp {
-            current,
-            position,
-            total,
-        } => AutomationBarcodeProgress::LookingUp {
-            current,
-            position,
-            total,
-        },
-        BarcodeProgressView::Done { n_results } => AutomationBarcodeProgress::Done { n_results },
-        BarcodeProgressView::Failed { failure } => AutomationBarcodeProgress::Failed {
-            failure: automation_lookup_failure(failure),
-        },
-        BarcodeProgressView::Skipped => AutomationBarcodeProgress::Skipped,
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_result_provenance(
-    release_id: String,
-    provenance: bae_core::identify::ResultProvenance,
-) -> AutomationResultProvenance {
-    let bae_core::identify::ResultProvenance {
-        by_disc_id,
-        by_barcode,
-        by_catalog,
-    } = provenance;
-    AutomationResultProvenance {
-        release_id,
-        by_disc_id,
-        by_barcode,
-        by_catalog,
-    }
-}
-
-/// Mirror [`bae_core::identify::IdentifyStateView`] into the JSON enum. Core has
-/// already folded the matches into their group cards, keyed the provenance,
-/// reduced the in-flight payloads to counts, and dropped what must not cross —
-/// this is a field copy per variant and nothing else.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_identify_state(
-    state: bae_core::identify::IdentifyState,
-) -> AutomationIdentifyState {
-    use bae_core::identify::IdentifyStateView;
-    match IdentifyStateView::from(state) {
-        IdentifyStateView::Idle => AutomationIdentifyState::Idle,
-        IdentifyStateView::Triangulating { discid, barcode } => {
-            AutomationIdentifyState::Triangulating {
-                discid: automation_discid_progress(discid),
-                barcode: automation_barcode_progress(barcode),
-            }
-        }
-        IdentifyStateView::Found {
-            groups,
-            library_statuses,
-            track_count,
-            provenance,
-        } => AutomationIdentifyState::Found {
-            groups: groups.into_iter().map(automation_release_group).collect(),
-            library_statuses: library_statuses
-                .into_iter()
-                .map(automation_library_status)
-                .collect(),
-            track_count,
-            provenance: provenance
-                .into_iter()
-                .map(|(release_id, p)| automation_result_provenance(release_id, p))
-                .collect(),
-        },
-        IdentifyStateView::NotFoundAnywhere => AutomationIdentifyState::NotFoundAnywhere,
-        IdentifyStateView::ManualOnly { track_count } => {
-            AutomationIdentifyState::ManualOnly { track_count }
-        }
-        IdentifyStateView::Failed { failures } => AutomationIdentifyState::Failed {
-            failures: failures
-                .into_iter()
-                .map(|failure| match failure {
-                    bae_core::identify::IdentifyFailure::DiscId(failure) => {
-                        AutomationIdentifyFailure::DiscId {
-                            failure: automation_lookup_failure(failure),
-                        }
-                    }
-                    bae_core::identify::IdentifyFailure::Barcode(failure) => {
-                        AutomationIdentifyFailure::Barcode {
-                            failure: automation_lookup_failure(failure),
-                        }
-                    }
-                    bae_core::identify::IdentifyFailure::Catalog(failure) => {
-                        AutomationIdentifyFailure::Catalog {
-                            failure: automation_lookup_failure(failure),
-                        }
-                    }
-                    bae_core::identify::IdentifyFailure::ReleaseDetails(failure) => {
-                        AutomationIdentifyFailure::ReleaseDetails {
-                            failure: automation_lookup_failure(failure),
-                        }
-                    }
-                })
-                .collect(),
-        },
     }
 }
 

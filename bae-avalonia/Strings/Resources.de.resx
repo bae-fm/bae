@@ -161,7 +161,6 @@
   <data name="search.failed" xml:space="preserve"><value>Suche fehlgeschlagen</value></data>
   <data name="search.field.album" xml:space="preserve"><value>Album</value></data>
   <data name="search.field.artist" xml:space="preserve"><value>Interpret</value></data>
-  <data name="search.field.source" xml:space="preserve"><value>Quelle</value></data>
   <data name="search.no_matches" xml:space="preserve"><value>keine Treffer</value></data>
   <data name="settings.discogs.label" xml:space="preserve"><value>Discogs-Token</value></data>
   <data name="settings.discogs.recheck" xml:space="preserve"><value>erneut prüfen</value></data>
@@ -484,4 +483,10 @@
   <data name="settings.import.find_online" xml:space="preserve"><value>Online suchen</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Keine</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Online-Suche</value></data>
+  <data name="action.clear" xml:space="preserve"><value>leeren</value></data>
+  <data name="action.retry" xml:space="preserve"><value>erneut versuchen</value></data>
+  <data name="import.search.results_for" xml:space="preserve"><value>Ergebnisse für {query}</value></data>
+  <data name="import.search.searching_source" xml:space="preserve"><value>{source} wird durchsucht…</value></data>
+  <data name="import.search.source_failed" xml:space="preserve"><value>{source} hat nicht geantwortet: {reason}</value></data>
+  <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ist nicht eingerichtet</value></data>
 </root>

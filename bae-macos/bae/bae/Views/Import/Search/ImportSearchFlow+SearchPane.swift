@@ -55,20 +55,19 @@ extension ImportSearchFlow {
             ),
             mode: mode,
             activeTab: fields.activeTab,
-            musicBrainzSelected: fields.musicBrainzSelected,
-            discogsSelected: fields.discogsSelected,
             searchArtist: fields.artist,
             searchAlbum: fields.album,
             searchCatalog: fields.catalog,
             searchBarcode: fields.barcode,
             onSearch: {
-                dispatchSearch(
+                startSearch(
                     importer: services.importer,
                     importStore: importStore,
-                    key: key,
-                    discogsAvailable: services.configStore.config.discogsUsable
+                    key: key
                 )
             },
+            onClearSearch: { services.importer.clearCandidateSearch(key) },
+            onRetrySearch: { services.importer.retryCandidateSearch(key) },
             onOpenSettings: openSettings,
             onUseFileTags: onUseFileTags,
             onToggleSignal: { signal in
@@ -80,14 +79,43 @@ extension ImportSearchFlow {
             onRerun: { services.importer.rerunIdentifyForCandidate(key) },
             onSelect: onSelect,
         )
+        // The search's releases are watched for library membership while the
+        // pane is open: each provider lands its own part, so the set they
+        // amount to changes as the run advances.
+        .task(id: searchStatusKeys(runtime: input.runtime)) {
+            importStore.refreshLibraryStatusSubscriptions(
+                importer: services.importer,
+                key: key,
+                desired: searchStatusKeys(runtime: input.runtime)
+            )
+        }
+    }
+
+    /// Every release a candidate's search has turned up, as the keys a library
+    /// membership subscription takes.
+    @MainActor
+    static func searchStatusKeys(
+        runtime: BridgeCandidateRuntimeSnapshot?
+    ) -> Set<ReleaseLibraryStatusSubscriptionKey> {
+        Set(
+            (runtime?.search?.groups ?? [])
+                .flatMap { group in
+                    group.pressings.flatMap(\.releases)
+                        .map { release in
+                            ReleaseLibraryStatusSubscriptionKey(
+                                source: release.source,
+                                releaseId: release.releaseId,
+                                sourceGroupId: release.sourceGroupId
+                            )
+                        }
+                }
+        )
     }
 
     /// The tab/source/text bindings the pane's form edits, each writing back
     /// through `mutateCandidate` so edits land on the candidate in the store.
     struct SearchFieldBindings {
         let activeTab: Binding<SearchTab>
-        let musicBrainzSelected: Binding<Bool>
-        let discogsSelected: Binding<Bool>
         let artist: Binding<String>
         let album: Binding<String>
         let catalog: Binding<String>
@@ -117,18 +145,6 @@ extension ImportSearchFlow {
                 key: key,
                 candidate: candidate
             ),
-            musicBrainzSelected: makeSearchSourceBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: \.musicBrainzSelected
-            ),
-            discogsSelected: makeSearchSourceBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: \.discogsSelected
-            ),
             artist: text(\.searchArtist),
             album: text(\.searchAlbum),
             catalog: text(\.searchCatalog),
@@ -144,22 +160,21 @@ extension ImportSearchFlow {
         services: ImportServices,
         input: SearchPaneInput
     ) -> ImportSearchState {
-        let tabResults = candidate.search.activeResults(
-            discogsAvailable: services.configStore.config.discogsUsable
-        )
+        // The search's own statuses are what core checked when each provider
+        // landed; a live subscription's value is fresher, so it wins.
+        var libraryStatuses = input.runtime?.search?.libraryStatuses ?? [:]
+        libraryStatuses.merge(candidate.libraryStatuses) { _, live in live }
         return ImportSearchState(
             identifyState: shownIdentifyState(
                 resumed: candidate.resumedIdentifyState,
                 runtime: input.runtime
             ),
             error: candidate.error,
-            searchGroups: tabResults.groups,
+            search: input.runtime?.search,
             selectedReleaseId: input.selectedReleaseId,
             loadingReleaseId: candidate.loadingReleaseId,
-            isSearching: tabResults.isSearching,
-            hasSearched: tabResults.hasSearched,
             isImporting: isImporting(candidate),
-            libraryStatuses: candidate.libraryStatuses,
+            libraryStatuses: libraryStatuses,
             discogsEnabled: services.configStore.config.discogsUsable,
             // The run in flight knows more than the last stored answer does,
             // and for a re-identify key — which has no row at all — it is the

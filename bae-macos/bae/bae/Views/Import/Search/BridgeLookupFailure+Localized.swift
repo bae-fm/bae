@@ -52,17 +52,22 @@ extension BridgeLookupFailure {
 }
 
 extension BridgeIdentifyFailure {
-    /// The failed step plus its provider reason. Keeping the step attached is
-    /// what distinguishes two simultaneous provider failures with the same
-    /// underlying reason.
+    /// The failed step plus its reason — and, where several providers answer
+    /// one step, the provider that did not. Keeping both attached is what
+    /// distinguishes two simultaneous failures with the same underlying reason.
     var badgeLine: String {
         switch self {
         case .discId(let failure):
             return String(localized: "Disc ID") + ": " + failure.badgeLine
-        case .barcode(let failure):
+        case .barcodeScan(let failure):
             return String(localized: "Barcode") + ": " + failure.badgeLine
-        case .catalog(let failure):
-            return String(localized: "Catalog number") + ": "
+        case .barcode(let source, let failure):
+            return String(localized: "Barcode") + " \u{00b7} "
+                + bridgeMetadataSourceName(source: source) + ": "
+                + failure.badgeLine
+        case .catalog(let source, let failure):
+            return String(localized: "Catalog number") + " \u{00b7} "
+                + bridgeMetadataSourceName(source: source) + ": "
                 + failure.badgeLine
         case .releaseDetails(let failure):
             return String(

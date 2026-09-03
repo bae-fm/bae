@@ -130,7 +130,11 @@ impl crate::types::BridgeInvalidCandidate {
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeCandidateRuntimeSnapshot {
     pub(crate) fn from_core(runtime: bae_core::import::CandidateRuntimeSnapshot) -> Self {
-        let bae_core::import::CandidateRuntimeSnapshot { identify, import } = runtime;
+        let bae_core::import::CandidateRuntimeSnapshot {
+            identify,
+            import,
+            search,
+        } = runtime;
         let identify = identify.and_then(bae_core::import::CandidateIdentifyRuntime::into_state);
         crate::types::BridgeCandidateRuntimeSnapshot {
             signals_toolbar: crate::types::BridgeSignalsToolbar::from_core(
@@ -143,6 +147,7 @@ impl crate::types::BridgeCandidateRuntimeSnapshot {
                 identify.unwrap_or(bae_core::identify::IdentifyState::Idle),
             ),
             import: import.map(crate::types::BridgeImportInFlight::from_core),
+            search: search.map(crate::types::BridgeCandidateSearch::from_core),
         }
     }
 }

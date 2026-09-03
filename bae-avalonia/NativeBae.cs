@@ -738,10 +738,6 @@ internal static partial class NativeBae
     internal static string? ApplyReleaseEdit(AppHandle handle, string releaseId, BridgeRawReleaseEdit edit) =>
         CaptureError(() => Await(() => handle.UpdateReleaseMetadataUserEdit(releaseId, ReleaseUserEdit(edit))));
 
-    internal static (List<ReleaseCandidateChoice>? Candidates, string? Error) SearchReleases(
-        AppHandle handle,
-        BridgeSearchQuery query) =>
-        CaptureBridgeValue(() => CandidateChoices(Await(() => handle.SearchForCandidate(query))));
 
     internal static string? ReidentifyRelease(AppHandle handle, string releaseId, BridgeReleaseReseed choice) =>
         CaptureError(() => Await(() => handle.ReIdentifyRelease(releaseId, choice)));
@@ -838,6 +834,21 @@ internal static partial class NativeBae
 
     internal static void RerunIdentifyForCandidate(AppHandle handle, string candidateKey) =>
         handle.RerunIdentifyForCandidate(candidateKey);
+
+    // The typed search is a run, not a call: every configured provider is asked
+    // at once and each answer lands on the candidate's runtime, so this returns
+    // nothing and the pane draws the stream.
+    internal static void StartCandidateSearch(
+        AppHandle handle,
+        string candidateKey,
+        BridgeSearchQuery query) =>
+        handle.StartCandidateSearch(candidateKey, query);
+
+    internal static void RetryCandidateSearch(AppHandle handle, string candidateKey) =>
+        handle.RetryCandidateSearch(candidateKey);
+
+    internal static void ClearCandidateSearch(AppHandle handle, string candidateKey) =>
+        handle.ClearCandidateSearch(candidateKey);
 
     internal static void PreviewPlay(AppHandle handle, BridgePreviewTarget target) => handle.PreviewPlay(target);
 

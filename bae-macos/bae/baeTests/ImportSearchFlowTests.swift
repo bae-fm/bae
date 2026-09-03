@@ -54,11 +54,9 @@ final class ManualSearchWorkspaceTests: XCTestCase {
         let state = ImportSearchState(
             identifyState: .idle,
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -122,11 +120,9 @@ struct FindOnlineMethodPresentationTests {
         ImportSearchState(
             identifyState: .idle,
             error: nil,
-            searchGroups: [],
+            search: nil,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: false,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -135,15 +131,26 @@ struct FindOnlineMethodPresentationTests {
         )
     }
 
+    /// A typed search both providers answered with nothing — the "no matches"
+    /// line, told apart from a form nobody has submitted yet.
+    private var settledEmptySearch: BridgeCandidateSearch {
+        BridgeCandidateSearch(
+            query: .general(artist: "Artist Name", album: "Album Title"),
+            musicbrainz: .done(count: 0),
+            discogs: .done(count: 0),
+            groups: [],
+            libraryStatuses: [:],
+            settled: true
+        )
+    }
+
     private var searchedEmptyState: ImportSearchState {
         ImportSearchState(
             identifyState: .idle,
             error: nil,
-            searchGroups: [],
+            search: settledEmptySearch,
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            isSearching: false,
-            hasSearched: true,
             isImporting: false,
             libraryStatuses: [:],
             discogsEnabled: true,
@@ -625,17 +632,14 @@ struct ImportSearchFlowLibraryStatusTests {
         let candidate = PreviewData.folderCandidates[0]
         store.selectedCandidates[candidate.key] = candidate
         let harness = ReleaseStatusHarness()
-        let response = searchResponse()
         let importer = Importer(
-            searchForCandidate: { _ in response },
             subscribeReleaseLibraryStatus: harness.subscribe
         )
 
-        ImportSearchFlow.dispatchSearch(
+        store.refreshLibraryStatusSubscriptions(
             importer: importer,
-            importStore: store,
             key: candidate.key,
-            discogsAvailable: true
+            desired: ImportSearchFlow.searchStatusKeys(runtime: runtime())
         )
         await waitUntil { harness.callback(releaseId: "rel-live") != nil }
 
@@ -662,42 +666,32 @@ struct ImportSearchFlowLibraryStatusTests {
     @Test("an old same-key status subscription cannot update its replacement")
     func sameKeyReplacementRejectsOldCallbacks() async throws {
         let store = ImportStore()
-        let (candidate, statusKey) = candidateWithStatusSubscription()
+        let candidate = PreviewData.folderCandidates[0]
         store.selectedCandidates[candidate.key] = candidate
         let harness = ReleaseStatusHarness()
         let importer = Importer(
             subscribeReleaseLibraryStatus: harness.subscribe
         )
+        let desired = ImportSearchFlow.searchStatusKeys(runtime: runtime())
 
         store.refreshLibraryStatusSubscriptions(
             importer: importer,
-            key: candidate.key
+            key: candidate.key,
+            desired: desired
         )
         await waitUntil { harness.callbackCount(releaseId: "rel-live") == 1 }
 
-        store.mutateCandidate(forKey: candidate.key) { current in
-            var empty = current.search.activeResults(discogsAvailable: true)
-            empty.libraryStatusSubscriptionKeys = []
-            current.search.setResults(
-                empty,
-                for: current.search.activeSlot(discogsAvailable: true)
-            )
-        }
+        // The search is cleared and then re-run: the second subscription
+        // replaces the first, and only it may write.
         store.refreshLibraryStatusSubscriptions(
             importer: importer,
-            key: candidate.key
+            key: candidate.key,
+            desired: []
         )
-        store.mutateCandidate(forKey: candidate.key) { current in
-            var restored = current.search.activeResults(discogsAvailable: true)
-            restored.libraryStatusSubscriptionKeys = [statusKey]
-            current.search.setResults(
-                restored,
-                for: current.search.activeSlot(discogsAvailable: true)
-            )
-        }
         store.refreshLibraryStatusSubscriptions(
             importer: importer,
-            key: candidate.key
+            key: candidate.key,
+            desired: desired
         )
         await waitUntil { harness.callbackCount(releaseId: "rel-live") == 2 }
 
@@ -716,23 +710,52 @@ struct ImportSearchFlowLibraryStatusTests {
         }
     }
 
-    private func candidateWithStatusSubscription() -> (
-        Candidate,
-        ReleaseLibraryStatusSubscriptionKey
-    ) {
-        var candidate = PreviewData.folderCandidates[0]
-        let statusKey = ReleaseLibraryStatusSubscriptionKey(
-            source: .musicBrainz,
-            releaseId: "rel-live",
-            sourceGroupId: "group-live"
+    /// A candidate whose typed search turned up one release, as the runtime
+    /// delivers it.
+    private func runtime() -> BridgeCandidateRuntimeSnapshot {
+        BridgeCandidateRuntimeSnapshot(
+            identifyState: .idle,
+            signalsToolbar: BridgeSignalsToolbar(signals: []),
+            import: nil,
+            search: BridgeCandidateSearch(
+                query: .general(artist: "Artist Name", album: "Album Title"),
+                musicbrainz: .done(count: 1),
+                discogs: .notConfigured,
+                groups: [
+                    BridgeReleaseGroup(
+                        id: "group-live",
+                        title: "Album Title",
+                        artist: "Artist Name",
+                        coverArt: nil,
+                        sources: [
+                            BridgeReleaseGroupSource(
+                                source: .musicBrainz,
+                                groupUrl: "https://example.invalid/group-live"
+                            )
+                        ],
+                        yearMin: 2000,
+                        yearMax: 2000,
+                        pressings: [
+                            BridgePressing(releases: [
+                                BridgeMetadataResult(
+                                    source: .musicBrainz,
+                                    releaseId: "rel-live",
+                                    year: 2000,
+                                    format: "CD",
+                                    label: nil,
+                                    catalogNumber: nil,
+                                    country: nil,
+                                    barcode: nil,
+                                    sourceGroupId: "group-live"
+                                )
+                            ])
+                        ]
+                    )
+                ],
+                libraryStatuses: [:],
+                settled: true
+            )
         )
-        var results = candidate.search.activeResults(discogsAvailable: true)
-        results.libraryStatusSubscriptionKeys = [statusKey]
-        candidate.search.setResults(
-            results,
-            for: candidate.search.activeSlot(discogsAvailable: true)
-        )
-        return (candidate, statusKey)
     }
 
     private func deliverStatus(
@@ -750,36 +773,6 @@ struct ImportSearchFlowLibraryStatusTests {
                     albumId: albumId
                 )
             )
-    }
-
-    private func searchResponse() -> BridgeCandidateSearchResults {
-        BridgeCandidateSearchResults(
-            groups: [
-                BridgeReleaseGroup(
-                    id: "group-live",
-                    sourceGroupId: "group-live",
-                    title: "Album Title",
-                    artist: "Artist Name",
-                    coverArt: nil,
-                    sourceLabel: "MusicBrainz",
-                    groupUrl: "https://example.invalid/group-live",
-                    yearMin: 2000,
-                    yearMax: 2000,
-                    pressings: [
-                        BridgeMetadataResult(
-                            source: .musicBrainz,
-                            releaseId: "rel-live",
-                            year: 2000,
-                            format: "CD",
-                            label: nil,
-                            catalogNumber: nil,
-                            country: nil
-                        )
-                    ]
-                )
-            ],
-            statuses: []
-        )
     }
 
     private func waitUntil(_ predicate: () -> Bool) async {
