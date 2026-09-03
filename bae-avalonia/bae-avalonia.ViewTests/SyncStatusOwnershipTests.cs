@@ -77,8 +77,18 @@ public sealed class SyncStatusOwnershipTests
         new(_ => new BridgeSyncIndicator.Error(), _ => "category line");
 
     private static BridgeSyncStatusSnapshot Failing(BridgeException error) =>
-        new(error, null, false, false);
+        new(
+            Error: error,
+            Blocked: [],
+            LastSyncTime: null,
+            Syncing: false,
+            SyncReady: false);
 
     private static BridgeSyncStatusSnapshot Status(bool syncReady) =>
-        new(null, null, false, syncReady);
+        new(
+            Error: null,
+            Blocked: [],
+            LastSyncTime: null,
+            Syncing: false,
+            SyncReady: syncReady);
 }
