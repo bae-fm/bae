@@ -673,19 +673,6 @@ internal sealed partial class ImportMappingTable
         return button;
     }
 
-    // The job in force for a file, and the control that changes it where the job
-    // is a decision. A sheet's entries carry no role of their own — their group
-    // header holds the sheet's decisions — and neither does a track the folder
-    // has nothing for.
-    private Control? RoleCell(BridgeMappingSource source)
-    {
-        if (source is not BridgeMappingSource.File file)
-        {
-            return null;
-        }
-        return RoleControl(file.FileValue) ?? RoleChip(file.FileValue.Role.FileRole());
-    }
-
     /// <summary>The job one file has, as a chip: what the Role column holds
     /// where the role is nobody's choice to make.</summary>
     private static Control RoleChip(BridgeFileRole role)
