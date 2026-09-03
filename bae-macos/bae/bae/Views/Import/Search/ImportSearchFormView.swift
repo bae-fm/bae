@@ -1,10 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// The manual-search form: the tab selector (General / Catalog # / Barcode) and
-/// the tab's fields, with autocomplete seeded from the candidate's scanned text
-/// signals. Submits through `onSearch`; every configured provider answers, so
-/// the form offers no source selection.
+/// The typed-search form, docked under the result area on every state: which
+/// kind of query (General / Catalog # / Barcode), its fields with autocomplete
+/// seeded from the folder's scanned text, and Search.
+///
+/// Every configured provider answers, so the form offers no source selection —
+/// a provider that was never asked says so on its own line in the run above.
 struct ImportSearchFormView: View {
     @Binding
     var activeTab: SearchTab
@@ -16,27 +18,21 @@ struct ImportSearchFormView: View {
     var searchCatalog: String
     @Binding
     var searchBarcode: String
-    let discogsEnabled: Bool
     let signals: Signals?
+    /// Whether the Artist field should take the keyboard. The pane raises it
+    /// when the result area has nothing to pick from.
+    let focusesArtist: Bool
     let onSearch: () -> Void
-    let onOpenSettings: () -> Void
-
-    @State
-    private var showDiscogsKeyInfo: Bool = false
-    @State
-    private var discogsKeyHoverTask: DispatchWorkItem?
 
     private var isSearchDisabled: Bool {
-        let hasTerms =
-            switch activeTab {
-            case .general:
-                !searchArtist.isEmpty || !searchAlbum.isEmpty
-            case .catalogNumber:
-                !searchCatalog.isEmpty
-            case .barcode:
-                !searchBarcode.isEmpty
-            }
-        return !hasTerms
+        switch activeTab {
+        case .general:
+            searchArtist.isEmpty && searchAlbum.isEmpty
+        case .catalogNumber:
+            searchCatalog.isEmpty
+        case .barcode:
+            searchBarcode.isEmpty
+        }
     }
 
     private func submitSearch() {
@@ -56,8 +52,8 @@ struct ImportSearchFormView: View {
     }
 
     /// True while core is still producing suggestions. Drives the small
-    /// spinner inside each autocomplete dropdown so users know the list is
-    /// still filling in — cheap visual signal that the pool is in motion.
+    /// spinner inside each autocomplete field so users know the list is still
+    /// filling in.
     private var isScanning: Bool {
         signals?.text.isScanning ?? false
     }
@@ -67,60 +63,24 @@ struct ImportSearchFormView: View {
     }
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                discogsHint
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
                 Picker("Search by", selection: $activeTab) {
                     Text("General").tag(SearchTab.general)
                     Text("Catalog #").tag(SearchTab.catalogNumber)
                     Text("Barcode").tag(SearchTab.barcode)
                 }
+                .labelsHidden()
                 .pickerStyle(.segmented)
                 .controlSize(.small)
-            }
+                .fixedSize()
 
-            switch activeTab {
-            case .general:
-                HStack {
-                    AutocompleteTextField(
-                        text: $searchArtist,
-                        placeholder: String(localized: "Artist"),
-                        suggestions: generalSuggestions,
-                        isLoading: isScanning,
-                        onSubmit: submitSearch,
-                    )
-                    AutocompleteTextField(
-                        text: $searchAlbum,
-                        placeholder: String(localized: "Album"),
-                        suggestions: generalSuggestions,
-                        isLoading: isScanning,
-                        onSubmit: submitSearch,
-                    )
-                    Button("Search", action: submitSearch)
-                        .disabled(isSearchDisabled)
-                }
-            case .catalogNumber:
-                HStack {
-                    AutocompleteTextField(
-                        text: $searchCatalog,
-                        placeholder: String(localized: "e.g. WPCR-80001"),
-                        suggestions: catalogSuggestions,
-                        isLoading: isScanning,
-                        onSubmit: submitSearch,
-                    )
-                    Button("Search", action: submitSearch)
-                        .disabled(isSearchDisabled)
-                }
-            case .barcode:
-                HStack {
-                    TextField("e.g. 4943674251780", text: $searchBarcode)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Search", action: submitSearch)
-                        .disabled(isSearchDisabled)
-                }
-                .onSubmit(submitSearch)
-            }
+                fields
 
+                Button("Search", action: submitSearch)
+                    .controlSize(.small)
+                    .disabled(isSearchDisabled)
+            }
             if let signalFailure {
                 Label(
                     signalFailure.badgeLine,
@@ -128,33 +88,45 @@ struct ImportSearchFormView: View {
                 )
                 .font(.system(size: 11.5))
                 .foregroundStyle(.orange)
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding()
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .animation(nil, value: activeTab)
     }
 
-    /// Discogs answers a search only with a key. Say so where the search is
-    /// typed, with the way to set one up behind it.
     @ViewBuilder
-    private var discogsHint: some View {
-        if !discogsEnabled {
-            Button("Discogs not configured") {
-                showDiscogsKeyInfo = true
-            }
-            .buttonStyle(.link)
-            .font(.system(size: 11.5))
-            .fixedSize()
-            .popover(isPresented: $showDiscogsKeyInfo, arrowEdge: .bottom) {
-                DiscogsKeyPopover(
-                    isPresented: $showDiscogsKeyInfo,
-                    hoverTask: $discogsKeyHoverTask,
-                    onOpenSettings: { onOpenSettings() },
-                )
-                .popoverEntrance(anchor: .top)
-                .background { PopoverBehavior() }
-            }
+    private var fields: some View {
+        switch activeTab {
+        case .general:
+            AutocompleteTextField(
+                text: $searchArtist,
+                placeholder: String(localized: "Artist"),
+                suggestions: generalSuggestions,
+                isLoading: isScanning,
+                takesFocus: focusesArtist,
+                onSubmit: submitSearch,
+            )
+            AutocompleteTextField(
+                text: $searchAlbum,
+                placeholder: String(localized: "Album"),
+                suggestions: generalSuggestions,
+                isLoading: isScanning,
+                onSubmit: submitSearch,
+            )
+        case .catalogNumber:
+            AutocompleteTextField(
+                text: $searchCatalog,
+                placeholder: String(localized: "e.g. WPCR-80001"),
+                suggestions: catalogSuggestions,
+                isLoading: isScanning,
+                onSubmit: submitSearch,
+            )
+        case .barcode:
+            TextField("e.g. 4943674251780", text: $searchBarcode)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .onSubmit(submitSearch)
         }
     }
 }
@@ -162,35 +134,43 @@ struct ImportSearchFormView: View {
 #if DEBUG
     // MARK: - Previews
 
+    /// The fields write back, so a preview holds them.
+    private struct ImportSearchFormPreview: View {
+        let tab: SearchTab
+        @State
+        var artist: String = ""
+        @State
+        var album: String = ""
+        @State
+        var catalog: String = ""
+
+        var body: some View {
+            ImportSearchFormView(
+                activeTab: .constant(tab),
+                searchArtist: $artist,
+                searchAlbum: $album,
+                searchCatalog: $catalog,
+                searchBarcode: .constant(""),
+                signals: PreviewData.settledSignals,
+                focusesArtist: false,
+                onSearch: {},
+            )
+        }
+    }
+
     #Preview("General search") {
-        ImportSearchFormView(
-            activeTab: .constant(.general),
-            searchArtist: .constant("Artist Name"),
-            searchAlbum: .constant("Album Title"),
-            searchCatalog: .constant(""),
-            searchBarcode: .constant(""),
-            discogsEnabled: true,
-            signals: PreviewData.settledSignals,
-            onSearch: {},
-            onOpenSettings: {},
+        ImportSearchFormPreview(
+            tab: .general,
+            artist: "Artist Name",
+            album: "Album Title"
         )
-        .frame(width: 560)
+        .frame(width: 660)
         .windowBackground()
     }
 
     #Preview("Catalog search") {
-        ImportSearchFormView(
-            activeTab: .constant(.catalogNumber),
-            searchArtist: .constant(""),
-            searchAlbum: .constant(""),
-            searchCatalog: .constant("WPCR-80001"),
-            searchBarcode: .constant(""),
-            discogsEnabled: false,
-            signals: PreviewData.settledSignals,
-            onSearch: {},
-            onOpenSettings: {},
-        )
-        .frame(width: 560)
-        .windowBackground()
+        ImportSearchFormPreview(tab: .catalogNumber, catalog: "WPCR-80001")
+            .frame(width: 660)
+            .windowBackground()
     }
 #endif

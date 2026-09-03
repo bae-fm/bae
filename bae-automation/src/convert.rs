@@ -235,6 +235,7 @@ pub(super) fn automation_release_group(group: ReleaseGroup) -> AutomationRelease
         id: group.id,
         title: group.title,
         artist: group.artist,
+        label: group.label,
         cover_art: group.cover_art.map(automation_remote_cover),
         sources: group
             .sources

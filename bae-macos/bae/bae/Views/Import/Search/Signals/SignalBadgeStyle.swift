@@ -1,9 +1,9 @@
 import BaeKit
 import SwiftUI
 
-/// Presentation strings + colors for a badge, all derived from the badge's
-/// pre-shaped fields. Kept as a caseless namespace so both the badge and its
-/// popover render identically.
+/// Presentation strings for a signal, all derived from the pre-shaped fields
+/// core sends. Kept as a caseless namespace so the header's verdict line and
+/// the Adjust popover word a signal the same way.
 enum SignalBadgeStyle {
     static func icon(for kind: BridgeSignalKind) -> String {
         switch kind {
@@ -13,11 +13,22 @@ enum SignalBadgeStyle {
         }
     }
 
+    /// The signal's name on its own — a row label.
     static func label(for kind: BridgeSignalKind) -> String {
         switch kind {
         case .discId: String(localized: "Disc ID")
         case .barcode: String(localized: "Barcode")
         case .catalog: String(localized: "Catalog")
+        }
+    }
+
+    /// The signal's name inside a sentence — "Identified by Disc ID and
+    /// barcode". A proper noun keeps its capitals; the rest are common nouns.
+    static func sentenceLabel(for kind: BridgeSignalKind) -> String {
+        switch kind {
+        case .discId: String(localized: "Disc ID")
+        case .barcode: String(localized: "barcode")
+        case .catalog: String(localized: "catalog number")
         }
     }
 
@@ -61,19 +72,6 @@ enum SignalBadgeStyle {
             }
         case .failed(let failure):
             return failure.badgeLine
-        }
-    }
-
-    static func stateDotColor(for signal: BridgeToolbarSignal) -> Color {
-        if signal.excluded || awaitingChoice(signal) {
-            return .secondary
-        }
-        switch signal.state {
-        case .found(let count): return count > 0 ? .green : .orange
-        case .noMatch: return .orange
-        case .failed: return .orange
-        case .skipped: return .secondary
-        case .lookingUp: return .secondary
         }
     }
 }

@@ -31,8 +31,6 @@ struct ReIdentifySheet: View {
     private var importer
     @Environment(ReleaseEditor.self)
     private var releaseEditor
-    @Environment(ConfigStore.self)
-    private var configStore
     @Environment(ImportStore.self)
     private var importStore
     @Environment(UiStore.self)
@@ -52,11 +50,6 @@ struct ReIdentifySheet: View {
     /// footer. `nil` until a row is picked.
     @State
     private var selectedResult: BridgeMetadataResult?
-    /// Which half of the identify pane is showing. The sheet owns it, so it
-    /// opens on what identification found.
-    @State
-    private var searchMode: BridgeDefaultFindOnlineMode = .automatic
-
     private enum Phase: Equatable {
         case identifying
         case committing
@@ -104,6 +97,13 @@ struct ReIdentifySheet: View {
                     .lineLimit(1)
             }
             Spacer()
+            // A rip identifies itself when no source knows it. The escape
+            // belongs beside Close: it commits the release outright rather
+            // than picking anything on the page below.
+            Button(coreString("ui.import.metadata.file_tags") + "\u{2026}") {
+                commit(.fileTags)
+            }
+            .buttonStyle(.link)
             Button("Close") { closeAndNavigate() }
                 .keyboardShortcut(.cancelAction)
         }
@@ -158,8 +158,7 @@ struct ReIdentifySheet: View {
             ImportSearchFlow.buildSearchPane(
                 services: ImportSearchFlow.ImportServices(
                     importer: importer,
-                    importStore: importStore,
-                    configStore: configStore
+                    importStore: importStore
                 ),
                 input: ImportSearchFlow.SearchPaneInput(
                     candidate: candidate,
@@ -168,14 +167,15 @@ struct ReIdentifySheet: View {
                     runtime: runtime,
                     liveSignals: signals
                 ),
-                mode: $searchMode,
                 openSettings: {
                     settingsNavigation.open(
                         .discogs,
                         present: { openSettings() }
                     )
                 },
-                onUseFileTags: { commit(.fileTags) },
+                // The sheet's own header closes it, so the pane offers no
+                // way back of its own.
+                onBack: nil,
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers
                 // post-commit edits). Picking a pressing claims it, and the

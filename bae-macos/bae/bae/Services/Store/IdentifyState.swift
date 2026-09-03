@@ -76,4 +76,13 @@ enum IdentifyState: Equatable {
         }
     }
 
+    /// What core knew about each matched release's library membership when the
+    /// verdict settled, keyed by release id. A live subscription outranks it.
+    var libraryStatuses: [String: BridgeLibraryStatus] {
+        switch self {
+        case .found(_, let statuses, _, _): statuses
+        case .failed(_, _, let statuses, _): statuses
+        case .idle, .triangulating, .notFoundAnywhere, .manualOnly: [:]
+        }
+    }
 }

@@ -3,75 +3,100 @@
     import BaeKit
     import Foundation
 
-    /// Preview fixtures for the import identity search states and signal toolbar.
+    /// Preview fixtures for the Find online pane: its identify verdicts, its
+    /// typed-search runs, and the signals behind both.
     extension PreviewData {
-        // MARK: - Import search
+        // MARK: - Album cards
 
-        /// Two pressings of one release group — the exact-match results state.
-        static let exactPressings: [BridgeMetadataResult] = [
-            BridgeMetadataResult(
-                source: .musicBrainz,
-                releaseId: "rel-123",
-                year: 1996,
-                format: "CD",
-                label: "Label Name",
-                catalogNumber: "6006-2",
-                country: "US",
-                barcode: nil,
-                sourceGroupId: nil
+        /// Two pressings of one album, the later one carried by both sources —
+        /// the cross-linked case the pane's row tags render.
+        static let exactPressings: [BridgePressing] = [
+            BridgePressing(releases: [
+                BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "rel-123",
+                    year: 1988,
+                    format: "CD",
+                    label: "Label Name",
+                    catalogNumber: "1871-2",
+                    country: "US",
+                    barcode: nil,
+                    sourceGroupId: "group-preview"
+                )
+            ]),
+            BridgePressing(releases: [
+                BridgeMetadataResult(
+                    source: .musicBrainz,
+                    releaseId: "rel-456",
+                    year: 1996,
+                    format: "CD",
+                    label: "Label Name",
+                    catalogNumber: "6006-2",
+                    country: "US",
+                    barcode: "0123456789012",
+                    sourceGroupId: "group-preview"
+                ),
+                BridgeMetadataResult(
+                    source: .discogs,
+                    releaseId: "rel-456-d",
+                    year: 1996,
+                    format: "CD, Album, Reissue",
+                    label: "Label Name",
+                    catalogNumber: "6006-2",
+                    country: "US",
+                    barcode: "0123456789012",
+                    sourceGroupId: "master-6"
+                ),
+            ]),
+        ]
+
+        static let searchGroupExactBridge = BridgeReleaseGroup(
+            id: "group-preview",
+            title: "Album Title",
+            artist: "Artist Name",
+            label: "Label Name",
+            coverArt: nil,
+            sources: [
+                BridgeReleaseGroupSource(
+                    source: .musicBrainz,
+                    groupUrl:
+                        "https://musicbrainz.org/release-group/group-preview"
+                ),
+                BridgeReleaseGroupSource(
+                    source: .discogs,
+                    groupUrl: "https://www.discogs.com/master/master-6"
+                ),
+            ],
+            yearMin: 1988,
+            yearMax: 1996,
+            pressings: exactPressings
+        )
+
+        static let searchGroupExact = ReleaseGroup(
+            bridge: searchGroupExactBridge
+        )
+
+        /// The disc ID named the first pressing, the barcode the second.
+        static let searchProvenanceExact: [String: BridgeResultProvenance] = [
+            "rel-123": BridgeResultProvenance(
+                byDiscId: true,
+                byBarcode: false,
+                byCatalog: false
             ),
-            BridgeMetadataResult(
-                source: .musicBrainz,
-                releaseId: "rel-456",
-                year: 1988,
-                format: "CD",
-                label: "Label Name",
-                catalogNumber: "1871-2",
-                country: "US",
-                barcode: nil,
-                sourceGroupId: nil
+            "rel-456": BridgeResultProvenance(
+                byDiscId: false,
+                byBarcode: true,
+                byCatalog: false
             ),
         ]
 
-        static let searchGroupExact = ReleaseGroup(
-            bridge: BridgeReleaseGroup(
-                id: "group-preview",
-                title: "Album Title",
-                artist: "Artist Name",
-                coverArt: nil,
-                sources: [
-                    BridgeReleaseGroupSource(
-                        source: .musicBrainz,
-                        groupUrl:
-                            "https://musicbrainz.org/release-group/group-preview"
-                    )
-                ],
-                yearMin: 1988,
-                yearMax: 1996,
-                pressings: exactPressings.map { BridgePressing(releases: [$0]) }
-            )
-        )
-
-        static let searchProvenanceExact: [String: BridgeResultProvenance] =
-            Dictionary(
-                uniqueKeysWithValues: exactPressings.map {
-                    (
-                        $0.releaseId,
-                        BridgeResultProvenance(
-                            byDiscId: true,
-                            byBarcode: false,
-                            byCatalog: true
-                        )
-                    )
-                }
-            )
-
-        /// Two distinct release groups — the manual-search results state.
+        /// Two distinct albums — the typed-search results state.
         static let searchGroupsManualBridge: [BridgeReleaseGroup] = [
             BridgeReleaseGroup(
                 id: "grp-1",
                 title: "Album Title One",
                 artist: "Artist Name",
+                label: "Label Name",
                 coverArt: nil,
                 sources: [
                     BridgeReleaseGroupSource(
@@ -115,6 +140,7 @@
                 id: "grp-2",
                 title: "Album Title One (Remaster)",
                 artist: "Artist Name",
+                label: "Reissue Records",
                 coverArt: nil,
                 sources: [
                     BridgeReleaseGroupSource(
@@ -146,7 +172,7 @@
                             source: .discogs,
                             releaseId: "rel-ddd",
                             year: 2005,
-                            format: "CD",
+                            format: "CD, Album, Reissue, Remastered",
                             label: "Reissue Records",
                             catalogNumber: "RR-500",
                             country: "EU",
@@ -161,40 +187,13 @@
         static let searchGroupsManual: [ReleaseGroup] =
             searchGroupsManualBridge.map(ReleaseGroup.init(bridge:))
 
-        /// The releases the disc ID and the barcode each named when they share
-        /// none — one card per release group.
-        static let discidOnlyResults: [BridgeMetadataResult] = [
-            BridgeMetadataResult(
-                source: .musicBrainz,
-                releaseId: "rel-disc-1",
-                year: 1996,
-                format: "CD",
-                label: "Label A",
-                catalogNumber: "AAA-001",
-                country: "US",
-                barcode: nil,
-                sourceGroupId: nil
-            )
-        ]
-
-        static let barcodeOnlyResults: [BridgeMetadataResult] = [
-            BridgeMetadataResult(
-                source: .musicBrainz,
-                releaseId: "rel-bar-1",
-                year: 2001,
-                format: "CD",
-                label: "Label B",
-                catalogNumber: "BBB-002",
-                country: "JP",
-                barcode: nil,
-                sourceGroupId: nil
-            )
-        ]
-
+        /// The albums the disc ID and the barcode each named when they share
+        /// none — one card per album.
         static let discidOnlyGroup = BridgeReleaseGroup(
             id: "group-disc",
             title: "Album Title",
             artist: "Artist Name",
+            label: "Label A",
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(
@@ -204,13 +203,28 @@
             ],
             yearMin: 1996,
             yearMax: 1996,
-            pressings: discidOnlyResults.map { BridgePressing(releases: [$0]) }
+            pressings: [
+                BridgePressing(releases: [
+                    BridgeMetadataResult(
+                        source: .musicBrainz,
+                        releaseId: "rel-disc-1",
+                        year: 1996,
+                        format: "CD",
+                        label: "Label A",
+                        catalogNumber: "AAA-001",
+                        country: "US",
+                        barcode: nil,
+                        sourceGroupId: "group-disc"
+                    )
+                ])
+            ]
         )
 
         static let barcodeOnlyGroup = BridgeReleaseGroup(
             id: "group-bar",
             title: "Other Album Title",
             artist: "Artist Name",
+            label: "Label B",
             coverArt: nil,
             sources: [
                 BridgeReleaseGroupSource(
@@ -220,7 +234,21 @@
             ],
             yearMin: 2001,
             yearMax: 2001,
-            pressings: barcodeOnlyResults.map { BridgePressing(releases: [$0]) }
+            pressings: [
+                BridgePressing(releases: [
+                    BridgeMetadataResult(
+                        source: .musicBrainz,
+                        releaseId: "rel-bar-1",
+                        year: 2001,
+                        format: "CD",
+                        label: "Label B",
+                        catalogNumber: "BBB-002",
+                        country: "JP",
+                        barcode: nil,
+                        sourceGroupId: "group-bar"
+                    )
+                ])
+            ]
         )
 
         /// Each row says which signal produced it — the whole of what tells
@@ -252,7 +280,7 @@
             )
         )
 
-        // MARK: - Signals toolbar
+        // MARK: - Signals
 
         /// Both identity signals still looking up, one catalog filter present.
         static let toolbarBothRunning = BridgeSignalsToolbar(signals: [
@@ -282,44 +310,7 @@
             ),
         ])
 
-        /// Disc-id settled, barcode still running, two catalog filters (one
-        /// confirming, one not).
-        static let toolbarOneSettled = BridgeSignalsToolbar(signals: [
-            BridgeToolbarSignal(
-                kind: .discId,
-                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
-                origin: .discToc,
-                state: .found(count: 3),
-                excluded: false,
-                options: []
-            ),
-            BridgeToolbarSignal(
-                kind: .barcode,
-                value: "0123456789012",
-                origin: .artwork,
-                state: .lookingUp,
-                excluded: false,
-                options: []
-            ),
-            BridgeToolbarSignal(
-                kind: .catalog,
-                value: "WPCR-80001",
-                origin: .folderName,
-                state: .found(count: 1),
-                excluded: false,
-                options: []
-            ),
-            BridgeToolbarSignal(
-                kind: .catalog,
-                value: "A2 16018",
-                origin: .textFile,
-                state: .noMatch,
-                excluded: false,
-                options: []
-            ),
-        ])
-
-        /// Barcode excluded from triangulation while both identity signals matched.
+        /// Barcode excluded from triangulation while the disc ID matched.
         static let toolbarBarcodeExcluded = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
@@ -347,7 +338,7 @@
             ),
         ])
 
-        /// Both identity signals matched, on different releases.
+        /// Both identity signals matched.
         static let toolbarBothMatched = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
@@ -367,7 +358,43 @@
             ),
         ])
 
-        /// Identify skipped — both identity signals have no value and are skipped.
+        /// A catalog waiting to be told which of the folder's numbers to use.
+        static let toolbarCatalogChoices = BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
+                kind: .discId,
+                value: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                origin: .discToc,
+                state: .found(count: 1),
+                excluded: false,
+                options: []
+            ),
+            BridgeToolbarSignal(
+                kind: .catalog,
+                value: nil,
+                origin: .folderName,
+                state: .skipped,
+                excluded: false,
+                options: [
+                    BridgeSignalOption(
+                        value: "WPCR-80001",
+                        origin: .folderName,
+                        chosen: false
+                    ),
+                    BridgeSignalOption(
+                        value: "LBL 999",
+                        origin: .artwork,
+                        chosen: false
+                    ),
+                    BridgeSignalOption(
+                        value: "A2 16018",
+                        origin: .textFile,
+                        chosen: false
+                    ),
+                ]
+            ),
+        ])
+
+        /// Identify skipped — both identity signals have no value.
         static let toolbarSkippedNoSignals = BridgeSignalsToolbar(signals: [
             BridgeToolbarSignal(
                 kind: .discId,
@@ -387,107 +414,103 @@
             ),
         ])
 
-        /// Find online before an automatic run starts.
-        static let searchStateIdle = ImportSearchState(
-            identifyState: .idle,
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [])
-        )
-
-        /// Exact-match display state: the disc ID and the chosen catalog number both
-        /// name the same group.
-        static let searchStateFoundExact = ImportSearchState(
-            identifyState: .found(
-                groups: [searchGroupExact],
-                libraryStatuses: [:],
-                trackCount: 0,
-                provenance: searchProvenanceExact
+        /// Both signals ran and neither matched.
+        static let toolbarNothingMatched = BridgeSignalsToolbar(signals: [
+            BridgeToolbarSignal(
+                kind: .discId,
+                value: "disc-hash",
+                origin: .discToc,
+                state: .noMatch,
+                excluded: false,
+                options: []
             ),
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: settledSignals,
-            signalsToolbar: BridgeSignalsToolbar(signals: [
-                BridgeToolbarSignal(
-                    kind: .discId,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .found(count: 3),
-                    excluded: false,
-                    options: []
-                ),
-                BridgeToolbarSignal(
-                    kind: .catalog,
-                    value: "WPCR-80001",
-                    origin: .folderName,
-                    state: .found(count: 1),
-                    excluded: false,
-                    options: []
-                ),
-            ])
-        )
+            BridgeToolbarSignal(
+                kind: .barcode,
+                value: "5051961234567",
+                origin: .artwork,
+                state: .noMatch,
+                excluded: false,
+                options: []
+            ),
+        ])
 
-        /// A settled typed search over both providers, with results.
+        // MARK: - Typed-search runs
+
+        /// A settled search over both providers, with results.
         static let manualSearchRun = BridgeCandidateSearch(
             query: .general(artist: "Artist Name", album: "Album Title One"),
             musicbrainz: .done(count: 3),
-            discogs: .notConfigured,
+            discogs: .done(count: 1),
             groups: searchGroupsManualBridge,
             libraryStatuses: [:],
             settled: true
         )
 
-        /// Manual-search display state: results listed, the form open.
-        static let searchStateManual = ImportSearchState(
-            identifyState: .found(
-                groups: [searchGroupsManual[0]],
-                libraryStatuses: [:],
-                trackCount: 0,
-                provenance: [:]
-            ),
-            error: nil,
-            search: manualSearchRun,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
+        /// MusicBrainz has landed; Discogs is still out.
+        static let searchRunInFlight = BridgeCandidateSearch(
+            query: .general(artist: "Artist Name", album: "Album Title One"),
+            musicbrainz: .done(count: 3),
+            discogs: .searching,
+            groups: searchGroupsManualBridge,
             libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: settledSignals,
-            signalsToolbar: BridgeSignalsToolbar(signals: [
-                BridgeToolbarSignal(
-                    kind: .discId,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .found(count: 2),
-                    excluded: false,
-                    options: []
-                ),
-                BridgeToolbarSignal(
-                    kind: .catalog,
-                    value: "WPCR-80001",
-                    origin: .folderName,
-                    state: .noMatch,
-                    excluded: false,
-                    options: []
-                ),
-            ])
+            settled: false
         )
 
-        /// The bridge shape of the disagreement below — what a run in flight
-        /// carries across, for a surface driven by the runtime signal. The two
-        /// signals named different releases, so the set is their union and the
-        /// cards are one per release group.
+        /// One provider answered, the other dropped.
+        static let searchRunSourceFailed = BridgeCandidateSearch(
+            query: .catalogNumber(catalogNumber: "WPCR-80001"),
+            musicbrainz: .done(count: 1),
+            discogs: .failed(failure: .network),
+            groups: [searchGroupsManualBridge[0]],
+            libraryStatuses: [:],
+            settled: true
+        )
+
+        /// Both providers answered with nothing.
+        static let searchRunEmpty = BridgeCandidateSearch(
+            query: .general(artist: "Artist Name", album: "Album Title"),
+            musicbrainz: .done(count: 0),
+            discogs: .done(count: 0),
+            groups: [],
+            libraryStatuses: [:],
+            settled: true
+        )
+
+        // MARK: - Pane states
+
+        /// Find online before an automatic run starts.
+        static let searchStateIdle = searchState(identifyState: .idle)
+
+        /// Auto-lookup in progress: disc ID looking up, barcode skipped.
+        static let searchStateTriangulating = searchState(
+            identifyState: .triangulating(
+                discid: .lookingUp,
+                barcode: .skipped
+            ),
+            toolbar: toolbarBothRunning
+        )
+
+        /// The terminal Found verdict: one album, both sources cross-linked.
+        static let searchStateFoundExact = searchState(
+            identifyState: .found(
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                provenance: searchProvenanceExact
+            ),
+            toolbar: toolbarBothMatched,
+            signals: settledSignals
+        )
+
+        /// The disc ID and the barcode named different albums: every one of
+        /// them is offered.
+        static let searchStateDisagreement = searchState(
+            identifyState: IdentifyState(bridge: bridgeDisagreementState),
+            toolbar: toolbarBothMatched
+        )
+
+        /// The bridge shape of the disagreement above — what a run in flight
+        /// carries across, for a surface driven by the runtime signal.
         static let bridgeDisagreementState = BridgeIdentifyState.found(
             groups: [discidOnlyGroup, barcodeOnlyGroup],
             libraryStatuses: [:],
@@ -495,101 +518,93 @@
             provenance: disagreementProvenance
         )
 
-        /// Display state where the disc ID and the barcode named different
-        /// releases: every one of them is offered.
-        static let searchStateDisagreement = ImportSearchState(
-            identifyState: IdentifyState(bridge: bridgeDisagreementState),
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [
-                BridgeToolbarSignal(
-                    kind: .discId,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .found(count: 2),
-                    excluded: false,
-                    options: []
-                ),
-                BridgeToolbarSignal(
-                    kind: .barcode,
-                    value: "5051961234567",
-                    origin: .artwork,
-                    state: .found(count: 3),
-                    excluded: false,
-                    options: []
-                ),
-            ])
-        )
-
-        /// Auto-lookup in progress: disc-id looking up, barcode skipped.
-        static let searchStateTriangulating = ImportSearchState(
-            identifyState: .triangulating(
-                discid: .lookingUp,
-                barcode: .skipped
-            ),
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: false,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [
-                BridgeToolbarSignal(
-                    kind: .discId,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .lookingUp,
-                    excluded: false,
-                    options: []
-                ),
-                BridgeToolbarSignal(
-                    kind: .barcode,
-                    value: nil,
-                    origin: .artwork,
-                    state: .skipped,
-                    excluded: false,
-                    options: []
-                ),
-            ])
-        )
-
-        /// Manual search after both signals came up empty.
-        static let searchStateNotFound = ImportSearchState(
+        /// Both signals ran and neither source knew them.
+        static let searchStateNotFound = searchState(
             identifyState: .notFoundAnywhere,
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [
-                BridgeToolbarSignal(
-                    kind: .discId,
-                    value: "disc-hash",
-                    origin: .discToc,
-                    state: .noMatch,
-                    excluded: false,
-                    options: []
-                ),
-                BridgeToolbarSignal(
-                    kind: .barcode,
-                    value: "5051961234567",
-                    origin: .artwork,
-                    state: .noMatch,
-                    excluded: false,
-                    options: []
-                ),
-            ])
+            toolbar: toolbarNothingMatched
         )
+
+        /// The folder carries nothing to look up.
+        static let searchStateNoSignals = searchState(
+            identifyState: .manualOnly(trackCount: 9),
+            toolbar: toolbarSkippedNoSignals
+        )
+
+        /// One source dropped while the other's matches stand.
+        static let searchStateSourceFailure = searchState(
+            identifyState: .failed(
+                failures: [
+                    .barcode(source: .discogs, failure: .timeout)
+                ],
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                provenance: searchProvenanceExact
+            ),
+            toolbar: toolbarBarcodeExcluded
+        )
+
+        /// Nothing answered, so the reasons take the result area.
+        static let searchStateAllSourcesFailed = searchState(
+            identifyState: .failed(
+                failures: [
+                    .discId(failure: .network),
+                    .barcode(source: .discogs, failure: .provider(status: 503)),
+                ],
+                groups: [],
+                libraryStatuses: [:],
+                provenance: [:]
+            ),
+            toolbar: toolbarBothRunning
+        )
+
+        /// A typed search still running over the Found verdict.
+        static let searchStateSearching = searchState(
+            identifyState: .found(
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                provenance: searchProvenanceExact
+            ),
+            search: searchRunInFlight,
+            toolbar: toolbarBothMatched,
+            signals: settledSignals
+        )
+
+        /// A settled typed search over the Found verdict.
+        static let searchStateManual = searchState(
+            identifyState: .found(
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                trackCount: 11,
+                provenance: searchProvenanceExact
+            ),
+            search: manualSearchRun,
+            toolbar: toolbarBothMatched,
+            signals: settledSignals
+        )
+
+        /// The pane's state with only the situation each preview is about
+        /// stated; everything else is the inert default.
+        static func searchState(
+            identifyState: IdentifyState,
+            search: BridgeCandidateSearch? = nil,
+            toolbar: BridgeSignalsToolbar = BridgeSignalsToolbar(signals: []),
+            signals: Signals? = nil,
+            libraryStatuses: [String: BridgeLibraryStatus] = [:],
+            selectedReleaseId: String? = nil,
+            loadingReleaseId: String? = nil,
+        ) -> ImportSearchState {
+            ImportSearchState(
+                identifyState: identifyState,
+                error: nil,
+                search: search,
+                selectedReleaseId: selectedReleaseId,
+                loadingReleaseId: loadingReleaseId,
+                isImporting: false,
+                libraryStatuses: libraryStatuses,
+                signals: signals,
+                signalsToolbar: toolbar
+            )
+        }
     }
 #endif

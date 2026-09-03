@@ -16,6 +16,10 @@ struct AutocompleteTextField: View {
     let placeholder: String
     let suggestions: [String]
     let isLoading: Bool
+    /// Whether the field should take the keyboard. It does so when this turns
+    /// true; clicking elsewhere afterwards is the person's call, not this
+    /// flag's.
+    var takesFocus: Bool = false
     var onSubmit: (() -> Void)?
 
     var body: some View {
@@ -24,6 +28,7 @@ struct AutocompleteTextField: View {
                 text: $text,
                 placeholder: placeholder,
                 suggestions: suggestions,
+                takesFocus: takesFocus,
                 onSubmit: onSubmit,
             )
             if isLoading {
@@ -53,6 +58,7 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     var text: String
     let placeholder: String
     let suggestions: [String]
+    let takesFocus: Bool
     var onSubmit: (() -> Void)?
 
     func makeNSView(context: Context) -> NSTextField {
@@ -78,6 +84,16 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
             field.stringValue = text
             context.coordinator.userTypedPrefix = text
         }
+        // Only the change into `takesFocus` moves the responder: holding it
+        // true must not drag focus back every time the pane redraws.
+        if takesFocus, !context.coordinator.tookFocus {
+            // The field has no window during the update pass that installs
+            // it, so ask on the next turn.
+            DispatchQueue.main.async {
+                field.window?.makeFirstResponder(field)
+            }
+        }
+        context.coordinator.tookFocus = takesFocus
     }
 
     func makeCoordinator() -> Coordinator {
@@ -94,6 +110,9 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         /// mid-text resets this and suppresses further completion until
         /// the user types forward again.
         fileprivate var userTypedPrefix: String = ""
+        /// What `takesFocus` was last update, so focus moves on the change
+        /// into it rather than on every redraw.
+        fileprivate var tookFocus: Bool = false
 
         init(parent: InlineCompletionTextFieldNS) {
             self.parent = parent

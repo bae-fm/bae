@@ -760,6 +760,7 @@ public sealed class ImportMappingPaneTests
                 "group-1",
                 "Album Title",
                 "Artist Name",
+                "Label Name",
                 null,
                 new[]
                 {

@@ -349,6 +349,8 @@ pub struct AutomationReleaseGroup {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
+    /// The label the album's pressings name, where they name one.
+    pub label: Option<String>,
     pub cover_art: Option<AutomationRemoteCover>,
     /// Every source carrying this group, MusicBrainz first.
     pub sources: Vec<AutomationReleaseGroupSource>,

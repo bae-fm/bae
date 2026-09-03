@@ -68,6 +68,9 @@ pub struct BridgeReleaseGroup {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
+    /// The label the card names beside the artist, where the album's pressings
+    /// state one.
+    pub label: Option<String>,
     /// Representative cover for the card.
     pub cover_art: Option<BridgeRemoteCover>,
     /// Every source carrying this group, MusicBrainz first.

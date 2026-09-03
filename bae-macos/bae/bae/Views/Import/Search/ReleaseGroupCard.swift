@@ -2,79 +2,78 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// Header card for a release group: the album's cover, title, and artist on
-/// the left; the source name (linking out to the group's editorial page) and
-/// the pre-formatted "year span · N pressings" line on the right. The group's
-/// pressing rows render beneath it.
+/// Header for a release group: the album's cover, its title and the artist and
+/// label beneath it, and on the right one outbound link per source carrying
+/// it. The group's pressing rows render beneath.
 struct ReleaseGroupCard: View {
     let group: ReleaseGroup
 
     var body: some View {
-        HStack(spacing: 14) {
-            ImageView(content: group.coverImageContent, pointSize: 60)
-                .frame(width: 60, height: 60)
+        HStack(spacing: 12) {
+            ImageView(content: group.coverImageContent, pointSize: 48)
+                .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(
                     RoundedRectangle(cornerRadius: 7)
                         .strokeBorder(.white.opacity(0.08), lineWidth: 1)
                 )
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(group.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .lineLimit(1)
                     .truncationMode(.tail)
-                if let artist = group.artist {
-                    Text(artist)
-                        .font(.system(size: 13))
+                if !attribution.isEmpty {
+                    Text(attribution)
+                        .font(.system(size: 12.5))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                 }
             }
 
             Spacer(minLength: 8)
 
-            VStack(alignment: .trailing, spacing: 5) {
-                sourceLink
-                Text(group.metaLabel)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .monospacedDigit()
+            HStack(spacing: 10) {
+                ForEach(group.sources, id: \.source) { source in
+                    sourceLink(source)
+                }
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .background(
-            Theme.surfaceElevated,
-            in: RoundedRectangle(cornerRadius: 12)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
-        )
     }
 
+    /// Who made the album and who put it out — the two facts core names for
+    /// the card, joined only where both are there.
+    private var attribution: String {
+        [group.artist, group.label]
+            .compactMap { $0 }
+            .joined(separator: " \u{00b7} ")
+    }
+
+    /// One source's name, opening its editorial page for the album. A source
+    /// that returned the release ungrouped has no page, so its name is text.
     @ViewBuilder
-    private var sourceLink: some View {
-        if let url = group.groupUrl {
+    private func sourceLink(_ source: BridgeReleaseGroupSource) -> some View {
+        let name = bridgeMetadataSourceName(source: source.source)
+        if let url = source.groupUrl.flatMap(URL.init(string:)) {
             Button {
                 NSWorkspace.shared.open(url)
             } label: {
-                HStack(spacing: 5) {
-                    Text(group.sourceLabel)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.caption2)
+                HStack(spacing: 4) {
+                    Text(name)
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(.tertiary)
                 }
+                .font(.system(size: 11.5, weight: .semibold))
+                .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
-            .help("Open release group on \(group.sourceLabel)")
+            .help(String(localized: "Open this album on \(name)"))
         }
         else {
-            Text(group.sourceLabel)
-                .font(.system(size: 12, weight: .semibold))
+            Text(name)
+                .font(.system(size: 11.5, weight: .semibold))
                 .foregroundStyle(.secondary)
         }
     }
@@ -84,9 +83,12 @@ struct ReleaseGroupCard: View {
     // MARK: - Previews
 
     #Preview("Release group card") {
-        ReleaseGroupCard(group: PreviewData.searchGroupExact)
-            .padding()
-            .frame(width: 560)
-            .importPreviewEnvironment()
+        VStack(alignment: .leading, spacing: 18) {
+            ReleaseGroupCard(group: PreviewData.searchGroupExact)
+            ReleaseGroupCard(group: PreviewData.searchGroupsManual[1])
+        }
+        .padding()
+        .frame(width: 560)
+        .importPreviewEnvironment()
     }
 #endif

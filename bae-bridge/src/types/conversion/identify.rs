@@ -267,6 +267,7 @@ impl BridgeReleaseGroup {
             id,
             title,
             artist,
+            label,
             cover_art,
             sources,
             year_min,
@@ -277,6 +278,7 @@ impl BridgeReleaseGroup {
             id,
             title,
             artist,
+            label,
             cover_art: cover_art.map(BridgeRemoteCover::from_core),
             sources: sources
                 .into_iter()

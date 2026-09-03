@@ -135,7 +135,8 @@ struct ImportMetadataSourceSection: View {
 }
 
 /// The online browser reads its candidate from the store because its form
-/// bindings and result application write that same candidate.
+/// bindings and result application write that same candidate. The pane carries
+/// its own title row, so the slot mounts it whole.
 private struct ImportOnlineMetadataBrowser: View {
     let candidateKey: String
     let runtime: BridgeCandidateRuntimeSnapshot?
@@ -146,80 +147,52 @@ private struct ImportOnlineMetadataBrowser: View {
     private var importer
     @Environment(ImportStore.self)
     private var importStore
-    @Environment(ConfigStore.self)
-    private var configStore
     @Environment(\.openSettings)
     private var openSettings
     @Environment(SettingsNavigation.self)
     private var settingsNavigation
-    @State
-    private var mode: BridgeDefaultFindOnlineMode = .automatic
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack {
-                Text("Find online")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(maxWidth: .infinity)
-                HStack {
-                    Button {
-                        onBack()
-                    } label: {
-                        Label("Back", systemImage: "chevron.left")
-                    }
-                    .buttonStyle(.link)
-                    Spacer()
-                }
-            }
-            .padding(.horizontal, 4)
-            .padding(.bottom, 8)
-
-            if let candidate = importStore.candidate(forKey: candidateKey) {
-                CandidateSignalsReader(key: candidateKey) { signals in
-                    ImportSearchFlow.buildSearchPane(
-                        services: ImportSearchFlow.ImportServices(
+        if let candidate = importStore.candidate(forKey: candidateKey) {
+            CandidateSignalsReader(key: candidateKey) { signals in
+                ImportSearchFlow.buildSearchPane(
+                    services: ImportSearchFlow.ImportServices(
+                        importer: importer,
+                        importStore: importStore
+                    ),
+                    input: ImportSearchFlow.SearchPaneInput(
+                        candidate: candidate,
+                        key: candidateKey,
+                        selectedReleaseId: candidate.pickedRelease?.releaseId,
+                        runtime: runtime,
+                        liveSignals: signals
+                    ),
+                    openSettings: {
+                        settingsNavigation.open(
+                            .discogs,
+                            present: { openSettings() }
+                        )
+                    },
+                    onBack: onBack,
+                    onSelect: { result in
+                        ImportSearchFlow.applyMetadata(
                             importer: importer,
                             importStore: importStore,
-                            configStore: configStore
-                        ),
-                        input: ImportSearchFlow.SearchPaneInput(
-                            candidate: candidate,
+                            endEditing: endEditing,
                             key: candidateKey,
-                            selectedReleaseId: candidate.pickedRelease?
-                                .releaseId,
-                            runtime: runtime,
-                            liveSignals: signals
-                        ),
-                        mode: $mode,
-                        openSettings: {
-                            settingsNavigation.open(
-                                .discogs,
-                                present: { openSettings() }
-                            )
-                        },
-                        onSelect: { result in
-                            ImportSearchFlow.applyMetadata(
-                                importer: importer,
-                                importStore: importStore,
-                                endEditing: endEditing,
-                                key: candidateKey,
-                                provenance: .externalRelease(
-                                    source: result.source,
-                                    releaseId: result.releaseId
-                                ),
-                                onConfirmed: {
-                                    Task { @MainActor in onBack() }
-                                }
-                            )
-                        }
-                    )
-                }
-                .frame(maxWidth: .infinity)
-                .formGroupCard()
+                            provenance: .externalRelease(
+                                source: result.source,
+                                releaseId: result.releaseId
+                            ),
+                            onConfirmed: {
+                                Task { @MainActor in onBack() }
+                            }
+                        )
+                    }
+                )
             }
-        }
-        .onAppear {
-            mode = configStore.config.defaultFindOnlineMode
+            .frame(maxWidth: .infinity)
+            .formGroupCard()
         }
     }
 }

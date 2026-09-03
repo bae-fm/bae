@@ -26,6 +26,11 @@ pub struct ReleaseGroup {
     pub id: String,
     pub title: String,
     pub artist: Option<String>,
+    /// The label the card names beside the artist — the first pressing that
+    /// states one, MusicBrainz first. `None` when no pressing names a label.
+    /// Which of an album's pressings speaks for it is core's call, not a
+    /// surface's.
+    pub label: Option<String>,
     /// Representative cover for the card — the first pressing that surfaced
     /// one, MusicBrainz first.
     pub cover_art: Option<RemoteCover>,
@@ -192,6 +197,7 @@ fn build_group(card: Vec<Bucket>) -> ReleaseGroup {
         .unwrap_or_else(|| lead.release_id.clone());
     let title = lead.title.clone();
     let artist = releases.iter().find_map(|release| release.artist.clone());
+    let label = releases.iter().find_map(|release| release.label.clone());
     let cover_art = releases
         .iter()
         .find_map(|release| release.cover_art.clone());
@@ -219,6 +225,7 @@ fn build_group(card: Vec<Bucket>) -> ReleaseGroup {
         id,
         title,
         artist,
+        label,
         cover_art,
         sources,
         year_min,
@@ -598,6 +605,25 @@ mod tests {
         let groups = group_results(vec![mb("rel-1", Some("group-x"), None)]);
         assert_eq!(groups[0].year_min, None);
         assert_eq!(groups[0].year_max, None);
+    }
+
+    #[test]
+    fn the_card_label_is_the_first_pressing_that_names_one() {
+        let mut unlabelled = mb("rel-1", Some("group-x"), Some(1992));
+        unlabelled.label = None;
+        let mut labelled = mb("rel-2", Some("group-x"), Some(1994));
+        labelled.label = Some("Label Name".to_string());
+        let mut later = mb("rel-3", Some("group-x"), Some(2012));
+        later.label = Some("Reissue Records".to_string());
+
+        let groups = group_results(vec![unlabelled, labelled, later]);
+        assert_eq!(groups[0].label.as_deref(), Some("Label Name"));
+    }
+
+    #[test]
+    fn a_card_whose_pressings_name_no_label_has_none() {
+        let groups = group_results(vec![mb("rel-1", Some("group-x"), Some(1992))]);
+        assert_eq!(groups[0].label, None);
     }
 
     #[test]

@@ -124,6 +124,7 @@
                 id: "group-track-mismatch",
                 title: "Album Title Seven",
                 artist: "Artist Name",
+                label: "Label Name",
                 coverArt: nil,
                 sources: [
                     BridgeReleaseGroupSource(
@@ -134,7 +135,7 @@
                 ],
                 yearMin: 1994,
                 yearMax: 1994,
-                pressings: [BridgePressing(releases: [exactPressings[0]])]
+                pressings: [exactPressings[0]]
             )
         )
 

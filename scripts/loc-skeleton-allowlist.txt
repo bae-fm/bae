@@ -34,6 +34,7 @@ nl	Album
 nl	Albums
 nl	Audio
 nl	Barcode
+nl	barcode
 nl	Bucket
 nl	Cloud
 nl	Credits

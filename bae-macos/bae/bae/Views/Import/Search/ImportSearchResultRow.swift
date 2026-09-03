@@ -2,60 +2,70 @@ import AppKit
 import BaeKit
 import SwiftUI
 
-/// One pressing row beneath a release-group card. Year-led headline (big
-/// tabular) + label inline, a chip row of cat# (mono) · country · format, and
-/// the signal badges that produced it. No cover and no per-row commit buttons:
-/// the cover lives on the group card above, and clicking the row opens the
-/// docked confirm pane where the Exact / Metadata-only choice is made.
+/// One pressing row beneath a release-group card: the year, the label, the
+/// catalogue number, where and in what format it was pressed, which signals
+/// named it, and every source that lists it.
 ///
-/// Selecting a row that's already in the library still opens the pane — it
-/// surfaces the "already imported" banner and leaves Import disabled there —
-/// so the row stays tappable; it only dims to signal the dupe.
+/// Picking the row commits the pressing's lead release; picking a source tag
+/// commits that source's own record of the same pressing. Both open the docked
+/// confirm pane, where the Exact / Metadata-only choice is made.
+///
+/// A row already in the library still opens the pane — it surfaces the
+/// "already imported" banner and leaves Import disabled there — so the row
+/// stays clickable; it only dims to signal the dupe.
 struct ImportSearchResultRow: View {
-    let result: BridgeMetadataResult
+    let pressing: Pressing
     let isImporting: Bool
     let libraryStatus: BridgeLibraryStatus?
-    /// Which signals produced/confirmed this result, for the badge row. `nil`
-    /// for manual-search results (no auto-identify signals).
+    /// Which signals produced or confirmed this pressing, for the badge row.
+    /// `nil` for typed-search results, which no signal produced.
     var provenance: BridgeResultProvenance?
     let isSelected: Bool
     /// Whether this row's pick is being read right now — the row itself
     /// carries the spinner, so the list stays put while the release loads.
     var isLoading: Bool = false
-    let onSelect: () -> Void
+    let onSelect: (BridgeMetadataResult) -> Void
 
     private var isInLibrary: Bool {
         libraryStatus?.releaseInLibrary == true
     }
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(alignment: .center, spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    headline
-                    chipRow
-                    signalBadges
-                }
-                .opacity(isInLibrary ? 0.55 : 1.0)
+        ZStack {
+            Button {
+                onSelect(pressing.lead)
+            } label: {
+                Rectangle()
+                    .fill(.clear)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isImporting)
+
+            HStack(spacing: 8) {
+                facts
+                    .opacity(isInLibrary ? 0.55 : 1)
+                    .allowsHitTesting(false)
+                signalBadges
+                    .allowsHitTesting(false)
                 Spacer(minLength: 8)
                 libraryMarker
+                    .allowsHitTesting(false)
+                sourceTags
                 chevron
+                    .allowsHitTesting(false)
             }
-            .padding(.vertical, 9)
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(rowBackground)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .disabled(isImporting)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(rowBackground)
     }
 
     private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: 8)
+        RoundedRectangle(cornerRadius: 7)
             .fill(isSelected ? Theme.accent.opacity(0.12) : .clear)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(
                         isSelected ? Theme.accent.opacity(0.4) : .clear,
                         lineWidth: 1
@@ -63,63 +73,43 @@ struct ImportSearchResultRow: View {
             )
     }
 
-    // MARK: - Headline
+    // MARK: - What the pressing is
 
-    private var headline: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if let year = result.year {
+    private var facts: some View {
+        HStack(spacing: 8) {
+            if let year = pressing.lead.year {
                 Text(String(year))
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .monospacedDigit()
-                    .foregroundStyle(.primary)
             }
             else {
                 Text("Year unknown")
-                    .font(.callout)
+                    .font(.system(size: 12))
                     .foregroundStyle(.tertiary)
             }
-            if let label = result.label {
+            if let label = pressing.lead.label {
                 Text(label)
-                    .font(.system(size: 13))
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-        }
-    }
-
-    // MARK: - Chip row
-
-    private var chipRow: some View {
-        HStack(spacing: 7) {
-            if let cat = result.catalogNumber {
-                Text(cat)
-                    .font(.system(.caption, design: .monospaced))
+            if let catalogNumber = pressing.lead.catalogNumber {
+                Text(catalogNumber)
+                    .font(.system(size: 10.5, design: .monospaced))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, 5)
                     .padding(.vertical, 1)
                     .background(
                         .white.opacity(0.05),
-                        in: RoundedRectangle(cornerRadius: 3)
+                        in: RoundedRectangle(cornerRadius: 4)
                     )
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
-            if let country = result.country {
-                Text(country)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-            if result.format != nil
-                && (result.catalogNumber != nil || result.country != nil)
-            {
-                Text(verbatim: "·")
-                    .font(.caption2)
-                    .foregroundStyle(.quaternary)
-            }
-            if let format = result.format {
-                Text(format)
-                    .font(.caption2)
+            if !pressed.isEmpty {
+                Text(pressed)
+                    .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -127,56 +117,67 @@ struct ImportSearchResultRow: View {
         }
     }
 
+    /// Where it was pressed and in what form — "US · CD" — joined only where
+    /// the source states both.
+    private var pressed: String {
+        [pressing.lead.country, pressing.lead.format]
+            .compactMap { $0 }
+            .joined(separator: " \u{00b7} ")
+    }
+
     // MARK: - Signal badges
 
-    /// Which signals produced/confirmed this row. All three chips stay in the
-    /// tree (opacity-toggled) so row height is stable across the list.
+    /// Which signals produced or confirmed this row. All three chips stay in
+    /// the tree (opacity-toggled) so row height is stable across the list.
     @ViewBuilder
     private var signalBadges: some View {
         if let provenance {
             HStack(spacing: 4) {
-                signalBadge(
-                    "Disc ID",
-                    icon: "opticaldiscdrive",
-                    on: provenance.byDiscId
-                )
-                signalBadge(
-                    "Barcode",
-                    icon: "barcode",
-                    on: provenance.byBarcode
-                )
-                signalBadge(
-                    "Catalog",
-                    icon: "tag",
-                    on: provenance.byCatalog
-                )
+                signalBadge(.discId, on: provenance.byDiscId)
+                signalBadge(.barcode, on: provenance.byBarcode)
+                signalBadge(.catalog, on: provenance.byCatalog)
             }
-            .padding(.top, 1)
         }
     }
 
-    private func signalBadge(
-        _ label: LocalizedStringKey,
-        icon: String,
-        on: Bool
-    )
-        -> some View
-    {
-        HStack(spacing: 3) {
-            Image(systemName: icon)
-            Text(label)
-        }
-        .font(.caption2.weight(.medium))
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(Color.accentColor.opacity(0.15), in: Capsule())
-        .foregroundStyle(Color.accentColor)
-        .opacity(on ? 1 : 0)
-        .allowsHitTesting(false)
-        .accessibilityHidden(!on)
+    private func signalBadge(_ kind: BridgeSignalKind, on: Bool) -> some View {
+        Text(SignalBadgeStyle.label(for: kind))
+            .font(.system(size: 10.5, weight: .semibold))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2)
+            .background(Theme.accentSoft, in: Capsule())
+            .foregroundStyle(Theme.accent)
+            .opacity(on ? 1 : 0)
+            .accessibilityHidden(!on)
     }
 
     // MARK: - Trailing
+
+    /// Every source listing this pressing. Each name commits that source's own
+    /// record of it, which is how a person takes the Discogs half of a merged
+    /// row without losing the row.
+    private var sourceTags: some View {
+        HStack(spacing: 4) {
+            ForEach(pressing.releases) { release in
+                let name = bridgeMetadataSourceName(source: release.source)
+                if release.releaseId != pressing.lead.releaseId {
+                    Text(verbatim: "\u{00b7}")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
+                }
+                Button {
+                    onSelect(release)
+                } label: {
+                    Text(name)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .disabled(isImporting)
+                .help(String(localized: "Use this pressing as \(name) has it"))
+            }
+        }
+    }
 
     /// "In library" tag for an already-imported pressing. Kept in the tree
     /// (opacity-toggled) so selecting a row doesn't reflow the column.
@@ -186,10 +187,9 @@ struct ImportSearchResultRow: View {
                 .foregroundStyle(.green)
             Text("In library")
         }
-        .font(.caption2)
+        .font(.system(size: 11))
         .foregroundStyle(.tertiary)
         .opacity(isInLibrary ? 1 : 0)
-        .allowsHitTesting(false)
         .accessibilityHidden(!isInLibrary)
     }
 
@@ -200,34 +200,26 @@ struct ImportSearchResultRow: View {
         ZStack {
             ProgressView()
                 .controlSize(.small)
+                .scaleEffect(0.7)
                 .opacity(isLoading ? 1 : 0)
             Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(
                     isSelected ? Theme.accent : Color.white.opacity(0.3)
                 )
                 .opacity(isLoading ? 0 : 1)
         }
+        .frame(width: 12)
     }
 }
 
 #if DEBUG
     // MARK: - Preview
 
-    #Preview("Pressing Rows") {
-        VStack(spacing: 2) {
+    #Preview("Pressing rows") {
+        VStack(spacing: 1) {
             ImportSearchResultRow(
-                result: BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "p-1",
-                    year: 1992,
-                    format: "CD",
-                    label: "Label Name",
-                    catalogNumber: "CAT 3922 CD",
-                    country: "BE",
-                    barcode: "0123456789012",
-                    sourceGroupId: "group-preview",
-                ),
+                pressing: PreviewData.searchGroupExact.pressings[0],
                 isImporting: false,
                 libraryStatus: nil,
                 provenance: BridgeResultProvenance(
@@ -236,23 +228,22 @@ struct ImportSearchResultRow: View {
                     byCatalog: true
                 ),
                 isSelected: true,
-                onSelect: {},
+                onSelect: { _ in },
             )
             ImportSearchResultRow(
-                result: BridgeMetadataResult(
-                    source: .musicBrainz,
-                    releaseId: "p-2",
-                    year: 2012,
-                    format: "2×Vinyl",
-                    label: "Label Name",
-                    catalogNumber: "CAT 92021 LP",
-                    country: "UK",
-                    barcode: nil,
-                    sourceGroupId: "group-preview",
-                ),
+                pressing: PreviewData.searchGroupsManual[1].pressings[0],
+                isImporting: false,
+                libraryStatus: nil,
+                provenance: nil,
+                isSelected: false,
+                isLoading: true,
+                onSelect: { _ in },
+            )
+            ImportSearchResultRow(
+                pressing: PreviewData.searchGroupExact.pressings[1],
                 isImporting: false,
                 libraryStatus: BridgeLibraryStatus(
-                    releaseId: "p-2",
+                    releaseId: "rel-456",
                     releaseInLibrary: true,
                     albumInLibrary: true,
                     albumTitle: "Album Title",
@@ -260,13 +251,11 @@ struct ImportSearchResultRow: View {
                 ),
                 provenance: nil,
                 isSelected: false,
-                onSelect: {},
+                onSelect: { _ in },
             )
         }
         .padding()
-        .frame(width: 520)
-        .windowBackground()
-        .environment(UiStore())
-        .environment(ImageStore.stub())
+        .frame(width: 620)
+        .importPreviewEnvironment()
     }
 #endif

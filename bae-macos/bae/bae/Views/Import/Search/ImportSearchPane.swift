@@ -1,16 +1,17 @@
 import BaeKit
 import SwiftUI
 
-/// The search/identify surface, in one of two modes: what identification found
-/// (the signals toolbar over its matches, or the line saying it found
-/// nothing), or the typed search (the source picker, the fields, and their
-/// results). Renders from `ImportSearchState` plus the form bindings and action
-/// callbacks.
+/// Find online: one page. The header states what identification concluded and
+/// offers the one thing to do about it, the result area lists what there is to
+/// pick from, and the typed-search form stays docked at the bottom.
+///
+/// A submitted search takes over the result area only — the verdict above it
+/// does not move, and Clear gives the area back. Renders from
+/// `ImportSearchState` plus the form bindings and action callbacks.
 struct ImportSearchPane: View {
     let state: ImportSearchState
-    /// Which method the stable Find online page is showing.
-    @Binding
-    var mode: BridgeDefaultFindOnlineMode
+    /// Leave the pane. `nil` for a surface that owns its own way out.
+    let onBack: (() -> Void)?
     @Binding
     var activeTab: SearchTab
     @Binding
@@ -27,138 +28,78 @@ struct ImportSearchPane: View {
     /// Re-ask only the providers whose part of the search failed.
     let onRetrySearch: () -> Void
     let onOpenSettings: () -> Void
-    /// Re-identifying an existing library release can still use its local file
-    /// tags directly. Folder import source changes live on the draft card.
-    let onUseFileTags: (() -> Void)?
-    /// Act on a signal in the toolbar — take the disc ID or barcode in or out
-    /// of the run, or pick which extracted catalog number the run looks up.
-    /// The state the import projection delivers is re-derived from what is
-    /// left checked.
+    /// Act on a signal — take the disc ID or barcode in or out of the run, or
+    /// pick which extracted catalog number the run looks up. The state the
+    /// import projection delivers is re-derived from what is left checked.
     let onToggleSignal: (BridgeSignalToggle) -> Void
-    /// Enter Automatic. Core owns whether this starts, resumes, or does
-    /// nothing for an active or settled run.
-    let onEnterAutomatic: () -> Void
-    /// Run signal extraction and lookup again from either online-search view.
+    /// Start identification for a folder whose run never began. Core owns
+    /// whether this starts, resumes, or does nothing.
+    let onIdentify: () -> Void
+    /// Run signal extraction and the lookups again.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (BridgeMetadataResult) -> Void
 
-    private struct FoundResult {
-        let groups: [ReleaseGroup]
-        let statuses: [String: BridgeLibraryStatus]
-        let provenance: [String: BridgeResultProvenance]
-    }
+    /// Whether the form's Artist field should hold the keyboard: a person
+    /// with nothing to pick is going to type, so an empty result area hands
+    /// the cursor over.
+    @State
+    private var focusesArtist = false
 
-    /// The auto-identified release groups, their library statuses, and per-row
-    /// provenance, extracted from the identify state.
-    private var foundResult: FoundResult? {
-        guard
-            case .found(let groups, let statuses, _, let provenance) =
-                state.identifyState
-        else {
-            return nil
-        }
-        return FoundResult(
-            groups: groups,
-            statuses: statuses,
-            provenance: provenance
+    private var verdict: FindOnlineVerdict {
+        FindOnlineVerdict(
+            state: state.identifyState,
+            toolbar: state.signalsToolbar
         )
     }
 
-    /// Whether the pipeline is mid-triangulation — drives the body's
-    /// "Identifying…" placeholder (the per-signal progress lives in the
-    /// toolbar's spinning badges now).
-    private var isTriangulating: Bool {
-        if case .triangulating = state.identifyState {
-            return true
-        }
-        return false
-    }
-
-    private var hasAutomaticRunStarted: Bool {
-        if case .idle = state.identifyState {
-            return false
-        }
-        return true
-    }
-
-    private var automaticFailures: [BridgeIdentifyFailure] {
-        guard case .failed(let failures, _, _, _) = state.identifyState else {
-            return []
-        }
-        return failures
-    }
-
-    /// Whether the toolbar row renders: live badges when the signals are
-    /// known, or just its escapes (Auto / Search manually) on a resumed
-    /// verdict — a terminal state stood back up from the store, whose raw
-    /// signals were never persisted and so has no badges to show.
-    private var showsToolbar: Bool {
-        if !state.signalsToolbar.signals.isEmpty {
-            return true
-        }
-        switch state.identifyState {
-        case .found, .notFoundAnywhere, .manualOnly, .failed:
-            return true
-        case .idle, .triangulating:
-            return false
-        }
-    }
-
-    /// The signals toolbar, shown across every state once core has emitted a
-    /// transition. Hidden until then (empty badge list) and in idle.
-    @ViewBuilder
-    private var toolbar: some View {
-        if showsToolbar {
-            SignalsToolbarView(
-                toolbar: state.signalsToolbar,
-                onToggle: onToggleSignal,
-                onRerun: onRerun,
-                onUseFileTags: onUseFileTags,
-            )
-        }
+    private var area: FindOnlineResultArea {
+        FindOnlineResultArea(
+            identifyState: state.identifyState,
+            hasSearch: state.search != nil
+        )
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            methodPicker
-            switch mode {
-            case .automatic:
-                toolbar
-                errorLine
-                signalsResult
-            case .searchManually:
-                errorLine
-                manualForm
+            FindOnlineHeader(
+                verdict: verdict,
+                toolbar: state.signalsToolbar,
+                onBack: onBack,
+                onIdentify: onIdentify,
+                onRetry: onRerun,
+                onToggleSignal: onToggleSignal,
+                onRerun: onRerun,
+            )
+            Divider()
+            errorLine
+            resultArea
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider()
+            ImportSearchFormView(
+                activeTab: $activeTab,
+                searchArtist: $searchArtist,
+                searchAlbum: $searchAlbum,
+                searchCatalog: $searchCatalog,
+                searchBarcode: $searchBarcode,
+                signals: state.signals,
+                focusesArtist: focusesArtist,
+                onSearch: onSearch,
+            )
+        }
+        // A person looking at an empty result area is about to type: seed the
+        // Artist field from what was read off the folder and put the cursor
+        // in it. Only when the fields are untouched — never over typing.
+        .onChange(of: area, initial: true) { _, area in
+            let isEmpty = area == .nothingFound || area == .noSignals
+            focusesArtist = isEmpty
+            guard isEmpty, searchArtist.isEmpty, searchAlbum.isEmpty else {
+                return
+            }
+            if let seed = state.signals?.text.freeText.first {
+                searchArtist = seed
             }
         }
-        .padding(.top, 6)
-    }
-
-    private var methodPicker: some View {
-        Picker(
-            selection: Binding(
-                get: { mode },
-                set: { selected in
-                    mode = selected
-                    if selected == .automatic {
-                        onEnterAutomatic()
-                    }
-                }
-            )
-        ) {
-            Text("Automatic").tag(BridgeDefaultFindOnlineMode.automatic)
-            Text("Search manually")
-                .tag(
-                    BridgeDefaultFindOnlineMode.searchManually
-                )
-        } label: {
-            EmptyView()
-        }
-        .labelsHidden()
-        .pickerStyle(.segmented)
-        .frame(width: 300)
-        .padding(.bottom, 8)
     }
 
     @ViewBuilder
@@ -167,91 +108,109 @@ struct ImportSearchPane: View {
             HStack(spacing: 6) {
                 Image(systemName: "exclamationmark.triangle.fill")
                 Text(error)
+                Spacer()
             }
             .font(.caption)
             .foregroundStyle(.red)
-            .padding(.horizontal)
+            .padding(.horizontal, 14)
             .padding(.vertical, 6)
         }
     }
 
-    // MARK: - Signals
+    // MARK: - Result area
 
-    /// What identification made of the folder: its matches, the spinner while
-    /// it is still looking, or the one line saying it has nothing — with the
-    /// way over to the typed search on that same line.
     @ViewBuilder
-    private var signalsResult: some View {
-        if let found = foundResult, !found.groups.isEmpty {
+    private var resultArea: some View {
+        switch area {
+        case .identifying:
+            ResultSkeleton()
+        case .groups:
             ReleaseGroupListView(
-                groups: found.groups,
+                groups: state.identifiedGroups,
                 isImporting: state.isImporting,
-                libraryStatuses: found.statuses,
-                provenance: found.provenance,
+                libraryStatuses: state.libraryStatuses,
+                provenance: state.identifiedProvenance,
                 selectedReleaseId: state.selectedReleaseId,
                 loadingReleaseId: state.loadingReleaseId,
+                trailingNotes: missingSourceNotes,
+                onSelect: onSelect,
+            )
+        case .nothingFound:
+            FindOnlineNotice(
+                title: "Neither source knows these signals.",
+                detail:
+                    "Small pressings and reissues often lack a Disc ID entry. Searching by artist and album usually finds them."
+            )
+        case .noSignals:
+            FindOnlineNotice(
+                title: "Nothing to look up automatically.",
+                detail:
+                    "The folder carries no disc TOC, barcode, or catalog number. Search below, or use the file tags on the draft."
+            )
+        case .notStarted:
+            FindOnlineNotice(
+                title: "This folder hasn't been looked up.",
+                detail:
+                    "Identify reads the folder's disc TOC, barcode, and catalog number and asks both sources. Or search below."
+            )
+        case .failureLines:
+            failureLines
+        case .searchRun:
+            searchRun
+        }
+    }
+
+    /// Every lookup failed, so the reasons take the place of the results.
+    private var failureLines: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(state.identifyFailures, id: \.badgeLine) { failure in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(failure.badgeLine)
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+        .font(.system(size: 12.5))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 22)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: .topLeading
+        )
+    }
+
+    /// One line per source whose results the list is missing, closing it.
+    private var missingSourceNotes: [String] {
+        var seen: Set<BridgeMetadataSource> = []
+        return state.identifyFailures.compactMap { failure in
+            guard let source = failure.failedSource,
+                seen.insert(source).inserted
+            else { return nil }
+            return String(
+                localized:
+                    "\(bridgeMetadataSourceName(source: source)) results are missing from this list."
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var searchRun: some View {
+        if let search = state.search {
+            FindOnlineSearchResults(
+                search: search,
+                isImporting: state.isImporting,
+                libraryStatuses: state.libraryStatuses,
+                selectedReleaseId: state.selectedReleaseId,
+                loadingReleaseId: state.loadingReleaseId,
+                onClear: onClearSearch,
+                onRetry: onRetrySearch,
+                onOpenSettings: onOpenSettings,
                 onSelect: onSelect,
             )
         }
-        else if isTriangulating {
-            // The toolbar's spinning badges carry the per-signal progress;
-            // the body just notes the pipeline is still working.
-            ContentUnavailableView(
-                "Identifying\u{2026}",
-                systemImage: "antenna.radiowaves.left.and.right",
-                description: Text("Looking up the signals above."),
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        else if !automaticFailures.isEmpty {
-            lookupFailedLine
-        }
-        else if hasAutomaticRunStarted {
-            nothingFoundLine
-        }
-        else {
-            ContentUnavailableView(
-                "Identifying…",
-                systemImage: "antenna.radiowaves.left.and.right"
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    private var lookupFailedLine: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
-            VStack(alignment: .leading, spacing: 4) {
-                ForEach(Array(automaticFailures.enumerated()), id: \.offset) {
-                    _,
-                    failure in
-                    Text(failure.badgeLine)
-                        .font(.callout)
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-    }
-
-    /// The result line when nothing was found: what happened, and the one
-    /// thing left to do beside it.
-    @ViewBuilder
-    private var nothingFoundLine: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "info.circle.fill")
-                .foregroundStyle(.orange)
-            Text("No automatic matches found")
-                .font(.callout)
-            DiscIdInfoTip()
-            Spacer()
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -259,18 +218,17 @@ struct ImportSearchPane: View {
     // MARK: - Previews
 
     extension ImportSearchPane {
-        /// Preview builder — fixes the form bindings and action callbacks to inert
-        /// defaults so a preview states only the result situation it exercises.
+        /// Preview builder — fixes the form bindings and action callbacks to
+        /// inert defaults so a preview states only the situation it exercises.
         @MainActor
         static func preview(
             state: ImportSearchState,
-            mode: BridgeDefaultFindOnlineMode = .automatic,
             searchArtist: String = "",
             searchAlbum: String = "",
         ) -> ImportSearchPane {
             ImportSearchPane(
                 state: state,
-                mode: .constant(mode),
+                onBack: {},
                 activeTab: .constant(.general),
                 searchArtist: .constant(searchArtist),
                 searchAlbum: .constant(searchAlbum),
@@ -280,53 +238,79 @@ struct ImportSearchPane: View {
                 onClearSearch: {},
                 onRetrySearch: {},
                 onOpenSettings: {},
-                onUseFileTags: nil,
                 onToggleSignal: { _ in },
-                onEnterAutomatic: {},
+                onIdentify: {},
                 onRerun: {},
                 onSelect: { _ in },
             )
         }
     }
 
-    #Preview("Main Pane - Exact Matches") {
+    #Preview("Find online — identifying") {
+        ImportSearchPane.preview(state: PreviewData.searchStateTriangulating)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — found, cross-linked") {
         ImportSearchPane.preview(state: PreviewData.searchStateFoundExact)
-            .frame(width: 1212, height: 982)
+            .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
-    #Preview("Main Pane - Auto-lookup idle") {
+    #Preview("Find online — signals named different releases") {
+        ImportSearchPane.preview(state: PreviewData.searchStateDisagreement)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — nothing found") {
+        ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — no signals") {
+        ImportSearchPane.preview(state: PreviewData.searchStateNoSignals)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — source failure, partial results") {
+        ImportSearchPane.preview(state: PreviewData.searchStateSourceFailure)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — every source failed") {
+        ImportSearchPane.preview(state: PreviewData.searchStateAllSourcesFailed)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — not identified") {
         ImportSearchPane.preview(state: PreviewData.searchStateIdle)
-            .frame(width: 1212, height: 982)
+            .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }
 
-    #Preview("Main Pane - Manual Search") {
+    #Preview("Find online — searching") {
         ImportSearchPane.preview(
-            state: PreviewData.searchStateManual,
-            mode: .searchManually,
+            state: PreviewData.searchStateSearching,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
         )
-        .frame(width: 1212, height: 982)
+        .frame(width: 900, height: 620)
         .importPreviewEnvironment()
     }
 
-    #Preview("Main Pane - Signals named different releases") {
-        ImportSearchPane.preview(state: PreviewData.searchStateDisagreement)
-            .frame(width: 1212, height: 982)
-            .importPreviewEnvironment()
-    }
-
-    #Preview("Main Pane - Auto-lookup in progress") {
-        ImportSearchPane.preview(state: PreviewData.searchStateTriangulating)
-            .frame(width: 1212, height: 982)
-            .importPreviewEnvironment()
-    }
-
-    #Preview("Main Pane - Nothing found") {
-        ImportSearchPane.preview(state: PreviewData.searchStateNotFound)
-            .frame(width: 1212, height: 982)
-            .importPreviewEnvironment()
+    #Preview("Find online — search results") {
+        ImportSearchPane.preview(
+            state: PreviewData.searchStateManual,
+            searchArtist: "Artist Name",
+            searchAlbum: "Album Title One",
+        )
+        .frame(width: 900, height: 620)
+        .importPreviewEnvironment()
     }
 #endif

@@ -258,6 +258,16 @@ private struct ImportOperations: Sendable {
     }
 }
 
+/// What an importer with no bridge behind it hands back when a surface asks to
+/// watch a release's library membership: a preview and a test that does not
+/// exercise membership still render the pane, which watches every release it
+/// offers.
+private final class InertLibraryStatusSubscription: LiveSubscriptionProtocol,
+    @unchecked Sendable
+{
+    func cancel() {}
+}
+
 /// Import-flow operations: watched-folder management, scan, identify,
 /// candidate search, signal dismissal, file-tag preview, and commit.
 final class Importer: Sendable, Observable {
@@ -325,9 +335,7 @@ final class Importer: Sendable, Observable {
                 BridgeMetadataSource, String, String?,
                 ReleaseLibraryStatusCallback
             ) -> any LiveSubscriptionProtocol = { _, _, _, _ in
-                fatalError(
-                    "release library status subscription not implemented"
-                )
+                InertLibraryStatusSubscription()
             },
         toggleSignalForCandidate:
             @escaping @Sendable (String, BridgeSignalToggle) -> Void = {

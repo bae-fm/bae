@@ -49,23 +49,13 @@ final class SettingsNavigationTests: XCTestCase {
 }
 
 @MainActor
-final class ManualSearchWorkspaceTests: XCTestCase {
-    func testIdleManualSearchHasNoResultsScroller() async {
-        let state = ImportSearchState(
-            identifyState: .idle,
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [])
-        )
+final class FindOnlinePaneTests: XCTestCase {
+    /// Nothing to list means nothing to scroll: the docked form is the whole
+    /// of what a folder nobody has looked up yet offers.
+    func testAPaneWithNothingToOfferHasNoResultsScroller() async {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = SnapshotTestSupport.hostInWindow(
-            ImportSearchPane.preview(state: state, mode: .searchManually)
+            ImportSearchPane.preview(state: PreviewData.searchStateIdle)
                 .frame(width: size.width, height: size.height),
             size: size
         )
@@ -82,134 +72,261 @@ final class ManualSearchWorkspaceTests: XCTestCase {
 }
 
 @MainActor
-@Suite("Find online method presentation")
-struct FindOnlineMethodPresentationTests {
-    @Test("idle automatic method has no empty-result message")
-    func idleAutomaticMethodHasNoEmptyResultMessage() async throws {
-        let idle = try await pixels(
-            for: ImportSearchPane.preview(state: idleState)
-        )
-        let finishedWithoutMatches = try await pixels(
-            for: ImportSearchPane.preview(
-                state: PreviewData.searchStateNotFound
-            )
+@Suite("Find online verdict")
+struct FindOnlineVerdictTests {
+    @Test("a folder nobody looked up offers to identify it")
+    func idleOffersIdentify() {
+        let verdict = FindOnlineVerdict(
+            state: .idle,
+            toolbar: BridgeSignalsToolbar(signals: [])
         )
 
-        #expect(idle != finishedWithoutMatches)
+        #expect(verdict.lines == [String(localized: "Not identified")])
+        #expect(verdict.action == .identify)
+        #expect(!verdict.isWorking)
     }
 
-    @Test("manual method has no empty-result message before a search")
-    func manualMethodHasNoEmptyResultMessageBeforeSearch() async throws {
-        let idle = try await pixels(
-            for: ImportSearchPane.preview(
-                state: idleState,
-                mode: .searchManually
-            )
-        )
-        let searched = try await pixels(
-            for: ImportSearchPane.preview(
-                state: searchedEmptyState,
-                mode: .searchManually
-            )
+    @Test("a run under way says so and offers nothing")
+    func triangulatingWorks() {
+        let verdict = FindOnlineVerdict(
+            state: .triangulating(discid: .lookingUp, barcode: .scanning),
+            toolbar: PreviewData.toolbarBothRunning
         )
 
-        #expect(idle != searched)
+        #expect(verdict.isWorking)
+        #expect(verdict.action == .none)
     }
 
-    private var idleState: ImportSearchState {
-        ImportSearchState(
-            identifyState: .idle,
-            error: nil,
-            search: nil,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [])
+    @Test("a verdict names the signals that matched, and only those")
+    func foundNamesTheMatchedSignals() {
+        let verdict = FindOnlineVerdict(
+            state: PreviewData.searchStateFoundExact.identifyState,
+            toolbar: PreviewData.toolbarBothMatched
         )
+
+        #expect(verdict.action == .adjust)
+        let line = try? #require(verdict.lines.first)
+        #expect(line?.contains(String(localized: "Disc ID")) == true)
+        #expect(line?.contains(String(localized: "barcode")) == true)
     }
 
-    /// A typed search both providers answered with nothing — the "no matches"
-    /// line, told apart from a form nobody has submitted yet.
-    private var settledEmptySearch: BridgeCandidateSearch {
-        BridgeCandidateSearch(
-            query: .general(artist: "Artist Name", album: "Album Title"),
-            musicbrainz: .done(count: 0),
-            discogs: .done(count: 0),
-            groups: [],
-            libraryStatuses: [:],
-            settled: true
+    @Test("an excluded signal is not part of what identified the folder")
+    func foundSkipsExcludedSignals() {
+        let verdict = FindOnlineVerdict(
+            state: PreviewData.searchStateFoundExact.identifyState,
+            toolbar: PreviewData.toolbarBarcodeExcluded
         )
+
+        let line = try? #require(verdict.lines.first)
+        #expect(line?.contains(String(localized: "Disc ID")) == true)
+        #expect(line?.contains(String(localized: "barcode")) == false)
     }
 
-    private var searchedEmptyState: ImportSearchState {
-        ImportSearchState(
-            identifyState: .idle,
-            error: nil,
-            search: settledEmptySearch,
-            selectedReleaseId: nil,
-            loadingReleaseId: nil,
-            isImporting: false,
-            libraryStatuses: [:],
-            discogsEnabled: true,
-            signals: nil,
-            signalsToolbar: BridgeSignalsToolbar(signals: [])
+    @Test("a verdict stood back up from the store names no signals")
+    func resumedVerdictNamesNoSignals() {
+        let verdict = FindOnlineVerdict(
+            state: PreviewData.searchStateFoundExact.identifyState,
+            toolbar: BridgeSignalsToolbar(signals: [])
         )
+
+        #expect(verdict.lines == [String(localized: "Identified")])
+        #expect(verdict.action == .adjust)
     }
 
-    private func pixels<V: View>(for view: V) async throws -> Data {
-        let size = NSSize(width: 900, height: 600)
-        let (window, host) = SnapshotTestSupport.hostInWindow(
-            view.frame(width: size.width, height: size.height),
-            size: size
+    @Test("nothing found names the signals that ran")
+    func notFoundNamesTheSignalsThatRan() {
+        let verdict = FindOnlineVerdict(
+            state: .notFoundAnywhere,
+            toolbar: PreviewData.toolbarNothingMatched
         )
-        let pixels = try await SnapshotTestSupport.capturePNG(host, size: size)
-        withExtendedLifetime(window) {}
-        return pixels
+
+        let line = try? #require(verdict.lines.first)
+        #expect(line?.contains(String(localized: "Disc ID")) == true)
+        #expect(line?.contains(String(localized: "barcode")) == true)
+        #expect(verdict.action == .adjust)
+    }
+
+    @Test("a folder with no signals has nothing to adjust")
+    func manualOnlyOffersNothing() {
+        let verdict = FindOnlineVerdict(
+            state: .manualOnly(trackCount: 9),
+            toolbar: PreviewData.toolbarSkippedNoSignals
+        )
+
+        #expect(
+            verdict.lines == [String(localized: "No signals in this folder")]
+        )
+        #expect(verdict.action == .none)
+    }
+
+    @Test("a failure names one line per source, with the reason in its help")
+    func failureNamesEachSource() {
+        let verdict = FindOnlineVerdict(
+            state: .failed(
+                failures: [
+                    .discId(failure: .network),
+                    .barcode(source: .discogs, failure: .timeout),
+                ],
+                groups: [],
+                libraryStatuses: [:],
+                provenance: [:]
+            ),
+            toolbar: BridgeSignalsToolbar(signals: [])
+        )
+
+        #expect(verdict.isFailure)
+        #expect(verdict.action == .retry)
+        #expect(verdict.lines.count == 2)
+        #expect(
+            verdict.lines[0]
+                .contains(
+                    bridgeMetadataSourceName(source: .musicBrainz)
+                )
+        )
+        #expect(
+            verdict.lines[1]
+                .contains(
+                    bridgeMetadataSourceName(source: .discogs)
+                )
+        )
+        #expect(verdict.help.contains(BridgeLookupFailure.timeout.badgeLine))
     }
 }
 
 @MainActor
-final class SignalBadgePopoverTests: XCTestCase {
-    func testFailedLookupOffersRetryBesideItsSignalValue() async throws {
-        var didRetry = false
-        let signal = BridgeToolbarSignal(
-            kind: .barcode,
-            value: "0123456789012",
-            origin: .artwork,
-            state: .failed(failure: .network),
-            excluded: false,
-            options: []
+@Suite("Find online result area")
+struct FindOnlineResultAreaTests {
+    @Test("a submitted search owns the area whatever identification said")
+    func aSearchOwnsTheArea() {
+        let found = PreviewData.searchStateFoundExact.identifyState
+        #expect(
+            FindOnlineResultArea(identifyState: found, hasSearch: true)
+                == .searchRun
         )
-        let rendered = await render(
-            SignalBadgePopover(signal: signal, onRetry: { didRetry = true })
+        #expect(
+            FindOnlineResultArea(identifyState: .idle, hasSearch: true)
+                == .searchRun
         )
-
-        XCTAssertTrue(rendered.labels.contains("0123456789012"))
-        let retryButton = try XCTUnwrap(rendered.buttons.first)
-        retryButton.performClick(nil)
-        XCTAssertTrue(didRetry)
     }
 
-    private func render<V: View>(_ view: V) async -> (
-        labels: [String],
-        buttons: [NSButton]
-    ) {
-        let size = NSSize(width: 300, height: 220)
+    @Test("each identify state picks its own area")
+    func eachStatePicksItsArea() {
+        #expect(
+            FindOnlineResultArea(identifyState: .idle, hasSearch: false)
+                == .notStarted
+        )
+        #expect(
+            FindOnlineResultArea(
+                identifyState: .triangulating(
+                    discid: .computing,
+                    barcode: .scanning
+                ),
+                hasSearch: false
+            ) == .identifying
+        )
+        #expect(
+            FindOnlineResultArea(
+                identifyState: PreviewData.searchStateFoundExact.identifyState,
+                hasSearch: false
+            ) == .groups
+        )
+        #expect(
+            FindOnlineResultArea(
+                identifyState: .notFoundAnywhere,
+                hasSearch: false
+            ) == .nothingFound
+        )
+        #expect(
+            FindOnlineResultArea(
+                identifyState: .manualOnly(trackCount: 9),
+                hasSearch: false
+            ) == .noSignals
+        )
+    }
+
+    /// One source failing never blanks the pane: the other's matches stand,
+    /// and only a run that turned up nothing at all shows the reasons.
+    @Test("a failure with matches still lists them")
+    func aFailureWithMatchesListsThem() {
+        #expect(
+            FindOnlineResultArea(
+                identifyState:
+                    PreviewData.searchStateSourceFailure.identifyState,
+                hasSearch: false
+            ) == .groups
+        )
+        #expect(
+            FindOnlineResultArea(
+                identifyState:
+                    PreviewData.searchStateAllSourcesFailed.identifyState,
+                hasSearch: false
+            ) == .failureLines
+        )
+    }
+}
+
+@MainActor
+@Suite("Adjusting a candidate's signals")
+struct SignalAdjustPopoverTests {
+    /// Clicking the disc ID or the barcode takes it in or out of the run. The
+    /// catalog is not a toggle: it is chosen by value, so it sends its own.
+    @Test("a signal row's click is the toggle for that signal")
+    func aRowSendsItsOwnToggle() {
+        func signal(_ kind: BridgeSignalKind) -> BridgeToolbarSignal {
+            BridgeToolbarSignal(
+                kind: kind,
+                value: "value",
+                origin: .artwork,
+                state: .found(count: 1),
+                excluded: false,
+                options: []
+            )
+        }
+
+        #expect(BridgeSignalToggle(signal: signal(.discId)) == .disc)
+        #expect(BridgeSignalToggle(signal: signal(.barcode)) == .barcode)
+        #expect(BridgeSignalToggle(signal: signal(.catalog)) == nil)
+    }
+
+    /// Every signal core extracted gets a control, and Run again closes the
+    /// list — including for a verdict resumed from the store, which has no
+    /// signals to show and so offers Run again alone.
+    @Test("the popover offers one control per signal, plus Run again")
+    func thePopoverOffersOneControlPerSignal() async {
+        let withSignals = await controlCount(
+            SignalAdjustPopover(
+                toolbar: PreviewData.toolbarBothMatched,
+                onToggle: { _ in },
+                onRerun: {},
+            )
+        )
+        let resumed = await controlCount(
+            SignalAdjustPopover(
+                toolbar: BridgeSignalsToolbar(signals: []),
+                onToggle: { _ in },
+                onRerun: {},
+            )
+        )
+
+        #expect(
+            withSignals
+                == PreviewData.toolbarBothMatched.signals.count + 1
+        )
+        #expect(resumed == 1)
+    }
+
+    private func controlCount<V: View>(_ view: V) async -> Int {
+        let size = NSSize(width: 340, height: 220)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             view.frame(width: size.width, height: size.height),
             size: size
         )
         await SnapshotTestSupport.settle(host)
-        let descendants = SnapshotTestSupport.descendants(of: host)
-        let labels = descendants.compactMap {
-            ($0 as? NSTextField)?.stringValue
-        }
-        let buttons = descendants.compactMap { $0 as? NSButton }
+        let count = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSButton }
+            .count
         withExtendedLifetime(window) {}
-        return (labels, buttons)
+        return count
     }
 }
 
@@ -639,7 +756,7 @@ struct ImportSearchFlowLibraryStatusTests {
         store.refreshLibraryStatusSubscriptions(
             importer: importer,
             key: candidate.key,
-            desired: ImportSearchFlow.searchStatusKeys(runtime: runtime())
+            desired: ImportSearchFlow.releaseStatusKeys(state: state())
         )
         await waitUntil { harness.callback(releaseId: "rel-live") != nil }
 
@@ -672,7 +789,7 @@ struct ImportSearchFlowLibraryStatusTests {
         let importer = Importer(
             subscribeReleaseLibraryStatus: harness.subscribe
         )
-        let desired = ImportSearchFlow.searchStatusKeys(runtime: runtime())
+        let desired = ImportSearchFlow.releaseStatusKeys(state: state())
 
         store.refreshLibraryStatusSubscriptions(
             importer: importer,
@@ -710,13 +827,11 @@ struct ImportSearchFlowLibraryStatusTests {
         }
     }
 
-    /// A candidate whose typed search turned up one release, as the runtime
-    /// delivers it.
-    private func runtime() -> BridgeCandidateRuntimeSnapshot {
-        BridgeCandidateRuntimeSnapshot(
+    /// A candidate whose typed search turned up one release, as the pane
+    /// renders it.
+    private func state() -> ImportSearchState {
+        PreviewData.searchState(
             identifyState: .idle,
-            signalsToolbar: BridgeSignalsToolbar(signals: []),
-            import: nil,
             search: BridgeCandidateSearch(
                 query: .general(artist: "Artist Name", album: "Album Title"),
                 musicbrainz: .done(count: 1),
@@ -726,6 +841,7 @@ struct ImportSearchFlowLibraryStatusTests {
                         id: "group-live",
                         title: "Album Title",
                         artist: "Artist Name",
+                        label: nil,
                         coverArt: nil,
                         sources: [
                             BridgeReleaseGroupSource(
