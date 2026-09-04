@@ -9,8 +9,8 @@
 //! pressing arrive twice. Both collapses happen here: two sources' groups
 //! become one card when they name the same album, and two sources' releases
 //! become one row when they name the same physical pressing. A row is then a
-//! pressing on however many sources listed it, and picking it picks its first
-//! source's release.
+//! pressing on however many sources listed it, and picking it claims every one
+//! of them — [`Pressing::pick`] says exactly what.
 
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::MetadataResult;
@@ -54,9 +54,10 @@ pub struct ReleaseGroupSource {
     pub group_url: Option<String>,
 }
 
-/// One physical pressing, on every source that lists it. Picking the row picks
-/// `releases[0]` (MusicBrainz when both carry it); each further entry is the
-/// same pressing on another source and can be picked by itself.
+/// One physical pressing, on every source that lists it. A row is picked
+/// whole: `releases[0]` (MusicBrainz when both carry it) is the release the
+/// draft is read from, and each further entry is the same pressing as another
+/// source has it, claimed alongside it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Pressing {
     pub releases: Vec<MetadataResult>,
@@ -68,6 +69,27 @@ impl Pressing {
         self.releases
             .first()
             .expect("a pressing is built from at least one release")
+    }
+
+    /// What picking this row claims: the lead as the document the draft is
+    /// read from, and every other source's record of the same pressing as a
+    /// partner.
+    ///
+    /// A row is one pressing however many sources carry it, so this is the
+    /// whole of what picking it means. Deciding it here rather than on each
+    /// surface is what keeps macOS, Windows and Linux picking the same thing.
+    pub fn pick(&self) -> crate::import::MetadataProvenance {
+        let lead = self.lead();
+        crate::import::MetadataProvenance::ExternalRelease {
+            source: lead.source,
+            release_id: lead.release_id.clone(),
+            partners: self.releases[1..]
+                .iter()
+                .map(|release| {
+                    crate::import::MetadataRef::new(release.release_id.clone(), release.source)
+                })
+                .collect(),
+        }
     }
 }
 
@@ -510,6 +532,44 @@ mod tests {
         assert_eq!(groups.len(), 2);
         assert_eq!(groups[0].sources.len(), 2);
         assert_eq!(groups[1].sources.len(), 1);
+    }
+
+    /// A row paired across both sources is picked whole: the lead is the
+    /// document the draft is read from, and the other source's record of the
+    /// same pressing rides along as a partner.
+    #[test]
+    fn a_paired_row_is_picked_with_its_partner() {
+        let mut one = mb("mb-1", Some("group-x"), Some(1992));
+        one.barcode = Some("012345678905".to_string());
+        let mut other = discogs("dg-1", Some("master-7"), Some(1992));
+        other.barcode = Some("012345678905".to_string());
+
+        let groups = group_results(vec![one, other]);
+        assert_eq!(
+            groups[0].pressings[0].pick(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-1".to_string(),
+                partners: vec![crate::import::MetadataRef::new(
+                    "dg-1",
+                    MetadataSource::Discogs
+                )],
+            }
+        );
+    }
+
+    /// A pressing only one source lists claims only that source.
+    #[test]
+    fn a_lone_row_is_picked_with_no_partner() {
+        let groups = group_results(vec![discogs("dg-1", Some("master-7"), Some(1992))]);
+        assert_eq!(
+            groups[0].pressings[0].pick(),
+            crate::import::MetadataProvenance::ExternalRelease {
+                source: MetadataSource::Discogs,
+                release_id: "dg-1".to_string(),
+                partners: vec![],
+            }
+        );
     }
 
     /// Barcodes the two sources punctuate differently still name one pressing.

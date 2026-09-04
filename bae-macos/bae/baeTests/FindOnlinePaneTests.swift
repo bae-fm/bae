@@ -32,36 +32,41 @@ final class FindOnlinePaneTests: XCTestCase {
 @MainActor
 @Suite("What picking a pressing row claims")
 struct FindOnlinePressingPickTests {
-    /// A row is one pressing however many sources carry it. Picking it names
-    /// the lead as the release the draft is read from and every other source's
-    /// record of the same pressing as a partner — which is what
-    /// `ImportSearchResultRow.onSelect` hands the flow.
-    @Test("a row pick carries every source the pressing has")
-    func aRowPickCarriesEverySource() throws {
+    /// A row is one pressing however many sources carry it, and what picking
+    /// it claims is core's answer, not the row's — the pane hands core's pick
+    /// straight back through `ImportSearchResultRow.onSelect`.
+    @Test("a row sends the pick core settled for it")
+    func aRowSendsTheCorePick() throws {
         let bridge = PreviewData.exactPressings[1]
         let pressing = try #require(Pressing(bridge: bridge))
-        let partners = bridge.releases.dropFirst()
-            .map { release in
-                BridgeMetadataRef(
-                    source: release.source,
-                    releaseId: release.releaseId
-                )
-            }
 
-        #expect(partners.count == 1)
+        #expect(pressing.provenance == bridge.pick)
+        #expect(pressing.provenance.releaseRefs.count == 2)
         #expect(
-            pressing.provenance
-                == .externalRelease(
-                    source: bridge.releases[0].source,
-                    releaseId: bridge.releases[0].releaseId,
-                    partners: partners
-                )
+            pressing.provenance.releaseRefs.map(\.releaseId)
+                == bridge.releases.map(\.releaseId)
         )
+    }
+
+    /// The re-identify footer commits the same claim, only in the shape a
+    /// library release takes.
+    @Test("the reseed says the same thing as the pick")
+    func theReseedSaysTheSameThing() throws {
+        let bridge = PreviewData.exactPressings[1]
+        let pressing = try #require(Pressing(bridge: bridge))
+
+        guard
+            case .externalRelease(let source, let releaseId, let partners) =
+                pressing.provenance
+        else {
+            Issue.record("a picked row claims an external release")
+            return
+        }
         #expect(
             pressing.reseed
                 == .externalRelease(
-                    releaseId: bridge.releases[0].releaseId,
-                    source: bridge.releases[0].source,
+                    releaseId: releaseId,
+                    source: source,
                     partners: partners
                 )
         )
@@ -73,13 +78,10 @@ struct FindOnlinePressingPickTests {
         let bridge = PreviewData.exactPressings[0]
         let pressing = try #require(Pressing(bridge: bridge))
 
+        #expect(pressing.provenance == bridge.pick)
         #expect(
-            pressing.provenance
-                == .externalRelease(
-                    source: bridge.releases[0].source,
-                    releaseId: bridge.releases[0].releaseId,
-                    partners: []
-                )
+            pressing.provenance.releaseRefs.map(\.releaseId)
+                == [bridge.releases[0].releaseId]
         )
     }
 }

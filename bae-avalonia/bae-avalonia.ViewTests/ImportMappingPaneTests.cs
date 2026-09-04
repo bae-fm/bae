@@ -751,7 +751,13 @@ public sealed class ImportMappingPaneTests
                 },
                 1996,
                 1996,
-                new[] { new BridgePressing(new[] { release }) });
+                new[]
+                {
+                    new BridgePressing(
+                        new[] { release },
+                        new BridgeMetadataProvenance.ExternalRelease(
+                            BridgeMetadataSource.MusicBrainz, releaseId, [])),
+                });
     }
 
     private static void Click(Control pane, string label) =>

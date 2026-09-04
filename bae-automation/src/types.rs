@@ -368,11 +368,16 @@ pub struct AutomationReleaseGroupSource {
     pub group_url: Option<String>,
 }
 
-/// One physical pressing, on every source that lists it. `releases[0]` is what
-/// picking the row picks.
+/// One physical pressing, on every source that lists it.
+///
+/// A row is picked whole. `releases` is what the row shows, its extra entries
+/// naming the other sources carrying the same pressing rather than offering
+/// separate picks; `pick` is what picking the row means and can be handed
+/// straight back as a candidate's metadata provenance.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationPressing {
     pub releases: Vec<AutomationMetadataResult>,
+    pub pick: AutomationMetadataProvenance,
 }
 
 #[derive(Debug, Clone, Serialize)]

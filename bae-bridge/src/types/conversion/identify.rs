@@ -292,6 +292,7 @@ impl BridgeReleaseGroup {
             pressings: pressings
                 .into_iter()
                 .map(|pressing| BridgePressing {
+                    pick: crate::types::BridgeMetadataProvenance::from_core(pressing.pick()),
                     releases: pressing
                         .releases
                         .into_iter()

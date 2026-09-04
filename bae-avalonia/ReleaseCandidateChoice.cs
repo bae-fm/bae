@@ -1,12 +1,13 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
 /// <summary>A release pressing choice shown by import and re-identify pickers.
-/// A row is one pressing however many sources carry it: picking it reads the
-/// draft from the lead's release and claims every other source's record of the
-/// same pressing alongside it.</summary>
+/// A row is one pressing however many sources carry it, and core settles what
+/// picking it claims — the lead's facts fill the row's label, and
+/// <see cref="Provenance"/> is the claim itself.</summary>
 public sealed class ReleaseCandidateChoice
 {
     private readonly BridgeReleaseGroup _group;
@@ -23,21 +24,20 @@ public sealed class ReleaseCandidateChoice
     internal BridgeMetadataSource Source => _lead.Source;
     public string ReleaseId => _lead.ReleaseId;
 
-    /// <summary>Every source's record of this pressing other than the lead's.
-    /// </summary>
-    private BridgeMetadataRef[] Partners =>
-        _pressing.Releases
-            .Skip(1)
-            .Select(release => new BridgeMetadataRef(release.Source, release.ReleaseId))
-            .ToArray();
+    /// <summary>What picking this row claims, as core settled it.</summary>
+    internal BridgeMetadataProvenance Provenance => _pressing.Pick;
 
-    /// <summary>What picking this row claims for an import candidate.</summary>
-    internal BridgeMetadataProvenance Provenance =>
-        new BridgeMetadataProvenance.ExternalRelease(Source, ReleaseId, Partners);
-
-    /// <summary>The same claim for a release already in the library.</summary>
-    internal BridgeReleaseReseed Reseed =>
-        new BridgeReleaseReseed.ExternalRelease(ReleaseId, Source, Partners);
+    /// <summary>The same claim, in the shape a release already in the library
+    /// takes.</summary>
+    internal BridgeReleaseReseed Reseed => Provenance switch
+    {
+        BridgeMetadataProvenance.ExternalRelease external =>
+            new BridgeReleaseReseed.ExternalRelease(
+                external.ReleaseId, external.Source, external.Partners),
+        BridgeMetadataProvenance.FileTags => new BridgeReleaseReseed.FileTags(),
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(Provenance), Provenance, "Unknown metadata provenance"),
+    };
 
     /// <summary>The one-line label the picker shows, omitting absent fields.</summary>
     public string Summary

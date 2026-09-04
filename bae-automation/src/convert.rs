@@ -194,6 +194,31 @@ fn metadata_ref(release_ref: AutomationMetadataRef) -> MetadataRef {
     MetadataRef::new(release_ref.release_id, release_ref.source.into())
 }
 
+/// The claim core settled, going out — the direction `metadata_provenance`
+/// doesn't cover.
+pub(super) fn automation_metadata_provenance(
+    provenance: MetadataProvenance,
+) -> AutomationMetadataProvenance {
+    match provenance {
+        MetadataProvenance::ExternalRelease {
+            source,
+            release_id,
+            partners,
+        } => AutomationMetadataProvenance::ExternalRelease {
+            source: source.into(),
+            release_id,
+            partners: partners
+                .into_iter()
+                .map(|partner| AutomationMetadataRef {
+                    source: partner.source.into(),
+                    release_id: partner.id,
+                })
+                .collect(),
+        },
+        MetadataProvenance::FileTags => AutomationMetadataProvenance::FileTags,
+    }
+}
+
 pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> CandidateEditField {
     match field {
         AutomationCandidateEditField::AlbumTitle => CandidateEditField::AlbumTitle,
@@ -261,6 +286,7 @@ pub(super) fn automation_release_group(group: ReleaseGroup) -> AutomationRelease
             .pressings
             .into_iter()
             .map(|pressing| AutomationPressing {
+                pick: automation_metadata_provenance(pressing.pick()),
                 releases: pressing
                     .releases
                     .into_iter()

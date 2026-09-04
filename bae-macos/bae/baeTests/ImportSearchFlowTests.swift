@@ -575,19 +575,26 @@ struct ImportSearchFlowLibraryStatusTests {
                         yearMin: 2000,
                         yearMax: 2000,
                         pressings: [
-                            BridgePressing(releases: [
-                                BridgeMetadataResult(
+                            BridgePressing(
+                                releases: [
+                                    BridgeMetadataResult(
+                                        source: .musicBrainz,
+                                        releaseId: "rel-live",
+                                        year: 2000,
+                                        format: "CD",
+                                        label: nil,
+                                        catalogNumber: nil,
+                                        country: nil,
+                                        barcode: nil,
+                                        sourceGroupId: "group-live"
+                                    )
+                                ],
+                                pick: .externalRelease(
                                     source: .musicBrainz,
                                     releaseId: "rel-live",
-                                    year: 2000,
-                                    format: "CD",
-                                    label: nil,
-                                    catalogNumber: nil,
-                                    country: nil,
-                                    barcode: nil,
-                                    sourceGroupId: "group-live"
+                                    partners: []
                                 )
-                            ])
+                            )
                         ]
                     )
                 ],

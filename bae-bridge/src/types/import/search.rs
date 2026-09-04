@@ -91,12 +91,17 @@ pub struct BridgeReleaseGroupSource {
     pub group_url: Option<String>,
 }
 
-/// One physical pressing, on every source that lists it. Picking the row picks
-/// `releases[0]` (MusicBrainz when both carry it); each further entry is the
-/// same pressing on another source and can be picked by itself.
+/// One physical pressing, on every source that lists it.
+///
+/// A row is picked whole. `releases` is what the row shows — its year, label,
+/// catalogue number, and the name of every source carrying it — and the extra
+/// entries beyond the first are labels, not separate picks. `pick` is what
+/// picking the row means, decided in core: the release the draft is read from
+/// plus every other source's record of the same pressing.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePressing {
     pub releases: Vec<BridgeMetadataResult>,
+    pub pick: crate::types::BridgeMetadataProvenance,
 }
 
 /// One provider's part of a candidate's manual search. Mirrors
