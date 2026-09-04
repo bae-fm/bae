@@ -410,8 +410,12 @@ private struct ReadOnlyCandidateMappingTable: View {
                 .frame(width: columns.title, alignment: .leading)
             FormEyebrow(text: Text("Artist"))
                 .frame(width: columns.artist, alignment: .leading)
-            FormEyebrow(text: Text("Length"))
-                .frame(width: ReleaseMetadataTrackColumns.length)
+            FormEyebrow(
+                text: Text(
+                    verbatim: coreString("ui.import.slots.column.length")
+                )
+            )
+            .frame(width: ReleaseMetadataTrackColumns.length)
             Color.clear.frame(width: ReleaseMetadataTrackColumns.action)
         }
         .padding(.vertical, 6)
