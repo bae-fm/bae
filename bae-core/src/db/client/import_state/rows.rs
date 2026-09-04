@@ -5,7 +5,7 @@ use super::edit_rows::{apply_file_edit_row, read_file_edit_row};
 use super::signal_rows::load_signals_on;
 use super::verdict_rows::{
     read_identify_failure_row, read_match_row, unreadable, verdict_of, IdentifyFailureRow,
-    MatchLists,
+    StoredMatches,
 };
 use super::*;
 use crate::import::{MetadataProvenance, MetadataRef, MetadataSource};
@@ -188,6 +188,36 @@ const MATCH_COLUMNS: &str = "content_hash, source, release_id, title, artist, ye
 const FILE_EDIT_COLUMNS: &str = "content_hash, relative_path, role_choice, sheet_binding, \
      sheet_binding_file_id, sheet_disc, sheet_disc_number";
 
+/// Every candidate's stored matches, keyed by content hash, or just the one
+/// `only` names.
+///
+/// The whole row per match rather than a count and a lead: how many *pressings*
+/// a verdict named is decided by grouping them, which needs the fields each one
+/// states. The one reader of these columns, for the pane's whole verdict and
+/// for the queue list's summary alike.
+pub(crate) fn load_matches_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<HashMap<String, StoredMatches>, DbError> {
+    let mut matches: HashMap<String, StoredMatches> = HashMap::new();
+    for row in sql.query(
+        &format!(
+            "SELECT {MATCH_COLUMNS} FROM import_candidate_match \
+             WHERE :only IS NULL OR content_hash = :only \
+             ORDER BY content_hash, position"
+        ),
+        named_params! { ":only": only },
+        |row| Ok(read_match_row(row)),
+    )? {
+        let row = row?;
+        matches
+            .entry(row.content_hash)
+            .or_default()
+            .push((row.result, row.provenance));
+    }
+    Ok(matches)
+}
+
 /// Every stored candidate row, or the one `only` names, assembled with the
 /// match and file-decision rows that hang off it.
 pub(crate) fn load_states_on(
@@ -202,20 +232,7 @@ pub(crate) fn load_states_on(
         named_params! { ":only": only },
         |row| Ok(read_state_row(row)),
     )?;
-    let matches = sql.query(
-        &format!(
-            "SELECT {MATCH_COLUMNS} FROM import_candidate_match \
-             WHERE :only IS NULL OR content_hash = :only \
-             ORDER BY content_hash, position"
-        ),
-        named_params! { ":only": only },
-        |row| Ok(read_match_row(row)),
-    )?;
-    let mut lists: HashMap<String, MatchLists> = HashMap::new();
-    for row in matches {
-        let row = row?;
-        lists.entry(row.content_hash.clone()).or_default().push(row);
-    }
+    let mut lists = load_matches_on(sql, only)?;
     let mut edits = load_edits_on(sql, only)?;
     let mut signals = load_signals_on(sql, only)?;
     let mut partners = load_provenance_partners_on(sql, only)?;

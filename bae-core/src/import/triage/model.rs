@@ -315,7 +315,7 @@ impl MatchedRelease {
     /// the first has results but no agreement on which is the match, and the
     /// other two have no results at all.
     ///
-    /// With several matches the row still leads with the first one's title,
+    /// With several pressings the row still leads with the first one's title,
     /// artist and cover. Those are not group-level truths — a release group
     /// spans remasters and reissues that differ in all three — they are the
     /// lead pressing's, standing in for the album until someone picks. What is
@@ -324,7 +324,7 @@ impl MatchedRelease {
     /// pre-empting the user.
     pub fn of_summary(summary: &VerdictSummary) -> Option<Self> {
         let lead = summary.lead.as_ref()?;
-        let settled = summary.match_count == 1;
+        let settled = summary.pressing_count == 1;
         Some(Self {
             release_id: lead.release_id.clone(),
             title: lead.title.clone(),

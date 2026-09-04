@@ -19,7 +19,9 @@ pub(super) use pane_rows::{
 #[cfg(any(test, feature = "test-utils"))]
 use prepared_asset_rows::invalidate_prepared_assets;
 use prepared_asset_rows::replace_prepared_assets;
-pub(super) use rows::{load_provenance_partners_on, load_states_on, metadata_provenance_of};
+pub(super) use rows::{
+    load_matches_on, load_provenance_partners_on, load_states_on, metadata_provenance_of,
+};
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{

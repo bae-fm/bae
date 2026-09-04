@@ -41,6 +41,26 @@ fn found(matches: Vec<MetadataResult>, track_count: u32) -> TerminalVerdict {
     }
 }
 
+/// The barcode printed on the sleeve, which both sources state.
+const BARCODE: &str = "0123456789012";
+
+/// `result`, stating the barcode its source printed.
+fn barcoded(mut result: MetadataResult, barcode: &str) -> MetadataResult {
+    result.barcode = Some(barcode.to_string());
+    result
+}
+
+/// The Discogs record of a pressing: a source of its own, no group (Discogs
+/// states a master or nothing), and the barcode that pairs it with the
+/// MusicBrainz row. A Discogs search result never carries a tracklist.
+fn discogs(release_id: &str, barcode: &str) -> MetadataResult {
+    MetadataResult {
+        source: MetadataSource::Discogs,
+        source_group_id: None,
+        ..barcoded(result(release_id, None), barcode)
+    }
+}
+
 fn agreeing(count: u32, total_ms: u64) -> Option<SourceTracks> {
     Some(SourceTracks::Listed {
         count,
@@ -68,8 +88,46 @@ fn one_verified_match_not_in_the_library_is_ready() {
     );
 }
 
+/// Two sources' records of one physical pressing are one row on the list,
+/// picked whole — so a verdict naming both is one answer, not a choice, and a
+/// settled lead makes it Ready exactly as a lone match does. The Discogs row
+/// states no tracklist of its own and is not asked for one: the rule reads the
+/// release the draft is read from.
+#[test]
+fn two_sources_agreeing_on_a_barcode_are_one_pressing() {
+    let verdict = found(
+        vec![
+            barcoded(result("mb-1", agreeing(11, 2_400_000)), BARCODE),
+            discogs("d-1", BARCODE),
+        ],
+        11,
+    );
+    assert_eq!(
+        classify(&verdict, 2_400_000, &[status("mb-1", false, false)]),
+        QueueClassification::Ready
+    );
+}
+
+/// Two sources naming *different* pressings is still the user's choice, and
+/// the count is rows on the list rather than records returned.
+#[test]
+fn two_sources_naming_different_pressings_stay_a_choice() {
+    let verdict = found(
+        vec![
+            barcoded(result("mb-1", agreeing(11, 2_400_000)), BARCODE),
+            discogs("d-1", "9876543210987"),
+        ],
+        11,
+    );
+    assert_eq!(
+        classify(&verdict, 2_400_000, &[]),
+        QueueClassification::NeedsYou(NeedsYou::SeveralMatches { count: 2 })
+    );
+}
+
 /// An exact signal is not a unique result: a disc ID routinely returns several
-/// pressings, and choosing between them is not something to do unattended.
+/// pressings of one release group, and choosing between them is not something
+/// to do unattended.
 #[test]
 fn several_matches_are_a_choice_for_the_user() {
     let verdict = found(
@@ -176,31 +234,50 @@ fn the_tolerance_is_per_track_rounding_with_a_floor() {
 
 /// [`VerdictSummary`] is what the list classifies from, read off stored
 /// columns rather than a rebuilt verdict — so every fact the rule consults has
-/// to survive the reduction: which shape the verdict is, how many releases it
-/// named, and the lead's own columns.
+/// to survive the reduction: which shape the verdict is, how many pressings it
+/// named, and the lead's own columns. Each verdict is paired with the pressing
+/// count it makes, which is the fact the reduction can no longer read off a
+/// row count.
 #[test]
 fn a_summary_keeps_every_fact_the_rule_consults() {
     let verdicts = [
-        found(vec![result("rel-a", agreeing(11, 2_400_000))], 11),
-        found(
-            vec![
-                result("rel-a", agreeing(11, 2_400_000)),
-                result("rel-b", agreeing(11, 2_400_000)),
-            ],
-            11,
+        (found(vec![result("rel-a", agreeing(11, 2_400_000))], 11), 1),
+        (
+            found(
+                vec![
+                    result("rel-a", agreeing(11, 2_400_000)),
+                    result("rel-b", agreeing(11, 2_400_000)),
+                ],
+                11,
+            ),
+            2,
         ),
-        TerminalVerdict::NotFoundAnywhere,
-        TerminalVerdict::ManualOnly { track_count: 11 },
-        TerminalVerdict::Failed {
-            failures: vec![crate::identify::IdentifyFailure::DiscId(
-                crate::signals::LookupFailure::Network,
-            )],
-            track_count: 11,
-        },
+        (
+            found(
+                vec![
+                    barcoded(result("rel-a", agreeing(11, 2_400_000)), BARCODE),
+                    discogs("rel-b", BARCODE),
+                ],
+                11,
+            ),
+            1,
+        ),
+        (TerminalVerdict::NotFoundAnywhere, 0),
+        (TerminalVerdict::ManualOnly { track_count: 11 }, 0),
+        (
+            TerminalVerdict::Failed {
+                failures: vec![crate::identify::IdentifyFailure::DiscId(
+                    crate::signals::LookupFailure::Network,
+                )],
+                track_count: 11,
+            },
+            0,
+        ),
     ];
 
-    for verdict in verdicts {
+    for (verdict, pressings) in verdicts {
         let summary = VerdictSummary::of(&verdict);
+        assert_eq!(summary.pressing_count, pressings, "{verdict:?}");
         match &verdict {
             TerminalVerdict::Found {
                 matches,
@@ -209,7 +286,6 @@ fn a_summary_keeps_every_fact_the_rule_consults() {
             } => {
                 assert_eq!(summary.kind, VerdictKind::Found);
                 assert_eq!(summary.track_count, Some(*track_count));
-                assert_eq!(summary.match_count, matches.len() as u32);
                 let lead = summary.lead.as_ref().expect("a found verdict has a lead");
                 assert_eq!(lead.release_id, matches[0].release_id);
                 assert_eq!(lead.source_tracks, matches[0].source_tracks);

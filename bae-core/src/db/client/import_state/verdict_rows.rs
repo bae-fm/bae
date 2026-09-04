@@ -250,22 +250,14 @@ fn insert_match(
     Ok(())
 }
 
+/// One candidate's stored matches, in the order they were written: the lead
+/// first, then the rest.
+pub(crate) type StoredMatches = Vec<(MetadataResult, ResultProvenance)>;
+
 pub(super) struct MatchRow {
     pub(super) content_hash: String,
-    result: MetadataResult,
-    provenance: ResultProvenance,
-}
-
-/// One candidate's matches, in the order they were written.
-#[derive(Default)]
-pub(super) struct MatchLists {
-    found: Vec<(MetadataResult, ResultProvenance)>,
-}
-
-impl MatchLists {
-    pub(super) fn push(&mut self, row: MatchRow) {
-        self.found.push((row.result, row.provenance));
-    }
+    pub(super) result: MetadataResult,
+    pub(super) provenance: ResultProvenance,
 }
 
 pub(super) fn read_match_row(row: &Row<'_>) -> Result<MatchRow, DbError> {
@@ -339,7 +331,7 @@ pub(super) fn verdict_of(
     kind: &str,
     track_count: Option<i64>,
     matched_barcode: Option<String>,
-    lists: MatchLists,
+    found: StoredMatches,
 ) -> Result<TerminalVerdict, DbError> {
     let count_of = || {
         track_count
@@ -358,7 +350,7 @@ pub(super) fn verdict_of(
     };
     match kind {
         "found" => {
-            let (matches, provenance) = lists.found.into_iter().unzip();
+            let (matches, provenance) = found.into_iter().unzip();
             Ok(TerminalVerdict::Found {
                 matches,
                 track_count: count_of()?,

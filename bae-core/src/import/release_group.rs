@@ -136,6 +136,23 @@ impl Bucket {
     }
 }
 
+/// How many pressing rows these results make.
+///
+/// The list shows one row per physical pressing and a row is picked whole, so
+/// "how many pressings did this candidate match" is this number rather than
+/// how many result rows came back: a MusicBrainz release and a Discogs release
+/// describing the same object are one answer, not two. The Ready rule and the
+/// sweep's settle step both ask it.
+///
+/// These are the rows [`group_results`] builds, so nothing counts one thing
+/// and shows another.
+pub fn pressing_count(results: Vec<MetadataResult>) -> usize {
+    group_results(results)
+        .iter()
+        .map(|group| group.pressings.len())
+        .sum()
+}
+
 /// Group results into album cards with one row per physical pressing.
 ///
 /// Four steps: bucket each source's releases by its own group, merge a

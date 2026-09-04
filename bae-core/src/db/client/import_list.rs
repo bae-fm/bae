@@ -1,7 +1,8 @@
 //! The import tab's list, read as columns.
 //!
 //! The whole queue is read on every rerun — a few short columns per scanned
-//! folder, per boundary and per stored verdict — and nothing else: no files,
+//! folder, per boundary and per stored verdict, plus each verdict's match rows,
+//! which is what says how many pressings it named — and nothing else: no files,
 //! no cue sheets, no boundary trees, no archived documents. Ordering the list
 //! is natural-order over the folder's display path, which SQLite has no
 //! collation for, and the list interleaves group headers with three kinds of
@@ -12,7 +13,7 @@
 mod window;
 
 use super::identity::check_releases_in_library_on;
-use super::import_state::{load_provenance_partners_on, metadata_provenance_of};
+use super::import_state::{load_matches_on, load_provenance_partners_on, metadata_provenance_of};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_registry::WatchedFolder;
@@ -22,12 +23,10 @@ use crate::import::list::{
     flatten, ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
     ImportListWindow,
 };
-use crate::import::search::SourceTracks;
 use crate::import::{
-    FolderScanStatus, ImportedRelease, MetadataProvenance, MetadataSource, WatchedFolderScanStatus,
+    FolderScanStatus, ImportedRelease, MetadataProvenance, WatchedFolderScanStatus,
 };
 use folder_scans::columns::{invalid_reason_of, to_u32, to_u64, unreadable};
-use std::str::FromStr;
 
 /// What the scan made of one folder.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,8 +90,8 @@ pub struct ImportQueueRows {
     pub failures: HashMap<String, String>,
     pub states: HashMap<String, CandidateStateListRow>,
     /// The live library check of every lead match, by release id. Only the
-    /// leads of single-match verdicts are checked: those are the only ones the
-    /// Ready rule asks about.
+    /// leads of single-pressing verdicts are checked: those are the only ones
+    /// the Ready rule asks about.
     pub lead_statuses: HashMap<String, LibraryStatus>,
     /// Every folder whose reading is settled as several releases, keyed by
     /// `(watched_folder_path, relative_folder_path)`. The rows below such a
@@ -174,9 +173,9 @@ pub(super) fn load_import_queue_on(sql: &SqlReadContext<'_>) -> Result<ImportQue
         let Some(verdict) = state.verdict.as_ref() else {
             continue;
         };
-        // The Ready rule consults the lead and only when it is the one match;
-        // every other shape is answered before the library is asked.
-        if verdict.match_count != 1 {
+        // The Ready rule consults the lead and only when the verdict named one
+        // pressing; every other shape is answered before the library is asked.
+        if verdict.pressing_count != 1 {
             continue;
         }
         if let Some(lead) = verdict.lead.as_ref() {
@@ -341,26 +340,10 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
 fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateStateListRow>, DbError> {
     let mut drafts = super::import_state::load_drafts_on(sql, None)?;
     let mut covers = super::import_state::load_covers_on(sql, None)?;
-    let mut match_counts: HashMap<String, u32> = HashMap::new();
-    for (content_hash, count) in sql.query(
-        "SELECT content_hash, COUNT(*) FROM import_candidate_match \
-         GROUP BY content_hash",
-        [],
-        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
-    )? {
-        match_counts.insert(content_hash, to_u32(count, "a verdict's match count")?);
-    }
-    let mut leads: HashMap<String, LeadMatch> = HashMap::new();
-    for (content_hash, lead) in sql.query(
-        "SELECT content_hash, source, release_id, source_group_id, title, artist, year, \
-                format, cover_thumbnail_url, source_tracks_kind, source_tracks_count, \
-                source_tracks_total_ms, by_disc_id, by_barcode \
-         FROM import_candidate_match WHERE position = 0",
-        [],
-        |row| Ok((row.get::<_, String>(0)?, read_lead(row))),
-    )? {
-        leads.insert(content_hash, lead?);
-    }
+    // Every match row, not a count and a lead row: how many *pressings* a
+    // verdict named is what the Ready rule asks, and two sources' records of
+    // one pressing pair by fields no `COUNT(*)` can see.
+    let mut matches = load_matches_on(sql, None)?;
     let mut identify_failures: HashMap<String, (u32, u64)> = HashMap::new();
     for (content_hash, track_count, probed) in sql.query(
         "SELECT content_hash, track_count, probed_total_duration_ms \
@@ -414,6 +397,15 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             provenance_release_id,
             partners.remove(&content_hash).unwrap_or_default(),
         );
+        // Read the lead off the first row, then spend the rest on the count:
+        // both come from the one read of this candidate's matches.
+        let found = matches.remove(&content_hash).unwrap_or_default();
+        let lead = found
+            .first()
+            .map(|(result, provenance)| LeadMatch::of(result, Some(provenance)));
+        let pressings = crate::import::release_group::pressing_count(
+            found.into_iter().map(|(result, _)| result).collect(),
+        ) as u32;
         let normal_verdict = verdict_kind
             .map(|kind| -> Result<VerdictSummary, DbError> {
                 Ok(VerdictSummary {
@@ -426,8 +418,8 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                     track_count: track_count
                         .map(|count| to_u32(count, "a verdict's track count"))
                         .transpose()?,
-                    match_count: match_counts.get(&content_hash).copied().unwrap_or_default(),
-                    lead: leads.get(&content_hash).cloned(),
+                    pressing_count: pressings,
+                    lead,
                 })
             })
             .transpose()?;
@@ -442,7 +434,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             failed.map(|(track_count, _)| VerdictSummary {
                 kind: VerdictKind::Failed,
                 track_count: Some(track_count),
-                match_count: 0,
+                pressing_count: 0,
                 lead: None,
             })
         });
@@ -476,47 +468,6 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         );
     }
     Ok(states)
-}
-
-fn read_lead(row: &Row<'_>) -> Result<LeadMatch, DbError> {
-    let source: String = row.get("source")?;
-    let tracks_kind: Option<String> = row.get("source_tracks_kind")?;
-    let source_tracks = match tracks_kind.as_deref() {
-        None => None,
-        Some("nothing") => Some(SourceTracks::Nothing),
-        Some("listed") => {
-            let count: i64 = row
-                .get::<_, Option<i64>>("source_tracks_count")?
-                .ok_or_else(|| {
-                    DbError::Message("a listed source tracklist states no count".to_string())
-                })?;
-            Some(SourceTracks::Listed {
-                count: to_u32(count, "a source tracklist's count")?,
-                total_duration_ms: row
-                    .get::<_, Option<i64>>("source_tracks_total_ms")?
-                    .map(|total| to_u64(total, "a source tracklist's total"))
-                    .transpose()?,
-            })
-        }
-        Some(other) => return Err(unreadable("source_tracks_kind", other)),
-    };
-    Ok(LeadMatch {
-        release_id: row.get("release_id")?,
-        source: MetadataSource::from_str(&source).map_err(DbError::Message)?,
-        source_group_id: row.get("source_group_id")?,
-        title: row.get("title")?,
-        artist: row.get("artist")?,
-        year: row.get("year")?,
-        format: row.get("format")?,
-        cover_thumbnail_url: row.get("cover_thumbnail_url")?,
-        source_tracks,
-        by_disc_id: row
-            .get::<_, Option<bool>>("by_disc_id")?
-            .unwrap_or_default(),
-        by_barcode: row
-            .get::<_, Option<bool>>("by_barcode")?
-            .unwrap_or_default(),
-    })
 }
 
 /// One read of the list for `request`.

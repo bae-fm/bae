@@ -43,8 +43,8 @@ fn duration_tolerance_ms(track_count: u32) -> u64 {
 /// variant names the question being asked, which is what the sidebar groups by.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum QueueClassification {
-    /// Exactly one match, not in the library, and the source agrees with the
-    /// files on both track count and total length.
+    /// Exactly one pressing, not in the library, and the source agrees with
+    /// the files on both track count and total length.
     Ready,
     NeedsYou(NeedsYou),
 }
@@ -56,6 +56,8 @@ pub enum NeedsYou {
     /// One match, but it (or its album) is already in the library.
     AlreadyInLibrary,
     /// Several pressings matched; which one is on disk is the user's call.
+    /// `count` is pressings, not result rows — the number of rows the list
+    /// shows.
     SeveralMatches { count: u32 },
     /// Signals ran and matched nothing anywhere.
     NoMatch,
@@ -96,8 +98,14 @@ pub enum VerdictKind {
 /// One row of `import_candidate_match` at `list = 'found'`, `position = 0`.
 /// Everything the queue asks of a verdict's matches is asked of this one: the
 /// Ready rule consults the lead and nothing else (it only reaches the
-/// tracklist comparison when there is exactly one match), and the row leads
-/// with the lead's title, artist and cover whatever the count.
+/// tracklist comparison when the matches make a single pressing), and the row
+/// leads with the lead's title, artist and cover whatever the count.
+///
+/// When they do make a single pressing this is also that pressing's own lead —
+/// the release the documents were settled from, and so the only one carrying a
+/// tracklist. A pressing holds at most one release per source and the first
+/// match is the first MusicBrainz one, so a second MusicBrainz release would be
+/// a second pressing and the rule would never have reached the tracklist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LeadMatch {
     pub release_id: String,
@@ -115,8 +123,8 @@ pub struct LeadMatch {
 
 impl LeadMatch {
     /// The lead of a `Found` verdict's index-aligned match and provenance
-    /// lists.
-    fn of(result: &MetadataResult, provenance: Option<&ResultProvenance>) -> Self {
+    /// lists — also how the stored `position = 0` row reads back.
+    pub(crate) fn of(result: &MetadataResult, provenance: Option<&ResultProvenance>) -> Self {
         Self {
             release_id: result.release_id.clone(),
             source: result.source,
@@ -137,20 +145,21 @@ impl LeadMatch {
 }
 
 /// As much of a stored verdict as the queue's list reads: which shape it is,
-/// how many matches it names, and the lead match's own columns.
+/// how many pressings it named, and the lead match's own columns.
 ///
-/// The list reads these off `import_candidate_state` and one
-/// `import_candidate_match` row rather than rebuilding a [`TerminalVerdict`],
-/// which would mean every match row of every candidate on every rerun. The
-/// pane, which shows the other matches, still reads the whole verdict.
+/// The list reads these off `import_candidate_state` and the candidate's match
+/// rows rather than rebuilding a [`TerminalVerdict`] — the pane, which shows
+/// the failures and the matched barcode too, still reads the whole verdict.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerdictSummary {
     pub kind: VerdictKind,
     /// The folder's own track count, as identification counted it. `None` for
     /// `NotFound`, which counts nothing.
     pub track_count: Option<u32>,
-    /// How many releases the `found` list holds; zero for the other shapes.
-    pub match_count: u32,
+    /// How many physical pressings the `found` list names — its releases as
+    /// [`crate::import::release_group::pressing_count`] groups them, so two
+    /// sources' records of one pressing count once. Zero for the other shapes.
+    pub pressing_count: u32,
     pub lead: Option<LeadMatch>,
 }
 
@@ -165,7 +174,8 @@ impl VerdictSummary {
             } => Self {
                 kind: VerdictKind::Found,
                 track_count: Some(*track_count),
-                match_count: matches.len() as u32,
+                pressing_count: crate::import::release_group::pressing_count(matches.clone())
+                    as u32,
                 lead: matches
                     .first()
                     .map(|result| LeadMatch::of(result, provenance.first())),
@@ -173,19 +183,19 @@ impl VerdictSummary {
             TerminalVerdict::NotFoundAnywhere => Self {
                 kind: VerdictKind::NotFound,
                 track_count: None,
-                match_count: 0,
+                pressing_count: 0,
                 lead: None,
             },
             TerminalVerdict::ManualOnly { track_count } => Self {
                 kind: VerdictKind::ManualOnly,
                 track_count: Some(*track_count),
-                match_count: 0,
+                pressing_count: 0,
                 lead: None,
             },
             TerminalVerdict::Failed { track_count, .. } => Self {
                 kind: VerdictKind::Failed,
                 track_count: Some(*track_count),
-                match_count: 0,
+                pressing_count: 0,
                 lead: None,
             },
         }
@@ -235,10 +245,12 @@ pub fn classify_summary(
 
     // "An exact signal is not the same as a unique result" — a disc ID or a
     // barcode routinely returns several pressings of one release group, and
-    // picking between them is the user's job.
-    let (Some(lead), 1) = (summary.lead.as_ref(), summary.match_count) else {
+    // picking between them is the user's job. Two sources' records of the same
+    // pressing are not that choice: they are one row on the list, picked whole,
+    // so they count once here and the candidate is still answered.
+    let (Some(lead), 1) = (summary.lead.as_ref(), summary.pressing_count) else {
         return QueueClassification::NeedsYou(NeedsYou::SeveralMatches {
-            count: summary.match_count,
+            count: summary.pressing_count,
         });
     };
 

@@ -106,7 +106,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         verdict: Some(VerdictSummary {
             kind: VerdictKind::Found,
             track_count: Some(11),
-            match_count: 1,
+            pressing_count: 1,
             lead: Some(lead(release_id)),
         }),
         probed_total_duration_ms: 2_400_000,
@@ -128,7 +128,7 @@ fn several_matches_state() -> CandidateStateListRow {
         verdict: Some(VerdictSummary {
             kind: VerdictKind::Found,
             track_count: Some(11),
-            match_count: 3,
+            pressing_count: 3,
             lead: Some(lead("mb-1")),
         }),
         probed_total_duration_ms: 2_400_000,
@@ -146,7 +146,7 @@ fn not_found_state() -> CandidateStateListRow {
         verdict: Some(VerdictSummary {
             kind: VerdictKind::NotFound,
             track_count: None,
-            match_count: 0,
+            pressing_count: 0,
             lead: None,
         }),
         probed_total_duration_ms: 2_400_000,

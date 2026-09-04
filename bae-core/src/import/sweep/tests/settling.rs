@@ -469,6 +469,12 @@ async fn matches_that_pair_into_one_pressing_settle_as_one_pick() {
         fixture.archived_discogs("70000101").await.is_some(),
         "and so are the partner's, so every source the pick claims reads offline"
     );
+    assert_eq!(
+        fixture.classification_for(&dir).await,
+        QueueClassification::Ready,
+        "one pressing, not in the library, counts and totals agreeing — the two \
+         records are one row, so nothing is left to ask"
+    );
 }
 
 /// Two pressings are a question, not an answer: which one is on disk is the
