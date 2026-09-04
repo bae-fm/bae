@@ -228,35 +228,31 @@ extension ReleaseMetadataEditSession {
             }
     }
 
-    var trackGroups: [ReleaseMetadataTrackGroup] {
-        var groups: [ReleaseMetadataTrackGroup] = []
+    /// The tracks as the table lays them out: a run per side, and within it a
+    /// run per sheet the tracks are carved from. The same shape the import
+    /// mapping table draws, so a release reads the same before and after it
+    /// is imported.
+    var trackSides: [ReleaseMetadataTrackSide] {
+        var sides: [ReleaseMetadataTrackSide] = []
         for item in trackItems {
-            guard let cueSource = item.sharedCueSource else {
-                groups.append(
-                    ReleaseMetadataTrackGroup(
-                        id: item.id,
-                        sharedSource: nil,
-                        tracks: [item]
-                    )
-                )
-                continue
-            }
-            if let last = groups.last,
-                last.sharedSource?.fileId == cueSource.fileId
-            {
-                groups[groups.count - 1].tracks.append(item)
+            if let last = sides.last, last.side == item.context.side {
+                sides[sides.count - 1].append(item)
             }
             else {
-                groups.append(
-                    ReleaseMetadataTrackGroup(
-                        id: "source:\(cueSource.fileId):\(item.id)",
-                        sharedSource: cueSource,
-                        tracks: [item]
+                sides.append(
+                    ReleaseMetadataTrackSide(
+                        id: "side:\(item.id)",
+                        side: item.context.side,
+                        headerText: item.context.side.headerText(
+                            key: item.context.sideHeaderKey
+                        ),
+                        groups: []
                     )
                 )
+                sides[sides.count - 1].append(item)
             }
         }
-        return groups
+        return sides
     }
 
     var validationMessage: String? {
@@ -264,13 +260,6 @@ extension ReleaseMetadataEditSession {
             return reason.localizedMessage
         }
         return nil
-    }
-
-    var positionHeaderText: String {
-        guard let key = display.tracks.compactMap(\.sideHeaderKey).first else {
-            return String(localized: "Disc")
-        }
-        return coreString(key)
     }
 
     var isBusy: Bool {
@@ -306,4 +295,44 @@ struct ReleaseMetadataTrackGroup: Identifiable {
     let id: String
     let sharedSource: BridgeReleaseEditTrackSource?
     var tracks: [ReleaseMetadataTrackItem]
+}
+
+/// One side of the release — a disc of a multi-disc set, a side of a record —
+/// and the runs of tracks on it.
+struct ReleaseMetadataTrackSide: Identifiable {
+    let id: String
+    let side: BridgeTrackSide
+    /// "Disc 2" / "Side B", or empty for a release with one flat side, which
+    /// has no header to draw.
+    let headerText: String
+    var groups: [ReleaseMetadataTrackGroup]
+
+    /// Add the next track in table order: onto the run of the sheet it is
+    /// carved from when that run is the last one, else as a run of its own.
+    mutating func append(_ item: ReleaseMetadataTrackItem) {
+        guard let cueSource = item.sharedCueSource else {
+            groups.append(
+                ReleaseMetadataTrackGroup(
+                    id: item.id,
+                    sharedSource: nil,
+                    tracks: [item]
+                )
+            )
+            return
+        }
+        if let last = groups.last,
+            last.sharedSource?.fileId == cueSource.fileId
+        {
+            groups[groups.count - 1].tracks.append(item)
+        }
+        else {
+            groups.append(
+                ReleaseMetadataTrackGroup(
+                    id: "source:\(cueSource.fileId):\(item.id)",
+                    sharedSource: cueSource,
+                    tracks: [item]
+                )
+            )
+        }
+    }
 }

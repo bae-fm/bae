@@ -9,24 +9,14 @@ struct ReleaseMetadataEditorContent: View {
     var onPlayTrack: ((Int) -> Void)?
 
     @State
-    private var availableWidth = ReleaseMetadataEditorContent
-        .editorMinimumTableWidth
-
-    private static let editorMinimumTableWidth =
-        ReleaseMetadataTrackColumns.minimumTableWidth
-        + TrackSideCell.width
-        + ReleaseMetadataTrackColumns.spacing
+    private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
 
     private var tableWidth: CGFloat {
-        max(availableWidth, Self.editorMinimumTableWidth)
+        max(availableWidth, ReleaseMetadataTrackColumns.minimumTableWidth)
     }
 
     private var columns: ReleaseMetadataTrackColumns {
-        .resolved(
-            tableWidth: tableWidth
-                - TrackSideCell.width
-                - ReleaseMetadataTrackColumns.spacing
-        )
+        .resolved(tableWidth: tableWidth)
     }
 
     var body: some View {
@@ -78,8 +68,8 @@ struct ReleaseMetadataEditorContent: View {
             FormSectionHeader(title: String(localized: "Tracks"), ruled: true)
             ScrollView(.horizontal) {
                 VStack(spacing: 0) {
-                    headerRow
-                    if session.trackGroups.isEmpty {
+                    if session.trackSides.isEmpty {
+                        headerRow
                         Text("No tracks")
                             .font(.callout)
                             .foregroundStyle(.secondary)
@@ -87,16 +77,11 @@ struct ReleaseMetadataEditorContent: View {
                             .padding(.vertical, 16)
                     }
                     else {
-                        ForEach(session.trackGroups) { group in
-                            if let source = group.sharedSource {
-                                sharedSourceCaption(source)
-                            }
-                            ForEach(group.tracks) { item in
-                                trackRow(
-                                    item,
-                                    sourceIsInCaption: group.sharedSource != nil
-                                )
-                            }
+                        ForEach(
+                            Array(session.trackSides.enumerated()),
+                            id: \.element.id
+                        ) { index, side in
+                            sideRows(side, index: index)
                         }
                     }
                 }
@@ -111,15 +96,50 @@ struct ReleaseMetadataEditorContent: View {
         }
     }
 
+    /// One side's rows, laid out as the import mapping table lays a side out:
+    /// the side's header, then each run under the sheet it is carved from,
+    /// with the column header once, after the first run's caption.
+    @ViewBuilder
+    private func sideRows(_ side: ReleaseMetadataTrackSide, index: Int)
+        -> some View
+    {
+        if !side.headerText.isEmpty {
+            sideHeader(side.headerText, index: index)
+        }
+        ForEach(Array(side.groups.enumerated()), id: \.element.id) {
+            groupIndex,
+            group in
+            if let source = group.sharedSource {
+                sharedSourceCaption(source)
+            }
+            if index == 0 && groupIndex == 0 {
+                headerRow
+            }
+            ForEach(group.tracks) { item in
+                trackRow(
+                    item,
+                    sourceIsInCaption: group.sharedSource != nil
+                )
+            }
+        }
+    }
+
+    private func sideHeader(_ text: String, index: Int) -> some View {
+        Text(verbatim: text)
+            .font(.system(size: 10, weight: .bold))
+            .tracking(1.2)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
+            .frame(width: tableWidth, alignment: .leading)
+            .padding(.top, index == 0 ? 2 : 18)
+            .padding(.bottom, 6)
+    }
+
     private var headerRow: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
             FormEyebrow(text: Text("Source"))
                 .frame(width: columns.source, alignment: .leading)
-            FormEyebrow(text: Text(verbatim: session.positionHeaderText))
-                .frame(
-                    width: TrackSideCell.width,
-                    alignment: .leading
-                )
             FormEyebrow(text: Text("Track"))
                 .frame(
                     width: ReleaseMetadataTrackColumns.track,
@@ -149,8 +169,6 @@ struct ReleaseMetadataEditorContent: View {
     ) -> some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
             sourceCell(item, sourceIsInCaption: sourceIsInCaption)
-            TrackSideCell(value: sideBinding(for: item.track))
-                .frame(width: TrackSideCell.width)
             ReleaseMetadataTrackRow(
                 track: item.track,
                 duration: releaseDurationText(item.context.durationMs),
@@ -167,17 +185,6 @@ struct ReleaseMetadataEditorContent: View {
         .overlay(alignment: .top) {
             Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
         }
-    }
-
-    private func sideBinding(for track: BridgeRawTrackEdit) -> Binding<Int32> {
-        Binding(
-            get: { track.side },
-            set: { value in
-                var edited = track
-                edited.side = value
-                session.updateTrack(edited)
-            }
-        )
     }
 
     private func sourceCell(
