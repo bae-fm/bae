@@ -189,6 +189,7 @@ fn make_mb_release_for_re_identify(
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: (1..=track_count)
                 .map(|n| MbTrack {

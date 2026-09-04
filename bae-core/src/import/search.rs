@@ -10,6 +10,7 @@ use crate::import::ImportError;
 use crate::musicbrainz::{self, MbReleaseResponse, ReleaseSearchParams, SearchRelease};
 use crate::signals::LookupFailure;
 use crate::util::rate_limiter::CallPriority;
+use tracing::warn;
 
 /// A metadata search result from either MusicBrainz or Discogs.
 ///
@@ -40,11 +41,10 @@ pub struct MetadataResult {
     /// count and total length agree with the candidate's.
     ///
     /// **`None` means nobody has asked yet** — not that the source has
-    /// nothing. A result arrives this way from every lookup identification
-    /// makes: the disc-ID endpoint carries track lengths but not the rest of
-    /// what opening the candidate needs, and the search endpoint takes no `inc`
-    /// and returns no `tracks` array at all. It is filled when the sweep settles
-    /// the lead, from the release document that settling archives.
+    /// nothing. Search endpoints return results this way because they carry no
+    /// tracklist. A MusicBrainz DiscID result instead carries `Some` immediately
+    /// from the matching medium's tracks. Other results are filled when the
+    /// sweep settles the lead, from the release document that settling archives.
     ///
     /// Keeping "unasked" distinct from "asked, and there is nothing" is what
     /// lets a stored verdict say whether its lead was settled: the two are
@@ -167,8 +167,13 @@ pub fn discogs_search_result_to_metadata(
 /// A MusicBrainz release's tracklist, as an `inc=recordings` response carries
 /// it.
 pub(crate) fn mb_source_tracks(r: &MbReleaseResponse) -> SourceTracks {
-    let tracks: Vec<&crate::musicbrainz::MbTrack> =
-        r.media.iter().flat_map(|medium| &medium.tracks).collect();
+    source_tracks_from_mb_tracks(r.media.iter().flat_map(|medium| &medium.tracks))
+}
+
+fn source_tracks_from_mb_tracks<'a>(
+    tracks: impl Iterator<Item = &'a crate::musicbrainz::MbTrack>,
+) -> SourceTracks {
+    let tracks: Vec<_> = tracks.collect();
     if tracks.is_empty() {
         return SourceTracks::Nothing;
     }
@@ -178,19 +183,43 @@ pub(crate) fn mb_source_tracks(r: &MbReleaseResponse) -> SourceTracks {
     }
 }
 
-fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) -> MetadataResult {
+fn mb_discid_release_to_metadata(discid: &str, r: MbReleaseResponse) -> Option<MetadataResult> {
+    let mut matching_media = r.media.iter().filter(|medium| {
+        medium
+            .discs
+            .iter()
+            .any(|registered| registered.id == discid)
+    });
+    let Some(medium) = matching_media.next() else {
+        warn!(
+            discid,
+            musicbrainz_release_id = %r.id,
+            "Skipping MusicBrainz DiscID result without a matching medium"
+        );
+        return None;
+    };
+    if matching_media.next().is_some() {
+        warn!(
+            discid,
+            musicbrainz_release_id = %r.id,
+            "Skipping MusicBrainz DiscID result with multiple matching media"
+        );
+        return None;
+    }
+
+    let format = medium.format.clone();
+    let source_tracks = Some(source_tracks_from_mb_tracks(medium.tracks.iter()));
     let pressing = crate::import::musicbrainz_mapper::pressing(&r);
-    // Free here: this response came from an `inc=recordings` endpoint, so the
-    // tracklist is already on the wire — a disc-ID match costs no second call to
-    // reach the Ready rule.
-    let source_tracks = Some(mb_source_tracks(&r));
-    MetadataResult {
+    let cover_art = r
+        .has_front_cover()
+        .then(|| RemoteCover::musicbrainz_release(&r.id));
+    Some(MetadataResult {
         source: MetadataSource::MusicBrainz,
         release_id: r.id,
         title: r.title,
         artist: r.artist_credit.first().map(|ac| ac.name.clone()),
         year: pressing.year,
-        format: pressing.format,
+        format,
         label: pressing.label,
         catalog_number: pressing.catalog_number,
         country: pressing.country,
@@ -198,7 +227,17 @@ fn mb_release_to_metadata(r: MbReleaseResponse, cover_art: Option<RemoteCover>) 
         cover_art,
         source_group_id: r.release_group.as_ref().map(|rg| rg.id.clone()),
         source_tracks,
-    }
+    })
+}
+
+fn mb_discid_releases_to_metadata(
+    discid: &str,
+    releases: Vec<MbReleaseResponse>,
+) -> Vec<MetadataResult> {
+    releases
+        .into_iter()
+        .filter_map(|release| mb_discid_release_to_metadata(discid, release))
+        .collect()
 }
 
 fn search_release_to_metadata(r: SearchRelease, cover_art: Option<RemoteCover>) -> MetadataResult {
@@ -457,18 +496,7 @@ pub async fn lookup_by_discid(
         Err(e) => return Err(mb_error_to_lookup_failure(&e)),
     };
 
-    Ok(releases
-        .into_iter()
-        .map(|r| {
-            // Unlike the search endpoint, this one returns whole release
-            // documents, so each states whether the archive holds a front image
-            // for it.
-            let cover_art = r
-                .has_front_cover()
-                .then(|| RemoteCover::musicbrainz_release(&r.id));
-            mb_release_to_metadata(r, cover_art)
-        })
-        .collect())
+    Ok(mb_discid_releases_to_metadata(discid, releases))
 }
 
 /// A Discogs release's tracklist. Headings and index entries are not tracks and

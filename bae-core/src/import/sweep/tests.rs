@@ -34,6 +34,7 @@ use tempfile::TempDir;
 /// — what the resumed pane's evidence points at.
 const SEEDED_DISC_ID: &str = "XwqRcz4RhAqRTfhE5nRxRKF4iFY-";
 const SEEDED_DISC_ID_FILE: &str = "Album.log";
+const FIXTURE_DISC_ID: &str = "ayQ_jFizitCdB_btUSn6qV6ENaI-";
 
 fn settled_signals(durations: crate::import::probe::SourceDurations) -> Signals {
     Signals {
@@ -239,10 +240,11 @@ fn titled_release_json(release_id: &str, group_id: &str, title: &str, artist: &s
 }
 
 fn discid_json(release_id: &str, group_id: &str, track_lengths: &[u64]) -> String {
-    format!(
-        r#"{{"releases":[{}]}}"#,
-        release_json(release_id, group_id, track_lengths)
-    )
+    let mut release: serde_json::Value =
+        serde_json::from_str(&release_json(release_id, group_id, track_lengths))
+            .expect("release fixture parses");
+    release["media"][0]["discs"] = serde_json::json!([{ "id": FIXTURE_DISC_ID }]);
+    serde_json::json!({ "releases": [release] }).to_string()
 }
 
 /// A search hit as `ws/2/release?query=…` returns it: no `media`, hence no

@@ -85,10 +85,12 @@ fn make_response(media: Vec<MbMedium>) -> MbReleaseResponse {
 fn test_cd_two_media_each_one_side() {
     let response = make_response(vec![
         MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![make_mb_track("1", "Track 1"), make_mb_track("2", "Track 2")],
         },
         MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![make_mb_track("1", "Track 3"), make_mb_track("2", "Track 4")],
         },
@@ -115,6 +117,7 @@ fn test_cd_two_media_each_one_side() {
 #[test]
 fn test_vinyl_one_medium_two_sides() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("12\" Vinyl".to_string()),
         tracks: vec![
             make_mb_track("A1", "Track A1"),
@@ -148,6 +151,7 @@ fn test_vinyl_one_medium_two_sides() {
 fn test_vinyl_two_media_four_sides() {
     let response = make_response(vec![
         MbMedium {
+            discs: vec![],
             format: Some("12\" Vinyl".to_string()),
             tracks: vec![
                 make_mb_track("A1", "Track A1"),
@@ -157,6 +161,7 @@ fn test_vinyl_two_media_four_sides() {
             ],
         },
         MbMedium {
+            discs: vec![],
             format: Some("12\" Vinyl".to_string()),
             tracks: vec![
                 make_mb_track("C1", "Track C1"),
@@ -188,6 +193,7 @@ fn test_vinyl_two_media_four_sides() {
 #[test]
 fn test_single_medium_cd_all_side_one() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![
             make_mb_track("1", "Track 1"),
@@ -216,6 +222,7 @@ fn test_single_medium_cd_all_side_one() {
 #[test]
 fn test_vinyl_track_missing_side_letter_errors() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("12\" Vinyl".to_string()),
         tracks: vec![
             make_mb_track("A1", "Track A1"),
@@ -249,6 +256,7 @@ fn test_vinyl_track_missing_side_letter_errors() {
 #[test]
 fn test_vinyl_track_numeric_only_errors() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("12\" Vinyl".to_string()),
         tracks: vec![
             make_mb_track("A1", "Track A1"),
@@ -268,6 +276,7 @@ fn test_vinyl_track_numeric_only_errors() {
 #[test]
 fn medium_with_no_tracks_returns_err() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![],
     }]);
@@ -282,6 +291,7 @@ fn medium_with_no_tracks_returns_err() {
 #[test]
 fn track_title_is_used_when_recording_title_is_missing() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![MbTrack {
             position: None,
@@ -306,6 +316,7 @@ fn track_title_is_used_when_recording_title_is_missing() {
 #[test]
 fn track_without_recording_or_track_title_returns_err() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![MbTrack {
             position: None,
@@ -338,6 +349,7 @@ fn track_without_recording_or_track_title_returns_err() {
 #[test]
 fn pressing_reads_year_format_first_label_country_and_barcode() {
     let mut response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("12\" Vinyl".to_string()),
         tracks: vec![make_mb_track("A1", "Track A1")],
     }]);
@@ -434,6 +446,7 @@ fn discogs_release_with_master(master_id: Option<String>) -> crate::discogs::Dis
 #[test]
 fn test_map_mb_no_cross_ref_yields_only_mb_identity() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -450,6 +463,7 @@ fn test_map_mb_no_cross_ref_yields_only_mb_identity() {
 #[test]
 fn release_with_no_artist_credits_returns_err() {
     let mut response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -467,6 +481,7 @@ fn release_with_no_artist_credits_returns_err() {
 #[test]
 fn release_with_no_release_group_returns_err() {
     let mut response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -486,6 +501,7 @@ fn test_map_mb_cross_ref_no_master_id_yields_discogs_release_as_its_own_group() 
     // Cross-ref hit and the linked Discogs release has no master — it is its
     // own group, so the Discogs row is still emitted.
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -507,6 +523,7 @@ fn test_map_mb_cross_ref_with_master_id_yields_two_identity_rows() {
     // Cross-ref hit AND the linked Discogs release carries a master_id
     // — two rows: MB + Discogs. Both Exact (release IDs present).
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -541,6 +558,7 @@ fn credit(id: &str, name: &str) -> MbArtistCredit {
 #[test]
 fn release_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
     let mut response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -574,6 +592,7 @@ fn missing_mb_sort_names_remain_absent() {
             ..MbRelation::default()
         }];
         MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![track],
         }

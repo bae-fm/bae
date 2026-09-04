@@ -285,8 +285,91 @@ fn discogs_search_result_carries_remote_cover_pair() {
 }
 
 #[test]
+fn discid_metadata_uses_the_medium_that_contains_the_disc() {
+    let response: MbReleaseResponse = serde_json::from_value(serde_json::json!({
+        "id": "mb-release-1",
+        "title": "Album Title",
+        "artist-credit": [{ "name": "Artist Name" }],
+        "release-group": { "id": "mb-group-1" },
+        "label-info": [],
+        "media": [
+            {
+                "format": "12\" Vinyl",
+                "discs": [],
+                "tracks": [
+                    { "number": "A1", "length": 180000, "title": "Vinyl Track" }
+                ]
+            },
+            {
+                "format": "CD",
+                "discs": [{ "id": "disc-1" }],
+                "tracks": [
+                    { "number": "1", "length": 240000, "title": "CD Track" }
+                ]
+            }
+        ],
+        "relations": [],
+        "cover-art-archive": { "front": false, "darkened": false }
+    }))
+    .expect("MusicBrainz DiscID response parses");
+
+    let metadata = mb_discid_release_to_metadata("disc-1", response)
+        .expect("the release contains the queried disc");
+
+    assert_eq!(metadata.format.as_deref(), Some("CD"));
+    assert_eq!(
+        metadata.source_tracks,
+        Some(SourceTracks::Listed {
+            count: 1,
+            total_duration_ms: Some(240_000),
+        })
+    );
+}
+
+#[test]
+fn discid_metadata_skips_only_releases_without_one_matching_medium() {
+    let no_match = response_with_media(vec![MbMedium {
+        discs: vec![],
+        format: Some("12\" Vinyl".to_string()),
+        tracks: vec![make_mb_track("A1", "Vinyl Track")],
+    }]);
+    let multiple_matches = response_with_media(vec![
+        MbMedium {
+            discs: vec![crate::musicbrainz::MbDisc {
+                id: "disc-1".to_string(),
+            }],
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "First CD Track")],
+        },
+        MbMedium {
+            discs: vec![crate::musicbrainz::MbDisc {
+                id: "disc-1".to_string(),
+            }],
+            format: Some("CD".to_string()),
+            tracks: vec![make_mb_track("1", "Second CD Track")],
+        },
+    ]);
+    let mut valid = response_with_media(vec![MbMedium {
+        discs: vec![crate::musicbrainz::MbDisc {
+            id: "disc-1".to_string(),
+        }],
+        format: Some("CD".to_string()),
+        tracks: vec![make_mb_track("1", "CD Track")],
+    }]);
+    valid.id = "mb-release-2".to_string();
+
+    let metadata =
+        mb_discid_releases_to_metadata("disc-1", vec![no_match, multiple_matches, valid]);
+
+    assert_eq!(metadata.len(), 1);
+    assert_eq!(metadata[0].release_id, "mb-release-2");
+    assert_eq!(metadata[0].format.as_deref(), Some("CD"));
+}
+
+#[test]
 fn mb_detail_uses_supplied_cover_art_archive_candidates() {
     let response = response_with_media(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track Title")],
     }]);
@@ -309,6 +392,7 @@ fn mb_detail_uses_supplied_cover_art_archive_candidates() {
 fn mb_detail_numbers_vinyl_sides_across_media() {
     let response = response_with_media(vec![
         MbMedium {
+            discs: vec![],
             format: Some("12\" Vinyl".to_string()),
             tracks: vec![
                 make_mb_track("A1", "Track A1"),
@@ -316,6 +400,7 @@ fn mb_detail_numbers_vinyl_sides_across_media() {
             ],
         },
         MbMedium {
+            discs: vec![],
             format: Some("12\" Vinyl".to_string()),
             tracks: vec![
                 make_mb_track("C1", "Track C1"),
@@ -355,6 +440,7 @@ fn parse_duration_to_ms_handles_mm_ss_and_hh_mm_ss() {
 #[test]
 fn mb_detail_errors_on_multi_side_track_without_side_letter() {
     let response = response_with_media(vec![MbMedium {
+        discs: vec![],
         format: Some("12\" Vinyl".to_string()),
         tracks: vec![
             make_mb_track("A1", "Track A1"),
@@ -376,6 +462,7 @@ fn mb_detail_errors_on_multi_side_track_without_side_letter() {
 #[test]
 fn mb_detail_pressing_matches_the_committed_pressing() {
     let mut response = response_with_media(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track Title")],
     }]);
@@ -431,6 +518,7 @@ fn mb_detail_track_title_prefers_the_recording_title() {
         artist_credit: vec![],
     };
     let response = response_with_media(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track, fallback],
     }]);
@@ -457,6 +545,7 @@ fn mb_detail_track_title_prefers_the_recording_title() {
 #[test]
 fn mb_detail_errors_on_track_without_any_title() {
     let response = response_with_media(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![MbTrack {
             position: None,

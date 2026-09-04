@@ -209,6 +209,7 @@ fn seed_mb_release(release_id: &str, release_group_id: &str) {
         }),
         label_info: vec![],
         media: vec![crate::musicbrainz::MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![crate::musicbrainz::MbTrack {
                 position: Some(1),

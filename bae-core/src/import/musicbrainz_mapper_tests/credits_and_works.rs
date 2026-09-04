@@ -67,6 +67,7 @@ fn nested_recording_work_imports_composer_work_graph() {
         ..MbRelation::default()
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track_one, track_two],
     }]);
@@ -147,6 +148,7 @@ fn recording_linking_the_same_work_twice_produces_one_track_work_link() {
         },
     ];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -176,6 +178,7 @@ fn track_level_artist_credit_creates_and_links_a_new_artist() {
     let mut featured = make_mb_track("2", "Track 2 (feat. Guest)");
     featured.artist_credit = vec![credit("artist-guest", "Guest")];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1"), featured],
     }]);
@@ -212,6 +215,7 @@ fn track_artist_credit_name_is_used_when_artist_payload_name_is_missing() {
     name_only_credit.artist.as_mut().unwrap().name = None;
     track.artist_credit = vec![name_only_credit];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -236,6 +240,7 @@ fn track_level_artist_credit_dedupes_against_release_artist_by_mb_id() {
     let mut t = make_mb_track("1", "Track 1");
     t.artist_credit = vec![credit("artist-1", "Test Artist")];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![t],
     }]);
@@ -273,6 +278,7 @@ fn known_mb_artist_id_does_not_merge_into_same_name_artist_without_id() {
             ..MbRelation::default()
         }];
         MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![track],
         }
@@ -319,6 +325,7 @@ fn id_less_track_credit_does_not_merge_into_id_bearing_release_artist() {
         }),
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -356,6 +363,7 @@ fn known_mb_artist_ids_keep_same_name_artists_separate() {
         ..MbRelation::default()
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -410,6 +418,7 @@ fn backward_work_parts_relation_treats_related_work_as_parent() {
         ..MbRelation::default()
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -432,6 +441,7 @@ fn backward_work_parts_relation_treats_related_work_as_parent() {
 #[test]
 fn release_artist_gets_discogs_id_by_case_insensitive_name() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -458,6 +468,7 @@ fn release_artist_gets_discogs_id_by_case_insensitive_name() {
 #[test]
 fn release_artist_discogs_id_is_none_when_no_name_matches() {
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
     }]);
@@ -501,6 +512,7 @@ fn work_composer_relation_without_artist_payload_is_logged_and_skipped() {
         ..MbRelation::default()
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -551,6 +563,7 @@ fn work_referenced_by_two_tracks_logs_skip_once() {
     let mut track_two = make_mb_track("2", "Track 2");
     track_two.recording.as_mut().unwrap().relations = vec![performance(work)];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track_one, track_two],
     }]);
@@ -606,6 +619,7 @@ fn work_parts_relation_without_work_payload_is_logged_and_skipped() {
         ..MbRelation::default()
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);
@@ -638,6 +652,7 @@ fn track_artist_credit_without_resolvable_name_is_logged_and_skipped() {
         }),
     }];
     let response = make_response(vec![MbMedium {
+        discs: vec![],
         format: Some("CD".to_string()),
         tracks: vec![track],
     }]);

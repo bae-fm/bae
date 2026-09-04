@@ -255,6 +255,7 @@ fn seed_mb_with_discogs_xref(
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![MbTrack {
                 position: Some(1),
@@ -521,6 +522,7 @@ fn seed_mb_without_xref(mb_release_id: &str, mb_group_id: &str, title: &str) -> 
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![MbTrack {
                 position: Some(1),

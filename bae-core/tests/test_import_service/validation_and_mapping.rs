@@ -141,6 +141,7 @@ fn seed_two_credit_mb_release(mb_release_id: &str, mb_group_id: &str) -> String 
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![MbTrack {
                 position: Some(1),
@@ -267,6 +268,7 @@ fn seed_mb_release_with_track_count(
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: (1..=track_count)
                 .map(|position| MbTrack {
@@ -541,6 +543,7 @@ fn seed_mb_release_with_front_cover(mb_release_id: &str, mb_group_id: &str, titl
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: vec![MbTrack {
                 position: Some(1),

@@ -125,6 +125,7 @@ fn vinyl_response() -> crate::musicbrainz::MbReleaseResponse {
             }),
         }],
         media: vec![crate::musicbrainz::MbMedium {
+            discs: vec![],
             format: Some("12\" Vinyl".to_string()),
             tracks: vec![
                 mb_track("A1", "A1 title"),

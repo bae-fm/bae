@@ -125,9 +125,17 @@ pub struct MbTrack {
 /// A medium (disc) within a release
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MbMedium {
+    #[serde(default)]
+    pub discs: Vec<MbDisc>,
     pub format: Option<String>,
     #[serde(default)]
     pub tracks: Vec<MbTrack>,
+}
+
+/// A MusicBrainz DiscID registered against a medium.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MbDisc {
+    pub id: String,
 }
 
 /// What a release document says the Cover Art Archive holds for it. Every

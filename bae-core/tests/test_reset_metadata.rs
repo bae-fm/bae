@@ -219,6 +219,7 @@ fn mb_release_json(
             catalog_number: Some("CAT-001".to_string()),
         }],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks: track_titles
                 .iter()

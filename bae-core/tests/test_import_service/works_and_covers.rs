@@ -86,6 +86,7 @@ fn seed_mb_release_with_works(
         }),
         label_info: vec![],
         media: vec![MbMedium {
+            discs: vec![],
             format: Some("CD".to_string()),
             tracks,
         }],
