@@ -278,13 +278,8 @@ pub(crate) fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<A
             UnitContribution::Runs(sheets) => {
                 for sheet in sheets {
                     for (index, track) in sheet.sheet.playable_tracks().enumerate() {
-                        let audio = sheet
-                            .audio_files
-                            .iter()
-                            .find(|(file_reference, _)| *file_reference == track.file_reference)
-                            .expect("a bound sheet resolved every playable track's audio");
                         units.push(AudioFile::SheetSlice {
-                            file_id: audio.1.relative_path.clone(),
+                            file_id: sheet.audio_for(track).relative_path.clone(),
                             sheet_id: sheet.file.relative_path.clone(),
                             index: index as u32,
                         });
@@ -365,13 +360,10 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
         .collect()
 }
 
-/// Which of the folder's audio one bound sheet speaks for.
-///
-/// A sheet that names one file for the whole disc speaks for the audio it is
-/// *bound* to, which is not necessarily what its `FILE` directive spells — the
-/// two differ exactly when the binding is the user's. A sheet that names one
-/// file per track has no single binding to stand in for its references, so
-/// those resolve as written, inside the sheet's own directory.
+/// Which of the folder's audio one bound sheet speaks for: the audio its
+/// binding names, which is not necessarily what its `FILE` directives spell —
+/// a directive may resolve by stem, and a single-file sheet may be bound by
+/// the user.
 fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
     bound
         .audio_files

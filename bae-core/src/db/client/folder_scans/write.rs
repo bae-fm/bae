@@ -302,6 +302,9 @@ fn insert_invalid(
 /// Lay down one candidate's files, their parsed track sheets and all. Also
 /// the write a file decision makes: the settled shape replaces the rows the
 /// scan proposed, under the same candidate.
+///
+/// The audio each bound sheet describes goes in last: those rows reference
+/// the audio's own file row, which may sort after the sheet's.
 pub(crate) fn insert_candidate_files(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
@@ -310,6 +313,27 @@ pub(crate) fn insert_candidate_files(
 ) -> Result<(), DbError> {
     for (position, file) in files.files.iter().enumerate() {
         insert_file(sql, watched_folder_path, candidate_path, position, file)?;
+    }
+    for sheet in files.track_sheets() {
+        let Some(audio_files) = sheet.binding.audio_files() else {
+            continue;
+        };
+        for (position, audio) in audio_files.iter().enumerate() {
+            sql.execute(
+                "INSERT INTO scan_sheet_audio_file \
+                     (watched_folder_path, candidate_path, sheet_relative_path, position, \
+                      file_reference, audio_relative_path) \
+                 VALUES (?, ?, ?, ?, ?, ?)",
+                params![
+                    watched_folder_path,
+                    candidate_path,
+                    sheet.file.relative_path,
+                    to_i64(position as u64, "a sheet audio file's position")?,
+                    audio.file_reference,
+                    audio.file_id,
+                ],
+            )?;
+        }
     }
     Ok(())
 }
@@ -328,8 +352,8 @@ fn insert_file(
               size, modified_at_ns, audio_content_type, audio_duration_ms, \
               audio_sample_rate_hz, audio_bits_per_sample, audio_bitrate_kbps, audio_channels, \
               file_name, dir_prefix, proposed_audio, role, sheet_binding, \
-              sheet_binding_file_id, sheet_binding_codec, sheet_disc, sheet_disc_number) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+              sheet_binding_codec, sheet_disc, sheet_disc_number) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             watched_folder_path,
             candidate_path,
@@ -368,7 +392,6 @@ fn insert_file(
             file.proposed_audio,
             columns.role,
             columns.sheet_binding,
-            columns.sheet_binding_file_id,
             columns.sheet_binding_codec,
             columns.sheet_disc,
             columns.sheet_disc_number,

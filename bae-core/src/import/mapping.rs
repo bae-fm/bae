@@ -6,10 +6,9 @@
 //! no index addresses anything — which is what keeps the joining out of the
 //! surfaces that render it.
 
-use crate::cue_flac::CueSheet;
 use crate::import::folder_scanner::{
     BoundTrackSheet, CandidateFile, CategorizedFiles, FileRole, FileRoleChoice, ScannedFile,
-    SheetBinding, SheetDisc,
+    SheetBinding, SheetDisc, TrackSheetFile,
 };
 use crate::import::probe::SourceDurations;
 use crate::import::track_slots::{
@@ -356,7 +355,15 @@ pub fn mapping_table(
                 name: entry.file.relative_path.clone(),
                 size: entry.file.size,
                 path: entry.file.path.clone(),
-                bound: bound_of(files, &entry.file.relative_path, sheet, binding),
+                bound: bound_of(
+                    files,
+                    TrackSheetFile {
+                        file: &entry.file,
+                        sheet,
+                        binding,
+                        disc: *disc,
+                    },
+                ),
                 assignment: *disc,
                 disc_options: disc_options.clone(),
             })),
@@ -476,12 +483,7 @@ impl RowBuilder<'_> {
             .playable_tracks()
             .enumerate()
             .map(|(index, track)| {
-                let audio = sheet
-                    .audio_files
-                    .iter()
-                    .find(|(file_reference, _)| *file_reference == track.file_reference)
-                    .expect("a bound sheet resolved every playable track's audio")
-                    .1;
+                let audio = sheet.audio_for(track);
                 let unit = AudioFile::SheetSlice {
                     file_id: audio.relative_path.clone(),
                     sheet_id: sheet.file.relative_path.clone(),
@@ -704,30 +706,21 @@ fn container(audio: &ScannedFile) -> MappingContainer {
 }
 
 /// What a sheet describes, as its header states it.
-///
-/// A resolved sheet whose audio no longer has the audio role describes
-/// nothing, and says so with what the directive asked for.
-fn bound_of(
-    files: &CategorizedFiles,
-    sheet_id: &str,
-    sheet: &CueSheet,
-    binding: &SheetBinding,
-) -> SheetBound {
-    let unresolved = || SheetBound::Unresolved {
-        requested: sheet
-            .audio_file_references()
-            .into_iter()
-            .map(str::to_string)
-            .collect(),
-    };
-    match binding {
-        SheetBinding::Resolved | SheetBinding::Override { .. } => files
-            .bound_sheets()
-            .into_iter()
-            .find(|bound| bound.file.relative_path == sheet_id)
-            .map(|bound| bound_sheet(&bound))
-            .unwrap_or_else(unresolved),
-        SheetBinding::Unresolved => unresolved(),
+fn bound_of(files: &CategorizedFiles, sheet: TrackSheetFile<'_>) -> SheetBound {
+    match sheet.binding {
+        SheetBinding::Resolved { .. } | SheetBinding::Override { .. } => bound_sheet(
+            &files
+                .bound_sheet(sheet)
+                .expect("a resolved binding names audio"),
+        ),
+        SheetBinding::Unresolved => SheetBound::Unresolved {
+            requested: sheet
+                .sheet
+                .audio_file_references()
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
+        },
         SheetBinding::RefusedCodec { codec } => SheetBound::RefusedCodec {
             codec: codec.clone(),
         },

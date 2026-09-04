@@ -4,7 +4,8 @@
 
 use super::*;
 use crate::import::folder_scanner::{
-    FileRole, FolderReleaseDecision, InvalidReason, ReleaseFileScope, SheetBinding, SheetDisc,
+    FileRole, FolderReleaseDecision, InvalidReason, ReleaseFileScope, SheetAudioFile, SheetBinding,
+    SheetDisc,
 };
 
 /// A column holding a value no writer here produces.
@@ -83,11 +84,12 @@ pub(crate) fn invalid_reason_of(
     }
 }
 
-/// The role, and the two pairs of columns a track sheet adds to it.
+/// The role, and the columns a track sheet adds to it. The audio a bound
+/// sheet describes is not a column: it is the sheet's `scan_sheet_audio_file`
+/// rows, written after every file of the candidate is in place.
 pub(super) struct RoleColumns<'a> {
     pub(super) role: &'static str,
     pub(super) sheet_binding: Option<&'static str>,
-    pub(super) sheet_binding_file_id: Option<&'a str>,
     pub(super) sheet_binding_codec: Option<&'a str>,
     pub(super) sheet_disc: Option<&'static str>,
     pub(super) sheet_disc_number: Option<u32>,
@@ -97,7 +99,6 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
     let plain = |role| RoleColumns {
         role,
         sheet_binding: None,
-        sheet_binding_file_id: None,
         sheet_binding_codec: None,
         sheet_disc: None,
         sheet_disc_number: None,
@@ -108,13 +109,11 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
         FileRole::Document => plain("document"),
         FileRole::Other => plain("other"),
         FileRole::TrackSheet { binding, disc, .. } => {
-            let (sheet_binding, sheet_binding_file_id, sheet_binding_codec) = match binding {
-                SheetBinding::Resolved => ("resolved", None, None),
-                SheetBinding::Override { file_id } => ("override", Some(file_id.as_str()), None),
-                SheetBinding::Unresolved => ("unresolved", None, None),
-                SheetBinding::RefusedCodec { codec } => {
-                    ("refused_codec", None, Some(codec.as_str()))
-                }
+            let (sheet_binding, sheet_binding_codec) = match binding {
+                SheetBinding::Resolved { .. } => ("resolved", None),
+                SheetBinding::Override { .. } => ("override", None),
+                SheetBinding::Unresolved => ("unresolved", None),
+                SheetBinding::RefusedCodec { codec } => ("refused_codec", Some(codec.as_str())),
             };
             let (sheet_disc, sheet_disc_number) = match disc {
                 SheetDisc::Disc { number } => ("disc", Some(*number)),
@@ -123,7 +122,6 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
             RoleColumns {
                 role: "track_sheet",
                 sheet_binding: Some(sheet_binding),
-                sheet_binding_file_id,
                 sheet_binding_codec,
                 sheet_disc: Some(sheet_disc),
                 sheet_disc_number,
@@ -132,24 +130,33 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
     }
 }
 
+/// A sheet's binding from its column and its stored audio pairing. A bound
+/// spelling with no pairing rows, or an override with more than one, is a
+/// store nothing here wrote.
 pub(super) fn sheet_binding_of(
     stored: &str,
-    file_id: Option<String>,
+    audio_files: Vec<SheetAudioFile>,
     codec: Option<String>,
 ) -> Result<SheetBinding, DbError> {
-    let named = |value: Option<String>, column: &str| {
-        value.ok_or_else(|| {
-            DbError::Message(format!("folder scan binding {stored} has no {column}"))
-        })
-    };
+    let malformed =
+        |detail: &str| DbError::Message(format!("folder scan binding {stored} {detail}"));
     match stored {
-        "resolved" => Ok(SheetBinding::Resolved),
-        "override" => Ok(SheetBinding::Override {
-            file_id: named(file_id, "file id")?,
-        }),
+        "resolved" => {
+            if audio_files.is_empty() {
+                return Err(malformed("names no audio"));
+            }
+            Ok(SheetBinding::Resolved { files: audio_files })
+        }
+        "override" => {
+            let mut audio_files = audio_files.into_iter();
+            let (Some(file), None) = (audio_files.next(), audio_files.next()) else {
+                return Err(malformed("must name exactly one audio file"));
+            };
+            Ok(SheetBinding::Override { file })
+        }
         "unresolved" => Ok(SheetBinding::Unresolved),
         "refused_codec" => Ok(SheetBinding::RefusedCodec {
-            codec: named(codec, "codec")?,
+            codec: codec.ok_or_else(|| malformed("has no codec"))?,
         }),
         other => Err(unreadable("sheet_binding", other)),
     }

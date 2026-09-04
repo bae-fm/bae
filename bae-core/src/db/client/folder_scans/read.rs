@@ -15,6 +15,7 @@ use crate::import::file_tag_snapshot::{
 use crate::import::folder_scanner::{
     CandidateFile, CategorizedFiles, FileRole, FolderCandidate, FolderReleaseDecisionKey,
     InvalidCandidate, ResolvedFolderReleaseBoundary, ScanItem, ScannedAudio, ScannedFile,
+    SheetAudioFile,
 };
 use crate::util::content_type::ContentType;
 
@@ -431,7 +432,6 @@ struct FileRow {
     proposed_audio: bool,
     role: String,
     sheet_binding: Option<String>,
-    sheet_binding_file_id: Option<String>,
     sheet_binding_codec: Option<String>,
     sheet_disc: Option<String>,
     sheet_disc_number: Option<i64>,
@@ -446,8 +446,8 @@ fn load_files(
         "SELECT candidate_path, relative_path, absolute_path, size, modified_at_ns, \
                 audio_content_type, audio_duration_ms, audio_sample_rate_hz, \
                 audio_bits_per_sample, audio_bitrate_kbps, audio_channels, file_name, dir_prefix, \
-                proposed_audio, role, sheet_binding, sheet_binding_file_id, \
-                sheet_binding_codec, sheet_disc, sheet_disc_number \
+                proposed_audio, role, sheet_binding, sheet_binding_codec, sheet_disc, \
+                sheet_disc_number \
          FROM scan_candidate_file \
          WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
          ORDER BY candidate_path, position",
@@ -470,14 +470,14 @@ fn load_files(
                 proposed_audio: row.get(13)?,
                 role: row.get(14)?,
                 sheet_binding: row.get(15)?,
-                sheet_binding_file_id: row.get(16)?,
-                sheet_binding_codec: row.get(17)?,
-                sheet_disc: row.get(18)?,
-                sheet_disc_number: row.get(19)?,
+                sheet_binding_codec: row.get(16)?,
+                sheet_disc: row.get(17)?,
+                sheet_disc_number: row.get(18)?,
             })
         },
     )?;
     let mut sheets = load_cue_sheets(sql, watched_folder_path, only)?;
+    let mut sheet_audio_files = load_sheet_audio_files(sql, watched_folder_path, only)?;
     let mut files: HashMap<String, Vec<CandidateFile>> = HashMap::new();
     for row in rows {
         let source_audio = source_audio_of(&row)?;
@@ -502,7 +502,12 @@ fn load_files(
                         .ok_or_else(|| missing("parsed sheet"))?,
                     binding: sheet_binding_of(
                         &row.sheet_binding.ok_or_else(|| missing("binding"))?,
-                        row.sheet_binding_file_id,
+                        sheet_audio_files
+                            .remove(&SheetKey {
+                                candidate_path: row.candidate_path.clone(),
+                                sheet_relative_path: row.relative_path.clone(),
+                            })
+                            .unwrap_or_default(),
                         row.sheet_binding_codec,
                     )?,
                     disc: sheet_disc_of(
@@ -530,7 +535,40 @@ fn load_files(
                 proposed_audio: row.proposed_audio,
             });
     }
+    for (candidate_path, files) in &files {
+        check_sheet_bindings_name_audio(candidate_path, files)?;
+    }
     Ok(files)
+}
+
+/// A binding is settled against the roles in force, so every file it names
+/// has the audio role. The table can only say the file exists; this says it
+/// is audio, so a candidate that violates it is refused here rather than
+/// panicking whoever reads the bound sheets.
+fn check_sheet_bindings_name_audio(
+    candidate_path: &str,
+    files: &[CandidateFile],
+) -> Result<(), DbError> {
+    let audio: std::collections::HashSet<&str> = files
+        .iter()
+        .filter(|entry| matches!(entry.role, FileRole::Audio))
+        .map(|entry| entry.file.relative_path.as_str())
+        .collect();
+    for entry in files {
+        let FileRole::TrackSheet { binding, .. } = &entry.role else {
+            continue;
+        };
+        for named in binding.audio_files().unwrap_or_default() {
+            if !audio.contains(named.file_id.as_str()) {
+                return Err(DbError::Message(format!(
+                    "track sheet {} under {candidate_path} describes {}, which is not the \
+                     candidate's audio",
+                    entry.file.relative_path, named.file_id
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn source_audio_of(row: &FileRow) -> Result<Option<ScannedAudio>, DbError> {
@@ -632,6 +670,43 @@ pub(crate) fn load_resolved_boundaries(
 struct SheetKey {
     candidate_path: String,
     sheet_relative_path: String,
+}
+
+/// The audio each bound sheet describes, in the sheet's reference order.
+fn load_sheet_audio_files(
+    sql: &(impl QueryOne + QueryRows),
+    watched_folder_path: &str,
+    only: Option<&str>,
+) -> Result<HashMap<SheetKey, Vec<SheetAudioFile>>, DbError> {
+    let rows = sql.query(
+        "SELECT candidate_path, sheet_relative_path, file_reference, audio_relative_path \
+         FROM scan_sheet_audio_file \
+         WHERE watched_folder_path = :root AND (:only IS NULL OR candidate_path = :only) \
+         ORDER BY candidate_path, sheet_relative_path, position",
+        named_params! { ":root": watched_folder_path, ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        },
+    )?;
+    let mut audio_files: HashMap<SheetKey, Vec<SheetAudioFile>> = HashMap::new();
+    for (candidate_path, sheet_relative_path, file_reference, audio_relative_path) in rows {
+        audio_files
+            .entry(SheetKey {
+                candidate_path,
+                sheet_relative_path,
+            })
+            .or_default()
+            .push(SheetAudioFile {
+                file_reference,
+                file_id: audio_relative_path,
+            });
+    }
+    Ok(audio_files)
 }
 
 /// One track of one sheet, by its position in that sheet.

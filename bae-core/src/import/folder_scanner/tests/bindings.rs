@@ -33,7 +33,12 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Resolved,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "cd.wav".to_string(),
+                file_id: "cd.flac".to_string(),
+            }],
+        },
     );
     assert_eq!(files.bound_sheets()[0].audio_files[0].1.file_name, "cd.flac");
     assert!(
@@ -169,7 +174,12 @@ fn exact_file_reference_wins_over_other_same_stem_audio() {
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Resolved,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "cd.flac".to_string(),
+                file_id: "cd.flac".to_string(),
+            }],
+        },
     );
 }
 

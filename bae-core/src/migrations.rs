@@ -78,6 +78,11 @@ pub fn all() -> Vec<coven::Migration> {
             "cue_binding_resolution",
             include_str!("../migrations/014_cue_binding_resolution.sql"),
         ),
+        coven::Migration::sql(
+            15,
+            "scan_sheet_audio_file",
+            include_str!("../migrations/015_scan_sheet_audio_file.sql"),
+        ),
     ]
 }
 

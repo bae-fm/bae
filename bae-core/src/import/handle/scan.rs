@@ -1,5 +1,4 @@
 use super::*;
-use crate::import::folder_scanner::SheetBinding;
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
@@ -102,23 +101,15 @@ impl ImportServiceHandle {
             });
         };
         // Same rule as `set_sheet_disc`: re-stating the binding in force
-        // decides nothing, and must not clear the verdict.
-        let already_in_force = match (binding, audio_file_id.as_deref()) {
-            (SheetBinding::Resolved, Some(file_id)) => files
-                .bound_sheets()
-                .into_iter()
-                .find(|sheet| sheet.file.relative_path == sheet_file_id)
-                .is_some_and(|sheet| {
-                    matches!(sheet.audio_files.as_slice(), [(_, audio)] if audio.relative_path == file_id)
-                }),
-            (SheetBinding::Resolved, None) => false,
-            (SheetBinding::Override { file_id }, Some(requested)) => file_id == requested,
-            (SheetBinding::Unresolved | SheetBinding::RefusedCodec { .. }, None) => true,
-            (
-                SheetBinding::Unresolved | SheetBinding::RefusedCodec { .. },
-                Some(_),
-            )
-            | (SheetBinding::Override { .. }, None) => false,
+        // decides nothing, and must not clear the verdict. A sheet already on
+        // exactly the one file asked for is in force whether the scan or the
+        // user put it there.
+        let already_in_force = match (binding.audio_files(), audio_file_id.as_deref()) {
+            (Some(named), Some(requested)) => {
+                matches!(named, [file] if file.file_id == requested)
+            }
+            (None, None) => true,
+            (Some(_), None) | (None, Some(_)) => false,
         };
         if already_in_force {
             let _commit = self.folder_state_commit.lock().await;

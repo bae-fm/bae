@@ -370,6 +370,18 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
     assert_eq!(candidates.len(), 1);
     let files = &candidates[0].files;
     assert_eq!(files.bound_sheets().len(), 1);
+    assert_eq!(
+        files.track_sheets().next().unwrap().binding,
+        &SheetBinding::Resolved {
+            files: ["01 First", "02 Second", "03 Third"]
+                .map(|stem| SheetAudioFile {
+                    file_reference: format!("{stem}.wav"),
+                    file_id: format!("{stem}.flac"),
+                })
+                .to_vec(),
+        },
+        "the binding carries each reference and the audio it resolved to",
+    );
     let units = crate::import::track_slots::audio_units(files);
     assert_eq!(
         units,

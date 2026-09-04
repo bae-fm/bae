@@ -132,7 +132,12 @@ fn sheet_naming_absent_audio_uses_the_unique_same_stem_file() {
     assert_eq!(sheets[0].file.file_name, "Album.cue");
     assert_eq!(
         sheets[0].binding,
-        &SheetBinding::Resolved,
+        &SheetBinding::Resolved {
+            files: vec![SheetAudioFile {
+                file_reference: "Album.wav".to_string(),
+                file_id: "Album.flac".to_string(),
+            }],
+        },
     );
     assert_eq!(
         candidate
@@ -401,7 +406,7 @@ fn a_binding_survives_a_rename_of_the_sheet() {
     assert_eq!(bound[0].audio_files[0].1.file_name, "Audio.flac");
     assert_eq!(
         bound[0].audio_files[0].1.relative_path, "Audio.flac",
-        "`describes` names the audio by its file id",
+        "the binding names the audio by its file id",
     );
 }
 

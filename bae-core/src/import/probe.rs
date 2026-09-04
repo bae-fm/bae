@@ -102,14 +102,9 @@ pub fn source_durations(files: &CategorizedFiles) -> Result<SourceDurations, Imp
             let sheet_id = sheet.file.relative_path.as_str();
             let analysis = sheet_analysis(files, sheet_id)?;
             for (index, track) in sheet.sheet.playable_tracks().enumerate() {
-                let audio = sheet
-                    .audio_files
-                    .iter()
-                    .find(|(file_reference, _)| *file_reference == track.file_reference)
-                    .expect("a bound sheet resolved every playable track's audio");
                 units.push(SourceDuration {
                     audio: AudioFile::SheetSlice {
-                        file_id: audio.1.relative_path.clone(),
+                        file_id: sheet.audio_for(track).relative_path.clone(),
                         sheet_id: sheet_id.to_string(),
                         index: index as u32,
                     },
