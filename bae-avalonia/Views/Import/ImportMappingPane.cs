@@ -389,7 +389,7 @@ internal sealed partial class ImportMappingPane : UserControl
                 var settings = _app.SettingsStore.Current
                     ?? throw new InvalidOperationException(
                         "Find online cannot open before import settings load.");
-                if (settings.DefaultFindOnlineMode == BridgeDefaultFindOnlineMode.Automatic)
+                if (settings.IdentifyAutomatically)
                 {
                     _ = _import.StartInteractiveLookup(key);
                 }

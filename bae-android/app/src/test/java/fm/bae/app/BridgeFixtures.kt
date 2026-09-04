@@ -7,7 +7,6 @@ import uniffi.bae_bridge.BridgeArtistSummary
 import uniffi.bae_bridge.BridgeCastDevice
 import uniffi.bae_bridge.BridgeComposerSummary
 import uniffi.bae_bridge.BridgeConfig
-import uniffi.bae_bridge.BridgeDefaultFindOnlineMode
 import uniffi.bae_bridge.BridgeDefaultImportMetadataSource
 import uniffi.bae_bridge.BridgeDiscogsTokenStatus
 import uniffi.bae_bridge.BridgeDownloadOp
@@ -269,7 +268,7 @@ object BridgeFixtures {
             pauseBetweenSides = false,
             maxConcurrentUploads = 3u,
             maxConcurrentDownloads = 3u,
-            defaultFindOnlineMode = BridgeDefaultFindOnlineMode.AUTOMATIC,
+            identifyAutomatically = true,
             defaultImportMetadataSource = BridgeDefaultImportMetadataSource.FIND_ONLINE,
             showRemainingTime = false,
             libraryFullWidth = false,

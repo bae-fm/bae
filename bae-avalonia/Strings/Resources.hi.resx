@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>हाथ से खोजें</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>कोई स्वतः मिलान नहीं मिला</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>संकेत</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>स्वतः</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>विफल</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>तैयार</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>पहचान की प्रतीक्षा में</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ऑनलाइन खोजें…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>उम्मीदवार को फिर से पढ़ने की कोशिश करें।</value></data>
   <data name="import.search.general" xml:space="preserve"><value>सामान्य</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ऑनलाइन खोज का डिफ़ॉल्ट मोड</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>डिफ़ॉल्ट मेटाडेटा स्रोत</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ऑनलाइन खोजें</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>स्वतः पहचानें</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>नए उम्मीदवारों की पहचान मिलते ही और ऑनलाइन खोजें खुलने पर होती है। बंद होने पर पहचानें लिंक इसे शुरू करता है।</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>कोई नहीं</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ऑनलाइन खोज</value></data>
   <data name="action.clear" xml:space="preserve"><value>साफ़ करें</value></data>

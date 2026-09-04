@@ -2102,193 +2102,384 @@
         }
       }
     },
-    "Default Find online mode" : {
-      "comment" : "Import settings: method selected whenever Find online opens",
+    "Identify automatically" : {
+      "comment" : "Import settings: whether identification starts on its own",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "وضع البحث عبر الإنترنت الافتراضي"
+            "value" : "تحديد الهوية تلقائيًا"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Режим за търсене онлайн по подразбиране"
+            "value" : "Автоматично идентифициране"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "অনলাইনে খোঁজার ডিফল্ট মোড"
+            "value" : "স্বয়ংক্রিয়ভাবে শনাক্ত করুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Výchozí režim hledání online"
+            "value" : "Identifikovat automaticky"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standardmodus für Online-Suche"
+            "value" : "Automatisch identifizieren"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Default Find online mode"
+            "value" : "Identify automatically"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo predeterminado de Buscar en línea"
+            "value" : "Identificar automáticamente"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mode Rechercher en ligne par défaut"
+            "value" : "Identifier automatiquement"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ઑનલાઇન શોધનો ડિફૉલ્ટ મોડ"
+            "value" : "આપમેળે ઓળખો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מצב ברירת המחדל לחיפוש באינטרנט"
+            "value" : "זיהוי אוטומטי"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑनलाइन खोज का डिफ़ॉल्ट मोड"
+            "value" : "स्वतः पहचानें"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zadani način pretraživanja na internetu"
+            "value" : "Automatski identificiraj"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modalità predefinita di Trova online"
+            "value" : "Identifica automaticamente"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「オンラインで検索」のデフォルトモード"
+            "value" : "自動で識別"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಆನ್‌ಲೈನ್ ಹುಡುಕಾಟದ ಡೀಫಾಲ್ಟ್ ಮೋಡ್"
+            "value" : "ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "온라인 찾기 기본 모드"
+            "value" : "자동으로 식별"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഓൺലൈനിൽ കണ്ടെത്തലിന്റെ ഡിഫോൾട്ട് മോഡ്"
+            "value" : "സ്വയമേവ തിരിച്ചറിയുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑनलाइन शोधण्याचा डीफॉल्ट मोड"
+            "value" : "स्वयंचलितपणे ओळखा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Standaardmodus voor Online zoeken"
+            "value" : "Automatisch identificeren"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਆਨਲਾਈਨ ਲੱਭਣ ਦਾ ਡਿਫੌਲਟ ਢੰਗ"
+            "value" : "ਆਪੇ ਪਛਾਣੋ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Domyślny tryb wyszukiwania online"
+            "value" : "Identyfikuj automatycznie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modo padrão de Buscar online"
+            "value" : "Identificar automaticamente"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இணையத்தில் தேடுவதற்கான இயல்புநிலை முறை"
+            "value" : "தானாக அடையாளம் காண்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఆన్‌లైన్‌లో వెతకడానికి డిఫాల్ట్ మోడ్"
+            "value" : "స్వయంచాలకంగా గుర్తించు"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "โหมดค้นหาออนไลน์เริ่มต้น"
+            "value" : "ระบุอัตโนมัติ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Varsayılan Çevrimiçi bul modu"
+            "value" : "Otomatik tanımla"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Типовий режим пошуку онлайн"
+            "value" : "Ідентифікувати автоматично"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "آن لائن تلاش کا ڈیفالٹ موڈ"
+            "value" : "خودکار شناخت کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chế độ Tìm trên mạng mặc định"
+            "value" : "Tự động nhận dạng"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在线查找默认模式"
+            "value" : "自动识别"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在線尋找預設模式"
+            "value" : "自動識別"
+          }
+        }
+      }
+    },
+    "New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run." : {
+      "comment" : "Import settings: what identifying automatically does",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تُحدَّد هوية المرشحين الجدد فور اكتشافهم وعند فتح البحث عبر الإنترنت. عند الإيقاف، يبدأ التحديد من رابط تحديد الهوية."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новите кандидати се идентифицират при откриването им и при отваряне на Търсене онлайн. Когато е изключено, идентифицирането започва от връзката Идентифициране."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নতুন প্রার্থীদের খুঁজে পাওয়ার সঙ্গে সঙ্গে এবং অনলাইনে খুঁজুন খোলার সময় শনাক্ত করা হয়। বন্ধ থাকলে শনাক্ত করুন লিঙ্ক থেকে শুরু হয়।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noví kandidáti se identifikují hned po nalezení a při otevření Najít online. Když je vypnuto, identifikaci spustí odkaz Identifikovat."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neue Kandidaten werden identifiziert, sobald sie gefunden werden, und wenn „Online suchen“ geöffnet wird. Ist die Option aus, startet der Link „Identifizieren“ den Vorgang."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los candidatos nuevos se identifican al descubrirse y al abrir Buscar en línea. Si está desactivado, el enlace Identificar inicia el proceso."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les nouveaux candidats sont identifiés dès leur découverte et à l’ouverture de Rechercher en ligne. Si l’option est désactivée, le lien Identifier lance l’analyse."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "નવા ઉમેદવારો શોધાય કે તરત અને ઓનલાઇન શોધો ખૂલે ત્યારે ઓળખાય છે. બંધ હોય ત્યારે ઓળખો લિંક તે શરૂ કરે છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מועמדים חדשים מזוהים עם גילוים ובעת פתיחת חיפוש באינטרנט. כשהאפשרות כבויה, הקישור זהה מתחיל את הזיהוי."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नए उम्मीदवारों की पहचान मिलते ही और ऑनलाइन खोजें खुलने पर होती है। बंद होने पर पहचानें लिंक इसे शुरू करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novi kandidati identificiraju se čim se pronađu i kad se otvori Pronađi na internetu. Kad je isključeno, identifikaciju pokreće poveznica Identificiraj."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I nuovi candidati vengono identificati appena rilevati e all’apertura di Trova online. Se disattivato, l’identificazione parte dal link Identifica."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新しい候補は、見つかった時点とオンラインで検索を開いた時点で識別されます。オフの場合は「識別」リンクから始めます。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಹೊಸ ಅಭ್ಯರ್ಥಿಗಳು ಪತ್ತೆಯಾದ ತಕ್ಷಣ ಮತ್ತು ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ತೆರೆದಾಗ ಗುರುತಿಸಲ್ಪಡುತ್ತವೆ. ಆಫ್ ಆಗಿದ್ದರೆ ಗುರುತಿಸಿ ಕೊಂಡಿ ಇದನ್ನು ಆರಂಭಿಸುತ್ತದೆ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "새 후보는 발견되는 즉시, 그리고 온라인에서 찾기를 열 때 식별됩니다. 꺼져 있으면 식별 링크로 시작합니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പുതിയ കാൻഡിഡേറ്റുകൾ കണ്ടെത്തുമ്പോഴും ഓൺലൈനിൽ കണ്ടെത്തുക തുറക്കുമ്പോഴും തിരിച്ചറിയപ്പെടും. ഓഫാണെങ്കിൽ തിരിച്ചറിയുക ലിങ്ക് ഇത് തുടങ്ങുന്നു."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "नवीन उमेदवार सापडताच आणि ऑनलाइन शोधा उघडल्यावर ओळखले जातात. बंद असल्यास ओळखा दुवा हे सुरू करतो."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nieuwe kandidaten worden geïdentificeerd zodra ze worden gevonden en wanneer Online zoeken wordt geopend. Staat dit uit, dan start de link Identificeren het."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਨਵੇਂ ਉਮੀਦਵਾਰ ਲੱਭਦੇ ਸਾਰ ਅਤੇ ਆਨਲਾਈਨ ਲੱਭੋ ਖੁੱਲ੍ਹਣ ਵੇਲੇ ਪਛਾਣੇ ਜਾਂਦੇ ਹਨ। ਬੰਦ ਹੋਵੇ ਤਾਂ ਪਛਾਣੋ ਲਿੰਕ ਇਹ ਸ਼ੁਰੂ ਕਰਦਾ ਹੈ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nowi kandydaci są identyfikowani zaraz po wykryciu oraz przy otwarciu Znajdź online. Gdy opcja jest wyłączona, identyfikację uruchamia odnośnik Zidentyfikuj."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novos candidatos são identificados assim que são descobertos e ao abrir Buscar online. Se estiver desativado, o link Identificar inicia o processo."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "புதிய வேட்பாளர்கள் கண்டறியப்படும் போதும், இணையத்தில் தேடு திறக்கும் போதும் அடையாளம் காணப்படுகின்றன. அணைத்திருந்தால், அடையாளம் காண் இணைப்பு இதைத் தொடங்கும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "కొత్త అభ్యర్థులు కనుగొన్న వెంటనే, ఆన్‌లైన్‌లో కనుగొను తెరిచినప్పుడు గుర్తించబడతారు. ఆఫ్‌లో ఉంటే గుర్తించు లింక్ దీన్ని మొదలుపెడుతుంది."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "รายการใหม่จะถูกระบุทันทีที่พบ และเมื่อเปิดค้นหาออนไลน์ หากปิดอยู่ ลิงก์ระบุจะเริ่มให้"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yeni adaylar bulunur bulunmaz ve Çevrimiçi bul açıldığında tanımlanır. Kapalıyken işlemi Tanımla bağlantısı başlatır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нові кандидати ідентифікуються щойно їх знайдено та коли відкривається Знайти онлайн. Коли вимкнено, ідентифікацію запускає посилання Ідентифікувати."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "نئے امیدواروں کی شناخت ملتے ہی اور آن لائن تلاش کریں کھلنے پر ہوتی ہے۔ بند ہونے پر شناخت کریں لنک اسے شروع کرتا ہے۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mục mới được nhận dạng ngay khi tìm thấy và khi mở Tìm trên mạng. Khi tắt, liên kết Nhận dạng sẽ bắt đầu."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新候选项在被发现时以及打开“在线查找”时识别。关闭后，由“识别”链接手动开始。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新候選項目在被發現時以及開啟「在線上尋找」時識別。關閉後，由「識別」連結手動開始。"
           }
         }
       }
@@ -14841,197 +15032,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "確定要刪除此發行嗎？此操作無法復原。"
-          }
-        }
-      }
-    },
-    "Automatic" : {
-      "comment" : "Find online method selector: automatic identification",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "تلقائي"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Автоматично"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "স্বয়ংক্রিয়"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automaticky"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatisch"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatic"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automático"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatique"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "આપમેળે"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אוטומטי"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "स्वतः"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatski"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatico"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自動"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಸ್ವಯಂಚಾಲಿತ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "자동"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "സ്വയമേവ"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "स्वयंचलित"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatisch"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਆਪੇ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automatycznie"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Automático"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "தானியங்கி"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "స్వయంచాలకం"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "อัตโนมัติ"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otomatik"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Автоматично"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "خودکار"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tự động"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自動"
           }
         }
       }
@@ -84389,197 +84389,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "重新執行識別"
-          }
-        }
-      }
-    },
-    "Search manually" : {
-      "comment" : "Import signals toolbar: escape to the manual search form",
-      "localizations" : {
-        "ar" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "البحث يدويًا"
-          }
-        },
-        "bg" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Търсене ръчно"
-          }
-        },
-        "bn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "হাতে অনুসন্ধান করুন"
-          }
-        },
-        "cs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hledat ručně"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manuell suchen"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search manually"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar manualmente"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechercher manuellement"
-          }
-        },
-        "gu" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "હાથેથી શોધો"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "חפש ידנית"
-          }
-        },
-        "hi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "हाथ से खोजें"
-          }
-        },
-        "hr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pretraži ručno"
-          }
-        },
-        "it" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cerca manualmente"
-          }
-        },
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手動で検索"
-          }
-        },
-        "kn" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ಕೈಯಾರೆ ಹುಡುಕಿ"
-          }
-        },
-        "ko" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "수동 검색"
-          }
-        },
-        "ml" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "നേരിട്ട് തിരയുക"
-          }
-        },
-        "mr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "हाताने शोधा"
-          }
-        },
-        "nl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Handmatig zoeken"
-          }
-        },
-        "pa" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ਹੱਥੋਂ ਖੋਜੋ"
-          }
-        },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wyszukaj ręcznie"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Buscar manualmente"
-          }
-        },
-        "ta" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "கைமுறையாக தேடு"
-          }
-        },
-        "te" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "చేతితో వెతుకు"
-          }
-        },
-        "th" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ค้นหาด้วยตนเอง"
-          }
-        },
-        "tr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elle ara"
-          }
-        },
-        "uk" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Шукати вручну"
-          }
-        },
-        "ur" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ہاتھ سے تلاش کریں"
-          }
-        },
-        "vi" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tìm thủ công"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手动搜索"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "手動搜尋"
           }
         }
       }

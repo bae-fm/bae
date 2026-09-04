@@ -146,23 +146,10 @@ mod conversion_roundtrip {
     }
 
     #[test]
-    fn find_online_modes_cross_the_bridge_unchanged() {
-        for core in [
-            bae_core::config::DefaultFindOnlineMode::Automatic,
-            bae_core::config::DefaultFindOnlineMode::SearchManually,
-        ] {
-            let bridge = BridgeDefaultFindOnlineMode::from_core(core);
-            assert_eq!(bridge.into_core(), core);
-        }
-    }
+    fn config_exposes_independent_default_source_and_identify_automatically() {
+        use bae_core::config::{Config, DefaultImportMetadataSource as Source};
 
-    #[test]
-    fn config_exposes_independent_default_source_and_find_online_mode() {
-        use bae_core::config::{
-            Config, DefaultFindOnlineMode as Mode, DefaultImportMetadataSource as Source,
-        };
-
-        for mode in [Mode::Automatic, Mode::SearchManually] {
+        for identify_automatically in [true, false] {
             for source in [Source::FindOnline, Source::FileTags, Source::None] {
                 let mut config = Config::with_defaults(
                     "library".to_string(),
@@ -170,14 +157,11 @@ mod conversion_roundtrip {
                     std::path::PathBuf::from("/library"),
                     "Library".to_string(),
                 );
-                config.default_find_online_mode = mode;
+                config.identify_automatically = identify_automatically;
                 config.default_import_metadata_source = source;
 
                 let bridge = BridgeConfig::from_core(&config);
-                assert_eq!(
-                    bridge.default_find_online_mode,
-                    BridgeDefaultFindOnlineMode::from_core(mode)
-                );
+                assert_eq!(bridge.identify_automatically, identify_automatically);
                 assert_eq!(
                     bridge.default_import_metadata_source,
                     BridgeDefaultImportMetadataSource::from_core(source),

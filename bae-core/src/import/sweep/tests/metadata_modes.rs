@@ -12,7 +12,7 @@ async fn automatic_lookup_off_runs_none_of_the_identification_pipeline() {
     fixture.scan(1).await;
     fixture
         .manager
-        .set_default_find_online_mode(crate::config::DefaultFindOnlineMode::SearchManually)
+        .set_identify_automatically(false)
         .unwrap();
 
     fixture.sweep_once().await;
@@ -151,7 +151,7 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
     fixture.scan(1).await;
     fixture
         .manager
-        .set_default_find_online_mode(crate::config::DefaultFindOnlineMode::SearchManually)
+        .set_identify_automatically(false)
         .unwrap();
 
     fixture.start_explicit_lookup(&dir);
@@ -179,7 +179,7 @@ async fn disabling_automatic_lookup_cancels_running_background_identification() 
 
     fixture
         .manager
-        .set_default_find_online_mode(crate::config::DefaultFindOnlineMode::SearchManually)
+        .set_identify_automatically(false)
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), pass)
         .await
@@ -217,7 +217,7 @@ async fn disabling_automatic_lookup_preserves_a_settled_result() {
 
     fixture
         .manager
-        .set_default_find_online_mode(crate::config::DefaultFindOnlineMode::SearchManually)
+        .set_identify_automatically(false)
         .unwrap();
     fixture.sweep_once().await;
 
@@ -264,7 +264,7 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
     let fixture = Fixture::new("enable-schedules-unresolved").await;
     fixture
         .manager
-        .set_default_find_online_mode(crate::config::DefaultFindOnlineMode::SearchManually)
+        .set_identify_automatically(false)
         .unwrap();
     let sweep = start(
         fixture.import.clone(),
@@ -289,7 +289,7 @@ async fn enabling_automatic_lookup_schedules_unresolved_candidates() {
 
     fixture
         .manager
-        .set_default_find_online_mode(crate::config::DefaultFindOnlineMode::Automatic)
+        .set_identify_automatically(true)
         .unwrap();
 
     tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))

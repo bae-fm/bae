@@ -104,7 +104,7 @@ struct SyncStatusStoreTests {
             pauseBetweenSides: false,
             maxConcurrentUploads: 1,
             maxConcurrentDownloads: 1,
-            defaultFindOnlineMode: .automatic,
+            identifyAutomatically: true,
             defaultImportMetadataSource: .findOnline,
             showRemainingTime: false,
             libraryFullWidth: false,

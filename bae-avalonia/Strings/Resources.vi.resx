@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>tìm thủ công</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Không tìm thấy kết quả khớp tự động</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Tín hiệu</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>Tự động</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Thất bại</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Sẵn sàng</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Đang chờ nhận dạng</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Tìm trên mạng…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Hãy thử đọc lại mục này.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Chung</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Chế độ Tìm trên mạng mặc định</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Nguồn siêu dữ liệu mặc định</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Tìm trên mạng</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Tự động nhận dạng</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Mục mới được nhận dạng ngay khi tìm thấy và khi mở Tìm trên mạng. Khi tắt, liên kết Nhận dạng sẽ bắt đầu.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Không có</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Tra cứu trực tuyến</value></data>
   <data name="action.clear" xml:space="preserve"><value>xóa</value></data>

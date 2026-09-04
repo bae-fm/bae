@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>ръчно търсене</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Няма автоматични съвпадения</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Сигнали</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>Автоматично</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Неуспешно</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Готово</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Чака идентифициране</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Търсене онлайн…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Опитайте да прочетете кандидата отново.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Общи</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Режим за търсене онлайн по подразбиране</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Източник на метаданни по подразбиране</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Търсене онлайн</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Автоматично идентифициране</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Новите кандидати се идентифицират при откриването им и при отваряне на Търсене онлайн. Когато е изключено, идентифицирането започва от връзката Идентифициране.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Няма</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Търсене онлайн</value></data>
   <data name="action.clear" xml:space="preserve"><value>изчисти</value></data>

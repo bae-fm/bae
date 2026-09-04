@@ -117,10 +117,7 @@ fn import_metadata_settings_default_to_automatic_lookup() {
     let tmp = TempDir::new().unwrap();
     let config = make_test_config("lib", tmp.path().to_path_buf());
 
-    assert_eq!(
-        config.default_find_online_mode,
-        DefaultFindOnlineMode::Automatic
-    );
+    assert!(config.identify_automatically);
     assert_eq!(
         config.default_import_metadata_source,
         DefaultImportMetadataSource::FindOnline
@@ -128,10 +125,10 @@ fn import_metadata_settings_default_to_automatic_lookup() {
 }
 
 #[test]
-fn import_metadata_source_and_find_online_mode_roundtrip_independently() {
+fn import_metadata_source_and_identify_automatically_roundtrip_independently() {
     let tmp = TempDir::new().unwrap();
     let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    config.default_find_online_mode = DefaultFindOnlineMode::SearchManually;
+    config.identify_automatically = false;
     config.default_import_metadata_source = DefaultImportMetadataSource::None;
     config.save_to_config_yaml().unwrap();
 
@@ -140,31 +137,11 @@ fn import_metadata_source_and_find_online_mode_roundtrip_independently() {
             .unwrap();
     let loaded = yaml.into_config("device".to_string(), tmp.path().to_path_buf());
 
-    assert_eq!(
-        loaded.default_find_online_mode,
-        DefaultFindOnlineMode::SearchManually
-    );
+    assert!(!loaded.identify_automatically);
     assert_eq!(
         loaded.default_import_metadata_source,
         DefaultImportMetadataSource::None
     );
-}
-
-#[test]
-fn find_online_mode_is_independent_of_the_discovery_default() {
-    let tmp = TempDir::new().unwrap();
-    let mut config = make_test_config("lib", tmp.path().to_path_buf());
-    for source in [
-        DefaultImportMetadataSource::FindOnline,
-        DefaultImportMetadataSource::FileTags,
-        DefaultImportMetadataSource::None,
-    ] {
-        config.default_import_metadata_source = source;
-        assert_eq!(
-            config.default_find_online_mode,
-            DefaultFindOnlineMode::Automatic
-        );
-    }
 }
 
 /// A hand-edited `0` is refused at load rather than reaching coven — the
@@ -287,7 +264,7 @@ fn config_yaml_requires_every_bae_field() {
         "show_remaining_time",
         "library_full_width",
         "verify_decode_on_import",
-        "default_find_online_mode",
+        "identify_automatically",
         "default_import_metadata_source",
         "cast_enabled",
     ] {

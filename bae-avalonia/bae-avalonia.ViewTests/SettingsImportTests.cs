@@ -32,9 +32,7 @@ public sealed class SettingsImportTests
 
         settings.BuildImport(content, renderers);
 
-        var pickers = content.GetLogicalDescendants().OfType<ComboBox>().ToList();
-        Assert.Equal(2, pickers.Count);
-        var picker = pickers[0];
+        var picker = Assert.Single(content.GetLogicalDescendants().OfType<ComboBox>());
         Assert.Equal(
             new[]
             {
@@ -48,19 +46,15 @@ public sealed class SettingsImportTests
         Assert.Contains(
             content.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == Loc.Chrome("settings.import.default_source"));
-        var modePicker = pickers[1];
+        var identifyAutomatically = Assert.Single(
+            content.GetLogicalDescendants().OfType<CheckBox>());
         Assert.Equal(
-            new[]
-            {
-                BridgeDefaultFindOnlineMode.Automatic,
-                BridgeDefaultFindOnlineMode.SearchManually,
-            },
-            modePicker.Items.OfType<ComboBoxItem>()
-                .Select(item => Assert.IsType<BridgeDefaultFindOnlineMode>(item.Tag)));
+            Loc.Chrome("settings.import.identify_automatically"),
+            identifyAutomatically.Content);
         Assert.Contains(
             content.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text
-                == Loc.Chrome("settings.import.default_find_online_mode"));
+                == Loc.Chrome("settings.import.identify_automatically_help"));
         Assert.Contains(
             content.GetLogicalDescendants().OfType<TextBlock>(),
             text => text.Text == Loc.Chrome("settings.import.online_lookup"));
@@ -75,12 +69,9 @@ public sealed class SettingsImportTests
             Assert.Single(renderers)(new Settings
             {
                 DefaultImportMetadataSource = source,
-                DefaultFindOnlineMode = BridgeDefaultFindOnlineMode.SearchManually,
+                IdentifyAutomatically = false,
             });
-            Assert.True(modePicker.IsVisible);
-            Assert.Equal(
-                BridgeDefaultFindOnlineMode.SearchManually,
-                Assert.IsType<ComboBoxItem>(modePicker.SelectedItem).Tag);
+            Assert.False(identifyAutomatically.IsChecked);
         }
     }
 }

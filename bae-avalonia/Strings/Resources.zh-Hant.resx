@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>手動搜尋</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>找不到自動比對結果</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>訊號</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>自動</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失敗</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>就緒</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>等待識別</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>在線上尋找…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>請嘗試重新讀取候選項目。</value></data>
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>在線尋找預設模式</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>預設中繼資料來源</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>在線上尋找</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>自動識別</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>新候選項目在被發現時以及開啟「在線上尋找」時識別。關閉後，由「識別」連結手動開始。</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>無</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>在線尋找</value></data>
   <data name="action.clear" xml:space="preserve"><value>清除</value></data>

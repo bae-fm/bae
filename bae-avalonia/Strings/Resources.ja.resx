@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>手動で検索</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>自動一致は見つかりませんでした</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>シグナル</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>自動</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>失敗</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>準備完了</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>識別待ち</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>オンラインで検索…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>候補をもう一度読み込んでください。</value></data>
   <data name="import.search.general" xml:space="preserve"><value>一般</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>「オンラインで検索」のデフォルトモード</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>デフォルトのメタデータソース</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>オンラインで検索</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>自動で識別</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>新しい候補は、見つかった時点とオンラインで検索を開いた時点で識別されます。オフの場合は「識別」リンクから始めます。</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>なし</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>オンライン検索</value></data>
   <data name="action.clear" xml:space="preserve"><value>クリア</value></data>

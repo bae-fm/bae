@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>szukaj ręcznie</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Nie znaleziono automatycznych dopasowań</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Sygnały</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>Automatycznie</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Niepowodzenie</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Gotowe</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Czeka na identyfikację</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Znajdź online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Spróbuj ponownie odczytać kandydata.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Ogólne</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Domyślny tryb wyszukiwania online</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Domyślne źródło metadanych</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Znajdź online</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identyfikuj automatycznie</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Nowi kandydaci są identyfikowani zaraz po wykryciu oraz przy otwarciu Znajdź online. Gdy opcja jest wyłączona, identyfikację uruchamia odnośnik Zidentyfikuj.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Brak</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Wyszukiwanie online</value></data>
   <data name="action.clear" xml:space="preserve"><value>wyczyść</value></data>

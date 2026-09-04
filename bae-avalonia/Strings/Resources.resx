@@ -412,7 +412,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>Search manually</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>No automatic matches found</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Signals</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>Automatic</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Failed</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Ready</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Waiting to be identified</value></data>
@@ -505,9 +504,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Find online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Try reading the candidate again.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>General</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Default Find online mode</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Default metadata source</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Find online</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identify automatically</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>New candidates are identified as they are discovered, and when Find online opens. When off, the Identify link starts a run.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>None</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Online lookup</value></data>
   <data name="action.clear" xml:space="preserve"><value>clear</value></data>

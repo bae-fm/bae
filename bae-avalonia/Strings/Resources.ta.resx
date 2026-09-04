@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>கைமுறையாகத் தேடு</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>தானியங்கி பொருத்தங்கள் எதுவும் இல்லை</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>சமிக்ஞைகள்</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>தானியங்கி</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>தோல்வியடைந்தது</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>தயார்</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>அடையாளம் காண காத்திருக்கிறது</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>இணையத்தில் தேடு…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>தேர்வை மீண்டும் படிக்க முயலவும்.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>பொது</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>இணையத்தில் தேடுவதற்கான இயல்புநிலை முறை</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>இயல்புநிலை மெட்டாடேட்டா மூலம்</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>இணையத்தில் தேடு</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>தானாக அடையாளம் காண்</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>புதிய வேட்பாளர்கள் கண்டறியப்படும் போதும், இணையத்தில் தேடு திறக்கும் போதும் அடையாளம் காணப்படுகின்றன. அணைத்திருந்தால், அடையாளம் காண் இணைப்பு இதைத் தொடங்கும்.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>எதுவுமில்லை</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>இணையத் தேடல்</value></data>
   <data name="action.clear" xml:space="preserve"><value>அழி</value></data>

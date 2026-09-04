@@ -1,5 +1,5 @@
-//! Queue-wide identification: every unseeded candidate in automatic Lookup
-//! mode acquires a verdict, without anyone clicking it.
+//! Queue-wide identification: while `identify_automatically` is on, every
+//! unseeded Lookup candidate acquires a verdict without anyone clicking it.
 //!
 //! The sweep owns no pipeline of its own. It walks the candidates the scan
 //! already found, drives each through the existing extraction → identify pair
@@ -163,7 +163,7 @@ pub fn start(
                         if changed.is_err() {
                             return;
                         }
-                        if config.borrow().find_online_starts_automatically() {
+                        if config.borrow().identify_automatically {
                             run_pass(&loop_context, &loop_token, &mut event_rx, &mut config).await;
                         } else {
                             loop_context.release_all();
@@ -319,7 +319,7 @@ async fn run_pass_once(
     bus: &mut mpsc::UnboundedReceiver<Result<ImportEvent, broadcast::error::RecvError>>,
     config: &mut tokio::sync::watch::Receiver<crate::config::Config>,
 ) -> PassOutcome {
-    if !config.borrow().find_online_starts_automatically() {
+    if !config.borrow().identify_automatically {
         context.release_all();
         emit_progress(context, 0, 0);
         return PassOutcome::Complete;
@@ -391,7 +391,7 @@ async fn run_pass_once(
 
     loop {
         while in_flight.len() + finishing.len() < MAX_IN_FLIGHT {
-            if !config.borrow().find_online_starts_automatically() {
+            if !config.borrow().identify_automatically {
                 context.release_all();
                 finishing.shutdown().await;
                 emit_progress(context, 0, 0);
@@ -473,7 +473,7 @@ async fn run_pass_once(
                 if changed.is_err()
                     || !config
                         .borrow()
-                        .find_online_starts_automatically()
+                        .identify_automatically
                 {
                     context.release_all();
                     finishing.shutdown().await;

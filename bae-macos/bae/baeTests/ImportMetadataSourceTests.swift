@@ -63,11 +63,11 @@ private final class MetadataSourceRecorder {
 
     func services(
         _ store: ImportStore,
-        defaultFindOnlineMode: BridgeDefaultFindOnlineMode = .automatic
+        identifyAutomatically: Bool = true
     ) -> ImportMappingServices {
         ImportMappingServices(
             importer: importer,
-            defaultFindOnlineMode: defaultFindOnlineMode,
+            identifyAutomatically: identifyAutomatically,
             importStore: store,
             endEditing: {},
             previewAudio: PreviewAudio.stub(),
@@ -151,12 +151,9 @@ extension ImportMetadataSourceTests {
         )
     }
 
-    @Test("Find online starts only in the configured automatic method")
-    func findOnlineHonorsConfiguredMethod() throws {
-        for mode in [
-            BridgeDefaultFindOnlineMode.searchManually,
-            .automatic,
-        ] {
+    @Test("Find online identifies on open only when the setting is on")
+    func findOnlineHonorsIdentifyAutomatically() throws {
+        for identifyAutomatically in [false, true] {
             let store = MappingFixtures.store(
                 mapping: nil,
                 metadataProvenance: nil,
@@ -172,13 +169,13 @@ extension ImportMetadataSourceTests {
                 for: candidate,
                 services: recorder.services(
                     store,
-                    defaultFindOnlineMode: mode
+                    identifyAutomatically: identifyAutomatically
                 )
             )
 
             #expect(
                 recorder.identifiedKeys
-                    == (mode == .automatic
+                    == (identifyAutomatically
                         ? [MappingFixtures.candidateKey] : [])
             )
         }

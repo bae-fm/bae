@@ -118,7 +118,7 @@ public sealed class ImportMappingPaneTests
         var (pane, _) = Show(
             detail,
             identified: identified,
-            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.Automatic);
+            identifyAutomatically: true);
 
         pane.GetLogicalDescendants().OfType<Button>()
             .First(button => Equals(
@@ -139,7 +139,7 @@ public sealed class ImportMappingPaneTests
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
             identified: identified,
-            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually);
+            identifyAutomatically: false);
 
         Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
 
@@ -147,9 +147,6 @@ public sealed class ImportMappingPaneTests
         Assert.Contains(
             pane.GetLogicalDescendants().OfType<Button>(),
             button => Equals(button.Content, Loc.Chrome("action.search")));
-        Assert.DoesNotContain(
-            pane.GetLogicalDescendants().OfType<Button>(),
-            button => Equals(button.Content, Loc.Chrome("import.search.auto")));
     }
 
     [AvaloniaFact]
@@ -159,7 +156,7 @@ public sealed class ImportMappingPaneTests
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
             identified: identified,
-            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.Automatic);
+            identifyAutomatically: true);
 
         Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
 
@@ -202,7 +199,7 @@ public sealed class ImportMappingPaneTests
     {
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
-            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually);
+            identifyAutomatically: false);
 
         Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
         Assert.DoesNotContain("Album", Fields(pane));
@@ -234,7 +231,7 @@ public sealed class ImportMappingPaneTests
     {
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
-            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually);
+            identifyAutomatically: false);
 
         Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
 
@@ -254,7 +251,7 @@ public sealed class ImportMappingPaneTests
         var searches = new List<(string Key, BridgeSearchQuery Query)>();
         var (pane, _) = Show(
             Detail(metadataProvenance: null, edit: BlankEdit()),
-            defaultFindOnlineMode: BridgeDefaultFindOnlineMode.SearchManually,
+            identifyAutomatically: false,
             searches: searches);
 
         Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
@@ -451,8 +448,7 @@ public sealed class ImportMappingPaneTests
         Action<string, BridgeCandidateEditField, string>? onEditField = null,
         BridgeCandidateRuntimeSnapshot? running = null,
         List<string>? identified = null,
-        BridgeDefaultFindOnlineMode defaultFindOnlineMode =
-            BridgeDefaultFindOnlineMode.Automatic,
+        bool identifyAutomatically = true,
         List<BridgeMetadataProvenance>? appliedProvenances = null,
         IReadOnlyList<ReleaseCandidateChoice>? matches = null,
         ImportMetadataPresentation? initialPresentation = null,
@@ -532,7 +528,7 @@ public sealed class ImportMappingPaneTests
             {
                 GetSettings = () => (true, new Settings
                 {
-                    DefaultFindOnlineMode = defaultFindOnlineMode,
+                    IdentifyAutomatically = identifyAutomatically,
                     DiscogsUsable = true,
                 }),
             });

@@ -23,9 +23,10 @@ public sealed class Settings
     public string? SyncAccount { get; set; }
     public bool PauseBetweenSides { get; set; }
 
-    /// <summary>The method shown whenever Find online opens.</summary>
-    internal BridgeDefaultFindOnlineMode DefaultFindOnlineMode { get; set; } =
-        BridgeDefaultFindOnlineMode.Automatic;
+    /// <summary>Whether identification starts on its own: newly discovered
+    /// candidates are identified as they are found, and opening Find online
+    /// starts a run.</summary>
+    internal bool IdentifyAutomatically { get; set; } = true;
 
     /// <summary>The source applied to a newly discovered candidate.</summary>
     internal BridgeDefaultImportMetadataSource DefaultImportMetadataSource { get; set; } =

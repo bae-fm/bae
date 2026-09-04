@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>hledat ručně</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Žádné automatické shody</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Signály</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>Automaticky</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Selhalo</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Připraveno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeká na identifikaci</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Najít online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Zkuste kandidáta načíst znovu.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Obecné</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Výchozí režim hledání online</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Výchozí zdroj metadat</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Najít online</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identifikovat automaticky</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Noví kandidáti se identifikují hned po nalezení a při otevření Najít online. Když je vypnuto, identifikaci spustí odkaz Identifikovat.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Žádný</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Online vyhledávání</value></data>
   <data name="action.clear" xml:space="preserve"><value>vymazat</value></data>

@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>હાથેથી શોધો</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>કોઈ આપમેળે મેળ મળ્યો નથી</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>સંકેતો</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>આપમેળે</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>નિષ્ફળ</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>તૈયાર</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ઓળખની રાહમાં</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ઓનલાઇન શોધો…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ઉમેદવારને ફરી વાંચવાનો પ્રયાસ કરો.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>સામાન્ય</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ઑનલાઇન શોધનો ડિફૉલ્ટ મોડ</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ડિફૉલ્ટ મેટાડેટા સ્રોત</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ઓનલાઇન શોધો</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>આપમેળે ઓળખો</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>નવા ઉમેદવારો શોધાય કે તરત અને ઓનલાઇન શોધો ખૂલે ત્યારે ઓળખાય છે. બંધ હોય ત્યારે ઓળખો લિંક તે શરૂ કરે છે.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>કોઈ નહીં</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ઑનલાઇન શોધ</value></data>
   <data name="action.clear" xml:space="preserve"><value>સાફ કરો</value></data>

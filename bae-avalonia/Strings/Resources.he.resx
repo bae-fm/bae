@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>חפש ידנית</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>לא נמצאו התאמות אוטומטיות</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>אותות</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>אוטומטי</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>נכשל</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>מוכן</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ממתין לזיהוי</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>חיפוש באינטרנט…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>נסו לקרוא שוב את המועמד.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>כללי</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>מצב ברירת המחדל לחיפוש באינטרנט</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>מקור מטא־נתונים כברירת מחדל</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>זיהוי אוטומטי</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>מועמדים חדשים מזוהים עם גילוים ובעת פתיחת חיפוש באינטרנט. כשהאפשרות כבויה, הקישור זהה מתחיל את הזיהוי.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ללא</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>חיפוש באינטרנט</value></data>
   <data name="action.clear" xml:space="preserve"><value>נקה</value></data>

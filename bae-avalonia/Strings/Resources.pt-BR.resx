@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>buscar manualmente</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>Nenhuma correspondência automática encontrada</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>Sinais</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>Automático</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>Falhou</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>Pronto</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Aguardando identificação</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>Buscar online…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>Tente ler o candidato novamente.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>Geral</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>Modo padrão de Buscar online</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>Fonte de metadados padrão</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>Buscar online</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>Identificar automaticamente</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>Novos candidatos são identificados assim que são descobertos e ao abrir Buscar online. Se estiver desativado, o link Identificar inicia o processo.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>Nenhuma</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>Busca online</value></data>
   <data name="action.clear" xml:space="preserve"><value>limpar</value></data>

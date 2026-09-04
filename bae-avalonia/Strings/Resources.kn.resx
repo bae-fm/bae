@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>ಕೈಯಾರೆ ಹುಡುಕಿ</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತ ಹೊಂದಾಣಿಕೆಗಳು ಸಿಗಲಿಲ್ಲ</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>ಸಂಕೇತಗಳು</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತ</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>ವಿಫಲವಾಯಿತು</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಗೆ ಕಾಯುತ್ತಿದೆ</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>ಅಭ್ಯರ್ಥಿಯನ್ನು ಮತ್ತೆ ಓದಲು ಪ್ರಯತ್ನಿಸಿ.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>ಸಾಮಾನ್ಯ</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ಆನ್‌ಲೈನ್ ಹುಡುಕಾಟದ ಡೀಫಾಲ್ಟ್ ಮೋಡ್</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ಡೀಫಾಲ್ಟ್ ಮೆಟಾಡೇಟಾ ಮೂಲ</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಗುರುತಿಸಿ</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>ಹೊಸ ಅಭ್ಯರ್ಥಿಗಳು ಪತ್ತೆಯಾದ ತಕ್ಷಣ ಮತ್ತು ಆನ್‌ಲೈನ್‌ನಲ್ಲಿ ಹುಡುಕಿ ತೆರೆದಾಗ ಗುರುತಿಸಲ್ಪಡುತ್ತವೆ. ಆಫ್ ಆಗಿದ್ದರೆ ಗುರುತಿಸಿ ಕೊಂಡಿ ಇದನ್ನು ಆರಂಭಿಸುತ್ತದೆ.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ಯಾವುದೂ ಇಲ್ಲ</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ಆನ್‌ಲೈನ್ ಹುಡುಕಾಟ</value></data>
   <data name="action.clear" xml:space="preserve"><value>ಅಳಿಸಿ</value></data>

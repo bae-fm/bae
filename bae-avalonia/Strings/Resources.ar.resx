@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>البحث يدويًا</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>لم يُعثر على تطابقات تلقائية</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>الإشارات</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>تلقائي</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>فشل</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>جاهز</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>في انتظار التحديد</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>البحث عبر الإنترنت…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>حاول قراءة العنصر المرشّح مرة أخرى.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>عام</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>وضع البحث عبر الإنترنت الافتراضي</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>مصدر البيانات الوصفية الافتراضي</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>تحديد الهوية تلقائيًا</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>تُحدَّد هوية المرشحين الجدد فور اكتشافهم وعند فتح البحث عبر الإنترنت. عند الإيقاف، يبدأ التحديد من رابط تحديد الهوية.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>بلا</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>البحث عبر الإنترنت</value></data>
   <data name="action.clear" xml:space="preserve"><value>مسح</value></data>

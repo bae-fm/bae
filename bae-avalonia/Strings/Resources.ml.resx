@@ -387,7 +387,6 @@
   <data name="import.row.search_manually" xml:space="preserve"><value>നേരിട്ട് തിരയുക</value></data>
   <data name="import.search.no_automatic_matches" xml:space="preserve"><value>സ്വയമേവയുള്ള പൊരുത്തങ്ങളൊന്നും കണ്ടെത്തിയില്ല</value></data>
   <data name="import.search.signals" xml:space="preserve"><value>സിഗ്നലുകൾ</value></data>
-  <data name="import.search.auto" xml:space="preserve"><value>സ്വയമേവ</value></data>
   <data name="import.row.failed" xml:space="preserve"><value>പരാജയപ്പെട്ടു</value></data>
   <data name="import.row.ready" xml:space="preserve"><value>തയ്യാർ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>തിരിച്ചറിയലിനായി കാത്തിരിക്കുന്നു</value></data>
@@ -478,9 +477,10 @@
   <data name="import.metadata.find_online_ellipsis" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക…</value></data>
   <data name="import.metadata.try_again" xml:space="preserve"><value>സ്ഥാനാർഥിയെ വീണ്ടും വായിക്കാൻ ശ്രമിക്കുക.</value></data>
   <data name="import.search.general" xml:space="preserve"><value>പൊതുവായത്</value></data>
-  <data name="settings.import.default_find_online_mode" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തലിന്റെ ഡിഫോൾട്ട് മോഡ്</value></data>
   <data name="settings.import.default_source" xml:space="preserve"><value>ഡിഫോൾട്ട് മെറ്റാഡാറ്റ ഉറവിടം</value></data>
   <data name="settings.import.find_online" xml:space="preserve"><value>ഓൺലൈനിൽ കണ്ടെത്തുക</value></data>
+  <data name="settings.import.identify_automatically" xml:space="preserve"><value>സ്വയമേവ തിരിച്ചറിയുക</value></data>
+  <data name="settings.import.identify_automatically_help" xml:space="preserve"><value>പുതിയ കാൻഡിഡേറ്റുകൾ കണ്ടെത്തുമ്പോഴും ഓൺലൈനിൽ കണ്ടെത്തുക തുറക്കുമ്പോഴും തിരിച്ചറിയപ്പെടും. ഓഫാണെങ്കിൽ തിരിച്ചറിയുക ലിങ്ക് ഇത് തുടങ്ങുന്നു.</value></data>
   <data name="settings.import.none" xml:space="preserve"><value>ഒന്നുമില്ല</value></data>
   <data name="settings.import.online_lookup" xml:space="preserve"><value>ഓൺലൈൻ തിരയൽ</value></data>
   <data name="action.clear" xml:space="preserve"><value>മായ്ക്കുക</value></data>

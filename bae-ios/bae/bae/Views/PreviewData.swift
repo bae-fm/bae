@@ -21,7 +21,7 @@ enum PreviewData {
                     pauseBetweenSides: false,
                     maxConcurrentUploads: 3,
                     maxConcurrentDownloads: 3,
-                    defaultFindOnlineMode: .automatic,
+                    identifyAutomatically: true,
                     defaultImportMetadataSource: .findOnline,
                     showRemainingTime: false,
                     libraryFullWidth: false,
