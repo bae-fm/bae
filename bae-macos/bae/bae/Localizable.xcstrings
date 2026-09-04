@@ -109981,1148 +109981,1148 @@
         }
       }
     },
-    "Neither source knows these signals." : {
-      "comment" : "Find online result area: headline when identification matched nothing",
+    "Automatic" : {
+      "comment" : "Find online: caps label on the empty identify zone",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يعرف أي من المصدرين هذه الإشارات."
+            "value" : "تلقائي"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нито един източник не разпознава тези сигнали."
+            "value" : "Автоматично"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "কোনো উৎসই এই সংকেতগুলো চেনে না।"
+            "value" : "স্বয়ংক্রিয়"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ani jeden zdroj tyto signály nezná."
+            "value" : "Automaticky"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Keine der beiden Quellen kennt diese Signale."
+            "value" : "Automatisch"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Neither source knows these signals."
+            "value" : "Automatic"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ninguna de las dos fuentes conoce estas señales."
+            "value" : "Automático"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune des deux sources ne connaît ces signaux."
+            "value" : "Automatique"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "બંનેમાંથી કોઈ સ્રોત આ સંકેતો જાણતો નથી."
+            "value" : "આપોઆપ"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אף אחד מהמקורות לא מכיר את האותות האלה."
+            "value" : "אוטומטי"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "दोनों में से कोई स्रोत इन संकेतों को नहीं जानता।"
+            "value" : "स्वचालित"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nijedan izvor ne poznaje ove signale."
+            "value" : "Automatski"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nessuna delle due fonti conosce questi segnali."
+            "value" : "Automatico"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "どちらのソースもこれらの手がかりを知りません。"
+            "value" : "自動"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಎರಡೂ ಮೂಲಗಳಿಗೆ ಈ ಸಂಕೇತಗಳು ಗೊತ್ತಿಲ್ಲ."
+            "value" : "ಸ್ವಯಂಚಾಲಿತ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "두 소스 모두 이 신호를 알지 못합니다."
+            "value" : "자동"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "രണ്ട് ഉറവിടങ്ങൾക്കും ഈ സൂചനകൾ അറിയില്ല."
+            "value" : "സ്വയമേവ"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "दोन्हीपैकी कोणत्याही स्रोताला हे संकेत माहीत नाहीत."
+            "value" : "स्वयंचलित"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geen van beide bronnen kent deze signalen."
+            "value" : "Automatisch"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਦੋਵਾਂ ਵਿੱਚੋਂ ਕੋਈ ਵੀ ਸਰੋਤ ਇਹ ਸੰਕੇਤ ਨਹੀਂ ਜਾਣਦਾ।"
+            "value" : "ਆਪਣੇ-ਆਪ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Żadne ze źródeł nie zna tych sygnałów."
+            "value" : "Automatycznie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma das fontes conhece esses sinais."
+            "value" : "Automático"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இரண்டு மூலங்களுக்கும் இந்த அடையாளங்கள் தெரியவில்லை."
+            "value" : "தானியங்கு"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "రెండు మూలాలకూ ఈ సంకేతాలు తెలియవు."
+            "value" : "స్వయంచాలకం"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ไม่มีแหล่งข้อมูลใดรู้จักสัญญาณเหล่านี้"
+            "value" : "อัตโนมัติ"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kaynakların hiçbiri bu ipuçlarını tanımıyor."
+            "value" : "Otomatik"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Жодне джерело не знає цих сигналів."
+            "value" : "Автоматично"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "دونوں میں سے کوئی ذریعہ ان اشاروں کو نہیں جانتا۔"
+            "value" : "خودکار"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không nguồn nào biết những dấu hiệu này."
+            "value" : "Tự động"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "两个来源都不认识这些线索。"
+            "value" : "自动"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "兩個來源都不認得這些線索。"
+            "value" : "自動"
           }
         }
       }
     },
-    "Small pressings and reissues often lack a Disc ID entry. Searching by artist and album usually finds them." : {
-      "comment" : "Find online result area: hint under the nothing-found headline",
+    "Manual" : {
+      "comment" : "Find online: caps label beside the docked search form",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "غالبًا ما تفتقر النسخ المحدودة وإعادات الإصدار إلى مدخل معرّف القرص. البحث بالفنان والألبوم يعثر عليها عادةً."
+            "value" : "يدوي"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Малките тиражи и преизданията често нямат запис с ID на диска. Търсенето по изпълнител и албум обикновено ги намира."
+            "value" : "Ръчно"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ছোট প্রেসিং ও পুনঃপ্রকাশে প্রায়ই ডিস্ক ID এন্ট্রি থাকে না। শিল্পী ও অ্যালবাম দিয়ে খুঁজলে সাধারণত পাওয়া যায়।"
+            "value" : "ম্যানুয়াল"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Malé lisy a reedice často nemají záznam s ID disku. Hledání podle interpreta a alba je obvykle najde."
+            "value" : "Ručně"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kleine Pressungen und Neuauflagen haben oft keinen Disc-ID-Eintrag. Die Suche nach Interpret und Album findet sie meist."
+            "value" : "Manuell"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Small pressings and reissues often lack a Disc ID entry. Searching by artist and album usually finds them."
+            "value" : "Manual"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Las ediciones pequeñas y las reediciones suelen no tener entrada de ID de disco. Buscar por artista y álbum suele encontrarlas."
+            "value" : "Manual"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les petits pressages et les rééditions n'ont souvent pas d'entrée ID de disque. Une recherche par artiste et album les trouve généralement."
+            "value" : "Manuel"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "નાના પ્રેસિંગ અને પુનઃપ્રકાશનોમાં ઘણીવાર ડિસ્ક ID નોંધ હોતી નથી. કલાકાર અને આલ્બમથી શોધવાથી સામાન્ય રીતે મળી જાય છે."
+            "value" : "જાતે"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "להוצאות קטנות ולמהדורות חוזרות אין לרוב רשומת מזהה תקליטור. חיפוש לפי אמן ואלבום בדרך כלל מוצא אותן."
+            "value" : "ידני"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "छोटी प्रेसिंग और पुनर्प्रकाशनों में अक्सर डिस्क ID प्रविष्टि नहीं होती। कलाकार और एल्बम से खोजने पर वे आमतौर पर मिल जाती हैं।"
+            "value" : "मैन्युअल"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mala izdanja i reizdanja često nemaju unos s ID-om diska. Pretraga po izvođaču i albumu obično ih pronađe."
+            "value" : "Ručno"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le stampe limitate e le ristampe spesso non hanno una voce Disc ID. Cercare per artista e album di solito le trova."
+            "value" : "Manuale"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "少量プレスや再発にはディスクIDの登録がないことがよくあります。アーティストとアルバムで検索すれば見つかることがほとんどです。"
+            "value" : "手動"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಸಣ್ಣ ಪ್ರೆಸ್ಸಿಂಗ್‌ಗಳು ಮತ್ತು ಮರುಬಿಡುಗಡೆಗಳಿಗೆ ಡಿಸ್ಕ್ ID ನಮೂದು ಇರುವುದಿಲ್ಲ. ಕಲಾವಿದ ಮತ್ತು ಆಲ್ಬಂ ಮೂಲಕ ಹುಡುಕಿದರೆ ಸಾಮಾನ್ಯವಾಗಿ ಸಿಗುತ್ತವೆ."
+            "value" : "ಹಸ್ತಚಾಲಿತ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "소량 프레싱과 재발매반에는 디스크 ID 항목이 없는 경우가 많습니다. 아티스트와 앨범으로 검색하면 대개 찾을 수 있습니다."
+            "value" : "수동"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ചെറിയ പ്രസ്സിംഗുകൾക്കും പുനഃപ്രകാശനങ്ങൾക്കും ഡിസ്‌ക് ID രേഖ പലപ്പോഴും ഉണ്ടാകാറില്ല. കലാകാരനും ആൽബവും ഉപയോഗിച്ച് തിരഞ്ഞാൽ സാധാരണ കണ്ടെത്താം."
+            "value" : "മാനുവൽ"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "लहान प्रेसिंग आणि पुनर्प्रकाशनांना अनेकदा डिस्क ID नोंद नसते. कलाकार आणि अल्बमने शोधल्यास ती सहसा सापडतात."
+            "value" : "मॅन्युअल"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kleine persingen en heruitgaven hebben vaak geen Disc ID-vermelding. Zoeken op artiest en album vindt ze meestal wel."
+            "value" : "Handmatig"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਛੋਟੀਆਂ ਪ੍ਰੈੱਸਿੰਗਾਂ ਅਤੇ ਮੁੜ-ਰਿਲੀਜ਼ਾਂ ਵਿੱਚ ਅਕਸਰ ਡਿਸਕ ID ਇੰਦਰਾਜ ਨਹੀਂ ਹੁੰਦਾ। ਕਲਾਕਾਰ ਅਤੇ ਐਲਬਮ ਨਾਲ ਖੋਜਣ ਤੇ ਇਹ ਆਮ ਤੌਰ ਤੇ ਮਿਲ ਜਾਂਦੀਆਂ ਹਨ।"
+            "value" : "ਹੱਥੀਂ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Małe tłoczenia i wznowienia często nie mają wpisu DiscID. Wyszukiwanie po wykonawcy i albumie zwykle je znajduje."
+            "value" : "Ręcznie"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prensagens pequenas e relançamentos costumam não ter registro de ID do disco. Buscar por artista e álbum geralmente os encontra."
+            "value" : "Manual"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "சிறிய பதிப்புகளுக்கும் மறுவெளியீடுகளுக்கும் பெரும்பாலும் Disc ID பதிவு இருக்காது. கலைஞர் மற்றும் ஆல்பம் மூலம் தேடினால் வழக்கமாக கிடைக்கும்."
+            "value" : "கைமுறை"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "చిన్న ప్రెస్సింగ్‌లకు, పునర్విడుదలలకు తరచుగా డిస్క్ ID నమోదు ఉండదు. కళాకారుడు, ఆల్బమ్ ద్వారా వెతికితే సాధారణంగా దొరుకుతాయి."
+            "value" : "మాన్యువల్"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "แผ่นพิมพ์จำนวนน้อยและฉบับพิมพ์ซ้ำมักไม่มีข้อมูลรหัสดิสก์ การค้นหาด้วยศิลปินและอัลบั้มมักพบได้"
+            "value" : "ด้วยตนเอง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Küçük baskılar ve yeniden basımlar çoğu zaman Disc ID kaydı taşımaz. Sanatçı ve albüme göre arama genellikle bulur."
+            "value" : "Elle"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Малі наклади й перевидання часто не мають запису ID диска. Пошук за виконавцем і альбомом зазвичай їх знаходить."
+            "value" : "Вручну"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "چھوٹی پریسنگز اور دوبارہ اشاعتوں میں اکثر ڈسک ID اندراج نہیں ہوتا۔ فنکار اور البم سے تلاش کرنے پر عموماً مل جاتی ہیں۔"
+            "value" : "دستی"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Các bản in số lượng ít và bản tái phát hành thường không có mục Disc ID. Tìm theo nghệ sĩ và album thường sẽ ra."
+            "value" : "Thủ công"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "小批量压制和再版通常没有碟片 ID 记录。按艺术家和专辑搜索通常能找到。"
+            "value" : "手动"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "小批量壓製與再版通常沒有光碟 ID 記錄。以演出者和專輯搜尋通常能找到。"
+            "value" : "手動"
           }
         }
       }
     },
-    "Nothing to look up automatically." : {
-      "comment" : "Find online result area: headline for a folder with no signals",
+    "No matches." : {
+      "comment" : "Find online empty zone: identification ran and no source knew the folder",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يوجد ما يمكن البحث عنه تلقائيًا."
+            "value" : "لا توجد تطابقات."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Няма какво да се потърси автоматично."
+            "value" : "Няма съвпадения."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "স্বয়ংক্রিয়ভাবে খোঁজার মতো কিছু নেই।"
+            "value" : "কোনো মিল নেই।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Není co automaticky vyhledat."
+            "value" : "Žádné shody."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nichts, wonach automatisch gesucht werden könnte."
+            "value" : "Keine Treffer."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nothing to look up automatically."
+            "value" : "No matches."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No hay nada que buscar automáticamente."
+            "value" : "Sin coincidencias."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rien à rechercher automatiquement."
+            "value" : "Aucune correspondance."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "આપોઆપ શોધવા જેવું કંઈ નથી."
+            "value" : "મેળો નથી."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אין מה לחפש אוטומטית."
+            "value" : "אין התאמות."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "स्वचालित रूप से खोजने के लिए कुछ नहीं है।"
+            "value" : "कोई मिलान नहीं।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nema se što automatski potražiti."
+            "value" : "Nema podudaranja."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Non c'è nulla da cercare automaticamente."
+            "value" : "Nessuna corrispondenza."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "自動で検索できるものがありません。"
+            "value" : "一致なし。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಹುಡುಕಲು ಏನೂ ಇಲ್ಲ."
+            "value" : "ಹೊಂದಾಣಿಕೆಗಳಿಲ್ಲ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "자동으로 조회할 것이 없습니다."
+            "value" : "일치 없음."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "സ്വയമേവ തിരയാൻ ഒന്നുമില്ല."
+            "value" : "പൊരുത്തങ്ങളില്ല."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "आपोआप शोधण्यासारखे काही नाही."
+            "value" : "जुळण्या नाहीत."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Niets om automatisch op te zoeken."
+            "value" : "Geen matches."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਆਪਣੇ-ਆਪ ਲੱਭਣ ਲਈ ਕੁਝ ਨਹੀਂ ਹੈ।"
+            "value" : "ਕੋਈ ਮੇਲ ਨਹੀਂ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nie ma czego wyszukać automatycznie."
+            "value" : "Brak dopasowań."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nada para buscar automaticamente."
+            "value" : "Sem correspondências."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "தானாகத் தேட எதுவும் இல்லை."
+            "value" : "பொருத்தங்கள் இல்லை."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "స్వయంచాలకంగా వెతకడానికి ఏమీ లేదు."
+            "value" : "సరిపోలికలు లేవు."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ไม่มีสิ่งที่ค้นหาอัตโนมัติได้"
+            "value" : "ไม่พบรายการตรงกัน"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Otomatik olarak aranacak bir şey yok."
+            "value" : "Eşleşme yok."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Немає чого шукати автоматично."
+            "value" : "Немає збігів."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "خودکار طور پر تلاش کرنے کے لیے کچھ نہیں ہے۔"
+            "value" : "کوئی میل نہیں۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Không có gì để tra cứu tự động."
+            "value" : "Không có kết quả khớp."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有可自动查找的信息。"
+            "value" : "无匹配项。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "沒有可自動查詢的資訊。"
+            "value" : "沒有符合項目。"
           }
         }
       }
     },
-    "The folder carries no disc TOC, barcode, or catalog number. Search below, or use the file tags on the draft." : {
-      "comment" : "Find online result area: hint under the no-signals headline",
+    "Nothing to identify." : {
+      "comment" : "Find online empty zone: the folder carries no signals to look up",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يحتوي المجلد على جدول محتويات قرص أو رمز شريطي أو رقم كتالوج. ابحث أدناه، أو استخدم وسوم الملفات في المسودة."
+            "value" : "لا يوجد ما يمكن تحديد هويته."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Папката не съдържа TOC на диск, баркод или каталожен номер. Потърсете по-долу или използвайте етикетите на файловете в черновата."
+            "value" : "Няма какво да се идентифицира."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ফোল্ডারে কোনো ডিস্ক TOC, বারকোড বা ক্যাটালগ নম্বর নেই। নিচে খুঁজুন, অথবা খসড়ায় ফাইল ট্যাগ ব্যবহার করুন।"
+            "value" : "শনাক্ত করার মতো কিছু নেই।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Složka neobsahuje TOC disku, čárový kód ani katalogové číslo. Vyhledejte níže nebo použijte značky souborů v konceptu."
+            "value" : "Není co identifikovat."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Der Ordner enthält weder Disc-TOC noch Barcode oder Katalognummer. Suche unten, oder verwende die Datei-Tags im Entwurf."
+            "value" : "Nichts zu identifizieren."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The folder carries no disc TOC, barcode, or catalog number. Search below, or use the file tags on the draft."
+            "value" : "Nothing to identify."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La carpeta no incluye TOC de disco, código de barras ni número de catálogo. Busca abajo o usa las etiquetas de los archivos en el borrador."
+            "value" : "Nada que identificar."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le dossier ne contient ni TOC de disque, ni code-barres, ni numéro de catalogue. Cherchez ci-dessous ou utilisez les tags des fichiers sur le brouillon."
+            "value" : "Rien à identifier."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ફોલ્ડરમાં ડિસ્ક TOC, બારકોડ કે કેટલોગ નંબર નથી. નીચે શોધો, અથવા ડ્રાફ્ટ પર ફાઇલ ટૅગ વાપરો."
+            "value" : "ઓળખવા જેવું કંઈ નથી."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "התיקייה לא כוללת TOC של תקליטור, ברקוד או מספר קטלוגי. חפש למטה, או השתמש בתגיות הקבצים בטיוטה."
+            "value" : "אין מה לזהות."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फ़ोल्डर में डिस्क TOC, बारकोड या कैटलॉग नंबर नहीं है। नीचे खोजें, या ड्राफ़्ट पर फ़ाइल टैग का उपयोग करें।"
+            "value" : "पहचानने के लिए कुछ नहीं है।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mapa ne sadrži TOC diska, crtični kod ni kataloški broj. Pretražite ispod ili upotrijebite oznake datoteka na skici."
+            "value" : "Nema se što identificirati."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La cartella non contiene TOC del disco, codice a barre o numero di catalogo. Cerca qui sotto oppure usa i tag dei file sulla bozza."
+            "value" : "Non c'è nulla da identificare."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このフォルダにはディスクTOC、バーコード、カタログ番号がありません。下で検索するか、下書きのファイルタグを使ってください。"
+            "value" : "識別できるものがありません。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಫೋಲ್ಡರ್‌ನಲ್ಲಿ ಡಿಸ್ಕ್ TOC, ಬಾರ್‌ಕೋಡ್ ಅಥವಾ ಕ್ಯಾಟಲಾಗ್ ಸಂಖ್ಯೆ ಇಲ್ಲ. ಕೆಳಗೆ ಹುಡುಕಿ, ಅಥವಾ ಡ್ರಾಫ್ಟ್‌ನಲ್ಲಿ ಫೈಲ್ ಟ್ಯಾಗ್‌ಗಳನ್ನು ಬಳಸಿ."
+            "value" : "ಗುರುತಿಸಲು ಏನೂ ಇಲ್ಲ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 폴더에는 디스크 TOC, 바코드, 카탈로그 번호가 없습니다. 아래에서 검색하거나 초안의 파일 태그를 사용하세요."
+            "value" : "식별할 것이 없습니다."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഫോൾഡറിൽ ഡിസ്‌ക് TOC, ബാർകോഡ്, കാറ്റലോഗ് നമ്പർ എന്നിവയില്ല. താഴെ തിരയുക, അല്ലെങ്കിൽ ഡ്രാഫ്റ്റിലെ ഫയൽ ടാഗുകൾ ഉപയോഗിക്കുക."
+            "value" : "തിരിച്ചറിയാൻ ഒന്നുമില്ല."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "फोल्डरमध्ये डिस्क TOC, बारकोड किंवा कॅटलॉग क्रमांक नाही. खाली शोधा, किंवा मसुद्यावरील फाइल टॅग वापरा."
+            "value" : "ओळखण्यासारखे काही नाही."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "De map bevat geen disc-TOC, barcode of catalogusnummer. Zoek hieronder, of gebruik de bestandstags op het concept."
+            "value" : "Niets om te identificeren."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਫੋਲਡਰ ਵਿੱਚ ਡਿਸਕ TOC, ਬਾਰਕੋਡ ਜਾਂ ਕੈਟਾਲਾਗ ਨੰਬਰ ਨਹੀਂ ਹੈ। ਹੇਠਾਂ ਖੋਜੋ, ਜਾਂ ਡਰਾਫਟ ਉੱਤੇ ਫਾਈਲ ਟੈਗ ਵਰਤੋ।"
+            "value" : "ਪਛਾਣਨ ਲਈ ਕੁਝ ਨਹੀਂ ਹੈ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Folder nie zawiera TOC płyty, kodu kreskowego ani numeru katalogowego. Wyszukaj poniżej lub użyj tagów plików w szkicu."
+            "value" : "Nie ma czego zidentyfikować."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "A pasta não traz TOC de disco, código de barras nem número de catálogo. Busque abaixo ou use as tags dos arquivos no rascunho."
+            "value" : "Nada para identificar."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இந்த கோப்புறையில் வட்டு TOC, பட்டைக் குறியீடு அல்லது பட்டியல் எண் இல்லை. கீழே தேடுங்கள், அல்லது வரைவில் உள்ள கோப்பு குறிச்சொற்களைப் பயன்படுத்துங்கள்."
+            "value" : "அடையாளம் காண எதுவும் இல்லை."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఫోల్డర్‌లో డిస్క్ TOC, బార్‌కోడ్ లేదా కాటలాగ్ నంబర్ లేవు. కింద వెతకండి, లేదా డ్రాఫ్ట్‌లోని ఫైల్ ట్యాగ్‌లను వాడండి."
+            "value" : "గుర్తించడానికి ఏమీ లేదు."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "โฟลเดอร์นี้ไม่มี TOC ของดิสก์ บาร์โค้ด หรือหมายเลขแค็ตตาล็อก ค้นหาด้านล่าง หรือใช้แท็กไฟล์บนฉบับร่าง"
+            "value" : "ไม่มีสิ่งที่ระบุได้"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Klasörde disk TOC'si, barkod veya katalog numarası yok. Aşağıdan arayın ya da taslaktaki dosya etiketlerini kullanın."
+            "value" : "Tanımlanacak bir şey yok."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тека не містить TOC диска, штрихкоду чи каталожного номера. Шукайте нижче або скористайтеся тегами файлів у чернетці."
+            "value" : "Немає чого ідентифікувати."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "فولڈر میں ڈسک TOC، بارکوڈ یا کیٹلاگ نمبر نہیں ہے۔ نیچے تلاش کریں، یا ڈرافٹ پر فائل ٹیگ استعمال کریں۔"
+            "value" : "شناخت کرنے کے لیے کچھ نہیں ہے۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thư mục không có TOC đĩa, mã vạch hay số danh mục. Hãy tìm bên dưới, hoặc dùng thẻ tệp trên bản nháp."
+            "value" : "Không có gì để nhận dạng."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "该文件夹没有碟片 TOC、条形码或目录编号。请在下方搜索，或使用草稿上的文件标签。"
+            "value" : "没有可识别的信息。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "此檔案夾沒有光碟 TOC、條碼或目錄編號。請在下方搜尋，或使用草稿上的檔案標籤。"
+            "value" : "沒有可識別的資訊。"
           }
         }
       }
     },
-    "This folder hasn't been looked up." : {
-      "comment" : "Find online result area: headline before any lookup has run",
+    "Search instead" : {
+      "comment" : "Find online empty zone: link that puts the cursor in the search form",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لم يتم البحث عن هذا المجلد بعد."
+            "value" : "ابحث بدلًا من ذلك"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Тази папка още не е търсена."
+            "value" : "Потърсете вместо това"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "এই ফোল্ডারটি এখনো খোঁজা হয়নি।"
+            "value" : "এর বদলে খুঁজুন"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tato složka zatím nebyla vyhledána."
+            "value" : "Místo toho vyhledat"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Ordner wurde noch nicht nachgeschlagen."
+            "value" : "Stattdessen suchen"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This folder hasn't been looked up."
+            "value" : "Search instead"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta carpeta aún no se ha consultado."
+            "value" : "Buscar en su lugar"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ce dossier n'a pas encore été recherché."
+            "value" : "Chercher à la place"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "આ ફોલ્ડર હજી શોધાયું નથી."
+            "value" : "તેના બદલે શોધો"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "התיקייה הזו עדיין לא נבדקה."
+            "value" : "חפש במקום זאת"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "इस फ़ोल्डर की अब तक खोज नहीं हुई है।"
+            "value" : "इसके बजाय खोजें"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ova mapa još nije pretražena."
+            "value" : "Umjesto toga pretraži"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Questa cartella non è ancora stata cercata."
+            "value" : "Cerca invece"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このフォルダはまだ検索されていません。"
+            "value" : "代わりに検索"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಈ ಫೋಲ್ಡರ್ ಅನ್ನು ಇನ್ನೂ ಹುಡುಕಲಾಗಿಲ್ಲ."
+            "value" : "ಬದಲಿಗೆ ಹುಡುಕಿ"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "이 폴더는 아직 조회되지 않았습니다."
+            "value" : "대신 검색"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ഈ ഫോൾഡർ ഇതുവരെ തിരഞ്ഞിട്ടില്ല."
+            "value" : "പകരം തിരയുക"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "हे फोल्डर अद्याप शोधलेले नाही."
+            "value" : "त्याऐवजी शोधा"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Deze map is nog niet opgezocht."
+            "value" : "Zoek in plaats daarvan"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਇਹ ਫੋਲਡਰ ਹਾਲੇ ਲੱਭਿਆ ਨਹੀਂ ਗਿਆ।"
+            "value" : "ਇਸਦੀ ਬਜਾਏ ਖੋਜੋ"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ten folder nie został jeszcze wyszukany."
+            "value" : "Zamiast tego wyszukaj"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta pasta ainda não foi consultada."
+            "value" : "Buscar em vez disso"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "இந்த கோப்புறை இன்னும் தேடப்படவில்லை."
+            "value" : "அதற்குப் பதிலாகத் தேடுங்கள்"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ఈ ఫోల్డర్ ఇంకా వెతకబడలేదు."
+            "value" : "బదులుగా వెతకండి"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ยังไม่ได้ค้นหาโฟลเดอร์นี้"
+            "value" : "ค้นหาแทน"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu klasör henüz aranmadı."
+            "value" : "Bunun yerine ara"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Цю теку ще не шукали."
+            "value" : "Натомість шукати"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "اس فولڈر کی ابھی تلاش نہیں ہوئی۔"
+            "value" : "اس کے بجائے تلاش کریں"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thư mục này chưa được tra cứu."
+            "value" : "Tìm thay vào đó"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尚未查找此文件夹。"
+            "value" : "改为搜索"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "尚未查詢此檔案夾。"
+            "value" : "改為搜尋"
           }
         }
       }
     },
-    "Identify reads the folder's disc TOC, barcode, and catalog number and asks both sources. Or search below." : {
-      "comment" : "Find online result area: hint under the not-looked-up headline",
+    "Identify reads the folder's disc TOC, barcode, and catalog number and asks both sources." : {
+      "comment" : "Find online empty zone: help on the Identify automatically button",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "يقرأ ”تحديد الهوية“ جدول محتويات القرص والرمز الشريطي ورقم الكتالوج في المجلد ويسأل كلا المصدرين. أو ابحث أدناه."
+            "value" : "يقرأ ”تحديد الهوية“ جدول محتويات القرص والرمز الشريطي ورقم الكتالوج في المجلد ويسأل كلا المصدرين."
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Идентифициране“ разчита TOC на диска, баркода и каталожния номер на папката и пита и двата източника. Или потърсете по-долу."
+            "value" : "„Идентифициране“ разчита TOC на диска, баркода и каталожния номер на папката и пита и двата източника."
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“শনাক্ত করুন” ফোল্ডারের ডিস্ক TOC, বারকোড ও ক্যাটালগ নম্বর পড়ে দুটি উৎসেই জিজ্ঞাসা করে। অথবা নিচে খুঁজুন।"
+            "value" : "“শনাক্ত করুন” ফোল্ডারের ডিস্ক TOC, বারকোড ও ক্যাটালগ নম্বর পড়ে দুটি উৎসেই জিজ্ঞাসা করে।"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identifikace přečte TOC disku, čárový kód a katalogové číslo složky a zeptá se obou zdrojů. Nebo vyhledejte níže."
+            "value" : "Identifikace přečte TOC disku, čárový kód a katalogové číslo složky a zeptá se obou zdrojů."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Identifizieren“ liest Disc-TOC, Barcode und Katalognummer des Ordners und fragt beide Quellen. Oder suche unten."
+            "value" : "„Identifizieren“ liest Disc-TOC, Barcode und Katalognummer des Ordners und fragt beide Quellen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Identify reads the folder's disc TOC, barcode, and catalog number and asks both sources. Or search below."
+            "value" : "Identify reads the folder's disc TOC, barcode, and catalog number and asks both sources."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«Identificar» lee el TOC de disco, el código de barras y el número de catálogo de la carpeta y consulta ambas fuentes. O busca abajo."
+            "value" : "«Identificar» lee el TOC de disco, el código de barras y el número de catálogo de la carpeta y consulta ambas fuentes."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "« Identifier » lit le TOC de disque, le code-barres et le numéro de catalogue du dossier et interroge les deux sources. Ou cherchez ci-dessous."
+            "value" : "« Identifier » lit le TOC de disque, le code-barres et le numéro de catalogue du dossier et interroge les deux sources."
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“ઓળખો” ફોલ્ડરનો ડિસ્ક TOC, બારકોડ અને કેટલોગ નંબર વાંચીને બંને સ્રોતોને પૂછે છે. અથવા નીચે શોધો."
+            "value" : "“ઓળખો” ફોલ્ડરનો ડિસ્ક TOC, બારકોડ અને કેટલોગ નંબર વાંચીને બંને સ્રોતોને પૂછે છે."
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "”זהה“ קורא את ה-TOC של התקליטור, הברקוד ומספר הקטלוג בתיקייה ופונה לשני המקורות. או חפש למטה."
+            "value" : "”זהה“ קורא את ה-TOC של התקליטור, הברקוד ומספר הקטלוג בתיקייה ופונה לשני המקורות."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“पहचानें” फ़ोल्डर का डिस्क TOC, बारकोड और कैटलॉग नंबर पढ़कर दोनों स्रोतों से पूछता है। या नीचे खोजें।"
+            "value" : "“पहचानें” फ़ोल्डर का डिस्क TOC, बारकोड और कैटलॉग नंबर पढ़कर दोनों स्रोतों से पूछता है।"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Identificiraj” čita TOC diska, crtični kod i kataloški broj mape te pita oba izvora. Ili pretražite ispod."
+            "value" : "„Identificiraj” čita TOC diska, crtični kod i kataloški broj mape te pita oba izvora."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«Identifica» legge il TOC del disco, il codice a barre e il numero di catalogo della cartella e interroga entrambe le fonti. Oppure cerca qui sotto."
+            "value" : "«Identifica» legge il TOC del disco, il codice a barre e il numero di catalogo della cartella e interroga entrambe le fonti."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「識別」はフォルダのディスクTOC、バーコード、カタログ番号を読み取り、両方のソースに問い合わせます。または下で検索してください。"
+            "value" : "「識別」はフォルダのディスクTOC、バーコード、カタログ番号を読み取り、両方のソースに問い合わせます。"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“ಗುರುತಿಸಿ” ಫೋಲ್ಡರ್‌ನ ಡಿಸ್ಕ್ TOC, ಬಾರ್‌ಕೋಡ್ ಮತ್ತು ಕ್ಯಾಟಲಾಗ್ ಸಂಖ್ಯೆಯನ್ನು ಓದಿ ಎರಡೂ ಮೂಲಗಳನ್ನು ಕೇಳುತ್ತದೆ. ಅಥವಾ ಕೆಳಗೆ ಹುಡುಕಿ."
+            "value" : "“ಗುರುತಿಸಿ” ಫೋಲ್ಡರ್‌ನ ಡಿಸ್ಕ್ TOC, ಬಾರ್‌ಕೋಡ್ ಮತ್ತು ಕ್ಯಾಟಲಾಗ್ ಸಂಖ್ಯೆಯನ್ನು ಓದಿ ಎರಡೂ ಮೂಲಗಳನ್ನು ಕೇಳುತ್ತದೆ."
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘식별’은 폴더의 디스크 TOC, 바코드, 카탈로그 번호를 읽어 두 소스에 모두 조회합니다. 또는 아래에서 검색하세요."
+            "value" : "‘식별’은 폴더의 디스크 TOC, 바코드, 카탈로그 번호를 읽어 두 소스에 모두 조회합니다."
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“തിരിച്ചറിയുക” ഫോൾഡറിലെ ഡിസ്‌ക് TOC, ബാർകോഡ്, കാറ്റലോഗ് നമ്പർ വായിച്ച് രണ്ട് ഉറവിടങ്ങളോടും ചോദിക്കുന്നു. അല്ലെങ്കിൽ താഴെ തിരയുക."
+            "value" : "“തിരിച്ചറിയുക” ഫോൾഡറിലെ ഡിസ്‌ക് TOC, ബാർകോഡ്, കാറ്റലോഗ് നമ്പർ വായിച്ച് രണ്ട് ഉറവിടങ്ങളോടും ചോദിക്കുന്നു."
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“ओळखा” फोल्डरचा डिस्क TOC, बारकोड आणि कॅटलॉग क्रमांक वाचून दोन्ही स्रोतांना विचारते. किंवा खाली शोधा."
+            "value" : "“ओळखा” फोल्डरचा डिस्क TOC, बारकोड आणि कॅटलॉग क्रमांक वाचून दोन्ही स्रोतांना विचारते."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "'Identificeren' leest de disc-TOC, barcode en het catalogusnummer van de map en raadpleegt beide bronnen. Of zoek hieronder."
+            "value" : "'Identificeren' leest de disc-TOC, barcode en het catalogusnummer van de map en raadpleegt beide bronnen."
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“ਪਛਾਣੋ” ਫੋਲਡਰ ਦਾ ਡਿਸਕ TOC, ਬਾਰਕੋਡ ਅਤੇ ਕੈਟਾਲਾਗ ਨੰਬਰ ਪੜ੍ਹ ਕੇ ਦੋਵਾਂ ਸਰੋਤਾਂ ਤੋਂ ਪੁੱਛਦਾ ਹੈ। ਜਾਂ ਹੇਠਾਂ ਖੋਜੋ।"
+            "value" : "“ਪਛਾਣੋ” ਫੋਲਡਰ ਦਾ ਡਿਸਕ TOC, ਬਾਰਕੋਡ ਅਤੇ ਕੈਟਾਲਾਗ ਨੰਬਰ ਪੜ੍ਹ ਕੇ ਦੋਵਾਂ ਸਰੋਤਾਂ ਤੋਂ ਪੁੱਛਦਾ ਹੈ।"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "„Zidentyfikuj” odczytuje TOC płyty, kod kreskowy i numer katalogowy folderu i pyta oba źródła. Albo wyszukaj poniżej."
+            "value" : "„Zidentyfikuj” odczytuje TOC płyty, kod kreskowy i numer katalogowy folderu i pyta oba źródła."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Identificar” lê o TOC do disco, o código de barras e o número de catálogo da pasta e consulta as duas fontes. Ou busque abaixo."
+            "value" : "“Identificar” lê o TOC do disco, o código de barras e o número de catálogo da pasta e consulta as duas fontes."
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“அடையாளம் காண்” கோப்புறையின் வட்டு TOC, பட்டைக் குறியீடு, பட்டியல் எண் ஆகியவற்றைப் படித்து இரு மூலங்களிடமும் கேட்கும். அல்லது கீழே தேடுங்கள்."
+            "value" : "“அடையாளம் காண்” கோப்புறையின் வட்டு TOC, பட்டைக் குறியீடு, பட்டியல் எண் ஆகியவற்றைப் படித்து இரு மூலங்களிடமும் கேட்கும்."
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“గుర్తించు” ఫోల్డర్‌లోని డిస్క్ TOC, బార్‌కోడ్, కాటలాగ్ నంబర్ చదివి రెండు మూలాలనూ అడుగుతుంది. లేదా కింద వెతకండి."
+            "value" : "“గుర్తించు” ఫోల్డర్‌లోని డిస్క్ TOC, బార్‌కోడ్, కాటలాగ్ నంబర్ చదివి రెండు మూలాలనూ అడుగుతుంది."
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“ระบุ” จะอ่าน TOC ของดิสก์ บาร์โค้ด และหมายเลขแค็ตตาล็อกในโฟลเดอร์ แล้วสอบถามทั้งสองแหล่ง หรือค้นหาด้านล่าง"
+            "value" : "“ระบุ” จะอ่าน TOC ของดิสก์ บาร์โค้ด และหมายเลขแค็ตตาล็อกในโฟลเดอร์ แล้วสอบถามทั้งสองแหล่ง"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Tanımla”, klasördeki disk TOC'sini, barkodu ve katalog numarasını okuyup her iki kaynağa da sorar. Ya da aşağıdan arayın."
+            "value" : "“Tanımla”, klasördeki disk TOC'sini, barkodu ve katalog numarasını okuyup her iki kaynağa da sorar."
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "«Ідентифікувати» зчитує TOC диска, штрихкод і каталожний номер теки та звертається до обох джерел. Або шукайте нижче."
+            "value" : "«Ідентифікувати» зчитує TOC диска, штрихкод і каталожний номер теки та звертається до обох джерел."
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "”شناخت کریں“ فولڈر کا ڈسک TOC، بارکوڈ اور کیٹلاگ نمبر پڑھ کر دونوں ذرائع سے پوچھتا ہے۔ یا نیچے تلاش کریں۔"
+            "value" : "”شناخت کریں“ فولڈر کا ڈسک TOC، بارکوڈ اور کیٹلاگ نمبر پڑھ کر دونوں ذرائع سے پوچھتا ہے۔"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“Nhận dạng” đọc TOC đĩa, mã vạch và số danh mục của thư mục rồi hỏi cả hai nguồn. Hoặc tìm bên dưới."
+            "value" : "“Nhận dạng” đọc TOC đĩa, mã vạch và số danh mục của thư mục rồi hỏi cả hai nguồn."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“识别”会读取文件夹的碟片 TOC、条形码和目录编号，并向两个来源查询。也可以在下方搜索。"
+            "value" : "“识别”会读取文件夹的碟片 TOC、条形码和目录编号，并向两个来源查询。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「識別」會讀取檔案夾的光碟 TOC、條碼與目錄編號，並向兩個來源查詢。也可以在下方搜尋。"
+            "value" : "「識別」會讀取檔案夾的光碟 TOC、條碼與目錄編號，並向兩個來源查詢。"
           }
         }
       }

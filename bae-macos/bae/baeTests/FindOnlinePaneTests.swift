@@ -30,6 +30,58 @@ final class FindOnlinePaneTests: XCTestCase {
 }
 
 @MainActor
+@Suite("The empty zone's way into the form")
+struct FindOnlineFormFocusTests {
+    /// "Search instead" is a request, not a flag: the cursor goes to the
+    /// form's first field on every new one, so it works after the automatic
+    /// hand-over already happened and the person has clicked elsewhere.
+    @Test("each new focus request moves the cursor into the first field")
+    func eachRequestMovesTheCursor() async throws {
+        let size = NSSize(width: 660, height: 60)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            form(focusRequest: 1).frame(width: size.width, height: size.height),
+            size: size
+        )
+        await SnapshotTestSupport.settle(host)
+
+        let artist = try #require(
+            SnapshotTestSupport.descendants(of: host)
+                .compactMap { $0 as? NSTextField }
+                .first { $0.placeholderString == String(localized: "Artist") }
+        )
+        #expect(artist.currentEditor() === window.firstResponder)
+
+        _ = window.makeFirstResponder(nil)
+        await SnapshotTestSupport.settle(host)
+        #expect(artist.currentEditor() == nil)
+
+        host.rootView = form(focusRequest: 1)
+            .frame(width: size.width, height: size.height)
+        await SnapshotTestSupport.settle(host)
+        #expect(artist.currentEditor() == nil)
+
+        host.rootView = form(focusRequest: 2)
+            .frame(width: size.width, height: size.height)
+        await SnapshotTestSupport.settle(host)
+        #expect(artist.currentEditor() === window.firstResponder)
+        withExtendedLifetime(window) {}
+    }
+
+    private func form(focusRequest: Int) -> ImportSearchFormView {
+        ImportSearchFormView(
+            activeTab: .constant(.general),
+            searchArtist: .constant(""),
+            searchAlbum: .constant(""),
+            searchCatalog: .constant(""),
+            searchBarcode: .constant(""),
+            signals: nil,
+            focusRequest: focusRequest,
+            onSearch: {},
+        )
+    }
+}
+
+@MainActor
 @Suite("Find online verdict")
 struct FindOnlineVerdictTests {
     @Test("a folder nobody looked up offers to identify it")

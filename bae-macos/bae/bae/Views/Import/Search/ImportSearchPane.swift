@@ -40,11 +40,11 @@ struct ImportSearchPane: View {
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (BridgeMetadataResult) -> Void
 
-    /// Whether the form's Artist field should hold the keyboard: a person
-    /// with nothing to pick is going to type, so an empty result area hands
-    /// the cursor over.
+    /// The form's first field takes the keyboard on every new value. A
+    /// person with nothing to pick is going to type, so an empty result area
+    /// hands the cursor over, and "Search instead" hands it over again.
     @State
-    private var focusesArtist = false
+    private var formFocusRequest = 0
 
     private var verdict: FindOnlineVerdict {
         FindOnlineVerdict(
@@ -84,7 +84,7 @@ struct ImportSearchPane: View {
                 searchCatalog: $searchCatalog,
                 searchBarcode: $searchBarcode,
                 signals: state.signals,
-                focusesArtist: focusesArtist,
+                focusRequest: formFocusRequest,
                 onSearch: onSearch,
             )
         }
@@ -92,11 +92,9 @@ struct ImportSearchPane: View {
         // Artist field from what was read off the folder and put the cursor
         // in it. Only when the fields are untouched — never over typing.
         .onChange(of: area, initial: true) { _, area in
-            let isEmpty = area == .nothingFound || area == .noSignals
-            focusesArtist = isEmpty
-            guard isEmpty, searchArtist.isEmpty, searchAlbum.isEmpty else {
-                return
-            }
+            guard area == .nothingFound || area == .noSignals else { return }
+            formFocusRequest += 1
+            guard searchArtist.isEmpty, searchAlbum.isEmpty else { return }
             if let seed = state.signals?.text.freeText.first {
                 searchArtist = seed
             }
@@ -155,28 +153,34 @@ struct ImportSearchPane: View {
                 },
             )
         case .nothingFound:
-            FindOnlineNotice(
-                title: "Neither source knows these signals.",
-                detail:
-                    "Small pressings and reissues often lack a Disc ID entry. Searching by artist and album usually finds them."
-            )
+            FindOnlineEmptyZone {
+                Text("No matches.")
+                    .foregroundStyle(.secondary)
+                searchInstead
+            }
         case .noSignals:
-            FindOnlineNotice(
-                title: "Nothing to look up automatically.",
-                detail:
-                    "The folder carries no disc TOC, barcode, or catalog number. Search below, or use the file tags on the draft."
-            )
+            FindOnlineEmptyZone {
+                Text("Nothing to identify.")
+                    .foregroundStyle(.secondary)
+                searchInstead
+            }
         case .notStarted:
-            FindOnlineNotice(
-                title: "This folder hasn't been looked up.",
-                detail:
-                    "Identify reads the folder's disc TOC, barcode, and catalog number and asks both sources. Or search below."
-            )
+            FindOnlineEmptyZone {
+                IdentifyAutomaticallyButton(action: onIdentify)
+            }
         case .failureLines:
             failureLines
         case .searchRun:
             searchRun
         }
+    }
+
+    /// The way out of an empty zone: the cursor goes to the form's first
+    /// field. Every press is a new request, so it works after the cursor has
+    /// been elsewhere.
+    private var searchInstead: some View {
+        Button("Search instead") { formFocusRequest += 1 }
+            .buttonStyle(.link)
     }
 
     /// Every lookup failed, so the reasons take the place of the results.

@@ -48,11 +48,7 @@ struct FindOnlineSearchResults: View {
 
     private var queryLine: some View {
         HStack(spacing: 8) {
-            Text("Results for")
-                .font(.system(size: 10, weight: .bold))
-                .tracking(1.2)
-                .textCase(.uppercase)
-                .foregroundStyle(.tertiary)
+            FindOnlineCapsLabel("Results for")
             Text(search.query.summary)
                 .font(.system(size: 11.5))
                 .foregroundStyle(.secondary)

@@ -16,10 +16,11 @@ struct AutocompleteTextField: View {
     let placeholder: String
     let suggestions: [String]
     let isLoading: Bool
-    /// Whether the field should take the keyboard. It does so when this turns
-    /// true; clicking elsewhere afterwards is the person's call, not this
-    /// flag's.
-    var takesFocus: Bool = false
+    /// A request for the field to take the keyboard. Each new request (any
+    /// value the field has not served yet; `0` is no request) moves the
+    /// responder once, so the same request asked again after the person
+    /// clicked elsewhere is honoured while a redraw with an old one is not.
+    var focusRequest: Int = 0
     var onSubmit: (() -> Void)?
 
     var body: some View {
@@ -28,7 +29,7 @@ struct AutocompleteTextField: View {
                 text: $text,
                 placeholder: placeholder,
                 suggestions: suggestions,
-                takesFocus: takesFocus,
+                focusRequest: focusRequest,
                 onSubmit: onSubmit,
             )
             if isLoading {
@@ -58,7 +59,7 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     var text: String
     let placeholder: String
     let suggestions: [String]
-    let takesFocus: Bool
+    let focusRequest: Int
     var onSubmit: (() -> Void)?
 
     func makeNSView(context: Context) -> NSTextField {
@@ -84,16 +85,18 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
             field.stringValue = text
             context.coordinator.userTypedPrefix = text
         }
-        // Only the change into `takesFocus` moves the responder: holding it
-        // true must not drag focus back every time the pane redraws.
-        if takesFocus, !context.coordinator.tookFocus {
+        // A request moves the responder once: holding the same one through
+        // redraws must not drag focus back every time the pane redraws.
+        if focusRequest != 0,
+            focusRequest != context.coordinator.servedFocusRequest
+        {
+            context.coordinator.servedFocusRequest = focusRequest
             // The field has no window during the update pass that installs
             // it, so ask on the next turn.
             DispatchQueue.main.async {
                 field.window?.makeFirstResponder(field)
             }
         }
-        context.coordinator.tookFocus = takesFocus
     }
 
     func makeCoordinator() -> Coordinator {
@@ -110,9 +113,9 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         /// mid-text resets this and suppresses further completion until
         /// the user types forward again.
         fileprivate var userTypedPrefix: String = ""
-        /// What `takesFocus` was last update, so focus moves on the change
-        /// into it rather than on every redraw.
-        fileprivate var tookFocus: Bool = false
+        /// The focus request already honoured, so focus moves on a new one
+        /// rather than on every redraw.
+        fileprivate var servedFocusRequest = 0
 
         init(parent: InlineCompletionTextFieldNS) {
             self.parent = parent

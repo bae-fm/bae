@@ -19,10 +19,15 @@ struct ImportSearchFormView: View {
     @Binding
     var searchBarcode: String
     let signals: Signals?
-    /// Whether the Artist field should take the keyboard. The pane raises it
-    /// when the result area has nothing to pick from.
-    let focusesArtist: Bool
+    /// A request for the form's first field to take the keyboard — Artist,
+    /// the catalog number, or the barcode, whichever the search-by picker
+    /// shows. The pane sends one when the result area has nothing to pick
+    /// from and when "Search instead" is chosen; each request is a new value.
+    let focusRequest: Int
     let onSearch: () -> Void
+
+    @FocusState
+    private var barcodeHasFocus: Bool
 
     private var isSearchDisabled: Bool {
         switch activeTab {
@@ -65,6 +70,7 @@ struct ImportSearchFormView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
+                FindOnlineCapsLabel("Manual")
                 Picker("Search by", selection: $activeTab) {
                     Text("General").tag(SearchTab.general)
                     Text("Catalog #").tag(SearchTab.catalogNumber)
@@ -104,7 +110,7 @@ struct ImportSearchFormView: View {
                 placeholder: String(localized: "Artist"),
                 suggestions: generalSuggestions,
                 isLoading: isScanning,
-                takesFocus: focusesArtist,
+                focusRequest: focusRequest,
                 onSubmit: submitSearch,
             )
             AutocompleteTextField(
@@ -120,13 +126,23 @@ struct ImportSearchFormView: View {
                 placeholder: String(localized: "e.g. WPCR-80001"),
                 suggestions: catalogSuggestions,
                 isLoading: isScanning,
+                focusRequest: focusRequest,
                 onSubmit: submitSearch,
             )
         case .barcode:
             TextField("e.g. 4943674251780", text: $searchBarcode)
                 .textFieldStyle(.roundedBorder)
                 .controlSize(.small)
+                .focused($barcodeHasFocus)
                 .onSubmit(submitSearch)
+                // The same contract as the autocomplete fields: a pending
+                // request is served when the field shows, a new one when it
+                // arrives.
+                .onChange(of: focusRequest, initial: true) { _, request in
+                    if request != 0 {
+                        barcodeHasFocus = true
+                    }
+                }
         }
     }
 }
@@ -152,7 +168,7 @@ struct ImportSearchFormView: View {
                 searchCatalog: $catalog,
                 searchBarcode: .constant(""),
                 signals: PreviewData.settledSignals,
-                focusesArtist: false,
+                focusRequest: 0,
                 onSearch: {},
             )
         }
