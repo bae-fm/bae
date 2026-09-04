@@ -382,6 +382,11 @@ fn multi_file_cue_resolves_each_reference_by_unique_stem() {
         },
         "the binding carries each reference and the audio it resolved to",
     );
+    assert!(
+        crate::import::discid::compute_discid_from_categorized(files)
+            .is_some_and(|computed| computed.source_file == "Album.cue"),
+        "a one-file-per-track rip lays its files end to end into a disc ID",
+    );
     let units = crate::import::track_slots::audio_units(files);
     assert_eq!(
         units,
