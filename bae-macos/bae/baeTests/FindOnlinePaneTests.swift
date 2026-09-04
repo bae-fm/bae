@@ -226,8 +226,8 @@ struct FindOnlineVerdictTests {
         #expect(verdict.action == .none)
     }
 
-    @Test("a failure names one line per source, with the reason in its help")
-    func failureNamesEachSource() {
+    @Test("a failure names each step, its source and a brief reason")
+    func failureNamesEachStep() {
         let verdict = FindOnlineVerdict(
             state: .failed(
                 failures: [
@@ -244,17 +244,29 @@ struct FindOnlineVerdictTests {
         #expect(verdict.isFailure)
         #expect(verdict.action == .retry)
         #expect(verdict.lines.count == 2)
+        // The disc-ID endpoint is MusicBrainz's alone, so its failure names
+        // the source the same way a barcode lookup names its provider.
         #expect(
             verdict.lines[0]
-                .contains(
-                    bridgeMetadataSourceName(source: .musicBrainz)
-                )
+                .contains(bridgeMetadataSourceName(source: .musicBrainz))
+        )
+        #expect(
+            verdict.lines[0]
+                .contains(SignalBadgeStyle.sentenceLabel(for: .discId))
+        )
+        #expect(
+            verdict.lines[0].contains(BridgeLookupFailure.network.briefLine)
         )
         #expect(
             verdict.lines[1]
-                .contains(
-                    bridgeMetadataSourceName(source: .discogs)
-                )
+                .contains(bridgeMetadataSourceName(source: .discogs))
+        )
+        #expect(
+            verdict.lines[1]
+                .contains(SignalBadgeStyle.sentenceLabel(for: .barcode))
+        )
+        #expect(
+            verdict.lines[1].contains(BridgeLookupFailure.timeout.briefLine)
         )
         #expect(verdict.help.contains(BridgeLookupFailure.timeout.badgeLine))
     }

@@ -430,6 +430,48 @@ fn produced_keys() -> Vec<String> {
     })
     .is_none());
 
+    // bridge_lookup_failure_brief_key — total over the variants, and the
+    // status split lands 429 and 503 on the busy line.
+    for (f, expected) in [
+        (
+            BridgeLookupFailure::Network,
+            "core.lookup.failure.brief.network",
+        ),
+        (
+            BridgeLookupFailure::Provider { status: Some(429) },
+            "core.lookup.failure.brief.busy",
+        ),
+        (
+            BridgeLookupFailure::Provider { status: Some(503) },
+            "core.lookup.failure.brief.busy",
+        ),
+        (
+            BridgeLookupFailure::Provider { status: Some(404) },
+            "core.lookup.failure.brief.provider",
+        ),
+        (
+            BridgeLookupFailure::Provider { status: None },
+            "core.lookup.failure.brief.provider_unknown",
+        ),
+        (
+            BridgeLookupFailure::Timeout,
+            "core.lookup.failure.brief.timeout",
+        ),
+        (
+            BridgeLookupFailure::ArtworkAnalysis,
+            "core.lookup.failure.brief.artwork_analysis",
+        ),
+        (
+            BridgeLookupFailure::Diagnostic {
+                detail: String::new(),
+            },
+            "core.lookup.failure.brief.diagnostic",
+        ),
+    ] {
+        assert_eq!(bridge_lookup_failure_brief_key(f), expected);
+        keys.push(expected.to_string());
+    }
+
     // bridge_error_category_key — every variant carries a key.
     for c in [
         BridgeErrorCategory::Database,

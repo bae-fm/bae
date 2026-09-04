@@ -486,6 +486,30 @@ pub fn bridge_lookup_failure_key(failure: BridgeLookupFailure) -> Option<String>
     }
 }
 
+/// Localization key for a lookup failure's brief reason: the few words a line
+/// that already names the source and the step ends with — "timed out", "busy
+/// (503)". Total, `Diagnostic` included, since a brief line has no room for
+/// the opaque detail. A 429 or 503 is the provider refusing for now rather
+/// than a fault in what was asked, so it reads as busy rather than as an
+/// error number. One source of these keys for every platform.
+#[uniffi::export]
+pub fn bridge_lookup_failure_brief_key(failure: BridgeLookupFailure) -> String {
+    match failure {
+        BridgeLookupFailure::Network => "core.lookup.failure.brief.network",
+        BridgeLookupFailure::Provider {
+            status: Some(429 | 503),
+        } => "core.lookup.failure.brief.busy",
+        BridgeLookupFailure::Provider { status: Some(_) } => "core.lookup.failure.brief.provider",
+        BridgeLookupFailure::Provider { status: None } => {
+            "core.lookup.failure.brief.provider_unknown"
+        }
+        BridgeLookupFailure::Timeout => "core.lookup.failure.brief.timeout",
+        BridgeLookupFailure::ArtworkAnalysis => "core.lookup.failure.brief.artwork_analysis",
+        BridgeLookupFailure::Diagnostic { .. } => "core.lookup.failure.brief.diagnostic",
+    }
+    .to_string()
+}
+
 /// The live lookup state of one toolbar badge. Mirrors
 /// `bae_core::identify::SignalState`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]

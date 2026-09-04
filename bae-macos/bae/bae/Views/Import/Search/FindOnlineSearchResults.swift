@@ -104,7 +104,7 @@ struct FindOnlineSearchResults: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundStyle(.orange)
-                        Text("\(name) didn't respond")
+                        Text("\(name) search: \(failure.briefLine)")
                             .foregroundStyle(.orange)
                             .help(failure.badgeLine)
                         Button("Retry", action: onRetry)

@@ -138,40 +138,67 @@ struct FindOnlineVerdict: Equatable {
     }
 }
 
+/// One lookup a provider was asked for: which step of identification, at
+/// which source. A failure names one; the same source may well have answered
+/// the other steps, and those matches are on the list.
+struct FailedSearch: Hashable {
+    let source: BridgeMetadataSource
+    let step: BridgeSignalKind
+}
+
 extension BridgeIdentifyFailure {
-    /// The header's short line: which source did not answer. A step no
-    /// provider owns says what step failed instead; the reason itself rides in
-    /// the header's help (`badgeLine`).
+    /// The header's short line: which step failed, at which source, and
+    /// briefly why — "MusicBrainz barcode search: busy (503)". The full
+    /// reason rides in the header's help (`badgeLine`).
     var verdictLine: String {
         switch self {
-        // The disc-ID endpoint is MusicBrainz's alone, so a disc-ID failure
-        // names it the same way a barcode lookup names whichever provider
-        // dropped.
-        case .discId:
-            return sourceDidNotRespond(.musicBrainz)
-        case .barcode(let source, _), .catalog(let source, _):
-            return sourceDidNotRespond(source)
+        case .discId(let failure):
+            return searchFailed(
+                FailedSearch(source: .musicBrainz, step: .discId),
+                failure
+            )
+        case .barcode(let source, let failure):
+            return searchFailed(
+                FailedSearch(source: source, step: .barcode),
+                failure
+            )
+        case .catalog(let source, let failure):
+            return searchFailed(
+                FailedSearch(source: source, step: .catalog),
+                failure
+            )
         case .barcodeScan:
             return String(localized: "Couldn't read the folder's barcodes")
-        case .releaseDetails:
-            return String(localized: "Couldn't load the release details")
+        case .releaseDetails(let failure):
+            return String(
+                localized:
+                    "Couldn't load the release details: \(failure.briefLine)"
+            )
         }
     }
 
-    /// The source this failure names, for the line saying its results are
-    /// missing from the list. `nil` for the steps no provider owns.
-    var failedSource: BridgeMetadataSource? {
+    /// The lookup this failure names, for the line saying its results are
+    /// missing from the list. `nil` for the steps no provider owns. The
+    /// disc-ID endpoint is MusicBrainz's alone, so a disc-ID failure names it.
+    var failedSearch: FailedSearch? {
         switch self {
-        case .discId: .musicBrainz
-        case .barcode(let source, _), .catalog(let source, _): source
+        case .discId: FailedSearch(source: .musicBrainz, step: .discId)
+        case .barcode(let source, _):
+            FailedSearch(source: source, step: .barcode)
+        case .catalog(let source, _):
+            FailedSearch(source: source, step: .catalog)
         case .barcodeScan, .releaseDetails: nil
         }
     }
 
-    private func sourceDidNotRespond(_ source: BridgeMetadataSource) -> String {
-        String(
-            localized:
-                "\(bridgeMetadataSourceName(source: source)) didn't respond"
+    private func searchFailed(
+        _ search: FailedSearch,
+        _ failure: BridgeLookupFailure
+    ) -> String {
+        let source = bridgeMetadataSourceName(source: search.source)
+        let step = SignalBadgeStyle.sentenceLabel(for: search.step)
+        return String(
+            localized: "\(source) \(step) search: \(failure.briefLine)"
         )
     }
 }

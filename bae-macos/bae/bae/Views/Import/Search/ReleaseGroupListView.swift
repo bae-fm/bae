@@ -163,7 +163,7 @@ struct ReleaseGroupSection: View {
                 MissingSourceNote(
                     text: String(
                         localized:
-                            "\(bridgeMetadataSourceName(source: .discogs)) results are missing from this list."
+                            "\(bridgeMetadataSourceName(source: .discogs)) \(SignalBadgeStyle.sentenceLabel(for: .barcode)) results are missing from this list."
                     )
                 )
             },

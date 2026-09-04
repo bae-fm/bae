@@ -49,6 +49,17 @@ extension BridgeLookupFailure {
         }
         return localizedDescription
     }
+
+    /// The brief reason: the few words a line that already names the source
+    /// and the step ends with — "timed out", "busy (503)". Core picks the
+    /// key, so a 429 or 503 reads as busy on every platform alike.
+    var briefLine: String {
+        let format = coreString(bridgeLookupFailureBriefKey(failure: self))
+        if case .provider(let status) = self, let status {
+            return String(format: format, NSNumber(value: status).intValue)
+        }
+        return format
+    }
 }
 
 extension BridgeIdentifyFailure {

@@ -205,16 +205,20 @@ struct ImportSearchPane: View {
         )
     }
 
-    /// One line per source whose results the list is missing, closing it.
+    /// One line per failed lookup whose results the list is missing, closing
+    /// it. Named by step as well as source: the source's other steps may have
+    /// answered, and those results are on the list.
     private var missingSourceNotes: [String] {
-        var seen: Set<BridgeMetadataSource> = []
+        var seen: Set<FailedSearch> = []
         return state.identifyFailures.compactMap { failure in
-            guard let source = failure.failedSource,
-                seen.insert(source).inserted
+            guard let search = failure.failedSearch,
+                seen.insert(search).inserted
             else { return nil }
+            let source = bridgeMetadataSourceName(source: search.source)
+            let step = SignalBadgeStyle.sentenceLabel(for: search.step)
             return String(
                 localized:
-                    "\(bridgeMetadataSourceName(source: source)) results are missing from this list."
+                    "\(source) \(step) results are missing from this list."
             )
         }
     }
