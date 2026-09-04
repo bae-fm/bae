@@ -73,6 +73,11 @@ pub fn all() -> Vec<coven::Migration> {
             "import_candidate_provenance_partners",
             include_str!("../migrations/013_import_candidate_provenance_partners.sql"),
         ),
+        coven::Migration::sql(
+            14,
+            "cue_binding_resolution",
+            include_str!("../migrations/014_cue_binding_resolution.sql"),
+        ),
     ]
 }
 

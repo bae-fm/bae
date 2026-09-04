@@ -152,12 +152,7 @@ fn produced_keys() -> Vec<String> {
     // bridge_file_role_key — every role the scan can propose has a name.
     for role in [
         BridgeFileRole::Audio,
-        BridgeFileRole::TrackSheet {
-            binding: BridgeSheetBinding::Unresolved {
-                requested: Vec::new(),
-            },
-            track_count: 0,
-        },
+        BridgeFileRole::TrackSheet { track_count: 0 },
         BridgeFileRole::Artwork {
             choice: loc_cover_choice(),
         },

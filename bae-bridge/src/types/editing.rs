@@ -421,14 +421,15 @@ pub struct BridgeSheetGroup {
 /// What a track sheet describes, with the facts its header shows about it.
 /// Mirror of bae-core's `SheetBound`.
 ///
-/// `BridgeSheetBinding` enriched by the container's name and size: a header
-/// states both which audio a sheet is on and why it is on none, and carrying
-/// the binding separately would be a second way to say the first.
+/// Core's sheet binding enriched with the container facts its header renders.
 #[cfg(feature = "desktop")]
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeSheetBound {
     /// The sheet describes this audio.
     Describes { container: BridgeMappingContainer },
+    /// The sheet describes several audio files. Each track row names its own
+    /// physical file, so the group header has no single container.
+    DescribesFiles,
     /// It describes nothing: the directive named audio that is not in the
     /// folder, named several and only some are here, or the user cleared the
     /// binding. `requested` is what the directive asked for, so the header can
@@ -436,11 +437,9 @@ pub enum BridgeSheetBound {
     /// audio instead.
     Unresolved { requested: Vec<String> },
     /// The directive resolved, but bae cannot carve tracks out of that codec.
+    /// The physical audio files import independently.
     /// The UI localizes `codec` through `bridge_sheet_refused_codec_key`.
-    RefusedCodec {
-        container: BridgeMappingContainer,
-        codec: String,
-    },
+    RefusedCodec { codec: String },
 }
 
 /// One of the folder's images, as the gallery shows it. Mirror of bae-core's

@@ -423,19 +423,16 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
             files.bound_sheets().is_empty(),
             "{folder}: the sheet must not bind to a codec bae can't carve",
         );
-        // The refusal keeps the file it named and the codec, so the pane can
-        // say which file and why instead of leaving the row reading as a bug —
-        // and so the editor that makes this binding a user decision can refuse
-        // the same pairing up front rather than at commit.
+        // The refusal keeps the codec, so the pane can explain why the sheet
+        // does not carve the audio.
         let sheets: Vec<_> = files.track_sheets().collect();
         assert_eq!(sheets.len(), 1);
         assert_eq!(
             sheets[0].binding,
             &SheetBinding::RefusedCodec {
-                file_id: audio_name.to_string(),
                 codec: codec.to_string(),
             },
-            "{folder}: the refusal names the file and the probed codec",
+            "{folder}: the refusal names the probed codec",
         );
         assert_eq!(
             files.audio().count(),
@@ -451,7 +448,7 @@ fn cue_with_unsupported_codec_leaves_the_sheet_unbound() {
     }
 }
 
-/// A CUE paired with a codec that can back single-file CUE playback yields a
+/// A CUE paired with a codec that can back CUE playback yields a
 /// valid candidate with a CUE-backed descriptor. PCM, WavPack, and DSD are
 /// otherwise untested positive arms of the codec match.
 #[test]
@@ -765,9 +762,14 @@ FILE "02 - Track Two.flac" WAVE
 
     let bound = files.bound_sheets();
     assert_eq!(bound.len(), 1);
-    // The sheet leads with its first FILE directive; both referenced files keep
-    // the audio role.
-    assert_eq!(bound[0].audio.file_name, "01 - Track One.flac");
+    assert_eq!(
+        bound[0]
+            .audio_files
+            .iter()
+            .map(|(_, audio)| audio.file_name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["01 - Track One.flac", "02 - Track Two.flac"],
+    );
     assert_eq!(
         files
             .audio()

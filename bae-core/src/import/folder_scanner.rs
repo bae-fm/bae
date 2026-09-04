@@ -40,15 +40,39 @@ const PARTIAL_MARKER_EXTENSIONS: &[&str] = &["part", "crdownload", "download", "
 
 // ── Candidate file index ────────────────────────────────────────────────────
 
-/// The audio file a CUE pairs with. The literal `FILE` path wins. When that is
-/// absent, a single-file sheet may use the unique same-stem audio in the CUE's
-/// own directory.
-pub(crate) fn find_matching_audio_for_cue<'a>(
+/// Resolve every audio path a CUE names. Each `FILE` uses the same rule: its
+/// literal path wins, otherwise the unique audio beside the referenced path
+/// with the same stem wins. Every reference must resolve to a different file.
+pub(crate) fn resolve_cue_audio_paths<'sheet, 'audio>(
     cue_path: &Path,
-    sheet: &CueSheet,
+    sheet: &'sheet CueSheet,
+    audio_files: &'audio [PathBuf],
+) -> Option<Vec<(&'sheet str, &'audio PathBuf)>> {
+    let references = sheet.audio_file_references();
+    if references.is_empty() {
+        return None;
+    }
+    let mut resolved = Vec::with_capacity(references.len());
+    let mut used = BTreeSet::new();
+    for reference in references {
+        let audio = resolve_cue_audio_path(cue_path, reference, audio_files)?;
+        if !used.insert(audio.as_path()) {
+            debug!(
+                "CUE {:?} resolves more than one FILE reference to {:?}",
+                cue_path, audio
+            );
+            return None;
+        }
+        resolved.push((reference, audio));
+    }
+    Some(resolved)
+}
+
+fn resolve_cue_audio_path<'a>(
+    cue_path: &Path,
+    file_reference: &str,
     audio_files: &'a [PathBuf],
 ) -> Option<&'a PathBuf> {
-    let file_reference = sheet.single_file()?;
     let cue_dir = cue_path.parent()?;
     let exact_path = cue_dir.join(file_reference);
     if let Some(exact) = audio_files
@@ -58,16 +82,17 @@ pub(crate) fn find_matching_audio_for_cue<'a>(
         return Some(exact);
     }
     let file_stem = Path::new(file_reference).file_stem()?.to_str()?;
+    let reference_dir = exact_path.parent()?;
     let mut matches = audio_files.iter().filter(|path| {
         ContentTypeHint::path_is_audio(path)
-            && path.parent() == Some(cue_dir)
+            && path.parent() == Some(reference_dir)
             && path.file_stem().and_then(|stem| stem.to_str()) == Some(file_stem)
     });
     let matched = matches.next()?;
     if matches.next().is_some() {
         debug!(
-            "CUE {:?} has more than one same-stem audio file beside it",
-            cue_path
+            "CUE {:?} has more than one same-stem audio file beside referenced path {:?}",
+            cue_path, exact_path
         );
         return None;
     }

@@ -109,13 +109,12 @@ pub(super) fn role_columns(role: &FileRole) -> RoleColumns<'_> {
         FileRole::Other => plain("other"),
         FileRole::TrackSheet { binding, disc, .. } => {
             let (sheet_binding, sheet_binding_file_id, sheet_binding_codec) = match binding {
-                SheetBinding::Describes { file_id } => ("describes", Some(file_id.as_str()), None),
+                SheetBinding::Resolved => ("resolved", None, None),
+                SheetBinding::Override { file_id } => ("override", Some(file_id.as_str()), None),
                 SheetBinding::Unresolved => ("unresolved", None, None),
-                SheetBinding::RefusedCodec { file_id, codec } => (
-                    "refused_codec",
-                    Some(file_id.as_str()),
-                    Some(codec.as_str()),
-                ),
+                SheetBinding::RefusedCodec { codec } => {
+                    ("refused_codec", None, Some(codec.as_str()))
+                }
             };
             let (sheet_disc, sheet_disc_number) = match disc {
                 SheetDisc::Disc { number } => ("disc", Some(*number)),
@@ -144,12 +143,12 @@ pub(super) fn sheet_binding_of(
         })
     };
     match stored {
-        "describes" => Ok(SheetBinding::Describes {
+        "resolved" => Ok(SheetBinding::Resolved),
+        "override" => Ok(SheetBinding::Override {
             file_id: named(file_id, "file id")?,
         }),
         "unresolved" => Ok(SheetBinding::Unresolved),
         "refused_codec" => Ok(SheetBinding::RefusedCodec {
-            file_id: named(file_id, "file id")?,
             codec: named(codec, "codec")?,
         }),
         other => Err(unreadable("sheet_binding", other)),

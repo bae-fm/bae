@@ -227,11 +227,19 @@ pub(crate) fn audio_layout(files: &CategorizedFiles) -> Vec<(&ScannedFile, UnitC
     let mut hosted: HashMap<&str, usize> = HashMap::new();
     let mut spoken_for: HashSet<&str> = HashSet::new();
     for sheet in &carving {
-        for file_id in sheet_audio_ids(files, sheet) {
+        for file_id in sheet_audio_ids(sheet) {
             spoken_for.insert(file_id);
         }
         *hosted
-            .entry(sheet.audio.relative_path.as_str())
+            .entry(
+                sheet
+                    .audio_files
+                    .first()
+                    .expect("a bound sheet resolves at least one audio file")
+                    .1
+                    .relative_path
+                    .as_str(),
+            )
             .or_default() += 1;
     }
 
@@ -269,9 +277,14 @@ pub(crate) fn units_of(layout: &[(&ScannedFile, UnitContribution<'_>)]) -> Vec<A
             }),
             UnitContribution::Runs(sheets) => {
                 for sheet in sheets {
-                    for index in 0..sheet.sheet.playable_track_count() {
+                    for (index, track) in sheet.sheet.playable_tracks().enumerate() {
+                        let audio = sheet
+                            .audio_files
+                            .iter()
+                            .find(|(file_reference, _)| *file_reference == track.file_reference)
+                            .expect("a bound sheet resolved every playable track's audio");
                         units.push(AudioFile::SheetSlice {
-                            file_id: sheet.audio.relative_path.clone(),
+                            file_id: audio.1.relative_path.clone(),
                             sheet_id: sheet.file.relative_path.clone(),
                             index: index as u32,
                         });
@@ -359,11 +372,11 @@ pub(crate) fn direct_entry_track_rows(files: &CategorizedFiles) -> Vec<TrackUser
 /// two differ exactly when the binding is the user's. A sheet that names one
 /// file per track has no single binding to stand in for its references, so
 /// those resolve as written, inside the sheet's own directory.
-fn sheet_audio_ids<'a>(files: &'a CategorizedFiles, bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
-    files
-        .sheet_audio_files(bound)
-        .into_iter()
-        .map(|audio| audio.relative_path.as_str())
+fn sheet_audio_ids<'a>(bound: &BoundTrackSheet<'a>) -> Vec<&'a str> {
+    bound
+        .audio_files
+        .iter()
+        .map(|(_, audio)| audio.relative_path.as_str())
         .collect()
 }
 

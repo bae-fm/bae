@@ -645,10 +645,7 @@
         static let boundTrackSheet = previewFile(
             name: "Album Title.cue",
             size: 1200,
-            role: .trackSheet(
-                binding: .describes(fileId: mappedAudioContainer.file.name),
-                trackCount: 9
-            ),
+            role: .trackSheet(trackCount: 9),
             becomes: .slots(first: 1, last: 9)
         )
 
@@ -823,11 +820,7 @@
                     previewFile(
                         name: "Album.cue",
                         size: 1100,
-                        role: .trackSheet(
-                            binding: .unresolved(requested: ["Album Title.wav"]
-                            ),
-                            trackCount: 9
-                        )
+                        role: .trackSheet(trackCount: 9)
                     ),
                 ],
             sourceAudio: BridgeCandidateSourceAudio(

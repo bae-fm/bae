@@ -106,27 +106,24 @@ pub enum FileRole {
 /// the folder.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SheetBinding {
-    /// Bound to the audio named by this [`ScannedFile::relative_path`].
-    Describes { file_id: String },
+    /// Every `FILE` reference resolved through the sheet itself.
+    Resolved,
+    /// A single-file sheet was explicitly bound to this audio instead of its
+    /// `FILE` reference.
+    Override { file_id: String },
     /// The directive named audio that is not in this folder, named several and
     /// only some resolved, or the sheet names none at all.
     Unresolved,
     /// The directive resolved, but bae can't carve tracks out of that
-    /// container: the codec doesn't back single-file CUE playback. The audio
-    /// still imports, as one track. Carries the file it named and the probed
-    /// codec, so the pane can say which file and why, and so the editor that
-    /// makes this binding a user decision can refuse the same pairing up front
-    /// instead of failing at commit.
-    RefusedCodec { file_id: String, codec: String },
+    /// audio: the codec doesn't back CUE playback. The physical audio files
+    /// still import independently.
+    RefusedCodec { codec: String },
 }
 
 impl SheetBinding {
-    /// The audio this sheet describes — only a resolved, playable binding.
-    pub fn describes(&self) -> Option<&str> {
-        match self {
-            Self::Describes { file_id } => Some(file_id),
-            Self::Unresolved | Self::RefusedCodec { .. } => None,
-        }
+    /// Whether this sheet resolves to playable audio.
+    pub fn is_resolved(&self) -> bool {
+        matches!(self, Self::Resolved | Self::Override { .. })
     }
 }
 
@@ -341,7 +338,7 @@ pub enum SheetBindingOffer {
     /// The sheet can be bound to this audio.
     Offered,
     /// bae can't carve tracks out of this container: the codec doesn't back
-    /// single-file CUE playback. Carries the probed codec so the picker says
+    /// CUE playback. Carries the probed codec so the picker says
     /// which file and why.
     RefusedCodec { codec: String },
     /// The sheet names boundaries outside this file's measured duration.
@@ -433,11 +430,13 @@ pub struct TrackSheetFile<'a> {
 
 /// A track sheet whose `FILE` directive resolved, paired with the audio it
 /// describes — the unit the track mapper and the disc-ID computer consume.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct BoundTrackSheet<'a> {
     pub file: &'a ScannedFile,
     pub sheet: &'a crate::cue_flac::CueSheet,
-    pub audio: &'a ScannedFile,
+    /// Every CUE `FILE` reference paired with the physical audio it resolved
+    /// to, in the sheet's reference order.
+    pub audio_files: Vec<(&'a str, &'a ScannedFile)>,
     pub disc: SheetDisc,
 }
 
@@ -497,8 +496,8 @@ impl CategorizedFiles {
         let carved_audio: std::collections::HashSet<&str> = self
             .carving_sheets()
             .into_iter()
-            .flat_map(|sheet| self.sheet_audio_files(&sheet))
-            .map(|file| file.relative_path.as_str())
+            .flat_map(|sheet| sheet.audio_files)
+            .map(|(_, audio)| audio.relative_path.as_str())
             .collect();
         let files_and_descriptors: Vec<_> = self
             .audio()
@@ -586,14 +585,39 @@ impl CategorizedFiles {
     /// The track sheets whose `FILE` directive resolved, each with the audio it
     /// describes, in the sheets' `relative_path` order.
     pub fn bound_sheets(&self) -> Vec<BoundTrackSheet<'_>> {
+        let audio_paths = self.audio_paths();
         self.track_sheets()
             .filter_map(|sheet| {
-                let describes = sheet.binding.describes()?;
-                let audio = self.audio().find(|file| file.relative_path == describes)?;
+                let audio_files = match sheet.binding {
+                    SheetBinding::Resolved => resolve_cue_audio_paths(
+                        sheet.file.path.as_path(),
+                        sheet.sheet,
+                        &audio_paths,
+                    )?
+                    .into_iter()
+                    .map(|(file_reference, path)| {
+                        let audio = self
+                            .audio()
+                            .find(|audio| audio.path == *path)
+                            .expect("resolved CUE audio came from this folder");
+                        (file_reference, audio)
+                    })
+                    .collect(),
+                    SheetBinding::Override { file_id } => vec![(
+                        sheet
+                            .sheet
+                            .single_file()
+                            .expect("only a single-file CUE accepts an explicit binding"),
+                        self.audio()
+                            .find(|audio| audio.relative_path == file_id.as_str())
+                            .expect("an explicit CUE binding names retained audio"),
+                    )],
+                    SheetBinding::Unresolved | SheetBinding::RefusedCodec { .. } => return None,
+                };
                 Some(BoundTrackSheet {
                     file: sheet.file,
                     sheet: sheet.sheet,
-                    audio,
+                    audio_files,
                     disc: sheet.disc,
                 })
             })
@@ -606,27 +630,6 @@ impl CategorizedFiles {
         self.bound_sheets()
             .into_iter()
             .filter(BoundTrackSheet::carves)
-            .collect()
-    }
-
-    /// Every physical audio file a bound sheet speaks for. A single-file
-    /// sheet uses its effective binding; a multi-file sheet resolves every
-    /// audio reference in the sheet's directory.
-    pub fn sheet_audio_files<'a>(&'a self, bound: &BoundTrackSheet<'a>) -> Vec<&'a ScannedFile> {
-        if bound.sheet.single_file().is_some() {
-            return vec![bound.audio];
-        }
-        let Some(cue_dir) = bound.file.path.parent() else {
-            return Vec::new();
-        };
-        bound
-            .sheet
-            .audio_file_references()
-            .iter()
-            .filter_map(|reference| {
-                let path = cue_dir.join(reference);
-                self.audio().find(|audio| audio.path == path)
-            })
             .collect()
     }
 

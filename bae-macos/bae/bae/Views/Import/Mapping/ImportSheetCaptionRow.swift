@@ -85,10 +85,12 @@ struct ImportSheetCaptionRow: View {
         .onHover { hoveringName = $0 }
     }
 
-    /// There is a binding to show when core has offered audio to bind to, or
-    /// when the sheet is already on some.
+    /// There is a binding to show when core has offered audio to bind to, the
+    /// sheet is already on one file, or core has a refusal to explain.
     private var hasBinding: Bool {
-        options?.isEmpty == false || sheet.bound.containerName != nil
+        options?.isEmpty == false
+            || sheet.bound.containerName != nil
+            || sheet.bound.reasonLine != nil
     }
 
     /// The audio the sheet describes: the menu that chooses it where there is
@@ -105,6 +107,13 @@ struct ImportSheetCaptionRow: View {
         else if let name = sheet.bound.containerName {
             Text(name)
                 .font(.system(size: 11, design: .monospaced))
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        else if let reason = sheet.bound.reasonLine {
+            Text(reason)
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
         }

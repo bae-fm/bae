@@ -33,11 +33,9 @@ fn single_file_cue_uses_the_unique_same_stem_audio_when_its_reference_is_missing
     assert_uniform_source_audio(&files, crate::album_detail::SourceAudioLayout::Cue, "FLAC");
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Describes {
-            file_id: "cd.flac".to_string()
-        },
+        &SheetBinding::Resolved,
     );
-    assert_eq!(files.bound_sheets()[0].audio.file_name, "cd.flac");
+    assert_eq!(files.bound_sheets()[0].audio_files[0].1.file_name, "cd.flac");
     assert!(
         crate::import::discid::compute_discid_from_categorized(&files).is_some(),
         "the automatically bound sheet and audio yield a disc ID",
@@ -171,9 +169,7 @@ fn exact_file_reference_wins_over_other_same_stem_audio() {
 
     assert_eq!(
         files.track_sheets().next().unwrap().binding,
-        &SheetBinding::Describes {
-            file_id: "cd.flac".to_string()
-        },
+        &SheetBinding::Resolved,
     );
 }
 

@@ -79,7 +79,7 @@ fn a_cue_carved_container_yields_a_row_per_slice() {
         panic!("the fixture binds a carving sheet");
     };
     let sheet_id = sheet.file.relative_path.clone();
-    let container_id = sheet.audio.relative_path.clone();
+    let container_id = sheet.audio_files[0].1.relative_path.clone();
     let track_count = sheet.sheet.playable_track_count();
 
     let probed = source_durations(&files).expect("valid CUE timing has durations");

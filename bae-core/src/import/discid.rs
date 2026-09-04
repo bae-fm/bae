@@ -1,5 +1,5 @@
 use crate::cue_flac::CueSheet;
-use crate::import::folder_scanner::find_matching_audio_for_cue;
+use crate::import::folder_scanner::resolve_cue_audio_paths;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tracing::{debug, trace, warn};
@@ -240,13 +240,17 @@ pub fn compute_discid_from_paths(
                 continue;
             }
         };
-        let Some(audio_path) = find_matching_audio_for_cue(cue_path, &sheet, &audio_paths) else {
+        let Some(resolved) = resolve_cue_audio_paths(cue_path, &sheet, &audio_paths) else {
             debug!("Skipping CUE with no matching audio file: {:?}", cue_path);
+            continue;
+        };
+        let [(_, audio_path)] = resolved.as_slice() else {
+            debug!("Skipping multi-file CUE for DiscID: {:?}", cue_path);
             continue;
         };
         let duration_ms = audio_files
             .iter()
-            .find_map(|(path, duration_ms)| (path == audio_path).then_some(*duration_ms))
+            .find_map(|(path, duration_ms)| (path == *audio_path).then_some(*duration_ms))
             .expect("a matched CUE audio path came from the retained-duration list");
         if let Some(id) = discid_from_cue_duration(&sheet, duration_ms, audio_path) {
             return Some(id);
@@ -321,13 +325,17 @@ pub fn compute_discid_from_categorized(
     // Only the sheets that carve: one the user took out of the tracklist
     // describes a disc this folder is no longer presenting.
     for bound in categorized.carving_sheets() {
-        let source_audio = bound
-            .audio
+        let [resolved] = bound.audio_files.as_slice() else {
+            debug!("Skipping multi-file CUE for DiscID: {:?}", bound.file.path);
+            continue;
+        };
+        let source_audio = resolved
+            .1
             .source_audio
             .as_ref()
             .expect("a categorized audio file retains its scan facts");
         if let Some(id) =
-            discid_from_cue_duration(bound.sheet, source_audio.duration_ms, &bound.audio.path)
+            discid_from_cue_duration(bound.sheet, source_audio.duration_ms, &resolved.1.path)
         {
             return Some(ComputedDiscId {
                 disc_id: id,
@@ -762,7 +770,7 @@ mod tests {
 
     /// A single-FILE CUE matches the unique same-stem audio beside the sheet.
     #[test]
-    fn find_matching_audio_for_cue_matches_by_stem() {
+    fn resolve_cue_audio_paths_matches_by_stem() {
         let sheet = cue_sheet_with(vec![
             audio_cue_track(1, "Album Image.flac"),
             audio_cue_track(2, "Album Image.flac"),
@@ -772,25 +780,24 @@ mod tests {
             PathBuf::from("/rip/Album Image.flac"),
         ];
 
-        let matched =
-            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files);
-        assert_eq!(matched, Some(&PathBuf::from("/rip/Album Image.flac")));
+        let matched = resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+            .expect("the unique same-stem audio should resolve");
+        assert_eq!(matched[0].1, &PathBuf::from("/rip/Album Image.flac"));
     }
 
     /// No audio file shares the FILE reference's stem → no match.
     #[test]
-    fn find_matching_audio_for_cue_no_stem_match_is_none() {
+    fn resolve_cue_audio_paths_no_stem_match_is_none() {
         let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.flac")]);
         let audio_files = vec![PathBuf::from("/rip/Different Name.flac")];
 
         assert!(
-            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
-                .is_none()
+            resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files).is_none()
         );
     }
 
     #[test]
-    fn find_matching_audio_for_cue_ambiguous_same_stem_is_none() {
+    fn resolve_cue_audio_paths_ambiguous_same_stem_is_none() {
         let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.wav")]);
         let audio_files = vec![
             PathBuf::from("/rip/Album Image.flac"),
@@ -798,13 +805,12 @@ mod tests {
         ];
 
         assert!(
-            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
-                .is_none()
+            resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files).is_none()
         );
     }
 
     #[test]
-    fn find_matching_audio_for_cue_exact_path_wins_over_same_stem_audio() {
+    fn resolve_cue_audio_paths_exact_path_wins_over_same_stem_audio() {
         let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.flac")]);
         let audio_files = vec![
             PathBuf::from("/rip/Album Image.ape"),
@@ -812,27 +818,38 @@ mod tests {
         ];
 
         assert_eq!(
-            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files),
-            Some(&PathBuf::from("/rip/Album Image.flac")),
+            resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+                .expect("the exact path should resolve")[0]
+                .1,
+            &PathBuf::from("/rip/Album Image.flac"),
         );
     }
 
     #[test]
-    fn find_matching_audio_for_cue_other_directory_is_none() {
+    fn resolve_cue_audio_paths_other_directory_is_none() {
         let sheet = cue_sheet_with(vec![audio_cue_track(1, "Album Image.wav")]);
         let audio_files = vec![PathBuf::from("/rip/audio/Album Image.flac")];
 
         assert!(
-            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
-                .is_none()
+            resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files).is_none()
         );
     }
 
-    /// A multi-FILE CUE (one file per track) is not a disc-ID candidate — the
-    /// sectors would have to come from one concatenated container, so the
-    /// matcher returns `None` regardless of the audio files present.
     #[test]
-    fn find_matching_audio_for_cue_multi_file_is_none() {
+    /// Same-stem fallback follows the reference's directory, not only the
+    /// directory containing the CUE.
+    fn resolve_cue_audio_paths_matches_by_stem_in_referenced_subdirectory() {
+        let sheet = cue_sheet_with(vec![audio_cue_track(1, "audio/Album Image.wav")]);
+        let audio_files = vec![PathBuf::from("/rip/audio/Album Image.flac")];
+
+        let matched = resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+            .expect("same-stem audio beside the referenced path should resolve");
+        assert_eq!(matched[0].1, &PathBuf::from("/rip/audio/Album Image.flac"));
+    }
+
+    /// Every reference in a multi-FILE CUE resolves independently.
+    #[test]
+    fn resolve_cue_audio_paths_resolves_multiple_files() {
         let sheet = cue_sheet_with(vec![
             audio_cue_track(1, "Track 01.flac"),
             audio_cue_track(2, "Track 02.flac"),
@@ -842,9 +859,17 @@ mod tests {
             PathBuf::from("/rip/Track 02.flac"),
         ];
 
-        assert!(
-            find_matching_audio_for_cue(Path::new("/rip/Album.cue"), &sheet, &audio_files)
-                .is_none()
+        let matched = resolve_cue_audio_paths(Path::new("/rip/Album.cue"), &sheet, &audio_files)
+            .expect("both referenced audio files should resolve");
+        assert_eq!(
+            matched
+                .into_iter()
+                .map(|(_, path)| path.as_path())
+                .collect::<Vec<_>>(),
+            vec![
+                Path::new("/rip/Track 01.flac"),
+                Path::new("/rip/Track 02.flac"),
+            ]
         );
     }
 }

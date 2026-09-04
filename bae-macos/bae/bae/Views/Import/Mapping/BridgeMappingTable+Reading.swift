@@ -132,8 +132,7 @@ extension BridgeSheetBound {
     private var container: BridgeMappingContainer? {
         switch self {
         case .describes(let container): container
-        case .refusedCodec(let container, _): container
-        case .unresolved: nil
+        case .describesFiles, .refusedCodec, .unresolved: nil
         }
     }
 
@@ -146,7 +145,7 @@ extension BridgeSheetBound {
     /// when it is on audio and there is nothing to explain.
     var reasonLine: String? {
         switch self {
-        case .describes:
+        case .describes, .describesFiles:
             nil
         case .unresolved(let requested):
             if requested.isEmpty {
@@ -158,7 +157,7 @@ extension BridgeSheetBound {
                     requested.formatted(.list(type: .and))
                 )
             }
-        case .refusedCodec(_, let codec):
+        case .refusedCodec(let codec):
             coreString(bridgeSheetRefusedCodecKey(), codec)
         }
     }

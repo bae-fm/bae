@@ -4,6 +4,8 @@ use coven::{Coven, CovenError, FixedClock, MigrationError, StoreDir};
 use serial_test::serial;
 use std::sync::Arc;
 
+#[path = "migrations_tests/migration_fourteen.rs"]
+mod migration_fourteen;
 #[path = "migrations_tests/migration_ten.rs"]
 mod migration_ten;
 #[path = "migrations_tests/migration_twelve.rs"]
@@ -95,6 +97,12 @@ fn version_nine() -> Vec<coven::Migration> {
 fn version_eleven() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(11);
+    migrations
+}
+
+fn version_thirteen() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(13);
     migrations
 }
 

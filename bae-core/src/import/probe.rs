@@ -101,10 +101,15 @@ pub fn source_durations(files: &CategorizedFiles) -> Result<SourceDurations, Imp
         for sheet in sheets {
             let sheet_id = sheet.file.relative_path.as_str();
             let analysis = sheet_analysis(files, sheet_id)?;
-            for index in 0..sheet.sheet.playable_track_count() {
+            for (index, track) in sheet.sheet.playable_tracks().enumerate() {
+                let audio = sheet
+                    .audio_files
+                    .iter()
+                    .find(|(file_reference, _)| *file_reference == track.file_reference)
+                    .expect("a bound sheet resolved every playable track's audio");
                 units.push(SourceDuration {
                     audio: AudioFile::SheetSlice {
-                        file_id: sheet.audio.relative_path.clone(),
+                        file_id: audio.1.relative_path.clone(),
                         sheet_id: sheet_id.to_string(),
                         index: index as u32,
                     },
@@ -156,12 +161,8 @@ pub(crate) fn sheet_track_duration_ms(
 }
 
 /// Parse-and-probe one bound track sheet, once, for every slice carved out of
-/// it. The audio a sheet naming a single file is analyzed against is the audio
-/// it is *bound* to, not what its `FILE` directive spells: a sheet written for
-/// a WAV that was later encoded to FLAC still says `WAV`, and re-resolving the
-/// directive here would refuse the very pairing the user corrected. A sheet
-/// naming one file per track has no single binding to stand in, so its
-/// references resolve as written.
+/// it. The scan has already resolved every CUE `FILE` reference to the
+/// candidate's physical audio, including extension changes.
 pub(crate) fn sheet_analysis(
     files: &CategorizedFiles,
     sheet_id: &str,
@@ -174,27 +175,8 @@ pub(crate) fn sheet_analysis(
             detail: format!("{sheet_id} no longer describes any of the folder's audio"),
         })?;
 
-    let cue_dir = sheet
-        .file
-        .path
-        .parent()
-        .ok_or_else(|| ImportError::UnusableFile {
-            detail: format!("{sheet_id} has no parent directory"),
-        })?;
-    let single_file = sheet.sheet.single_file().is_some();
-
     let mut audio_files = Vec::new();
-    for file_reference in sheet.sheet.audio_file_references() {
-        let file = if single_file {
-            sheet.audio
-        } else {
-            files
-                .audio()
-                .find(|audio| audio.path == cue_dir.join(file_reference))
-                .ok_or_else(|| ImportError::UnusableFile {
-                    detail: format!("{sheet_id} references missing audio {file_reference}"),
-                })?
-        };
+    for (file_reference, file) in &sheet.audio_files {
         let source_audio = file
             .source_audio
             .as_ref()
@@ -202,7 +184,7 @@ pub(crate) fn sheet_analysis(
                 detail: format!("{} has no scanned audio facts", file.relative_path),
             })?;
         audio_files.push(CueAnalyzedAudioFile {
-            file_reference: file_reference.to_string(),
+            file_reference: (*file_reference).to_string(),
             path: file.path.clone(),
             probe: ProbeResult {
                 content_type: source_audio.content_type.clone(),

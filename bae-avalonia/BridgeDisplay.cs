@@ -233,7 +233,7 @@ internal static class BridgeDisplay
     internal static string? UnboundSheetLine(BridgeSheetBound bound) =>
         bound switch
         {
-            BridgeSheetBound.Describes => null,
+            BridgeSheetBound.Describes or BridgeSheetBound.DescribesFiles => null,
             BridgeSheetBound.Unresolved { Requested.Length: 0 } =>
                 Loc.Core("ui.import.sheet.describes_nothing"),
             BridgeSheetBound.Unresolved unresolved => Loc.Core(

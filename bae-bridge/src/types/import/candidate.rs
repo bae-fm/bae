@@ -32,27 +32,6 @@ pub struct BridgeFileInfo {
     pub audio_format: Option<BridgeAudioFormat>,
 }
 
-/// What a track sheet describes. Mirror of bae-core's `SheetBinding`; `file_id`
-/// is a file's `name` (its release-relative path).
-///
-/// The scan proposes it from the sheet's `FILE` directive and the user can
-/// overrule it — see `AppHandle::set_sheet_binding`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeSheetBinding {
-    /// Bound to the audio named by `file_id`.
-    Describes { file_id: String },
-    /// The sheet describes nothing: the directive names audio that is not in
-    /// the folder, names several and only some are here, or the user cleared
-    /// the binding. `requested` is what the directive asked for, so the pane
-    /// can say what the sheet was looking for while it offers the folder's own
-    /// audio instead.
-    Unresolved { requested: Vec<String> },
-    /// The directive resolved, but bae can't carve tracks out of that codec.
-    /// The audio imports as one track. The UI localizes `codec` through
-    /// [`bridge_sheet_refused_codec_key`].
-    RefusedCodec { file_id: String, codec: String },
-}
-
 /// Whether one of a candidate's audio files can back a sheet's binding. Mirror
 /// of bae-core's `SheetBindingOffer`. Core decides this by probing, so no UI
 /// reads a codec to work out what it may offer.
@@ -129,9 +108,8 @@ pub(crate) const SHEET_REFUSED_UNREADABLE_KEY: &str = "core.import.sheet.refused
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeFileRole {
     Audio,
-    /// A parsed track sheet, with what its `FILE` directive resolved to.
+    /// A parsed track sheet.
     TrackSheet {
-        binding: BridgeSheetBinding,
         /// Playable tracks the sheet carves.
         track_count: u32,
     },

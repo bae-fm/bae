@@ -236,6 +236,10 @@ pub struct SheetGroup {
 pub enum SheetBound {
     /// The sheet describes this audio.
     Describes(MappingContainer),
+    /// The sheet describes several audio files, one per distinct `FILE`
+    /// reference. The rows name their own physical files; the group header has
+    /// no single container to name.
+    DescribesFiles,
     /// It describes nothing: the directive named audio that is not in the
     /// folder, named several and only some are here, or the user cleared the
     /// binding. `requested` is what the directive asked for, so the header can
@@ -243,24 +247,8 @@ pub enum SheetBound {
     /// audio instead.
     Unresolved { requested: Vec<String> },
     /// The directive resolved, but bae cannot carve tracks out of that codec.
-    /// The audio imports as one track.
-    RefusedCodec {
-        container: MappingContainer,
-        codec: String,
-    },
-}
-
-impl SheetBound {
-    /// The audio the sheet is on, where it is on any — the file whose rows this
-    /// sheet's group stands for.
-    pub fn container_id(&self) -> Option<&str> {
-        match self {
-            Self::Describes(container) | Self::RefusedCodec { container, .. } => {
-                Some(container.file_id.as_str())
-            }
-            Self::Unresolved { .. } => None,
-        }
-    }
+    /// The physical audio files import independently.
+    RefusedCodec { codec: String },
 }
 
 /// The audio a track sheet describes.
@@ -368,7 +356,7 @@ pub fn mapping_table(
                 name: entry.file.relative_path.clone(),
                 size: entry.file.size,
                 path: entry.file.path.clone(),
-                bound: bound_of(files, sheet, binding),
+                bound: bound_of(files, &entry.file.relative_path, sheet, binding),
                 assignment: *disc,
                 disc_options: disc_options.clone(),
             })),
@@ -384,7 +372,7 @@ pub fn mapping_table(
                                     name: sheet.file.relative_path.clone(),
                                     size: sheet.file.size,
                                     path: sheet.file.path.clone(),
-                                    bound: SheetBound::Describes(container(sheet.audio)),
+                                    bound: bound_sheet(sheet),
                                     assignment: sheet.disc,
                                     disc_options: disc_options.clone(),
                                 },
@@ -488,15 +476,20 @@ impl RowBuilder<'_> {
             .playable_tracks()
             .enumerate()
             .map(|(index, track)| {
+                let audio = sheet
+                    .audio_files
+                    .iter()
+                    .find(|(file_reference, _)| *file_reference == track.file_reference)
+                    .expect("a bound sheet resolved every playable track's audio")
+                    .1;
                 let unit = AudioFile::SheetSlice {
-                    file_id: sheet.audio.relative_path.clone(),
+                    file_id: audio.relative_path.clone(),
                     sheet_id: sheet.file.relative_path.clone(),
                     index: index as u32,
                 };
                 let duration_ms = self.duration_ms(&unit);
                 let sample_rate = u64::try_from(
-                    sheet
-                        .audio
+                    audio
                         .source_audio
                         .as_ref()
                         .expect("a scanned audio file has source facts")
@@ -505,7 +498,7 @@ impl RowBuilder<'_> {
                 )
                 .expect("a scanned audio file has a non-negative sample rate");
                 let preview_target = crate::playback::PreviewTarget::sample_range(
-                    sheet.audio.path.to_string_lossy().into_owned(),
+                    audio.path.to_string_lossy().into_owned(),
                     crate::cue_flac::cue_frames_to_samples(track.start_cue_frames, sample_rate),
                     track
                         .end_cue_frames
@@ -519,11 +512,10 @@ impl RowBuilder<'_> {
                         number: track.number,
                         title: track.title.clone(),
                         duration_ms,
-                        container_id: sheet.audio.relative_path.clone(),
-                        container_name: sheet.audio.file_name.clone(),
-                        container_path: sheet.audio.path.clone(),
-                        audio_format: sheet
-                            .audio
+                        container_id: audio.relative_path.clone(),
+                        container_name: audio.file_name.clone(),
+                        container_path: audio.path.clone(),
+                        audio_format: audio
                             .source_audio
                             .as_ref()
                             .expect("a scanned audio file has source facts")
@@ -711,22 +703,16 @@ fn container(audio: &ScannedFile) -> MappingContainer {
     }
 }
 
-/// The container a binding names, or `None` when the folder no longer holds it
-/// as audio — which is the same thing as the sheet describing nothing.
-fn container_of(files: &CategorizedFiles, file_id: &str) -> Option<MappingContainer> {
-    files
-        .audio()
-        .find(|audio| audio.relative_path == file_id)
-        .map(container)
-}
-
 /// What a sheet describes, as its header states it.
 ///
-/// A binding naming audio the folder no longer holds as audio — a container
-/// somebody took out of the tracklist — describes nothing, and says so with what
-/// the directive asked for, which is the same answer an unresolved directive
-/// gives.
-fn bound_of(files: &CategorizedFiles, sheet: &CueSheet, binding: &SheetBinding) -> SheetBound {
+/// A resolved sheet whose audio no longer has the audio role describes
+/// nothing, and says so with what the directive asked for.
+fn bound_of(
+    files: &CategorizedFiles,
+    sheet_id: &str,
+    sheet: &CueSheet,
+    binding: &SheetBinding,
+) -> SheetBound {
     let unresolved = || SheetBound::Unresolved {
         requested: sheet
             .audio_file_references()
@@ -735,18 +721,24 @@ fn bound_of(files: &CategorizedFiles, sheet: &CueSheet, binding: &SheetBinding) 
             .collect(),
     };
     match binding {
+        SheetBinding::Resolved | SheetBinding::Override { .. } => files
+            .bound_sheets()
+            .into_iter()
+            .find(|bound| bound.file.relative_path == sheet_id)
+            .map(|bound| bound_sheet(&bound))
+            .unwrap_or_else(unresolved),
         SheetBinding::Unresolved => unresolved(),
-        SheetBinding::Describes { file_id } => match container_of(files, file_id) {
-            Some(container) => SheetBound::Describes(container),
-            None => unresolved(),
+        SheetBinding::RefusedCodec { codec } => SheetBound::RefusedCodec {
+            codec: codec.clone(),
         },
-        SheetBinding::RefusedCodec { file_id, codec } => match container_of(files, file_id) {
-            Some(container) => SheetBound::RefusedCodec {
-                container,
-                codec: codec.clone(),
-            },
-            None => unresolved(),
-        },
+    }
+}
+
+fn bound_sheet(sheet: &BoundTrackSheet<'_>) -> SheetBound {
+    match sheet.audio_files.as_slice() {
+        [(_, audio)] => SheetBound::Describes(container(audio)),
+        [_, _, ..] => SheetBound::DescribesFiles,
+        [] => unreachable!("a bound sheet resolves at least one audio file"),
     }
 }
 

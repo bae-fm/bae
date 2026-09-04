@@ -12,11 +12,12 @@ pub fn is_audio_file(path: &Path) -> bool {
 
 /// A track sheet's audio file, as FFmpeg probes it.
 pub(super) enum CueCodecLabel {
-    /// A codec bae can play back from a single-file CUE.
+    /// A codec bae can play back through a CUE.
     Supported,
-    /// A readable codec that can't back single-file CUE playback (e.g. MP3,
+    /// A readable codec that can't back CUE playback (e.g. MP3,
     /// Vorbis). Carries the codec's display name for the log line: the binding
-    /// is refused with the codec named, and the audio imports as one track.
+    /// is refused with the codec named, and the physical files import
+    /// independently.
     Unsupported(String),
     /// The file cleared the header-only magic check but FFmpeg can't identify a
     /// playable stream in it — a download truncated after the header, or
@@ -25,7 +26,7 @@ pub(super) enum CueCodecLabel {
     Unprobeable,
 }
 
-/// Whether a track sheet's audio file can back single-file CUE playback. The
+/// Whether a track sheet's audio file can back CUE playback. The
 /// answer comes from FFmpeg's probe, never from the extension, because containers
 /// such as MP4, Ogg, WAV, and AIFF don't prove the codec by filename.
 ///
@@ -62,24 +63,12 @@ fn track_fits_audio(track: &crate::cue_flac::CueTrack, audio: &ScannedFile) -> b
     })
 }
 
-fn sheet_fits_resolved_audio(
-    sheet_file: &ScannedFile,
-    sheet: &CueSheet,
-    bound_audio: &ScannedFile,
-    audio: &HashMap<&str, &ScannedFile>,
-) -> bool {
-    if sheet.single_file().is_some() {
-        return sheet_fits_single_audio(sheet, bound_audio);
-    }
-    let Some(cue_dir) = sheet_file.path.parent() else {
-        return false;
-    };
+fn sheet_fits_resolved_audio(sheet: &CueSheet, resolved: &[(&str, &ScannedFile)]) -> bool {
     sheet.playable_tracks().all(|track| {
-        let path = cue_dir.join(&track.file_reference);
-        audio
-            .values()
-            .find(|candidate| candidate.path == path)
-            .is_some_and(|candidate| track_fits_audio(track, candidate))
+        resolved
+            .iter()
+            .find(|(reference, _)| *reference == track.file_reference)
+            .is_some_and(|(_, audio)| track_fits_audio(track, audio))
     })
 }
 
@@ -199,61 +188,91 @@ pub(super) fn settle_sheet_bindings(
         .filter(|entry| matches!(entry.role, FileRole::Audio))
         .map(|entry| (entry.file.relative_path.as_str(), &entry.file))
         .collect();
+    let audio_paths: Vec<PathBuf> = audio.values().map(|file| file.path.clone()).collect();
+    let audio_by_path: HashMap<&Path, &ScannedFile> = audio
+        .values()
+        .map(|file| (file.path.as_path(), *file))
+        .collect();
 
     let mut settled: Vec<(usize, SheetBinding)> = Vec::new();
     for (index, entry) in files.iter().enumerate() {
         cancellation.check()?;
-        let FileRole::TrackSheet { sheet, binding, .. } = &entry.role else {
+        let FileRole::TrackSheet { sheet, .. } = &entry.role else {
             continue;
         };
-        let binding = match edits.get(&entry.file.relative_path) {
-            Some(UserSheetBinding::Describes { file_id }) => SheetBinding::Describes {
-                file_id: file_id.clone(),
-            },
-            Some(UserSheetBinding::Cleared) => SheetBinding::Unresolved,
-            None => binding.clone(),
+        let resolved = match edits.get(&entry.file.relative_path) {
+            Some(UserSheetBinding::Describes { file_id }) => {
+                let reference = sheet.single_file();
+                reference
+                    .zip(audio.get(file_id.as_str()).copied())
+                    .map(|pair| (vec![pair], Some(file_id.clone())))
+            }
+            Some(UserSheetBinding::Cleared) => None,
+            None => {
+                resolve_cue_audio_paths(&entry.file.path, sheet, &audio_paths).map(|resolved| {
+                    (
+                        resolved
+                            .into_iter()
+                            .map(|(reference, path)| {
+                                (
+                                    reference,
+                                    *audio_by_path
+                                        .get(path.as_path())
+                                        .expect("resolved CUE audio came from this folder"),
+                                )
+                            })
+                            .collect(),
+                        None,
+                    )
+                })
+            }
         };
-        let SheetBinding::Describes { file_id } = &binding else {
-            settled.push((index, binding));
-            continue;
-        };
-        let Some(audio_path) = audio.get(file_id.as_str()) else {
-            info!(
-                "sheet {} names {file_id}, which is not this folder's audio; it stays unbound",
-                entry.file.relative_path,
-            );
+        let Some((resolved, explicit_file_id)) = resolved else {
             settled.push((index, SheetBinding::Unresolved));
             continue;
         };
-        let binding = match cue_pair_codec_label(audio_path) {
-            CueCodecLabel::Supported
-                if sheet_fits_resolved_audio(&entry.file, sheet, audio_path, &audio) =>
-            {
-                binding
+        let mut refused_codec = None;
+        for (_, audio) in &resolved {
+            match cue_pair_codec_label(audio) {
+                CueCodecLabel::Supported => {}
+                CueCodecLabel::Unsupported(codec) => {
+                    refused_codec.get_or_insert(codec);
+                }
+                CueCodecLabel::Unprobeable => {
+                    info!(
+                        "Invalid candidate: sheet audio file could not be probed: {}",
+                        audio.relative_path
+                    );
+                    return Ok(SettledBindings::CorruptAudio {
+                        path: audio.relative_path.clone(),
+                    });
+                }
             }
-            CueCodecLabel::Supported => {
+        }
+        let binding = if let Some(codec) = refused_codec {
+            info!(
+                "sheet {} names {codec} audio, which bae can't play from a CUE; \
+                 the binding is refused and the physical audio files import independently",
+                entry.file.relative_path,
+            );
+            SheetBinding::RefusedCodec { codec }
+        } else if !sheet_fits_resolved_audio(sheet, &resolved) {
+            let file_ids = resolved
+                .iter()
+                .map(|(_, audio)| audio.relative_path.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            {
                 info!(
-                    "sheet {} has boundaries outside {file_id}; it stays unbound and the audio imports as one track",
+                    "sheet {} has boundaries outside {file_ids}; it stays unbound and the physical audio files import independently",
                     entry.file.relative_path,
                 );
                 SheetBinding::Unresolved
             }
-            CueCodecLabel::Unsupported(codec) => {
-                info!(
-                    "sheet {} names {codec} audio, which bae can't play from a single-file CUE; \
-                     the binding is refused and the audio imports as one track",
-                    entry.file.relative_path,
-                );
-                SheetBinding::RefusedCodec {
-                    file_id: file_id.clone(),
-                    codec,
-                }
-            }
-            CueCodecLabel::Unprobeable => {
-                info!("Invalid candidate: sheet audio file could not be probed: {file_id}");
-                return Ok(SettledBindings::CorruptAudio {
-                    path: file_id.clone(),
-                });
+        } else {
+            match explicit_file_id {
+                Some(file_id) => SheetBinding::Override { file_id },
+                None => SheetBinding::Resolved,
             }
         };
         settled.push((index, binding));
@@ -282,7 +301,7 @@ pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscE
         let FileRole::TrackSheet { binding, disc, .. } = &mut entry.role else {
             continue;
         };
-        let position = if binding.describes().is_some() {
+        let position = if binding.is_resolved() {
             bound_so_far += 1;
             bound_so_far
         } else {
@@ -292,15 +311,6 @@ pub(super) fn settle_sheet_discs(files: &mut [CandidateFile], edits: &SheetDiscE
             .get(&entry.file.relative_path)
             .unwrap_or(SheetDisc::Disc { number: position });
     }
-}
-
-/// The directory holding a CUE sheet, where its `FILE` references resolve. A
-/// CUE path with no parent is a filesystem impossibility for a scanned file,
-/// so it's a hard scan error, not an invalid-candidate reason.
-pub(super) fn cue_parent_dir(cue_path: &Path) -> Result<&Path, FolderScanError> {
-    cue_path
-        .parent()
-        .ok_or_else(|| FolderScanError::Other(format!("CUE file has no parent: {:?}", cue_path)))
 }
 
 /// Categorize a release root's selected files. `fs_root` is the folder
@@ -432,24 +442,17 @@ pub(super) fn categorize_files_from_tree(
 
     // Resolve each sheet's `FILE` directives literally inside the sheet's own
     // directory. A sheet binds only when every reference resolves — a partial
-    // layout describes audio that isn't reachable, so it is no better than none
-    // — and `describes` names the first reference, the audio the sheet leads
-    // with. A single-FILE sheet whose literal path is absent may instead name
-    // the unique same-stem audio beside it.
+    // layout describes audio that isn't reachable, so it is no better than
+    // none. A missing literal path may instead name the unique same-stem audio
+    // beside the referenced path.
     let audio_paths: Vec<PathBuf> = proposed
         .iter()
         .filter(|(_, role)| *role == ProposedRole::Audio)
         .map(|(file, _)| file.path.clone())
         .collect();
-    let audio_by_path: HashMap<&Path, &str> = proposed
-        .iter()
-        .filter(|(_, role)| *role == ProposedRole::Audio)
-        .map(|(file, _)| (file.path.as_path(), file.relative_path.as_str()))
-        .collect();
     let mut bindings: BTreeMap<usize, SheetBinding> = BTreeMap::new();
     for (index, sheet) in &sheets {
         let cue_file = &proposed[*index].0;
-        let cue_dir = cue_parent_dir(&cue_file.path)?;
         let references = sheet.audio_file_references();
         if references.is_empty() {
             info!(
@@ -459,33 +462,15 @@ pub(super) fn categorize_files_from_tree(
             bindings.insert(*index, SheetBinding::Unresolved);
             continue;
         }
-        let resolved: Option<Vec<&str>> = references
-            .iter()
-            .map(|reference| {
-                audio_by_path
-                    .get(cue_dir.join(reference).as_path())
-                    .copied()
-            })
-            .collect();
-        let binding = match resolved {
-            Some(resolved) => SheetBinding::Describes {
-                file_id: resolved[0].to_string(),
-            },
-            None => match find_matching_audio_for_cue(&cue_file.path, sheet, &audio_paths) {
-                Some(audio_path) => SheetBinding::Describes {
-                    file_id: audio_by_path
-                        .get(audio_path.as_path())
-                        .expect("same-stem match came from this folder's audio")
-                        .to_string(),
-                },
-                None => {
-                    info!(
-                        "CUE {:?} names audio that is not here; it stays unbound",
-                        cue_file.path
-                    );
-                    SheetBinding::Unresolved
-                }
-            },
+        let binding = match resolve_cue_audio_paths(&cue_file.path, sheet, &audio_paths) {
+            Some(_) => SheetBinding::Resolved,
+            None => {
+                info!(
+                    "CUE {:?} names audio that is not here; it stays unbound",
+                    cue_file.path
+                );
+                SheetBinding::Unresolved
+            }
         };
         bindings.insert(*index, binding);
     }

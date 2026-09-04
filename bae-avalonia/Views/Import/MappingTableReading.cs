@@ -118,7 +118,6 @@ internal static class MappingTableReading
     internal static BridgeMappingContainer? Container(this BridgeSheetBound bound) => bound switch
     {
         BridgeSheetBound.Describes describes => describes.Container,
-        BridgeSheetBound.RefusedCodec refused => refused.Container,
         _ => null,
     };
 

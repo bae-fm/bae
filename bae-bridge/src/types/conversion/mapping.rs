@@ -35,7 +35,7 @@ impl BridgeCandidateFile {
         entry: bae_core::import::folder_scanner::CandidateFile,
         becomes: bae_core::import::folder_scanner::FileBecomes,
     ) -> Self {
-        use bae_core::import::folder_scanner::{CandidateFile, FileRole, SheetBinding};
+        use bae_core::import::folder_scanner::{CandidateFile, FileRole};
 
         let alternatives = entry
             .role_alternatives()
@@ -68,30 +68,7 @@ impl BridgeCandidateFile {
             // The disc assignment is the mapping table's to show, on the group
             // header that carries the picker for it. A roles row states what
             // the sheet's slots are, which already reflects the assignment.
-            FileRole::TrackSheet {
-                sheet,
-                binding,
-                disc: _,
-            } => BridgeFileRole::TrackSheet {
-                binding: match binding {
-                    SheetBinding::Describes { file_id } => {
-                        BridgeSheetBinding::Describes { file_id }
-                    }
-                    // Derived from the parsed sheet, like `track_count` below:
-                    // the directive's text is what the pane shows a user whose
-                    // sheet found nothing, and the bridge doesn't mirror the
-                    // whole parse to carry it.
-                    SheetBinding::Unresolved => BridgeSheetBinding::Unresolved {
-                        requested: sheet
-                            .audio_file_references()
-                            .into_iter()
-                            .map(str::to_string)
-                            .collect(),
-                    },
-                    SheetBinding::RefusedCodec { file_id, codec } => {
-                        BridgeSheetBinding::RefusedCodec { file_id, codec }
-                    }
-                },
+            FileRole::TrackSheet { sheet, .. } => BridgeFileRole::TrackSheet {
                 // A derived count, not a carried field — `CueSheet` is a large
                 // parse product the bridge doesn't mirror.
                 track_count: sheet.playable_track_count() as u32,
@@ -633,11 +610,9 @@ impl BridgeSheetBound {
             SheetBound::Describes(container) => Self::Describes {
                 container: BridgeMappingContainer::from_core(container),
             },
+            SheetBound::DescribesFiles => Self::DescribesFiles,
             SheetBound::Unresolved { requested } => Self::Unresolved { requested },
-            SheetBound::RefusedCodec { container, codec } => Self::RefusedCodec {
-                container: BridgeMappingContainer::from_core(container),
-                codec,
-            },
+            SheetBound::RefusedCodec { codec } => Self::RefusedCodec { codec },
         }
     }
 
@@ -645,11 +620,9 @@ impl BridgeSheetBound {
         use bae_core::import::SheetBound;
         match self {
             Self::Describes { container } => SheetBound::Describes(container.into_core()),
+            Self::DescribesFiles => SheetBound::DescribesFiles,
             Self::Unresolved { requested } => SheetBound::Unresolved { requested },
-            Self::RefusedCodec { container, codec } => SheetBound::RefusedCodec {
-                container: container.into_core(),
-                codec,
-            },
+            Self::RefusedCodec { codec } => SheetBound::RefusedCodec { codec },
         }
     }
 }

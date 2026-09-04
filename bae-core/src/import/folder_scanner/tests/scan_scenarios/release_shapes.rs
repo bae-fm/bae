@@ -346,6 +346,76 @@ fn multi_file_cue_surfaces_as_cue_backed_release() {
     assert!(!c.files.documents().any(|d| d.file_name == "Album.cue"));
 }
 
+/// Every FILE entry uses the same path resolution rule. A ripper commonly
+/// writes a CUE before its WAV files are encoded, leaving the sheet's stems
+/// intact while the audio extension changes.
+#[test]
+fn multi_file_cue_resolves_each_reference_by_unique_stem() {
+    let tmp = tempfile::tempdir().unwrap();
+    let album = tmp.path().join("Album");
+    std::fs::create_dir_all(&album).unwrap();
+    for name in ["01 First.flac", "02 Second.flac", "03 Third.flac"] {
+        std::fs::write(album.join(name), bytes_for(FileKind::Flac)).unwrap();
+    }
+    std::fs::write(
+        album.join("Album.cue"),
+        "PERFORMER \"Artist Name\"\nTITLE \"Album Title\"\n\
+             FILE \"01 First.wav\" WAVE\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n\
+             FILE \"02 Second.wav\" WAVE\n  TRACK 02 AUDIO\n    INDEX 01 00:00:00\n\
+             FILE \"03 Third.wav\" WAVE\n  TRACK 03 AUDIO\n    INDEX 01 00:00:00\n",
+    )
+    .unwrap();
+
+    let candidates = scan_valid(tmp.path().to_path_buf());
+    assert_eq!(candidates.len(), 1);
+    let files = &candidates[0].files;
+    assert_eq!(files.bound_sheets().len(), 1);
+    let units = crate::import::track_slots::audio_units(files);
+    assert_eq!(
+        units,
+        vec![
+            crate::import::types::AudioFile::SheetSlice {
+                file_id: "01 First.flac".to_string(),
+                sheet_id: "Album.cue".to_string(),
+                index: 0,
+            },
+            crate::import::types::AudioFile::SheetSlice {
+                file_id: "02 Second.flac".to_string(),
+                sheet_id: "Album.cue".to_string(),
+                index: 1,
+            },
+            crate::import::types::AudioFile::SheetSlice {
+                file_id: "03 Third.flac".to_string(),
+                sheet_id: "Album.cue".to_string(),
+                index: 2,
+            },
+        ],
+    );
+
+    let durations = crate::import::probe::source_durations(files)
+        .expect("every resolved CUE entry should have a source duration");
+    assert!(units
+        .iter()
+        .all(|unit| durations.duration_of(unit).is_some()));
+    let table = crate::import::mapping::mapping_table(files, None, &durations);
+    let crate::import::MappingTrackSectionContent::Sheet { sheet, entries } =
+        &table.track_sections[0].content
+    else {
+        panic!("the resolved CUE should group its track rows");
+    };
+    assert_eq!(sheet.bound, crate::import::SheetBound::DescribesFiles);
+    assert_eq!(
+        entries
+            .iter()
+            .map(|entry| match &entry.source {
+                crate::import::MappingSource::SheetEntry(entry) => entry.container_id.as_str(),
+                _ => panic!("a CUE group should contain sheet entries"),
+            })
+            .collect::<Vec<_>>(),
+        vec!["01 First.flac", "02 Second.flac", "03 Third.flac"],
+    );
+}
+
 /// Single-FILE CUE whose own stem differs from the audio file it names —
 /// pair detection follows the CUE's `FILE` directive, not the CUE's
 /// filename stem. The CUE is the source of truth for what it points at.
@@ -366,7 +436,7 @@ fn single_file_cue_pairs_by_file_directive_not_stem() {
     assert_eq!(candidates.len(), 1);
     let bound = candidates[0].files.bound_sheets();
     assert_eq!(bound.len(), 1);
-    assert_eq!(bound[0].audio.file_name, "Audio.flac");
+    assert_eq!(bound[0].audio_files[0].1.file_name, "Audio.flac");
     assert_eq!(bound[0].file.file_name, "Sheet.cue");
 }
 

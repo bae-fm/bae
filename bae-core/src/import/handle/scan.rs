@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::folder_scanner::SheetBinding;
 use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
@@ -91,10 +92,10 @@ impl ImportServiceHandle {
         use crate::import::folder_scanner::{SheetBindingOffer, UserSheetBinding};
 
         let (files, offered_revision) = self.folder_files_for_binding(&candidate_key).await?;
-        let Some(bound) = files
+        let Some(binding) = files
             .track_sheets()
             .find(|sheet| sheet.file.relative_path == sheet_file_id)
-            .map(|sheet| sheet.binding.describes().map(str::to_string))
+            .map(|sheet| sheet.binding)
         else {
             return Err(crate::import::ImportError::SheetBinding {
                 detail: format!("{candidate_key} has no track sheet {sheet_file_id}"),
@@ -102,7 +103,24 @@ impl ImportServiceHandle {
         };
         // Same rule as `set_sheet_disc`: re-stating the binding in force
         // decides nothing, and must not clear the verdict.
-        if bound == audio_file_id {
+        let already_in_force = match (binding, audio_file_id.as_deref()) {
+            (SheetBinding::Resolved, Some(file_id)) => files
+                .bound_sheets()
+                .into_iter()
+                .find(|sheet| sheet.file.relative_path == sheet_file_id)
+                .is_some_and(|sheet| {
+                    matches!(sheet.audio_files.as_slice(), [(_, audio)] if audio.relative_path == file_id)
+                }),
+            (SheetBinding::Resolved, None) => false,
+            (SheetBinding::Override { file_id }, Some(requested)) => file_id == requested,
+            (SheetBinding::Unresolved | SheetBinding::RefusedCodec { .. }, None) => true,
+            (
+                SheetBinding::Unresolved | SheetBinding::RefusedCodec { .. },
+                Some(_),
+            )
+            | (SheetBinding::Override { .. }, None) => false,
+        };
+        if already_in_force {
             let _commit = self.folder_state_commit.lock().await;
             self.editable_candidate_for_commit(&candidate_key).await?;
             debug!("{sheet_file_id} already binds {audio_file_id:?}; nothing to write");
