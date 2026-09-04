@@ -329,8 +329,9 @@ pub fn map_mb_response_to_db(
 
     // Always one MB identity row — every MB release belongs to a release group,
     // so absence is a broken response, not a runtime case. A Discogs release
-    // resolved from url-rels contributes a second row, so future Discogs imports
-    // of the same master attach to this album. Both are Exact.
+    // resolved from url-rels contributes a second row (`discogs_identity` picks
+    // its group), so future Discogs imports of the same release attach to this
+    // album. Both are Exact.
     let mb_release_group =
         response
             .release_group
@@ -345,13 +346,7 @@ pub fn map_mb_response_to_db(
         source_release_id: response.id.clone(),
     }];
     if let Some(dr) = discogs_release.as_ref() {
-        if let Some(master_id) = dr.master_id.clone() {
-            identities.push(ReleaseIdentity {
-                source: MetadataSource::Discogs,
-                source_group_id: master_id,
-                source_release_id: dr.id.clone(),
-            });
-        }
+        identities.push(super::discogs_mapper::discogs_identity(dr));
     }
 
     // Album year: release-group first-release-date, then the release date,

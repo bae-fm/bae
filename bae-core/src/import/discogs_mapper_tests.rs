@@ -447,20 +447,20 @@ fn test_collapsed_sub_tracks_preserve_per_track_artists() {
 // ── identities (parsed.identities) ─────────────────────────────────
 
 #[test]
-fn test_no_master_id_yields_no_identity_row() {
-    // master_id is the group identifier; without one there's no group
-    // to claim, and the parser emits zero identity rows. The release
-    // still imports — it just contributes no group identity.
+fn test_no_master_id_yields_release_as_its_own_group() {
+    // Discogs filed this release under no master, so it is its own group: the
+    // row still records the claim, and matching on (source, group) merges it
+    // only with itself.
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.master_id = None;
 
     let parsed = map(&release, None, None).unwrap();
 
-    assert!(
-        parsed.identities.is_empty(),
-        "expected no identities when master_id is None, got {:?}",
-        parsed.identities,
-    );
+    assert_eq!(parsed.identities.len(), 1);
+    let identity = &parsed.identities[0];
+    assert_eq!(identity.source, MetadataSource::Discogs);
+    assert_eq!(identity.source_group_id, "test-123");
+    assert_eq!(identity.source_release_id, "test-123");
 }
 
 #[test]
@@ -541,18 +541,23 @@ fn mb_xref_without_release_group_returns_err() {
 }
 
 #[test]
-fn test_no_master_id_with_mb_xref_yields_only_mb_identity_row() {
-    // Edge case: Discogs release has no master_id (no Discogs
-    // identity row), but MB has a back-link. Emit just the MB row
-    // — the album is still attached via MB's group.
+fn test_no_master_id_with_mb_xref_yields_two_identity_rows() {
+    // The Discogs release has no master, so it is its own group; MB's
+    // back-link adds its own row. Two rows, one per source.
     let mut release = make_release(vec![make_track("1", "Track 1")]);
     release.master_id = None;
     let mb_xref = mb_xref_with_group("mb-rel-only", "mb-group-only");
 
     let parsed = map(&release, None, Some(&mb_xref)).unwrap();
 
-    assert_eq!(parsed.identities.len(), 1);
-    let mb = &parsed.identities[0];
+    assert_eq!(parsed.identities.len(), 2);
+
+    let discogs = &parsed.identities[0];
+    assert_eq!(discogs.source, MetadataSource::Discogs);
+    assert_eq!(discogs.source_group_id, "test-123");
+    assert_eq!(discogs.source_release_id, "test-123");
+
+    let mb = &parsed.identities[1];
     assert_eq!(mb.source, MetadataSource::MusicBrainz);
     assert_eq!(mb.source_group_id, "mb-group-only");
     assert_eq!(mb.source_release_id, "mb-rel-only");

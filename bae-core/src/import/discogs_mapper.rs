@@ -60,6 +60,26 @@ fn discogs_track_artist_ref(credit: &DiscogsArtist) -> ArtistRef {
     discogs_artist_ref(credit.name.clone(), Some(credit.id.clone()))
 }
 
+/// The identity a Discogs release states about itself.
+///
+/// The group is the release's master when Discogs filed it under one, and the
+/// release's own id when it did not — a master-less release is its own group,
+/// the same reading `ReleaseGroup::id` in `release_group.rs` gives a lone
+/// release. Cross-source album merging matches on `(source, group)`, so a
+/// release standing as its own group merges only with itself, which is what a
+/// release Discogs never grouped should do. Emitting no row instead would drop
+/// the claim the person made when they picked that release.
+pub(super) fn discogs_identity(release: &DiscogsRelease) -> ReleaseIdentity {
+    ReleaseIdentity {
+        source: MetadataSource::Discogs,
+        source_group_id: release
+            .master_id
+            .clone()
+            .unwrap_or_else(|| release.id.clone()),
+        source_release_id: release.id.clone(),
+    }
+}
+
 /// Map a Discogs release into database models (pure, no I/O).
 ///
 /// `master_year` is the original release year from the Discogs master; the album
@@ -178,21 +198,11 @@ fn map_discogs_to_db_with_tracks(
         .map(|pt| discogs_track_ir(release, pt))
         .collect();
 
-    // Discogs's `master_id` is the group key, so a release without one stands on
-    // its own and gets no Discogs identity row — the import still commits, just
-    // without that source's identity. An `mb_xref` means MB back-links to this
+    // Always a Discogs row: the release states its own identity whether or not
+    // Discogs filed it under a master. An `mb_xref` means MB back-links to this
     // Discogs release, contributing a second row so future MB-rooted imports of
     // the same release group attach to this album. Both rows are Exact.
-    let mut identities: Vec<ReleaseIdentity> = release
-        .master_id
-        .as_ref()
-        .map(|master_id| ReleaseIdentity {
-            source: MetadataSource::Discogs,
-            source_group_id: master_id.clone(),
-            source_release_id: release.id.clone(),
-        })
-        .into_iter()
-        .collect();
+    let mut identities: Vec<ReleaseIdentity> = vec![discogs_identity(release)];
     if let Some(mb) = mb_xref {
         let rg = mb
             .release_group

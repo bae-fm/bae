@@ -482,9 +482,9 @@ fn release_with_no_release_group_returns_err() {
 }
 
 #[test]
-fn test_map_mb_cross_ref_no_master_id_yields_only_mb_identity() {
-    // Cross-ref hit but the linked Discogs release has no master_id —
-    // the parser doesn't fabricate a group; only the MB row is emitted.
+fn test_map_mb_cross_ref_no_master_id_yields_discogs_release_as_its_own_group() {
+    // Cross-ref hit and the linked Discogs release has no master — it is its
+    // own group, so the Discogs row is still emitted.
     let response = make_response(vec![MbMedium {
         format: Some("CD".to_string()),
         tracks: vec![make_mb_track("1", "Track 1")],
@@ -493,8 +493,13 @@ fn test_map_mb_cross_ref_no_master_id_yields_only_mb_identity() {
 
     let parsed = map(&response, None, Some(discogs_release)).unwrap();
 
-    assert_eq!(parsed.identities.len(), 1);
+    assert_eq!(parsed.identities.len(), 2);
     assert_eq!(parsed.identities[0].source, MetadataSource::MusicBrainz);
+
+    let discogs = &parsed.identities[1];
+    assert_eq!(discogs.source, MetadataSource::Discogs);
+    assert_eq!(discogs.source_group_id, "d-rel-99");
+    assert_eq!(discogs.source_release_id, "d-rel-99");
 }
 
 #[test]
