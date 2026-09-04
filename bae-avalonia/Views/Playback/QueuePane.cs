@@ -42,7 +42,7 @@ internal sealed class QueuePane : IDisposable
 
     private NowPlayingBarTrack? _nowPlaying;
     private PlaybackPositionRender? _position;
-    private long _renderedSecond = -1;
+    private string? _renderedElapsed;
 
     private ObservableCollection<object>? _rows;
 
@@ -304,7 +304,7 @@ internal sealed class QueuePane : IDisposable
                 _cardCover!,
                 ImageContent.ForLibraryImage(track.CoverImage),
                 ImageWidths.Row);
-            _renderedSecond = -1;
+            _renderedElapsed = null;
             RenderCardPosition(force: true);
         }
         else
@@ -319,16 +319,17 @@ internal sealed class QueuePane : IDisposable
         {
             return;
         }
-        var second = (long)(position.PositionMs / 1000);
-        if (!force && second == _renderedSecond)
+        var elapsed = BridgeDisplay.SeekBarClocks(
+            position.PositionMs, position.DurationMs, showRemaining: false).Leading;
+        if (!force && elapsed == _renderedElapsed)
         {
             return;
         }
-        _renderedSecond = second;
+        _renderedElapsed = elapsed;
         var progress = Math.Clamp(position.Progress, 0, 1);
         _cardFill!.Width = new GridLength(progress, GridUnitType.Star);
         _cardRest!.Width = new GridLength(1 - progress, GridUnitType.Star);
-        _cardElapsed!.Text = BridgeDisplay.Clock(position.PositionMs);
+        _cardElapsed!.Text = elapsed;
     }
 
     // ── List ──────────────────────────────────────────────────────────────────

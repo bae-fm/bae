@@ -40,9 +40,31 @@ pub struct PlaybackQueueProjection {
 #[derive(Debug, Clone)]
 pub struct PlaybackPosition {
     pub track_id: String,
+    /// Track-relative position: negative while pregap audio plays, zero at
+    /// INDEX 01, positive afterward.
+    pub position_ms: i64,
+    pub duration_ms: u64,
+    pub progress: f64,
+}
+
+/// The non-negative timeline accepted by operating-system media controls.
+#[derive(Debug, Clone)]
+pub struct MediaControlPosition {
+    pub track_id: String,
     pub position_ms: u64,
     pub duration_ms: u64,
     pub progress: f64,
+}
+
+impl MediaControlPosition {
+    fn from_playback(position: &PlaybackPosition) -> Self {
+        Self {
+            track_id: position.track_id.clone(),
+            position_ms: position.position_ms.max(0) as u64,
+            duration_ms: position.duration_ms,
+            progress: position.progress,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -66,7 +88,7 @@ pub struct MediaControlValues {
 pub enum MediaControlPlayback {
     Library {
         state: PlaybackState,
-        position: Option<PlaybackPosition>,
+        position: Option<MediaControlPosition>,
         seek_revision: u64,
     },
     Preview {
@@ -199,7 +221,10 @@ impl PlaybackValues {
             },
             PreviewState::Idle => MediaControlPlayback::Library {
                 state: self.state.clone(),
-                position: self.position.clone(),
+                position: self
+                    .position
+                    .as_ref()
+                    .map(MediaControlPosition::from_playback),
                 seek_revision: self.seek_revision,
             },
         };
@@ -231,8 +256,8 @@ pub enum PlaybackProgress {
         state: PlaybackState,
     },
     PositionUpdate {
-        position_ms: u64,
-        /// User-facing track duration (pregap-adjusted), paired with
+        position_ms: i64,
+        /// User-facing track duration, paired with
         /// `position_ms` so consumers don't re-derive it from track state.
         duration_ms: u64,
         track_id: String,
@@ -275,8 +300,8 @@ pub enum PlaybackProgress {
     /// and the pause/resume refresh, which need the display repositioned without
     /// a state change.
     Seeked {
-        position_ms: u64,
-        /// User-facing track duration (pregap-adjusted), paired with
+        position_ms: i64,
+        /// User-facing track duration, paired with
         /// `position_ms` so consumers don't re-derive it from track state.
         duration_ms: u64,
         track_id: String,
@@ -354,5 +379,31 @@ mod tests {
                 ..
             }
         ));
+    }
+
+    #[test]
+    fn media_control_clamps_pregap_while_ui_position_remains_signed() {
+        let values = PlaybackValues::initial()
+            .applying(&PlaybackProgress::PositionUpdate {
+                position_ms: -1_250,
+                duration_ms: 100_000,
+                track_id: "track-1".to_string(),
+                progress: 0.0,
+            })
+            .expect("position update is retained");
+
+        assert_eq!(
+            values.position.as_ref().expect("UI position").position_ms,
+            -1_250
+        );
+        let MediaControlPlayback::Library {
+            position: Some(position),
+            ..
+        } = values.media_control_values().playback
+        else {
+            panic!("idle preview should expose library playback");
+        };
+        assert_eq!(position.position_ms, 0);
+        assert_eq!(position.duration_ms, 100_000);
     }
 }

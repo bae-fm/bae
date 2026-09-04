@@ -6,9 +6,9 @@
 // - Direct selection (play / next): skip the pregap, start at INDEX 01, so the
 //   adjusted position climbs from 0 the moment audio flows.
 // - Natural transition (auto-advance): play the pregap from INDEX 00, so the
-//   adjusted position stays pinned at 0 across the pregap, then climbs.
+//   track-relative position counts from -2s to 0 across the pregap, then climbs.
 // The distinguishing signal is *where the position sits partway in*: a skipped
-// pregap is already climbing; a played pregap is still at 0. (A no-pregap FLAC
+// pregap is already positive; a played pregap is still negative. (A no-pregap FLAC
 // can't tell these apart — both start at 0 — which is why these use the CUE
 // fixture, not the plain FLAC one.)
 
@@ -111,12 +111,13 @@ async fn test_auto_advance_plays_pregap() {
     .await
     .expect("playback should auto-advance into the pregapped track");
 
-    // ~1s into track 2 the 2s pregap is still playing: adjusted position pinned at 0.
+    // ~1s into track 2 the 2s pregap is still playing: position is counting
+    // toward INDEX 01 from below zero.
     let during_pregap = position_after(&mut fixture.progress_rx, Duration::from_millis(1000)).await;
     assert!(
-        during_pregap < 600,
-        "auto-advance should play the pregap: position stays pinned at 0 across it, \
-         got {during_pregap}ms ~1s in (a skipped pregap would already be climbing)",
+        during_pregap < 0,
+        "auto-advance should play the pregap with a negative countdown; \
+         got {during_pregap}ms ~1s in",
     );
 
     // Past the 2s pregap, INDEX 01 content plays and position climbs.

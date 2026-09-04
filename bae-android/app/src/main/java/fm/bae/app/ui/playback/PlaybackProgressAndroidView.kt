@@ -55,7 +55,7 @@ internal fun Context.seekBarState(
     showRemaining: Boolean,
 ): SeekBarState {
     val positionMs = position.positionMs ?: return SeekBarState(position.progress, "", "")
-    val clocks = bridgeSeekBar(positionMs.toULong(), (position.durationMs ?: 0L).toULong(), showRemaining)
+    val clocks = bridgeSeekBar(positionMs, (position.durationMs ?: 0L).toULong(), showRemaining)
     return SeekBarState(
         progress = position.progress,
         leading = clockText(clocks.leading, currentLocale()),

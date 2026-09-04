@@ -34,11 +34,11 @@ class SeekBarNSView: NSView {
         }
     }
 
-    private var positionMs: UInt64 = 0
+    private var positionMs: Int64 = 0
     private var durationMs: UInt64?
     /// Set while the user drags the slider: the dropped position, shown until
     /// the drag ends. Nil means the leading label follows playback.
-    private var draggingPositionMs: UInt64?
+    private var draggingPositionMs: Int64?
 
     /// `fixedSliderWidth` pins the slider's width; nil lets the stack size it
     /// to the space its container offers (the now-playing bar's center column,
@@ -116,7 +116,7 @@ class SeekBarNSView: NSView {
 
     // MARK: - Direct position updates (called from a Combine subscription)
 
-    func setPosition(progress: Double, positionMs: UInt64) {
+    func setPosition(progress: Double, positionMs: Int64) {
         self.positionMs = positionMs
 
         if !slider.isDragging {
@@ -171,7 +171,7 @@ class SeekBarNSView: NSView {
         guard slider.isDragging, let durationMs, durationMs > 0 else {
             return
         }
-        draggingPositionMs = slider.positionMs(forDuration: durationMs)
+        draggingPositionMs = Int64(slider.positionMs(forDuration: durationMs))
         updateLabels()
     }
 

@@ -11,12 +11,12 @@ import Foundation
 /// since the choice is a config the store does not read. `.reset` clears the bar
 /// when playback stops.
 public enum PlaybackPositionEvent {
-    case position(progress: Double, positionMs: UInt64, durationMs: UInt64)
+    case position(progress: Double, positionMs: Int64, durationMs: UInt64)
     case reset
 }
 
 public struct PlaybackPositionSnapshot {
-    public let positionMs: UInt64
+    public let positionMs: Int64
     public let durationMs: UInt64
     public let progress: Double
 

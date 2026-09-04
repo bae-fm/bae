@@ -85,16 +85,16 @@ where
 /// Await the first position update (generous deadline — a fresh load or a seek
 /// rebuild only starts emitting once its ring fills, which can take seconds on
 /// a loaded machine), then drain progress for `settle` wall time from that
-/// anchor and return the most recent adjusted `position_ms` seen. With a
+/// anchor and return the most recent track-relative `position_ms` seen. With a
 /// real-time capture sink wall time tracks playback time, so this reads "where
 /// the position bar sits `settle` into audible playback" — the signal that
 /// distinguishes a skipped pregap (position climbs from 0 immediately) from a
-/// played pregap (position pinned at 0 for the pregap's length, then climbs).
+/// played pregap (position counts up from a negative value, then climbs).
 /// Panics if no position update ever arrives.
 async fn position_after(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     settle: Duration,
-) -> u64 {
+) -> i64 {
     let first_deadline = Instant::now() + Duration::from_secs(30);
     let mut latest = None;
     while latest.is_none() {
@@ -134,11 +134,11 @@ async fn position_after(
 /// advances within the deadline (the failure the caller asserts on).
 ///
 /// Use `position_after` instead — not this — when the elapsed real time is
-/// itself the measurement (a seek-target value, a pregap that must stay pinned
-/// at 0 across its length, a periodic persist that must have time to fire).
+/// itself the measurement (a seek-target value, a pregap countdown, a periodic
+/// persist that must have time to fire).
 async fn wait_for_position_advance(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
-) -> Option<u64> {
+) -> Option<i64> {
     let first_deadline = Instant::now() + Duration::from_secs(30);
     let mut anchor = None;
     while anchor.is_none() {
@@ -216,7 +216,10 @@ async fn wait_for_seeked_on(
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(100), progress_rx.recv()).await {
             Ok(Some(PlaybackProgress::Seeked { position_ms, .. })) => {
-                return Some(position_ms);
+                return Some(
+                    u64::try_from(position_ms)
+                        .expect("a seek target cannot be inside the pregap countdown"),
+                );
             }
             Ok(Some(_)) => continue,
             Ok(None) => break,
@@ -284,7 +287,7 @@ async fn wait_for_track_position(
     progress_rx: &mut tokio::sync::mpsc::UnboundedReceiver<PlaybackProgress>,
     track_id: &str,
     timeout_duration: Duration,
-) -> Option<u64> {
+) -> Option<i64> {
     let deadline = Instant::now() + timeout_duration;
     while Instant::now() < deadline {
         match timeout(Duration::from_millis(100), progress_rx.recv()).await {
@@ -694,7 +697,10 @@ impl PlaybackTestFixture {
         while Instant::now() < deadline {
             match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
                 Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. })) => {
-                    return Some(position_ms);
+                    return Some(
+                        u64::try_from(position_ms)
+                            .expect("this helper expects playback at or after track start"),
+                    );
                 }
                 Ok(Some(_)) => continue,
                 Ok(None) => break,
@@ -718,9 +724,13 @@ impl PlaybackTestFixture {
         while Instant::now() < deadline {
             match timeout(Duration::from_millis(100), self.progress_rx.recv()).await {
                 Ok(Some(PlaybackProgress::PositionUpdate { position_ms, .. }))
-                    if position_ms > floor_ms =>
+                    if position_ms
+                        > i64::try_from(floor_ms).expect("position floor exceeds i64 range") =>
                 {
-                    return Some(position_ms);
+                    return Some(
+                        u64::try_from(position_ms)
+                            .expect("position past a nonnegative floor is nonnegative"),
+                    );
                 }
                 Ok(Some(_)) => continue,
                 Ok(None) => break,

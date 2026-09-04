@@ -739,11 +739,11 @@ async fn direct_play_skips_pregap_over_sparse_buffer() {
     );
 }
 
-/// Multi-window port of `test_auto_advance_plays_pregap`'s "position pinned
-/// during the pregap" assertion — `auto_advance_crosses_gaplessly_within_a_multi_window_file`
+/// Multi-window port of `test_auto_advance_plays_pregap`'s negative position
+/// assertion — `auto_advance_crosses_gaplessly_within_a_multi_window_file`
 /// already proves the crossing happens and that audio keeps flowing
 /// afterward, but never checks that the pregap itself is actually played
-/// (position pinned near 0) rather than silently skipped.
+/// (position counting toward zero) rather than silently skipped.
 #[tokio::test(flavor = "multi_thread")]
 async fn auto_advance_plays_pregap_over_sparse_buffer() {
     let mut playback = MultiWindowPlayback::new("multi-window-auto-advance-pregap").await;
@@ -761,12 +761,12 @@ async fn auto_advance_plays_pregap_over_sparse_buffer() {
     .await
     .expect("playback should auto-advance into the pregapped track");
 
-    // ~1s into track 2 the 2s pregap is still playing: position pinned at 0.
+    // ~1s into track 2 the 2s pregap is still playing: position remains below zero.
     let during_pregap =
         position_after(&mut playback.progress_rx, Duration::from_millis(1000)).await;
     assert!(
-        during_pregap < 600,
-        "auto-advance should play the pregap: position stays pinned at 0 across it, \
-         got {during_pregap}ms ~1s in (a skipped pregap would already be climbing)",
+        during_pregap < 0,
+        "auto-advance should play the pregap with a negative countdown; \
+         got {during_pregap}ms ~1s in",
     );
 }

@@ -230,6 +230,22 @@ class PlaybackSeekProjectionTest {
     }
 
     @Test
+    fun pregapPositionRemainsNegativeInUiWhileMedia3PositionIsZero() {
+        val (player, _) = player()
+
+        player.startPlaying(durationMs = 100_000uL)
+        player.onProgress(positionMs = -1_250, durationMs = 100_000, progress = 0.0)
+
+        assertPosition(
+            player.position.value,
+            progress = 0.0,
+            positionMs = -1_250,
+            durationMs = 100_000,
+        )
+        assertEquals(0, player.contentPosition)
+    }
+
+    @Test
     fun nextTrackFailureDoesNotEscapeSeekHandler() {
         val (player, handle) = player()
         handle.nextTrackFailure = RuntimeException("next failed")
@@ -291,7 +307,7 @@ class PlaybackSeekProjectionTest {
         applyValues(
             playbackValues(
                 playingState(durationMs = durationMs.toULong()),
-                BridgePlaybackPosition("track-1", positionMs.toULong(), durationMs.toULong(), progress),
+                BridgePlaybackPosition("track-1", positionMs, durationMs.toULong(), progress),
             ),
         )
     }
@@ -304,7 +320,7 @@ class PlaybackSeekProjectionTest {
         applyValues(
             playbackValues(
                 playingState(durationMs = durationMs.toULong()),
-                BridgePlaybackPosition("track-1", positionMs.toULong(), durationMs.toULong(), progress),
+                BridgePlaybackPosition("track-1", positionMs, durationMs.toULong(), progress),
                 seekRevision = 1u,
             ),
         )

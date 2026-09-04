@@ -13,7 +13,7 @@ public sealed record SeekProjection(
 
 public sealed record PlaybackPositionSnapshot(
     ulong DurationMs,
-    ulong PositionMs,
+    long PositionMs,
     double Progress);
 
 public sealed record PlaybackPositionState(

@@ -31,7 +31,12 @@ internal fun playbackValues(
         preview = BridgePreviewValues(BridgePreviewState.Idle, 0uL, 0.0),
         mediaControl =
             BridgeMediaControlValues(
-                playback = BridgeMediaControlPlayback.Library(state, position, seekRevision),
+                playback =
+                    BridgeMediaControlPlayback.Library(
+                        state,
+                        null,
+                        seekRevision,
+                    ),
                 volume = volume,
                 isMuted = isMuted,
             ),

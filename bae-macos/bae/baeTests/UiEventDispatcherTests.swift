@@ -94,6 +94,12 @@ struct AppServiceMediaControlTests {
             durationMs: 120_000,
             progress: 0.25
         )
+        let mediaPosition = BridgeMediaControlPosition(
+            trackId: "track-1",
+            positionMs: 30_000,
+            durationMs: 120_000,
+            progress: 0.25
+        )
         handle.deliverPlayback(
             BridgePlaybackValues(
                 state: state,
@@ -111,7 +117,7 @@ struct AppServiceMediaControlTests {
                 mediaControl: BridgeMediaControlValues(
                     playback: .library(
                         state: state,
-                        position: position,
+                        position: mediaPosition,
                         seekRevision: 0
                     ),
                     volume: 1,

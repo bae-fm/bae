@@ -513,13 +513,13 @@ impl PlaybackService {
         let raw_pos_ms = actual_pos.as_millis() as u64;
         let progress =
             crate::playback::format::compute_progress(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
-        let (adjusted_pos_ms, adjusted_dur_ms) =
+        let (track_position_ms, duration_ms) =
             crate::playback::format::adjust_for_pregap(raw_pos_ms, fmt.duration_ms, fmt.pregap_ms);
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::PositionUpdate {
-                position_ms: adjusted_pos_ms,
-                duration_ms: adjusted_dur_ms,
+                position_ms: track_position_ms,
+                duration_ms,
                 track_id: fmt.track_id.clone(),
                 progress,
             },

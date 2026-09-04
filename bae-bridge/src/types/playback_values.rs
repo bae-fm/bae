@@ -102,6 +102,17 @@ pub enum BridgePreviewState {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgePlaybackPosition {
     pub track_id: String,
+    pub position_ms: i64,
+    pub duration_ms: u64,
+    pub progress: f64,
+}
+
+/// The library timeline exposed to an operating-system media surface. Unlike
+/// the in-app position, it cannot represent the pregap countdown because those
+/// APIs accept only positions at or after track start.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeMediaControlPosition {
+    pub track_id: String,
     pub position_ms: u64,
     pub duration_ms: u64,
     pub progress: f64,
@@ -125,7 +136,7 @@ pub struct BridgeMediaControlValues {
 pub enum BridgeMediaControlPlayback {
     Library {
         state: BridgePlaybackValueState,
-        position: Option<BridgePlaybackPosition>,
+        position: Option<BridgeMediaControlPosition>,
         seek_revision: u64,
     },
     Preview {
@@ -243,6 +254,17 @@ impl BridgePlaybackPosition {
     }
 }
 
+impl BridgeMediaControlPosition {
+    fn from_core(position: bae_core::playback::MediaControlPosition) -> Self {
+        Self {
+            track_id: position.track_id,
+            position_ms: position.position_ms,
+            duration_ms: position.duration_ms,
+            progress: position.progress,
+        }
+    }
+}
+
 impl BridgePreviewState {
     fn from_core(value: bae_core::playback::PreviewState) -> Self {
         match value {
@@ -305,7 +327,7 @@ impl BridgeMediaControlPlayback {
                 seek_revision,
             } => Self::Library {
                 state: BridgePlaybackValueState::from_core(state),
-                position: position.map(BridgePlaybackPosition::from_core),
+                position: position.map(BridgeMediaControlPosition::from_core),
                 seek_revision,
             },
             bae_core::playback::MediaControlPlayback::Preview {

@@ -15,18 +15,18 @@ impl PlaybackService {
             return;
         };
         let prepared = &cur.prepared;
-        let raw_dur_ms = prepared.duration.as_millis() as u64;
+        let duration_ms = track_duration_ms(prepared);
         let pregap_ms = prepared.total_pregap_ms();
-        let (adjusted_pos_ms, adjusted_dur_ms) =
-            crate::playback::format::adjust_for_pregap(position_ms, raw_dur_ms, pregap_ms);
+        let (track_position_ms, duration_ms) =
+            crate::playback::format::adjust_for_pregap(position_ms, duration_ms, pregap_ms);
         let progress =
-            crate::playback::format::compute_progress(position_ms, raw_dur_ms, pregap_ms);
+            crate::playback::format::compute_progress(position_ms, duration_ms, pregap_ms);
 
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::Seeked {
-                position_ms: adjusted_pos_ms,
-                duration_ms: adjusted_dur_ms,
+                position_ms: track_position_ms,
+                duration_ms,
                 track_id,
                 progress,
             },
@@ -49,11 +49,11 @@ impl PlaybackService {
                 },
                 TrackPhase::Playing => PlaybackState::Playing {
                     track_info: cur.prepared.track_info.clone(),
-                    duration_ms: pregap_adjusted_duration(&cur.prepared),
+                    duration_ms: track_duration_ms(&cur.prepared),
                 },
                 TrackPhase::Paused(pause) => PlaybackState::Paused {
                     track_info: cur.prepared.track_info.clone(),
-                    duration_ms: pregap_adjusted_duration(&cur.prepared),
+                    duration_ms: track_duration_ms(&cur.prepared),
                     reason: pause.to_reason(),
                 },
                 // A Completed track emits no public state — the machine leaves

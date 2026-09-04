@@ -29,7 +29,7 @@ public enum DurationClock {
     /// one is the track's total length — "" when its length is unknown. Which
     /// label is which is core's decision, not the bar's.
     public static func seekBar(
-        positionMs: UInt64,
+        positionMs: Int64,
         durationMs: UInt64,
         showRemaining: Bool
     ) -> (leading: String, trailing: String) {

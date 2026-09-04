@@ -162,7 +162,7 @@ async fn test_high_sample_rate_position_calculation() {
 
     // Wait for track to complete and capture final position
     let deadline = Instant::now() + Duration::from_secs(10);
-    let mut final_position_ms: Option<u64> = None;
+    let mut final_position_ms: Option<i64> = None;
     let mut track_completed = false;
 
     while Instant::now() < deadline {

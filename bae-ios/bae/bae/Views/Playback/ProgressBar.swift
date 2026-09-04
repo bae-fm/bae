@@ -52,7 +52,7 @@ final class PlaybackProgressUIView: UIView {
     }
 
     private var isDragging = false
-    private var positionMs: UInt64 = 0
+    private var positionMs: Int64 = 0
     private var durationMs: UInt64 = 0
     private var cancellable: AnyCancellable?
 

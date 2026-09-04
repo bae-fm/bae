@@ -133,13 +133,9 @@ pub(crate) fn log_streaming_decode_failure(
     }
 }
 
-/// The pregap-adjusted total duration (ms) a prepared track reports to the UI
-/// — the same value `Playing`/`Paused`/`Loading` all carry.
-fn pregap_adjusted_duration(prepared: &PlaybackPreparedTrack) -> u64 {
-    let raw_dur = prepared.duration.as_millis() as u64;
-    let (_, adjusted_dur) =
-        crate::playback::format::adjust_for_pregap(0, raw_dur, prepared.total_pregap_ms());
-    adjusted_dur
+/// The INDEX 01-to-end duration stored for the track and reported to the UI.
+fn track_duration_ms(prepared: &PlaybackPreparedTrack) -> u64 {
+    prepared.duration.as_millis() as u64
 }
 
 impl PlaybackPreparedTrack {

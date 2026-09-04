@@ -13,7 +13,7 @@ final class ProgressStripNSView: NSView {
     private let bar = ProgressTrackNSView()
     private let elapsedField: NSTextField
 
-    private var positionMs: UInt64 = 0
+    private var positionMs: Int64 = 0
     private var durationMs: UInt64?
 
     init() {
@@ -54,7 +54,7 @@ final class ProgressStripNSView: NSView {
 
     // MARK: - Direct position updates (called from a Combine subscription)
 
-    func setPosition(progress: Double, positionMs: UInt64, durationMs: UInt64) {
+    func setPosition(progress: Double, positionMs: Int64, durationMs: UInt64) {
         self.positionMs = positionMs
         self.durationMs = durationMs
         bar.progress = progress

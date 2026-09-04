@@ -33,8 +33,8 @@ pub use error::PlaybackError;
 pub use persisted::{repeat_to_str, source_to_str, PersistedPlayback};
 pub use preview_player::PreviewTarget;
 pub use progress::{
-    MediaControlPlayback, MediaControlValues, PlaybackPosition, PlaybackProgress,
-    PlaybackQueueProjection, PlaybackValues, PreviewState, PreviewValues,
+    MediaControlPlayback, MediaControlPosition, MediaControlValues, PlaybackPosition,
+    PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewState, PreviewValues,
 };
 pub use queue::{
     ContextProjection, ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry,

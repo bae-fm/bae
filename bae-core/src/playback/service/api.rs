@@ -41,7 +41,7 @@ impl LoadingTrack {
     pub(super) fn from_prepared(prepared: &PlaybackPreparedTrack) -> Self {
         Self {
             track_info: prepared.track_info.clone(),
-            duration_ms: pregap_adjusted_duration(prepared),
+            duration_ms: track_duration_ms(prepared),
         }
     }
 }

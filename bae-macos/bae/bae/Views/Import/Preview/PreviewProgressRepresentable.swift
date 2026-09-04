@@ -56,7 +56,7 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
                     case .position(let progress, let positionMs):
                         view.setPosition(
                             progress: progress,
-                            positionMs: positionMs
+                            positionMs: Int64(positionMs)
                         )
                     case .reset:
                         view.reset()

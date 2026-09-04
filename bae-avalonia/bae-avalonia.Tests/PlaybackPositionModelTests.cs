@@ -16,7 +16,7 @@ public sealed class PlaybackPositionModelTests
 {
     private static PlaybackPositionSnapshot Snapshot(
         ulong durationMs = 200_000,
-        ulong positionMs = 50_000,
+        long positionMs = 50_000,
         double progress = 0.25) =>
         new(durationMs, positionMs, progress);
 
@@ -187,5 +187,14 @@ public sealed class PlaybackPositionModelTests
         var state = PlaybackPositionModel.WithPosition(existing, "track-1", snapshot, null);
         Assert.Equal("album-1", state.AlbumId);
         Assert.Equal(snapshot, state.Position!.Snapshot);
+    }
+
+    [Fact]
+    public void WithPosition_PreservesNegativePregapPosition()
+    {
+        var snapshot = Snapshot(positionMs: -1_250, progress: 0.0);
+        var state = PlaybackPositionModel.WithPosition(null, "track-1", snapshot, null);
+
+        Assert.Equal(-1_250, state.Position!.Snapshot.PositionMs);
     }
 }

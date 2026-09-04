@@ -84,7 +84,7 @@ internal static class BridgeDisplay
     /// label is which is core's decision, not the bar's.
     /// </summary>
     internal static (string Leading, string Trailing) SeekBarClocks(
-        ulong positionMs,
+        long positionMs,
         ulong durationMs,
         bool showRemaining)
     {

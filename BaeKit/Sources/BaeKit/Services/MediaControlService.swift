@@ -330,7 +330,7 @@ extension MediaControlService {
         }
         if let snapshot = playbackStore.projectSeek(ratio: ratio) {
             updatePosition(
-                positionMs: snapshot.positionMs,
+                positionMs: UInt64(snapshot.positionMs),
                 durationMs: snapshot.durationMs
             )
         }

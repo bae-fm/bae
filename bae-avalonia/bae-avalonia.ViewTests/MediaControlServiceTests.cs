@@ -37,7 +37,7 @@ public sealed class MediaControlServiceTests
                     "Album Title",
                     null,
                     200_000),
-                new BridgePlaybackPosition("track-1", 30_000, 200_000, 0.15),
+                new BridgeMediaControlPosition("track-1", 30_000, 200_000, 0.15),
                 0),
             1,
             false));

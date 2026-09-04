@@ -119,7 +119,7 @@ private let libraryPlayback = BridgeMediaControlPlayback.library(
         coverImage: nil,
         durationMs: 200_000
     ),
-    position: BridgePlaybackPosition(
+    position: BridgeMediaControlPosition(
         trackId: "track-1",
         positionMs: 30_000,
         durationMs: 200_000,

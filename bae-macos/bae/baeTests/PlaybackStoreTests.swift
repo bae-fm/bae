@@ -620,6 +620,25 @@ struct PlaybackStoreSeekProjectionTests {
     }
 
     @MainActor
+    @Test("pregap position remains negative in the published event")
+    func pregapPositionRemainsNegative() {
+        let store = PlaybackStore()
+
+        _ = store.updatePlaybackPosition(
+            positionMs: -1_250,
+            durationMs: 100_000,
+            progress: 0
+        )
+
+        expectPosition(
+            store.playbackPositionEvent,
+            progress: 0,
+            positionMs: -1_250,
+            durationMs: 100_000
+        )
+    }
+
+    @MainActor
     @Test("reset clears projected position")
     func resetClearsProjection() {
         let store = PlaybackStore()
@@ -664,7 +683,7 @@ struct PlaybackStoreSeekProjectionTests {
 private func expectPosition(
     _ event: PlaybackPositionEvent,
     progress: Double,
-    positionMs: UInt64,
+    positionMs: Int64,
     durationMs: UInt64
 ) {
     guard
@@ -686,7 +705,7 @@ private func expectPosition(
 private func expectStorePosition(
     _ store: PlaybackStore,
     progress: Double,
-    positionMs: UInt64,
+    positionMs: Int64,
     durationMs: UInt64
 ) {
     expectPosition(
@@ -699,7 +718,7 @@ private func expectStorePosition(
 
 extension PlaybackStore {
     fileprivate func updatePlaybackPosition(
-        positionMs: UInt64,
+        positionMs: Int64,
         durationMs: UInt64,
         progress: Double
     ) -> PlaybackPositionSnapshot {
@@ -717,7 +736,7 @@ extension PlaybackStore {
     }
 
     fileprivate func updatePlaybackSeeked(
-        positionMs: UInt64,
+        positionMs: Int64,
         durationMs: UInt64,
         progress: Double
     ) -> PlaybackPositionSnapshot {

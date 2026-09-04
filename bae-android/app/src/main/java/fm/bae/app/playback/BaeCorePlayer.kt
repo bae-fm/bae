@@ -390,9 +390,9 @@ class BaeCorePlayer(
         }
         values.position?.let {
             if (values.seekRevision != lastSeekRevision) {
-                onSeeked(it.trackId, it.positionMs.toLong(), it.durationMs.toLong(), it.progress)
+                onSeeked(it.trackId, it.positionMs, it.durationMs.toLong(), it.progress)
             } else {
-                onProgress(it.trackId, it.positionMs.toLong(), it.durationMs.toLong(), it.progress)
+                onProgress(it.trackId, it.positionMs, it.durationMs.toLong(), it.progress)
             }
         }
         lastSeekRevision = values.seekRevision
@@ -838,7 +838,7 @@ class BaeCorePlayer(
             .setCurrentMediaItemIndex(currentIndex)
             .setContentPositionMs(
                 PositionSupplier.getExtrapolating(
-                    positionModel.effectivePositionMs,
+                    positionModel.effectivePositionMs.coerceAtLeast(0L),
                     if (playbackState == Player.STATE_READY && playWhenReady) 1.0f else 0.0f,
                 ),
             ).build()

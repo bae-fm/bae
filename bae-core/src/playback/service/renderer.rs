@@ -395,13 +395,13 @@ impl PlaybackService {
             *self.current_position_shared.lock().unwrap() = Some(position);
             let progress =
                 crate::playback::format::compute_progress(raw_pos_ms, raw_dur_ms, pregap_ms);
-            let (adjusted_pos_ms, adjusted_dur_ms) =
+            let (track_position_ms, duration_ms) =
                 crate::playback::format::adjust_for_pregap(raw_pos_ms, raw_dur_ms, pregap_ms);
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::PositionUpdate {
-                    position_ms: adjusted_pos_ms,
-                    duration_ms: adjusted_dur_ms,
+                    position_ms: track_position_ms,
+                    duration_ms,
                     track_id: track_id.clone(),
                     progress,
                 },

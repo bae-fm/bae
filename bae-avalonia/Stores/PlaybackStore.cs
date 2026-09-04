@@ -19,7 +19,7 @@ internal sealed record NowPlayingBarTrack(
 // live progress update and a pending seek projection).
 internal sealed record PlaybackPositionRender(
     double Progress,
-    ulong PositionMs,
+    long PositionMs,
     ulong DurationMs);
 
 // Mirror of core's playback state: the now-playing track/position and the queue
@@ -261,7 +261,7 @@ internal sealed class PlaybackStore
         PlaybackStopped?.Invoke();
     }
 
-    public void ApplyProgress(string trackId, ulong positionMs, ulong durationMs, double progress)
+    public void ApplyProgress(string trackId, long positionMs, ulong durationMs, double progress)
     {
         if (!Accept(trackId))
         {
@@ -273,7 +273,7 @@ internal sealed class PlaybackStore
         {
             PositionChanged?.Invoke(new PlaybackPositionRender(
                 projection!.Progress,
-                projection.TargetPositionMs,
+                checked((long)projection.TargetPositionMs),
                 projection.DurationMs));
             return;
         }
@@ -281,7 +281,7 @@ internal sealed class PlaybackStore
         ApplyPositionSnapshot(trackId, durationMs, positionMs, progress);
     }
 
-    public void ApplySeeked(string trackId, ulong positionMs, ulong durationMs, double progress)
+    public void ApplySeeked(string trackId, long positionMs, ulong durationMs, double progress)
     {
         if (!Accept(trackId))
         {
@@ -423,7 +423,7 @@ internal sealed class PlaybackStore
             ? nowPlaying.Position
             : null;
 
-    private void ApplyPositionSnapshot(string trackId, ulong durationMs, ulong positionMs, double progress)
+    private void ApplyPositionSnapshot(string trackId, ulong durationMs, long positionMs, double progress)
     {
         var snapshot = new PlaybackPositionSnapshot(durationMs, positionMs, progress);
         _nowPlaying = PlaybackPositionModel.WithPosition(_nowPlaying, trackId, snapshot, null);

@@ -590,7 +590,7 @@ pub struct BridgeSeekBarClocks {
 /// is playback reporting an unknown length: no total, and no countdown.
 #[uniffi::export]
 pub fn bridge_seek_bar(
-    position_ms: u64,
+    position_ms: i64,
     duration_ms: u64,
     show_remaining: bool,
 ) -> BridgeSeekBarClocks {

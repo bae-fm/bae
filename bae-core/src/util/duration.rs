@@ -39,13 +39,30 @@ impl DurationClock {
         Some(Self::from_seconds(ms / 1000, false))
     }
 
+    /// A track-relative playback position. Negative positions count down to
+    /// INDEX 01 and use ceiling so `-0:01` remains visible until the boundary;
+    /// non-negative positions use the ordinary elapsed-time floor.
+    fn playback_position(position_ms: i64, duration_ms: Option<u64>) -> Self {
+        if position_ms < 0 {
+            return Self::from_seconds(position_ms.unsigned_abs().div_ceil(1_000), true);
+        }
+        let position_ms = position_ms as u64;
+        let position_ms = duration_ms.map_or(position_ms, |duration| position_ms.min(duration));
+        Self::from_seconds(position_ms / 1_000, false)
+    }
+
     /// The countdown from a position within a duration ("-1:23").
     ///
     /// A position past the duration is a real state — a track whose stored
     /// length undershoots the audio the decoder actually produces — so the
     /// countdown stops at "-0:00" instead of counting back up.
-    pub fn remaining(position_ms: u64, duration_ms: u64) -> Self {
-        Self::from_seconds(duration_ms.saturating_sub(position_ms) / 1000, true)
+    pub fn remaining(position_ms: i64, duration_ms: u64) -> Self {
+        let elapsed_ms = if position_ms < 0 {
+            0
+        } else {
+            position_ms as u64
+        };
+        Self::from_seconds(duration_ms.saturating_sub(elapsed_ms) / 1000, true)
     }
 
     /// Whole seconds floor: a track is "3:07" for the whole of its 3:07.x.
@@ -78,17 +95,17 @@ impl SeekBarClocks {
     /// zero-length track: there is nothing to count down to and no total to
     /// name, so the leading label shows the elapsed position whatever the
     /// preference says.
-    pub fn new(position_ms: u64, duration_ms: u64, show_remaining: bool) -> Self {
+    pub fn new(position_ms: i64, duration_ms: u64, show_remaining: bool) -> Self {
         if duration_ms == 0 {
             return Self {
-                leading: DurationClock::from_seconds(position_ms / 1000, false),
+                leading: DurationClock::playback_position(position_ms, None),
                 trailing: None,
             };
         }
         let leading = if show_remaining {
             DurationClock::remaining(position_ms, duration_ms)
         } else {
-            DurationClock::from_seconds(position_ms / 1000, false)
+            DurationClock::playback_position(position_ms, Some(duration_ms))
         };
         Self {
             leading,
@@ -259,6 +276,45 @@ mod tests {
         assert_eq!(remaining.leading, DurationClock::remaining(25_000, 100_000));
         assert!(remaining.leading.negative);
         assert_eq!(remaining.trailing, Some(clock(100_000)));
+    }
+
+    #[test]
+    fn pregap_elapsed_clock_counts_down_with_ceiling() {
+        let expected_two = DurationClock {
+            negative: true,
+            hours: None,
+            minutes: 0,
+            seconds: 2,
+        };
+        assert_eq!(
+            SeekBarClocks::new(-2_000, 100_000, false).leading,
+            expected_two
+        );
+        assert_eq!(
+            SeekBarClocks::new(-1_001, 100_000, false).leading,
+            expected_two
+        );
+
+        let expected_one = DurationClock {
+            negative: true,
+            hours: None,
+            minutes: 0,
+            seconds: 1,
+        };
+        assert_eq!(
+            SeekBarClocks::new(-1_000, 100_000, false).leading,
+            expected_one
+        );
+        assert_eq!(SeekBarClocks::new(-1, 100_000, false).leading, expected_one);
+        assert_eq!(SeekBarClocks::new(0, 100_000, false).leading, clock(0));
+    }
+
+    #[test]
+    fn remaining_clock_holds_the_full_track_duration_during_pregap() {
+        assert_eq!(
+            SeekBarClocks::new(-1_000, 100_000, true).leading,
+            DurationClock::remaining(0, 100_000),
+        );
     }
 
     /// A zero duration is playback saying it does not know the length. There is

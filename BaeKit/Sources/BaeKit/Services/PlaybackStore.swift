@@ -182,7 +182,7 @@ public class PlaybackStore {
 
     public func updatePlaybackProgress(
         trackId: String,
-        positionMs: UInt64,
+        positionMs: Int64,
         durationMs: UInt64,
         progress: Double
     ) -> PlaybackPositionSnapshot? {
@@ -203,7 +203,7 @@ public class PlaybackStore {
 
     public func updatePlaybackSeeked(
         trackId: String,
-        positionMs: UInt64,
+        positionMs: Int64,
         durationMs: UInt64,
         progress: Double
     ) -> PlaybackPositionSnapshot? {
@@ -218,7 +218,7 @@ public class PlaybackStore {
     }
 
     private func publishCurrentPosition(
-        positionMs: UInt64,
+        positionMs: Int64,
         durationMs: UInt64,
         progress: Double
     ) -> PlaybackPositionSnapshot {
@@ -253,7 +253,7 @@ public class PlaybackStore {
             return nil
         }
         let clampedRatio = min(1.0, max(0.0, ratio))
-        let targetPositionMs = UInt64(
+        let targetPositionMs = Int64(
             (clampedRatio * Double(currentPosition.durationMs)).rounded()
         )
         let snapshot = PlaybackPositionSnapshot(
