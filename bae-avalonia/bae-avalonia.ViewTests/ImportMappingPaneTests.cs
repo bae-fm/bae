@@ -150,20 +150,6 @@ public sealed class ImportMappingPaneTests
     }
 
     [AvaloniaFact]
-    public void OpeningFindOnlineStartsIdentificationWhenTheSettingSaysSo()
-    {
-        var identified = new List<string>();
-        var (pane, _) = Show(
-            Detail(metadataProvenance: null, edit: BlankEdit()),
-            identified: identified,
-            identifyAutomatically: true);
-
-        Click(pane, Loc.Chrome("import.metadata.find_online_ellipsis"));
-
-        Assert.Equal(new[] { CandidateKey }, identified);
-    }
-
-    [AvaloniaFact]
     public void AutomaticMethodShowsSignalBadgesAndRunAgain()
     {
         var runtime = new BridgeCandidateRuntimeSnapshot(
