@@ -377,8 +377,9 @@ impl ImportServiceHandle {
         provenance: Option<&crate::import::MetadataProvenance>,
         active: &crate::import::RawReleaseEdit,
     ) -> Result<std::collections::BTreeSet<String>, crate::import::ImportError> {
-        let Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) =
-            provenance
+        let Some(crate::import::MetadataProvenance::ExternalRelease {
+            source, release_id, ..
+        }) = provenance
         else {
             return Ok(Default::default());
         };

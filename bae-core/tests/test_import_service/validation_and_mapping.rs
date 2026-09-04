@@ -217,6 +217,7 @@ async fn two_credit_mb_release_keeps_both_album_artists() {
             bae_core::import::MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
+                partners: vec![],
             },
         )
         .await
@@ -334,6 +335,7 @@ async fn pick_release_for_folder(
             bae_core::import::MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.to_string(),
+                partners: vec![],
             },
         )
         .await
@@ -593,6 +595,7 @@ async fn an_import_with_no_cover_pick_takes_the_release_s_own_cover() {
         MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: release_id_key,
+            partners: vec![],
         },
     )
     .await
@@ -642,6 +645,7 @@ async fn an_import_fails_when_the_release_s_own_cover_will_not_download() {
         MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: release_id_key,
+            partners: vec![],
         },
     )
     .await

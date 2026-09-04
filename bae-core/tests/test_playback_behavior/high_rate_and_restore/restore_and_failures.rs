@@ -41,6 +41,7 @@ async fn restore_test_library() -> RestoreTestLibrary {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -117,6 +118,7 @@ async fn import_second_release(lib: &RestoreTestLibrary) -> (String, Vec<String>
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -403,6 +405,7 @@ impl CloudOnlyPlaybackFixture {
                 metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                    partners: vec![],
                 }),
                 user_edit: None,
             })

@@ -201,7 +201,8 @@
             ),
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId
+                releaseId: releaseDetailBridge.releaseId,
+                partners: []
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -236,7 +237,8 @@
             selectable: true,
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId
+                releaseId: releaseDetailBridge.releaseId,
+                partners: []
             )
         )
 
@@ -433,7 +435,8 @@
                 selectable: true,
                 metadataProvenance: .externalRelease(
                     source: releaseDetailBridge.source,
-                    releaseId: releaseDetailBridge.releaseId
+                    releaseId: releaseDetailBridge.releaseId,
+                    partners: []
                 )
             ),
             triageRow(

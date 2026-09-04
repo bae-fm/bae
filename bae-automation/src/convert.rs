@@ -163,25 +163,35 @@ pub(super) fn search_query(query: AutomationSearchQuery) -> (SearchQuery, Metada
 
 pub(super) fn release_reseed(choice: AutomationReleaseReseed) -> ReleaseReseed {
     match choice {
-        AutomationReleaseReseed::ExternalRelease { source, release_id } => {
-            ReleaseReseed::ExternalRelease {
-                release_ref: MetadataRef::new(release_id, source.into()),
-            }
-        }
+        AutomationReleaseReseed::ExternalRelease {
+            source,
+            release_id,
+            partners,
+        } => ReleaseReseed::ExternalRelease {
+            release_ref: MetadataRef::new(release_id, source.into()),
+            partners: partners.into_iter().map(metadata_ref).collect(),
+        },
         AutomationReleaseReseed::FileTags => ReleaseReseed::FileTags,
     }
 }
 
 pub(super) fn metadata_provenance(provenance: AutomationMetadataProvenance) -> MetadataProvenance {
     match provenance {
-        AutomationMetadataProvenance::ExternalRelease { source, release_id } => {
-            MetadataProvenance::ExternalRelease {
-                source: source.into(),
-                release_id,
-            }
-        }
+        AutomationMetadataProvenance::ExternalRelease {
+            source,
+            release_id,
+            partners,
+        } => MetadataProvenance::ExternalRelease {
+            source: source.into(),
+            release_id,
+            partners: partners.into_iter().map(metadata_ref).collect(),
+        },
         AutomationMetadataProvenance::FileTags => MetadataProvenance::FileTags,
     }
+}
+
+fn metadata_ref(release_ref: AutomationMetadataRef) -> MetadataRef {
+    MetadataRef::new(release_ref.release_id, release_ref.source.into())
 }
 
 pub(super) fn candidate_edit_field(field: AutomationCandidateEditField) -> CandidateEditField {

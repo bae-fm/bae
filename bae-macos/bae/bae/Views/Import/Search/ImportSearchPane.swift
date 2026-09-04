@@ -38,7 +38,7 @@ struct ImportSearchPane: View {
     /// Run signal extraction and the lookups again.
     let onRerun: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
-    let onSelect: (BridgeMetadataResult) -> Void
+    let onSelect: (Pressing) -> Void
 
     /// The form's first field takes the keyboard on every new value. A
     /// person with nothing to pick is going to type, so an empty result area

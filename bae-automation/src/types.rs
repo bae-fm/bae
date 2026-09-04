@@ -334,6 +334,8 @@ pub enum AutomationReleaseReseed {
     ExternalRelease {
         source: AutomationMetadataSource,
         release_id: String,
+        /// The other sources' releases the picked pressing paired with.
+        partners: Vec<AutomationMetadataRef>,
     },
     FileTags,
 }
@@ -739,8 +741,18 @@ pub enum AutomationMetadataProvenance {
     ExternalRelease {
         source: AutomationMetadataSource,
         release_id: String,
+        /// The other sources' releases the picked pressing paired with. The
+        /// draft is read from `release_id`; the pick claims these too.
+        partners: Vec<AutomationMetadataRef>,
     },
     FileTags,
+}
+
+/// One source's release, named.
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AutomationMetadataRef {
+    pub source: AutomationMetadataSource,
+    pub release_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]

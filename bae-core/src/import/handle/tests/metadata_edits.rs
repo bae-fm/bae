@@ -338,6 +338,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
             crate::import::MetadataProvenance::ExternalRelease {
                 source: crate::import::MetadataSource::Discogs,
                 release_id: source_release_id,
+                partners: vec![],
             },
         )
         .await

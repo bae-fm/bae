@@ -228,6 +228,9 @@ fn map_discogs_to_db_with_tracks(
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             source: MetadataSource::Discogs,
             release_id: release.id.clone(),
+            // The mapper reads one document; what else the pick claimed is
+            // the picker's to say, and reaches the library as identity rows.
+            partners: Vec::new(),
         }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles,

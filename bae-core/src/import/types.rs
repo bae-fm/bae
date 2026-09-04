@@ -186,8 +186,7 @@ impl std::fmt::Display for MetadataSource {
 /// A source-tagged identifier into a metadata system. Whether this points at a
 /// release vs. a release-group/master is determined by the field this value
 /// lives in — there's no structural difference, both are `(id, source)`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MetadataRef {
     pub id: String,
     pub source: MetadataSource,
@@ -198,8 +197,26 @@ pub struct MetadataRef {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MetadataProvenance {
     ExternalRelease {
+        /// The source of the document the draft is read from.
         source: MetadataSource,
+        /// The release that document describes.
         release_id: String,
+        /// The other sources' releases the picked pressing paired with. Find
+        /// online pairs a MusicBrainz release and a Discogs release into one
+        /// pressing row when they agree on a barcode or a catalog number;
+        /// picking the row claims both, and these are the ones the draft is
+        /// *not* read from. Each names a different source from the primary and
+        /// from every other partner.
+        ///
+        /// This is what the person picked, not what one provider says about
+        /// another — a cross-reference an editor linked stays inferred from
+        /// the documents.
+        ///
+        /// Only an import candidate stores these. A library release records
+        /// what its pick claimed as one `release_identities` row per source,
+        /// so reading a release's provenance back names its anchor document
+        /// alone.
+        partners: Vec<MetadataRef>,
     },
     FileTags,
 }
@@ -269,7 +286,6 @@ impl PreparedArtistImage {
     }
 }
 
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 impl MetadataRef {
     pub fn new(id: impl Into<String>, source: MetadataSource) -> Self {
         Self {
@@ -306,7 +322,12 @@ pub struct ReleaseIdentity {
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ReleaseReseed {
-    ExternalRelease { release_ref: MetadataRef },
+    ExternalRelease {
+        release_ref: MetadataRef,
+        /// The other sources' releases the picked pressing paired with — the
+        /// same claim [`MetadataProvenance`] records for an import candidate.
+        partners: Vec<MetadataRef>,
+    },
     FileTags,
 }
 
@@ -314,9 +335,13 @@ pub enum ReleaseReseed {
 impl ReleaseReseed {
     pub fn metadata_provenance(&self) -> MetadataProvenance {
         match self {
-            Self::ExternalRelease { release_ref } => MetadataProvenance::ExternalRelease {
+            Self::ExternalRelease {
+                release_ref,
+                partners,
+            } => MetadataProvenance::ExternalRelease {
                 source: release_ref.source,
                 release_id: release_ref.id.clone(),
+                partners: partners.clone(),
             },
             Self::FileTags => MetadataProvenance::FileTags,
         }

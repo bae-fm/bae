@@ -317,13 +317,14 @@ internal static partial class NativeBae
             _ => [],
         };
 
-    /// <summary>One choice per pressing row, picking the row's first source's
-    /// release — core orders the row's releases, MusicBrainz first.</summary>
+    /// <summary>One choice per pressing row. The row is picked whole: core
+    /// orders its releases, MusicBrainz first, and the rest ride along as
+    /// partners.</summary>
     internal static List<ReleaseCandidateChoice> GroupChoices(
         IEnumerable<BridgeReleaseGroup> groups) =>
         groups
             .SelectMany(group => group.Pressings
-                .Select(pressing => new ReleaseCandidateChoice(group, pressing.Releases[0])))
+                .Select(pressing => new ReleaseCandidateChoice(group, pressing)))
             .ToList();
 
     private static SignalBadge SignalBadge(BridgeToolbarSignal signal) =>

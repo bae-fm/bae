@@ -148,6 +148,7 @@ impl LibraryManager {
             Some(MetadataProvenance::ExternalRelease {
                 source,
                 release_id: source_release_id,
+                ..
             }) => {
                 // The stored source release names which payload seeded this one, and
                 // the documents are keyed by exactly that — so what is read back
@@ -203,9 +204,11 @@ impl LibraryManager {
     ///   release, which is what the new seed names, so reset-to-source replays
     ///   the same seed. The picked release's track count is checked against the existing
     ///   track rows, and a mismatch errors before the identity write — a 12-track
-    ///   release can't replace a 10-track rip. Album/release/track row data is not
-    ///   touched: the identity rows and metadata provenance change; the rows stay as
-    ///   the user last had them.
+    ///   release can't replace a 10-track rip. Each partner the pick carries is
+    ///   prepared the same way and its own identity replaces whatever the
+    ///   picked document inferred about that source. Album/release/track row
+    ///   data is not touched: the identity rows and metadata provenance change;
+    ///   the rows stay as the user last had them.
     /// - **File Tags** — empty identities and File Tags provenance; the release always
     ///   lands on a fresh album. The old source's album/release/track rows would
     ///   still show its metadata, so the same call reseeds them from the local file
@@ -219,13 +222,28 @@ impl LibraryManager {
         release_id: &str,
         reseed: crate::import::ReleaseReseed,
     ) -> Result<(), LibraryError> {
-        use crate::import::{MetadataProvenance, ReleaseReseed};
+        use crate::import::ReleaseReseed;
 
-        let (new_identities, metadata_provenance) = match &reseed {
-            ReleaseReseed::ExternalRelease { release_ref } => {
+        let metadata_provenance = reseed.metadata_provenance();
+        let new_identities = match &reseed {
+            ReleaseReseed::ExternalRelease {
+                release_ref,
+                partners,
+            } => {
                 let payloads = crate::import::service::prepare_release(
                     self,
                     release_ref,
+                    crate::util::rate_limiter::CallPriority::Interactive,
+                )
+                .await?;
+                // Every partner the pick claims is archived too, so its own
+                // identity is readable here and by any later reset. One that
+                // will not prepare fails the re-identify before the identity
+                // rows are written.
+                crate::import::service::prepare_partners(
+                    self,
+                    release_ref,
+                    partners,
                     crate::util::rate_limiter::CallPriority::Interactive,
                 )
                 .await?;
@@ -254,13 +272,10 @@ impl LibraryManager {
                     )));
                 }
 
-                let seed = MetadataProvenance::ExternalRelease {
-                    source: release_ref.source,
-                    release_id: release_ref.id.clone(),
-                };
-                (parsed.identities, seed)
+                crate::import::service::identities_with_partners(self, parsed.identities, partners)
+                    .await?
             }
-            ReleaseReseed::FileTags => (Vec::new(), MetadataProvenance::FileTags),
+            ReleaseReseed::FileTags => Vec::new(),
         };
 
         self.set_identity(release_id, new_identities, metadata_provenance)

@@ -31,6 +31,7 @@ async fn local_folder_import() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -185,6 +186,7 @@ async fn import_produces_audio_format_records() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -243,6 +245,7 @@ async fn exact_metadata_import_stores_dsd_audio_format() {
                 metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                    partners: vec![],
                 }),
                 user_edit: None,
             })
@@ -318,6 +321,7 @@ async fn loudness_pass_emits_within_track_progress() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -460,6 +464,7 @@ async fn loudness_measured_at_import_drives_playback_gain() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -618,6 +623,7 @@ async fn loudness_pass_advances_the_candidate_rows_percent() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

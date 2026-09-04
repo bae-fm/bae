@@ -8,7 +8,7 @@ use super::verdict_rows::{
     MatchLists,
 };
 use super::*;
-use crate::import::{MetadataProvenance, MetadataSource};
+use crate::import::{MetadataProvenance, MetadataRef, MetadataSource};
 use std::str::FromStr;
 
 /// Who decided a candidate's stored metadata provenance. Identification's
@@ -44,7 +44,9 @@ pub(super) fn seed_columns(seed: &MetadataProvenance) -> SeedColumns<'_> {
             source: None,
             release_id: None,
         },
-        MetadataProvenance::ExternalRelease { source, release_id } => SeedColumns {
+        MetadataProvenance::ExternalRelease {
+            source, release_id, ..
+        } => SeedColumns {
             kind: "external_release",
             source: Some(source.as_str()),
             release_id: Some(release_id.as_str()),
@@ -52,10 +54,14 @@ pub(super) fn seed_columns(seed: &MetadataProvenance) -> SeedColumns<'_> {
     }
 }
 
+/// The provenance columns plus the partner rows the same write laid down.
+/// `partners` is ignored for anything but an external release, which is the
+/// only provenance that can carry them.
 pub(crate) fn metadata_provenance_of(
     kind: Option<String>,
     source: Option<String>,
     release_id: Option<String>,
+    partners: Vec<MetadataRef>,
 ) -> Result<Option<MetadataProvenance>, DbError> {
     let Some(kind) = kind else {
         return Ok(None);
@@ -72,10 +78,67 @@ pub(crate) fn metadata_provenance_of(
                 source: MetadataSource::from_str(&source.ok_or_else(|| missing("source"))?)
                     .map_err(DbError::Message)?,
                 release_id: release_id.ok_or_else(|| missing("release"))?,
+                partners,
             }))
         }
         other => Err(unreadable("provenance_kind", other)),
     }
+}
+
+/// Replace the partner rows of one candidate to match `provenance`, in the
+/// transaction that writes its provenance columns. A provenance carrying none —
+/// File Tags, a cleared draft, a pick from one source — leaves the table empty
+/// for that candidate rather than keeping rows the columns no longer explain.
+pub(super) fn replace_provenance_partners(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    provenance: Option<&MetadataProvenance>,
+) -> Result<(), DbError> {
+    sql.execute(
+        "DELETE FROM import_candidate_provenance_partner WHERE content_hash = ?",
+        params![content_hash],
+    )?;
+    let Some(MetadataProvenance::ExternalRelease { partners, .. }) = provenance else {
+        return Ok(());
+    };
+    for partner in partners {
+        sql.execute(
+            "INSERT INTO import_candidate_provenance_partner (content_hash, source, release_id) \
+             VALUES (?, ?, ?)",
+            params![content_hash, partner.source.as_str(), partner.id],
+        )?;
+    }
+    Ok(())
+}
+
+/// Every candidate's partner rows, or the one `only` names, keyed by content
+/// hash and ordered by source so a read back is stable.
+pub(crate) fn load_provenance_partners_on(
+    sql: &SqlReadContext<'_>,
+    only: Option<&str>,
+) -> Result<HashMap<String, Vec<MetadataRef>>, DbError> {
+    let rows = sql.query(
+        "SELECT content_hash, source, release_id FROM import_candidate_provenance_partner \
+         WHERE :only IS NULL OR content_hash = :only \
+         ORDER BY content_hash, source",
+        named_params! { ":only": only },
+        |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        },
+    )?;
+    let mut partners: HashMap<String, Vec<MetadataRef>> = HashMap::new();
+    for (content_hash, source, release_id) in rows {
+        let source = MetadataSource::from_str(&source).map_err(DbError::Message)?;
+        partners
+            .entry(content_hash)
+            .or_default()
+            .push(MetadataRef::new(release_id, source));
+    }
+    Ok(partners)
 }
 
 struct StateRow {
@@ -86,7 +149,9 @@ struct StateRow {
     verdict_matched_barcode: Option<String>,
     probed_total_duration_ms: Option<i64>,
     identified_at: Option<DateTime<Utc>>,
-    metadata_provenance: Option<MetadataProvenance>,
+    provenance_kind: Option<String>,
+    provenance_source: Option<String>,
+    provenance_release_id: Option<String>,
     edit_revision: i64,
     metadata_revision: i64,
 }
@@ -103,11 +168,9 @@ fn read_state_row(row: &Row<'_>) -> Result<StateRow, DbError> {
         identified_at: identified_at
             .map(|_| rfc3339_column(row, "identified_at"))
             .transpose()?,
-        metadata_provenance: metadata_provenance_of(
-            row.get("provenance_kind")?,
-            row.get("provenance_source")?,
-            row.get("provenance_release_id")?,
-        )?,
+        provenance_kind: row.get("provenance_kind")?,
+        provenance_source: row.get("provenance_source")?,
+        provenance_release_id: row.get("provenance_release_id")?,
         edit_revision: row.get("edit_revision")?,
         metadata_revision: row.get("metadata_revision")?,
     })
@@ -155,6 +218,7 @@ pub(crate) fn load_states_on(
     }
     let mut edits = load_edits_on(sql, only)?;
     let mut signals = load_signals_on(sql, only)?;
+    let mut partners = load_provenance_partners_on(sql, only)?;
     let failure_rows = sql.query(
         "SELECT content_hash, failures_json, track_count, probed_total_duration_ms, identified_at \
          FROM import_candidate_identify_failure \
@@ -217,6 +281,12 @@ pub(crate) fn load_states_on(
             }
             (normal, failed) => normal.or(failed),
         };
+        let metadata_provenance = metadata_provenance_of(
+            state.provenance_kind,
+            state.provenance_source,
+            state.provenance_release_id,
+            partners.remove(&state.content_hash).unwrap_or_default(),
+        )?;
         let mut file_edits = edits.remove(&state.content_hash).unwrap_or_default();
         file_edits.revision = u64::try_from(state.edit_revision).map_err(|_| {
             DbError::Message(format!(
@@ -238,7 +308,7 @@ pub(crate) fn load_states_on(
                 folder_path: state.folder_path,
                 identify,
                 file_edits,
-                metadata_provenance: state.metadata_provenance,
+                metadata_provenance,
                 metadata_revision,
             },
         );

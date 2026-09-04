@@ -109,6 +109,7 @@ async fn identity_rows_take_their_ids_from_the_injected_provider() {
         Some(MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-release-1".to_string(),
+            partners: vec![],
         }),
         &album.id,
         &target.id,

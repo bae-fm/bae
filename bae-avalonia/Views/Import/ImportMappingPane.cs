@@ -336,8 +336,7 @@ internal sealed partial class ImportMappingPane : UserControl
             var revision = provenance switch
             {
                 BridgeMetadataProvenance.ExternalRelease external =>
-                    await _import.ApplyCandidateExternalMetadata(
-                        key, external.Source, external.ReleaseId),
+                    await _import.ApplyCandidateExternalMetadata(key, external),
                 BridgeMetadataProvenance.FileTags =>
                     await _import.ApplyCandidateFileTags(key),
                 _ => throw new ArgumentOutOfRangeException(
@@ -571,8 +570,7 @@ internal sealed partial class ImportMappingPane : UserControl
         Edit = _candidate?.Edit,
         MetaLine = MetaLine(),
         SourceAudioLine = SourceAudioLine(_candidate?.Files),
-        ProvenanceLabel = ProvenanceLabel(),
-        ProvenanceUri = ProvenanceUri(),
+        ProvenanceChips = ProvenanceChips(),
         IsReading = _pickInFlight
             || _applyingProvenance is not null
             || _candidate?.FileTagsPreviewStatus == ImportFileTagsPreviewStatus.Loading,
@@ -670,45 +668,44 @@ internal sealed partial class ImportMappingPane : UserControl
     private static string SourceAudioLine(BridgeCandidateFiles? files) =>
         BridgeDisplay.SourceAudio(files?.SourceAudio?.Summary);
 
-    private string? ProvenanceLabel() => _candidate?.MetadataProvenance switch
-    {
-        BridgeMetadataProvenance.ExternalRelease external =>
-            BaeBridgeMethods.BridgeMetadataSourceName(external.Source),
-        BridgeMetadataProvenance.FileTags =>
-            Loc.Core("ui.import.metadata.file_tags"),
-        null => null,
-        _ => throw new ArgumentOutOfRangeException(
-            nameof(_candidate.MetadataProvenance),
-            _candidate.MetadataProvenance,
-            "Unknown metadata provenance"),
-    };
+    // A pick pairs a MusicBrainz release and a Discogs release into one
+    // pressing, and the draft claims both, so the card names both — the
+    // release it was read from first, then each partner the pick carried.
+    private IReadOnlyList<ProvenanceChip> ProvenanceChips() =>
+        _candidate?.MetadataProvenance switch
+        {
+            BridgeMetadataProvenance.ExternalRelease external =>
+                new[] { new BridgeMetadataRef(external.Source, external.ReleaseId) }
+                    .Concat(external.Partners)
+                    .Select(release => new ProvenanceChip(
+                        BaeBridgeMethods.BridgeMetadataSourceName(release.Source),
+                        ExternalReleaseUri(release)))
+                    .ToList(),
+            BridgeMetadataProvenance.FileTags =>
+            [
+                new ProvenanceChip(Loc.Core("ui.import.metadata.file_tags"), null),
+            ],
+            null => [],
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(_candidate.MetadataProvenance),
+                _candidate.MetadataProvenance,
+                "Unknown metadata provenance"),
+        };
 
-    private Uri? ProvenanceUri() => _candidate?.MetadataProvenance switch
+    private static Uri ExternalReleaseUri(BridgeMetadataRef release)
     {
-        BridgeMetadataProvenance.ExternalRelease external =>
-            ExternalReleaseUri(external),
-        BridgeMetadataProvenance.FileTags or null => null,
-        _ => throw new ArgumentOutOfRangeException(
-            nameof(_candidate.MetadataProvenance),
-            _candidate.MetadataProvenance,
-            "Unknown metadata provenance"),
-    };
-
-    private static Uri ExternalReleaseUri(
-        BridgeMetadataProvenance.ExternalRelease external)
-    {
-        var root = external.Source switch
+        var root = release.Source switch
         {
             BridgeMetadataSource.MusicBrainz =>
                 "https://musicbrainz.org/release/",
             BridgeMetadataSource.Discogs =>
                 "https://www.discogs.com/release/",
             _ => throw new ArgumentOutOfRangeException(
-                nameof(external.Source),
-                external.Source,
+                nameof(release.Source),
+                release.Source,
                 "Unknown metadata source"),
         };
-        return new Uri(root + Uri.EscapeDataString(external.ReleaseId));
+        return new Uri(root + Uri.EscapeDataString(release.ReleaseId));
     }
 
     private bool DraftIsBlank() => _candidate?.Detail?.MetadataDraftIsBlank ?? true;

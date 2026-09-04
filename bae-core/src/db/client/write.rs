@@ -172,9 +172,9 @@ pub(super) fn metadata_provenance_columns(
     provenance: Option<&crate::import::MetadataProvenance>,
 ) -> (&str, Option<&str>) {
     match provenance {
-        Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) => {
-            (source.as_str(), Some(release_id.as_str()))
-        }
+        Some(crate::import::MetadataProvenance::ExternalRelease {
+            source, release_id, ..
+        }) => (source.as_str(), Some(release_id.as_str())),
         Some(crate::import::MetadataProvenance::FileTags) => ("file_tags", None),
         None => ("none", None),
     }

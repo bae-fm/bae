@@ -473,10 +473,9 @@ internal sealed class ImportStore : IDisposable
 
     public async Task<ulong?> ApplyCandidateExternalMetadata(
         string key,
-        BridgeMetadataSource source,
-        string releaseId) =>
+        BridgeMetadataProvenance.ExternalRelease provenance) =>
         await WriteRevision(() =>
-            _import.ApplyCandidateExternalMetadata(key, source, releaseId));
+            _import.ApplyCandidateExternalMetadata(key, provenance));
 
     public async Task<ulong?> ApplyCandidateFileTags(string key) =>
         await WriteRevision(() => _import.ApplyCandidateFileTags(key));

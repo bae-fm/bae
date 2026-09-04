@@ -21,7 +21,8 @@ use crate::discogs::DiscogsRelease;
 use crate::import::cover_art::RemoteCover;
 use crate::import::search::{ImportSearchReleaseDetail, SourceTracks};
 use crate::import::{
-    ImportError, MetadataRef, MetadataSource, ParsedAlbum, PayloadSource, SourcePayload,
+    ImportError, MetadataRef, MetadataSource, ParsedAlbum, PayloadSource, ReleaseIdentity,
+    SourcePayload,
 };
 use crate::musicbrainz::MbReleaseResponse;
 use crate::util::rate_limiter::CallPriority;
@@ -120,6 +121,35 @@ impl ReleasePayloads {
                 self.source_data(format!("stored Discogs master does not parse: {e}"))
             }),
             None => Ok(release.year),
+        }
+    }
+
+    /// The identity this release's own document states: its source, the group
+    /// it belongs to, and itself.
+    ///
+    /// The anchor's claim alone — never the cross-reference an editor linked,
+    /// which [`Self::parsed`] contributes as a second row. A pick's partner is
+    /// read through here so the person's claim about that source replaces
+    /// whatever the primary document inferred about it.
+    pub fn identity(&self) -> Result<ReleaseIdentity, ImportError> {
+        match self.release.source {
+            MetadataSource::MusicBrainz => {
+                let response = self.musicbrainz_anchor()?;
+                let release_group = response.release_group.as_ref().ok_or_else(|| {
+                    self.source_data(format!(
+                        "MusicBrainz release {} names no release group",
+                        self.release.id
+                    ))
+                })?;
+                Ok(ReleaseIdentity {
+                    source: MetadataSource::MusicBrainz,
+                    source_group_id: release_group.id.clone(),
+                    source_release_id: response.id.clone(),
+                })
+            }
+            MetadataSource::Discogs => Ok(crate::import::discogs_mapper::discogs_identity(
+                &self.discogs_anchor()?,
+            )),
         }
     }
 

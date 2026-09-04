@@ -845,6 +845,7 @@ fn a_metadata_provenance_answers_whatever_the_verdict_asked() {
             Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: "mb-picked".to_string(),
+                partners: vec![],
             }),
             "{name}: the row carries what a bulk import would commit"
         );

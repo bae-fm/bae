@@ -20,7 +20,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
     let selectedReleaseId: String?
     /// Release id whose candidate detail is being fetched, if any.
     let loadingReleaseId: String?
-    let onSelect: (BridgeMetadataResult) -> Void
+    let onSelect: (Pressing) -> Void
     @ViewBuilder
     let trailing: () -> Trailing
 
@@ -70,7 +70,7 @@ struct ReleaseGroupSection: View {
     /// The pressing whose pick is being read right now — its row carries a
     /// spinner while the list stays put.
     var loadingReleaseId: String?
-    let onSelect: (BridgeMetadataResult) -> Void
+    let onSelect: (Pressing) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

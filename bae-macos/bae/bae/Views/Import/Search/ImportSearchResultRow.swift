@@ -6,9 +6,9 @@ import SwiftUI
 /// catalogue number, where and in what format it was pressed, which signals
 /// named it, and every source that lists it.
 ///
-/// Picking the row commits the pressing's lead release; picking a source tag
-/// commits that source's own record of the same pressing. Both open the docked
-/// confirm pane, where the Exact / Metadata-only choice is made.
+/// The row is picked whole: it commits the pressing's lead release and carries
+/// every other source's record of the same pressing along with it. That opens
+/// the docked confirm pane, where the Exact / Metadata-only choice is made.
 ///
 /// A row already in the library still opens the pane — it surfaces the
 /// "already imported" banner and leaves Import disabled there — so the row
@@ -24,7 +24,7 @@ struct ImportSearchResultRow: View {
     /// Whether this row's pick is being read right now — the row itself
     /// carries the spinner, so the list stays put while the release loads.
     var isLoading: Bool = false
-    let onSelect: (BridgeMetadataResult) -> Void
+    let onSelect: (Pressing) -> Void
 
     private var isInLibrary: Bool {
         libraryStatus?.releaseInLibrary == true
@@ -33,7 +33,7 @@ struct ImportSearchResultRow: View {
     var body: some View {
         ZStack {
             Button {
-                onSelect(pressing.lead)
+                onSelect(pressing)
             } label: {
                 Rectangle()
                     .fill(.clear)
@@ -52,6 +52,7 @@ struct ImportSearchResultRow: View {
                 libraryMarker
                     .allowsHitTesting(false)
                 sourceTags
+                    .allowsHitTesting(false)
                 chevron
                     .allowsHitTesting(false)
             }
@@ -155,28 +156,20 @@ struct ImportSearchResultRow: View {
 
     // MARK: - Trailing
 
-    /// Every source listing this pressing. Each name commits that source's own
-    /// record of it, which is how a person takes the Discogs half of a merged
-    /// row without losing the row.
+    /// Every source listing this pressing, named. A label, not a choice: the
+    /// row is one pressing however many sources carry it, and picking it
+    /// claims all of them.
     private var sourceTags: some View {
         HStack(spacing: 4) {
             ForEach(pressing.releases) { release in
-                let name = bridgeMetadataSourceName(source: release.source)
                 if release.releaseId != pressing.lead.releaseId {
                     Text(verbatim: "\u{00b7}")
                         .font(.system(size: 11))
                         .foregroundStyle(.quaternary)
                 }
-                Button {
-                    onSelect(release)
-                } label: {
-                    Text(name)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-                .disabled(isImporting)
-                .help(String(localized: "Use this pressing as \(name) has it"))
+                Text(bridgeMetadataSourceName(source: release.source))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
             }
         }
     }

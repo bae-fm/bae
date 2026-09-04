@@ -125,6 +125,7 @@ async fn edit_seed_exposes_reset_eligibility_from_provenance() {
             Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: "mb-release".to_string(),
+                partners: vec![],
             }),
             true,
         ),
@@ -132,6 +133,7 @@ async fn edit_seed_exposes_reset_eligibility_from_provenance() {
             Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: "discogs-release".to_string(),
+                partners: vec![],
             }),
             true,
         ),
@@ -255,6 +257,7 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
     release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: "mb-release-1".to_string(),
+        partners: vec![],
     });
     let t1 = make_track(&release.id, 1, "Original Track 1");
     let t2 = make_track(&release.id, 2, "Original Track 2");
@@ -326,6 +329,7 @@ async fn reset_mb_returns_full_pressing_data_from_cache() {
         Some(MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-release-1".to_string(),
+            partners: vec![],
         })
     );
     // And it doesn't touch the persisted album / release / tracks either —
@@ -392,6 +396,7 @@ async fn reset_discogs_returns_full_pressing_data_from_cache() {
     release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
         source: MetadataSource::Discogs,
         release_id: "12345".to_string(),
+        partners: vec![],
     });
     let t1 = make_track(&release.id, 1, "Original Track");
 
@@ -564,6 +569,7 @@ async fn reset_mb_missing_archived_payload_errors() {
     release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: "mb-release-missing".to_string(),
+        partners: vec![],
     });
 
     db.insert_artist(&artist).await.unwrap();
@@ -601,6 +607,7 @@ async fn reset_mb_reads_only_the_pressing_the_pointer_names() {
     release.metadata_provenance = Some(MetadataProvenance::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: "mb-release-Y".to_string(),
+        partners: vec![],
     });
 
     db.insert_artist(&artist).await.unwrap();

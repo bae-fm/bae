@@ -125,6 +125,7 @@ async fn release_edit_reset_preserves_persisted_track_ids() {
                     source: MetadataSource::MusicBrainz,
                     id: source_release_id.to_string(),
                 },
+                partners: vec![],
             },
         )
         .await

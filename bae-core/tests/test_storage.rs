@@ -94,6 +94,7 @@ async fn test_local_import() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -245,6 +246,7 @@ async fn test_local_delete_preserves_files() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -346,6 +348,7 @@ async fn run_import_with_cover_test() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

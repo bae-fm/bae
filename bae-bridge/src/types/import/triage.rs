@@ -427,6 +427,10 @@ pub enum BridgeMetadataProvenance {
     ExternalRelease {
         source: BridgeMetadataSource,
         release_id: String,
+        /// The other sources' releases the picked pressing paired with. The
+        /// draft is read from `release_id`; each of these is the same pressing
+        /// as another source has it, and the pick claims them all.
+        partners: Vec<crate::types::BridgeMetadataRef>,
     },
     FileTags,
 }
@@ -435,24 +439,36 @@ pub enum BridgeMetadataProvenance {
 impl BridgeMetadataProvenance {
     pub(crate) fn from_core(pick: bae_core::import::MetadataProvenance) -> Self {
         match pick {
-            bae_core::import::MetadataProvenance::ExternalRelease { source, release_id } => {
-                Self::ExternalRelease {
-                    source: BridgeMetadataSource::from_core(source),
-                    release_id,
-                }
-            }
+            bae_core::import::MetadataProvenance::ExternalRelease {
+                source,
+                release_id,
+                partners,
+            } => Self::ExternalRelease {
+                source: BridgeMetadataSource::from_core(source),
+                release_id,
+                partners: partners
+                    .into_iter()
+                    .map(crate::types::BridgeMetadataRef::from_core)
+                    .collect(),
+            },
             bae_core::import::MetadataProvenance::FileTags => Self::FileTags,
         }
     }
 
     pub(crate) fn into_core(self) -> bae_core::import::MetadataProvenance {
         match self {
-            Self::ExternalRelease { source, release_id } => {
-                bae_core::import::MetadataProvenance::ExternalRelease {
-                    source: source.into_core(),
-                    release_id,
-                }
-            }
+            Self::ExternalRelease {
+                source,
+                release_id,
+                partners,
+            } => bae_core::import::MetadataProvenance::ExternalRelease {
+                source: source.into_core(),
+                release_id,
+                partners: partners
+                    .into_iter()
+                    .map(crate::types::BridgeMetadataRef::into_core)
+                    .collect(),
+            },
             Self::FileTags => bae_core::import::MetadataProvenance::FileTags,
         }
     }

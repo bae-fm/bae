@@ -53,6 +53,7 @@ async fn re_identify_with_file_tags_clears_identities_and_moves_album() {
     release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-rel-1".to_string(),
+        partners: vec![],
     });
     release.remote = false;
 
@@ -239,6 +240,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
     release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-rel-old".to_string(),
+        partners: vec![],
     });
 
     manager.database.insert_album(&album).await.unwrap();
@@ -272,6 +274,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
                 },
+                partners: vec![],
             },
         )
         .await
@@ -300,6 +303,7 @@ async fn re_identify_release_exact_archives_the_picked_release() {
         Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: new_release_id.to_string(),
+            partners: vec![],
         })
     );
 
@@ -365,6 +369,7 @@ async fn re_identify_release_rejects_track_count_mismatch() {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
                 },
+                partners: vec![],
             },
         )
         .await
@@ -424,6 +429,7 @@ async fn re_identify_release_followed_by_reset_succeeds() {
                     source: MetadataSource::MusicBrainz,
                     id: new_release_id.to_string(),
                 },
+                partners: vec![],
             },
         )
         .await
@@ -485,6 +491,7 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-rel-1".to_string(),
+        partners: vec![],
     });
     release.remote = false;
 
@@ -579,5 +586,124 @@ async fn re_identify_with_file_tags_reseeds_rows_from_file_tags() {
     assert!(
         !titles.iter().any(|t| t.starts_with("MB ")),
         "old MusicBrainz track titles must be gone, got {titles:?}"
+    );
+}
+
+/// Re-identifying onto a paired pressing keeps both sources: the picked
+/// release's own identity row and one for each partner, naming the release
+/// that source lists.
+#[tokio::test]
+async fn re_identify_with_a_partner_writes_both_identity_rows() {
+    use crate::import::{MetadataRef, MetadataSource, ReleaseReseed};
+    use crate::musicbrainz::{seed_release_cache, seed_release_group_json_cache};
+
+    let (manager, _temp_dir) = setup_test_manager().await;
+    manager
+        .set_discogs_key(
+            "test-discogs-token",
+            crate::config::DiscogsValidation::Valid,
+        )
+        .unwrap();
+
+    let album = create_test_album();
+    let mut release = create_test_release(&album.id);
+    release.metadata_provenance = Some(crate::import::MetadataProvenance::ExternalRelease {
+        source: MetadataSource::MusicBrainz,
+        release_id: "partner-re-identify-mb-rel-old".to_string(),
+        partners: vec![],
+    });
+
+    manager.database.insert_album(&album).await.unwrap();
+    manager.database.insert_release(&release).await.unwrap();
+    manager
+        .database
+        .insert_release_identities(
+            &release.id,
+            &[mb_identity("g-old", "partner-re-identify-mb-rel-old")],
+        )
+        .await
+        .unwrap();
+    insert_n_tracks(&manager.database, &release.id, 1).await;
+
+    let mb_release_id = "partner-re-identify-mb-rel-new";
+    let mb_group_id = "partner-re-identify-mb-group-new";
+    let response = make_mb_release_for_re_identify(mb_release_id, mb_group_id, 1);
+    let raw_json = serde_json::to_string(&response).unwrap();
+    seed_release_cache(mb_release_id, (response, None, raw_json));
+    seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
+    );
+
+    let discogs_release_id = "80000101";
+    let discogs_master_id = "80009101";
+    crate::discogs::client::seed_master_cache(
+        discogs_master_id,
+        Some(1996),
+        serde_json::json!({ "id": discogs_master_id, "year": 1996 }).to_string(),
+    );
+    let discogs_raw = serde_json::json!({
+        "id": discogs_release_id.parse::<u64>().unwrap(),
+        "title": "Album Title",
+        "year": 1996,
+        "master_id": discogs_master_id.parse::<u64>().unwrap(),
+        "formats": [{ "name": "CD" }],
+        "artists": [{ "id": 1, "name": "Artist Name" }],
+        "tracklist": [{
+            "position": "1",
+            "title": "Track 1",
+            "duration": "0:01",
+            "type_": "track",
+            "artists": [],
+        }],
+    })
+    .to_string();
+    let discogs_parsed = crate::discogs::client::parse_discogs_release_json(&discogs_raw).unwrap();
+    crate::discogs::client::seed_release_cache(discogs_release_id, (discogs_parsed, discogs_raw));
+    crate::musicbrainz::seed_discogs_url_lookup(discogs_release_id, None);
+
+    manager
+        .re_identify_release(
+            &release.id,
+            ReleaseReseed::ExternalRelease {
+                release_ref: MetadataRef::new(mb_release_id, MetadataSource::MusicBrainz),
+                partners: vec![MetadataRef::new(discogs_release_id, MetadataSource::Discogs)],
+            },
+        )
+        .await
+        .unwrap();
+
+    let identities = manager
+        .database
+        .get_release_identities(&release.id)
+        .await
+        .unwrap();
+    assert_eq!(identities.len(), 2, "one row per claimed source");
+
+    let mb = identities
+        .iter()
+        .find(|identity| identity.source == MetadataSource::MusicBrainz)
+        .expect("the MusicBrainz row");
+    assert_eq!(mb.source_group_id, mb_group_id);
+    assert_eq!(mb.source_release_id, mb_release_id);
+
+    let discogs = identities
+        .iter()
+        .find(|identity| identity.source == MetadataSource::Discogs)
+        .expect("the Discogs row");
+    assert_eq!(discogs.source_group_id, discogs_master_id);
+    assert_eq!(discogs.source_release_id, discogs_release_id);
+
+    // The partner's documents are archived under its own key, so a later
+    // reset or read of that identity needs no network.
+    assert!(
+        archived_for(
+            &manager,
+            crate::import::PayloadSource::Discogs,
+            discogs_release_id
+        )
+        .await
+        .is_some(),
+        "the partner's own document is archived by the re-identify"
     );
 }

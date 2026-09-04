@@ -93,6 +93,7 @@ fn row_to_release_reads_every_provenance_shape() {
         Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-release".to_string(),
+            partners: vec![],
         })
     );
     assert_eq!(
@@ -100,6 +101,7 @@ fn row_to_release_reads_every_provenance_shape() {
         Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::Discogs,
             release_id: "discogs-release".to_string(),
+            partners: vec![],
         })
     );
 }

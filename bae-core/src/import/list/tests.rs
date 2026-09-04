@@ -113,6 +113,7 @@ fn ready_state(release_id: &str) -> CandidateStateListRow {
         metadata_provenance: Some(MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: release_id.to_string(),
+            partners: vec![],
         }),
         metadata_draft_valid: true,
         metadata_summary: None,
@@ -161,6 +162,7 @@ fn external_release_seed(release_id: &str) -> MetadataProvenance {
     MetadataProvenance::ExternalRelease {
         source: MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
+        partners: vec![],
     }
 }
 

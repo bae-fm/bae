@@ -30,6 +30,61 @@ final class FindOnlinePaneTests: XCTestCase {
 }
 
 @MainActor
+@Suite("What picking a pressing row claims")
+struct FindOnlinePressingPickTests {
+    /// A row is one pressing however many sources carry it. Picking it names
+    /// the lead as the release the draft is read from and every other source's
+    /// record of the same pressing as a partner — which is what
+    /// `ImportSearchResultRow.onSelect` hands the flow.
+    @Test("a row pick carries every source the pressing has")
+    func aRowPickCarriesEverySource() throws {
+        let bridge = PreviewData.exactPressings[1]
+        let pressing = try #require(Pressing(bridge: bridge))
+        let partners = bridge.releases.dropFirst()
+            .map { release in
+                BridgeMetadataRef(
+                    source: release.source,
+                    releaseId: release.releaseId
+                )
+            }
+
+        #expect(partners.count == 1)
+        #expect(
+            pressing.provenance
+                == .externalRelease(
+                    source: bridge.releases[0].source,
+                    releaseId: bridge.releases[0].releaseId,
+                    partners: partners
+                )
+        )
+        #expect(
+            pressing.reseed
+                == .externalRelease(
+                    releaseId: bridge.releases[0].releaseId,
+                    source: bridge.releases[0].source,
+                    partners: partners
+                )
+        )
+    }
+
+    /// A pressing only one source lists claims only that source.
+    @Test("an unpaired row carries no partner")
+    func anUnpairedRowCarriesNoPartner() throws {
+        let bridge = PreviewData.exactPressings[0]
+        let pressing = try #require(Pressing(bridge: bridge))
+
+        #expect(
+            pressing.provenance
+                == .externalRelease(
+                    source: bridge.releases[0].source,
+                    releaseId: bridge.releases[0].releaseId,
+                    partners: []
+                )
+        )
+    }
+}
+
+@MainActor
 @Suite("The empty zone's way into the form")
 struct FindOnlineFormFocusTests {
     /// "Search instead" is a request, not a flag: the cursor goes to the

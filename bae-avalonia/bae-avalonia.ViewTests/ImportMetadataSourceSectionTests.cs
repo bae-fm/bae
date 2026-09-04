@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Avalonia.Controls;
@@ -215,8 +215,7 @@ public sealed class ImportMetadataSourceSectionTests
             Edit = edit ?? Edit(),
             MetaLine = "CD · 1996",
             SourceAudioLine = sourceAudioLine,
-            ProvenanceLabel = null,
-            ProvenanceUri = null,
+            ProvenanceChips = [],
             IsReading = isReading,
             FileTagsPreview = fileTagsPreview,
             FileTagsMetaLine = "CD · 1996",

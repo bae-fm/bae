@@ -174,16 +174,13 @@ private struct ImportOnlineMetadataBrowser: View {
                         )
                     },
                     onBack: onBack,
-                    onSelect: { result in
+                    onSelect: { pressing in
                         ImportSearchFlow.applyMetadata(
                             importer: importer,
                             importStore: importStore,
                             endEditing: endEditing,
                             key: candidateKey,
-                            provenance: .externalRelease(
-                                source: result.source,
-                                releaseId: result.releaseId
-                            ),
+                            provenance: pressing.provenance,
                             onConfirmed: {
                                 Task { @MainActor in onBack() }
                             }

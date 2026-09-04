@@ -12,7 +12,7 @@
 mod window;
 
 use super::identity::check_releases_in_library_on;
-use super::import_state::metadata_provenance_of;
+use super::import_state::{load_provenance_partners_on, metadata_provenance_of};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_registry::WatchedFolder;
@@ -383,6 +383,7 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
         );
     }
 
+    let mut partners = load_provenance_partners_on(sql, None)?;
     let mut states = HashMap::new();
     for row in sql.query(
         "SELECT content_hash, edit_revision, verdict_kind, verdict_track_count, \
@@ -396,11 +397,23 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 row.get::<_, Option<String>>(2)?,
                 row.get::<_, Option<i64>>(3)?,
                 row.get::<_, Option<i64>>(4)?,
-                metadata_provenance_of(row.get(5)?, row.get(6)?, row.get(7)?),
+                (
+                    row.get::<_, Option<String>>(5)?,
+                    row.get::<_, Option<String>>(6)?,
+                    row.get::<_, Option<String>>(7)?,
+                ),
             ))
         },
     )? {
-        let (content_hash, edit_revision, verdict_kind, track_count, probed, metadata_provenance) = row;
+        let (content_hash, edit_revision, verdict_kind, track_count, probed, provenance_columns) =
+            row;
+        let (provenance_kind, provenance_source, provenance_release_id) = provenance_columns;
+        let metadata_provenance = metadata_provenance_of(
+            provenance_kind,
+            provenance_source,
+            provenance_release_id,
+            partners.remove(&content_hash).unwrap_or_default(),
+        );
         let normal_verdict = verdict_kind
             .map(|kind| -> Result<VerdictSummary, DbError> {
                 Ok(VerdictSummary {

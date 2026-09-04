@@ -242,6 +242,7 @@ async fn seed_library() -> Library {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: discogs_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

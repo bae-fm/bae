@@ -267,6 +267,7 @@ async fn a_picked_row_leads_with_the_archived_document() {
         Some(&MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-picked".to_string(),
+            partners: vec![],
         }),
     )
     .await
@@ -306,6 +307,7 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
         Some(&MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "mb-never-fetched".to_string(),
+            partners: vec![],
         }),
     )
     .await

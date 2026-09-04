@@ -61,6 +61,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key.clone(),
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -83,6 +84,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
         Some(MetadataProvenance::ExternalRelease {
             source: MetadataSource::Discogs,
             release_id: release_id_key.clone(),
+            partners: vec![],
         })
     );
 
@@ -143,6 +145,7 @@ async fn a_user_edit_overlays_the_picked_release() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key.clone(),
+                partners: vec![],
             }),
             user_edit: Some(edit),
         })
@@ -330,6 +333,7 @@ async fn cross_source_writes_both_release_ids() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: mb_id.clone(),
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -358,4 +362,191 @@ async fn cross_source_writes_both_release_ids() {
         support::discogs_fixture_id("xref-d-master-exact")
     );
     assert_eq!(discogs.source_release_id, discogs_id);
+}
+
+// ── a pick's partners ───────────────────────────────────────────────────────
+//
+// Find online pairs a MusicBrainz release and a Discogs release into one
+// pressing row. Picking that row claims both: the draft is read from the
+// primary, and each partner contributes its own source's identity row.
+
+/// A pick carrying a partner writes one identity row per source, each naming
+/// the release that source lists — even though neither document cross-links
+/// the other.
+#[tokio::test]
+async fn a_pick_with_a_partner_writes_both_identity_rows() {
+    support::tracing_init();
+
+    let discogs_id = seed_discogs_for_xref("90000101", "partner-d-master", "Album Title");
+    bae_core::musicbrainz::seed_discogs_url_lookup(&discogs_id, None);
+    let mb_id = seed_mb_without_xref("partner-mb-rel", "partner-mb-group", "Album Title");
+
+    let f = ImportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(&album_dir, &["01 Track One.flac"]);
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: mb_id.clone(),
+                partners: vec![bae_core::import::MetadataRef::new(
+                    discogs_id.clone(),
+                    MetadataSource::Discogs,
+                )],
+            }),
+            user_edit: None,
+        })
+        .await
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    let identities = f.db.get_release_identities(&release_id).await.unwrap();
+    assert_eq!(identities.len(), 2, "expected MB + Discogs identity rows");
+
+    let mb = identities
+        .iter()
+        .find(|i| i.source == MetadataSource::MusicBrainz)
+        .expect("MB identity row missing");
+    assert_eq!(mb.source_group_id, "partner-mb-group");
+    assert_eq!(mb.source_release_id, mb_id);
+
+    let discogs = identities
+        .iter()
+        .find(|i| i.source == MetadataSource::Discogs)
+        .expect("Discogs identity row missing");
+    assert_eq!(
+        discogs.source_group_id,
+        support::discogs_fixture_id("partner-d-master")
+    );
+    assert_eq!(discogs.source_release_id, discogs_id);
+}
+
+/// The partner is what the person picked, so it replaces the Discogs identity
+/// the MusicBrainz document's url-rels merely suggested: one Discogs row, and
+/// it names the picked pressing rather than the cross-referenced one.
+#[tokio::test]
+async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
+    support::tracing_init();
+
+    let inferred_id = seed_discogs_for_xref("90000201", "inferred-d-master", "Album Title");
+    let picked_id = seed_discogs_for_xref("90000202", "picked-d-master", "Album Title");
+    bae_core::musicbrainz::seed_discogs_url_lookup(&inferred_id, None);
+    bae_core::musicbrainz::seed_discogs_url_lookup(&picked_id, None);
+    let mb_id = seed_mb_with_discogs_xref(
+        "partner-override-mb-rel",
+        "partner-override-mb-group",
+        &inferred_id,
+        "Album Title",
+    );
+
+    let f = ImportFixture::new().await;
+    let album_dir = f.temp_path().join("album");
+    fs::create_dir_all(&album_dir).unwrap();
+    generate_album_files(&album_dir, &["01 Track One.flac"]);
+
+    let import_id = uuid::Uuid::new_v4().to_string();
+    f.handle
+        .send_command(ImportCommand {
+            import_id: import_id.clone(),
+            candidate_key: "test".to_string(),
+            folder: album_dir,
+            scope: bae_core::import::ReleaseFileScope::Recursive,
+            selected_cover: None,
+            storage_mode: StorageMode::Local,
+            pin: false,
+            metadata_provenance: Some(MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: mb_id.clone(),
+                partners: vec![bae_core::import::MetadataRef::new(
+                    picked_id.clone(),
+                    MetadataSource::Discogs,
+                )],
+            }),
+            user_edit: None,
+        })
+        .await
+        .unwrap();
+
+    let mut progress_rx = f.handle.subscribe_import(import_id);
+    let (release_id, _) = support::wait_for_import_complete(&mut progress_rx).await;
+
+    let identities = f.db.get_release_identities(&release_id).await.unwrap();
+    let discogs: Vec<_> = identities
+        .iter()
+        .filter(|i| i.source == MetadataSource::Discogs)
+        .collect();
+    assert_eq!(discogs.len(), 1, "one row per source");
+    assert_eq!(
+        discogs[0].source_release_id, picked_id,
+        "the picked release outranks the cross-referenced one"
+    );
+    assert_eq!(
+        discogs[0].source_group_id,
+        support::discogs_fixture_id("picked-d-master")
+    );
+}
+
+/// Seed an MB release with no Discogs url-rel. Returns the MB release id.
+fn seed_mb_without_xref(mb_release_id: &str, mb_group_id: &str, title: &str) -> String {
+    let response = MbReleaseResponse {
+        id: mb_release_id.to_string(),
+        title: title.to_string(),
+        date: Some("1996".to_string()),
+        country: Some("US".to_string()),
+        barcode: None,
+        artist_credit: vec![MbArtistCredit {
+            name: "Artist Name".to_string(),
+            artist: Some(MbArtistRef {
+                id: Some("mb-artist-1".to_string()),
+                name: Some("Artist Name".to_string()),
+                sort_name: Some("Artist Name".to_string()),
+            }),
+        }],
+        release_group: Some(MbReleaseGroupRef {
+            id: mb_group_id.to_string(),
+            first_release_date: None,
+            relations: None,
+        }),
+        label_info: vec![],
+        media: vec![MbMedium {
+            format: Some("CD".to_string()),
+            tracks: vec![MbTrack {
+                position: Some(1),
+                number: Some("1".to_string()),
+                title: None,
+                length: None,
+                recording: Some(MbRecording {
+                    id: None,
+                    title: Some("Track One".to_string()),
+                    artist_credit: vec![],
+                    relations: vec![],
+                }),
+                artist_credit: vec![],
+            }],
+        }],
+        relations: vec![],
+        cover_art_archive: bae_core::musicbrainz::MbCoverArtArchive {
+            front: false,
+            darkened: false,
+        },
+    };
+    let raw_json = serde_json::to_string(&response).expect("the test response serializes");
+    bae_core::musicbrainz::seed_release_cache(mb_release_id, (response, None, raw_json));
+    bae_core::musicbrainz::seed_release_group_json_cache(
+        mb_group_id,
+        serde_json::json!({ "id": mb_group_id }).to_string(),
+    );
+    mb_release_id.to_string()
 }

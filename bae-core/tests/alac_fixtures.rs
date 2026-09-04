@@ -116,6 +116,7 @@ async fn import_single_m4a_fixture(
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -363,6 +364,7 @@ async fn import_cue_alac_pair() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

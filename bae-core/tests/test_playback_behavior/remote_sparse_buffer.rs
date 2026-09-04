@@ -90,6 +90,7 @@ async fn build_remote_multi_window_template(
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

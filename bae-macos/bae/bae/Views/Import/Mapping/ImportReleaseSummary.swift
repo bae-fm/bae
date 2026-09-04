@@ -145,7 +145,7 @@ struct ImportReleaseSummaryView: View {
                     .foregroundStyle(.tertiary)
                     .lineLimit(1)
                 if let provenance = summary.provenance {
-                    ImportMetadataProvenanceChip(provenance: provenance)
+                    ImportMetadataProvenanceChips(provenance: provenance)
                 }
             }
             .padding(.top, style.factsTopPadding)
@@ -167,30 +167,50 @@ struct ImportReleaseContextView: View {
 
     var body: some View {
         if let provenance = summary.provenance {
-            ImportMetadataProvenanceChip(provenance: provenance)
+            ImportMetadataProvenanceChips(provenance: provenance)
         }
     }
 }
 
-private struct ImportMetadataProvenanceChip: View {
+/// Every source this metadata claims, one chip each. A pick pairs a
+/// MusicBrainz release and a Discogs release into one pressing, and both are
+/// the release's, so both are named — the one the draft was read from first,
+/// each linking to its own release page.
+private struct ImportMetadataProvenanceChips: View {
     let provenance: BridgeMetadataProvenance
 
     var body: some View {
-        Group {
-            if let url = provenance.externalReleaseURL {
-                Link(destination: url) {
-                    label
+        HStack(spacing: 4) {
+            switch provenance {
+            case .externalRelease:
+                ForEach(provenance.releaseRefs, id: \.source) { release in
+                    chip(
+                        label: bridgeMetadataSourceName(source: release.source),
+                        url: release.releaseURL
+                    )
                 }
-                .buttonStyle(.plain)
-            }
-            else {
-                label
+            case .fileTags:
+                chip(
+                    label: coreString("ui.import.metadata.file_tags"),
+                    url: nil
+                )
             }
         }
     }
 
-    private var label: some View {
-        Text(verbatim: provenance.label)
+    @ViewBuilder
+    private func chip(label: String, url: URL?) -> some View {
+        if let url {
+            Link(destination: url) { capsule(label) }
+                .buttonStyle(.plain)
+        }
+        else {
+            capsule(label)
+        }
+    }
+
+    private func capsule(_ label: String) -> some View {
+        Text(verbatim: label)
             .font(.system(size: 10.5, weight: .medium))
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
@@ -201,19 +221,22 @@ private struct ImportMetadataProvenanceChip: View {
 }
 
 extension BridgeMetadataProvenance {
-    fileprivate var label: String {
+    /// The releases this provenance names — the one the draft was read from,
+    /// then each partner the pick carried. Empty for File Tags, which names
+    /// no external release.
+    var releaseRefs: [BridgeMetadataRef] {
         switch self {
-        case .externalRelease(let source, _):
-            bridgeMetadataSourceName(source: source)
+        case .externalRelease(let source, let releaseId, let partners):
+            [BridgeMetadataRef(source: source, releaseId: releaseId)]
+                + partners
         case .fileTags:
-            coreString("ui.import.metadata.file_tags")
+            []
         }
     }
+}
 
-    fileprivate var externalReleaseURL: URL? {
-        guard case .externalRelease(let source, let releaseId) = self else {
-            return nil
-        }
+extension BridgeMetadataRef {
+    fileprivate var releaseURL: URL? {
         let root =
             switch source {
             case .musicBrainz: URL(string: "https://musicbrainz.org/release")

@@ -49,7 +49,7 @@ struct ReIdentifySheet: View {
     /// The pressing the user clicked, pending the Set-identity commit in the
     /// footer. `nil` until a row is picked.
     @State
-    private var selectedResult: BridgeMetadataResult?
+    private var selectedPressing: Pressing?
     private enum Phase: Equatable {
         case identifying
         case committing
@@ -163,7 +163,7 @@ struct ReIdentifySheet: View {
                 input: ImportSearchFlow.SearchPaneInput(
                     candidate: candidate,
                     key: key,
-                    selectedReleaseId: selectedResult?.releaseId,
+                    selectedReleaseId: selectedPressing?.lead.releaseId,
                     runtime: runtime,
                     liveSignals: signals
                 ),
@@ -178,15 +178,16 @@ struct ReIdentifySheet: View {
                 onBack: nil,
                 // Re-identify has no editable confirm page (the release
                 // already has metadata; "Edit metadata..." covers
-                // post-commit edits). Picking a pressing claims it, and the
-                // footer commits it via `re_identify_release`.
-                onSelect: { result in
-                    selectedResult = result
+                // post-commit edits). Picking a pressing claims it — every
+                // source it carries — and the footer commits it via
+                // `re_identify_release`.
+                onSelect: { pressing in
+                    selectedPressing = pressing
                 },
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if let selectedResult {
-                selectionFooter(for: selectedResult)
+            if let selectedPressing {
+                selectionFooter(for: selectedPressing)
             }
         }
     }
@@ -194,19 +195,15 @@ struct ReIdentifySheet: View {
     // MARK: - Selection footer
 
     /// Footer shown once a pressing is picked: the commit that stores it as
-    /// the release's selected external metadata provenance.
+    /// the release's selected external metadata provenance, every source the
+    /// pressing carries included.
     private func selectionFooter(
-        for result: BridgeMetadataResult
+        for pressing: Pressing
     ) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Spacer(minLength: 0)
             Button("Set identity") {
-                commit(
-                    .externalRelease(
-                        releaseId: result.releaseId,
-                        source: result.source
-                    )
-                )
+                commit(pressing.reseed)
             }
             .buttonStyle(.borderedProminent)
         }

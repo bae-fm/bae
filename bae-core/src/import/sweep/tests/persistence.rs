@@ -583,6 +583,7 @@ async fn a_pick_reads_back_as_the_same_answer() {
         crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-answer-1".to_string(),
+            partners: vec![],
         }
     );
 
@@ -663,6 +664,7 @@ async fn a_picked_release_is_what_the_row_leads_with() {
                     crate::import::MetadataProvenance::ExternalRelease {
                         source: crate::import::MetadataSource::MusicBrainz,
                         release_id: "mb-picked-1".to_string(),
+                        partners: vec![],
                     },
                 )
                 .await
@@ -738,6 +740,7 @@ async fn a_pick_reads_back_as_the_identity_it_commits() {
     let pick = crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-answer-1".to_string(),
+        partners: vec![],
     };
     fixture
         .import

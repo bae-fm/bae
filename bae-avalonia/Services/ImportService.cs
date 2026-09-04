@@ -153,12 +153,13 @@ internal sealed class ImportService
         = _ => throw new InvalidOperationException(
             "ImportService stub: ClearCandidateSearch not wired");
 
-    /// <summary>Replace the draft from an online release.</summary>
-    public Func<string, BridgeMetadataSource, string,
+    /// <summary>Replace the draft from an online release, claiming every
+    /// source the pick carried.</summary>
+    public Func<string, BridgeMetadataProvenance.ExternalRelease,
         Task<(bool Current, (ulong? Revision, string? Error) Result)>>
         ApplyCandidateExternalMetadata
     { get; init; }
-        = (_, _, _) => throw new InvalidOperationException(
+        = (_, _) => throw new InvalidOperationException(
             "ImportService stub: ApplyCandidateExternalMetadata not wired");
 
     /// <summary>Replace the draft from the candidate's file tags.</summary>
@@ -295,10 +296,10 @@ internal sealed class ImportService
         ClearCandidateSearch = candidateKey =>
             session.WithCurrentHandle(handle =>
                 NativeBae.ClearCandidateSearch(handle, candidateKey)),
-        ApplyCandidateExternalMetadata = (candidateKey, source, releaseId) =>
+        ApplyCandidateExternalMetadata = (candidateKey, provenance) =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.ApplyCandidateExternalMetadata(
-                    handle, candidateKey, source, releaseId)),
+                    handle, candidateKey, provenance)),
         ApplyCandidateFileTags = candidateKey =>
             session.RunForCurrentHandle(handle =>
                 NativeBae.ApplyCandidateFileTags(handle, candidateKey)),

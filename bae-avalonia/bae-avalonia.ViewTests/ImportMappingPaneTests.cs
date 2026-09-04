@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -281,7 +281,8 @@ public sealed class ImportMappingPaneTests
         var detailCallbacks = new List<Action<BridgeImportCandidateDetail?>>();
         var provenance = new BridgeMetadataProvenance.ExternalRelease(
             BridgeMetadataSource.MusicBrainz,
-            "rel-1");
+            "rel-1",
+            []);
         var group = ChoiceGroup("rel-1");
         var runtime = new BridgeCandidateRuntimeSnapshot(
             new BridgeIdentifyState.Found(
@@ -480,12 +481,9 @@ public sealed class ImportMappingPaneTests
             PreviewFileTags = _ => Task.FromResult((
                 true,
                 ((BridgeReleaseUserEdit?)FileTagsEdit(), (string?)null))),
-            ApplyCandidateExternalMetadata = (_, source, releaseId) =>
+            ApplyCandidateExternalMetadata = (_, provenance) =>
             {
-                appliedProvenances?.Add(
-                    new BridgeMetadataProvenance.ExternalRelease(
-                        source,
-                        releaseId));
+                appliedProvenances?.Add(provenance);
                 return Task.FromResult((
                     true,
                     ((ulong?)applicationRevision, (string?)null)));
@@ -587,7 +585,8 @@ public sealed class ImportMappingPaneTests
         Detail(
             new BridgeMetadataProvenance.ExternalRelease(
                 BridgeMetadataSource.MusicBrainz,
-                "rel-1"),
+                "rel-1",
+                []),
             failure: failure,
             importStatus: importStatus);
 

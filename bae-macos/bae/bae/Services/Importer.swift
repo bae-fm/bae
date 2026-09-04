@@ -48,7 +48,7 @@ private struct ImportOperations: Sendable {
     let setSheetBinding:
         @Sendable (String, String, String?) async throws -> Void
     let applyCandidateExternalMetadata:
-        @Sendable (String, BridgeMetadataSource, String) async throws -> UInt64
+        @Sendable (String, BridgeMetadataProvenance) async throws -> UInt64
     let applyCandidateFileTags: @Sendable (String) async throws -> UInt64
     let clearCandidateMetadata: @Sendable (String) async throws -> UInt64
     let previewFileTags:
@@ -131,7 +131,7 @@ private struct ImportOperations: Sendable {
             applyCandidateExternalMetadata: {
                 try await handle.selectCandidateMetadataProvenance(
                     candidateKey: $0,
-                    provenance: .externalRelease(source: $1, releaseId: $2)
+                    provenance: $1
                 )
             },
             applyCandidateFileTags: {
@@ -296,8 +296,8 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String, String, String?) async throws -> Void =
             { _, _, _ in },
         applyCandidateExternalMetadata:
-            @escaping @Sendable (String, BridgeMetadataSource, String)
-            async throws -> UInt64 = { _, _, _ in
+            @escaping @Sendable (String, BridgeMetadataProvenance)
+            async throws -> UInt64 = { _, _ in
                 throw StubError.notImplemented
             },
         applyCandidateFileTags:
@@ -470,15 +470,15 @@ extension Importer {
         )
     }
 
+    /// Replace the candidate's draft from the release a pick names, claiming
+    /// every source that pick carried.
     func applyCandidateExternalMetadata(
         _ candidateKey: String,
-        source: BridgeMetadataSource,
-        releaseId: String
+        provenance: BridgeMetadataProvenance
     ) async throws -> UInt64 {
         try await operations.applyCandidateExternalMetadata(
             candidateKey,
-            source,
-            releaseId
+            provenance
         )
     }
 

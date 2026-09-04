@@ -25,6 +25,7 @@ fn release_mb_id(release: &DbRelease) -> Option<String> {
         Some(MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id,
+            ..
         }) => Some(release_id.clone()),
         Some(MetadataProvenance::ExternalRelease { .. })
         | Some(MetadataProvenance::FileTags)

@@ -9,6 +9,7 @@ mod metadata_provenance_tests {
         let provenance = MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: "release-a".to_string(),
+            partners: vec![],
         };
         let stored = serde_json::to_string(&provenance).expect("metadata provenance encodes");
         let read_back: MetadataProvenance =

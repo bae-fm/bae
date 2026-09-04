@@ -310,6 +310,7 @@ async fn settle_lead(
                 provenance: crate::import::MetadataProvenance::ExternalRelease {
                     source: only_match.source,
                     release_id: only_match.release_id.clone(),
+                    partners: Vec::new(),
                 },
                 payloads,
             })

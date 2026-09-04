@@ -189,6 +189,7 @@ fn release_pick(release_id: &str) -> crate::import::MetadataProvenance {
     crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: release_id.to_string(),
+        partners: vec![],
     }
 }
 

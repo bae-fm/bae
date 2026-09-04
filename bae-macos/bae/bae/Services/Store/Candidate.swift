@@ -215,7 +215,7 @@ struct Candidate: Equatable, Identifiable {
 
     var loadingReleaseId: String? {
         guard
-            case .externalRelease(_, let releaseId) = provenanceInFlight
+            case .externalRelease(_, let releaseId, _) = provenanceInFlight
         else {
             return nil
         }
@@ -352,10 +352,11 @@ struct Candidate: Equatable, Identifiable {
         }
     }
 
-    /// The external release the draft came from, where it names one.
+    /// The external release the draft was read from, where it names one. The
+    /// partners the same pick carried are the provenance's to say.
     var pickedRelease: (source: BridgeMetadataSource, releaseId: String)? {
         guard
-            case .externalRelease(let source, let releaseId) =
+            case .externalRelease(let source, let releaseId, _) =
                 metadataProvenance
         else { return nil }
         return (source: source, releaseId: releaseId)

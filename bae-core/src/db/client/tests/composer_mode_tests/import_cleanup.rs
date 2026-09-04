@@ -358,6 +358,7 @@ async fn finalize_import_persists_composer_work_and_role_rows() {
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "mb-release-a".to_string(),
+            partners: vec![],
         }),
         remote: true,
         source_folder_name: None,

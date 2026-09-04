@@ -897,5 +897,67 @@ pub(crate) async fn prepare_release(
     Ok(payloads)
 }
 
+/// Archive every partner a pick carried, so each one's own identity reads back
+/// offline later.
+///
+/// A pick names one release per source: the primary is the document the draft
+/// is read from, and every partner is a different source's record of the same
+/// pressing. Two claims about one source are two answers to one question, so
+/// this refuses them rather than picking one. Nothing is written before this
+/// returns, so a partner that will not prepare leaves the pick unmade.
+pub(crate) async fn prepare_partners(
+    library_manager: &LibraryManager,
+    primary: &MetadataRef,
+    partners: &[MetadataRef],
+    priority: CallPriority,
+) -> Result<(), crate::import::ImportError> {
+    let mut claimed = vec![primary.source];
+    for partner in partners {
+        if claimed.contains(&partner.source) {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!(
+                    "a pick names two {} releases for one pressing",
+                    partner.source.as_str()
+                ),
+            });
+        }
+        claimed.push(partner.source);
+        prepare_release(library_manager, partner, priority).await?;
+    }
+    Ok(())
+}
+
+/// The identity rows a pick commits: what the primary document's mapping
+/// concluded, with each partner's source replaced by that partner's own
+/// identity.
+///
+/// `release_identities` holds one row per source, so this is a per-source
+/// override rather than a union — the person picked that Discogs release, and
+/// what an editor cross-linked from the MusicBrainz side does not outrank it.
+/// Every partner's documents were archived when the pick was applied, so this
+/// reads them and never fetches; nothing stored is a broken invariant.
+pub(crate) async fn identities_with_partners(
+    library_manager: &LibraryManager,
+    mut identities: Vec<crate::import::ReleaseIdentity>,
+    partners: &[MetadataRef],
+) -> Result<Vec<crate::import::ReleaseIdentity>, crate::import::ImportError> {
+    for partner in partners {
+        let payloads = library_manager
+            .load_release_payloads(partner)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!(
+                    "picked {} release {} but nothing stored its lookups",
+                    partner.source.as_str(),
+                    partner.id
+                ),
+            })?;
+        let identity = payloads.identity()?;
+        identities.retain(|existing| existing.source != identity.source);
+        identities.push(identity);
+    }
+    Ok(identities)
+}
+
 #[cfg(test)]
 mod tests;

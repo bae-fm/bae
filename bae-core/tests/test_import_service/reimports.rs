@@ -39,6 +39,7 @@ async fn two_sequential_imports() {
                 metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_keys[i].clone(),
+                    partners: vec![],
                 }),
                 user_edit: None,
             })

@@ -9,6 +9,10 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
+/// <summary>One source a draft's metadata claims, as the card names it: the
+/// service's own name, linking to that source's page for the release.</summary>
+internal readonly record struct ProvenanceChip(string Label, Uri? Link);
+
 /// <summary>The editable draft or one temporary source browser occupying the
 /// metadata slot.</summary>
 internal sealed class ImportMetadataSourceSection
@@ -19,8 +23,10 @@ internal sealed class ImportMetadataSourceSection
     internal required BridgeRawReleaseEdit? Edit { get; init; }
     internal required string MetaLine { get; init; }
     internal required string SourceAudioLine { get; init; }
-    internal required string? ProvenanceLabel { get; init; }
-    internal required Uri? ProvenanceUri { get; init; }
+    /// <summary>One chip per source the draft's provenance claims, in the
+    /// order they are shown: the release the draft was read from, then each
+    /// partner the pick carried. Empty when there is no provenance.</summary>
+    internal required IReadOnlyList<ProvenanceChip> ProvenanceChips { get; init; }
     internal required bool IsReading { get; init; }
     internal required BridgeReleaseUserEdit? FileTagsPreview { get; init; }
     internal required string FileTagsMetaLine { get; init; }
@@ -78,7 +84,7 @@ internal sealed class ImportMetadataSourceSection
             MetaLine,
             SourceAudioLine,
             Edit,
-            ProvenanceLabel,
+            ProvenanceChips,
             SourceActions(),
             ClearMetadataAction(),
             includeSelectedValues: true);
@@ -148,7 +154,7 @@ internal sealed class ImportMetadataSourceSection
                 FileTagsMetaLine,
                 SourceAudioLine,
                 edit: null,
-                provenanceLabel: null,
+                provenanceChips: [],
                 actionControl: ActionButton(
                     Loc.Chrome("import.metadata.apply"),
                     OnUseFileTags),
@@ -211,7 +217,7 @@ internal sealed class ImportMetadataSourceSection
         string metaLine,
         string sourceAudioLine,
         BridgeRawReleaseEdit? edit,
-        string? provenanceLabel,
+        IReadOnlyList<ProvenanceChip> provenanceChips,
         Control? actionControl,
         Control? destructiveAction,
         bool includeSelectedValues)
@@ -243,9 +249,9 @@ internal sealed class ImportMetadataSourceSection
         }
         var facts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         facts.Children.Add(ImportPaneUi.Cell(metaLine, secondary: true));
-        if (provenanceLabel is { Length: > 0 } label)
+        foreach (var chip in provenanceChips)
         {
-            facts.Children.Add(SourceChip(label, ProvenanceUri));
+            facts.Children.Add(SourceChip(chip.Label, chip.Link));
         }
         summary.Children.Add(facts);
         summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));

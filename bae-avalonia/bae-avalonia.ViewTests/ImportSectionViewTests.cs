@@ -519,7 +519,8 @@ public sealed class ImportSectionViewTests
                         or BridgeTriagePlacement.Done
                     ? new BridgeMetadataProvenance.ExternalRelease(
                         BridgeMetadataSource.MusicBrainz,
-                        "rel-matched")
+                        "rel-matched",
+                        [])
                     : null),
             IsGroupMember: isGroupMember),
     };

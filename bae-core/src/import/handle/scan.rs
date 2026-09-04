@@ -1,4 +1,5 @@
 use super::*;
+use crate::util::rate_limiter::CallPriority;
 
 impl ImportServiceHandle {
     /// Mark the candidate at `path` skipped or unskipped, persisting the change
@@ -348,13 +349,27 @@ impl ImportServiceHandle {
                     )
                     .await?);
             }
-            crate::import::MetadataProvenance::ExternalRelease { source, release_id } => {
+            crate::import::MetadataProvenance::ExternalRelease {
+                source,
+                release_id,
+                partners,
+            } => {
+                let primary = crate::import::MetadataRef::new(release_id.clone(), *source);
                 let payloads = self
-                    .payloads_for_provenance(
-                        &candidate_key,
-                        &crate::import::MetadataRef::new(release_id.clone(), *source),
-                    )
+                    .payloads_for_provenance(&candidate_key, &primary)
                     .await?;
+                // Every source the pick claims has to read offline afterwards:
+                // import and re-identify both open the partner's own document
+                // for the identity it states. This runs before the provenance
+                // is written, so a partner that will not prepare leaves the
+                // candidate with the draft and pick it already had.
+                crate::import::service::prepare_partners(
+                    &self.library_manager,
+                    &primary,
+                    partners,
+                    CallPriority::Interactive,
+                )
+                .await?;
                 let mut metadata = self
                     .external_candidate_metadata(
                         &payloads,

@@ -140,6 +140,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
         MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: prior_mb,
+            partners: vec![],
         },
     )
     .await
@@ -196,6 +197,7 @@ async fn remote_transition_failure_rolls_back_finalized_works() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::MusicBrainz,
                 release_id: remote_mb,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -291,6 +293,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: first_mb,
+            partners: vec![],
         },
     )
     .await
@@ -317,6 +320,7 @@ async fn work_mbid_is_stored_beside_a_minted_row_id_and_shared_across_releases()
         MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
                 release_id: second_mb,
+            partners: vec![],
         },
     )
     .await
@@ -392,6 +396,7 @@ async fn import_with_cover_art() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -447,6 +452,7 @@ async fn import_resizes_oversized_cover_to_jpeg_thumbnail() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -513,6 +519,7 @@ async fn import_on_browsable_home_writes_readable_cloud_paths_at_import() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

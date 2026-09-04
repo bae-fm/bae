@@ -24,8 +24,7 @@ private final class Recorder {
     var trackEdits: [(key: String, track: BridgeRawTrackEdit)] = []
     var droppedTracks: [(key: String, trackId: String)] = []
     var editFields: [(field: BridgeCandidateEditField, value: String)] = []
-    var externalMetadata: [(source: BridgeMetadataSource, releaseId: String)] =
-        []
+    var externalMetadata: [BridgeMetadataProvenance] = []
     var fileTagsApplications = 0
     var played: [BridgePreviewTarget] = []
     var stops = 0
@@ -41,12 +40,9 @@ private final class Recorder {
                     )
                 }
             },
-            applyCandidateExternalMetadata: {
-                [self] _, source, releaseId in
+            applyCandidateExternalMetadata: { [self] _, provenance in
                 try await MainActor.run {
-                    externalMetadata.append(
-                        (source: source, releaseId: releaseId)
-                    )
+                    externalMetadata.append(provenance)
                     if let pickFailure { throw pickFailure }
                     return 1
                 }
@@ -467,7 +463,8 @@ extension ImportMappingPaneTests {
             key: MappingFixtures.candidateKey,
             provenance: .externalRelease(
                 source: MappingFixtures.source,
-                releaseId: "another-pressing"
+                releaseId: "another-pressing",
+                partners: []
             )
         )
         try await Task.sleep(for: .milliseconds(50))
@@ -665,10 +662,7 @@ extension ImportMappingPaneTests {
             provenance: MappingFixtures.provenance
         )
         try await Task.sleep(for: .milliseconds(50))
-        #expect(
-            recorder.externalMetadata.map(\.releaseId)
-                == [MappingFixtures.releaseId]
-        )
+        #expect(recorder.externalMetadata == [MappingFixtures.provenance])
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,

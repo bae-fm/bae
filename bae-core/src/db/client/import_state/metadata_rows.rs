@@ -134,6 +134,11 @@ impl Database {
                 params![candidate_path, content_hash],
                 |row| row.get::<_, i64>(0),
             )?;
+            replace_provenance_partners(
+                sql,
+                &content_hash,
+                Some(&crate::import::MetadataProvenance::FileTags),
+            )?;
             pane_rows::replace_draft(sql, &content_hash, &draft)?;
             pane_rows::replace_track_mappings(sql, &content_hash, &track_mappings)?;
             pane_rows::delete_cover(sql, &content_hash)?;

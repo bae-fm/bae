@@ -61,6 +61,27 @@ impl BridgeMetadataSource {
     }
 }
 
+/// One source's release, named. Mirrors `bae_core::import::MetadataRef`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeMetadataRef {
+    pub source: BridgeMetadataSource,
+    pub release_id: String,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMetadataRef {
+    pub(crate) fn from_core(release_ref: bae_core::import::MetadataRef) -> Self {
+        Self {
+            source: BridgeMetadataSource::from_core(release_ref.source),
+            release_id: release_ref.id,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::MetadataRef {
+        bae_core::import::MetadataRef::new(self.release_id, self.source.into_core())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum BridgeCloudProvider {
     S3,
@@ -337,6 +358,8 @@ pub enum BridgeReleaseReseed {
     ExternalRelease {
         release_id: String,
         source: BridgeMetadataSource,
+        /// The other sources' releases the picked pressing paired with.
+        partners: Vec<BridgeMetadataRef>,
     },
     FileTags,
 }
@@ -345,11 +368,17 @@ pub enum BridgeReleaseReseed {
 impl BridgeReleaseReseed {
     pub fn into_core(self) -> bae_core::import::ReleaseReseed {
         match self {
-            Self::ExternalRelease { release_id, source } => {
-                bae_core::import::ReleaseReseed::ExternalRelease {
-                    release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
-                }
-            }
+            Self::ExternalRelease {
+                release_id,
+                source,
+                partners,
+            } => bae_core::import::ReleaseReseed::ExternalRelease {
+                release_ref: bae_core::import::MetadataRef::new(release_id, source.into_core()),
+                partners: partners
+                    .into_iter()
+                    .map(BridgeMetadataRef::into_core)
+                    .collect(),
+            },
             Self::FileTags => bae_core::import::ReleaseReseed::FileTags,
         }
     }
@@ -359,12 +388,17 @@ impl BridgeReleaseReseed {
     /// outward.
     pub fn from_core(choice: bae_core::import::ReleaseReseed) -> Self {
         match choice {
-            bae_core::import::ReleaseReseed::ExternalRelease { release_ref } => {
-                Self::ExternalRelease {
-                    release_id: release_ref.id,
-                    source: BridgeMetadataSource::from_core(release_ref.source),
-                }
-            }
+            bae_core::import::ReleaseReseed::ExternalRelease {
+                release_ref,
+                partners,
+            } => Self::ExternalRelease {
+                release_id: release_ref.id,
+                source: BridgeMetadataSource::from_core(release_ref.source),
+                partners: partners
+                    .into_iter()
+                    .map(BridgeMetadataRef::from_core)
+                    .collect(),
+            },
             bae_core::import::ReleaseReseed::FileTags => Self::FileTags,
         }
     }

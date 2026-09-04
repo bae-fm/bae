@@ -487,7 +487,8 @@
             ),
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId
+                releaseId: releaseDetailBridge.releaseId,
+                partners: []
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -512,12 +513,37 @@
             ),
             metadataProvenance: .externalRelease(
                 source: discogsReleaseDetail.source,
-                releaseId: discogsReleaseDetail.releaseId
+                releaseId: discogsReleaseDetail.releaseId,
+                partners: []
             ),
             release: discogsReleaseDetail,
             edit: confirmEditValues,
             mapping: mappingTable,
             cover: discogsReleaseDetail.defaultCover,
+        )
+
+        /// A pick that paired both sources into one pressing: the card names
+        /// each, the one the draft was read from first.
+        @MainActor
+        static let pairedMappingCandidate: Candidate = paneCandidate(
+            folder: mappingFolder(
+                name: "Album Title One",
+                files: candidateFilesTracks
+            ),
+            metadataProvenance: .externalRelease(
+                source: releaseDetailBridge.source,
+                releaseId: releaseDetailBridge.releaseId,
+                partners: [
+                    BridgeMetadataRef(
+                        source: discogsReleaseDetail.source,
+                        releaseId: discogsReleaseDetail.releaseId
+                    )
+                ]
+            ),
+            release: releaseDetailBridge,
+            edit: confirmEditValues,
+            mapping: mappingTable,
+            cover: releaseDetailBridge.defaultCover,
         )
 
         /// Nothing selected yet: the metadata card offers to find the release,
@@ -599,7 +625,8 @@
             ),
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId
+                releaseId: releaseDetailBridge.releaseId,
+                partners: []
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,
@@ -622,7 +649,8 @@
             ),
             metadataProvenance: .externalRelease(
                 source: moreTracksReleaseDetail.source,
-                releaseId: moreTracksReleaseDetail.releaseId
+                releaseId: moreTracksReleaseDetail.releaseId,
+                partners: []
             ),
             release: moreTracksReleaseDetail,
             edit: moreTracksEditValues,
@@ -642,7 +670,8 @@
             ),
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
-                releaseId: releaseDetailBridge.releaseId
+                releaseId: releaseDetailBridge.releaseId,
+                partners: []
             ),
             release: releaseDetailBridge,
             edit: confirmEditValues,

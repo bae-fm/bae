@@ -96,6 +96,7 @@ impl HighSampleRateTestFixture {
                 metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                    partners: vec![],
                 }),
                 user_edit: None,
             })
@@ -508,6 +509,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -603,6 +605,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

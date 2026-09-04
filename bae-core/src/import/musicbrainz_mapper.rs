@@ -482,6 +482,8 @@ pub fn map_mb_response_to_db(
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             source: MetadataSource::MusicBrainz,
             release_id: response.id.clone(),
+            // As in `discogs_mapper`: one document's own claim.
+            partners: Vec::new(),
         }),
         album_artist_scope: AlbumArtistScope::ReleaseCredits,
         release_roles: Vec::new(),

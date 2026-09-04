@@ -42,7 +42,7 @@ extension ImportSearchFlow {
         input: SearchPaneInput,
         openSettings: @escaping () -> Void,
         onBack: (() -> Void)?,
-        onSelect: @escaping (BridgeMetadataResult) -> Void
+        onSelect: @escaping (Pressing) -> Void
     ) -> some View {
         let key = input.key
         let importStore = services.importStore
@@ -90,8 +90,8 @@ extension ImportSearchFlow {
 
     /// Every release the pane offers — the identify verdict's pressings and
     /// the typed search's — as the keys a library-membership subscription
-    /// takes. A pressing carries one release per source, and each is
-    /// separately pickable, so each is separately watched.
+    /// takes. A pressing carries one release per source and a pick claims them
+    /// all, so each is separately watched.
     @MainActor
     static func releaseStatusKeys(
         state: ImportSearchState

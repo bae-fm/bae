@@ -397,6 +397,7 @@ async fn import_cue_flac_fixture(temp_root: &Path) -> (LibraryManager, String) {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -476,6 +477,7 @@ impl CueFlacCaptureFixture {
                 metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                     release_id: release_id_key,
+                    partners: vec![],
                 }),
                 user_edit: None,
             })

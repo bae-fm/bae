@@ -296,7 +296,11 @@ impl ImportService {
             crate::import::track_slots::audio_durations(&categorized, &source_durations)?;
 
         let parsed = match &metadata_provenance {
-            Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id }) => {
+            Some(crate::import::MetadataProvenance::ExternalRelease {
+                source,
+                release_id,
+                partners,
+            }) => {
                 // The documents are archived by `prepare_release`, keyed by the
                 // picked source release — so nothing about this release's rows
                 // needs to carry them, and the pointer written below is what
@@ -310,11 +314,17 @@ impl ImportService {
                             "{candidate_key}'s selected release payloads are not prepared"
                         ),
                     })?;
-                let parsed = payloads.parsed_for_audio(
+                let mut parsed = payloads.parsed_for_audio(
                     &audio_durations,
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
+                parsed.identities = crate::import::service::identities_with_partners(
+                    library_manager,
+                    parsed.identities,
+                    partners,
+                )
+                .await?;
                 parsed
             }
             Some(crate::import::MetadataProvenance::FileTags) => {

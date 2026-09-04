@@ -722,6 +722,7 @@ impl Fixture {
                         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
                             source: crate::import::MetadataSource::MusicBrainz,
                             release_id: release_id.to_string(),
+                            partners: vec![],
                         }),
                         cover: None,
                         assets: crate::import::CandidatePreparedAssets::default(),

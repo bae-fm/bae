@@ -19,14 +19,17 @@ pub(super) use pane_rows::{
 #[cfg(any(test, feature = "test-utils"))]
 use prepared_asset_rows::invalidate_prepared_assets;
 use prepared_asset_rows::replace_prepared_assets;
-pub(super) use rows::{load_states_on, metadata_provenance_of};
+pub(super) use rows::{load_provenance_partners_on, load_states_on, metadata_provenance_of};
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
-use rows::{load_candidate_file_edits_on, seed_columns, MetadataProvenanceAuthor};
+use rows::{
+    load_candidate_file_edits_on, replace_provenance_partners, seed_columns,
+    MetadataProvenanceAuthor,
+};
 use std::collections::HashSet;
 use verdict_rows::{
     delete_identify_failure, delete_matches, insert_identify_failure, insert_matches,
@@ -96,6 +99,7 @@ fn replace_candidate_metadata_on(
         .ok_or_else(|| {
             DbError::Message("metadata replacement has no candidate state row".to_string())
         })?;
+    replace_provenance_partners(sql, content_hash, metadata.provenance.as_ref())?;
     pane_rows::replace_draft(sql, content_hash, &metadata.edit)?;
     pane_rows::replace_track_mappings(sql, content_hash, &metadata.track_mappings)?;
     pane_rows::delete_cover(sql, content_hash)?;
@@ -588,6 +592,14 @@ impl Database {
                     &now,
                 )?;
                 if !preserve_user_metadata {
+                    // The partner rows belong to the provenance the columns
+                    // above just took, so they are replaced under exactly the
+                    // condition the columns were.
+                    replace_provenance_partners(
+                        sql,
+                        &verdict.content_hash,
+                        verdict.metadata.provenance.as_ref(),
+                    )?;
                     pane_rows::replace_draft(sql, &verdict.content_hash, &verdict.metadata.edit)?;
                     pane_rows::replace_track_mappings(
                         sql,
@@ -737,6 +749,13 @@ impl Database {
                 return Err(DbError::Message(format!(
                     "candidate file decision write changed {changed} rows; expected exactly one"
                 )));
+            }
+            // Same condition the provenance columns above were cleared under
+            // (`provenance_author` is not `user`): identification's pick went
+            // with the verdict, so the partners it carried go too. A pick a
+            // person made keeps both.
+            if !preserve_source_artists {
+                replace_provenance_partners(sql, &content_hash, None)?;
             }
             delete_matches(sql, &content_hash)?;
             delete_identify_failure(sql, &content_hash)?;

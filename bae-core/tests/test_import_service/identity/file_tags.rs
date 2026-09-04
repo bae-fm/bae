@@ -353,6 +353,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })

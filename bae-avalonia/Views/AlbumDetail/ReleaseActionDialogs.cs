@@ -270,7 +270,7 @@ internal sealed class ReleaseActionDialogs
                 }
                 var picked = candidates[pickedIndex];
                 var (current, error) = await _app.ReleaseEditor.ReidentifyRelease(
-                    releaseId, new BridgeReleaseReseed.ExternalRelease(picked.ReleaseId, picked.Source));
+                    releaseId, picked.Reseed);
                 if (!current)
                 {
                     return;

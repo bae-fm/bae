@@ -858,14 +858,13 @@ internal static partial class NativeBae
     internal static (ulong? Revision, string? Error) ApplyCandidateExternalMetadata(
         AppHandle handle,
         string candidateKey,
-        BridgeMetadataSource source,
-        string releaseId)
+        BridgeMetadataProvenance.ExternalRelease provenance)
     {
         ulong? revision = null;
         var error = CaptureError(() =>
             revision = Await(() => handle.SelectCandidateMetadataProvenance(
                 candidateKey,
-                new BridgeMetadataProvenance.ExternalRelease(source, releaseId))));
+                provenance)));
         return (revision, error);
     }
 

@@ -17,7 +17,7 @@ struct FindOnlineSearchResults: View {
     let onClear: () -> Void
     let onRetry: () -> Void
     let onOpenSettings: () -> Void
-    let onSelect: (BridgeMetadataResult) -> Void
+    let onSelect: (Pressing) -> Void
 
     private var groups: [ReleaseGroup] {
         search.groups.map(ReleaseGroup.init(bridge:))

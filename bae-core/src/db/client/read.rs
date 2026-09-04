@@ -330,7 +330,14 @@ pub(super) fn row_to_release(row: &Row) -> coven::rusqlite::Result<DbRelease> {
             let source = source.parse::<MetadataSource>().map_err(|e| {
                 column_conversion_error(row, "metadata_source", format!("releases.{e}"))
             })?;
-            Some(crate::import::MetadataProvenance::ExternalRelease { source, release_id })
+            Some(crate::import::MetadataProvenance::ExternalRelease {
+                source,
+                release_id,
+                // A library release records what its pick claimed as one
+                // `release_identities` row per source; its provenance names
+                // the anchor document alone.
+                partners: Vec::new(),
+            })
         }
         (source, release_id) => {
             return Err(column_conversion_error(

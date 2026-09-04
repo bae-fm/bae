@@ -1,4 +1,5 @@
 mod metadata_edits;
+mod pick_partners;
 mod candidate_mutation_race;
 // The pane's own controls, from the handle down to the next read.
 //

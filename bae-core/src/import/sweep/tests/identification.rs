@@ -726,6 +726,7 @@ async fn a_settled_candidate_uses_archived_metadata_and_prepares_its_cover() {
             crate::import::MetadataProvenance::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-offline-1".to_string(),
+                partners: vec![],
             },
         )
         .await
@@ -781,6 +782,7 @@ async fn a_settled_lead_with_no_documents_fails_loud() {
             crate::import::MetadataProvenance::ExternalRelease {
                 source: crate::import::MetadataSource::MusicBrainz,
                 release_id: "mb-missing-1".to_string(),
+                partners: vec![],
             },
         )
         .await
@@ -817,6 +819,7 @@ async fn a_pick_outside_the_verdict_archives_what_it_fetched() {
     let pick = || crate::import::MetadataProvenance::ExternalRelease {
         source: crate::import::MetadataSource::MusicBrainz,
         release_id: "mb-manual-1".to_string(),
+        partners: vec![],
     };
     fixture
         .import

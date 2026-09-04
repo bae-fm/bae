@@ -16,7 +16,8 @@ enum MappingFixtures {
     static let source: BridgeMetadataSource = .musicBrainz
     static let provenance: BridgeMetadataProvenance = .externalRelease(
         source: source,
-        releaseId: releaseId
+        releaseId: releaseId,
+        partners: []
     )
 
     static let audioFormat = BridgeAudioFormat(

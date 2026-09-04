@@ -150,6 +150,7 @@ async fn test_cue_ape_records_correct_durations() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -340,6 +341,7 @@ async fn test_cue_ape_records_track_timing() {
             metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                 source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                partners: vec![],
             }),
             user_edit: None,
         })
@@ -474,6 +476,7 @@ impl CueApeTestFixture {
                 metadata_provenance: Some(MetadataProvenance::ExternalRelease {
                     source: MetadataSource::Discogs,
                 release_id: release_id_key,
+                    partners: vec![],
                 }),
                 user_edit: None,
             })

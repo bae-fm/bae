@@ -57,10 +57,8 @@ struct ImportSearchFlowMetadataApplicationTests {
         let confirmation = ConfirmationRecorder()
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, source, releaseId in
-                await recorder.record(
-                    .externalRelease(source: source, releaseId: releaseId)
-                )
+            applyCandidateExternalMetadata: { _, provenance in
+                await recorder.record(provenance)
                 return 1
             }
         )
@@ -104,10 +102,8 @@ struct ImportSearchFlowMetadataApplicationTests {
         let (gate, releaseGate) = AsyncStream<Void>.makeStream()
         let recorder = PickRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, source, releaseId in
-                await recorder.record(
-                    .externalRelease(source: source, releaseId: releaseId)
-                )
+            applyCandidateExternalMetadata: { _, provenance in
+                await recorder.record(provenance)
                 for await _ in gate { break }
                 return 1
             }
@@ -146,7 +142,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore()
         let confirmation = ConfirmationRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _, _ in 1 }
+            applyCandidateExternalMetadata: { _, _ in 1 }
         )
 
         ImportSearchFlow.applyMetadata(
@@ -169,7 +165,8 @@ struct ImportSearchFlowMetadataApplicationTests {
                 mapping: MappingFixtures.fileTagsTable,
                 metadataProvenance: .externalRelease(
                     source: MappingFixtures.source,
-                    releaseId: "rel-other"
+                    releaseId: "rel-other",
+                    partners: []
                 )
             )
         )
@@ -191,7 +188,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore()
         let confirmation = ConfirmationRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _, _ in 2 }
+            applyCandidateExternalMetadata: { _, _ in 2 }
         )
 
         ImportSearchFlow.applyMetadata(
@@ -220,7 +217,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         let store = unsettledStore()
         let confirmation = ConfirmationRecorder()
         let importer = Importer(
-            applyCandidateExternalMetadata: { _, _, _ in
+            applyCandidateExternalMetadata: { _, _ in
                 throw StubError.notImplemented
             }
         )
@@ -287,8 +284,16 @@ final class MetadataApplicationEditingTests: XCTestCase {
     {
         for provenance in [
             BridgeMetadataProvenance.fileTags,
-            .externalRelease(source: .musicBrainz, releaseId: "release-mb"),
-            .externalRelease(source: .discogs, releaseId: "release-discogs"),
+            .externalRelease(
+                source: .musicBrainz,
+                releaseId: "release-mb",
+                partners: []
+            ),
+            .externalRelease(
+                source: .discogs,
+                releaseId: "release-discogs",
+                partners: []
+            ),
         ] {
             try await assertFocusedFieldIsReplaced(by: provenance)
         }
@@ -391,7 +396,7 @@ private final class MetadataApplicationEditingModel {
 
     var importer: Importer {
         Importer(
-            applyCandidateExternalMetadata: { [self] _, _, _ in
+            applyCandidateExternalMetadata: { [self] _, _ in
                 await apply()
                 return 1
             },

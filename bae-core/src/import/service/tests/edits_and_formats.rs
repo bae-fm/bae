@@ -51,6 +51,7 @@ fn make_seed_album_release_track() -> (
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "rel-mb".to_string(),
+            partners: vec![],
         }),
         remote: true,
         source_folder_name: None,
@@ -281,6 +282,7 @@ fn user_edit_preserves_source_id_artist_rows_when_names_unchanged() {
         metadata_provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
             source: crate::import::MetadataSource::MusicBrainz,
             release_id: "rel-mb".to_string(),
+            partners: vec![],
         }),
         remote: true,
         source_folder_name: None,

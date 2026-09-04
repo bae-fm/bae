@@ -364,8 +364,9 @@ internal static class ShotCapture
                             16,
                             null,
                             2)))),
-            ProvenanceLabel = provenanceLabel,
-            ProvenanceUri = null,
+            ProvenanceChips = provenanceLabel is { Length: > 0 } label
+                ? [new ProvenanceChip(label, null)]
+                : [],
             IsReading = false,
             FileTagsPreview = fileTagsPreview,
             FileTagsMetaLine = Loc.Core("ui.import.metadata.from_file_tags"),

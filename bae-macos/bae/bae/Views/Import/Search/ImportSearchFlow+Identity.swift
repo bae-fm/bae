@@ -33,11 +33,10 @@ extension ImportSearchFlow {
             do {
                 let revision =
                     switch provenance {
-                    case .externalRelease(let source, let releaseId):
+                    case .externalRelease:
                         try await importer.applyCandidateExternalMetadata(
                             key,
-                            source: source,
-                            releaseId: releaseId
+                            provenance: provenance
                         )
                     case .fileTags:
                         try await importer.applyCandidateFileTags(key)

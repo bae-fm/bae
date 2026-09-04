@@ -320,10 +320,7 @@ internal sealed partial class ImportMappingPane
                 return;
             }
             var chosen = choices[results.SelectedIndex];
-            await ApplyMetadata(
-                new BridgeMetadataProvenance.ExternalRelease(
-                    chosen.Source,
-                    chosen.ReleaseId));
+            await ApplyMetadata(chosen.Provenance);
         };
         return results;
     }

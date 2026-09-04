@@ -161,7 +161,8 @@ private func readyRow(
         importStatus: nil,
         metadataProvenance: .externalRelease(
             source: .musicBrainz,
-            releaseId: "rel-\(key)"
+            releaseId: "rel-\(key)",
+            partners: []
         )
     )
 }
@@ -310,7 +311,8 @@ struct ImportStoreCandidateDetailTests {
         existing.error = "the last command failed"
         let pendingPick = BridgeMetadataProvenance.externalRelease(
             source: .musicBrainz,
-            releaseId: "rel-1"
+            releaseId: "rel-1",
+            partners: []
         )
         existing.metadataApplicationSession =
             CandidateMetadataApplicationSession(
