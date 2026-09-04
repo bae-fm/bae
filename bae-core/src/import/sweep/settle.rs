@@ -342,11 +342,7 @@ async fn settle_lead(
                 .expect("the pressing's primary is one of the verdict's matches")
                 .source_tracks = Some(source_tracks);
             Some(SettledLead::ExternalRelease {
-                provenance: crate::import::MetadataProvenance::ExternalRelease {
-                    source: primary.source,
-                    release_id: primary.id,
-                    partners,
-                },
+                provenance: pressing.pick(),
                 payloads,
             })
         }
