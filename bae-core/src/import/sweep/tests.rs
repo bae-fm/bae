@@ -256,6 +256,53 @@ fn search_json(release_id: &str, group_id: &str) -> String {
     )
 }
 
+/// The same, for hits that state the barcode they were found by — what pairs
+/// a MusicBrainz release with the Discogs record of the same pressing, and
+/// what tells two different pressings apart.
+fn barcode_search_json(releases: &[(&str, &str, &str)]) -> String {
+    let releases: Vec<String> = releases
+        .iter()
+        .map(|(release_id, group_id, barcode)| {
+            format!(
+                r#"{{"id":"{release_id}","title":"Album",
+                    "artist-credit":[{{"name":"Artist"}}],
+                    "release-group":{{"id":"{group_id}"}},
+                    "barcode":"{barcode}","label-info":[]}}"#
+            )
+        })
+        .collect();
+    format!(r#"{{"releases":[{}]}}"#, releases.join(","))
+}
+
+/// A Discogs search hit as `database/search?barcode=…` returns it. The title
+/// is the "Artist - Album" form Discogs answers with, which is what decides
+/// whether this lands on the same album card as the MusicBrainz result.
+fn discogs_search_json(release_id: &str, barcode: &str) -> String {
+    format!(
+        r#"{{"results":[{{"id":{release_id},"type":"release",
+            "title":"Artist - Album","year":"1996","barcode":["{barcode}"]}}]}}"#
+    )
+}
+
+/// A one-track Discogs release with no master, as `releases/{id}` returns it.
+fn discogs_release_json(release_id: &str) -> String {
+    serde_json::json!({
+        "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
+        "title": "Album",
+        "year": 1996,
+        "formats": [{ "name": "CD" }],
+        "artists": [{ "id": 1, "name": "Artist" }],
+        "tracklist": [{
+            "position": "1",
+            "title": "Track 1",
+            "duration": "0:01",
+            "type_": "track",
+            "artists": [],
+        }],
+    })
+    .to_string()
+}
+
 // ── The fixture ─────────────────────────────────────────────────────────────
 
 /// Where the candidate audio comes from. The two FLACs are real files with real
@@ -370,8 +417,9 @@ impl Fixture {
             "Test Library".to_string(),
         );
         crate::config::install_test_keyring();
-        // No Discogs key is seeded, so Discogs operations are unavailable and the
-        // barcode lookup is MusicBrainz-only — one provider to fake.
+        // No Discogs key is seeded, so Discogs operations are unavailable and a
+        // lookup asks MusicBrainz alone. A test about a pressing both sources
+        // carry seeds one with `use_discogs`.
         let manager = LibraryManager::new(
             database,
             Arc::new(ConfigHandle::new(config)),
@@ -391,6 +439,9 @@ impl Fixture {
         let provider = FakeProvider::start().await;
         crate::musicbrainz::set_base_url_for_test(Some(provider.base_url.clone()));
         crate::import::cover_art::set_base_url_for_test(Some(provider.base_url.clone()));
+        // Pointed at the fake whether or not this test enables Discogs, so no
+        // fixture can spend its fake key on the real API.
+        crate::discogs::client::set_base_url_for_test(Some(provider.base_url.clone()));
         crate::musicbrainz::reset_rate_limiter_for_test();
 
         let root = temp.path().join("watched");
@@ -622,6 +673,26 @@ impl Fixture {
             .unwrap()
     }
 
+    /// The archived Discogs document for a release, if one was written.
+    async fn archived_discogs(&self, release_id: &str) -> Option<String> {
+        self.manager
+            .source_release_payload_for_test(crate::import::PayloadSource::Discogs, release_id)
+            .await
+            .unwrap()
+    }
+
+    /// Configure the fake Discogs key, so lookups ask both providers rather
+    /// than MusicBrainz alone. The client is already pointed at this fixture's
+    /// fake provider.
+    fn use_discogs(&self) {
+        self.manager
+            .set_discogs_key(
+                "test-discogs-token",
+                crate::config::DiscogsValidation::Valid,
+            )
+            .expect("the fake Discogs key is stored");
+    }
+
     /// Archive a release's documents directly, as a settle step would have — for
     /// a test that needs them present without anything having fetched them.
     async fn archive(&self, release_id: &str, group_id: &str, track_lengths: &[u64]) {
@@ -770,6 +841,7 @@ impl Drop for Fixture {
         // make the next test's live-service assumption silently wrong.
         crate::musicbrainz::set_base_url_for_test(None);
         crate::import::cover_art::set_base_url_for_test(None);
+        crate::discogs::client::set_base_url_for_test(None);
         self.sweep.stop();
         self.import.stop_and_join();
     }
@@ -778,6 +850,7 @@ impl Drop for Fixture {
 // ── 1. A candidate nobody selected acquires a verdict ────────────────────────
 
 include!("tests/identification.rs");
+include!("tests/settling.rs");
 include!("tests/metadata_modes.rs");
 include!("tests/imports_and_progress.rs");
 include!("tests/persistence.rs");

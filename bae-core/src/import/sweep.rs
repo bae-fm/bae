@@ -6,8 +6,9 @@
 //! at [`CallPriority::Background`], and writes the terminal verdict to
 //! `import_candidate_state`. What it adds over the explicit Lookup path is
 //! scheduling: which candidates still need answering, how many at once, and the
-//! one settle step that buys a single match's documents — the tracklist that
-//! decides Ready, and everything opening the candidate would otherwise re-fetch.
+//! one settle step that buys the documents of the single pressing it matched —
+//! the tracklist that decides Ready, and everything opening the candidate would
+//! otherwise re-fetch.
 //!
 //! **It starts and stops with the library, not with a view.**
 //! [`crate::library::AppServices`] constructs one and its `Drop` stops it, so
@@ -38,7 +39,7 @@ use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
 use super::ImportCandidateSnapshot;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyServiceHandle, IdentifyState, TerminalVerdict};
-use crate::import::MetadataRef;
+use crate::import::search::MetadataResult;
 use crate::library::LibraryManager;
 use crate::signals::{ExtractionServiceHandle, ExtractionSource};
 use crate::util::rate_limiter::CallPriority;

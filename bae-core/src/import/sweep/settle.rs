@@ -225,20 +225,37 @@ pub(super) async fn save(
     true
 }
 
-/// Settle a candidate's lead: buy the documents that describe the release it
-/// matched, store them, and read the source's own tracklist out of what came
-/// back. Returns whether the verdict may now be stored.
+/// The one pressing a verdict's matches describe, or `None` when they describe
+/// several.
+///
+/// Find online groups the same results into album cards and pairs two sources'
+/// records of one physical pressing into a single row, so "how many pressings
+/// did this candidate match" is that grouping's question, not a count of
+/// result rows. A MusicBrainz release and a Discogs release agreeing on a
+/// barcode are one row a person picks whole — an answer, not a question.
+fn sole_pressing(matches: &[MetadataResult]) -> Option<crate::import::release_group::Pressing> {
+    let mut pressings = crate::import::release_group::group_results(matches.to_vec())
+        .into_iter()
+        .flat_map(|group| group.pressings);
+    let only = pressings.next()?;
+    pressings.next().is_none().then_some(only)
+}
+
+/// Settle a candidate's lead: buy the documents that describe the pressing it
+/// matched — the primary's and every partner's — store them, and read the
+/// primary's own tracklist out of what came back. Returns whether the verdict
+/// may now be stored.
 ///
 /// **The documents land before the verdict does.** A stored verdict whose lead
 /// carries a tracklist is the queue's promise that opening that candidate needs
-/// no network, so the two are written in this order and a failure here writes
-/// neither. The candidate stores an explicit failure, while the release
-/// document archive remains absent.
+/// no network, and that promise covers every source the pick claims, so a
+/// partner that will not prepare fails the lead exactly as the primary does:
+/// the candidate stores an explicit failure and no verdict names the pressing.
 ///
-/// Only a single-match `Found` has a lead. Several matches and a conflict are
-/// questions for a person, answered from the result rows the verdict already
-/// carries, and a full fetch of every pressing on the list would buy a
-/// classification that cannot change.
+/// Only a `Found` that groups into one pressing has a lead. Several pressings
+/// and a conflict are questions for a person, answered from the result rows the
+/// verdict already carries, and a full fetch of every pressing on the list would
+/// buy a classification that cannot change.
 ///
 /// A release some other candidate already settled costs nothing: its documents
 /// are read back and the tracklist re-derived from them.
@@ -257,16 +274,27 @@ async fn settle_lead(
     else {
         return Some(SettledLead::NoExternalRelease);
     };
-    let [only_match] = matches.as_mut_slice() else {
+    let Some(pressing) = sole_pressing(matches) else {
         return Some(SettledLead::NoExternalRelease);
     };
-    let release = MetadataRef::new(&only_match.release_id, only_match.source);
+    let (primary, partners) = pressing.claims();
 
-    let settle = crate::import::service::prepare_release(
-        &context.library_manager,
-        &release,
-        CallPriority::Background,
-    );
+    let settle = async {
+        let payloads = crate::import::service::prepare_release(
+            &context.library_manager,
+            &primary,
+            CallPriority::Background,
+        )
+        .await?;
+        crate::import::service::prepare_partners(
+            &context.library_manager,
+            &primary,
+            &partners,
+            CallPriority::Background,
+        )
+        .await?;
+        Ok::<_, crate::import::ImportError>(payloads)
+    };
     let payloads = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.
@@ -278,7 +306,7 @@ async fn settle_lead(
         Err(error) => {
             debug!(
                 "sweep: could not settle {} ({error}); storing the failure",
-                only_match.release_id
+                primary.id
             );
             *verdict = TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(
@@ -305,12 +333,19 @@ async fn settle_lead(
             // `SourceTracks::Nothing` is an answer — this release states no
             // tracklist — so the verdict stores with the match unverifiable, and
             // the Ready rule lands it in Needs you rather than admitting it.
-            only_match.source_tracks = Some(source_tracks);
+            //
+            // The tracklist belongs to the primary's own match row: it is read
+            // from the primary's document, and a partner states its own.
+            matches
+                .iter_mut()
+                .find(|result| result.source == primary.source && result.release_id == primary.id)
+                .expect("the pressing's primary is one of the verdict's matches")
+                .source_tracks = Some(source_tracks);
             Some(SettledLead::ExternalRelease {
                 provenance: crate::import::MetadataProvenance::ExternalRelease {
-                    source: only_match.source,
-                    release_id: only_match.release_id.clone(),
-                    partners: Vec::new(),
+                    source: primary.source,
+                    release_id: primary.id,
+                    partners,
                 },
                 payloads,
             })
@@ -318,7 +353,7 @@ async fn settle_lead(
         Err(error) => {
             debug!(
                 "sweep: {} states no readable tracklist ({error}); storing the failure",
-                only_match.release_id
+                primary.id
             );
             *verdict = TerminalVerdict::Failed {
                 failures: vec![crate::identify::IdentifyFailure::ReleaseDetails(

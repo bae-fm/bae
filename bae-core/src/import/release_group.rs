@@ -71,24 +71,31 @@ impl Pressing {
             .expect("a pressing is built from at least one release")
     }
 
-    /// What picking this row claims: the lead as the document the draft is
-    /// read from, and every other source's record of the same pressing as a
-    /// partner.
+    /// What picking this row claims, as release references: the primary — the
+    /// document the draft is read from — and every other source's record of
+    /// the same pressing as a partner.
     ///
     /// A row is one pressing however many sources carry it, so this is the
     /// whole of what picking it means. Deciding it here rather than on each
-    /// surface is what keeps macOS, Windows and Linux picking the same thing.
+    /// surface is what keeps macOS, Windows, Linux and the sweep picking the
+    /// same thing.
+    pub(crate) fn claims(&self) -> (crate::import::MetadataRef, Vec<crate::import::MetadataRef>) {
+        let mut releases = self.releases.iter().map(|release| {
+            crate::import::MetadataRef::new(release.release_id.clone(), release.source)
+        });
+        let primary = releases
+            .next()
+            .expect("a pressing is built from at least one release");
+        (primary, releases.collect())
+    }
+
+    /// [`Self::claims`] as the provenance a pick stores.
     pub fn pick(&self) -> crate::import::MetadataProvenance {
-        let lead = self.lead();
+        let (primary, partners) = self.claims();
         crate::import::MetadataProvenance::ExternalRelease {
-            source: lead.source,
-            release_id: lead.release_id.clone(),
-            partners: self.releases[1..]
-                .iter()
-                .map(|release| {
-                    crate::import::MetadataRef::new(release.release_id.clone(), release.source)
-                })
-                .collect(),
+            source: primary.source,
+            release_id: primary.id,
+            partners,
         }
     }
 }
