@@ -14,8 +14,6 @@ struct ReleaseMetadataTrackRow: View {
 
     var body: some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
-            TrackSideCell(value: sideBinding)
-                .frame(width: ReleaseMetadataTrackColumns.side)
             TrackNumberCell(value: trackNumberBinding)
                 .frame(width: ReleaseMetadataTrackColumns.track)
             CommittedTextField(
@@ -82,17 +80,6 @@ struct ReleaseMetadataTrackRow: View {
         }
     }
 
-    private var sideBinding: Binding<Int32> {
-        Binding(
-            get: { track.side },
-            set: { value in
-                var edited = track
-                edited.side = value
-                Task { await onChange(edited) }
-            }
-        )
-    }
-
     private var trackNumberBinding: Binding<Int32?> {
         Binding(
             get: { track.trackNumber },
@@ -130,7 +117,6 @@ struct ReleaseMetadataTrackColumns {
     let title: CGFloat
     let artist: CGFloat
 
-    static let side: CGFloat = 68
     static let track: CGFloat = 52
     static let length: CGFloat = 88
     static let action: CGFloat = 24
@@ -144,8 +130,8 @@ struct ReleaseMetadataTrackColumns {
     private static let idealSource: CGFloat = 260
     private static let floorSource: CGFloat = 160
 
-    private static let chrome: CGFloat = rowPadding * 2 + spacing * 6
-    private static let rigid: CGFloat = side + track + length + action
+    private static let chrome: CGFloat = rowPadding * 2 + spacing * 5
+    private static let rigid: CGFloat = track + length + action
 
     static let idealTableWidth: CGFloat =
         idealTitle + idealArtist + idealSource + rigid + chrome

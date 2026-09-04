@@ -9,14 +9,24 @@ struct ReleaseMetadataEditorContent: View {
     var onPlayTrack: ((Int) -> Void)?
 
     @State
-    private var availableWidth = ReleaseMetadataTrackColumns.minimumTableWidth
+    private var availableWidth = ReleaseMetadataEditorContent
+        .editorMinimumTableWidth
+
+    private static let editorMinimumTableWidth =
+        ReleaseMetadataTrackColumns.minimumTableWidth
+        + TrackSideCell.width
+        + ReleaseMetadataTrackColumns.spacing
 
     private var tableWidth: CGFloat {
-        max(availableWidth, ReleaseMetadataTrackColumns.minimumTableWidth)
+        max(availableWidth, Self.editorMinimumTableWidth)
     }
 
     private var columns: ReleaseMetadataTrackColumns {
-        .resolved(tableWidth: tableWidth)
+        .resolved(
+            tableWidth: tableWidth
+                - TrackSideCell.width
+                - ReleaseMetadataTrackColumns.spacing
+        )
     }
 
     var body: some View {
@@ -107,7 +117,7 @@ struct ReleaseMetadataEditorContent: View {
                 .frame(width: columns.source, alignment: .leading)
             FormEyebrow(text: Text(verbatim: session.positionHeaderText))
                 .frame(
-                    width: ReleaseMetadataTrackColumns.side,
+                    width: TrackSideCell.width,
                     alignment: .leading
                 )
             FormEyebrow(text: Text("Track"))
@@ -139,6 +149,8 @@ struct ReleaseMetadataEditorContent: View {
     ) -> some View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
             sourceCell(item, sourceIsInCaption: sourceIsInCaption)
+            TrackSideCell(value: sideBinding(for: item.track))
+                .frame(width: TrackSideCell.width)
             ReleaseMetadataTrackRow(
                 track: item.track,
                 duration: releaseDurationText(item.context.durationMs),
@@ -155,6 +167,17 @@ struct ReleaseMetadataEditorContent: View {
         .overlay(alignment: .top) {
             Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
         }
+    }
+
+    private func sideBinding(for track: BridgeRawTrackEdit) -> Binding<Int32> {
+        Binding(
+            get: { track.side },
+            set: { value in
+                var edited = track
+                edited.side = value
+                session.updateTrack(edited)
+            }
+        )
     }
 
     private func sourceCell(

@@ -404,8 +404,6 @@ private struct ReadOnlyCandidateMappingTable: View {
         HStack(spacing: ReleaseMetadataTrackColumns.spacing) {
             FormEyebrow(text: Text("Source"))
                 .frame(width: columns.source, alignment: .leading)
-            FormEyebrow(text: Text(verbatim: table.positionHeaderText))
-                .frame(width: ReleaseMetadataTrackColumns.side)
             FormEyebrow(text: Text("Track"))
                 .frame(width: ReleaseMetadataTrackColumns.track)
             FormEyebrow(text: Text("Title"))
@@ -434,8 +432,6 @@ private struct ReadOnlyCandidateMappingTable: View {
             readOnlySource(mapping.source)
                 .frame(width: columns.source, alignment: .leading)
             if let track = mapping.track {
-                Text(track.side.formatted())
-                    .frame(width: ReleaseMetadataTrackColumns.side)
                 Text(track.trackNumber?.formatted() ?? "\u{2014}")
                     .frame(width: ReleaseMetadataTrackColumns.track)
                 Text(track.title)
@@ -446,7 +442,6 @@ private struct ReadOnlyCandidateMappingTable: View {
                     .lineLimit(1)
             }
             else {
-                Color.clear.frame(width: ReleaseMetadataTrackColumns.side)
                 Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
                 Text(coreString("ui.import.becomes.awaiting_pick"))
                     .frame(width: columns.title, alignment: .leading)

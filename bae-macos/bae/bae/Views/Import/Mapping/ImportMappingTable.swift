@@ -159,6 +159,7 @@ struct ImportMappingTable: View {
             .textCase(.uppercase)
             .foregroundStyle(.secondary)
             .padding(.horizontal, ImportMappingColumns.rowPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, index == 0 ? 2 : 18)
             .padding(.bottom, 6)
     }
@@ -226,11 +227,6 @@ struct ImportMappingTable: View {
                 Spacer(minLength: 0)
             }
             .frame(width: columns.source, alignment: .leading)
-            FormEyebrow(text: Text(verbatim: table.positionHeaderText))
-                .frame(
-                    width: ReleaseMetadataTrackColumns.side,
-                    alignment: .leading
-                )
             FormEyebrow(text: Text("Track"))
                 .frame(
                     width: ReleaseMetadataTrackColumns.track,

@@ -14,11 +14,10 @@ struct ImportMappingColumnsTests {
     /// leading edges, as the row lays them out.
     private func rowWidth(_ columns: ReleaseMetadataTrackColumns) -> CGFloat {
         columns.title + columns.artist + columns.source
-            + ReleaseMetadataTrackColumns.side
             + ReleaseMetadataTrackColumns.track
             + ReleaseMetadataTrackColumns.length
             + ReleaseMetadataTrackColumns.action
-            + ReleaseMetadataTrackColumns.spacing * 6
+            + ReleaseMetadataTrackColumns.spacing * 5
             + ReleaseMetadataTrackColumns.rowPadding * 2
     }
 

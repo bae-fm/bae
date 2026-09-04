@@ -3,6 +3,8 @@ import SwiftUI
 
 /// The disc/side cell — a required `Int32`, centered tabular digits.
 struct TrackSideCell: View {
+    static let width: CGFloat = 68
+
     @Binding
     var value: Int32
 

@@ -88,7 +88,6 @@ struct ImportMappingTrackRow: View {
 
     @ViewBuilder
     private var awaitingTrackCells: some View {
-        Color.clear.frame(width: ReleaseMetadataTrackColumns.side)
         Color.clear.frame(width: ReleaseMetadataTrackColumns.track)
         Text(coreString("ui.import.becomes.awaiting_pick"))
             .font(.system(size: 12))

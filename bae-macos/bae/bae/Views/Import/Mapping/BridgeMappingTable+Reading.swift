@@ -32,15 +32,6 @@ extension BridgeTrackMapping {
     }
 }
 
-extension BridgeMappingTable {
-    var positionHeaderText: String {
-        guard let key = trackSections.compactMap(\.headerKey).first else {
-            return String(localized: "Disc")
-        }
-        return coreString(key)
-    }
-}
-
 extension BridgeMappingSource {
     /// The playing time the folder itself offers for this row: measured off
     /// the file, or stated by the sheet for one of its entries.
