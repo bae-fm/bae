@@ -56,6 +56,7 @@ cd "$ROOT"
 missing=0
 for scene in \
     artwork-lightbox \
+    cover-picker-unlinked \
     cover-picker-wide \
     cover-picker-short \
     story-1-first-run \

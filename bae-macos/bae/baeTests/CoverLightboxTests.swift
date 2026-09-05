@@ -27,7 +27,7 @@ struct CoverLightboxTests {
         let size = NSSize(width: 960, height: 700)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             CoverGalleryView(
-                remoteItems: [front, booklet],
+                remoteItems: .linked([front, booklet]),
                 releaseItems: [file],
                 selectedCover: front.id,
                 onSelect: { selected = $0 },

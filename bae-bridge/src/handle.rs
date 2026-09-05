@@ -12,8 +12,6 @@ use crate::types::BridgeCloudProvider;
 use crate::types::BridgeDiscogsSaveOutcome;
 #[cfg(any(feature = "cloudkit", feature = "oauth-providers"))]
 use crate::types::BridgeHomeStorage;
-#[cfg(feature = "desktop")]
-use crate::types::BridgeRemoteCover;
 use crate::types::{
     BridgeAlbum, BridgeAlbumDetail, BridgeAlbumSearchResult, BridgeArtistDetail,
     BridgeArtistSearchResult, BridgeArtistSortCriterion, BridgeArtistSummary,

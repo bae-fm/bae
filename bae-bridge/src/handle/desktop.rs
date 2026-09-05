@@ -754,17 +754,14 @@ impl AppHandle {
     pub async fn fetch_remote_covers(
         self: std::sync::Arc<Self>,
         target: crate::types::BridgeCoverTarget,
-    ) -> Result<Vec<BridgeRemoteCover>, BridgeError> {
+    ) -> Result<crate::types::BridgeRemoteCoverGallery, BridgeError> {
         self.run_exported(move |this| async move {
             let covers = this
                 .services
                 .import_fetch_remote_covers(target.into_core())
                 .await
                 .map_err(BridgeError::import)?;
-            Ok(covers
-                .into_iter()
-                .map(crate::types::BridgeRemoteCover::from_core)
-                .collect())
+            Ok(crate::types::BridgeRemoteCoverGallery::from_core(covers))
         })
         .await
     }

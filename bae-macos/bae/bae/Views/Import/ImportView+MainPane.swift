@@ -213,6 +213,10 @@ extension ImportView {
                             .candidate(candidateKey: key)
                         )
                     },
+                    onFindRelease: {
+                        uiStore.dismissModal()
+                        presentMetadata(.findOnline, for: candidate)
+                    },
                     onSelect: { selection in
                         try await importer.setCandidateCover(
                             key,

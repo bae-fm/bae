@@ -3,13 +3,13 @@ import SwiftUI
 
 /// Shared cover browser. Preview focus is separate from the saved selection.
 struct CoverGalleryView: View {
-    let remoteItems: [CoverItem]
+    let remoteItems: RemoteCoverItems
     let releaseItems: [CoverItem]
     let selectedCover: BridgeCoverSelection?
-    var isLoading = false
     var isSaving = false
     var errorMessage: String?
     var onRefresh: (() -> Void)?
+    var onFindRelease: (() -> Void)?
     let onSelect: (CoverItem) -> Void
     let onDone: () -> Void
 
@@ -25,11 +25,11 @@ struct CoverGalleryView: View {
             HStack(spacing: 12) {
                 Text("Change Cover").font(.title2.weight(.semibold))
                 Spacer()
-                if let onRefresh {
+                if let onRefresh, remoteItems.canRefresh {
                     Button(action: onRefresh) {
                         Label("Refresh", systemImage: "arrow.clockwise")
                     }
-                    .disabled(isLoading || isSaving)
+                    .disabled(remoteItems.isLoading || isSaving)
                 }
                 Button("Done", action: onDone)
                     .keyboardShortcut(.cancelAction)
@@ -43,16 +43,9 @@ struct CoverGalleryView: View {
                         section(
                             "Remote Sources",
                             icon: "globe",
-                            items: remoteItems
+                            items: remoteItems.items
                         )
-                        if isLoading {
-                            ProgressView("Fetching covers...")
-                                .controlSize(.small)
-                        }
-                        else if remoteItems.isEmpty {
-                            Text("No remote covers found")
-                                .foregroundStyle(.secondary)
-                        }
+                        remoteStatus
                         section(
                             "Release Files",
                             icon: "folder",
@@ -70,7 +63,8 @@ struct CoverGalleryView: View {
             }
             Divider()
             HStack(spacing: 16) {
-                if let errorMessage {
+                if let errorMessage = errorMessage ?? remoteItems.failureMessage
+                {
                     Label(errorMessage, systemImage: "exclamationmark.triangle")
                         .font(.callout)
                         .foregroundStyle(.red)
@@ -122,7 +116,7 @@ struct CoverGalleryView: View {
 
     private func rebuild() {
         cursor = Cursor(
-            items: remoteItems + releaseItems,
+            items: remoteItems.items + releaseItems,
             preferring: cursor?.current.id ?? selectedCover
         )
     }
@@ -212,6 +206,32 @@ struct CoverGalleryView: View {
 }
 
 extension CoverGalleryView {
+    @ViewBuilder
+    private var remoteStatus: some View {
+        switch remoteItems {
+        case .loading:
+            ProgressView("Fetching covers...").controlSize(.small)
+        case .unlinked:
+            VStack(alignment: .leading, spacing: 10) {
+                Text("No linked release")
+                    .font(.headline)
+                Text(
+                    "Link a Discogs or MusicBrainz release to browse its artwork."
+                )
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                if let onFindRelease {
+                    Button("Find release…", action: onFindRelease)
+                        .disabled(isSaving)
+                }
+            }
+        case .linked(let items) where items.isEmpty:
+            Text("No remote covers found").foregroundStyle(.secondary)
+        case .linked, .failed:
+            EmptyView()
+        }
+    }
+
     @ViewBuilder
     private var preview: some View {
         if let cursor {

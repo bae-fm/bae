@@ -19,6 +19,15 @@ pub enum CoverTarget {
     Candidate(String),
 }
 
+/// Whether an owner names an external release, and the artwork it offers.
+/// An empty linked gallery is not an unidentified release.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[derive(Debug, Clone, PartialEq)]
+pub enum RemoteCoverGallery {
+    Unlinked,
+    Linked(Vec<RemoteCover>),
+}
+
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
 /// by the entity's MusicBrainz id, so an image's address is knowable without
 /// asking the archive anything.

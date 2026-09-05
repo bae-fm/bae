@@ -17,7 +17,7 @@ struct ImportedReleasePane: View {
     let changeCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let fetchRemoteCovers:
-        @Sendable (String) async throws -> [BridgeRemoteCover]
+        @Sendable (String) async throws -> BridgeRemoteCoverGallery
     let onViewInLibrary: (String) -> Void
     let onOpenImages: ([BridgeMappingImage], String) -> Void
     let onOpenDocument: (String, String) -> Void

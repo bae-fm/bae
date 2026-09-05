@@ -10,8 +10,8 @@ struct CoverPickerStateTests {
         let state = CoverPickerState()
         let starts = AsyncStream<Void>.makeStream()
         var started = starts.stream.makeAsyncIterator()
-        var finishFirst: CheckedContinuation<[BridgeRemoteCover], Never>?
-        var finishSecond: CheckedContinuation<[BridgeRemoteCover], Never>?
+        var finishFirst: CheckedContinuation<BridgeRemoteCoverGallery, Never>?
+        var finishSecond: CheckedContinuation<BridgeRemoteCoverGallery, Never>?
         let first = Task {
             await state.load {
                 await withCheckedContinuation {
@@ -31,14 +31,16 @@ struct CoverPickerStateTests {
             }
         }
         await started.next()
-        finishFirst?.resume(returning: [])
+        finishFirst?.resume(returning: .unlinked)
         await first.value
-        #expect(state.isLoading)
-        #expect(state.remoteCovers == nil)
-        finishSecond?.resume(returning: PreviewData.remoteCovers)
+        #expect(state.remoteItems == .loading([]))
+        finishSecond?
+            .resume(returning: .linked(covers: PreviewData.remoteCovers))
         await second.value
-        #expect(!state.isLoading)
-        #expect(state.remoteCovers == PreviewData.remoteCovers)
+        #expect(
+            state.remoteItems
+                == RemoteCoverItems(.linked(covers: PreviewData.remoteCovers))
+        )
         starts.continuation.finish()
     }
 
@@ -47,12 +49,28 @@ struct CoverPickerStateTests {
     )
     func failedRefresh() async {
         let state = CoverPickerState()
-        await state.load { PreviewData.remoteCovers }
-        let covers = state.remoteCovers
+        await state.load { .linked(covers: PreviewData.remoteCovers) }
+        let covers = state.remoteItems.items
         await state.load { throw StubError.notImplemented }
-        #expect(state.remoteCovers == covers)
-        #expect(state.errorMessage != nil)
-        #expect(!state.isLoading)
+        #expect(state.remoteItems.items == covers)
+        #expect(state.remoteItems.failureMessage != nil)
+        #expect(!state.remoteItems.isLoading)
+    }
+
+    @Test("Unlinked, empty, and failed lookups remain distinct")
+    func lookupStates() async {
+        let state = CoverPickerState()
+        #expect(state.remoteItems == .loading([]))
+        await state.load { .unlinked }
+        #expect(state.remoteItems == .unlinked)
+        #expect(!state.remoteItems.canRefresh)
+        await state.load { .linked(covers: []) }
+        #expect(state.remoteItems == .linked([]))
+        #expect(state.remoteItems.canRefresh)
+        await state.load { throw StubError.notImplemented }
+        #expect(state.remoteItems.failureMessage != nil)
+        #expect(state.remoteItems != .linked([]))
+        #expect(state.remoteItems.canRefresh)
     }
 
     @Test("An unsuccessful cover save does not dismiss the picker")

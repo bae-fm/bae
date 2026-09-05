@@ -1,5 +1,6 @@
 use super::*;
 use crate::import::candidate_search::CandidateSearch;
+use crate::import::cover_art::RemoteCoverGallery;
 use crate::import::search::{search_source, SearchQuery};
 use crate::util::rate_limiter::CallPriority;
 
@@ -198,7 +199,7 @@ impl ImportServiceHandle {
     pub async fn fetch_remote_covers(
         &self,
         target: crate::import::cover_art::CoverTarget,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
         match target {
             crate::import::cover_art::CoverTarget::Release(id) => self.release_covers(&id).await,
             crate::import::cover_art::CoverTarget::Candidate(key) => {
@@ -210,7 +211,7 @@ impl ImportServiceHandle {
     async fn candidate_covers(
         &self,
         key: &str,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
         let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
             self.get_candidate(key).await?
         else {
@@ -228,7 +229,7 @@ impl ImportServiceHandle {
             partners,
         }) = state.and_then(|state| state.metadata_provenance)
         else {
-            return Ok(Vec::new());
+            return Ok(RemoteCoverGallery::Unlinked);
         };
         let mut covers = Vec::new();
         let primary = crate::import::MetadataRef::new(release_id, source);
@@ -248,17 +249,21 @@ impl ImportServiceHandle {
                 crate::import::cover_art::push_unique_cover(&mut covers, cover);
             }
         }
-        Ok(covers)
+        Ok(RemoteCoverGallery::Linked(covers))
     }
 
     async fn release_covers(
         &self,
         release_id: &str,
-    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
         let identities = self
             .library_manager
             .get_release_identities(release_id)
             .await?;
+
+        if identities.is_empty() {
+            return Ok(RemoteCoverGallery::Unlinked);
+        }
 
         let mut covers = Vec::new();
 
@@ -276,30 +281,18 @@ impl ImportServiceHandle {
                 }
                 MetadataSource::Discogs => {
                     let rid = &identity.source_release_id;
-                    match self
+                    let found = self
                         .library_manager
                         .fetch_discogs_release_covers(rid, CallPriority::Interactive)
-                        .await
-                    {
-                        Ok(found) => {
-                            for cover in found {
-                                crate::import::cover_art::push_unique_cover(&mut covers, cover);
-                            }
-                        }
-                        Err(crate::import::ImportError::DiscogsNotConfigured) => {
-                            debug!(
-                                release_id,
-                                source_release_id = %rid,
-                                "skipping Discogs cover fetch: Discogs is not configured"
-                            );
-                        }
-                        Err(error) => return Err(error),
+                        .await?;
+                    for cover in found {
+                        crate::import::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }
             }
         }
 
-        Ok(covers)
+        Ok(RemoteCoverGallery::Linked(covers))
     }
 
     /// The documents behind external-release provenance, and where they come from.

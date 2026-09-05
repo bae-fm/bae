@@ -39,7 +39,7 @@ struct CoverPickerTests {
         let (window, host) = SnapshotTestSupport.hostInWindow(
             CoverSheetView(
                 releaseId: release.id,
-                fetchRemoteCovers: { [] },
+                fetchRemoteCovers: { .unlinked },
                 onSelect: { await recorder.select($0) },
                 onDone: {}
             )
@@ -148,7 +148,10 @@ struct CoverPickerTests {
                 remoteCoverArts: PreviewData.remoteCovers,
                 localArtwork: PreviewData.bridgeCandidateFiles.images,
                 selectedCover: nil,
-                fetchRemoteCovers: { PreviewData.remoteCovers },
+                fetchRemoteCovers: {
+                    .linked(covers: PreviewData.remoteCovers)
+                },
+                onFindRelease: {},
                 onSelect: { _ in },
                 onDone: {}
             )

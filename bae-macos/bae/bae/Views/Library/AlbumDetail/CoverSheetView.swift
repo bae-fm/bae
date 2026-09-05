@@ -5,7 +5,7 @@ import SwiftUI
 /// files. Scanned candidate paths never enter this picker.
 struct CoverSheetView: View {
     let releaseId: String
-    let fetchRemoteCovers: () async throws -> [BridgeRemoteCover]
+    let fetchRemoteCovers: () async throws -> BridgeRemoteCoverGallery
     let onSelect: (BridgeCoverSelection) async throws -> Void
     let onDone: () -> Void
 
@@ -20,15 +20,11 @@ struct CoverSheetView: View {
 
     var body: some View {
         CoverGalleryView(
-            remoteItems: (state.remoteCovers ?? [])
-                .map {
-                    CoverItem(coverChoice: $0.coverChoice, label: $0.label)
-                },
+            remoteItems: state.remoteItems,
             releaseItems: releaseFiles.map {
                 CoverItem(releaseId: releaseId, file: $0)
             },
             selectedCover: nil,
-            isLoading: state.isLoading,
             isSaving: state.isSaving,
             errorMessage: state.errorMessage ?? releaseError,
             onRefresh: { state.refresh(fetchRemoteCovers) },

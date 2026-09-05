@@ -5,38 +5,45 @@ import SwiftUI
 @MainActor
 @Observable
 final class CoverPickerState {
-    private(set) var remoteCovers: [BridgeRemoteCover]?
-    private(set) var isLoading = false
+    private(set) var remoteItems: RemoteCoverItems
     private(set) var isSaving = false
     private(set) var errorMessage: String?
     private var refreshTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
     private var loadVersion = 0
 
-    func load(_ fetch: () async throws -> [BridgeRemoteCover]) async {
+    init(initialCovers: [BridgeRemoteCover] = []) {
+        remoteItems = .loading(
+            initialCovers.map {
+                CoverItem(coverChoice: $0.coverChoice, label: $0.label)
+            }
+        )
+    }
+
+    func load(_ fetch: () async throws -> BridgeRemoteCoverGallery) async {
         loadVersion += 1
         let version = loadVersion
-        isLoading = true
+        let previousItems = remoteItems.items
+        remoteItems = .loading(previousItems)
         errorMessage = nil
-        defer {
-            if loadVersion == version { isLoading = false }
-        }
         do {
             let covers = try await fetch()
             try Task.checkCancellation()
             guard loadVersion == version else { return }
-            remoteCovers = covers
+            remoteItems = RemoteCoverItems(covers)
         }
         catch is CancellationError {}
         catch {
             guard loadVersion == version, !Task.isCancelled else { return }
-            errorMessage = error.displayLine.map {
+            let message = error.displayLine.map {
                 String(localized: "Failed to load covers: \($0)")
             }
+            remoteItems = .failed(previousItems, message: message)
         }
     }
 
-    func refresh(_ fetch: @escaping () async throws -> [BridgeRemoteCover]) {
+    func refresh(_ fetch: @escaping () async throws -> BridgeRemoteCoverGallery)
+    {
         refreshTask?.cancel()
         refreshTask = Task { await load(fetch) }
     }

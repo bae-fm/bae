@@ -43,6 +43,12 @@ struct ShotScene {
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
             AnyView(PreviewScenes.welcome())
         },
+        ShotScene(
+            id: "cover-picker-unlinked",
+            size: CGSize(width: 1_148, height: 868)
+        ) {
+            AnyView(CoverPickerPreviewScene.unlinked())
+        },
         ShotScene(id: "album-detail", size: CGSize(width: 1100, height: 800)) {
             AnyView(PreviewScenes.albumDetail())
         },

@@ -35,7 +35,7 @@
         var body: some View {
             CoverPickerFrame {
                 CoverGalleryView(
-                    remoteItems: Self.remoteItems,
+                    remoteItems: .linked(Self.remoteItems),
                     releaseItems: Self.releaseItems,
                     selectedCover: Self.releaseItems[0].selection,
                     onRefresh: {},
@@ -50,6 +50,21 @@
         static func lightbox() -> some View {
             CoverLightboxPreviewScene(items: remoteItems + releaseItems)
                 .environment(PreviewData.artImageStore())
+        }
+
+        static func unlinked() -> some View {
+            CoverPickerFrame {
+                CoverGalleryView(
+                    remoteItems: .unlinked,
+                    releaseItems: [releaseItems[0]],
+                    selectedCover: releaseItems[0].selection,
+                    onFindRelease: {},
+                    onSelect: { _ in },
+                    onDone: {}
+                )
+            }
+            .environment(PreviewData.artImageStore())
+            .background(Theme.background)
         }
 
         private static func remote(
@@ -120,5 +135,9 @@
 
     #Preview("Artwork lightbox") {
         CoverPickerPreviewScene.lightbox().frame(width: 1_148, height: 868)
+    }
+
+    #Preview("Cover gallery — unlinked release") {
+        CoverPickerPreviewScene.unlinked().frame(width: 1_148, height: 868)
     }
 #endif

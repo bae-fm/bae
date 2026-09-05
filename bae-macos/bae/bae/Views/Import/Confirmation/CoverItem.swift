@@ -73,3 +73,47 @@ extension BridgeCoverChoice {
         ImageContent(bridge: thumbnailSource)
     }
 }
+
+/// Artwork lookup state rendered by the picker, with previous images retained
+/// during refresh and failure so release browsing is never interrupted.
+enum RemoteCoverItems: Equatable {
+    case loading([CoverItem])
+    case unlinked
+    case linked([CoverItem])
+    case failed([CoverItem], message: String?)
+
+    init(_ gallery: BridgeRemoteCoverGallery) {
+        switch gallery {
+        case .unlinked: self = .unlinked
+        case .linked(let covers):
+            self = .linked(
+                covers.map {
+                    CoverItem(coverChoice: $0.coverChoice, label: $0.label)
+                }
+            )
+        }
+    }
+
+    var items: [CoverItem] {
+        switch self {
+        case .unlinked: []
+        case .loading(let items), .linked(let items), .failed(let items, _):
+            items
+        }
+    }
+
+    var isLoading: Bool {
+        if case .loading = self { return true }
+        return false
+    }
+
+    var canRefresh: Bool {
+        if case .unlinked = self { return false }
+        return true
+    }
+
+    var failureMessage: String? {
+        if case .failed(_, let message) = self { return message }
+        return nil
+    }
+}

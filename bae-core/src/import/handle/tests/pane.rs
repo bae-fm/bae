@@ -146,6 +146,73 @@ async fn shut_down(handle: ImportServiceHandle) {
         .unwrap();
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn unlinked_cover_gallery_for_candidate_without_metadata() {
+    let (manager, tmp) = setup_test_manager().await;
+    let (_, key, _) = picked_candidate(&manager, &tmp).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let gallery = handle
+        .fetch_remote_covers(crate::import::cover_art::CoverTarget::Candidate(key))
+        .await
+        .unwrap();
+    shut_down(handle).await;
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn unlinked_cover_gallery_for_file_tags() {
+    let (handle, _tmp, key, _) = pane_fixture().await;
+    let gallery = handle
+        .fetch_remote_covers(crate::import::cover_art::CoverTarget::Candidate(key))
+        .await
+        .unwrap();
+    shut_down(handle).await;
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn unlinked_cover_gallery_for_library_release() {
+    let (manager, _tmp) = setup_test_db_with_artist().await;
+    let album = make_album("Album Title");
+    let release = make_release(&album.id);
+    manager
+        .insert_album_with_release_and_tracks(
+            &album, &release, &[make_track(&release.id, 1)], &[],
+        )
+        .await
+        .unwrap();
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let gallery = handle
+        .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
+        .await
+        .unwrap();
+    shut_down(handle).await;
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Unlinked);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn cover_gallery_reports_unconfigured_discogs_as_failure() {
+    let (manager, _tmp) = setup_test_db_with_artist().await;
+    let album = make_album("Album Title");
+    let release = make_release(&album.id);
+    insert_with_identities(&manager, &album, &release, &[discogs_identity("11", "22")]).await;
+    let handle = manager
+        .start_import_service(tokio::runtime::Handle::current())
+        .await
+        .unwrap();
+    let result = handle
+        .fetch_remote_covers(crate::import::cover_art::CoverTarget::Release(release.id))
+        .await;
+    shut_down(handle).await;
+    assert!(matches!(result, Err(crate::import::ImportError::DiscogsNotConfigured)));
+}
+
 struct CountingFileTagReader {
     reads: std::sync::atomic::AtomicUsize,
     fail_on_read: Option<usize>,

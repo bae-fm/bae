@@ -3,6 +3,29 @@
 
 use super::*;
 
+#[tokio::test(flavor = "multi_thread")]
+async fn linked_cover_gallery_can_be_empty() {
+    let (handle, _tmp, key, _) = pane_fixture().await;
+    handle.library_manager.set_discogs_key(
+        "test-discogs-token", crate::config::DiscogsValidation::Valid,
+    ).unwrap();
+    let release_id = "70000003";
+    seed_discogs_release(release_id);
+    handle.select_candidate_metadata_provenance(
+        key.clone(),
+        crate::import::MetadataProvenance::ExternalRelease {
+            source: crate::import::MetadataSource::Discogs,
+            release_id: release_id.to_string(),
+            partners: vec![],
+        },
+    ).await.unwrap();
+    let gallery = handle.fetch_remote_covers(
+        crate::import::cover_art::CoverTarget::Candidate(key),
+    ).await.unwrap();
+    shut_down(handle).await;
+    assert_eq!(gallery, crate::import::cover_art::RemoteCoverGallery::Linked(vec![]));
+}
+
 /// Picking a paired pressing claims both sources. The partner is stored beside
 /// the primary, and its own documents are archived in the same apply — so
 /// opening the candidate, importing it, or re-reading its identity later needs

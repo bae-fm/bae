@@ -32,7 +32,7 @@ final class ReleaseEditor: Observable {
         @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
     let fetchRemoteCovers:
         @Sendable (_ target: BridgeCoverTarget) async throws ->
-            [BridgeRemoteCover]
+            BridgeRemoteCoverGallery
 
     init(
         changeCover:
@@ -70,8 +70,8 @@ final class ReleaseEditor: Observable {
             { _ in throw StubError.notImplemented },
         fetchRemoteCovers:
             @escaping @Sendable (BridgeCoverTarget) async throws ->
-            [BridgeRemoteCover] = {
-                _ in []
+            BridgeRemoteCoverGallery = {
+                _ in throw StubError.notImplemented
             }
     ) {
         self.changeCover = changeCover

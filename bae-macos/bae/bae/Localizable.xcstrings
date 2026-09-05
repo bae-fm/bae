@@ -59153,6 +59153,388 @@
         }
       }
     },
+    "No linked release": {
+      "comment": "Cover picker: the release has no external metadata identity",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "لا يوجد إصدار مرتبط"
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Няма свързано издание"
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "কোনো রিলিজ সংযুক্ত নেই"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Žádné propojené vydání"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine verknüpfte Veröffentlichung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No linked release"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna edición vinculada"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune parution liée"
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "કોઈ રિલીઝ જોડાયેલી નથી"
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "אין מהדורה מקושרת"
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कोई रिलीज़ लिंक नहीं है"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nema povezanog izdanja"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nessuna pubblicazione collegata"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "リリースがリンクされていません"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಯಾವುದೇ ಬಿಡುಗಡೆ ಲಿಂಕ್ ಆಗಿಲ್ಲ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "연결된 릴리스 없음"
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "റിലീസ് ലിങ്ക് ചെയ്തിട്ടില്ല"
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "कोणतेही प्रकाशन जोडलेले नाही"
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geen gekoppelde uitgave"
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਕੋਈ ਰਿਲੀਜ਼ ਲਿੰਕ ਨਹੀਂ ਕੀਤੀ"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak powiązanego wydania"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum lançamento vinculado"
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "இணைக்கப்பட்ட வெளியீடு இல்லை"
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "విడుదల లింక్ చేయబడలేదు"
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ยังไม่ได้เชื่อมโยงรุ่นวางจำหน่าย"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlı sürüm yok"
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Немає пов’язаного видання"
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "کوئی ریلیز منسلک نہیں"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chưa liên kết bản phát hành"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未关联发行版本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未連結發行版本"
+          }
+        }
+      }
+    },
+    "Link a Discogs or MusicBrainz release to browse its artwork.": {
+      "comment": "Cover picker: identify a release before looking up remote artwork",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "اربط إصدارًا من Discogs أو MusicBrainz لتصفح صوره."
+          }
+        },
+        "bg": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свържете издание от Discogs или MusicBrainz, за да разгледате изображенията му."
+          }
+        },
+        "bn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ছবি দেখতে Discogs বা MusicBrainz-এর একটি রিলিজ সংযুক্ত করুন।"
+          }
+        },
+        "cs": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Propojte vydání z Discogs nebo MusicBrainz a prohlédněte si jeho obrázky."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verknüpfe eine Veröffentlichung von Discogs oder MusicBrainz, um ihre Bilder anzusehen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link a Discogs or MusicBrainz release to browse its artwork."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincula una edición de Discogs o MusicBrainz para ver sus imágenes."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Associez une parution Discogs ou MusicBrainz pour parcourir ses images."
+          }
+        },
+        "gu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "તેની છબીઓ જોવા માટે Discogs અથવા MusicBrainz રિલીઝ જોડો."
+          }
+        },
+        "he": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "יש לקשר מהדורה מ־Discogs או מ־MusicBrainz כדי לעיין בתמונות שלה."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "चित्र देखने के लिए Discogs या MusicBrainz की रिलीज़ लिंक करें।"
+          }
+        },
+        "hr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Povežite izdanje s Discogsa ili MusicBrainza kako biste pregledali njegove slike."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Collega una pubblicazione di Discogs o MusicBrainz per sfogliarne le immagini."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DiscogsまたはMusicBrainzのリリースをリンクすると、アートワークを閲覧できます。"
+          }
+        },
+        "kn": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ಅದರ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಲು Discogs ಅಥವಾ MusicBrainz ಬಿಡುಗಡೆಯನ್ನು ಲಿಂಕ್ ಮಾಡಿ."
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discogs 또는 MusicBrainz 릴리스를 연결하면 아트워크를 볼 수 있습니다."
+          }
+        },
+        "ml": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ചിത്രങ്ങൾ കാണാൻ Discogs അല്ലെങ്കിൽ MusicBrainz റിലീസ് ലിങ്ക് ചെയ്യുക."
+          }
+        },
+        "mr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "त्याची चित्रे पाहण्यासाठी Discogs किंवा MusicBrainz प्रकाशन जोडा."
+          }
+        },
+        "nl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koppel een uitgave van Discogs of MusicBrainz om de afbeeldingen te bekijken."
+          }
+        },
+        "pa": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ਤਸਵੀਰਾਂ ਵੇਖਣ ਲਈ Discogs ਜਾਂ MusicBrainz ਦੀ ਰਿਲੀਜ਼ ਲਿੰਕ ਕਰੋ।"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Powiąż wydanie z Discogs lub MusicBrainz, aby przeglądać jego grafiki."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vincule um lançamento do Discogs ou MusicBrainz para ver suas imagens."
+          }
+        },
+        "ta": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "அதன் படங்களைப் பார்க்க Discogs அல்லது MusicBrainz வெளியீட்டை இணைக்கவும்."
+          }
+        },
+        "te": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "చిత్రాలను చూడటానికి Discogs లేదా MusicBrainz విడుదలను లింక్ చేయండి."
+          }
+        },
+        "th": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "เชื่อมโยงรุ่นวางจำหน่ายจาก Discogs หรือ MusicBrainz เพื่อดูภาพประกอบ"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görsellerine göz atmak için bir Discogs veya MusicBrainz sürümü bağlayın."
+          }
+        },
+        "uk": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пов’яжіть видання з Discogs або MusicBrainz, щоб переглянути його зображення."
+          }
+        },
+        "ur": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تصاویر دیکھنے کے لیے Discogs یا MusicBrainz کی ریلیز منسلک کریں۔"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Liên kết bản phát hành trên Discogs hoặc MusicBrainz để xem hình ảnh."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "关联 Discogs 或 MusicBrainz 发行版本以浏览其图片。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "連結 Discogs 或 MusicBrainz 發行版本以瀏覽其圖片。"
+          }
+        }
+      }
+    },
     "No remote covers found" : {
       "comment" : "Cover sheet: empty state for remote covers",
       "localizations" : {
