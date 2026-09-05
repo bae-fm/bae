@@ -67,9 +67,8 @@ pub(super) fn materialise(
                     .get(content_hash)
                     .filter(|state| state.edit_revision == scanned.file_edit_revision)
                     .and_then(|state| state.selected_cover.as_ref());
-                row.cover_thumbnail = selected
-                    .map(|cover| row_cover_source(sql, scanned, cover))
-                    .transpose()?;
+                row.cover_thumbnail =
+                    effective_row_cover_source(sql, scanned, selected, row.matched.as_ref())?;
                 Ok(ImportListItem::Candidate {
                     row,
                     is_group_member: *is_group_member,
@@ -103,6 +102,41 @@ pub(super) fn materialise(
             }
         })
         .collect()
+}
+
+fn effective_row_cover_source(
+    sql: &SqlReadContext<'_>,
+    candidate: &ScanCandidateListRow,
+    selected: Option<&CoverSelection>,
+    matched: Option<&MatchedRelease>,
+) -> Result<Option<crate::import::CoverImageSource>, DbError> {
+    if let Some(cover) = selected {
+        return row_cover_source(sql, candidate, cover).map(Some);
+    }
+    if let Some(url) = matched.and_then(|release| release.cover_thumbnail_url.as_ref()) {
+        return Ok(Some(crate::import::CoverImageSource::Remote {
+            url: url.clone(),
+        }));
+    }
+    let (_, stored) = load_item_by_key(sql, &candidate.path)?.ok_or_else(|| {
+        DbError::Message(format!(
+            "candidate {} vanished while materialising its cover",
+            candidate.path
+        ))
+    })?;
+    let candidate = match stored.item {
+        ScanItem::Valid(candidate) | ScanItem::Discovered(candidate) => candidate,
+        ScanItem::Invalid(_) | ScanItem::Decided { .. } => {
+            return Err(DbError::Message(format!(
+                "candidate {} cannot carry a cover",
+                candidate.path
+            )))
+        }
+    };
+    Ok(
+        crate::import::local_artwork::default_local_cover_choice(&candidate.files)
+            .map(|cover| cover.thumbnail),
+    )
 }
 
 fn row_cover_source(
@@ -464,9 +498,9 @@ fn pane_of(
     })
 }
 
-/// The cover the candidate commits with: the one chosen, else the picked
-/// release's default. A choice naming an image the folder no longer holds
-/// falls back the same way — the folder moved under the choice.
+/// The cover the candidate commits with: its selection, the picked release's
+/// default, or the folder's default image. A selection naming an image the
+/// folder no longer holds falls back through the same source-neutral order.
 fn chosen_cover(
     files: &CategorizedFiles,
     chosen: Option<&CoverSelection>,
@@ -477,6 +511,7 @@ fn chosen_cover(
         release
             .and_then(|release| release.default_cover())
             .map(CoverChoice::remote)
+            .or_else(|| crate::import::local_artwork::default_local_cover_choice(files))
     };
     match chosen {
         None => default(),

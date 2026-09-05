@@ -330,20 +330,15 @@ pub(crate) fn extract_file_tag_snapshot(
     })
 }
 
-/// The cover File Tags applies with its draft. Embedded artwork is part of the
-/// same snapshot and therefore leads. Without one, conventional cover, folder,
-/// and front image names lead by normalized filename order; every other image
-/// is ordered by file size and then by path.
-pub(crate) fn default_cover(
-    files: &super::folder_scanner::CategorizedFiles,
+/// Embedded artwork is a File Tags selection because its bytes belong to the
+/// snapshot. Folder artwork remains the candidate's source-neutral fallback.
+pub(crate) fn embedded_cover_selection(
     snapshot: &FileTagSnapshot,
 ) -> Option<super::CoverSelection> {
-    if let Some(cover) = &snapshot.embedded_cover {
-        return Some(super::CoverSelection::Embedded(
-            cover.source_relative_path.clone(),
-        ));
-    }
-    super::local_artwork::default_local_cover(files)
+    snapshot
+        .embedded_cover
+        .as_ref()
+        .map(|cover| super::CoverSelection::Embedded(cover.source_relative_path.clone()))
 }
 
 fn observe_file(file: &ScannedFile) -> Result<FileObservation, ImportError> {
@@ -576,31 +571,6 @@ mod tests {
         destination[..encoded.len()].copy_from_slice(&encoded);
     }
 
-    fn artwork(relative_path: &str, size: u64) -> ScannedFile {
-        ScannedFile::new(
-            PathBuf::from("/candidate").join(relative_path),
-            relative_path.to_string(),
-            size,
-            1,
-        )
-    }
-
-    fn files_with_artwork(
-        artwork: impl IntoIterator<Item = ScannedFile>,
-    ) -> super::super::folder_scanner::CategorizedFiles {
-        use super::super::folder_scanner::{CandidateFile, CategorizedFiles, FileRole};
-        CategorizedFiles {
-            files: artwork
-                .into_iter()
-                .map(|file| CandidateFile {
-                    file,
-                    role: FileRole::Artwork,
-                    proposed_audio: false,
-                })
-                .collect(),
-        }
-    }
-
     fn snapshot(embedded_cover: Option<EmbeddedCoverFact>) -> FileTagSnapshot {
         FileTagSnapshot {
             scan_generation: 1,
@@ -720,8 +690,7 @@ mod tests {
     }
 
     #[test]
-    fn embedded_artwork_leads_every_folder_image() {
-        let files = files_with_artwork([artwork("cover.jpg", 1), artwork("folder.png", 1)]);
+    fn embedded_artwork_becomes_the_file_tags_cover_selection() {
         let snapshot = snapshot(Some(EmbeddedCoverFact {
             source_relative_path: "01.flac".to_string(),
             content_type: ContentType::Jpeg,
@@ -729,7 +698,7 @@ mod tests {
         }));
 
         assert_eq!(
-            default_cover(&files, &snapshot),
+            embedded_cover_selection(&snapshot),
             Some(super::super::CoverSelection::Embedded(
                 "01.flac".to_string()
             ))
@@ -737,12 +706,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_embedded_artwork_uses_source_neutral_folder_selection() {
-        let files = files_with_artwork([artwork("scan.jpg", 1), artwork("cover.jpg", 500)]);
-
-        assert_eq!(
-            default_cover(&files, &snapshot(None)),
-            Some(super::super::CoverSelection::Local("cover.jpg".to_string()))
-        );
+    fn missing_embedded_artwork_stores_no_file_tags_cover_selection() {
+        assert_eq!(embedded_cover_selection(&snapshot(None)), None);
     }
 }

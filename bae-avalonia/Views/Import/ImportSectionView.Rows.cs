@@ -110,12 +110,7 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(checkboxSlot, 0);
         grid.Children.Add(checkboxSlot);
 
-        BridgeCoverImageSource? coverSource = row.CoverThumbnail;
-        if (coverSource is null && row.Matched?.CoverThumbnailUrl is { Length: > 0 } url)
-        {
-            coverSource = new BridgeCoverImageSource.Remote(url);
-        }
-        var cover = BuildCover(coverSource);
+        var cover = BuildCover(row.CoverThumbnail);
         cover.Margin = new Thickness(0, 7, 10, 7);
         Grid.SetColumn(cover, 1);
         grid.Children.Add(cover);

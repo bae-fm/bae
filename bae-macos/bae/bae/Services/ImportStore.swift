@@ -161,11 +161,9 @@ class ImportStore {
         items = items.filter { loaded.contains($0.key) }
     }
 
-    /// The candidate's stored draft cover, or its match thumbnail when the
-    /// draft has no explicit cover.
+    /// The effective cover resolved by core for this row.
     func sidebarCover(for row: BridgeTriageRow) -> ImageContent? {
         row.coverThumbnail.map(ImageContent.init(bridge:))
-            ?? row.matched?.coverThumbnailUrl.map { .remote(url: $0) }
     }
 
     // MARK: - Per-key reads

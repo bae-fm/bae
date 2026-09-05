@@ -420,20 +420,15 @@ struct ImportStoreSidebarCoverTests {
         }
     }
 
-    @Test(
-        "the sidebar retains the queue thumbnail before a candidate has a cover"
-    )
-    func queueThumbnailRendersBeforeCoverResolution() {
+    @Test("the sidebar renders only the cover resolved by core")
+    func sidebarDoesNotDeriveACoverFromMatchMetadata() {
         let row = readyRow(
             "/w/subject",
             title: "Subject",
             coverThumbnailUrl: "https://example.com/queue-thumbnail.jpg"
         )
 
-        #expect(
-            ImportStore().sidebarCover(for: row)
-                == .remote(url: "https://example.com/queue-thumbnail.jpg")
-        )
+        #expect(ImportStore().sidebarCover(for: row) == nil)
     }
 }
 

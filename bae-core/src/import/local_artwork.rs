@@ -1,14 +1,15 @@
 //! Source-neutral selection of artwork files from an import candidate.
 
-use super::folder_scanner::{CategorizedFiles, ScannedFile};
-use super::CoverSelection;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use super::folder_scanner::CategorizedFiles;
+use super::folder_scanner::ScannedFile;
 use crate::util::content_type_hint::ContentTypeHint;
 
-/// The folder image a candidate uses when no metadata source supplies artwork.
-/// This reads only scan facts: no audio file or tag is opened.
-pub(crate) fn default_local_cover(files: &CategorizedFiles) -> Option<CoverSelection> {
-    default_local_cover_file(files.files.iter().map(|entry| &entry.file))
-        .map(|file| CoverSelection::Local(file.relative_path.clone()))
+/// The folder fallback in the same complete form the detail pane consumes.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) fn default_local_cover_choice(files: &CategorizedFiles) -> Option<super::CoverChoice> {
+    default_local_cover_file(files.artwork())
+        .map(|image| super::CoverChoice::local(image.relative_path.clone(), image.path.clone()))
 }
 
 /// Select the folder image used when no source supplies artwork. Every caller
@@ -66,7 +67,6 @@ fn conventional_artwork_name(file: &ScannedFile) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::import::folder_scanner::{CandidateFile, FileRole};
     use std::path::PathBuf;
 
     fn artwork(relative_path: &str, size: u64) -> ScannedFile {
@@ -78,86 +78,71 @@ mod tests {
         )
     }
 
-    fn files_with_artwork(artwork: impl IntoIterator<Item = ScannedFile>) -> CategorizedFiles {
-        CategorizedFiles {
-            files: artwork
-                .into_iter()
-                .map(|file| CandidateFile {
-                    file,
-                    role: FileRole::Artwork,
-                    proposed_audio: false,
-                })
-                .collect(),
-        }
-    }
-
     #[test]
     fn conventional_folder_artwork_uses_case_insensitive_name_order() {
-        let files = files_with_artwork([
+        let files = [
             artwork("z/Folder.png", 50),
             artwork("A/COVER.jpg", 500),
             artwork("front.jpg", 1),
-        ]);
+        ];
 
         assert_eq!(
-            default_local_cover(&files),
-            Some(CoverSelection::Local("A/COVER.jpg".to_string()))
+            default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+            Some("A/COVER.jpg")
         );
     }
 
     #[test]
     fn numbered_front_artwork_beats_the_smallest_image() {
-        let files = files_with_artwork([artwork("00Front.jpg", 500), artwork("disc.jpg", 1)]);
+        let files = [artwork("00Front.jpg", 500), artwork("disc.jpg", 1)];
 
         assert_eq!(
-            default_local_cover(&files),
-            Some(CoverSelection::Local("00Front.jpg".to_string()))
+            default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+            Some("00Front.jpg")
         );
     }
 
     #[test]
     fn conventional_artwork_order_ignores_numbering_prefixes() {
-        let files = files_with_artwork([artwork("00Front.jpg", 1), artwork("99 - cover.jpg", 500)]);
+        let files = [artwork("00Front.jpg", 1), artwork("99 - cover.jpg", 500)];
 
         assert_eq!(
-            default_local_cover(&files),
-            Some(CoverSelection::Local("99 - cover.jpg".to_string()))
+            default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+            Some("99 - cover.jpg")
         );
     }
 
     #[test]
     fn descriptive_front_artwork_beats_the_smallest_image() {
-        let files =
-            files_with_artwork([artwork("01 - Front scan.jpg", 500), artwork("disc.jpg", 1)]);
+        let files = [artwork("01 - Front scan.jpg", 500), artwork("disc.jpg", 1)];
 
         assert_eq!(
-            default_local_cover(&files),
-            Some(CoverSelection::Local("01 - Front scan.jpg".to_string()))
+            default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+            Some("01 - Front scan.jpg")
         );
     }
 
     #[test]
     fn back_artwork_does_not_rank_as_a_conventional_cover() {
-        let files =
-            files_with_artwork([artwork("cover-back.jpg", 1), artwork("front scan.jpg", 500)]);
+        let files = [artwork("cover-back.jpg", 1), artwork("front scan.jpg", 500)];
 
         assert_eq!(
-            default_local_cover(&files),
-            Some(CoverSelection::Local("front scan.jpg".to_string()))
+            default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+            Some("front scan.jpg")
         );
     }
 
     #[test]
     fn remaining_folder_artwork_uses_size_then_name() {
-        let files = files_with_artwork([
+        let files = [
             artwork("large.jpg", 500),
             artwork("b/scan.png", 20),
             artwork("A/scan.png", 20),
-        ]);
+        ];
 
         assert_eq!(
-            default_local_cover(&files),
-            Some(CoverSelection::Local("A/scan.png".to_string()))
+            default_local_cover_file(&files).map(|file| file.relative_path.as_str()),
+            Some("A/scan.png")
         );
     }
 }

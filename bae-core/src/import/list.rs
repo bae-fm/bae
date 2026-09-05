@@ -330,8 +330,8 @@ pub struct ImportCandidateDetailProjection {
     /// Every source unit the folder offers, with the track committing makes of
     /// it. Every audio row awaits a pick until there is one.
     pub mapping: MappingTable,
-    /// The cover this candidate commits with: the one chosen, else the picked
-    /// release's default.
+    /// The cover this candidate commits with: its selection, the picked
+    /// release's default, or the folder's default image.
     pub cover: Option<CoverChoice>,
     /// Every cover the picker offers: the picked release's remote art.
     pub remote_covers: Vec<RemoteCover>,

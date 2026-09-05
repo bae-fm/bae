@@ -892,10 +892,10 @@ async fn a_file_decision_after_a_drop_preserves_every_mapping_identity() {
     shut_down(handle).await;
 }
 
-/// Applying File Tags persists the default cover, so the pane and queue keep
-/// drawing it without relying on selection state.
+/// Folder artwork remains the effective cover when File Tags has no embedded
+/// image to select.
 #[tokio::test(flavor = "multi_thread")]
-async fn file_tags_persists_the_conventional_folder_cover() {
+async fn file_tags_uses_the_conventional_folder_cover() {
     let (handle, _tmp, key, _hash) = pane_fixture().await;
     let cover = pane(&handle, &key)
         .await

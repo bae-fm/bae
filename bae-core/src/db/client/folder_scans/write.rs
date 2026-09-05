@@ -254,11 +254,6 @@ fn insert_candidate(
         )?;
     }
     insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
-    if created {
-        if let Some(cover) = crate::import::local_artwork::default_local_cover(&candidate.files) {
-            super::super::candidate_state_rows::save_cover(sql, &content_hash, &cover)?;
-        }
-    }
     insert_resolved_boundaries(
         sql,
         watched_folder_path,

@@ -135,10 +135,9 @@ pub enum CoverImageSource {
     Bytes { data: Vec<u8> },
 }
 
-/// The cover a candidate will be committed with, and where to draw it from.
-///
-/// The selection is what the commit records; the two addresses are what the
-/// picker and the sidebar render, at the two sizes each wants.
+/// The effective cover a candidate will be committed with, and where to draw
+/// it from. The selection identifies either a stored choice or the fallback
+/// that import will use when no choice is stored.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoverChoice {

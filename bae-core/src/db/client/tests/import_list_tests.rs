@@ -466,7 +466,7 @@ async fn a_verdict_from_another_revision_does_not_resume() {
 }
 
 /// The sidebar owns the compact applied-draft projection. Closing the detail
-/// subscription therefore cannot erase the title or selected cover from the
+/// subscription therefore cannot erase the title or effective cover from the
 /// row.
 #[tokio::test]
 async fn the_list_projects_the_applied_draft_and_cover() {
@@ -601,13 +601,15 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         .unwrap();
     assert_eq!(
         rows(&projection).remove(0).cover_thumbnail,
-        None,
-        "a rescan must retain an explicit clear"
+        Some(crate::import::CoverImageSource::Local {
+            path: PathBuf::from(format!("{root}/Album/cover.jpg")),
+        }),
+        "clearing the selection reveals the folder fallback"
     );
 }
 
 #[tokio::test]
-async fn the_list_projects_a_selected_cover_without_metadata() {
+async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
     let (db, tmp) = empty_db().await;
     let root = tmp.path().join("watched");
     std::fs::create_dir_all(&root).unwrap();
@@ -635,6 +637,23 @@ async fn the_list_projects_a_selected_cover_without_metadata() {
     .unwrap();
     db.finish_folder_scan(root, generation, None).await.unwrap();
 
+    assert!(db
+        .load_import_candidate_pane_rows(&candidate.files.content_hash())
+        .await
+        .unwrap()
+        .cover
+        .is_none());
+    let detail = db
+        .load_import_candidate(&candidate.path.to_string_lossy())
+        .await
+        .unwrap()
+        .expect("the candidate reads back");
+    assert_eq!(
+        detail.cover.map(|cover| cover.selection),
+        Some(crate::import::CoverSelection::Local(
+            "cover.jpg".to_string()
+        ))
+    );
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
         .await
@@ -646,6 +665,35 @@ async fn the_list_projects_a_selected_cover_without_metadata() {
         Some(crate::import::CoverImageSource::Local {
             path: PathBuf::from(format!("{root}/Album/cover.jpg")),
         })
+    );
+
+    save_verdict(&db, &candidate, "release-with-cover").await;
+    let hash = candidate.files.content_hash();
+    db.call(move |sql| {
+        sql.execute(
+            "UPDATE import_candidate_match SET cover_url = ?, cover_thumbnail_url = ?, \
+                 cover_label = ?, cover_source = 'musicbrainz' WHERE content_hash = ?",
+            params![
+                "https://example.invalid/full.jpg",
+                "https://example.invalid/thumb.jpg",
+                "Cover",
+                hash,
+            ],
+        )?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let projection = db
+        .load_import_list(request(TriageTab::Pending).await)
+        .await
+        .unwrap();
+    assert_eq!(
+        rows(&projection).remove(0).cover_thumbnail,
+        Some(crate::import::CoverImageSource::Remote {
+            url: "https://example.invalid/thumb.jpg".to_string(),
+        }),
+        "the matched release's cover outranks local fallback artwork"
     );
 }
 

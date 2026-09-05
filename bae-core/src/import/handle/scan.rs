@@ -332,10 +332,7 @@ impl ImportServiceHandle {
                     source_draft.track_mappings,
                     &current.track_mappings,
                 );
-                let cover = crate::import::file_tag_snapshot::default_cover(
-                    &snapshot_candidate.files,
-                    &snapshot,
-                );
+                let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
                 let _commit = self.folder_state_commit.lock().await;
                 self.editable_candidate_revision_for_commit(
                     &candidate_key,

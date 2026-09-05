@@ -401,8 +401,8 @@ pub struct TriageRow {
     /// The applied editable draft, independent of selection and of the
     /// identification result the row originally matched.
     pub metadata_summary: Option<TriageMetadataSummary>,
-    /// The cover selected for this candidate, independent of whether its
-    /// editable metadata contains text.
+    /// The effective cover the row renders: selection, matched artwork, or the
+    /// folder's default image.
     pub cover_thumbnail: Option<crate::import::CoverImageSource>,
     /// Whether this row takes a bulk-import checkbox — exactly the Ready rows,
     /// which is the whole point of the Ready rule. Carried rather than left to
