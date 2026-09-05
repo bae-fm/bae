@@ -286,7 +286,7 @@ impl BridgeArtworkStep {
                 total,
             } => BridgeArtworkStep::Failed {
                 failure: BridgeLookupFailure::from_core(failure),
-                read,
+                images_read: read,
                 total,
             },
         }
@@ -652,6 +652,22 @@ mod tests {
     };
     use bae_core::import::MetadataSource;
     use bae_core::signals::{DiscIdSignal, LookupFailure, SignalOrigin, SourcedValue};
+
+    #[test]
+    fn failed_artwork_preserves_the_number_of_images_read() {
+        assert_eq!(
+            BridgeArtworkStep::from_view(bae_core::identify::ArtworkStepView::Failed {
+                failure: LookupFailure::ArtworkAnalysis,
+                read: 2,
+                total: 5,
+            }),
+            BridgeArtworkStep::Failed {
+                failure: BridgeLookupFailure::ArtworkAnalysis,
+                images_read: 2,
+                total: 5,
+            }
+        );
+    }
 
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
         IdentifyState::Triangulating {

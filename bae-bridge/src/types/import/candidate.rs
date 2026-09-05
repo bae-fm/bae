@@ -681,10 +681,11 @@ pub enum BridgeArtworkStep {
         barcodes: u32,
         catalogs: u32,
     },
-    /// Reading stopped at a failure, `read` images in.
+    /// Reading stopped at a failure, `images_read` images in.
     Failed {
         failure: BridgeLookupFailure,
-        read: u32,
+        // Distinct from the Read variant: C# records inherit variant names.
+        images_read: u32,
         total: u32,
     },
 }
