@@ -17,6 +17,14 @@ struct AlbumDetailHeader: View {
     private var queue
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            metadata
+            playButtons
+            queueButtons
+        }
+    }
+
+    private var metadata: some View {
         HStack(alignment: .top, spacing: 16) {
             ImageView(imageRef: detail.summary.cover, pointSize: 140)
                 .frame(width: 140, height: 140)
@@ -46,17 +54,13 @@ struct AlbumDetailHeader: View {
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
                 }
-                playButtons
-                    .padding(.top, 8)
-                queueButtons
-                    .padding(.top, 4)
             }
             Spacer(minLength: 0)
         }
     }
 
     private var playButtons: some View {
-        HStack(spacing: 8) {
+        AlbumActionRow {
             Button {
                 playback.playRelease(releaseId, nil, false)
             } label: {
@@ -73,7 +77,7 @@ struct AlbumDetailHeader: View {
     }
 
     private var queueButtons: some View {
-        HStack(spacing: 8) {
+        AlbumActionRow {
             Button {
                 queue.addReleaseNext(releaseId)
             } label: {
@@ -89,6 +93,19 @@ struct AlbumDetailHeader: View {
         }
         .buttonStyle(.bordered)
         .tint(Theme.accent)
+    }
+}
+
+/// Actions use a row when their labels fit and a column at larger text sizes.
+private struct AlbumActionRow<Content: View>: View {
+    @ViewBuilder
+    var content: Content
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { content }.fixedSize()
+            VStack(alignment: .leading, spacing: 8) { content }
+        }
     }
 }
 

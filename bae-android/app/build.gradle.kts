@@ -23,11 +23,30 @@ val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
 fun buildConfigString(value: String?): String =
     value?.let { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" } ?: "null"
 
-// Bundle the canonical palette as a raw resource, including in layoutlib previews.
-val appearanceResources by tasks.registering(Copy::class) {
-    from("../../BaeKit/Sources/BaeKit/Resources/AppearancePalette.json")
-    rename { "appearance_palette.json" }
-    into(layout.buildDirectory.dir("generated/appearanceResources/raw"))
+// The same source supplies Compose colors and the native launch background.
+val appearancePaletteFile = file("../../BaeKit/Sources/BaeKit/Resources/AppearancePalette.json")
+val appearanceResourceDirectory = layout.buildDirectory.dir("generated/appearanceResources")
+val appearanceResources by tasks.registering {
+    inputs.file(appearancePaletteFile)
+    outputs.dir(appearanceResourceDirectory)
+    doLast {
+        val directory = appearanceResourceDirectory.get().asFile
+        val raw = directory.resolve("raw")
+        raw.mkdirs()
+        appearancePaletteFile.copyTo(raw.resolve("appearance_palette.json"), overwrite = true)
+        val palette = groovy.json.JsonSlurper().parse(appearancePaletteFile) as Map<*, *>
+        val tones = palette["tones"] as Map<*, *>
+        val neutral = tones["neutral"] as Map<*, *>
+        for ((mode, qualifier) in listOf("light" to "values", "dark" to "values-night")) {
+            val surfaces = neutral[mode] as Map<*, *>
+            val background = surfaces["background"] as String
+            val values = directory.resolve(qualifier)
+            values.mkdirs()
+            values.resolve("appearance_colors.xml").writeText(
+                "<resources><color name=\"appearance_launch_background\">$background</color></resources>\n",
+            )
+        }
+    }
 }
 
 tasks.named("preBuild") { dependsOn(appearanceResources) }

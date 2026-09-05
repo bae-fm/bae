@@ -1,6 +1,7 @@
 package fm.bae.app.ui
 
 import android.app.Activity
+import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.LocalTonalElevationEnabled
 import androidx.compose.material3.MaterialTheme
@@ -12,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalView
@@ -60,6 +62,12 @@ fun BaeTheme(
     if (!view.isInEditMode) {
         val activity = view.context as Activity
         SideEffect {
+            val background = colorScheme.background.toArgb()
+            activity.window.setBackgroundDrawable(ColorDrawable(background))
+            // Android 15 draws enforced edge-to-edge bars over the window;
+            // earlier releases still use these explicit bar colors.
+            activity.window.statusBarColor = background
+            activity.window.navigationBarColor = background
             val insetsController = WindowCompat.getInsetsController(activity.window, view)
             insetsController.isAppearanceLightStatusBars = !isDark
             insetsController.isAppearanceLightNavigationBars = !isDark
