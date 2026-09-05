@@ -652,7 +652,12 @@ public sealed class ImportMappingPaneTests
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg"),
                 new BridgeCoverImageSource.Local("/Music/Incoming/Album/cover.jpg")),
             Signals: null,
-            Failure: failure);
+            Failure: failure,
+            // This fixture has not visited Find Online or entered a query.
+            Session: new BridgeCandidateSession(
+                BridgeMetadataPresentation.Draft,
+                new BridgeSearchForm(BridgeSearchTab.General, "", "", "", ""),
+                null));
 
     private static BridgeTriageRow Row(
         BridgeMetadataProvenance? metadataProvenance,
