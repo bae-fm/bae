@@ -59,8 +59,7 @@ impl HighSampleRateTestFixture {
             format: vec![],
             country: Some("US".to_string()),
             label: vec!["Test Label".to_string()],
-            cover_image: None,
-            thumb: None,
+            covers: vec![],
             catno: None,
             artists: vec![DiscogsArtist {
                 name: "Test Artist".to_string(),

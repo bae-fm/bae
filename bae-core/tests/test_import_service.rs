@@ -311,8 +311,7 @@ fn discogs_release(title: &str, tracks: &[&str]) -> DiscogsRelease {
         format: vec![],
         country: None,
         label: vec![],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: None,
         artists: vec![DiscogsArtist {
             id: "discogs-artist-1".to_string(),

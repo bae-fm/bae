@@ -215,8 +215,46 @@ struct Format {
 struct Image {
     #[serde(rename = "type")]
     image_type: String,
-    uri: String,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
+    uri: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "crate::serde_helpers::empty_string_as_none"
+    )]
     uri150: Option<String>,
+}
+
+/// Discogs uses the same image array on releases and masters. Keep every
+/// usable image, with the primary image first and provider order otherwise.
+fn image_covers(images: Option<Vec<Image>>, entity: &str, id: u64) -> Vec<RemoteCover> {
+    let mut images: Vec<Image> = images.into_iter().flatten().collect();
+    images.sort_by_key(|image| image.image_type != "primary");
+    let mut covers = Vec::new();
+    for (index, image) in images.into_iter().enumerate() {
+        if let Some(mut cover) =
+            remote_cover_from_urls(image.uri.as_deref(), image.uri150.as_deref(), entity, id)
+        {
+            cover.label = format!("Discogs · [{entity}{id}] · {}", index + 1);
+            crate::import::cover_art::push_unique_cover(&mut covers, cover);
+        }
+    }
+    covers
+}
+
+/// Artwork from an archived master document, using the release image parser.
+pub(crate) fn parse_discogs_master_covers(
+    raw_json: &str,
+) -> Result<Vec<RemoteCover>, DiscogsError> {
+    #[derive(Deserialize)]
+    struct MasterImages {
+        id: u64,
+        images: Option<Vec<Image>>,
+    }
+    let master: MasterImages = serde_json::from_str(raw_json)?;
+    Ok(image_covers(master.images, "m", master.id))
 }
 #[derive(Debug, Deserialize)]
 struct TrackResponse {
@@ -308,14 +346,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
             .filter_map(extra_artist_to_model)
             .collect()
     });
-    let primary_image = release.images.as_ref().and_then(|images| {
-        images
-            .iter()
-            .find(|img| img.image_type == "primary")
-            .or_else(|| images.first())
-    });
-    let cover_image = primary_image.map(|img| img.uri.clone());
-    let thumb = primary_image.and_then(|img| img.uri150.clone().or_else(|| Some(img.uri.clone())));
+    let covers = image_covers(release.images, "r", release.id);
     let master_id = release.master_id.map(|id| id.to_string());
     let labels = release.labels.unwrap_or_default();
     let label_names: Vec<String> = labels.iter().map(|l| l.name.clone()).collect();
@@ -330,8 +361,7 @@ pub fn parse_discogs_release_json(raw_json: &str) -> Result<DiscogsRelease, Disc
         country: release.country,
         label: label_names,
         catno,
-        cover_image,
-        thumb,
+        covers,
         artists,
         extraartists,
         tracklist,

@@ -109,6 +109,53 @@ fn search_result_remote_cover_is_absent_without_cover_fields() {
 }
 
 #[test]
+fn release_images_keep_order_and_normalize_missing_urls() {
+    let release = parse_discogs_release_json(
+        &serde_json::json!({
+            "id": 123, "title": "Album Title", "images": [
+                { "type": "secondary", "uri": "https://images.example/back.jpg", "uri150": "" },
+                { "type": "primary", "uri": "", "uri150": "https://images.example/front.jpg" },
+                { "type": "secondary", "uri": "", "uri150": "" },
+                { "type": "secondary", "uri": "https://images.example/back.jpg" }
+            ]
+        })
+        .to_string(),
+    )
+    .expect("release parses");
+    assert_eq!(release.covers.len(), 2);
+    assert_eq!(release.covers[0].url, "https://images.example/front.jpg");
+    assert_eq!(
+        release.covers[1].thumbnail_url,
+        "https://images.example/back.jpg"
+    );
+    assert!(release.covers[0].label.contains("[r123]"));
+}
+
+#[test]
+fn master_images_keep_secondary_artwork() {
+    let covers = parse_discogs_master_covers(
+        &serde_json::json!({
+            "id": 456, "images": [
+                { "type": "primary", "uri": "https://images.example/front.jpg" },
+                { "type": "secondary", "uri": "https://images.example/booklet.jpg" }
+            ]
+        })
+        .to_string(),
+    )
+    .expect("master images parse");
+    assert_eq!(covers.len(), 2);
+    assert!(covers[1].label.contains("[m456]"));
+    assert_eq!(covers[1].url, "https://images.example/booklet.jpg");
+}
+
+#[test]
+fn release_without_images_offers_none() {
+    let release =
+        parse_discogs_release_json(r#"{"id":123,"title":"Album Title"}"#).expect("release parses");
+    assert!(release.covers.is_empty());
+}
+
+#[test]
 fn release_parser_preserves_nested_tracklist_entries() {
     let release = parse_discogs_release_json(
         &serde_json::json!({

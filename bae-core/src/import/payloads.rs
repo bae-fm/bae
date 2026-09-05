@@ -184,19 +184,38 @@ impl ReleasePayloads {
     /// The cover options this release offers, in the order a picker shows
     /// them.
     ///
-    /// Both come out of the documents themselves. A MusicBrainz release states
-    /// whether the archive holds a front image for it, and names the release
-    /// group whose album-level image is the other offer; a Discogs release
-    /// carries its cover's URL inside its own document.
+    /// Include artwork from the anchor and its archived cross-references.
+    /// Discogs releases and masters carry their complete image lists.
     pub fn covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+        let mut covers = Vec::new();
         match self.release.source {
-            MetadataSource::MusicBrainz => Ok(crate::import::cover_art::musicbrainz_covers(
-                &self.musicbrainz_anchor()?,
-            )),
+            MetadataSource::MusicBrainz => {
+                covers.extend(crate::import::cover_art::musicbrainz_covers(
+                    &self.musicbrainz_anchor()?,
+                ));
+                if let Some(release) = self.discogs_xref()? {
+                    covers.extend(release.covers);
+                }
+            }
             MetadataSource::Discogs => {
-                Ok(self.discogs_anchor()?.remote_cover().into_iter().collect())
+                covers.extend(self.discogs_anchor()?.covers);
+                if let Some(release) = self.musicbrainz_xref()? {
+                    covers.extend(crate::import::cover_art::musicbrainz_covers(&release));
+                }
             }
         }
+        if let Some(json) = self.document(PayloadSource::DiscogsMaster) {
+            covers.extend(
+                crate::discogs::client::parse_discogs_master_covers(json).map_err(|e| {
+                    self.source_data(format!("stored Discogs master images do not parse: {e}"))
+                })?,
+            );
+        }
+        let mut unique = Vec::new();
+        for cover in covers {
+            crate::import::cover_art::push_unique_cover(&mut unique, cover);
+        }
+        Ok(unique)
     }
 
     /// The cover a surface offers first for this release, and therefore the one
@@ -355,8 +374,8 @@ async fn fetch_musicbrainz(
 /// editor cross-linked to it.
 ///
 /// The master and the cross-reference are both best-effort: a release archived
-/// without either still describes itself, and the master's only contribution —
-/// the original release year — falls back to the release's own.
+/// without either still describes itself. A missing master leaves the release's
+/// own year and artwork available.
 async fn fetch_discogs(
     client: &DiscogsClient,
     release_id: &str,
@@ -497,10 +516,103 @@ mod tests {
     use coven::{FixedClock, SequentialIdProvider};
     use std::sync::Arc;
 
+    #[test]
+    fn discogs_cover_choices_keep_every_image() {
+        let payloads = ReleasePayloads {
+            release: MetadataRef::new("123", MetadataSource::Discogs),
+            anchor: serde_json::json!({
+                "id": 123,
+                "title": "Album Title",
+                "images": [
+                    { "type": "secondary", "uri": "https://images.example/back.jpg", "uri150": "https://images.example/back-small.jpg" },
+                    { "type": "primary", "uri": "https://images.example/front.jpg", "uri150": "https://images.example/front-small.jpg" }
+                ]
+            }).to_string(),
+            supporting: vec![],
+        };
+        let covers = payloads.covers().expect("cover choices parse");
+        assert_eq!(covers.len(), 2);
+        assert_eq!(covers[0].url, "https://images.example/front.jpg");
+        assert_eq!(covers[1].url, "https://images.example/back.jpg");
+        assert_eq!(
+            covers[1].thumbnail_url,
+            "https://images.example/back-small.jpg"
+        );
+    }
+
     fn now() -> DateTime<Utc> {
         chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .expect("a valid test instant")
             .with_timezone(&Utc)
+    }
+
+    #[test]
+    fn cover_choices_include_cross_references_and_deduplicate_master_images() {
+        let discogs = serde_json::json!({
+            "id": 123, "title": "Album Title", "master_id": 456,
+            "images": [{ "type": "primary", "uri": "https://images.example/front.jpg" }]
+        })
+        .to_string();
+        let musicbrainz = serde_json::json!({
+            "id": "mb-release", "title": "Album Title",
+            "artist-credit": [], "label-info": [], "media": [], "relations": [],
+            "release-group": { "id": "mb-group" },
+            "cover-art-archive": { "front": true, "darkened": false }
+        })
+        .to_string();
+        let master = SourcePayload::new(
+            PayloadSource::DiscogsMaster,
+            "456",
+            serde_json::json!({
+                "id": 456, "images": [
+                    { "type": "primary", "uri": "https://images.example/front.jpg" },
+                    { "type": "secondary", "uri": "https://images.example/booklet.jpg" }
+                ]
+            })
+            .to_string(),
+        );
+        for (source, anchor, supporting) in [
+            (
+                MetadataSource::Discogs,
+                discogs.clone(),
+                SourcePayload::new(
+                    PayloadSource::MusicBrainzDiscogsXref,
+                    "123",
+                    musicbrainz.clone(),
+                ),
+            ),
+            (
+                MetadataSource::MusicBrainz,
+                musicbrainz,
+                SourcePayload::new(PayloadSource::Discogs, "123", discogs),
+            ),
+        ] {
+            let covers = ReleasePayloads {
+                release: MetadataRef::new("source-release", source),
+                anchor,
+                supporting: vec![supporting, master.clone()],
+            }
+            .covers()
+            .expect("all archived artwork parses");
+            assert_eq!(covers.len(), 4);
+            assert_eq!(
+                covers
+                    .iter()
+                    .filter(|cover| cover.source == MetadataSource::Discogs)
+                    .count(),
+                2
+            );
+            assert_eq!(
+                covers
+                    .iter()
+                    .filter(|cover| cover.url == "https://images.example/front.jpg")
+                    .count(),
+                1
+            );
+            assert!(covers
+                .iter()
+                .any(|cover| cover.url == "https://images.example/booklet.jpg"));
+        }
     }
 
     async fn test_database() -> (Database, tempfile::TempDir) {

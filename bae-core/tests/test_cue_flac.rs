@@ -655,8 +655,7 @@ fn create_test_discogs_release() -> DiscogsRelease {
         format: vec![],
         country: Some("US".to_string()),
         label: vec!["Test Label".to_string()],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: None,
         artists: vec![DiscogsArtist {
             id: "discogs-artist-1".to_string(),

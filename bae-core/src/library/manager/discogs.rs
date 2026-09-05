@@ -78,16 +78,23 @@ impl DiscogsSession {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    async fn release_cover(
+    async fn release_covers(
         &self,
         release_id: &str,
         priority: CallPriority,
-    ) -> Result<Option<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
         let Some(client) = self.client.as_ref() else {
-            return Ok(None);
+            return Err(crate::import::ImportError::DiscogsNotConfigured);
         };
         let (release, _) = client.get_release(release_id, priority).await?;
-        Ok(release.remote_cover())
+        let mut covers = release.covers;
+        if let Some(master_id) = release.master_id {
+            let (_, json) = client.get_master(&master_id, priority).await?;
+            for cover in crate::discogs::client::parse_discogs_master_covers(&json)? {
+                crate::import::cover_art::push_unique_cover(&mut covers, cover);
+            }
+        }
+        Ok(covers)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -220,13 +227,13 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) async fn fetch_discogs_release_cover(
+    pub(crate) async fn fetch_discogs_release_covers(
         &self,
         release_id: &str,
         priority: CallPriority,
-    ) -> Result<Option<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
         DiscogsSession::open(&self.config_handle, &self.database)?
-            .release_cover(release_id, priority)
+            .release_covers(release_id, priority)
             .await
     }
 

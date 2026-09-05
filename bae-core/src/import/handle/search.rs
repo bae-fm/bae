@@ -197,8 +197,8 @@ impl ImportServiceHandle {
     /// per-pressing image (from `source_release_id`) and its album-level one
     /// (from `source_group_id`) at the archive's fixed addresses for them —
     /// costing no request, since the picker's thumbnail fetch is what resolves
-    /// each. Discogs has no address to derive, so its per-pressing cover comes
-    /// from fetching the release document that carries the URL.
+    /// each. Discogs image URLs come from the release and master documents,
+    /// which offer every image rather than only the primary cover.
     ///
     /// Covers come back in resolution order and the picker renders them as-is.
     /// A release without an external identity has no identity rows, so it returns an empty list —
@@ -229,29 +229,25 @@ impl ImportServiceHandle {
                     }
                 }
                 MetadataSource::Discogs => {
-                    // Discogs only exposes per-release covers via the API;
-                    // no master-level cover endpoint to mirror MB's CAA.
                     let rid = &identity.source_release_id;
                     match self
                         .library_manager
-                        .fetch_discogs_release_cover(rid, CallPriority::Interactive)
+                        .fetch_discogs_release_covers(rid, CallPriority::Interactive)
                         .await
                     {
-                        Ok(Some(cover)) => covers.push(cover),
-                        Ok(None) => {
+                        Ok(found) => {
+                            for cover in found {
+                                crate::import::cover_art::push_unique_cover(&mut covers, cover);
+                            }
+                        }
+                        Err(crate::import::ImportError::DiscogsNotConfigured) => {
                             debug!(
                                 release_id,
                                 source_release_id = %rid,
                                 "skipping Discogs cover fetch: Discogs is not configured"
                             );
                         }
-                        Err(error) => {
-                            warn!(
-                                release_id,
-                                source_release_id = %rid,
-                                "Discogs cover fetch failed; skipping this source: {error}"
-                            );
-                        }
+                        Err(error) => return Err(error),
                     }
                 }
             }

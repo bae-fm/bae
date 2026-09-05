@@ -8,8 +8,7 @@ fn discogs_release_rich(title: &str, master_id: &str, tracks: &[&str]) -> Discog
         format: vec!["CD".to_string()],
         country: Some("US".to_string()),
         label: vec!["Label Name".to_string()],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: Some("CAT-001".to_string()),
         artists: vec![DiscogsArtist {
             id: "discogs-artist-1".to_string(),

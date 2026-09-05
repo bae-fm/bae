@@ -156,8 +156,7 @@ fn create_test_album() -> DiscogsRelease {
         format: vec![],
         country: Some("US".to_string()),
         label: vec!["Test Label".to_string()],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: None,
         artists: vec![DiscogsArtist {
             name: "Test Artist".to_string(),
@@ -268,8 +267,7 @@ fn create_cue_flac_test_album() -> DiscogsRelease {
         format: vec![],
         country: Some("Test Country".to_string()),
         label: vec!["Test Label".to_string()],
-        cover_image: None,
-        thumb: None,
+        covers: vec![],
         catno: None,
         artists: vec![DiscogsArtist {
             name: "Test Artist".to_string(),

@@ -288,10 +288,10 @@ pub fn seed_discogs_test_release(release: bae_core::discogs::DiscogsRelease) -> 
             "name": name,
             "catno": if index == 0 { release.catno.clone() } else { None },
         })).collect::<Vec<_>>(),
-        "images": release.cover_image.iter().map(|uri| serde_json::json!({
-            "type": "primary",
-            "uri": uri,
-            "uri150": release.thumb,
+        "images": release.covers.iter().enumerate().map(|(index, cover)| serde_json::json!({
+            "type": if index == 0 { "primary" } else { "secondary" },
+            "uri": cover.url,
+            "uri150": cover.thumbnail_url,
         })).collect::<Vec<_>>(),
         "artists": release.artists.iter().map(credit).collect::<Vec<_>>(),
         "extraartists": release.extraartists.as_ref().map(|artists| {
