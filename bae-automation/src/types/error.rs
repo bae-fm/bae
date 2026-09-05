@@ -111,7 +111,8 @@ impl From<bae_core::ui::UiError> for AutomationError {
             UiErrorCategory::Import => Self::Import(detail),
             UiErrorCategory::Config => Self::Validation(detail),
             UiErrorCategory::Internal => Self::Internal(detail),
-            UiErrorCategory::Export
+            UiErrorCategory::SyncUpdateRequired
+            | UiErrorCategory::Export
             | UiErrorCategory::Save
             | UiErrorCategory::CloudSetup(_)
             | UiErrorCategory::DeviceIdentityMissing

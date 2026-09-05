@@ -14,12 +14,13 @@ use tracing::warn;
 
 use super::LibraryError;
 use crate::db::Database;
+use crate::ui::{UiError, UiErrorCategory};
 
 /// The banner state bae maintains across cycles. Each field holds what the last
 /// status with a verdict on it said.
 #[derive(Debug, Clone)]
 pub(super) struct SyncStatusState {
-    pub(super) error: Option<String>,
+    pub(super) error: Option<UiError>,
     pub(super) blocked: Vec<BlockedSyncOperation>,
     pub(super) last_sync_time_raw: Option<String>,
     pub(super) last_sync_time: Option<i64>,
@@ -47,7 +48,7 @@ impl SyncStatusState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SyncStatusUpdate {
     /// `Some(None)` clears the banner, `Some(Some(fault))` sets it.
-    pub(super) error: Option<Option<String>>,
+    pub(super) error: Option<Option<UiError>>,
     /// The RFC 3339 time of a completed cycle.
     pub(super) last_sync_time: Option<String>,
     pub(super) blocked: Option<Vec<BlockedSyncOperation>>,
@@ -64,7 +65,7 @@ impl SyncStatusUpdate {
                 blocked: None,
             },
             SyncLoopStatus::Synchronized(success) => Self {
-                error: Some(None),
+                error: Some(held_sync_error(&success.alerts.held_positions)),
                 last_sync_time: Some(success.last_sync_time.clone()),
                 blocked: Some(Vec::new()),
             },
@@ -72,7 +73,7 @@ impl SyncStatusUpdate {
                 success,
                 operations,
             } => Self {
-                error: Some(None),
+                error: Some(held_sync_error(&success.alerts.held_positions)),
                 last_sync_time: Some(success.last_sync_time.clone()),
                 blocked: Some(
                     operations
@@ -88,13 +89,35 @@ impl SyncStatusUpdate {
                 // the log.
                 warn!("sync loop failed: {error}");
                 Self {
-                    error: Some(Some(error.to_string())),
+                    error: Some(Some(UiError::internal(error))),
                     last_sync_time: None,
                     blocked: None,
                 }
             }
         }
     }
+}
+
+/// A completed network cycle may still have refused remote updates. Keep those
+/// reasons visible; completion alone does not mean the library is synchronized.
+fn held_sync_error(positions: &[coven::HeldStorePosition]) -> Option<UiError> {
+    if positions.is_empty() {
+        return None;
+    }
+    let category = if positions.iter().any(|position| {
+        matches!(
+            position.reason,
+            coven::HeldStorePositionReason::NewerSchema { .. }
+        )
+    }) {
+        UiErrorCategory::SyncUpdateRequired
+    } else {
+        UiErrorCategory::Internal
+    };
+    Some(UiError::diagnostic(
+        category,
+        format!("Sync held remote updates: {positions:?}"),
+    ))
 }
 
 /// One durable sync operation that cannot proceed until a person acts.
@@ -308,6 +331,74 @@ mod tests {
         }
     }
 
+    #[test]
+    fn a_newer_schema_is_not_reported_as_successful_sync() {
+        let mut success = success();
+        success
+            .alerts
+            .held_positions
+            .push(coven::HeldStorePosition {
+                coordinate: coven::HeldStoreCoordinate::Package {
+                    device_id: "peer".to_string(),
+                    seq: 90,
+                    package_hash: coven::ObjectHash::digest(b"newer schema package"),
+                },
+                reason: coven::HeldStorePositionReason::NewerSchema {
+                    local: 15,
+                    required: 17,
+                },
+            });
+        for status in [
+            SyncLoopStatus::Synchronized(success.clone()),
+            SyncLoopStatus::Blocked {
+                success,
+                operations: vec![blocked_write("write-1")],
+            },
+        ] {
+            let update = SyncStatusUpdate::from_loop_status(&status);
+            assert!(!update
+                .error
+                .as_ref()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .can_reconnect_sync());
+            assert!(
+                matches!(
+                    update.error,
+                    Some(Some(UiError::Diagnostic {
+                        category: UiErrorCategory::SyncUpdateRequired,
+                        ..
+                    }))
+                ),
+                "held updates must require an app update"
+            );
+        }
+    }
+
+    #[test]
+    fn other_held_updates_report_their_reason_without_requesting_an_app_update() {
+        let mut success = success();
+        success
+            .alerts
+            .held_positions
+            .push(coven::HeldStorePosition {
+                coordinate: coven::HeldStoreCoordinate::Package {
+                    device_id: "peer".to_string(),
+                    seq: 90,
+                    package_hash: coven::ObjectHash::digest(b"missing package"),
+                },
+                reason: coven::HeldStorePositionReason::MissingCommit,
+            });
+        let update = SyncStatusUpdate::from_loop_status(&SyncLoopStatus::Synchronized(success));
+        let error = update.error.unwrap().expect("held updates remain visible");
+        assert!(error.can_reconnect_sync());
+        assert!(matches!(error, UiError::Diagnostic {
+            category: UiErrorCategory::Internal,
+            ref detail,
+        } if detail.contains("MissingCommit")));
+    }
+
     fn blocked_write(write_id: &str) -> coven::BlockedOperation {
         coven::BlockedOperation::Write(coven::PendingWrite {
             write_id: coven::WriteId::from_generated(write_id.to_string()),
@@ -372,10 +463,9 @@ mod tests {
 
         assert_eq!(
             update.error,
-            Some(Some(
+            Some(Some(UiError::internal(
                 "check sync storage: storage operation failed: the bucket refused the request"
-                    .to_string()
-            ))
+            )))
         );
         assert_eq!(update.last_sync_time, None);
         assert_eq!(

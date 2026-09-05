@@ -1,5 +1,6 @@
 package fm.bae.app.ui.settings
 
+import fm.bae.app.data.SyncFailure
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import uniffi.bae_bridge.BridgeSyncIndicator
@@ -11,10 +12,10 @@ import uniffi.bae_bridge.BridgeSyncIndicator
  */
 class SettingsSyncStatusTest {
     @Test
-    fun errorMapsToDisconnectedCarryingTheMessage() {
+    fun errorKeepsItsMessageAndRecoveryAction() {
         assertEquals(
-            SettingsSyncStatus.Disconnected("network unreachable"),
-            settingsSyncStatus(BridgeSyncIndicator.Error, syncError = "network unreachable"),
+            SettingsSyncStatus.Failed(SyncFailure("network unreachable", true)),
+            settingsSyncStatus(BridgeSyncIndicator.Error, syncError = SyncFailure("network unreachable", true)),
         )
     }
 

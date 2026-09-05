@@ -211,7 +211,8 @@ internal sealed partial class SettingsWindow
             syncStatus.Text = fresh.SyncStatusText(_app.SyncStatusStore.SyncReady);
             syncFailure.Render(
                 fresh.SyncProvider is null ? null : _app.SyncStatusStore.ErrorText,
-                _app.SyncStatusStore.ErrorDetail);
+                _app.SyncStatusStore.ErrorDetail,
+                _app.SyncStatusStore.CanReconnect);
             syncBlocked.Render(
                 fresh.SyncProvider is null
                     ? Array.Empty<uniffi.bae_bridge.BridgeBlockedSyncOperation>()

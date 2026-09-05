@@ -545,6 +545,10 @@ impl crate::types::BridgeQueueUpcomingPage {
 
 impl crate::types::BridgeSyncStatusSnapshot {
     pub(super) fn from_core(snapshot: bae_core::library::SyncStatusSnapshot) -> Self {
+        let can_reconnect = snapshot
+            .error
+            .as_ref()
+            .is_some_and(bae_core::ui::UiError::can_reconnect_sync);
         let bae_core::library::SyncStatusSnapshot {
             error,
             blocked,
@@ -554,6 +558,7 @@ impl crate::types::BridgeSyncStatusSnapshot {
         } = snapshot;
         crate::types::BridgeSyncStatusSnapshot {
             error: error.map(crate::types::BridgeError::from_core),
+            can_reconnect,
             blocked: blocked
                 .into_iter()
                 .map(crate::types::BridgeBlockedSyncOperation::from_core)

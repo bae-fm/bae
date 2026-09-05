@@ -346,15 +346,17 @@ private struct LibraryBanner: View {
         // longer has.
         else if let error = syncStatusStore.error, configStore.config.sync != nil {
             banner(message: error.line, detail: error.detailSummary) {
-                if reconnecting {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(Color.white)
-                }
-                else {
-                    Button("Retry") { Task { await reconnect() } }
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.white)
+                if syncStatusStore.canReconnect {
+                    if reconnecting {
+                        ProgressView()
+                            .controlSize(.small)
+                            .tint(Color.white)
+                    }
+                    else {
+                        Button("Retry") { Task { await reconnect() } }
+                            .font(.caption.bold())
+                            .foregroundStyle(Color.white)
+                    }
                 }
             }
         }

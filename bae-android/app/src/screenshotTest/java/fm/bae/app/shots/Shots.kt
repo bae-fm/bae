@@ -1,13 +1,16 @@
 package fm.bae.app.shots
 
 import android.content.res.Configuration
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.coreString
 import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
@@ -17,6 +20,7 @@ import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
 import fm.bae.app.ui.library.ArtworkLoadingBanner
+import fm.bae.app.ui.library.ErrorBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.settings.AppearanceSection
@@ -173,5 +177,17 @@ fun ArtworkFailure() {
         }
     BaeTheme {
         ArtworkLoadingBanner(store)
+    }
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
+@Composable
+fun SyncUpdateRequired() {
+    BaeTheme {
+        Column {
+            ArtworkFailure()
+            ErrorBanner(message = LocalContext.current.coreString("core.error.sync_update_required"))
+        }
     }
 }

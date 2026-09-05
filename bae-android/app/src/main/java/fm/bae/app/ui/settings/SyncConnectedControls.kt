@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.coreString
+import fm.bae.app.data.SyncFailure
 import fm.bae.app.localizedLine
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
@@ -37,14 +38,13 @@ import uniffi.bae_bridge.BridgeSyncProvider
 
 /**
  * The sync row's rendered state, derived from the runtime sync snapshot. A
- * present error means the last sync cycle failed and the row offers a
- * reconnect; an absent error falls back to whether the loop is up ([Synced]) or
- * still coming up ([Syncing]). Only meaningful when a cloud provider is
+ * present error carries its message and whether reconnection can help. Without
+ * an error, the row shows whether the loop is synced or still coming up. Only meaningful when a cloud provider is
  * configured — the error takes precedence over readiness.
  */
 internal sealed interface SettingsSyncStatus {
-    data class Disconnected(
-        val error: String,
+    data class Failed(
+        val error: SyncFailure?,
     ) : SettingsSyncStatus
 
     data object Synced : SettingsSyncStatus
@@ -54,12 +54,12 @@ internal sealed interface SettingsSyncStatus {
 
 internal fun settingsSyncStatus(
     indicator: BridgeSyncIndicator,
-    syncError: String?,
+    syncError: SyncFailure?,
 ): SettingsSyncStatus =
     when (indicator) {
-        // The reconnect row needs the error's line; the indicator only says an
-        // error exists, so the line rides alongside.
-        is BridgeSyncIndicator.Error -> SettingsSyncStatus.Disconnected(syncError.orEmpty())
+        // The indicator also reports blocked operations, whose own rows below
+        // carry their failures even when the cycle itself has no error.
+        is BridgeSyncIndicator.Error -> SettingsSyncStatus.Failed(syncError)
 
         is BridgeSyncIndicator.Synced -> SettingsSyncStatus.Synced
 
@@ -79,7 +79,7 @@ internal fun SyncConnectedControls(
     session: OpenLibrary,
     sync: BridgeSyncConfig,
     indicator: BridgeSyncIndicator,
-    syncError: String?,
+    syncError: SyncFailure?,
     blocked: List<BridgeBlockedSyncOperation>,
 ) {
     val scope = rememberCoroutineScope()
@@ -133,25 +133,31 @@ internal fun SyncConnectedControls(
 
 /**
  * The sync status line under "Cloud sync on": either a failure with its message
- * and a reconnect action, or the live loop's synced/coming-up state. Rendered
+ * and any recovery action, or the live loop's synced/coming-up state. Rendered
  * only when a cloud provider is configured.
  */
 @Composable
-private fun SettingsSyncStatusRow(
+internal fun SettingsSyncStatusRow(
     indicator: BridgeSyncIndicator,
-    syncError: String?,
+    syncError: SyncFailure?,
     onReconnect: () -> Unit,
 ) {
     when (val status = settingsSyncStatus(indicator, syncError)) {
-        is SettingsSyncStatus.Disconnected -> {
-            Text(
-                text = stringResource(R.string.settings_sync_disconnected),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-            SyncStatusDetail(status.error)
-            OutlinedButton(onClick = onReconnect) {
-                Text(stringResource(R.string.settings_reconnect))
+        is SettingsSyncStatus.Failed -> {
+            status.error?.let { error ->
+                if (error.canReconnect) {
+                    Text(
+                        text = stringResource(R.string.settings_sync_disconnected),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                SyncStatusDetail(error.message)
+                if (error.canReconnect) {
+                    OutlinedButton(onClick = onReconnect) {
+                        Text(stringResource(R.string.settings_reconnect))
+                    }
+                }
             }
         }
 

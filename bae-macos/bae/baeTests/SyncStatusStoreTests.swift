@@ -31,6 +31,7 @@ struct SyncStatusStoreTests {
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: .Diagnostic(category: .internal, detail: fault),
+                canReconnect: true,
                 blocked: [],
                 lastSyncTime: nil,
                 syncing: false,
@@ -58,6 +59,7 @@ struct SyncStatusStoreTests {
         sync.apply(
             BridgeSyncStatusSnapshot(
                 error: nil,
+                canReconnect: false,
                 blocked: [
                     BridgeBlockedSyncOperation(
                         id: "write:write-1",
@@ -86,9 +88,35 @@ struct SyncStatusStoreTests {
         #expect(sync.error == nil)
     }
 
+    @MainActor
+    @Test("a required app update is visible without offering reconnection")
+    func requiredUpdateHasNoReconnect() throws {
+        let sync = SyncStatusStore()
+        sync.apply(
+            BridgeSyncStatusSnapshot(
+                error: .Diagnostic(
+                    category: .syncUpdateRequired,
+                    detail: "schema 17 required"
+                ),
+                canReconnect: false,
+                blocked: [],
+                lastSyncTime: nil,
+                syncing: false,
+                syncReady: true
+            )
+        )
+        #expect(
+            try #require(sync.error).line
+                == BridgeErrorCategory.syncUpdateRequired.localizedLine
+        )
+        #expect(sync.indicator == .error)
+        #expect(!sync.canReconnect)
+    }
+
     private func status(syncReady: Bool) -> BridgeSyncStatusSnapshot {
         BridgeSyncStatusSnapshot(
             error: nil,
+            canReconnect: false,
             blocked: [],
             lastSyncTime: nil,
             syncing: false,

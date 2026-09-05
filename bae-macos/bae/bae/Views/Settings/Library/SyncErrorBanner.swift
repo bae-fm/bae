@@ -49,18 +49,20 @@ struct SyncErrorBanner: View {
                 tint: .secondary,
                 showIcon: false
             )
-            HStack(spacing: 8) {
-                Button("Reconnect") {
-                    Task {
-                        reconnecting = true
-                        await onReconnect()
-                        reconnecting = false
+            if syncStatusStore.canReconnect {
+                HStack(spacing: 8) {
+                    Button("Reconnect") {
+                        Task {
+                            reconnecting = true
+                            await onReconnect()
+                            reconnecting = false
+                        }
                     }
-                }
-                .disabled(reconnecting)
-                if reconnecting {
-                    ProgressView()
-                        .controlSize(.small)
+                    .disabled(reconnecting)
+                    if reconnecting {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
                 }
             }
         }
@@ -160,6 +162,7 @@ private struct BlockedSyncOperationRow: View {
                         category: .network,
                         detail: "The cloud provider rejected the request."
                     ),
+                    canReconnect: true,
                     blocked: [],
                     lastSyncTime: nil,
                     syncing: false,
@@ -181,6 +184,7 @@ private struct BlockedSyncOperationRow: View {
             SyncStatusStore(
                 snapshot: BridgeSyncStatusSnapshot(
                     error: nil,
+                    canReconnect: false,
                     blocked: [
                         BridgeBlockedSyncOperation(
                             id: "write:write-1",

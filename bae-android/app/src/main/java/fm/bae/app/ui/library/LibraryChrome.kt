@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.AlbumPageStore
+import fm.bae.app.data.SyncFailure
 import fm.bae.app.reconnectFailedSync
 import fm.bae.app.ui.BaeTheme
 import kotlinx.coroutines.launch
@@ -63,19 +64,19 @@ import uniffi.bae_bridge.BridgeSortField
 internal fun LibraryErrorBanner(
     page: AlbumPageStore,
     appError: String?,
-    syncError: String?,
+    syncError: SyncFailure?,
     session: OpenLibrary,
 ) {
     val scope = rememberCoroutineScope()
     val reconnect: () -> Unit = { scope.launch { reconnectFailedSync(session.appHandle) } }
     val appendError = if (page.rows.isNotEmpty()) page.error else null
-    val banner = appendError?.message ?: appError ?: syncError ?: return
+    val banner = appendError?.message ?: appError ?: syncError?.message ?: return
     ErrorBanner(
         message = banner,
         onRetry =
             when {
                 appendError != null -> appendError.onRetry
-                appError == null && syncError != null -> reconnect
+                appError == null && syncError?.canReconnect == true -> reconnect
                 else -> null
             },
     )
@@ -84,16 +85,16 @@ internal fun LibraryErrorBanner(
 @Composable
 internal fun LibraryGlobalErrorBanner(
     appError: String?,
-    syncError: String?,
+    syncError: SyncFailure?,
     session: OpenLibrary,
 ) {
     val scope = rememberCoroutineScope()
     val reconnect: () -> Unit = { scope.launch { reconnectFailedSync(session.appHandle) } }
-    val banner = appError ?: syncError ?: return
+    val banner = appError ?: syncError?.message ?: return
     ErrorBanner(
         message = banner,
         onRetry =
-            if (appError == null && syncError != null) {
+            if (appError == null && syncError?.canReconnect == true) {
                 reconnect
             } else {
                 null

@@ -26,6 +26,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.data.DownloadStore
+import fm.bae.app.data.SyncFailure
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.downloads.DownloadsSummaryStrip
 import fm.bae.app.ui.playback.NowPlayingBar
@@ -161,7 +162,7 @@ private fun LibraryBrowserContent(
     composerSortCriterion: BridgeComposerSortCriterion,
     artistSortCriterion: BridgeArtistSortCriterion,
     appError: String?,
-    syncError: String?,
+    syncError: SyncFailure?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
     onSelectComposer: (String) -> Unit,
@@ -220,7 +221,7 @@ private fun AlbumBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeSortCriterion,
     appError: String?,
-    syncError: String?,
+    syncError: SyncFailure?,
     gridState: LazyGridState,
     onSelectAlbum: (String) -> Unit,
 ) {
@@ -251,7 +252,7 @@ private fun ComposerBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeComposerSortCriterion,
     appError: String?,
-    syncError: String?,
+    syncError: SyncFailure?,
     onSelectComposer: (String) -> Unit,
 ) {
     val page =
@@ -278,7 +279,7 @@ private fun ArtistBrowserContent(
     session: OpenLibrary,
     sortCriterion: BridgeArtistSortCriterion,
     appError: String?,
-    syncError: String?,
+    syncError: SyncFailure?,
     onSelectArtist: (String) -> Unit,
 ) {
     val page =

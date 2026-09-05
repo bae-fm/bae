@@ -17,7 +17,7 @@ public sealed class SyncFailureViewTests
         view.Render(
             "Something went wrong.",
             "sync cycle: pull Store commits: database: retained Merge replay "
-                + "has an unresolved foreign-key dependency");
+                + "has an unresolved foreign-key dependency", true);
 
         Assert.True(view.IsVisible);
         Assert.Equal("Something went wrong.", view.LineText.Text);
@@ -33,10 +33,21 @@ public sealed class SyncFailureViewTests
     {
         var view = new SyncFailureView(() => Task.CompletedTask);
 
-        view.Render("Something went wrong.", null);
+        view.Render("Something went wrong.", null, true);
 
         Assert.True(view.IsVisible);
         Assert.False(view.DetailText.IsVisible);
+    }
+
+    [AvaloniaFact]
+    public void AnAppUpdateCannotBeRetriedByReconnecting()
+    {
+        var view = new SyncFailureView(() => Task.CompletedTask);
+        view.Render("Update the app to continue syncing.", "schema 17 required", false);
+        Assert.True(view.IsVisible);
+        Assert.False(view.ReconnectButton.IsVisible);
+        view.Render("Could not reach the cloud.", "connection reset", true);
+        Assert.True(view.ReconnectButton.IsVisible);
     }
 
     /// Healthy sync is not a failure with empty text — the row is gone.
@@ -44,9 +55,9 @@ public sealed class SyncFailureViewTests
     public void HealthySyncHidesTheRow()
     {
         var view = new SyncFailureView(() => Task.CompletedTask);
-        view.Render("Something went wrong.", "connection reset");
+        view.Render("Something went wrong.", "connection reset", true);
 
-        view.Render(null, null);
+        view.Render(null, null, false);
 
         Assert.False(view.IsVisible);
     }

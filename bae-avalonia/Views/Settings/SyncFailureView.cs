@@ -71,9 +71,10 @@ internal sealed class SyncFailureView : StackPanel
     /// failure carries no diagnostic to name, which is a row with one line, never
     /// a blank second one.
     /// </summary>
-    internal void Render(string? line, string? detail)
+    internal void Render(string? line, string? detail, bool canReconnect)
     {
         IsVisible = line is not null;
+        ReconnectButton.IsVisible = canReconnect;
         LineText.Text = line ?? string.Empty;
         DetailText.Text = detail ?? string.Empty;
         DetailText.IsVisible = detail is not null;

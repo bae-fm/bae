@@ -377,6 +377,7 @@ private struct RecoveryCodeSection: View {
                 SyncStatusStore(
                     snapshot: BridgeSyncStatusSnapshot(
                         error: nil,
+                        canReconnect: false,
                         blocked: [],
                         lastSyncTime: nil,
                         syncing: false,

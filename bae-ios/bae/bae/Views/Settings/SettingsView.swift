@@ -345,10 +345,12 @@ private struct SyncConnectedControls: View {
             )
 
             if let syncError = syncStatusStore.error {
-                LabeledContent(
-                    "Status",
-                    value: String(localized: "Disconnected")
-                )
+                if syncStatusStore.canReconnect {
+                    LabeledContent(
+                        "Status",
+                        value: String(localized: "Disconnected")
+                    )
+                }
                 Text(syncError.line)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -361,11 +363,13 @@ private struct SyncConnectedControls: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                 }
-                if reconnecting {
-                    ProgressView()
-                }
-                else {
-                    Button("Reconnect") { Task { await reconnect() } }
+                if syncStatusStore.canReconnect {
+                    if reconnecting {
+                        ProgressView()
+                    }
+                    else {
+                        Button("Reconnect") { Task { await reconnect() } }
+                    }
                 }
             }
             else {

@@ -39,7 +39,7 @@ impl LibraryManager {
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {
         let state = self.sync_status.lock().unwrap().clone();
         SyncStatusSnapshot {
-            error: state.error.map(crate::ui::UiError::internal),
+            error: state.error,
             blocked: state.blocked,
             last_sync_time: state.last_sync_time,
             syncing: state.syncing,
@@ -206,7 +206,7 @@ impl LibraryManager {
     fn set_sync_error(&self, error: Option<String>) {
         {
             let mut state = self.sync_status.lock().unwrap();
-            state.error = error;
+            state.error = error.map(crate::ui::UiError::internal);
         }
         self.sync_status_values.send_replace(self.get_sync_status());
     }

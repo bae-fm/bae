@@ -79,6 +79,7 @@ public sealed class SyncStatusOwnershipTests
     private static BridgeSyncStatusSnapshot Failing(BridgeException error) =>
         new(
             Error: error,
+            CanReconnect: true,
             Blocked: [],
             LastSyncTime: null,
             Syncing: false,
@@ -87,6 +88,7 @@ public sealed class SyncStatusOwnershipTests
     private static BridgeSyncStatusSnapshot Status(bool syncReady) =>
         new(
             Error: null,
+            CanReconnect: false,
             Blocked: [],
             LastSyncTime: null,
             Syncing: false,

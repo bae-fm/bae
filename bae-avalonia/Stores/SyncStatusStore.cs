@@ -29,6 +29,8 @@ internal sealed class SyncStatusStore
     // timestamp can never accompany a stopped loop.
     public string? LastSyncTime { get; private set; }
 
+    public bool CanReconnect { get; private set; }
+
     public bool? SyncReady { get; private set; }
 
     // The durable sync operations the last completed cycle left waiting on a
@@ -54,6 +56,7 @@ internal sealed class SyncStatusStore
 
     public void Apply(BridgeSyncStatusSnapshot status)
     {
+        CanReconnect = status.CanReconnect;
         ErrorText = status.Error is null ? null : _lineFor(status.Error);
         ErrorDetail = status.Error is null ? null : BridgeDisplay.FaultSummary(status.Error);
         Indicator = _indicatorFor(status);

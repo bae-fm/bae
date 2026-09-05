@@ -26,6 +26,10 @@ public final class SyncStatusStore {
         snapshot?.error.flatMap { DisplayError($0) }
     }
 
+    public var canReconnect: Bool {
+        snapshot?.canReconnect == true
+    }
+
     /// The durable sync operations the last completed cycle left waiting on a
     /// person. Empty until a cycle reports some — including before the first
     /// status arrives, when nothing is known to be waiting. Each is retried by

@@ -324,6 +324,8 @@ pub struct BridgePlaybackContext {
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeSyncStatusSnapshot {
     pub error: Option<BridgeError>,
+    /// Whether reconnecting can retry this sync error.
+    pub can_reconnect: bool,
     /// The durable sync operations waiting on a person. Each is shown with its
     /// kind, description, and error, and retried by handing `id` back to
     /// `AppHandle::retry_blocked_sync_operation`. Empty once a cycle completes

@@ -52,6 +52,7 @@ import fm.bae.app.BaeLogger
 import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.RestorePlaybackPref
+import fm.bae.app.data.SyncFailure
 import fm.bae.app.localizedLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
@@ -135,7 +136,7 @@ private fun SettingsSections(
     config: BridgeConfig,
     libraries: List<BridgeLibrary>,
     syncIndicator: BridgeSyncIndicator,
-    syncError: String?,
+    syncError: SyncFailure?,
     syncBlocked: List<BridgeBlockedSyncOperation>,
     syncReady: Boolean,
     ioDispatcher: CoroutineDispatcher,
@@ -306,7 +307,7 @@ private fun SettingsConfigSection(
     session: OpenLibrary,
     config: BridgeConfig,
     syncIndicator: BridgeSyncIndicator,
-    syncError: String?,
+    syncError: SyncFailure?,
     syncBlocked: List<BridgeBlockedSyncOperation>,
 ) {
     Column(

@@ -7,6 +7,8 @@ pub enum UiErrorCategory {
     Database,
     Config,
     Internal,
+    /// Sync encountered data written by a newer app schema.
+    SyncUpdateRequired,
     Import,
     Export,
     Save,
@@ -52,7 +54,7 @@ pub enum UiEntityKind {
 /// chain (`detail`) the UI logs and offers in a copyable disclosure but never
 /// translates. The bridge maps this to `BridgeError`, which the macOS renderer
 /// turns into a generic per-category line.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UiError {
     /// A specific entity was missing. Keyed; the UI localizes it.
     NotFound { entity: UiEntityKind, id: String },
@@ -65,6 +67,17 @@ pub enum UiError {
 }
 
 impl UiError {
+    /// Reconnecting can retry a failed cycle, but cannot teach this app a newer schema.
+    pub fn can_reconnect_sync(&self) -> bool {
+        !matches!(
+            self,
+            Self::Diagnostic {
+                category: UiErrorCategory::SyncUpdateRequired,
+                ..
+            }
+        )
+    }
+
     /// A diagnostic error in the given category, with the underlying error's
     /// `Display` text as the opaque, log-only detail.
     pub fn diagnostic(category: UiErrorCategory, detail: impl std::fmt::Display) -> Self {

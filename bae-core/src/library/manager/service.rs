@@ -485,7 +485,7 @@ impl LibraryManager {
                                     let message =
                                         format!("unparseable last_sync_time {raw:?}: {e}");
                                     warn!("{message}");
-                                    state.error = Some(message);
+                                    state.error = Some(crate::ui::UiError::internal(message));
                                     new_failure = true;
                                     changed = true;
                                 }

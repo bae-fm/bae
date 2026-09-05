@@ -477,6 +477,7 @@ fn produced_keys() -> Vec<String> {
         BridgeErrorCategory::Database,
         BridgeErrorCategory::Config,
         BridgeErrorCategory::Internal,
+        BridgeErrorCategory::SyncUpdateRequired,
         BridgeErrorCategory::Import,
         BridgeErrorCategory::CandidateImportInProgress,
         BridgeErrorCategory::CandidateAlreadyImported,
@@ -536,6 +537,7 @@ fn produced_keys() -> Vec<String> {
             BridgeErrorCategory::Database => "core.error.category.database",
             BridgeErrorCategory::Config => "core.error.category.config",
             BridgeErrorCategory::Internal => "core.error.category.internal",
+            BridgeErrorCategory::SyncUpdateRequired => "core.error.sync_update_required",
             BridgeErrorCategory::Import => "core.error.category.import",
             BridgeErrorCategory::CandidateImportInProgress => {
                 "core.import.error.candidate_import_in_progress"

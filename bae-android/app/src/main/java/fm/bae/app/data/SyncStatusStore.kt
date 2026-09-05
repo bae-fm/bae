@@ -9,6 +9,11 @@ import uniffi.bae_bridge.BridgeSyncIndicator
 import uniffi.bae_bridge.BridgeSyncStatusSnapshot
 import uniffi.bae_bridge.bridgeSyncIndicator
 
+data class SyncFailure(
+    val message: String,
+    val canReconnect: Boolean,
+)
+
 /** Runtime sync state. The sync-status value stream is its only writer. */
 class SyncStatusStore(
     private val indicatorFor: (BridgeSyncStatusSnapshot) -> BridgeSyncIndicator = ::bridgeSyncIndicator,
@@ -16,8 +21,8 @@ class SyncStatusStore(
     private val _snapshot = MutableStateFlow<BridgeSyncStatusSnapshot?>(null)
     val snapshot: StateFlow<BridgeSyncStatusSnapshot?> = _snapshot.asStateFlow()
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
+    private val _error = MutableStateFlow<SyncFailure?>(null)
+    val error: StateFlow<SyncFailure?> = _error.asStateFlow()
 
     private val _indicator = MutableStateFlow<BridgeSyncIndicator>(BridgeSyncIndicator.Idle)
     val indicator: StateFlow<BridgeSyncIndicator> = _indicator.asStateFlow()
@@ -35,7 +40,7 @@ class SyncStatusStore(
         errors: ErrorLines,
     ) {
         _snapshot.value = status
-        _error.value = status.error?.let(errors::line)
+        _error.value = status.error?.let(errors::line)?.let { SyncFailure(it, status.canReconnect) }
         _indicator.value = indicatorFor(status)
         _blocked.value = status.blocked
     }

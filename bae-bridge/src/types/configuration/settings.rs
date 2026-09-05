@@ -198,6 +198,7 @@ pub enum BridgeErrorCategory {
     Database,
     Config,
     Internal,
+    SyncUpdateRequired,
     Import,
     CandidateImportInProgress,
     CandidateAlreadyImported,
@@ -353,6 +354,7 @@ pub fn bridge_error_category_key(category: BridgeErrorCategory) -> String {
         BridgeErrorCategory::Database => "core.error.category.database",
         BridgeErrorCategory::Config => "core.error.category.config",
         BridgeErrorCategory::Internal => "core.error.category.internal",
+        BridgeErrorCategory::SyncUpdateRequired => "core.error.sync_update_required",
         BridgeErrorCategory::Import => "core.error.category.import",
         BridgeErrorCategory::CandidateImportInProgress => {
             "core.import.error.candidate_import_in_progress"
@@ -518,6 +520,7 @@ impl BridgeErrorCategory {
             UiErrorCategory::Database => BridgeErrorCategory::Database,
             UiErrorCategory::Config => BridgeErrorCategory::Config,
             UiErrorCategory::Internal => BridgeErrorCategory::Internal,
+            UiErrorCategory::SyncUpdateRequired => BridgeErrorCategory::SyncUpdateRequired,
             UiErrorCategory::Import => BridgeErrorCategory::Import,
             UiErrorCategory::Export => BridgeErrorCategory::Export,
             UiErrorCategory::Save => BridgeErrorCategory::Save,
