@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>Външният вид не можа да бъде запазен: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>Среднощен</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>Горски</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>Пясъчен</value>
+  </data>
 </root>

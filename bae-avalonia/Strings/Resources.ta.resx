@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>தோற்றத்தைச் சேமிக்க முடியவில்லை: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>நள்ளிரவு</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>காடு</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>மணல்</value>
+  </data>
 </root>

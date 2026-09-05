@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>రూపాన్ని సేవ్ చేయలేకపోయాం: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>అర్ధరాత్రి</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>అడవి</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>ఇసుక</value>
+  </data>
 </root>

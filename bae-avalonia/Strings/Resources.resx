@@ -569,4 +569,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>Couldn't save appearance: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>Midnight</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>Forest</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>Sand</value>
+  </data>
 </root>

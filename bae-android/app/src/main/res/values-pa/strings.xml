@@ -226,4 +226,7 @@
     <string name="appearance_green">ਹਰਾ</string>
     <string name="appearance_teal">ਨੀਲਾ-ਹਰਾ</string>
     <string name="appearance_save_failed">ਦਿੱਖ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ: %1$s</string>
+    <string name="appearance_midnight">ਅੱਧੀ ਰਾਤ</string>
+    <string name="appearance_forest">ਜੰਗਲ</string>
+    <string name="appearance_sand">ਰੇਤ</string>
 </resources>

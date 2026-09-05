@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>চেহারা সংরক্ষণ করা যায়নি: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>মধ্যরাত</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>বন</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>বালি</value>
+  </data>
 </root>

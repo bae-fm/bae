@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>രൂപം സംരക്ഷിക്കാനായില്ല: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>അർധരാത്രി</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>വനം</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>മണൽ</value>
+  </data>
 </root>

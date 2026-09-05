@@ -230,4 +230,7 @@
     <string name="appearance_green">Зелений</string>
     <string name="appearance_teal">Синьо-зелений</string>
     <string name="appearance_save_failed">Не вдалося зберегти вигляд: %1$s</string>
+    <string name="appearance_midnight">Опівнічний</string>
+    <string name="appearance_forest">Лісовий</string>
+    <string name="appearance_sand">Пісочний</string>
 </resources>

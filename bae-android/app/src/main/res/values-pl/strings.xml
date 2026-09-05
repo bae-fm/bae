@@ -230,4 +230,7 @@
     <string name="appearance_green">Zielony</string>
     <string name="appearance_teal">Morski</string>
     <string name="appearance_save_failed">Nie udało się zapisać wyglądu: %1$s</string>
+    <string name="appearance_midnight">Północ</string>
+    <string name="appearance_forest">Las</string>
+    <string name="appearance_sand">Piasek</string>
 </resources>

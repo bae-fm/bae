@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>दिखावट सहेजी नहीं जा सकी: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>आधी रात</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>वन</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>रेत</value>
+  </data>
 </root>

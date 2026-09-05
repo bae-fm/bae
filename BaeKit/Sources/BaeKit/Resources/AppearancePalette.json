@@ -24,14 +24,14 @@
     },
     "slate": {
       "light": {
-        "background": "#F1F4F7",
-        "surface": "#F7F9FB",
-        "elevated": "#FFFFFF",
-        "field": "#FFFFFF",
-        "fieldHover": "#F3F6F9",
-        "placeholder": "#E0E6ED",
-        "well": "#E3E9F0",
-        "tile": "#FAFCFF"
+        "background": "#E5EBF3",
+        "surface": "#EDF2F8",
+        "elevated": "#F4F7FC",
+        "field": "#F4F7FC",
+        "fieldHover": "#EAF0F7",
+        "placeholder": "#D1DAE7",
+        "well": "#DAE3EE",
+        "tile": "#F4F7FC"
       },
       "dark": {
         "background": "#191E25",
@@ -46,14 +46,14 @@
     },
     "plum": {
       "light": {
-        "background": "#F5F2F7",
-        "surface": "#FAF7FC",
-        "elevated": "#FFFFFF",
-        "field": "#FFFFFF",
-        "fieldHover": "#F7F2FA",
-        "placeholder": "#E8E0ED",
-        "well": "#EBE3F0",
-        "tile": "#FDF9FF"
+        "background": "#EFE4F1",
+        "surface": "#F6EDF7",
+        "elevated": "#FBF4FC",
+        "field": "#FBF4FC",
+        "fieldHover": "#F2E8F4",
+        "placeholder": "#E0CFE5",
+        "well": "#E7D8EB",
+        "tile": "#FBF4FC"
       },
       "dark": {
         "background": "#201B25",
@@ -64,6 +64,72 @@
         "placeholder": "#40364A",
         "well": "#19141F",
         "tile": "#493D55"
+      }
+    },
+    "midnight": {
+      "light": {
+        "background": "#E5E5F1",
+        "surface": "#EEEEF7",
+        "elevated": "#F5F5FC",
+        "field": "#F5F5FC",
+        "fieldHover": "#EAEAF5",
+        "placeholder": "#D2D2E5",
+        "well": "#DCDCEF",
+        "tile": "#F5F5FC"
+      },
+      "dark": {
+        "background": "#11111B",
+        "surface": "#191925",
+        "elevated": "#222230",
+        "field": "#15151F",
+        "fieldHover": "#20202C",
+        "placeholder": "#2D2D40",
+        "well": "#0C0C14",
+        "tile": "#353548"
+      }
+    },
+    "forest": {
+      "light": {
+        "background": "#E4EEE7",
+        "surface": "#EDF5EF",
+        "elevated": "#F4FAF6",
+        "field": "#F4FAF6",
+        "fieldHover": "#E9F2EC",
+        "placeholder": "#CDDDD2",
+        "well": "#D8E7DD",
+        "tile": "#F4FAF6"
+      },
+      "dark": {
+        "background": "#111A16",
+        "surface": "#19251F",
+        "elevated": "#233028",
+        "field": "#15201A",
+        "fieldHover": "#202D25",
+        "placeholder": "#2C3C32",
+        "well": "#0C1410",
+        "tile": "#34463A"
+      }
+    },
+    "sand": {
+      "light": {
+        "background": "#F2E8DA",
+        "surface": "#F8F0E5",
+        "elevated": "#FCF7EF",
+        "field": "#FCF7EF",
+        "fieldHover": "#F5ECDF",
+        "placeholder": "#E3D3BD",
+        "well": "#EBDDCB",
+        "tile": "#FCF7EF"
+      },
+      "dark": {
+        "background": "#1B1712",
+        "surface": "#25201A",
+        "elevated": "#302920",
+        "field": "#201B15",
+        "fieldHover": "#2C251D",
+        "placeholder": "#3D3327",
+        "well": "#14110D",
+        "tile": "#483C2E"
       }
     }
   },
@@ -94,17 +160,17 @@
       "fill": "#B43E43"
     },
     "amber": {
-      "light": "#94651C",
+      "light": "#8C5D14",
       "dark": "#E6BE77",
       "fill": "#94651C"
     },
     "green": {
-      "light": "#337A4D",
+      "light": "#2D7447",
       "dark": "#8BCBA4",
       "fill": "#337A4D"
     },
     "teal": {
-      "light": "#277A7C",
+      "light": "#1F7274",
       "dark": "#80CCCE",
       "fill": "#277A7C"
     }
@@ -114,8 +180,8 @@
       "textPrimary": "#202124",
       "textSecondary": "#62656C",
       "danger": "#B63B3B",
-      "success": "#337A4D",
-      "warning": "#94651C",
+      "success": "#2D7447",
+      "warning": "#8C5D14",
       "info": "#2463C7",
       "hairline": "#1A000000",
       "hover": "#0F000000",
@@ -123,11 +189,11 @@
     },
     "dark": {
       "textPrimary": "#F2F2F4",
-      "textSecondary": "#B0B0BA",
+      "textSecondary": "#B1B1BB",
       "danger": "#F29C9F",
       "success": "#8BCBA4",
       "warning": "#E6BE77",
-      "info": "#82B1FF",
+      "info": "#87B5FF",
       "hairline": "#1AFFFFFF",
       "hover": "#0FFFFFFF",
       "scrim": "#73000000"

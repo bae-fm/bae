@@ -226,4 +226,7 @@
     <string name="appearance_green">سبز</string>
     <string name="appearance_teal">نیلا سبز</string>
     <string name="appearance_save_failed">ظاہری شکل محفوظ نہیں ہو سکی: %1$s</string>
+    <string name="appearance_midnight">آدھی رات</string>
+    <string name="appearance_forest">جنگل</string>
+    <string name="appearance_sand">ریت</string>
 </resources>

@@ -226,4 +226,7 @@
     <string name="appearance_green">Groen</string>
     <string name="appearance_teal">Blauwgroen</string>
     <string name="appearance_save_failed">Weergave kon niet worden opgeslagen: %1$s</string>
+    <string name="appearance_midnight">Middernacht</string>
+    <string name="appearance_forest">Bos</string>
+    <string name="appearance_sand">Zand</string>
 </resources>

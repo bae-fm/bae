@@ -226,4 +226,7 @@
     <string name="appearance_green">Yeşil</string>
     <string name="appearance_teal">Petrol yeşili</string>
     <string name="appearance_save_failed">Görünüm kaydedilemedi: %1$s</string>
+    <string name="appearance_midnight">Gece yarısı</string>
+    <string name="appearance_forest">Orman</string>
+    <string name="appearance_sand">Kum</string>
 </resources>

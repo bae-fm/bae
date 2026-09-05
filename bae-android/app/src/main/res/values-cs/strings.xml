@@ -230,4 +230,7 @@
     <string name="appearance_green">Zelená</string>
     <string name="appearance_teal">Modrozelená</string>
     <string name="appearance_save_failed">Vzhled se nepodařilo uložit: %1$s</string>
+    <string name="appearance_midnight">Půlnoční</string>
+    <string name="appearance_forest">Lesní</string>
+    <string name="appearance_sand">Pískový</string>
 </resources>

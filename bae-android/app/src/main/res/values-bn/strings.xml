@@ -226,4 +226,7 @@
     <string name="appearance_green">সবুজ</string>
     <string name="appearance_teal">নীলচে সবুজ</string>
     <string name="appearance_save_failed">চেহারা সংরক্ষণ করা যায়নি: %1$s</string>
+    <string name="appearance_midnight">মধ্যরাত</string>
+    <string name="appearance_forest">বন</string>
+    <string name="appearance_sand">বালি</string>
 </resources>

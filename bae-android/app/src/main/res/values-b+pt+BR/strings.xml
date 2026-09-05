@@ -227,4 +227,7 @@
     <string name="appearance_green">Verde</string>
     <string name="appearance_teal">Azul-petróleo</string>
     <string name="appearance_save_failed">Não foi possível salvar a aparência: %1$s</string>
+    <string name="appearance_midnight">Meia-noite</string>
+    <string name="appearance_forest">Floresta</string>
+    <string name="appearance_sand">Areia</string>
 </resources>

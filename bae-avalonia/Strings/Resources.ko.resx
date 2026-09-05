@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>화면 모양을 저장하지 못했습니다: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>미드나이트</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>숲</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>모래</value>
+  </data>
 </root>

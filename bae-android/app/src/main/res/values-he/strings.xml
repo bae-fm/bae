@@ -228,4 +228,7 @@
     <string name="appearance_green">ירוק</string>
     <string name="appearance_teal">כחול־ירוק</string>
     <string name="appearance_save_failed">לא ניתן לשמור את המראה: %1$s</string>
+    <string name="appearance_midnight">חצות</string>
+    <string name="appearance_forest">יער</string>
+    <string name="appearance_sand">חול</string>
 </resources>

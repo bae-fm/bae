@@ -224,4 +224,7 @@
     <string name="appearance_green">グリーン</string>
     <string name="appearance_teal">ティール</string>
     <string name="appearance_save_failed">外観を保存できませんでした：%1$s</string>
+    <string name="appearance_midnight">ミッドナイト</string>
+    <string name="appearance_forest">フォレスト</string>
+    <string name="appearance_sand">サンド</string>
 </resources>

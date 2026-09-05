@@ -30,8 +30,7 @@ enum ShotRenderer {
         let bounds = CGRect(origin: .zero, size: scene.size)
 
         let host = UIHostingController(
-            rootView: scene.makeView().defaultAppStorage(defaults)
-                .appearance(mode: mode, accent: accent, tone: tone)
+            rootView: scene.makeView().appAppearance().defaultAppStorage(defaults)
         )
         host.overrideUserInterfaceStyle = mode == .dark ? .dark : .light
         host.view.frame = bounds

@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>Weergave kon niet worden opgeslagen: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>Middernacht</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>Bos</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>Zand</value>
+  </data>
 </root>

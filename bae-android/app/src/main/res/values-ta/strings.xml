@@ -226,4 +226,7 @@
     <string name="appearance_green">பச்சை</string>
     <string name="appearance_teal">நீலப்பச்சை</string>
     <string name="appearance_save_failed">தோற்றத்தைச் சேமிக்க முடியவில்லை: %1$s</string>
+    <string name="appearance_midnight">நள்ளிரவு</string>
+    <string name="appearance_forest">காடு</string>
+    <string name="appearance_sand">மணல்</string>
 </resources>

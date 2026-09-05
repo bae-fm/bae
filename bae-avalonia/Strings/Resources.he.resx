@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>לא ניתן לשמור את המראה: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>חצות</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>יער</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>חול</value>
+  </data>
 </root>

@@ -226,4 +226,7 @@
     <string name="appearance_green">Grün</string>
     <string name="appearance_teal">Blaugrün</string>
     <string name="appearance_save_failed">Erscheinungsbild konnte nicht gespeichert werden: %1$s</string>
+    <string name="appearance_midnight">Mitternacht</string>
+    <string name="appearance_forest">Wald</string>
+    <string name="appearance_sand">Sand</string>
 </resources>

@@ -227,4 +227,7 @@
     <string name="appearance_green">Vert</string>
     <string name="appearance_teal">Bleu canard</string>
     <string name="appearance_save_failed">Impossible d’enregistrer l’apparence : %1$s</string>
+    <string name="appearance_midnight">Minuit</string>
+    <string name="appearance_forest">Forêt</string>
+    <string name="appearance_sand">Sable</string>
 </resources>

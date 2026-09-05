@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>દેખાવ સાચવી શકાયો નહીં: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>મધરાત</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>વન</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>રેતી</value>
+  </data>
 </root>

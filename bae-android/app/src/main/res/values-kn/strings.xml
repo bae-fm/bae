@@ -226,4 +226,7 @@
     <string name="appearance_green">ಹಸಿರು</string>
     <string name="appearance_teal">ನೀಲಿ ಹಸಿರು</string>
     <string name="appearance_save_failed">ಗೋಚರತೆಯನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ: %1$s</string>
+    <string name="appearance_midnight">ಮಧ್ಯರಾತ್ರಿ</string>
+    <string name="appearance_forest">ಅರಣ್ಯ</string>
+    <string name="appearance_sand">ಮರಳು</string>
 </resources>

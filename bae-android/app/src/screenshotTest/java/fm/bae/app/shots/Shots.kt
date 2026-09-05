@@ -101,6 +101,42 @@ fun AppearanceDarkPlum() {
     AppearanceScene(AppearanceMode.DARK, SurfaceTone.PLUM, AccentChoice.PURPLE)
 }
 
+@Preview(device = PHONE_SPEC)
+@Composable
+fun AppearanceLightMidnight() {
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.MIDNIGHT, AccentChoice.BLUE)
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun AppearanceDarkMidnight() {
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.MIDNIGHT, AccentChoice.BLUE)
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun AppearanceLightForest() {
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.FOREST, AccentChoice.GREEN)
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun AppearanceDarkForest() {
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.FOREST, AccentChoice.GREEN)
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun AppearanceLightSand() {
+    AppearanceScene(AppearanceMode.LIGHT, SurfaceTone.SAND, AccentChoice.AMBER)
+}
+
+@Preview(device = PHONE_SPEC)
+@Composable
+fun AppearanceDarkSand() {
+    AppearanceScene(AppearanceMode.DARK, SurfaceTone.SAND, AccentChoice.AMBER)
+}
+
 @Composable
 private fun AppearanceScene(
     mode: AppearanceMode,

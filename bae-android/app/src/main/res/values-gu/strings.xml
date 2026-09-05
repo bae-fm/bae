@@ -226,4 +226,7 @@
     <string name="appearance_green">લીલો</string>
     <string name="appearance_teal">વાદળી લીલો</string>
     <string name="appearance_save_failed">દેખાવ સાચવી શકાયો નહીં: %1$s</string>
+    <string name="appearance_midnight">મધરાત</string>
+    <string name="appearance_forest">વન</string>
+    <string name="appearance_sand">રેતી</string>
 </resources>

@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>ਦਿੱਖ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>ਅੱਧੀ ਰਾਤ</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>ਜੰਗਲ</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>ਰੇਤ</value>
+  </data>
 </root>

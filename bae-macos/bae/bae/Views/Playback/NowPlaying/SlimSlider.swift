@@ -19,7 +19,7 @@ struct SlimSlider: View {
                     .fill(Color.primary.opacity(0.10))
                     .frame(height: 5)
                 Capsule()
-                    .fill(Color.primary.opacity(0.75))
+                    .fill(Theme.accent)
                     .frame(width: CGFloat(clamped) * width, height: 5)
             }
             .frame(

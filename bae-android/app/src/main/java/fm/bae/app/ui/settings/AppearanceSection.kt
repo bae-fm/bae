@@ -168,6 +168,9 @@ private val SurfaceTone.label: Int
             SurfaceTone.NEUTRAL -> R.string.appearance_neutral
             SurfaceTone.SLATE -> R.string.appearance_slate
             SurfaceTone.PLUM -> R.string.appearance_plum
+            SurfaceTone.MIDNIGHT -> R.string.appearance_midnight
+            SurfaceTone.FOREST -> R.string.appearance_forest
+            SurfaceTone.SAND -> R.string.appearance_sand
         }
 
 private val AccentChoice.label: Int

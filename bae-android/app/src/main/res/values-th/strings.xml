@@ -224,4 +224,7 @@
     <string name="appearance_green">เขียว</string>
     <string name="appearance_teal">เขียวอมฟ้า</string>
     <string name="appearance_save_failed">บันทึกรูปลักษณ์ไม่ได้: %1$s</string>
+    <string name="appearance_midnight">เที่ยงคืน</string>
+    <string name="appearance_forest">ป่า</string>
+    <string name="appearance_sand">ทราย</string>
 </resources>

@@ -234,4 +234,7 @@
     <string name="appearance_green">أخضر</string>
     <string name="appearance_teal">أزرق مخضر</string>
     <string name="appearance_save_failed">تعذّر حفظ المظهر: %1$s</string>
+    <string name="appearance_midnight">منتصف الليل</string>
+    <string name="appearance_forest">غابة</string>
+    <string name="appearance_sand">رملي</string>
 </resources>

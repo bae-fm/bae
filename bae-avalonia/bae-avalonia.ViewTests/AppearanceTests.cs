@@ -64,6 +64,8 @@ public sealed class AppearanceTests
                 foreach (var role in new[] { "Background", "Surface", "Elevated", "Field", "Tile" })
                 {
                     Assert.True(Contrast(ColorFor("BaeTextPrimaryColor"), ColorFor($"Bae{role}Color")) >= 7);
+                    foreach (var semantic in new[] { "TextSecondary", "Danger", "Success", "Warning", "Info" })
+                        Assert.True(Contrast(ColorFor($"Bae{semantic}Color"), ColorFor($"Bae{role}Color")) >= 4.5, $"{mode} {tone} {semantic} {role}");
                     Assert.True(Contrast(ColorFor("BaeAccentColor"), ColorFor($"Bae{role}Color")) >= 4.5, $"{mode} {tone} {accent} {role}");
                 }
                 foreach (var role in new[] { "Primary", "PrimaryHover", "PrimaryPressed" })

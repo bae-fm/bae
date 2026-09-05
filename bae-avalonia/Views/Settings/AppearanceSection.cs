@@ -99,6 +99,9 @@ internal sealed class AppearanceSection : StackPanel
         SurfaceTone.Neutral => Loc.Chrome("appearance.neutral"),
         SurfaceTone.Slate => Loc.Chrome("appearance.slate"),
         SurfaceTone.Plum => Loc.Chrome("appearance.plum"),
+        SurfaceTone.Midnight => Loc.Chrome("appearance.midnight"),
+        SurfaceTone.Forest => Loc.Chrome("appearance.forest"),
+        SurfaceTone.Sand => Loc.Chrome("appearance.sand"),
         _ => throw new ArgumentOutOfRangeException(nameof(value)),
     };
 

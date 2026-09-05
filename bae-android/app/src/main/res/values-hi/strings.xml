@@ -226,4 +226,7 @@
     <string name="appearance_green">हरा</string>
     <string name="appearance_teal">नीला-हरा</string>
     <string name="appearance_save_failed">दिखावट सहेजी नहीं जा सकी: %1$s</string>
+    <string name="appearance_midnight">आधी रात</string>
+    <string name="appearance_forest">वन</string>
+    <string name="appearance_sand">रेत</string>
 </resources>

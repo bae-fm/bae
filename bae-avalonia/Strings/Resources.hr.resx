@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>Izgled nije moguće spremiti: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>Ponoć</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>Šuma</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>Pijesak</value>
+  </data>
 </root>

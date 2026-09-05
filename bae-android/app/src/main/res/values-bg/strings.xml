@@ -226,4 +226,7 @@
     <string name="appearance_green">Зелен</string>
     <string name="appearance_teal">Синьозелен</string>
     <string name="appearance_save_failed">Външният вид не можа да бъде запазен: %1$s</string>
+    <string name="appearance_midnight">Среднощен</string>
+    <string name="appearance_forest">Горски</string>
+    <string name="appearance_sand">Пясъчен</string>
 </resources>

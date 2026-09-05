@@ -542,4 +542,13 @@
   <data name="appearance.save_failed" xml:space="preserve">
     <value>No se pudo guardar la apariencia: {error}</value>
   </data>
+  <data name="appearance.midnight" xml:space="preserve">
+    <value>Medianoche</value>
+  </data>
+  <data name="appearance.forest" xml:space="preserve">
+    <value>Bosque</value>
+  </data>
+  <data name="appearance.sand" xml:space="preserve">
+    <value>Arena</value>
+  </data>
 </root>

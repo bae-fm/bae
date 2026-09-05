@@ -28,8 +28,8 @@ enum ShotRenderer {
         defer { defaults.removePersistentDomain(forName: suite) }
         let bounds = NSRect(origin: .zero, size: scene.size)
         let host = NSHostingView(
-            rootView: scene.makeView().defaultAppStorage(defaults)
-                .appearance(mode: mode, accent: accent, tone: tone)
+            rootView: scene.makeView().appAppearance()
+                .defaultAppStorage(defaults)
         )
         host.frame = bounds
 
@@ -44,8 +44,9 @@ enum ShotRenderer {
         )
         window.isReleasedWhenClosed = false
         window.contentView = host
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        window.makeMain()
         defer {
             window.contentView = nil
             window.close()
@@ -65,7 +66,8 @@ enum ShotRenderer {
                 colorSpaceName: .deviceRGB,
                 bytesPerRow: 0,
                 bitsPerPixel: 0
-            )
+            )?
+            .retagging(with: .sRGB)
         else {
             throw ShotError.bitmapAllocationFailed(scene.id)
         }
@@ -114,4 +116,5 @@ enum ShotError: Error, CustomStringConvertible {
 
 private final class ShotWindow: NSWindow {
     override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
 }

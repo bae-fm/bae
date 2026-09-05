@@ -224,4 +224,7 @@
     <string name="appearance_green">Xanh lá</string>
     <string name="appearance_teal">Xanh ngọc</string>
     <string name="appearance_save_failed">Không thể lưu giao diện: %1$s</string>
+    <string name="appearance_midnight">Nửa đêm</string>
+    <string name="appearance_forest">Rừng</string>
+    <string name="appearance_sand">Cát</string>
 </resources>

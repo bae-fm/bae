@@ -224,4 +224,7 @@
     <string name="appearance_green">綠色</string>
     <string name="appearance_teal">青色</string>
     <string name="appearance_save_failed">無法儲存外觀：%1$s</string>
+    <string name="appearance_midnight">午夜</string>
+    <string name="appearance_forest">森林</string>
+    <string name="appearance_sand">沙色</string>
 </resources>

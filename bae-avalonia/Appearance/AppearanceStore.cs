@@ -5,7 +5,7 @@ namespace Bae.Desktop;
 
 internal enum AppearanceMode { System, Light, Dark }
 internal enum AccentChoice { Blue, Indigo, Purple, Pink, Red, Amber, Green, Teal }
-internal enum SurfaceTone { Neutral, Slate, Plum }
+internal enum SurfaceTone { Neutral, Slate, Plum, Midnight, Forest, Sand }
 
 internal sealed record AppearancePreferences(
     [property: JsonRequired] AppearanceMode Mode,

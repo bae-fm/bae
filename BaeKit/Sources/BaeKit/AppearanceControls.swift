@@ -15,6 +15,7 @@ public struct AppearanceControls: View {
             Text("Mode", tableName: "Appearance", bundle: .module)
         }
         .pickerStyle(.segmented)
+        .tint(preferences.accent.buttonColor)
 
         VStack(alignment: .leading, spacing: 8) {
             Text("Accent color", tableName: "Appearance", bundle: .module)
@@ -79,6 +80,12 @@ extension SurfaceTone {
             String(localized: "Slate", table: "Appearance", bundle: .module)
         case .plum:
             String(localized: "Plum", table: "Appearance", bundle: .module)
+        case .midnight:
+            String(localized: "Midnight", table: "Appearance", bundle: .module)
+        case .forest:
+            String(localized: "Forest", table: "Appearance", bundle: .module)
+        case .sand:
+            String(localized: "Sand", table: "Appearance", bundle: .module)
         }
     }
 }

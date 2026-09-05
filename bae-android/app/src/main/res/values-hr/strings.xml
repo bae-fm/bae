@@ -228,4 +228,7 @@
     <string name="appearance_green">Zelena</string>
     <string name="appearance_teal">Modrozelena</string>
     <string name="appearance_save_failed">Izgled nije moguće spremiti: %1$s</string>
+    <string name="appearance_midnight">Ponoć</string>
+    <string name="appearance_forest">Šuma</string>
+    <string name="appearance_sand">Pijesak</string>
 </resources>

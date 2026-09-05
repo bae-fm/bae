@@ -1,7 +1,7 @@
 import SwiftUI
 
 public enum SurfaceTone: String, CaseIterable, Sendable {
-    case neutral, slate, plum
+    case neutral, slate, plum, midnight, forest, sand
 }
 
 public enum AccentChoice: String, CaseIterable, Sendable {

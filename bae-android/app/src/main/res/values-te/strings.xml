@@ -226,4 +226,7 @@
     <string name="appearance_green">ఆకుపచ్చ</string>
     <string name="appearance_teal">నీలి ఆకుపచ్చ</string>
     <string name="appearance_save_failed">రూపాన్ని సేవ్ చేయలేకపోయాం: %1$s</string>
+    <string name="appearance_midnight">అర్ధరాత్రి</string>
+    <string name="appearance_forest">అడవి</string>
+    <string name="appearance_sand">ఇసుక</string>
 </resources>
