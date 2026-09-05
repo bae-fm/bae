@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Hủy bỏ qua</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Xóa thư mục</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sắp xếp và thư mục theo dõi</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Tên (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Tên (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Mới nhất trước</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Cũ nhất trước</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Tên thư mục (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Tên thư mục (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Đang chờ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Hoàn tất</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Đang nhận dạng</value></data>

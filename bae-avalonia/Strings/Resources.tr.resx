@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Atlamayı Geri Al</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Klasörü Kaldır</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sıralama ve izlenen klasörler</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Ad (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Ad (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Önce en yeniler</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Önce en eskiler</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Klasör adı (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Klasör adı (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Beklemede</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Tamamlandı</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Tanımlanıyor</value></data>

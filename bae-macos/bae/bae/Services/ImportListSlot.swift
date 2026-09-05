@@ -1,7 +1,10 @@
 import BaeKit
 import Combine
 import Foundation
+import OSLog
 import Observation
+
+private let importListLogger = Logger.bae("ImportListSlot")
 
 /// The import sidebar's list machinery: the warm `PaginatedList`, the page
 /// source behind it, and the view that source is showing.
@@ -19,6 +22,10 @@ import Observation
 @Observable
 final class ImportListSlot {
     private(set) var list: PaginatedList<BridgeImportListItem>?
+    private(set) var sortOrder: BridgeImportListOrder
+    @ObservationIgnored
+    private let defaults: UserDefaults
+    private static let sortPreferenceKey = "importCandidateSortOrder"
 
     @ObservationIgnored
     private var view: BridgeImportListView
@@ -56,6 +63,7 @@ final class ImportListSlot {
     init(
         importStore: ImportStore,
         uiStore: UiStore,
+        defaults: UserDefaults = .standard,
         makeSource: @escaping (BridgeImportListView) -> ImportListPages,
         locateCandidate:
             @escaping @Sendable (BridgeImportListView, String) async throws
@@ -65,13 +73,28 @@ final class ImportListSlot {
         self.uiStore = uiStore
         self.makeSource = makeSource
         self.locateCandidate = locateCandidate
+        self.defaults = defaults
+        let initialOrder: BridgeImportListOrder
+        if let saved = defaults.string(forKey: Self.sortPreferenceKey) {
+            if let order = BridgeImportListOrder(preferenceValue: saved) {
+                initialOrder = order
+            }
+            else {
+                importListLogger.warning(
+                    "Unknown import sort preference: \(saved)"
+                )
+                initialOrder = .newestFirst
+            }
+        }
+        else {
+            initialOrder = .newestFirst
+        }
+        sortOrder = initialOrder
         view = BridgeImportListView(
             tab: uiStore.importCandidateTab,
             filterText: uiStore.importCandidateFilterText,
             collapsedGroups: uiStore.collapsedReleaseGroupKeys,
-            // macOS offers no order control; the list reads in the order the
-            // watched roots and the folder paths give it.
-            order: .pathAscending
+            order: initialOrder
         )
     }
 
@@ -101,6 +124,12 @@ final class ImportListSlot {
     func setFilterText(_ text: String) {
         uiStore.setImportCandidateFilterText(text)
         updateView { $0.filterText = text }
+    }
+
+    func setSortOrder(_ order: BridgeImportListOrder) {
+        sortOrder = order
+        defaults.set(order.preferenceValue, forKey: Self.sortPreferenceKey)
+        updateView { $0.order = order }
     }
 
     /// Ask for the view that contains `target`, then return only after that

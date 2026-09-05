@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>ਛੱਡਣਾ ਰੱਦ ਕਰੋ</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ਫੋਲਡਰ ਹਟਾਓ</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>ਕ੍ਰਮ ਅਤੇ ਨਿਗਰਾਨੀ ਵਾਲੇ ਫੋਲਡਰ</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>ਨਾਂ (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>ਨਾਂ (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>ਸਭ ਤੋਂ ਨਵੇਂ ਪਹਿਲਾਂ</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>ਸਭ ਤੋਂ ਪੁਰਾਣੇ ਪਹਿਲਾਂ</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ਫੋਲਡਰ ਦਾ ਨਾਂ (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ਫੋਲਡਰ ਦਾ ਨਾਂ (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>ਬਕਾਇਆ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>ਮੁਕੰਮਲ</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ</value></data>

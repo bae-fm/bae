@@ -23,11 +23,13 @@ mod boundary;
 mod candidates;
 mod categorize;
 mod files;
+mod folder_date;
 mod scan;
 pub use candidates::*;
 pub use categorize::is_audio_file;
 use categorize::*;
 pub use files::*;
+pub use folder_date::FolderDate;
 pub(crate) use scan::file_modified_at_ns;
 pub use scan::*;
 

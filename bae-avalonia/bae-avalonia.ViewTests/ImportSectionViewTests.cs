@@ -17,6 +17,45 @@ public sealed class ImportSectionViewTests
 {
     private const string CandidateKey = "/Music/Incoming/Collection/Release 01";
 
+    [Fact]
+    public void SortPreferencesRoundTripAllFourOrdersAndDefaultToNewest()
+    {
+        Assert.Equal(BridgeImportListOrder.NewestFirst, TriageListModel.ParseSortOrder(null));
+        foreach (var order in Enum.GetValues<BridgeImportListOrder>())
+            Assert.Equal(order, TriageListModel.ParseSortOrder(TriageListModel.Serialize(order)));
+        Assert.Throws<FormatException>(() => TriageListModel.ParseSortOrder("unknown"));
+    }
+
+    [AvaloniaFact]
+    public void ListMenuOffersAllFourSortOrdersOnEveryTab()
+    {
+        foreach (var tab in Enum.GetValues<BridgeTriageTab>())
+        {
+            var (view, app) = BuildSection(PreviewData.ImportItems, PreviewData.ImportSummary, tab);
+            var button = view.GetLogicalDescendants().OfType<Button>()
+                .Single(control => Equals(ToolTip.GetTip(control), Loc.Chrome("import.list_menu")));
+            RaiseClick(button);
+            var flyout = Assert.IsType<MenuFlyout>(button.Flyout);
+            var sorts = flyout.Items.OfType<MenuItem>().Take(4).ToArray();
+            var choices = new[]
+            {
+                (BridgeImportListOrder.NewestFirst, "import.sort.newest_first"),
+                (BridgeImportListOrder.OldestFirst, "import.sort.oldest_first"),
+                (BridgeImportListOrder.PathAscending, "import.sort.name_az"),
+                (BridgeImportListOrder.PathDescending, "import.sort.name_za"),
+            };
+            Assert.Equal(choices.Length, sorts.Length);
+            for (var index = 0; index < choices.Length; index++)
+            {
+                var (order, key) = choices[index];
+                Assert.Equal(
+                    (app.ImportStore.SortOrder == order ? "✓ " : string.Empty) + Loc.Chrome(key),
+                    sorts[index].Header);
+            }
+            flyout.Hide();
+        }
+    }
+
     [AvaloniaFact]
     public void ReadyCheckboxTapDoesNotActivateItsCandidateRow()
     {

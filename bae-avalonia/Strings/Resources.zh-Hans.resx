@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>取消跳过</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>移除文件夹</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>排序和监视的文件夹</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>名称（A–Z）</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>名称（Z–A）</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>最新优先</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>最早优先</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>文件夹名称（A–Z）</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>文件夹名称（Z–A）</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>待处理</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>已完成</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>识别中</value></data>

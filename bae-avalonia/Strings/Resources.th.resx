@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>เลิกข้าม</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ลบโฟลเดอร์</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>การเรียงลำดับและโฟลเดอร์ที่เฝ้าดู</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>ชื่อ (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>ชื่อ (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>ใหม่ที่สุดก่อน</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>เก่าที่สุดก่อน</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ชื่อโฟลเดอร์ (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ชื่อโฟลเดอร์ (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>รอดำเนินการ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>เสร็จแล้ว</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>กำลังระบุ</value></data>

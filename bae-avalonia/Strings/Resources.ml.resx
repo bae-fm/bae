@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>ഒഴിവാക്കൽ റദ്ദാക്കുക</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ഫോൾഡർ നീക്കം ചെയ്യുക</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>ക്രമീകരണവും നിരീക്ഷിക്കുന്ന ഫോൾഡറുകളും</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>പേര് (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>പേര് (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>പുതിയവ ആദ്യം</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>പഴയവ ആദ്യം</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ഫോൾഡറിന്റെ പേര് (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ഫോൾഡറിന്റെ പേര് (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>തീർപ്പാക്കാത്തവ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>പൂർത്തിയായി</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>തിരിച്ചറിയുന്നു</value></data>

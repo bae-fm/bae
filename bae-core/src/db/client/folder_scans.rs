@@ -10,6 +10,7 @@
 //! lays those rows down and [`read`] assembles them back.
 
 pub(super) mod columns;
+mod dates;
 mod read;
 pub(super) mod write;
 
@@ -245,6 +246,7 @@ impl Database {
         generation: u64,
         item: &ScanItem,
         initial_metadata_source: crate::config::DefaultImportMetadataSource,
+        folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<ScanItemWrite>, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
         let generation = generation_column(generation)?;
@@ -255,11 +257,19 @@ impl Database {
         };
         validate_scan_item_ownership(&watched_folder_path, &entry_key, item)?;
         let item = item.clone();
+        let observed_at = self.inner.clock.now().timestamp_millis();
         if self.current_scan_generation(&watched_folder_path).await? != Some(generation) {
             return Ok(None);
         }
         self.call(move |sql| {
             ensure_generation(sql, &watched_folder_path, generation)?;
+            let discovery = dates::CandidateDiscovery::observe(
+                sql,
+                &watched_folder_path,
+                &entry_key,
+                folder_date,
+                observed_at,
+            )?;
             // A re-walk rewrites every candidate it finds, and each one arrives
             // tentative before it arrives valid — tentative meaning "seen
             // before its enclosing folder was understood". A row that is
@@ -279,6 +289,7 @@ impl Database {
                 && read::candidate_is_valid(sql, &watched_folder_path, &entry_key)?
             {
                 write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
+                discovery.store(sql, &watched_folder_path, &entry_key)?;
                 return Ok(Some(ScanItemWrite::Unchanged));
             }
             // A walk of a folder nobody has touched produces exactly the items
@@ -289,6 +300,7 @@ impl Database {
             // generation's stamp, which is all the completion prune asks of it.
             if load_scan_item_on(sql, &entry_key)?.as_ref() == Some(&item) {
                 write::touch_candidate(sql, &watched_folder_path, &entry_key, generation)?;
+                discovery.store(sql, &watched_folder_path, &entry_key)?;
                 return Ok(Some(ScanItemWrite::Unchanged));
             }
             let stored_initial_metadata_source: Option<String> = sql
@@ -337,6 +349,7 @@ impl Database {
                 &item,
                 initial_metadata_source,
             )?;
+            discovery.store(sql, &watched_folder_path, &entry_key)?;
             Ok(Some(ScanItemWrite::Stored {
                 superseded_keys: removed_keys,
             }))
@@ -356,6 +369,7 @@ impl Database {
             generation,
             item,
             crate::config::DefaultImportMetadataSource::FindOnline,
+            None,
         )
         .await
     }

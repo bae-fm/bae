@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>בטל דילוג</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>הסר תיקייה</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>מיון ותיקיות במעקב</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>שם (א׳–ת׳)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>שם (ת׳–א׳)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>החדשים ביותר תחילה</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>הישנים ביותר תחילה</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>שם תיקייה (א׳–ת׳)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>שם תיקייה (ת׳–א׳)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>ממתינים</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>הושלמו</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>מזהה</value></data>

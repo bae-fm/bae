@@ -119,6 +119,22 @@ impl ImportService {
         ids: &coven::IdRef,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
     ) -> Result<Option<PersistedScanItem>, crate::import::ImportError> {
+        let path = match item {
+            ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) => candidate.path.clone(),
+            ScanItem::Invalid(candidate) => candidate.path.clone(),
+            ScanItem::Decided { .. } => {
+                return Err(crate::import::ImportError::Internal {
+                    detail: "a folder reading is stored as a decision, not as a scan entry".into(),
+                })
+            }
+        };
+        let folder_date = tokio::task::spawn_blocking(move || {
+            crate::import::folder_scanner::FolderDate::read(&path)
+        })
+        .await
+        .map_err(|error| crate::import::ImportError::Internal {
+            detail: format!("folder date task failed: {error}"),
+        })??;
         let commit = folder_state_commit.clone().lock_owned().await;
         let mut item = item.clone();
         if let ScanItem::Discovered(candidate) | ScanItem::Valid(candidate) = &mut item {
@@ -130,7 +146,12 @@ impl ImportService {
             candidate.file_edit_revision = edits.revision;
         }
         let superseded = library_manager
-            .save_folder_scan_item(&root.to_string_lossy(), generation, &item)
+            .save_folder_scan_item_with_date(
+                &root.to_string_lossy(),
+                generation,
+                &item,
+                folder_date,
+            )
             .await?;
         let Some(write) = superseded else {
             return Ok(None);

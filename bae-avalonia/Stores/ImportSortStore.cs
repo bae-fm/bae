@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
@@ -17,7 +18,7 @@ internal static class ImportSortStore
         "import-sort.txt");
 
     // Load the saved sort order, or the default when nothing is saved yet.
-    public static CandidateSortOrder Load()
+    public static BridgeImportListOrder Load()
     {
         try
         {
@@ -26,7 +27,7 @@ internal static class ImportSortStore
                 return TriageListModel.ParseSortOrder(File.ReadAllText(FilePath).Trim());
             }
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or FormatException)
         {
             BaeDiagnostics.Logger.Warning("Could not read the saved import sort.", exception);
         }
@@ -34,7 +35,7 @@ internal static class ImportSortStore
         return TriageListModel.ParseSortOrder(null);
     }
 
-    public static void Save(CandidateSortOrder order)
+    public static void Save(BridgeImportListOrder order)
     {
         try
         {

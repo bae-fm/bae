@@ -7,10 +7,11 @@
 
 use super::super::*;
 
-/// The two orders the list offers, over the folder's path below its watched
-/// root.
+/// Folder dates or natural folder-path order. Done dates are import dates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeImportListOrder {
+    NewestFirst,
+    OldestFirst,
     PathAscending,
     PathDescending,
 }

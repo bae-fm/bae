@@ -4,9 +4,9 @@
 //! folder, per boundary and per stored verdict, plus each verdict's match rows,
 //! which is what says how many pressings it named — and nothing else: no files,
 //! no cue sheets, no boundary trees, no archived documents. Ordering the list
-//! is natural-order over the folder's display path, which SQLite has no
-//! collation for, and the list interleaves group headers with three kinds of
-//! entry, so the ordering and the offsets are worked out in Rust by
+//! uses folder dates or natural-order paths, keeping each folder group's rows
+//! together. The list interleaves group headers with three kinds of entry, so
+//! the ordering and the offsets are worked out in Rust by
 //! [`crate::import::list::flatten`]. Only the entries inside the requested
 //! windows are then loaded whole.
 
@@ -45,6 +45,9 @@ pub struct ScanCandidateListRow {
     pub kind: ScanCandidateKind,
     pub name: String,
     pub display_path: String,
+    /// Filesystem date, or first observation when the filesystem has none.
+    /// Absent for a pre-date-tracking candidate that has not been rescanned.
+    pub discovered_at: Option<i64>,
     /// `None` only for an invalid folder, which carries no files.
     pub content_hash: Option<String>,
     pub file_edit_revision: u64,
@@ -278,7 +281,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
     sql.query(
         "SELECT watched_folder_path, path, kind, name, display_path, content_hash, \
                 file_edit_revision, combine_ancestor_relative_path, invalid_reason, \
-                invalid_reason_path \
+                invalid_reason_path, COALESCE(source_date, first_seen_at) \
          FROM scan_candidate",
         [],
         |row| {
@@ -293,6 +296,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 row.get::<_, Option<String>>(7)?,
                 row.get::<_, Option<String>>(8)?,
                 row.get::<_, Option<String>>(9)?,
+                row.get::<_, Option<i64>>(10)?,
             ))
         },
     )?
@@ -309,6 +313,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
             combine_ancestor_relative_path,
             invalid_reason,
             invalid_reason_path,
+            discovered_at,
         )| {
             let kind = match kind.as_str() {
                 "tentative" => ScanCandidateKind::Tentative,
@@ -322,6 +327,7 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 kind,
                 name,
                 display_path,
+                discovered_at,
                 content_hash,
                 file_edit_revision: to_u64(
                     file_edit_revision,

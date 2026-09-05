@@ -48,27 +48,21 @@ pub(crate) struct Flattened {
 struct OrderedEntry {
     watched_folder_path: String,
     display_path: String,
+    discovered_at: Option<i64>,
     tab: TriageTab,
     group: Option<TriageGroup>,
     matches_filter: bool,
     item: ItemRef,
     /// How a Done row sorts against its neighbours. `None` on every other tab,
-    /// which orders by path instead.
+    /// which uses the source folder's date instead.
     done_order: Option<DoneOrder>,
 }
 
-/// The Done tab's order: what the cloud is still doing with the release, then
-/// when it was imported, newest first.
-///
-/// Not the path: a folder that is in the library is finished, and what a person
-/// looks for there is the import they just ran and whatever is still going up
-/// behind it — neither of which the alphabet answers.
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+/// Outstanding uploads remain first. Date sorting on Done describes when
+/// the release entered the library rather than when its folder was discovered.
 struct DoneOrder {
     upload_rank: u8,
-    /// Reversed so the newest import leads. A release with no recorded time
-    /// sorts last rather than first.
-    imported_at: std::cmp::Reverse<Option<i64>>,
+    imported_at: Option<i64>,
 }
 
 pub(crate) fn flatten(
@@ -89,6 +83,7 @@ pub(crate) fn flatten(
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
                     display_path: row.display_path.clone(),
+                    discovered_at: row.discovered_at,
                     tab: TriageTab::Skipped,
                     group: None,
                     matches_filter: matches_text(
@@ -128,6 +123,7 @@ pub(crate) fn flatten(
                 ordered.push(OrderedEntry {
                     watched_folder_path: row.watched_folder_path.clone(),
                     display_path: row.display_path.clone(),
+                    discovered_at: row.discovered_at,
                     tab,
                     group: None,
                     matches_filter,
@@ -170,26 +166,49 @@ pub(crate) fn flatten(
         .enumerate()
         .map(|(index, folder)| (folder.path.as_str(), index))
         .collect();
+    // A group's most recent member dates the group as a whole. Compare the
+    // group before its members, so dates never scatter a group's rows between
+    // other headers. Compute this before filtering/collapsing: neither changes
+    // when the source folder was last added to.
+    let mut group_dates: HashMap<FolderReleaseDecisionKey, Option<i64>> = HashMap::new();
+    for entry in &ordered {
+        if let Some(group) = &entry.group {
+            group_dates
+                .entry(group.key.clone())
+                .and_modify(|date| *date = (*date).max(entry.discovered_at))
+                .or_insert(entry.discovered_at);
+        }
+    }
     // Sort every tab's entries in one pass, tab first so each tab's run is
     // contiguous and its own order is decided among its own rows. Which tab is
     // being shown is the filter's business, further down.
     ordered.sort_by(|left, right| {
         tab_rank(left.tab).cmp(&tab_rank(right.tab)).then_with(|| {
-            match (&left.done_order, &right.done_order) {
-                (Some(left_done), Some(right_done)) => left_done.cmp(right_done),
-                _ => {
-                    let by_root = root_order
-                        .get(left.watched_folder_path.as_str())
-                        .cmp(&root_order.get(right.watched_folder_path.as_str()));
-                    let by_path =
-                        natord::compare_ignore_case(&left.display_path, &right.display_path);
-                    let natural = by_root.then(by_path);
-                    match view.order {
-                        ImportListOrder::PathAscending => natural,
-                        ImportListOrder::PathDescending => natural.reverse(),
-                    }
+            let upload_order = match (&left.done_order, &right.done_order) {
+                (Some(left), Some(right)) => left.upload_rank.cmp(&right.upload_rank),
+                _ => std::cmp::Ordering::Equal,
+            };
+            let (left_path, left_date) = left.sort_group(&group_dates);
+            let (right_path, right_date) = right.sort_group(&group_dates);
+            let by_root = root_order
+                .get(left.watched_folder_path.as_str())
+                .cmp(&root_order.get(right.watched_folder_path.as_str()))
+                .then_with(|| left.watched_folder_path.cmp(&right.watched_folder_path));
+            let by_unit = by_root.then_with(|| natural_path(left_path, right_path));
+            let by_member = natural_path(&left.display_path, &right.display_path);
+            let chosen = match view.order {
+                ImportListOrder::PathAscending => by_unit.then(by_member),
+                ImportListOrder::PathDescending => by_unit.then(by_member).reverse(),
+                ImportListOrder::NewestFirst | ImportListOrder::OldestFirst => {
+                    compare_dates(left_date, right_date, view.order)
+                        .then(by_unit)
+                        .then_with(|| {
+                            compare_dates(left.sort_date(), right.sort_date(), view.order)
+                        })
+                        .then(by_member)
                 }
-            }
+            };
+            upload_order.then(chosen)
         })
     });
 
@@ -212,6 +231,47 @@ pub(crate) fn flatten(
         rows: placed,
         summary,
     })
+}
+
+impl OrderedEntry {
+    fn sort_group(
+        &self,
+        group_dates: &HashMap<FolderReleaseDecisionKey, Option<i64>>,
+    ) -> (&str, Option<i64>) {
+        match &self.group {
+            Some(group) => (&group.key.relative_folder_path, group_dates[&group.key]),
+            None => (&self.display_path, self.sort_date()),
+        }
+    }
+
+    fn sort_date(&self) -> Option<i64> {
+        match &self.done_order {
+            Some(done) => done.imported_at,
+            None => self.discovered_at,
+        }
+    }
+}
+
+fn natural_path(left: &str, right: &str) -> std::cmp::Ordering {
+    natord::compare_ignore_case(left, right).then_with(|| left.cmp(right))
+}
+
+/// Undated, not-yet-rescanned candidates come last in both date directions.
+fn compare_dates(
+    left: Option<i64>,
+    right: Option<i64>,
+    order: ImportListOrder,
+) -> std::cmp::Ordering {
+    match (left, right) {
+        (Some(left), Some(right)) => match order {
+            ImportListOrder::NewestFirst => right.cmp(&left),
+            ImportListOrder::OldestFirst => left.cmp(&right),
+            ImportListOrder::PathAscending | ImportListOrder::PathDescending => {
+                unreachable!("date comparison requires a date order")
+            }
+        },
+        _ => right.is_some().cmp(&left.is_some()),
+    }
 }
 
 /// Locate `candidate_key` using the same placement, grouping, filtering and
@@ -369,11 +429,10 @@ fn done_order(
         upload_rank: UploadStanding::rank(
             release_id.and_then(|id| upload_standing.get(id).copied()),
         ),
-        imported_at: std::cmp::Reverse(
-            row.content_hash
-                .as_deref()
-                .and_then(|hash| rows.imported_at.get(hash).copied()),
-        ),
+        imported_at: row
+            .content_hash
+            .as_deref()
+            .and_then(|hash| rows.imported_at.get(hash).copied()),
     }
 }
 

@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>தவிர்ப்பை நீக்கு</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>கோப்புறையை நீக்கு</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>வரிசைப்படுத்தல் மற்றும் கண்காணிக்கும் கோப்புறைகள்</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>பெயர் (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>பெயர் (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>புதியவை முதலில்</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>பழையவை முதலில்</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>கோப்புறையின் பெயர் (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>கோப்புறையின் பெயர் (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>நிலுவையில்</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>முடிந்தது</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது</value></data>

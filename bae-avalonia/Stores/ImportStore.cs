@@ -64,7 +64,7 @@ internal sealed class ImportStore : IDisposable
 
     // The persisted candidate-list sort order, loaded once at construction and
     // saved whenever the sidebar changes it.
-    public CandidateSortOrder SortOrder { get; private set; }
+    public BridgeImportListOrder SortOrder { get; private set; }
 
     // Bulk-select state for Pending's importable rows. Selection is view state —
     // it is not persisted and does not cross the bridge.
@@ -146,7 +146,7 @@ internal sealed class ImportStore : IDisposable
         CollapsedGroups: Interaction.CollapsedKeys()
             .Select(key => new BridgeFolderReleaseDecisionKey(key.WatchedRoot, key.RelativePath))
             .ToArray(),
-        Order: TriageListModel.ListOrder(SortOrder));
+        Order: SortOrder);
 
     private ImportListPageSource BuildSource() => new(
         View,
@@ -549,7 +549,7 @@ internal sealed class ImportStore : IDisposable
 
     // Change and persist the candidate-list sort order (absolute set — the
     // caller passes the order its control represents).
-    public void SetSortOrder(CandidateSortOrder order)
+    public void SetSortOrder(BridgeImportListOrder order)
     {
         SortOrder = order;
         ImportSortStore.Save(order);

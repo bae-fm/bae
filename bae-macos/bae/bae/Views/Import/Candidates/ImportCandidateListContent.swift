@@ -318,6 +318,11 @@ struct ImportCandidateListContent: View {
                             scanStatuses: scanStatuses,
                             networkFolders: networkFolders,
                             hasGroups: !summary.groupKeys.isEmpty,
+                            sortOrder: listSlot.sortOrder,
+                            onSetSortOrder: { order in
+                                cancelReveal()
+                                listSlot.setSortOrder(order)
+                            },
                             onAddFolder: onAddFolder,
                             onSetAllGroupsExpanded: { expanded in
                                 cancelReveal()

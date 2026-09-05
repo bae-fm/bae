@@ -172,11 +172,12 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn save_folder_scan_item(
+    pub(crate) async fn save_folder_scan_item_with_date(
         &self,
         watched_folder_path: &str,
         generation: u64,
         item: &crate::import::folder_scanner::ScanItem,
+        folder_date: Option<crate::import::folder_scanner::FolderDate>,
     ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
         let initial_metadata_source = self.config_handle.config().default_import_metadata_source;
         Ok(self
@@ -186,8 +187,23 @@ impl LibraryManager {
                 generation,
                 item,
                 initial_metadata_source,
+                folder_date,
             )
             .await?)
+    }
+
+    #[cfg(all(
+        any(test, feature = "test-utils"),
+        not(any(target_os = "ios", target_os = "android"))
+    ))]
+    pub async fn save_folder_scan_item(
+        &self,
+        watched_folder_path: &str,
+        generation: u64,
+        item: &crate::import::folder_scanner::ScanItem,
+    ) -> Result<Option<crate::db::ScanItemWrite>, LibraryError> {
+        self.save_folder_scan_item_with_date(watched_folder_path, generation, item, None)
+            .await
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -3,18 +3,6 @@ using uniffi.bae_bridge;
 
 namespace Bae.Desktop;
 
-// The sidebar row list's sort order. Over the folder's path below its watched
-// root, not over the row's title: for a candidate the user picked a release
-// for, the title lives in an archived document, and ordering by it would mean
-// decoding every pick on every read. Only name order survives the triage
-// redesign — a row carries no discovery timestamp, so a "date added" option
-// would silently degrade into an alias for this one.
-internal enum CandidateSortOrder
-{
-    NameAZ,
-    NameZA,
-}
-
 // What is left for the UI to say about a row once core has placed it: the title
 // it leads with, and the persisted sort token. Which tab a row belongs to, which
 // group it joins, whether the filter keeps it and where it sits are all core's,
@@ -34,28 +22,23 @@ internal static class TriageListModel
     internal static bool TitleIsFolderName(BridgeTriageRow row) =>
         row.MetadataSummary is null && row.Matched is null;
 
-    // The order core reads the persisted preference as.
-    internal static BridgeImportListOrder ListOrder(CandidateSortOrder order) => order switch
-    {
-        CandidateSortOrder.NameAZ => BridgeImportListOrder.PathAscending,
-        CandidateSortOrder.NameZA => BridgeImportListOrder.PathDescending,
-        _ => throw new ArgumentOutOfRangeException(nameof(order), order, "Unknown sort order"),
-    };
-
     // Round-trip tokens for the persisted sort preference.
-    internal static string Serialize(CandidateSortOrder order) => order switch
+    internal static string Serialize(BridgeImportListOrder order) => order switch
     {
-        CandidateSortOrder.NameAZ => "nameAZ",
-        CandidateSortOrder.NameZA => "nameZA",
+        BridgeImportListOrder.NewestFirst => "newestFirst",
+        BridgeImportListOrder.OldestFirst => "oldestFirst",
+        BridgeImportListOrder.PathAscending => "nameAZ",
+        BridgeImportListOrder.PathDescending => "nameZA",
         _ => throw new ArgumentOutOfRangeException(nameof(order), order, "Unknown sort order"),
     };
 
-    // An unknown or absent token falls back to the default order — a sort
-    // preference degrades to the default rather than failing.
-    internal static CandidateSortOrder ParseSortOrder(string? token) => token switch
+    internal static BridgeImportListOrder ParseSortOrder(string? token) => token switch
     {
-        "nameAZ" => CandidateSortOrder.NameAZ,
-        "nameZA" => CandidateSortOrder.NameZA,
-        _ => CandidateSortOrder.NameAZ,
+        null => BridgeImportListOrder.NewestFirst,
+        "newestFirst" => BridgeImportListOrder.NewestFirst,
+        "oldestFirst" => BridgeImportListOrder.OldestFirst,
+        "nameAZ" => BridgeImportListOrder.PathAscending,
+        "nameZA" => BridgeImportListOrder.PathDescending,
+        _ => throw new FormatException($"Unknown import sort preference: {token}"),
     };
 }

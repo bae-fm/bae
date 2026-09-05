@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Ne plus ignorer</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Supprimer le dossier</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Tri et dossiers surveillés</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Nom (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Nom (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Les plus récents d’abord</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Les plus anciens d’abord</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Nom du dossier (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Nom du dossier (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>En attente</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Terminés</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identification</value></data>

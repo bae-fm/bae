@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Niet meer overslaan</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Map verwijderen</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sortering en gevolgde mappen</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Naam (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Naam (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Nieuwste eerst</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Oudste eerst</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Mapnaam (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Mapnaam (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>In afwachting</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Voltooid</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificeren</value></data>

@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>దాటవేతను రద్దు చేయి</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ఫోల్డర్‌ను తీసివేయి</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>క్రమబద్ధీకరణ మరియు పర్యవేక్షిత ఫోల్డర్‌లు</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>పేరు (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>పేరు (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>కొత్తవి ముందు</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>పాతవి ముందు</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ఫోల్డర్ పేరు (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ఫోల్డర్ పేరు (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>పెండింగ్‌లో</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>పూర్తయింది</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>గుర్తిస్తోంది</value></data>

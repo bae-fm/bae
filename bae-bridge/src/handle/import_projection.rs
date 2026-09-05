@@ -420,6 +420,12 @@ impl crate::types::BridgeImportListView {
                 .map(crate::types::BridgeFolderReleaseDecisionKey::into_core)
                 .collect(),
             order: match self.order {
+                crate::types::BridgeImportListOrder::NewestFirst => {
+                    bae_core::import::ImportListOrder::NewestFirst
+                }
+                crate::types::BridgeImportListOrder::OldestFirst => {
+                    bae_core::import::ImportListOrder::OldestFirst
+                }
                 crate::types::BridgeImportListOrder::PathAscending => {
                     bae_core::import::ImportListOrder::PathAscending
                 }

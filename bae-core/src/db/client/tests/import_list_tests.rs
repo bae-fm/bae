@@ -18,6 +18,8 @@ use crate::import::{MetadataProvenance, PayloadSource, TriageTab};
 use coven::FixedClock;
 use std::path::PathBuf;
 
+mod dates;
+
 fn now() -> DateTime<Utc> {
     DateTime::parse_from_rfc3339("2026-01-15T12:00:00Z")
         .unwrap()
@@ -89,6 +91,7 @@ async fn scanned_with_source(
         generation,
         &ScanItem::Valid(candidate.clone()),
         source,
+        None,
     )
     .await
     .unwrap();
@@ -502,6 +505,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         generation,
         &ScanItem::Valid(candidate.clone()),
         crate::config::DefaultImportMetadataSource::FindOnline,
+        None,
     )
     .await
     .unwrap();
@@ -559,6 +563,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         generation,
         &ScanItem::Valid(candidate.clone()),
         crate::config::DefaultImportMetadataSource::None,
+        None,
     )
     .await
     .unwrap();
@@ -590,6 +595,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         generation,
         &ScanItem::Valid(candidate),
         crate::config::DefaultImportMetadataSource::None,
+        None,
     )
     .await
     .unwrap();
@@ -632,6 +638,7 @@ async fn local_artwork_is_the_effective_cover_without_a_stored_selection() {
         generation,
         &ScanItem::Valid(candidate.clone()),
         crate::config::DefaultImportMetadataSource::None,
+        None,
     )
     .await
     .unwrap();

@@ -50,7 +50,7 @@ pub use super::triage::TriageTab;
 /// The collapsed set is part of the request rather than a rendering decision:
 /// a folded group's rows are not in the list at all, so the offsets a window
 /// asks for depend on it.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportListView {
     pub tab: TriageTab,
     pub filter_text: String,
@@ -58,15 +58,23 @@ pub struct ImportListView {
     pub order: ImportListOrder,
 }
 
-/// The two orders the list offers, over the folder's path below its watched
-/// root.
-///
-/// Not over the row's title: for a candidate the user picked a release for,
-/// the title lives in an archived document, and ordering by it would mean
-/// decoding every pick on every rerun. The path is on the row.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+impl Default for ImportListView {
+    fn default() -> Self {
+        Self {
+            tab: TriageTab::Pending,
+            filter_text: String::new(),
+            collapsed_groups: BTreeSet::new(),
+            order: ImportListOrder::NewestFirst,
+        }
+    }
+}
+
+/// Folder dates or natural folder-path order, never the editable album title.
+/// Done uses the library import date and keeps outstanding uploads first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ImportListOrder {
-    #[default]
+    NewestFirst,
+    OldestFirst,
     PathAscending,
     PathDescending,
 }

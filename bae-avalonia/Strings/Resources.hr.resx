@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Poništi preskakanje</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Ukloni mapu</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Razvrstavanje i praćene mape</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Naziv (A–Ž)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Naziv (Ž–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Najnovije prvo</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Najstarije prvo</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Naziv mape (A–Ž)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Naziv mape (Ž–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Na čekanju</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Gotovo</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifikacija</value></data>

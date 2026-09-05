@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Não ignorar</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Remover pasta</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Ordenação e pastas monitoradas</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Nome (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Nome (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Mais recentes primeiro</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Mais antigos primeiro</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Nome da pasta (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Nome da pasta (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Pendentes</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Concluídos</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identificando</value></data>

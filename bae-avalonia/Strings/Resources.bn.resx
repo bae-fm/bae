@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>এড়ানো বাতিল করুন</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>ফোল্ডার সরান</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>সাজানো ও নজরে রাখা ফোল্ডার</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>নাম (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>নাম (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>নতুনগুলি আগে</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>পুরনোগুলি আগে</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>ফোল্ডারের নাম (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>ফোল্ডারের নাম (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>অপেক্ষমাণ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>সম্পন্ন</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে</value></data>

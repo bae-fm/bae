@@ -7,6 +7,19 @@ import XCTest
 
 private struct ReadFailed: Error {}
 
+private final class RecordedImportView: @unchecked Sendable {
+    private let lock = NSLock()
+    private var view: BridgeImportListView?
+
+    var last: BridgeImportListView? {
+        lock.withLock { view }
+    }
+
+    func set(_ view: BridgeImportListView) {
+        lock.withLock { self.view = view }
+    }
+}
+
 /// A source whose every page fails immediately.
 private struct FailingPageSource: PageSource {
     typealias Row = BridgeImportListItem
@@ -149,6 +162,50 @@ private func candidateKey(_ index: Int) -> String {
 @MainActor
 @Suite("Import list slot read failures")
 struct ImportListSlotTests {
+    @Test("sort choices update the source and survive recreating the slot")
+    func sortPreferenceReconfiguresAndPersists() async throws {
+        let suite = "ImportListSlotTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let requests = RecordedImportView()
+        let source = ImportListPreviewPageSource(items: [])
+        func makeSlot() -> ImportListSlot {
+            ImportListSlot(
+                importStore: ImportStore(),
+                uiStore: UiStore(),
+                defaults: defaults,
+                makeSource: { view in
+                    requests.set(view)
+                    return ImportListPages(
+                        source: source,
+                        setView: { requests.set($0) },
+                        firstUnidentifiedPosition: { _, _ in nil },
+                        waitForView: { _ in }
+                    )
+                },
+                locateCandidate: { _, _ in nil }
+            )
+        }
+        let slot = makeSlot()
+        #expect(slot.sortOrder == .newestFirst)
+        slot.startLoad()
+        await waitUntil { slot.list != nil }
+        #expect(requests.last?.order == .newestFirst)
+
+        for order: BridgeImportListOrder in [
+            .oldestFirst, .pathDescending, .pathAscending, .newestFirst,
+        ] {
+            slot.setSortOrder(order)
+            #expect(slot.sortOrder == order)
+            #expect(requests.last?.order == order)
+            let reopened = makeSlot()
+            #expect(reopened.sortOrder == order)
+            reopened.startLoad()
+            await waitUntil { reopened.list != nil }
+            #expect(requests.last?.order == order)
+        }
+    }
+
     @Test("a failed first page becomes the slot's failure and an alert")
     func aFailedFirstPageIsSurfaced() async {
         let uiStore = UiStore()

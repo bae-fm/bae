@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>スキップを解除</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>フォルダを削除</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>並べ替えと監視フォルダ</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>名前（A–Z）</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>名前（Z–A）</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>新しい順</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>古い順</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>フォルダ名（A–Z）</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>フォルダ名（Z–A）</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>保留中</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>完了</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>識別中</value></data>

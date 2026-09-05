@@ -83,6 +83,11 @@ pub fn all() -> Vec<coven::Migration> {
             "scan_sheet_audio_file",
             include_str!("../migrations/015_scan_sheet_audio_file.sql"),
         ),
+        coven::Migration::sql(
+            16,
+            "candidate_dates",
+            include_str!("../migrations/016_candidate_dates.sql"),
+        ),
     ]
 }
 

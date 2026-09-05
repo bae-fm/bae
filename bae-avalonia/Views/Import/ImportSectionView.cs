@@ -399,25 +399,22 @@ internal sealed partial class ImportSectionView : UserControl
     {
         var items = new List<Control>();
 
-        // The name order decides the tabs that are ordered by name. Done is
-        // ordered by what the cloud is still doing with each release and when
-        // it was imported, so on that tab there is nothing here to choose.
-        if (_import.ActiveTab != BridgeTriageTab.Done)
+        foreach (var (order, label) in new[]
         {
-            var az = new MenuItem
+            (BridgeImportListOrder.NewestFirst, "import.sort.newest_first"),
+            (BridgeImportListOrder.OldestFirst, "import.sort.oldest_first"),
+            (BridgeImportListOrder.PathAscending, "import.sort.name_az"),
+            (BridgeImportListOrder.PathDescending, "import.sort.name_za"),
+        })
+        {
+            var item = new MenuItem
             {
-                Header = (_import.SortOrder == CandidateSortOrder.NameAZ ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_az"),
+                Header = (_import.SortOrder == order ? "✓ " : string.Empty) + Loc.Chrome(label),
             };
-            az.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameAZ);
-            var za = new MenuItem
-            {
-                Header = (_import.SortOrder == CandidateSortOrder.NameZA ? "✓ " : string.Empty) + Loc.Chrome("import.sort.name_za"),
-            };
-            za.Click += (_, _) => _import.SetSortOrder(CandidateSortOrder.NameZA);
-            items.Add(az);
-            items.Add(za);
-            items.Add(new Separator());
+            item.Click += (_, _) => _import.SetSortOrder(order);
+            items.Add(item);
         }
+        items.Add(new Separator());
 
         var add = new MenuItem { Header = Loc.Chrome("import.folder.add") };
         add.Click += async (_, _) => await AddFolder();

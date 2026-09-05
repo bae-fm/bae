@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>건너뛰기 취소</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>폴더 제거</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>정렬 및 감시 중인 폴더</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>이름(A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>이름(Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>최신순</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>오래된순</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>폴더 이름 (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>폴더 이름 (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>대기 중</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>완료</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>식별 중</value></data>

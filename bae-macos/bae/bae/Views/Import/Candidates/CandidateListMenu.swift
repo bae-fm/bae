@@ -27,6 +27,8 @@ struct CandidateListMenu: View, Equatable {
     /// Whether the queue has folder groups to fold. Without any, the two
     /// group entries have nothing to act on and say so by being disabled.
     let hasGroups: Bool
+    let sortOrder: BridgeImportListOrder
+    let onSetSortOrder: (BridgeImportListOrder) -> Void
     let onAddFolder: () -> Void
     /// Fold every folder group in the queue open (`true`) or shut (`false`).
     let onSetAllGroupsExpanded: (_ expanded: Bool) -> Void
@@ -46,6 +48,7 @@ struct CandidateListMenu: View, Equatable {
             && lhs.refreshingFolders == rhs.refreshingFolders
             && lhs.networkFolders == rhs.networkFolders
             && lhs.hasGroups == rhs.hasGroups
+            && lhs.sortOrder == rhs.sortOrder
             && hasFailedScan(in: lhs.scanStatuses)
                 == hasFailedScan(in: rhs.scanStatuses)
             && lhs.watchedFolders.allSatisfy { folder in
@@ -91,6 +94,18 @@ struct CandidateListMenu: View, Equatable {
 
     var body: some View {
         Menu {
+            Picker(
+                "Sort",
+                selection: Binding(get: { sortOrder }, set: onSetSortOrder)
+            ) {
+                Text("Newest First").tag(BridgeImportListOrder.newestFirst)
+                Text("Oldest First").tag(BridgeImportListOrder.oldestFirst)
+                Text("Folder Name (A–Z)")
+                    .tag(BridgeImportListOrder.pathAscending)
+                Text("Folder Name (Z–A)")
+                    .tag(BridgeImportListOrder.pathDescending)
+            }
+            .pickerStyle(.inline)
             Section("Folders") {
                 Button {
                     onAddFolder()
@@ -130,7 +145,7 @@ struct CandidateListMenu: View, Equatable {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
-        .help("Folders")
+        .help("Sorting and Watched Folders")
     }
 
     /// One root's entry. Its scan, when it is saying anything, rides the
@@ -229,6 +244,8 @@ struct CandidateListMenu: View, Equatable {
             ],
             networkFolders: ["/Volumes/Vault"],
             hasGroups: true,
+            sortOrder: .newestFirst,
+            onSetSortOrder: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },

@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Скасувати пропуск</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Вилучити теку</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Сортування та відстежувані теки</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>За назвою (А–Я)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>За назвою (Я–А)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Спочатку найновіші</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Спочатку найстаріші</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Назва теки (А–Я)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Назва теки (Я–А)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Очікують</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Завершені</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Ідентифікація</value></data>

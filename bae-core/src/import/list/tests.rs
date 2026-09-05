@@ -14,6 +14,7 @@ use crate::import::types::MetadataSource;
 use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 
+mod dates;
 mod flatten;
 mod flatten_groups;
 mod subscription;
@@ -52,6 +53,7 @@ fn candidate(display_path: &str) -> ScanCandidateListRow {
             .expect("a display path has a last component")
             .to_string(),
         display_path: display_path.to_string(),
+        discovered_at: None,
         content_hash: Some(format!("hash-{display_path}")),
         file_edit_revision: 0,
         combine_ancestor_relative_path: None,

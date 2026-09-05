@@ -21,7 +21,10 @@ final class CandidateListMenuTests: XCTestCase {
     }
 
     @MainActor
-    private func menu(status: BridgeFolderScanStatus) -> CandidateListMenu {
+    private func menu(
+        status: BridgeFolderScanStatus,
+        sortOrder: BridgeImportListOrder = .newestFirst
+    ) -> CandidateListMenu {
         CandidateListMenu(
             watchedFolders: [
                 BridgeWatchedFolder(path: "/Imports", name: "Imports")
@@ -30,10 +33,20 @@ final class CandidateListMenuTests: XCTestCase {
             scanStatuses: ["/Imports": status],
             networkFolders: [],
             hasGroups: false,
+            sortOrder: sortOrder,
+            onSetSortOrder: { _ in },
             onAddFolder: {},
             onSetAllGroupsExpanded: { _ in },
             onRefreshFolder: { _ in },
             onRemoveFolder: { _ in }
+        )
+    }
+
+    @MainActor
+    func testChangedSortReplacesTheMenuCheckmark() {
+        XCTAssertNotEqual(
+            menu(status: .complete),
+            menu(status: .complete, sortOrder: .oldestFirst)
         )
     }
 }

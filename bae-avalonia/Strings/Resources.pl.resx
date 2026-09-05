@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>Cofnij pominięcie</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>Usuń folder</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>Sortowanie i obserwowane foldery</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>Nazwa (A–Z)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>Nazwa (Z–A)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>Najnowsze najpierw</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>Najstarsze najpierw</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>Nazwa folderu (A–Z)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>Nazwa folderu (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Oczekujące</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Zakończone</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identyfikowanie</value></data>

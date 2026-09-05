@@ -367,8 +367,10 @@
   <data name="import.candidate.unskip" xml:space="preserve"><value>إلغاء التخطّي</value></data>
   <data name="import.folder.remove" xml:space="preserve"><value>إزالة المجلد</value></data>
   <data name="import.list_menu" xml:space="preserve"><value>الفرز والمجلدات المراقَبة</value></data>
-  <data name="import.sort.name_az" xml:space="preserve"><value>الاسم (أ–ي)</value></data>
-  <data name="import.sort.name_za" xml:space="preserve"><value>الاسم (ي–أ)</value></data>
+  <data name="import.sort.newest_first" xml:space="preserve"><value>الأحدث أولاً</value></data>
+  <data name="import.sort.oldest_first" xml:space="preserve"><value>الأقدم أولاً</value></data>
+  <data name="import.sort.name_az" xml:space="preserve"><value>اسم المجلد (أ–ي)</value></data>
+  <data name="import.sort.name_za" xml:space="preserve"><value>اسم المجلد (ي–أ)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>قيد الانتظار</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>تم</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>جارٍ التحديد</value></data>
