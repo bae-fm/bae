@@ -226,6 +226,7 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement,
             skip_action,
+            actions,
             matched,
             metadata_summary,
             cover_thumbnail,
@@ -247,6 +248,10 @@ impl crate::types::BridgeTriageRow {
             actionable,
             placement: crate::types::BridgeTriagePlacement::from_core(placement),
             skip_action: skip_action.map(crate::types::BridgeTriageSkipAction::from_core),
+            actions: actions
+                .into_iter()
+                .map(crate::types::BridgeCandidateAction::from_core)
+                .collect(),
             matched: matched.map(crate::types::BridgeMatchedRelease::from_core),
             metadata_summary: metadata_summary.map(|summary| {
                 crate::types::BridgeTriageMetadataSummary {
@@ -263,6 +268,22 @@ impl crate::types::BridgeTriageRow {
             import_status: import_status.map(crate::types::BridgeTriageImportStatus::from_core),
             metadata_provenance: metadata_provenance
                 .map(crate::types::BridgeMetadataProvenance::from_core),
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl crate::types::BridgeCandidateAction {
+    fn from_core(action: bae_core::import::triage::CandidateAction) -> Self {
+        use bae_core::import::triage::CandidateAction as A;
+        match action {
+            A::ImportReady => Self::ImportReady,
+            A::Identify => Self::Identify,
+            A::RetryIdentification => Self::RetryIdentification,
+            A::UseFileMetadata => Self::UseFileMetadata,
+            A::ClearMetadata => Self::ClearMetadata,
+            A::Skip => Self::Skip,
+            A::Restore => Self::Restore,
         }
     }
 }

@@ -6,8 +6,8 @@ import XCTest
 
 @testable import bae
 
-@Suite("Import candidate checkbox")
-struct ImportCandidateCheckboxTests {
+@Suite("Import candidate selection")
+struct ImportCandidateSelectionTests {
     @MainActor
     @Test("folder scan activity renders an indeterminate progress control")
     func folderScanActivityRendersIndeterminateProgress() throws {
@@ -47,7 +47,6 @@ struct ImportCandidateCheckboxTests {
                 row: PreviewData.triageRowDoneImported,
                 coverContent: nil,
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -61,27 +60,23 @@ struct ImportCandidateCheckboxTests {
     }
 
     @MainActor
-    @Test("an unchecked candidate can be checked inside the selectable list")
-    func uncheckedCandidateCanBeChecked() async throws {
-        try await assertCheckboxCanBeChecked(isGroupMember: false)
+    @Test("native row selection is the bulk-action selection")
+    func candidateCanBeSelected() async throws {
+        try await assertCandidateCanBeSelected(isGroupMember: false)
     }
 
     @MainActor
-    @Test("a group member checkbox stays inside the selectable list")
-    func groupedCandidateCanBeChecked() async throws {
-        try await assertCheckboxCanBeChecked(isGroupMember: true)
+    @Test("native group-member selection is the bulk-action selection")
+    func groupedCandidateCanBeSelected() async throws {
+        try await assertCandidateCanBeSelected(isGroupMember: true)
     }
 
     @MainActor
-    private func assertCheckboxCanBeChecked(
+    private func assertCandidateCanBeSelected(
         isGroupMember: Bool
     ) async throws {
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
-        // One Ready row, so the first checkbox in the rendered list is the one
-        // this test clicks. Which rows a tab holds is core's answer now, so a
-        // narrower list is stated as a narrower fixture rather than as a
-        // filter the view applies.
         let store = PreviewData.importTabScene().store
         let slot = ImportListSlot.preview(
             importStore: store,
@@ -95,19 +90,21 @@ struct ImportCandidateCheckboxTests {
                 )
             ]
         )
-        let listSelection = CandidateListSelection()
         let size = NSSize(width: 400, height: 320)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             ImportCandidateListContent(
                 importStore: store,
                 listSlot: slot,
-                selectedKeys: listSelection.binding,
+                selectedKeys: Binding(
+                    get: { uiStore.selectedFolderCandidates },
+                    set: { uiStore.setFolderCandidateSelection($0) }
+                ),
                 onAddFolder: {},
                 onRemoveFolder: { _ in },
                 onRefreshFolder: { _ in },
                 onReleaseDecision: { _, _ in },
                 onSkip: { _, _ in },
-                onImportSelected: { _ in }
+                onImportSelected: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
             .environment(uiStore)
@@ -115,53 +112,28 @@ struct ImportCandidateCheckboxTests {
             .frame(width: size.width, height: size.height),
             size: size
         )
-        host.layoutSubtreeIfNeeded()
-        await Task.yield()
-        host.layoutSubtreeIfNeeded()
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
 
-        // SwiftUI's List is table-backed, so the table's own geometry says
-        // where the row is; the checkbox sits centered in the row's trailing
-        // edge padding.
+        // Exercise the native list selection, not a second checkbox state.
         let tableView = try #require(
             SnapshotTestSupport.descendants(of: host)
                 .compactMap { $0 as? NSTableView }
                 .first
         )
-        let cell = try #require(
-            tableView.view(atColumn: 0, row: 0, makeIfNecessary: false)
+        tableView.selectRowIndexes(
+            IndexSet(integer: 0),
+            byExtendingSelection: false
         )
-        let cellRect = cell.convert(cell.bounds, to: nil)
-        let point = NSPoint(
-            x: cellRect.maxX - ImportListHierarchyLayout.rowEdgePadding - 7,
-            y: cellRect.midY
-        )
-        try click(at: point, in: window)
-        await Task.yield()
+        await SnapshotTestSupport.settle(host)
 
         #expect(
-            uiStore.selectedReadyCandidates
+            uiStore.selectedFolderCandidates
                 == [PreviewData.triageRowReady.candidateKey]
         )
-    }
-
-    @MainActor
-    private func click(at point: NSPoint, in window: NSWindow) throws {
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            let event = try #require(
-                NSEvent.mouseEvent(
-                    with: type,
-                    location: point,
-                    modifierFlags: [],
-                    timestamp: ProcessInfo.processInfo.systemUptime,
-                    windowNumber: window.windowNumber,
-                    context: nil,
-                    eventNumber: 0,
-                    clickCount: 1,
-                    pressure: type == .leftMouseDown ? 1 : 0
-                )
-            )
-            window.sendEvent(event)
-        }
     }
 
 }
@@ -192,17 +164,5 @@ final class PopoverAnimationTests: XCTestCase {
         XCTAssertFalse(popover.animates)
         popover.performClose(nil)
         withExtendedLifetime(window) {}
-    }
-}
-
-@MainActor
-private final class CandidateListSelection {
-    private var keys: Set<String> = []
-
-    var binding: Binding<Set<String>> {
-        Binding(
-            get: { self.keys },
-            set: { self.keys = $0 }
-        )
     }
 }

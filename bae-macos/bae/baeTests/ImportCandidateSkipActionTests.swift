@@ -14,6 +14,28 @@ private actor SkippedCandidateRecorder {
 @Suite("Import candidate bulk skip")
 struct ImportCandidateSkipActionTests {
     @MainActor
+    @Test("a failed skip remains selected for retry")
+    func failedSkipRemainsSelected() async {
+        let store = PreviewData.importTabScene().store
+        let uiStore = UiStore()
+        let failed = PreviewData.importTabCandidate.key
+        let successful = PreviewData.importTabDisagreementCandidate.key
+        uiStore.setFolderCandidateSelection([failed, successful])
+        let importer = Importer(setCandidateSkipped: { key, _ in
+            if key == failed { throw CocoaError(.fileWriteNoPermission) }
+        })
+        await ImportCandidateSkipAction(
+            importer: importer,
+            importStore: store,
+            uiStore: uiStore
+        )
+        .start()?
+        .value
+        #expect(uiStore.selectedFolderCandidates == [failed])
+        #expect(uiStore.lastError != nil)
+    }
+
+    @MainActor
     @Test("the shared action skips exactly the eligible current selection")
     func skipsEligibleCurrentSelectionAndClearsIt() async {
         let importStore = PreviewData.importTabScene().store
@@ -35,7 +57,9 @@ struct ImportCandidateSkipActionTests {
             importer: importer,
             importStore: importStore,
             uiStore: uiStore
-        ).perform()
+        )
+        .start()?
+        .value
 
         // The eligible pair, and only it: a row already skipped offers Unskip
         // rather than Skip, and a key the list no longer holds offers nothing.
@@ -45,9 +69,14 @@ struct ImportCandidateSkipActionTests {
                 == [
                     PreviewData.importTabCandidate.key,
                     PreviewData.importTabDisagreementCandidate.key,
-                ].sorted()
+                ]
+                .sorted()
         )
-        #expect(uiStore.selectedFolderCandidates.isEmpty)
+        #expect(
+            uiStore.selectedFolderCandidates == [
+                PreviewData.triageRowSkipped.candidateKey, "candidate:stale",
+            ]
+        )
     }
 
     @MainActor
@@ -62,13 +91,15 @@ struct ImportCandidateSkipActionTests {
             importer: importer,
             importStore: PreviewData.importTabScene().store,
             uiStore: UiStore()
-        ).perform()
+        )
+        .start()?
+        .value
 
         #expect(await recorder.keys.isEmpty)
     }
 
-    @Test("Skip All is translated in every shipping locale")
-    func skipAllHasEveryLocalization() throws {
+    @Test("Skip selected (%lld) is translated in every shipping locale")
+    func skipSelectedHasEveryLocalization() throws {
         let catalogURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -83,7 +114,9 @@ struct ImportCandidateSkipActionTests {
         let referenceLocales = try #require(
             reference["localizations"] as? [String: Any]
         )
-        let skipAll = try #require(strings["Skip All"] as? [String: Any])
+        let skipAll = try #require(
+            strings["Skip selected (%lld)"] as? [String: Any]
+        )
         let skipAllLocales = try #require(
             skipAll["localizations"] as? [String: Any]
         )

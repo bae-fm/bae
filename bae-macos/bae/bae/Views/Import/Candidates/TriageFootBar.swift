@@ -32,14 +32,18 @@ struct TriageFootBar: View {
             .disabled(readyCount == 0)
             Spacer()
             Button(action: onImport) {
-                Text(String(localized: "Import \(selectedCount)"))
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(
-                        selectedCount == 0
-                            ? AnyShapeStyle(.tertiary)
-                            : AnyShapeStyle(Theme.accent)
+                Text(
+                    BridgeCandidateAction.importReady.label(
+                        count: selectedCount
                     )
-                    .contentShape(Rectangle())
+                )
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(
+                    selectedCount == 0
+                        ? AnyShapeStyle(.tertiary)
+                        : AnyShapeStyle(Theme.accent)
+                )
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(selectedCount == 0)

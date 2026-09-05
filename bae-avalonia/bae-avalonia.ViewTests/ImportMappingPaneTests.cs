@@ -671,6 +671,7 @@ public sealed class ImportMappingPaneTests
         Actionable: true,
         Placement: new BridgeTriagePlacement.Ready(),
         SkipAction: BridgeTriageSkipAction.Skip,
+        Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
         Matched: null,
         MetadataSummary: null,
         CoverThumbnail: null,

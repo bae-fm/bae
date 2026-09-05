@@ -143,6 +143,7 @@ internal static class PreviewData
                 Actionable: true,
                 Placement: new BridgeTriagePlacement.Ready(),
                 SkipAction: BridgeTriageSkipAction.Skip,
+                Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
                 Matched: null,
                 MetadataSummary: new BridgeTriageMetadataSummary(
                     AlbumTitle: "Applied Draft",
@@ -203,6 +204,7 @@ internal static class PreviewData
             Actionable: true,
             Placement: new BridgeTriagePlacement.Ready(),
             SkipAction: BridgeTriageSkipAction.Skip,
+            Actions: [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
             Matched: null,
             MetadataSummary: null,
             CoverThumbnail: null,

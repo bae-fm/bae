@@ -14,6 +14,7 @@ use crate::import::types::MetadataSource;
 use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 
+mod actions;
 mod dates;
 mod flatten;
 mod flatten_groups;

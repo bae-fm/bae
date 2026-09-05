@@ -24,8 +24,8 @@ pub enum TriagePlacement {
     Identification {
         status: IdentificationStatus,
     },
-    /// Exactly one match, not in the library, counts and lengths agree — safe
-    /// to import unattended.
+    /// Metadata is prepared for import. Offered actions also account for live
+    /// identification, which can temporarily prevent a bulk import.
     Ready,
     NeedsYou {
         reason: NeedsYou,
@@ -315,6 +315,7 @@ pub struct TriageRow {
     pub actionable: bool,
     pub placement: TriagePlacement,
     pub skip_action: Option<TriageSkipAction>,
+    pub actions: Vec<CandidateAction>,
     /// The release the row leads with. `None` and the folder name is the title.
     pub matched: Option<MatchedRelease>,
     /// The applied editable draft, independent of selection and of the
@@ -323,9 +324,8 @@ pub struct TriageRow {
     /// The effective cover the row renders: selection, matched artwork, or the
     /// folder's default image.
     pub cover_thumbnail: Option<crate::import::CoverImageSource>,
-    /// Whether this row takes a bulk-import checkbox — exactly the Ready rows,
-    /// which is the whole point of the Ready rule. Carried rather than left to
-    /// each UI so the rule is stated once.
+    /// Whether a bulk import can claim this row. Derived from the same action
+    /// set the multi-selection pane renders.
     pub selectable: bool,
     /// Where the candidate's import stands, without its progress: the row
     /// says *that* an import is running; how far along it is is the

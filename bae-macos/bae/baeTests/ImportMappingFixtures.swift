@@ -471,6 +471,10 @@ extension MappingFixtures {
                 placement: metadataProvenance == nil && edit.albumTitle.isEmpty
                     ? .pending : .ready,
                 skipAction: .skip,
+                actions: (metadataProvenance == nil && edit.albumTitle.isEmpty
+                    ? [] : [.importReady]) + [
+                        .identify, .useFileMetadata, .clearMetadata, .skip,
+                    ],
                 matched: nil,
                 metadataSummary: nil,
                 coverThumbnail: nil,

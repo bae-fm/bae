@@ -1,8 +1,8 @@
 //! The import sidebar's rows, decided once in core.
 //!
 //! The sidebar asks the same questions of every candidate — which tab it
-//! belongs to, which Needs-you group it joins, what it leads with, and whether
-//! it takes a bulk-import checkbox — and every one of them is a rule rather
+//! belongs to, which Needs-you group it joins, what it leads with, and which
+//! commands it offers — and every one of them is a rule rather
 //! than a rendering. [`crate::identify::view`] is the precedent: shape the
 //! state for the surfaces once, here, so both desktop UIs render the same
 //! decisions instead of each re-deriving them from a
@@ -25,8 +25,11 @@ use super::types::{MetadataProvenance, MetadataSource};
 use super::{CandidateRuntimeSnapshot, ImportedRelease};
 use crate::identify::{IdentifyState, LeadMatch, NeedsYou, QueueClassification, VerdictSummary};
 
+mod actions;
 mod model;
 
+pub(crate) use actions::candidate_actions;
+pub use actions::CandidateAction;
 pub use model::*;
 
 /// Which tab a candidate belongs to, and why a Pending row still needs input.
@@ -51,19 +54,9 @@ pub use model::*;
 ///    was going to ask. Nothing is left to ask, so the row is Ready.
 /// 6. **Then what is known about it**, for a candidate nobody has answered.
 ///
-/// **A candidate with no verdict yet is Needs you, not Ready** — the design
-/// mockup stacks the "still identifying" group under Ready, and that is the
-/// side that is wrong. Ready's count is what a bulk import would act on, so
-/// admitting rows nothing is known about turns the one number on the pane that
-/// has to be exact into an overstatement, and makes it move on its own while
-/// someone reads it. Those rows would also be the only Ready rows with no
-/// checkbox, contradicting the design's own rule that Ready is where
-/// multi-select lives. And it is worst at the moment it matters most: on a
-/// first launch *every* candidate is unanswered, so Ready would open full of
-/// dimmed, uncheckable rows with Needs you empty — the exact inverse of the
-/// truth. Under Needs you, Ready starts empty and fills as verdicts land, which
-/// is the signal a person actually wants, and a still-identifying row leaves
-/// its group by itself without anyone answering it.
+/// A candidate with no verdict and no valid draft is not Ready. Placement
+/// describes its preparation; action availability also accounts for live
+/// identification so a stored Ready draft does not permit conflicting work.
 pub fn place(
     skipped: bool,
     is_added: bool,

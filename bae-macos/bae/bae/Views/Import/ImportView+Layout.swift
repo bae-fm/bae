@@ -14,12 +14,9 @@ extension ImportView {
                 .frame(minWidth: 410, idealWidth: 420, maxWidth: 460)
             if uiStore.selectedFolderCandidates.count > 1 {
                 ImportCandidateBulkSelectionPane(
-                    selectedCount: uiStore.selectedFolderCandidates.count,
-                    skipAction: ImportCandidateSkipAction(
-                        importer: importer,
-                        importStore: importStore,
-                        uiStore: uiStore
-                    )
+                    storageCloud: $storageCloud,
+                    storagePinned: $storagePinned,
+                    onPerform: performCandidateAction
                 )
                 .frame(
                     minWidth: 620,

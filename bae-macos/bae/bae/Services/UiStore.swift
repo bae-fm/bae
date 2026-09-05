@@ -125,12 +125,7 @@ class UiStore: @unchecked Sendable {
     var importCandidateTab: BridgeTriageTab = .pending
     var importCandidateFilterText: String = ""
 
-    /// Checked bulk-importable candidate keys in Pending — UI state, never
-    /// persisted, and never crossing the bridge. A key surviving here after
-    /// its row stops being importable is harmless: every reader intersects
-    /// this against the current importable keys rather than trusting the set
-    /// on its own, so there is nothing to prune proactively.
-    var selectedReadyCandidates: Set<String> = []
+    let candidateActionRun = ImportCandidateActionRun()
     private var releaseGroupDisclosureState: [ReleaseGroupDisclosureID: Bool] =
         [:]
 
@@ -296,28 +291,6 @@ class UiStore: @unchecked Sendable {
 
     func setImportCandidateFilterText(_ text: String) {
         importCandidateFilterText = text
-    }
-
-    // MARK: - Pending-tab bulk selection
-
-    func setReadySelection(_ key: String, selected: Bool) {
-        if selected {
-            selectedReadyCandidates.insert(key)
-        }
-        else {
-            selectedReadyCandidates.remove(key)
-        }
-    }
-
-    /// Select every key in `keys` (Pending's current importable rows) — "Select
-    /// all" reads as "select what's visible now," not "remember these keys
-    /// forever," so it replaces rather than unions.
-    func selectAllReady(_ keys: [String]) {
-        selectedReadyCandidates = Set(keys)
-    }
-
-    func clearReadySelection() {
-        selectedReadyCandidates.removeAll()
     }
 
     /// The groups folded shut, as the list request names them. A group with no

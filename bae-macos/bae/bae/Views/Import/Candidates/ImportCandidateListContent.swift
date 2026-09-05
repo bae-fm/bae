@@ -172,8 +172,8 @@ struct ImportCandidateListContent: View {
         ) -> Void
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
-    /// Import every candidate in `keys` — Pending's bulk action.
-    let onImportSelected: (_ keys: [String]) -> Void
+    /// Import the highlighted Ready candidates.
+    let onImportSelected: () -> Void
 
     @Environment(UiStore.self)
     private var uiStore
@@ -410,22 +410,19 @@ struct ImportCandidateListContent: View {
             case .pending:
                 VStack(spacing: 0) {
                     entryList(list, proxy: proxy)
-                    // The bar exists to act on a selection; with none there
-                    // is nothing to act on, and the first checkbox brings
-                    // it up.
                     if !selectedReadyKeys.isEmpty {
                         Divider()
                         TriageFootBar(
                             selectedCount: selectedReadyKeys.count,
                             readyCount: summary.ready.count,
                             onSelectAll: {
-                                uiStore.selectAllReady(
+                                selectedKeys = Set(
                                     summary.ready.map(\.candidateKey)
                                 )
                             },
-                            onSelectNone: { uiStore.clearReadySelection() },
+                            onSelectNone: { selectedKeys = [] },
                             onImport: {
-                                onImportSelected(Array(selectedReadyKeys))
+                                onImportSelected()
                             }
                         )
                     }
@@ -442,7 +439,7 @@ struct ImportCandidateListContent: View {
 extension ImportCandidateListContent {
     private var selectedReadyKeys: Set<String> {
         let currentReady = Set(summary.ready.map(\.candidateKey))
-        return uiStore.selectedReadyCandidates.intersection(currentReady)
+        return selectedKeys.intersection(currentReady)
     }
 
     /// Virtualized rows over the paged list: each visible position loads the
@@ -629,19 +626,6 @@ extension ImportCandidateListContent {
         revealOperation = nil
     }
 
-    /// The Ready row's bulk-import checkbox, over the selection `UiStore`
-    /// holds.
-    private func readySelection(for row: BridgeTriageRow) -> Binding<Bool> {
-        Binding(
-            get: {
-                uiStore.selectedReadyCandidates.contains(row.candidateKey)
-            },
-            set: {
-                uiStore.setReadySelection(row.candidateKey, selected: $0)
-            }
-        )
-    }
-
     private func candidateRow(
         _ row: BridgeTriageRow,
         isGroupMember: Bool
@@ -650,7 +634,6 @@ extension ImportCandidateListContent {
             row: row,
             coverContent: importStore.sidebarCover(for: row),
             uploadObservation: uploadObservation(for: row),
-            selection: row.selectable ? readySelection(for: row) : nil,
             isGroupMember: isGroupMember,
             onSkip: { onSkip(row.candidateKey, $0) },
             onReleaseDecision: onReleaseDecision
@@ -759,7 +742,6 @@ extension ImportCandidateListContent {
         let scene = PreviewData.importSmokeTestScene()
         let uiStore = UiStore()
         uiStore.setImportCandidateTab(.pending)
-        uiStore.selectAllReady([PreviewData.importTabCandidate.key])
         return ImportCandidateListContent(
             importStore: scene.store,
             listSlot: scene.slot(uiStore: uiStore),
@@ -769,7 +751,7 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
-            onImportSelected: { _ in }
+            onImportSelected: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
@@ -794,7 +776,7 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
-            onImportSelected: { _ in }
+            onImportSelected: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)

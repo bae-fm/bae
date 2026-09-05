@@ -1,61 +1,43 @@
 import BaeKit
 import Foundation
-import os.log
-
-private let importCandidateSkipLogger = Logger.bae("ImportCandidateSkipAction")
 
 /// The single bulk-skip operation used by the mapping pane and Command-E.
 /// Eligibility is read from the current core projection at invocation time;
-/// completion removes only the selection the operation captured, preserving
-/// any rows selected while its calls were in flight.
+/// completion removes only successful candidates, preserving failed requests
+/// and rows selected while its calls were in flight.
 @MainActor
 struct ImportCandidateSkipAction {
     let importer: Importer
     let importStore: ImportStore
     let uiStore: UiStore
 
-    var isEnabled: Bool {
-        !eligibleKeys.isEmpty
+    var label: String {
+        BridgeCandidateAction.skip.label(count: eligibleCandidates.count)
     }
 
-    func perform() async {
-        let selectedKeys = uiStore.selectedFolderCandidates
-        let keys = eligibleKeys
-        guard !keys.isEmpty else { return }
+    var isEnabled: Bool {
+        !uiStore.candidateActionRun.isRunning && !eligibleCandidates.isEmpty
+    }
 
-        var firstFailure: DisplayError?
-        for key in keys {
-            do {
+    @discardableResult
+    func start() -> Task<Void, Never>? {
+        uiStore.candidateActionRun.start(
+            action: .skip,
+            candidates: eligibleCandidates,
+            uiStore: uiStore,
+            before: {},
+            operation: { key in
                 try await importer.setCandidateSkipped(key, true)
             }
-            catch is CancellationError {
-                return
-            }
-            catch {
-                importCandidateSkipLogger.error(
-                    "could not skip candidate \(key): \(String(reflecting: error))"
-                )
-                if firstFailure == nil {
-                    firstFailure = DisplayError(error)
-                }
-            }
-        }
-        uiStore.removeFolderCandidateSelection(selectedKeys)
-
-        if let firstFailure {
-            uiStore.showError(firstFailure)
-        }
+        )
     }
 
     /// The selected candidates whose own read says they accept the absolute
     /// Skip command. Reading it off each selected candidate's row makes a
     /// stale selection and a row whose import has started ineligible without
     /// teaching either action surface lifecycle rules.
-    private var eligibleKeys: [String] {
-        uiStore.selectedFolderCandidates
-            .sorted()
-            .filter {
-                importStore.selectedCandidates[$0]?.row?.skipAction == .skip
-            }
+    private var eligibleCandidates: [Candidate] {
+        ImportCandidateSelection(importStore: importStore, uiStore: uiStore)
+            .candidates(for: .skip)
     }
 }

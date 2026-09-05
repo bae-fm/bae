@@ -278,9 +278,18 @@ struct MainAppMenuCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .pasteboard) {
-            Button("Skip All") {
+            Button(
+                target.map {
+                    ImportCandidateSkipAction(
+                        importer: $0.importer,
+                        importStore: $0.importStore,
+                        uiStore: $0.uiStore
+                    )
+                    .label
+                } ?? BridgeCandidateAction.skip.label(count: 0)
+            ) {
                 let action = requireImportCandidateSkipAction()
-                Task { await action.perform() }
+                action.start()
             }
             .keyboardShortcut("e", modifiers: .command)
             .disabled(!canSkipSelectedImportCandidates)

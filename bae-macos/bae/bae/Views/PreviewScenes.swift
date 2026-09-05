@@ -127,7 +127,7 @@
                 onRefreshFolder: { _ in },
                 onReleaseDecision: { _, _ in },
                 onSkip: { _, _ in },
-                onImportSelected: { _ in }
+                onImportSelected: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
             .environment(PreviewData.artImageStore())

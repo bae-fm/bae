@@ -266,20 +266,14 @@ struct ImportView: View {
     /// carrying the tab and the selection goes on *before* it: the innermost
     /// value of an environment key is the one the view under it reads.
     private enum ImportTabPreview {
-        /// The sidebar's tab, the selected row, and the rows ticked for a bulk
-        /// import — the three things that decide what either half of the tab
-        /// has to draw. Production opens on Pending with nothing selected and
-        /// nothing ticked, which is the one state worth no canvas.
-        @MainActor
+        /// The sidebar tab and highlighted candidate for this preview.
         static func uiStore(
             tab: BridgeTriageTab,
-            selected: String? = nil,
-            ticked: [String] = []
+            selected: String? = nil
         ) -> UiStore {
             let store = UiStore()
             store.setImportCandidateTab(tab)
             store.setFolderCandidateSelection(selected.map { [$0] } ?? [])
-            store.selectAllReady(ticked)
             return store
         }
     }
@@ -308,8 +302,7 @@ struct ImportView: View {
     #Preview("Import tab — smoke test") {
         let uiStore = ImportTabPreview.uiStore(
             tab: .pending,
-            selected: PreviewData.importTabCandidate.key,
-            ticked: [PreviewData.importTabCandidate.key]
+            selected: PreviewData.importTabCandidate.key
         )
         let scene = PreviewData.importSmokeTestScene()
         ImportView(endEditing: {})
@@ -319,8 +312,7 @@ struct ImportView: View {
     #Preview("Import tab — a release settled") {
         let uiStore = ImportTabPreview.uiStore(
             tab: .pending,
-            selected: PreviewData.importTabCandidate.key,
-            ticked: [PreviewData.importTabCandidate.key]
+            selected: PreviewData.importTabCandidate.key
         )
         let scene = PreviewData.importTabScene()
         ImportView(endEditing: {})

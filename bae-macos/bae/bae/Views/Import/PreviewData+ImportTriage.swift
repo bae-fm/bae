@@ -50,10 +50,10 @@
             for candidate: Candidate,
             placement: BridgeTriagePlacement,
             skipAction: BridgeTriageSkipAction?,
+            actions: [BridgeCandidateAction],
             matched: BridgeMatchedRelease?,
             metadataSummary: BridgeTriageMetadataSummary? = nil,
             coverThumbnail: BridgeCoverImageSource? = nil,
-            selectable: Bool,
             importStatus: BridgeTriageImportStatus? = nil,
             metadataProvenance: BridgeMetadataProvenance? = nil
         ) -> BridgeTriageRow {
@@ -67,10 +67,11 @@
                 actionable: true,
                 placement: placement,
                 skipAction: skipAction,
+                actions: actions,
                 matched: matched,
                 metadataSummary: metadataSummary,
                 coverThumbnail: coverThumbnail,
-                selectable: selectable,
+                selectable: actions.contains(.importReady),
                 importStatus: importStatus,
                 metadataProvenance: metadataProvenance
             )
@@ -225,6 +226,10 @@
             for: importTabCandidate,
             placement: .ready,
             skipAction: .skip,
+            actions: [
+                .importReady, .identify, .useFileMetadata, .clearMetadata,
+                .skip,
+            ],
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: releaseDetailBridge.title,
@@ -234,7 +239,6 @@
                 trackCount: releaseDetailBridge.trackCount
             ),
             metadataSummary: nil,
-            selectable: true,
             metadataProvenance: .externalRelease(
                 source: releaseDetailBridge.source,
                 releaseId: releaseDetailBridge.releaseId,
@@ -248,6 +252,7 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
+            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
             // Several matches — the pressing is exactly what's unsettled, so
             // there is no `pressing` to show yet, only the lead's title and
             // artist.
@@ -263,7 +268,6 @@
                 )
             ),
             metadataSummary: nil,
-            selectable: false,
             importStatus: nil
         )
 
@@ -275,9 +279,9 @@
                 reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
+            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
             matched: nil,
-            metadataSummary: nil,
-            selectable: false
+            metadataSummary: nil
         )
 
         static let triageRowTrackMismatch = triageRow(
@@ -286,14 +290,14 @@
                 reason: .trackCountDisagrees(local: 1, source: 10)
             ),
             skipAction: .skip,
+            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: "rel-track-mismatch",
                 title: "Album Title Seven",
                 year: 1994,
                 trackCount: 10
             ),
-            metadataSummary: nil,
-            selectable: false
+            metadataSummary: nil
         )
 
         static let triageRowAlreadyInLibrary = triageRow(
@@ -302,6 +306,7 @@
                 reason: .alreadyInLibrary
             ),
             skipAction: .skip,
+            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
             matched: triageMatch(
                 releaseId: releaseDetailBridge.releaseId,
                 title: "Album Title (Reissue)",
@@ -309,8 +314,7 @@
                 trackCount: 14,
                 signal: .barcode
             ),
-            metadataSummary: nil,
-            selectable: false
+            metadataSummary: nil
         )
 
         static let triageRowNoMatch = triageRow(
@@ -319,18 +323,18 @@
                 reason: .noMatch
             ),
             skipAction: .skip,
+            actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
             matched: nil,
-            metadataSummary: nil,
-            selectable: false
+            metadataSummary: nil
         )
 
         static let triageRowIdentifying = triageRow(
             for: importTabIdentifyingCandidate,
             placement: .identification(status: .running),
             skipAction: .skip,
+            actions: [.skip],
             matched: nil,
-            metadataSummary: nil,
-            selectable: false
+            metadataSummary: nil
         )
 
         private static let importTabImportingCandidate = folderCandidates[2]
@@ -348,13 +352,13 @@
             for: importTabImportingCandidate,
             placement: .importing,
             skipAction: nil,
+            actions: [],
             matched: triageMatch(
                 releaseId: "rel-importing",
                 title: importTabImportingCandidate.displayName,
                 trackCount: 15
             ),
             metadataSummary: nil,
-            selectable: false,
             importStatus: .importing
         )
 
@@ -362,22 +366,22 @@
             for: folderCandidates[1],
             placement: .skipped,
             skipAction: .unskip,
+            actions: [.restore],
             matched: nil,
-            metadataSummary: nil,
-            selectable: false
+            metadataSummary: nil
         )
 
         static let triageRowDoneImported = triageRow(
             for: importTabDoneCandidate,
             placement: .done,
             skipAction: nil,
+            actions: [],
             matched: triageMatch(
                 releaseId: "preview-release",
                 title: importTabDoneCandidate.displayName,
                 trackCount: 5
             ),
             metadataSummary: nil,
-            selectable: false,
             importStatus: .complete(
                 releaseId: "preview-release",
                 albumId: "preview-album"
@@ -388,6 +392,7 @@
             for: importTabFailedCandidate,
             placement: .failed,
             skipAction: nil,
+            actions: [.identify, .useFileMetadata, .clearMetadata],
             matched: triageMatch(
                 releaseId: "rel-failed",
                 title: importTabFailedCandidate.displayName,
@@ -396,7 +401,6 @@
                 signal: .barcode
             ),
             metadataSummary: nil,
-            selectable: false,
             importStatus: .error(
                 error: .Diagnostic(
                     category: .import,
@@ -411,6 +415,10 @@
                 for: importTabGroupedReadyCandidate,
                 placement: .ready,
                 skipAction: .skip,
+                actions: [
+                    .importReady, .identify, .useFileMetadata, .clearMetadata,
+                    .skip,
+                ],
                 matched: triageMatch(
                     releaseId: releaseDetailBridge.releaseId,
                     title: releaseDetailBridge.title,
@@ -420,7 +428,6 @@
                     trackCount: releaseDetailBridge.trackCount
                 ),
                 metadataSummary: nil,
-                selectable: true,
                 metadataProvenance: .externalRelease(
                     source: releaseDetailBridge.source,
                     releaseId: releaseDetailBridge.releaseId,
@@ -433,9 +440,9 @@
                     reason: .noMatch
                 ),
                 skipAction: .skip,
+                actions: [.identify, .useFileMetadata, .clearMetadata, .skip],
                 matched: nil,
-                metadataSummary: nil,
-                selectable: false
+                metadataSummary: nil
             ),
         ]
 

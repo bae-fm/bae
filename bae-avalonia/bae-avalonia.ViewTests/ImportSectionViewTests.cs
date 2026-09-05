@@ -562,6 +562,17 @@ public sealed class ImportSectionViewTests
                 Actionable: true,
                 Placement: placement,
                 SkipAction: skipAction,
+                Actions: placement switch
+                {
+                    BridgeTriagePlacement.Ready => [BridgeCandidateAction.ImportReady, BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.Pending => [BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.NeedsYou => [BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata, BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.Identification => [BridgeCandidateAction.Skip],
+                    BridgeTriagePlacement.Failed => [BridgeCandidateAction.Identify, BridgeCandidateAction.UseFileMetadata, BridgeCandidateAction.ClearMetadata],
+                    BridgeTriagePlacement.Skipped => [BridgeCandidateAction.Restore],
+                    BridgeTriagePlacement.Done or BridgeTriagePlacement.Importing => [],
+                    _ => throw new ArgumentOutOfRangeException(nameof(placement)),
+                },
                 Matched: new BridgeMatchedRelease(
                     ReleaseId: "rel-matched",
                     Title: "Album Title",

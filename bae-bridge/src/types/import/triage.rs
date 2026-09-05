@@ -242,6 +242,17 @@ pub enum BridgeTriageSkipAction {
     Unskip,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCandidateAction {
+    ImportReady,
+    Identify,
+    RetryIdentification,
+    UseFileMetadata,
+    ClearMetadata,
+    Skip,
+    Restore,
+}
+
 /// What identification is doing for a candidate with no stored verdict.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeIdentificationStatus {
@@ -449,12 +460,13 @@ pub struct BridgeTriageRow {
     pub actionable: bool,
     pub placement: BridgeTriagePlacement,
     pub skip_action: Option<BridgeTriageSkipAction>,
+    pub actions: Vec<BridgeCandidateAction>,
     pub matched: Option<BridgeMatchedRelease>,
     pub metadata_summary: Option<BridgeTriageMetadataSummary>,
     /// The cover selected for this candidate, even when its metadata draft is
     /// otherwise blank.
     pub cover_thumbnail: Option<BridgeCoverImageSource>,
-    /// Whether this row takes a bulk-import checkbox.
+    /// Whether this row currently permits bulk import.
     pub selectable: bool,
     /// Where the candidate's import stands, without its progress: the row
     /// says *that* an import is running; how far along rides on the

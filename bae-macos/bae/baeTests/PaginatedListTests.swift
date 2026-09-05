@@ -849,7 +849,7 @@ final class ImportCandidateViewportTests: XCTestCase {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
-            onImportSelected: { _ in }
+            onImportSelected: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
         .environment(uiStore)
@@ -888,6 +888,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                 actionable: true,
                 placement: .skipped,
                 skipAction: .unskip,
+                actions: [.restore],
                 matched: nil,
                 metadataSummary: nil,
                 coverThumbnail: nil,

@@ -1,10 +1,8 @@
 import BaeKit
 import SwiftUI
 
-/// One triage row: an optional bulk-select checkbox, the matched release's
-/// cover, its title/metadata, and a trailing tag or status. Every decision
-/// about what the row shows — which tab, which group, whether it takes a
-/// checkbox — is `row`'s, read off `BridgeTriageRow`; this only renders it.
+/// One triage row: cover, title, metadata, and status. Selection belongs to
+/// the surrounding list.
 ///
 /// A row does not change height on selection: the folder it came from is the
 /// main pane's to state, and a row that grows on selection shifts every row
@@ -20,10 +18,6 @@ struct TriageRowView: View {
     /// The imported release's cloud transition, resolved by the list owner
     /// that already observes the outbox.
     let uploadObservation: UploadObservation?
-    /// Non-nil exactly when `row.selectable`. Passed in rather than read off
-    /// `row` again so the list content is the one place selection state
-    /// (`UiStore`) meets the row.
-    let selection: Binding<Bool>?
     let isGroupMember: Bool
     let onSkip: (_ skipped: Bool) -> Void
     let onReleaseDecision:
@@ -36,7 +30,6 @@ struct TriageRowView: View {
         row: BridgeTriageRow,
         coverContent: ImageContent?,
         uploadObservation: UploadObservation?,
-        selection: Binding<Bool>?,
         isGroupMember: Bool,
         onSkip: @escaping (_ skipped: Bool) -> Void,
         onReleaseDecision:
@@ -48,7 +41,6 @@ struct TriageRowView: View {
         self.row = row
         self.coverContent = coverContent
         self.uploadObservation = uploadObservation
-        self.selection = selection
         self.isGroupMember = isGroupMember
         self.onSkip = onSkip
         self.onReleaseDecision = onReleaseDecision
@@ -95,7 +87,6 @@ struct TriageRowView: View {
             meta
             Spacer(minLength: 4)
             trailing
-            checkboxControl
         }
         .padding(.vertical, 6)
         .padding(.horizontal, ImportListHierarchyLayout.rowEdgePadding)
@@ -118,17 +109,6 @@ struct TriageRowView: View {
     }
 
     // MARK: - Leading
-
-    /// Trailing, and only on rows that can join the bulk import: a row with
-    /// nothing to select reserves nothing.
-    @ViewBuilder
-    private var checkboxControl: some View {
-        if let selection {
-            Toggle(isOn: selection) {}
-                .labelsHidden()
-                .toggleStyle(TriageCheckboxToggleStyle())
-        }
-    }
 
     /// The matched release's cover, or the image placeholder when there is
     /// none yet — the tile keeps every row's text starting at one x whether
@@ -362,32 +342,6 @@ extension TriageRowView {
     }
 }
 
-/// The bulk-select checkbox has an open outline at rest and an accent fill
-/// when selected, with the checkmark contrasted against it in either mode.
-private struct TriageCheckboxToggleStyle: ToggleStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        Button {
-            configuration.isOn = !configuration.isOn
-        } label: {
-            ZStack {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Theme.accent)
-                    .opacity(configuration.isOn ? 1 : 0)
-                RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(Color.primary.opacity(0.3), lineWidth: 1.5)
-                    .opacity(configuration.isOn ? 0 : 1)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Theme.background)
-                    .opacity(configuration.isOn ? 1 : 0)
-            }
-            .frame(width: 18, height: 18)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 #if DEBUG
 
     // MARK: - Previews
@@ -401,7 +355,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowReady
                 ),
                 uploadObservation: nil,
-                selection: .constant(true),
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -411,7 +364,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowPickAPressing
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -421,7 +373,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowSeveralMatchesFromSignals
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -431,7 +382,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowAlreadyInLibrary
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -441,7 +391,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowNoMatch
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -451,7 +400,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowIdentifying
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -461,7 +409,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowDoneImported
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )
@@ -471,7 +418,6 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     for: PreviewData.triageRowFailed
                 ),
                 uploadObservation: nil,
-                selection: nil,
                 isGroupMember: false,
                 onSkip: { _ in }
             )

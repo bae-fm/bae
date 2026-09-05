@@ -376,6 +376,12 @@ fn place_row(
         state.is_some_and(|state| state.metadata_draft_valid),
         &known,
     );
+    let actions = crate::import::triage::candidate_actions(
+        true,
+        &placement,
+        facts.identification.as_ref(),
+        &known,
+    );
     Ok(TriageRow {
         candidate_key: row.path.clone(),
         folder_name: row.name.clone(),
@@ -392,7 +398,8 @@ fn place_row(
         // candidate never becomes one.
         actionable: true,
         skip_action: placement.skip_action(),
-        selectable: matches!(placement, TriagePlacement::Ready),
+        selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
+        actions,
         matched: verdict.and_then(MatchedRelease::of_summary),
         metadata_summary: state.and_then(|state| state.metadata_summary.clone()),
         cover_thumbnail: None,

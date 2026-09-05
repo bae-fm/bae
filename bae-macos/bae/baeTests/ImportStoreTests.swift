@@ -150,6 +150,9 @@ private func readyRow(
         actionable: true,
         placement: .ready,
         skipAction: .skip,
+        actions: [
+            .importReady, .identify, .useFileMetadata, .clearMetadata, .skip,
+        ],
         matched: matchedRelease(
             releaseId: "rel-\(key)",
             title: title,
@@ -178,6 +181,7 @@ private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
         actionable: true,
         placement: .done,
         skipAction: nil,
+        actions: [],
         matched: matchedRelease(releaseId: "rel-\(key)", title: title),
         metadataSummary: nil,
         coverThumbnail: nil,
@@ -198,6 +202,7 @@ private func skippedRow(_ key: String, title: String) -> BridgeTriageRow {
         actionable: true,
         placement: .skipped,
         skipAction: .unskip,
+        actions: [.restore],
         matched: nil,
         metadataSummary: nil,
         coverThumbnail: nil,

@@ -22,7 +22,7 @@ use super::mapping::MappingTable;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
-    TriageMetadataSummary, TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTabCounts,
+    TriageMetadataSummary, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
@@ -421,6 +421,12 @@ impl ImportCandidateDetailProjection {
             metadata_draft_valid,
             &known,
         );
+        let actions = super::triage::candidate_actions(
+            actionable,
+            &placement,
+            facts.identification.as_ref(),
+            &known,
+        );
         let row = TriageRow {
             candidate_key: candidate.path.to_string_lossy().into_owned(),
             folder_name: candidate.name.clone(),
@@ -430,7 +436,8 @@ impl ImportCandidateDetailProjection {
             combine_ancestor_key: candidate.combine_ancestor_key.clone(),
             actionable,
             skip_action: actionable.then(|| placement.skip_action()).flatten(),
-            selectable: actionable && matches!(placement, TriagePlacement::Ready),
+            selectable: actions.contains(&super::triage::CandidateAction::ImportReady),
+            actions,
             matched: matched.filter(|_| actionable),
             metadata_summary: TriageMetadataSummary::of(
                 &metadata_draft,

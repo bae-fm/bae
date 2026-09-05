@@ -88208,193 +88208,1909 @@
         }
       }
     },
-    "Skip All" : {
-      "comment" : "Import candidate selection: skip every eligible selected candidate",
+    "Import ready (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تخطّي الكل"
+            "value" : "استيراد الجاهز (%lld)"
           }
         },
         "bg" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пропускане на всички"
+            "value" : "Импортиране на готовите (%lld)"
           }
         },
         "bn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "সব এড়িয়ে যান"
+            "value" : "প্রস্তুতগুলি আমদানি করুন (%lld)"
           }
         },
         "cs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Přeskočit vše"
+            "value" : "Importovat připravené (%lld)"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alle überspringen"
+            "value" : "Bereite importieren (%lld)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Skip All"
+            "value" : "Import ready (%lld)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Omitir todo"
+            "value" : "Importar listos (%lld)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tout ignorer"
+            "value" : "Importer les éléments prêts (%lld)"
           }
         },
         "gu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "બધું છોડો"
+            "value" : "તૈયાર હોય તે આયાત કરો (%lld)"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "דלג על הכול"
+            "value" : "ייבוא המוכנים (%lld)"
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सभी छोड़ें"
+            "value" : "तैयार फ़ोल्डर आयात करें (%lld)"
           }
         },
         "hr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preskoči sve"
+            "value" : "Uvezi spremne (%lld)"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Salta tutto"
+            "value" : "Importa pronti (%lld)"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "すべてスキップ"
+            "value" : "準備完了を読み込む (%lld)"
           }
         },
         "kn" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ಎಲ್ಲವನ್ನೂ ಬಿಟ್ಟುಬಿಡಿ"
+            "value" : "ಸಿದ್ಧವಾದವುಗಳನ್ನು ಆಮದು ಮಾಡಿ (%lld)"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "모두 건너뛰기"
+            "value" : "준비된 항목 가져오기 (%lld)"
           }
         },
         "ml" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "എല്ലാം ഒഴിവാക്കുക"
+            "value" : "തയ്യാറായവ ഇറക്കുമതി ചെയ്യുക (%lld)"
           }
         },
         "mr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "सर्व वगळा"
+            "value" : "तयार असलेले आयात करा (%lld)"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Alles overslaan"
+            "value" : "Gereedstaande importeren (%lld)"
           }
         },
         "pa" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ਸਭ ਛੱਡੋ"
+            "value" : "ਤਿਆਰ ਫੋਲਡਰ ਆਯਾਤ ਕਰੋ (%lld)"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pomiń wszystko"
+            "value" : "Importuj gotowe (%lld)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ignorar tudo"
+            "value" : "Importar prontos (%lld)"
           }
         },
         "ta" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "அனைத்தையும் தவிர்"
+            "value" : "தயாரானவற்றை இறக்குமதி செய் (%lld)"
           }
         },
         "te" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "అన్నింటినీ దాటవేయి"
+            "value" : "సిద్ధమైనవి దిగుమతి చేయి (%lld)"
           }
         },
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ข้ามทั้งหมด"
+            "value" : "นำเข้ารายการที่พร้อม (%lld)"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tümünü atla"
+            "value" : "Hazır olanları içe aktar (%lld)"
           }
         },
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пропустити все"
+            "value" : "Імпортувати готові (%lld)"
           }
         },
         "ur" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "سب چھوڑیں"
+            "value" : "تیار فولڈر درآمد کریں (%lld)"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bỏ qua tất cả"
+            "value" : "Nhập các mục sẵn sàng (%lld)"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全部跳过"
+            "value" : "导入已就绪项 (%lld)"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "全部略過"
+            "value" : "匯入已就緒項 (%lld)"
+          }
+        }
+      }
+    },
+    "Identify selected (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تحديد هوية المحدد (%lld)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идентифициране на избраните (%lld)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নির্বাচিতগুলি শনাক্ত করুন (%lld)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifikovat vybrané (%lld)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählte identifizieren (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identify selected (%lld)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar seleccionados (%lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifier la sélection (%lld)"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પસંદ કરેલને ઓળખો (%lld)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זיהוי הנבחרים (%lld)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "चुने हुए पहचानें (%lld)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificiraj odabrane (%lld)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identifica selezionati (%lld)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択項目を識別 (%lld)"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಆಯ್ದವುಗಳನ್ನು ಗುರುತಿಸಿ (%lld)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택 항목 식별 (%lld)"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "തിരഞ്ഞെടുത്തവ തിരിച്ചറിയുക (%lld)"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "निवडलेले ओळखा (%lld)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selectie identificeren (%lld)"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਚੁਣੇ ਹੋਏ ਪਛਾਣੋ (%lld)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zidentyfikuj wybrane (%lld)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identificar selecionados (%lld)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தேர்ந்தெடுத்தவற்றை அடையாளம் காண் (%lld)"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఎంచుకున్నవి గుర్తించు (%lld)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ระบุรายการที่เลือก (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seçilenleri tanımla (%lld)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ідентифікувати вибрані (%lld)"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "منتخب کی شناخت کریں (%lld)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nhận dạng các mục đã chọn (%lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "识别所选项 (%lld)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "識別所選項 (%lld)"
+          }
+        }
+      }
+    },
+    "Retry failed identification (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إعادة محاولة تحديد الهوية الفاشلة (%lld)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторен опит за неуспешните идентификации (%lld)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ব্যর্থ শনাক্তকরণ আবার চেষ্টা করুন (%lld)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opakovat neúspěšnou identifikaci (%lld)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehlgeschlagene Identifizierung wiederholen (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry failed identification (%lld)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar identificación fallida (%lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer les identifications échouées (%lld)"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "નિષ્ફળ ઓળખ ફરી પ્રયાસ કરો (%lld)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניסיון חוזר לזיהוי שנכשל (%lld)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "विफल पहचान फिर आज़माएँ (%lld)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponovi neuspjelu identifikaciju (%lld)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Riprova identificazioni non riuscite (%lld)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "失敗した識別を再試行 (%lld)"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ವಿಫಲ ಗುರುತಿಸುವಿಕೆಯನ್ನು ಮರುಪ್ರಯತ್ನಿಸಿ (%lld)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "실패한 식별 재시도 (%lld)"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "പരാജയപ്പെട്ട തിരിച്ചറിയൽ വീണ്ടും ശ്രമിക്കുക (%lld)"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "अयशस्वी ओळख पुन्हा करून पाहा (%lld)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mislukte identificatie opnieuw proberen (%lld)"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਅਸਫਲ ਪਛਾਣ ਮੁੜ ਅਜ਼ਮਾਓ (%lld)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponów nieudaną identyfikację (%lld)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tentar novamente identificação com falha (%lld)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தோல்வியுற்ற அடையாளம் காணலை மீண்டும் முயல் (%lld)"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "విఫలమైన గుర్తింపును మళ్లీ ప్రయత్నించు (%lld)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ลองระบุรายการที่ล้มเหลวอีกครั้ง (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Başarısız tanımlamayı yeniden dene (%lld)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторити невдалу ідентифікацію (%lld)"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ناکام شناخت دوبارہ آزمائیں (%lld)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thử lại nhận dạng thất bại (%lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试失败的识别 (%lld)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重試失敗的識別 (%lld)"
+          }
+        }
+      }
+    },
+    "Skip selected (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تخطّي المحدد (%lld)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропускане на избраните (%lld)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নির্বাচিতগুলি এড়িয়ে যান (%lld)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Přeskočit vybrané (%lld)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählte überspringen (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip selected (%lld)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir seleccionados (%lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorer la sélection (%lld)"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પસંદ કરેલને છોડો (%lld)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דילוג על הנבחרים (%lld)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "चुने हुए छोड़ें (%lld)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preskoči odabrane (%lld)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salta selezionati (%lld)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択項目をスキップ (%lld)"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಆಯ್ದವುಗಳನ್ನು ಬಿಟ್ಟುಬಿಡಿ (%lld)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택 항목 건너뛰기 (%lld)"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "തിരഞ്ഞെടുത്തവ ഒഴിവാക്കുക (%lld)"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "निवडलेले वगळा (%lld)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selectie overslaan (%lld)"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਚੁਣੇ ਹੋਏ ਛੱਡੋ (%lld)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pomiń wybrane (%lld)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorar selecionados (%lld)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தேர்ந்தெடுத்தவற்றைத் தவிர் (%lld)"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఎంచుకున్నవి దాటవేయి (%lld)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ข้ามรายการที่เลือก (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seçilenleri atla (%lld)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустити вибрані (%lld)"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "منتخب چھوڑیں (%lld)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bỏ qua các mục đã chọn (%lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "跳过所选项 (%lld)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "略過所選項 (%lld)"
+          }
+        }
+      }
+    },
+    "Restore to Pending (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "إعادة إلى قيد الانتظار (%lld)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Връщане в чакащи (%lld)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "অপেক্ষমাণে ফেরান (%lld)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vrátit do čekajících (%lld)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurück zu Ausstehend (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore to Pending (%lld)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar a Pendientes (%lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remettre en attente (%lld)"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "બાકી યાદીમાં પાછા મૂકો (%lld)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החזרה לממתינים (%lld)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "लंबित में वापस लाएँ (%lld)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vrati na čekanje (%lld)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ripristina in attesa (%lld)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保留中に戻す (%lld)"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಬಾಕಿಗೆ ಮರುಸ್ಥಾಪಿಸಿ (%lld)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "대기 중으로 복원 (%lld)"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "കാത്തിരിക്കുന്നവയിലേക്ക് പുനഃസ്ഥാപിക്കുക (%lld)"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "प्रलंबितमध्ये परत आणा (%lld)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terugzetten naar In behandeling (%lld)"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਬਕਾਇਆ ਵਿੱਚ ਵਾਪਸ ਲਿਆਓ (%lld)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przywróć do oczekujących (%lld)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar para Pendentes (%lld)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "நிலுவைக்கு மீட்டமை (%lld)"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "పెండింగ్‌కు పునరుద్ధరించు (%lld)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "คืนค่าไปยังรายการรอดำเนินการ (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekleyenlere geri yükle (%lld)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повернути до очікування (%lld)"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "زیر التوا میں واپس لائیں (%lld)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Khôi phục về Đang chờ (%lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "恢复到待处理 (%lld)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "還原至待處理 (%lld)"
+          }
+        }
+      }
+    },
+    "Use file metadata (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استخدام بيانات الملفات الوصفية (%lld)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Използване на метаданните от файловете (%lld)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ফাইলের মেটাডেটা ব্যবহার করুন (%lld)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Použít metadata souborů (%lld)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dateimetadaten verwenden (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use file metadata (%lld)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar metadatos de archivos (%lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utiliser les métadonnées des fichiers (%lld)"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ફાઇલ મેટાડેટાનો ઉપયોગ કરો (%lld)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שימוש במטא־נתוני הקבצים (%lld)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फ़ाइल मेटाडेटा इस्तेमाल करें (%lld)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upotrijebi metapodatke datoteka (%lld)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa metadati dei file (%lld)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ファイルのメタデータを使用 (%lld)"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಫೈಲ್ ಮೆಟಾಡೇಟಾ ಬಳಸಿ (%lld)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "파일 메타데이터 사용 (%lld)"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഫയൽ മെറ്റാഡാറ്റ ഉപയോഗിക്കുക (%lld)"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फाइल मेटाडेटा वापरा (%lld)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bestandsmetadata gebruiken (%lld)"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਫ਼ਾਈਲ ਮੈਟਾਡਾਟਾ ਵਰਤੋ (%lld)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Użyj metadanych plików (%lld)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar metadados dos arquivos (%lld)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "கோப்பு மெட்டாடேட்டாவைப் பயன்படுத்து (%lld)"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఫైల్ మెటాడేటాను ఉపయోగించు (%lld)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ใช้ข้อมูลเมตาของไฟล์ (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dosya meta verilerini kullan (%lld)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Використати метадані файлів (%lld)"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فائل میٹا ڈیٹا استعمال کریں (%lld)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dùng siêu dữ liệu của tệp (%lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用文件元数据 (%lld)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "使用檔案中繼資料 (%lld)"
+          }
+        }
+      }
+    },
+    "Clear metadata (%lld)" : {
+      "comment" : "Import candidate bulk action; count of eligible selected folders",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مسح البيانات الوصفية (%lld)"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изчистване на метаданните (%lld)"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "মেটাডেটা মুছুন (%lld)"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vymazat metadata (%lld)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metadaten löschen (%lld)"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clear metadata (%lld)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borrar metadatos (%lld)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Effacer les métadonnées (%lld)"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "મેટાડેટા સાફ કરો (%lld)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניקוי המטא־נתונים (%lld)"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मेटाडेटा साफ़ करें (%lld)"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izbriši metapodatke (%lld)"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancella metadati (%lld)"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "メタデータを消去 (%lld)"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಮೆಟಾಡೇಟಾ ತೆರವುಗೊಳಿಸಿ (%lld)"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "메타데이터 지우기 (%lld)"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "മെറ്റാഡാറ്റ മായ്ക്കുക (%lld)"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "मेटाडेटा साफ करा (%lld)"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Metagegevens wissen (%lld)"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਮੈਟਾਡਾਟਾ ਸਾਫ਼ ਕਰੋ (%lld)"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wyczyść metadane (%lld)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpar metadados (%lld)"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "மெட்டாடேட்டாவை அழி (%lld)"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మెటాడేటాను తొలగించు (%lld)"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ล้างข้อมูลเมตา (%lld)"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meta verileri temizle (%lld)"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистити метадані (%lld)"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "میٹا ڈیٹا صاف کریں (%lld)"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xóa siêu dữ liệu (%lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除元数据 (%lld)"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除中繼資料 (%lld)"
+          }
+        }
+      }
+    },
+    "Each action applies only to eligible selected folders." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ينطبق كل إجراء على المجلدات المحددة المؤهلة فقط."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всяко действие се прилага само за допустимите избрани папки."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "প্রতিটি কাজ শুধু উপযুক্ত নির্বাচিত ফোল্ডারগুলিতে প্রযোজ্য।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Každá akce se použije jen na způsobilé vybrané složky."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Aktion gilt nur für geeignete ausgewählte Ordner."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each action applies only to eligible selected folders."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada acción se aplica solo a las carpetas seleccionadas que la admiten."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque action s’applique uniquement aux dossiers sélectionnés qui la permettent."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "દરેક ક્રિયા માત્ર પાત્ર પસંદ કરેલા ફોલ્ડરો પર લાગુ પડે છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כל פעולה חלה רק על התיקיות הנבחרות המתאימות לה."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "हर कार्रवाई केवल योग्य चुने हुए फ़ोल्डरों पर लागू होती है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svaka se radnja primjenjuje samo na odgovarajuće odabrane mape."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ogni azione si applica solo alle cartelle selezionate idonee."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "各操作は、選択したフォルダのうち実行可能なものにのみ適用されます。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಪ್ರತಿ ಕ್ರಿಯೆಯು ಅರ್ಹವಾದ ಆಯ್ದ ಫೋಲ್ಡರ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "각 작업은 선택한 폴더 중 해당 작업이 가능한 폴더에만 적용됩니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഓരോ പ്രവർത്തനവും അനുയോജ്യമായ തിരഞ്ഞെടുത്ത ഫോൾഡറുകൾക്ക് മാത്രമേ ബാധകമാകൂ."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "प्रत्येक कृती केवळ पात्र निवडलेल्या फोल्डरवर लागू होते."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elke actie geldt alleen voor geselecteerde mappen die ervoor in aanmerking komen."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਹਰ ਕਾਰਵਾਈ ਸਿਰਫ਼ ਯੋਗ ਚੁਣੇ ਹੋਏ ਫੋਲਡਰਾਂ ਉੱਤੇ ਲਾਗੂ ਹੁੰਦੀ ਹੈ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Każde działanie dotyczy tylko kwalifikujących się wybranych folderów."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada ação se aplica apenas às pastas selecionadas compatíveis."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ஒவ்வொரு செயலும் தகுதியான தேர்ந்தெடுத்த கோப்புறைகளுக்கு மட்டுமே பொருந்தும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ప్రతి చర్య అర్హమైన ఎంచుకున్న ఫోల్డర్‌లకు మాత్రమే వర్తిస్తుంది."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แต่ละการดำเนินการจะใช้กับโฟลเดอร์ที่เลือกซึ่งรองรับการดำเนินการนั้นเท่านั้น"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Her işlem yalnızca uygun seçili klasörlere uygulanır."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кожна дія застосовується лише до вибраних тек, для яких вона доступна."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ہر کارروائی صرف اہل منتخب فولڈروں پر لاگو ہوتی ہے۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mỗi thao tác chỉ áp dụng cho các thư mục đã chọn đủ điều kiện."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每项操作仅适用于符合条件的所选文件夹。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "每項操作僅適用於符合條件的所選檔案夾。"
+          }
+        }
+      }
+    },
+    "Replace selected metadata?" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "استبدال البيانات الوصفية المحددة؟"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Замяна на избраните метаданни?"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "নির্বাচিত মেটাডেটা প্রতিস্থাপন করবেন?"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nahradit vybraná metadata?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgewählte Metadaten ersetzen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace selected metadata?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Reemplazar los metadatos seleccionados?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remplacer les métadonnées sélectionnées ?"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "પસંદ કરેલો મેટાડેટા બદલવો?"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להחליף את המטא־נתונים שנבחרו?"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "चुना हुआ मेटाडेटा बदलें?"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zamijeniti odabrane metapodatke?"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sostituire i metadati selezionati?"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択項目のメタデータを置き換えますか？"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಆಯ್ದ ಮೆಟಾಡೇಟಾ ಬದಲಾಯಿಸುವುದೇ?"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택 항목의 메타데이터를 바꿀까요?"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "തിരഞ്ഞെടുത്ത മെറ്റാഡാറ്റ മാറ്റിസ്ഥാപിക്കണോ?"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "निवडलेला मेटाडेटा बदलायचा?"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geselecteerde metagegevens vervangen?"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਚੁਣਿਆ ਮੈਟਾਡਾਟਾ ਬਦਲਣਾ ਹੈ?"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zastąpić wybrane metadane?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Substituir metadados selecionados?"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தேர்ந்தெடுத்த மெட்டாடேட்டாவை மாற்றவா?"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఎంచుకున్న మెటాడేటాను భర్తీ చేయాలా?"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "แทนที่ข้อมูลเมตาที่เลือกหรือไม่"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seçili meta veriler değiştirilsin mi?"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Замінити вибрані метадані?"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "منتخب میٹا ڈیٹا بدلیں؟"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thay thế siêu dữ liệu đã chọn?"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "替换所选项的元数据？"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取代所選項目的中繼資料？"
+          }
+        }
+      }
+    },
+    "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged." : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستبدل هذا البيانات الوصفية واختيارات الغلاف للمجلدات المحددة. تبقى الملفات المصدر وترتيب المقاطع دون تغيير."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Това заменя метаданните и избора на обложка за избраните папки. Изходните файлове и подредбата на песните остават непроменени."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "এটি নির্বাচিত ফোল্ডারগুলির মেটাডেটা ও প্রচ্ছদ পছন্দ প্রতিস্থাপন করবে। উৎস ফাইল ও ট্র্যাকের বিন্যাস অপরিবর্তিত থাকবে।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tím se nahradí metadata a vybrané obaly pro zvolené složky. Zdrojové soubory a uspořádání stop se nezmění."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dies ersetzt die Metadaten und die Coverauswahl der ausgewählten Ordner. Quelldateien und Titelanordnung bleiben unverändert."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This replaces metadata and cover choices for the selected folders. Source files and track layout are unchanged."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto reemplaza los metadatos y las portadas elegidas de las carpetas seleccionadas. Los archivos de origen y la disposición de las pistas no cambian."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les métadonnées et les pochettes choisies pour les dossiers sélectionnés seront remplacées. Les fichiers source et l’organisation des pistes resteront inchangés."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "આ પસંદ કરેલા ફોલ્ડરોનો મેટાડેટા અને કવર પસંદગીઓ બદલે છે. સ્રોત ફાઇલો અને ટ્રૅક ગોઠવણી યથાવત્ રહે છે."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פעולה זו מחליפה את המטא־נתונים ובחירת העטיפה של התיקיות הנבחרות. קובצי המקור וסידור הרצועות אינם משתנים."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "इससे चुने हुए फ़ोल्डरों का मेटाडेटा और कवर चयन बदल जाएगा। स्रोत फ़ाइलें और ट्रैक व्यवस्था नहीं बदलेंगी।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovo zamjenjuje metapodatke i odabire omota za odabrane mape. Izvorne datoteke i raspored pjesama ostaju nepromijenjeni."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verranno sostituiti i metadati e le copertine scelte per le cartelle selezionate. I file sorgente e la disposizione delle tracce rimarranno invariati."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "選択したフォルダのメタデータとカバーの選択が置き換わります。元のファイルとトラック構成は変更されません。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಇದು ಆಯ್ದ ಫೋಲ್ಡರ್‌ಗಳ ಮೆಟಾಡೇಟಾ ಮತ್ತು ಕವರ್ ಆಯ್ಕೆಗಳನ್ನು ಬದಲಾಯಿಸುತ್ತದೆ. ಮೂಲ ಫೈಲ್‌ಗಳು ಮತ್ತು ಟ್ರ್ಯಾಕ್ ವಿನ್ಯಾಸ ಬದಲಾಗುವುದಿಲ್ಲ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "선택한 폴더의 메타데이터와 커버 선택을 바꿉니다. 원본 파일과 트랙 구성은 변경되지 않습니다."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ഇത് തിരഞ്ഞെടുത്ത ഫോൾഡറുകളുടെ മെറ്റാഡാറ്റയും കവർ തിരഞ്ഞെടുപ്പുകളും മാറ്റിസ്ഥാപിക്കും. ഉറവിട ഫയലുകളും ട്രാക്ക് ക്രമീകരണവും മാറില്ല."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "यामुळे निवडलेल्या फोल्डरचा मेटाडेटा आणि कव्हरची निवड बदलते. मूळ फाइल आणि ट्रॅकची मांडणी बदलत नाही."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dit vervangt de metagegevens en gekozen hoezen van de geselecteerde mappen. Bronbestanden en de trackindeling blijven ongewijzigd."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਇਹ ਚੁਣੇ ਫੋਲਡਰਾਂ ਦਾ ਮੈਟਾਡਾਟਾ ਅਤੇ ਕਵਰ ਚੋਣਾਂ ਬਦਲਦਾ ਹੈ। ਸਰੋਤ ਫ਼ਾਈਲਾਂ ਅਤੇ ਟ੍ਰੈਕ ਬਣਤਰ ਨਹੀਂ ਬਦਲਦੀ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spowoduje to zastąpienie metadanych i wybranych okładek w zaznaczonych folderach. Pliki źródłowe i układ utworów pozostaną bez zmian."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isso substitui os metadados e as capas escolhidas das pastas selecionadas. Os arquivos de origem e a organização das faixas permanecem inalterados."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இது தேர்ந்தெடுத்த கோப்புறைகளின் மெட்டாடேட்டாவையும் அட்டைத் தேர்வுகளையும் மாற்றும். மூலக் கோப்புகளும் டிராக் அமைப்பும் மாறாது."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ఇది ఎంచుకున్న ఫోల్డర్‌ల మెటాడేటా మరియు కవర్ ఎంపికలను భర్తీ చేస్తుంది. మూల ఫైల్‌లు మరియు ట్రాక్ అమరిక మారవు."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "การดำเนินการนี้จะแทนที่ข้อมูลเมตาและปกที่เลือกของโฟลเดอร์ที่เลือก ไฟล์ต้นฉบับและการจัดเรียงแทร็กจะไม่เปลี่ยนแปลง"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bu işlem seçili klasörlerin meta verilerini ve kapak seçimlerini değiştirir. Kaynak dosyalar ve parça düzeni değişmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Це замінить метадані й вибір обкладинок для вибраних тек. Вихідні файли та структура треків залишаться без змін."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اس سے منتخب فولڈروں کا میٹا ڈیٹا اور سرورق کا انتخاب بدل جائے گا۔ اصل فائلیں اور ٹریک کی ترتیب تبدیل نہیں ہوں گی۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thao tác này thay thế siêu dữ liệu và lựa chọn ảnh bìa của các thư mục đã chọn. Tệp nguồn và bố cục bản nhạc không thay đổi."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这会替换所选文件夹的元数据和封面选择。源文件和曲目布局保持不变。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "這會取代所選檔案夾的中繼資料與封面選擇。來源檔案與曲目配置維持不變。"
           }
         }
       }

@@ -18,7 +18,7 @@ extension ImportView {
                 setFolderReleaseDecision(key, decision)
             },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
-            onImportSelected: { keys in importReadyCandidates(keys) },
+            onImportSelected: importReadyCandidates,
         )
     }
 

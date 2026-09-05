@@ -234,6 +234,10 @@
                 actionable: true,
                 placement: .ready,
                 skipAction: .skip,
+                actions: [
+                    .importReady, .identify, .useFileMetadata, .clearMetadata,
+                    .skip,
+                ],
                 matched: nil,
                 metadataSummary: nil,
                 coverThumbnail: nil,
