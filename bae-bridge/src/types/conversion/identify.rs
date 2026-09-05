@@ -362,12 +362,17 @@ impl BridgeCatalogStep {
 impl BridgeIdentifyRun {
     fn from_view(v: bae_core::identify::IdentifyRunView) -> Self {
         let bae_core::identify::IdentifyRunView {
+            providers,
             disc_id,
             artwork,
             barcode,
             catalog,
         } = v;
         BridgeIdentifyRun {
+            providers: providers
+                .into_iter()
+                .map(BridgeMetadataSource::from_core)
+                .collect(),
             disc_id: BridgeDiscIdStep::from_view(disc_id),
             artwork: BridgeArtworkStep::from_view(artwork),
             barcode: BridgeBarcodeStep::from_view(barcode),

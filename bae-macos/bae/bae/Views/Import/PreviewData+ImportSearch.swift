@@ -589,6 +589,7 @@
         /// answered the barcode while MusicBrainz is still out, and the
         /// catalog waits for a pick.
         static let identifyRunInFlight = BridgeIdentifyRun(
+            providers: [.musicBrainz, .discogs],
             discId: .read(
                 discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
                 sourceFile: "Artist Name - Album Title One.log",
@@ -617,6 +618,7 @@
 
         /// A run that has only just started: nothing read yet.
         static let identifyRunStarting = BridgeIdentifyRun(
+            providers: [.musicBrainz, .discogs],
             discId: .reading,
             artwork: .reading(
                 current: "Front.jpg",
@@ -627,6 +629,44 @@
             ),
             barcode: .awaitingArtwork,
             catalog: .noneFound
+        )
+
+        /// No disc ID; Discogs failed the first barcode while MusicBrainz moved
+        /// on to the second, and the chosen catalog number is out at both.
+        static let identifyRunProviderFailed = BridgeIdentifyRun(
+            providers: [.musicBrainz, .discogs],
+            discId: .absent,
+            artwork: .read(images: 2, barcodes: 2, catalogs: 1),
+            barcode: .lookups(
+                codes: ["5051961234567", "0123456789012"],
+                providers: [
+                    BridgeProviderBarcodeLookup(
+                        source: .musicBrainz,
+                        state: .trying(
+                            barcode: "0123456789012",
+                            position: 2,
+                            total: 2
+                        )
+                    ),
+                    BridgeProviderBarcodeLookup(
+                        source: .discogs,
+                        state: .failed(failure: .timeout)
+                    ),
+                ]
+            ),
+            catalog: .chosen(
+                value: "WPCR-80001",
+                lookups: [
+                    BridgeProviderLookup(
+                        source: .musicBrainz,
+                        state: .lookingUp
+                    ),
+                    BridgeProviderLookup(
+                        source: .discogs,
+                        state: .noMatch
+                    ),
+                ]
+            )
         )
 
         static let searchStateTriangulating = searchState(

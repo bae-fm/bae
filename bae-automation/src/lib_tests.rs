@@ -451,6 +451,7 @@ mod identify_mirrors {
             },
             catalog: CatalogProgress::Skipped,
             context: SignalsContext {
+                providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
                 disc_id: DiscIdSignal::Computed {
                     disc_id: "disc-hash".to_string(),
                     track_count: 9,
@@ -463,6 +464,10 @@ mod identify_mirrors {
         let json = serde_json::to_value(automation_identify_state(state)).unwrap();
         assert_eq!(json["kind"], "triangulating");
         let run = &json["run"];
+        assert_eq!(
+            run["providers"],
+            serde_json::json!(["music_brainz", "discogs"])
+        );
         assert_eq!(run["disc_id"]["kind"], "read");
         assert_eq!(run["disc_id"]["disc_id"], "disc-hash");
         assert_eq!(run["disc_id"]["source_file"], "rip.log");

@@ -74,7 +74,6 @@ struct ImportSearchPane: View {
                 onRerun: onRerun,
             )
             Divider()
-            identifyingChips
             errorLine
             resultArea
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,20 +102,6 @@ struct ImportSearchPane: View {
         }
     }
 
-    /// While the run is going, the signals it is looking up. A settled verdict
-    /// says the same thing in one line, so the row goes with the run — and a
-    /// resumed verdict, whose signals were never stored, never had one.
-    @ViewBuilder
-    private var identifyingChips: some View {
-        if area.showsSignalChips(toolbar: state.signalsToolbar) {
-            IdentifyingSignalChips(
-                toolbar: state.signalsToolbar,
-                onToggle: onToggleSignal,
-            )
-            Divider()
-        }
-    }
-
     @ViewBuilder
     private var errorLine: some View {
         if let error = state.error {
@@ -138,7 +123,7 @@ struct ImportSearchPane: View {
     private var resultArea: some View {
         switch area {
         case .identifying:
-            ResultSkeleton()
+            identifying
         case .groups:
             ReleaseGroupListView(
                 groups: state.identifiedGroups,
@@ -222,6 +207,39 @@ struct ImportSearchPane: View {
                 localized:
                     "\(source) \(step) results are missing from this list."
             )
+        }
+    }
+
+    /// The run as its steps, each provider's part settling on its own, with
+    /// whatever the answered lookups have combined to listed beneath. The
+    /// list scrolls under the steps, which stay put, so a person keeps the
+    /// run in view while the matches come in.
+    @ViewBuilder
+    private var identifying: some View {
+        if case .triangulating(let run, _, _, _) = state.identifyState {
+            VStack(alignment: .leading, spacing: 0) {
+                IdentifyRunStepsView(
+                    run: run,
+                    catalogOptions: state.signalsToolbar.signals
+                        .first { $0.kind == .catalog }?
+                        .options ?? [],
+                    onToggleSignal: onToggleSignal,
+                    onRetryFailed: onRetryFailed,
+                )
+                if !state.identifiedGroups.isEmpty {
+                    Divider()
+                    ReleaseGroupListView(
+                        groups: state.identifiedGroups,
+                        isImporting: state.isImporting,
+                        libraryStatuses: state.libraryStatuses,
+                        provenance: state.identifiedProvenance,
+                        selectedReleaseId: state.selectedReleaseId,
+                        loadingReleaseId: state.loadingReleaseId,
+                        onSelect: onSelect,
+                        trailing: { EmptyView() },
+                    )
+                }
+            }
         }
     }
 

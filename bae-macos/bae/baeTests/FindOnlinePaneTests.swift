@@ -352,61 +352,52 @@ struct FindOnlineResultAreaTests {
 }
 
 @MainActor
-@Suite("The signal chips a run shows")
-struct IdentifyingSignalChipsTests {
-    /// The chips are the run's progress, so they go when the run does: a
-    /// settled verdict says the same thing in one header line.
-    @Test("the chips show only while a run is going")
-    func chipsShowOnlyWhileIdentifying() {
-        let toolbar = PreviewData.toolbarIdentifying
-        #expect(
-            FindOnlineResultArea.identifying.showsSignalChips(toolbar: toolbar)
-        )
-        for area in [
-            FindOnlineResultArea.groups,
-            .nothingFound,
-            .noSignals,
-            .failureLines,
-            .notStarted,
-            .searchRun,
-        ] {
-            #expect(!area.showsSignalChips(toolbar: toolbar))
-        }
-    }
-
-    /// A verdict resumed from the store has no signals, so the row would be an
-    /// empty strip above the results.
-    @Test("a run with no signals to show spends no row on them")
-    func noChipsWithoutSignals() {
-        #expect(
-            !FindOnlineResultArea.identifying.showsSignalChips(
-                toolbar: BridgeSignalsToolbar(signals: [])
+@Suite("The steps a run shows")
+struct IdentifyRunStepsViewTests {
+    /// The rows draw themselves — glyphs, values, counts — rather than
+    /// handing anything to an AppKit control. Assert each shape of run puts
+    /// something on screen, and that different runs draw differently.
+    @Test("every shape of run draws")
+    func everyShapeOfRunDraws() async throws {
+        let size = NSSize(width: 660, height: 240)
+        func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
+            try await FindOnlineRendering.pixels(
+                IdentifyRunStepsView(
+                    run: run,
+                    catalogOptions: [],
+                    onToggleSignal: { _ in },
+                    onRetryFailed: {},
+                ),
+                size: size
             )
-        )
+        }
+        let starting = try await pixels(PreviewData.identifyRunStarting)
+        let inFlight = try await pixels(PreviewData.identifyRunInFlight)
+        let failed = try await pixels(PreviewData.identifyRunProviderFailed)
+
+        #expect(starting != inFlight)
+        #expect(inFlight != failed)
     }
 
-    /// The chips draw their own rings, values and counts rather than handing
-    /// them to an AppKit control, which renders a label as a button title and
-    /// drops everything else. Assert they put something on screen.
-    @Test("every chip draws")
-    func everyChipDraws() async throws {
-        let size = NSSize(width: 660, height: 44)
-        let drawn = try await FindOnlineRendering.pixels(
-            IdentifyingSignalChips(
-                toolbar: PreviewData.toolbarIdentifying,
-                onToggle: { _ in },
-            ),
+    /// A run in flight lists what has landed under its steps, so the area
+    /// scrolls; a run that has landed nothing yet has nothing to scroll.
+    @Test("the matches landed so far list under the steps")
+    func landedMatchesListUnderTheSteps() async {
+        let size = NSSize(width: 900, height: 600)
+        let (window, host) = FindOnlineRendering.host(
+            ImportSearchPane.preview(
+                state: PreviewData.searchStateTriangulating
+            )
+            .importPreviewEnvironment(),
             size: size
         )
-        let empty = try await FindOnlineRendering.pixels(
-            IdentifyingSignalChips(
-                toolbar: BridgeSignalsToolbar(signals: []),
-                onToggle: { _ in },
-            ),
-            size: size
+        await Task.yield()
+        host.layoutSubtreeIfNeeded()
+        #expect(
+            SnapshotTestSupport.descendants(of: host)
+                .contains { $0 is NSScrollView }
         )
-
-        #expect(drawn != empty)
+        withExtendedLifetime(window) {}
     }
 }
 

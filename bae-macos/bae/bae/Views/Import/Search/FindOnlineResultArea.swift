@@ -7,8 +7,8 @@ import BaeKit
 /// Choosing between them is a switch over two pre-shaped values, so it is
 /// stated once here and rendered from.
 enum FindOnlineResultArea: Equatable {
-    /// A lookup is under way: the skeleton rows hold the space its results
-    /// will take.
+    /// A lookup is under way: the run's steps, with the matches landed so far
+    /// beneath them.
     case identifying
     /// Identification has matches to offer.
     case groups
@@ -45,14 +45,5 @@ enum FindOnlineResultArea: Equatable {
             // them, with the failure named under the list.
             self = groups.isEmpty ? .failureLines : .groups
         }
-    }
-
-    /// Whether the pane spends a row on the signal chips.
-    ///
-    /// Only while the run is going: a settled verdict says what identified the
-    /// folder in one line, and Adjust holds the toggles. A resumed verdict has
-    /// no signals to show either — they were never stored.
-    func showsSignalChips(toolbar: BridgeSignalsToolbar) -> Bool {
-        self == .identifying && !toolbar.signals.isEmpty
     }
 }

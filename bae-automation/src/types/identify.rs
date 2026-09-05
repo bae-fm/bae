@@ -126,6 +126,7 @@ pub enum AutomationCatalogStep {
 /// steps it is taking, each provider's part of each reported on its own.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
+    pub providers: Vec<AutomationMetadataSource>,
     pub disc_id: AutomationDiscIdStep,
     pub artwork: AutomationArtworkStep,
     pub barcode: AutomationBarcodeStep,

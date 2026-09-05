@@ -143,12 +143,14 @@ fn automation_catalog_step(view: bae_core::identify::CatalogStepView) -> Automat
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_identify_run(view: bae_core::identify::IdentifyRunView) -> AutomationIdentifyRun {
     let bae_core::identify::IdentifyRunView {
+        providers,
         disc_id,
         artwork,
         barcode,
         catalog,
     } = view;
     AutomationIdentifyRun {
+        providers: providers.into_iter().map(Into::into).collect(),
         disc_id: automation_disc_id_step(disc_id),
         artwork: automation_artwork_step(artwork),
         barcode: automation_barcode_step(barcode),

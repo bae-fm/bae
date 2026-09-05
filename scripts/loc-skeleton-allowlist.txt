@@ -35,6 +35,8 @@ nl	Albums
 nl	Audio
 nl	Barcode
 nl	barcode
+nl	%lld barcodes	one
+nl	%lld barcodes	other
 nl	Bucket
 nl	Cloud
 nl	Credits

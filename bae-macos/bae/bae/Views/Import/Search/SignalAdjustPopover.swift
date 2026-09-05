@@ -135,14 +135,14 @@ struct SignalAdjustPopover: View {
     @ViewBuilder
     private func capsule(_ signal: BridgeToolbarSignal) -> some View {
         if SignalBadgeStyle.awaitingChoice(signal) {
-            countCapsule(signal.options.count.formatted(), matched: false)
+            CountCapsule(text: signal.options.count.formatted(), matched: false)
         }
         else {
             switch signal.state {
             case .found(let count):
-                countCapsule(count.formatted(), matched: true)
+                CountCapsule(text: count.formatted(), matched: true)
             case .noMatch:
-                countCapsule(0.formatted(), matched: false)
+                CountCapsule(text: 0.formatted(), matched: false)
             case .failed:
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 11))
@@ -153,19 +153,6 @@ struct SignalAdjustPopover: View {
                     .foregroundStyle(.tertiary)
             }
         }
-    }
-
-    private func countCapsule(_ text: String, matched: Bool) -> some View {
-        Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .monospacedDigit()
-            .foregroundStyle(matched ? Color.green : Color.secondary)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .background(
-                matched ? Color.green.opacity(0.14) : .white.opacity(0.05),
-                in: RoundedRectangle(cornerRadius: 4)
-            )
     }
 
     /// Where the value came from and what the lookup made of it — the detail

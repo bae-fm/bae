@@ -768,6 +768,8 @@ pub enum BridgeCatalogStep {
 /// `bae_core::identify::IdentifyRunView`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeIdentifyRun {
+    /// The providers the run asks, in the order their rows are listed.
+    pub providers: Vec<BridgeMetadataSource>,
     pub disc_id: BridgeDiscIdStep,
     pub artwork: BridgeArtworkStep,
     pub barcode: BridgeBarcodeStep,

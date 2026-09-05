@@ -162,6 +162,10 @@ pub enum CatalogStepView {
 /// so a surface lists the run row by row and each row settles on its own.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IdentifyRunView {
+    /// The providers the run asks, in the order their rows are listed.
+    /// Named up front so a surface can show a step's provider rows before
+    /// that step's lookups have started.
+    pub providers: Vec<MetadataSource>,
     pub disc_id: DiscIdStepView,
     pub artwork: ArtworkStepView,
     pub barcode: BarcodeStepView,
@@ -238,6 +242,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Triangulating {
                     run: IdentifyRunView {
+                        providers: context.providers.clone(),
                         disc_id: disc_id_step(discid, &context),
                         artwork: artwork_step(&context),
                         barcode: barcode_step(barcode),
