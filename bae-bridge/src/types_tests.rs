@@ -33,6 +33,7 @@ mod triage_tests {
         use bae_core::identify::IdentifyState;
 
         let context = bae_core::identify::state::SignalsContext {
+            providers: Vec::new(),
             disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
             barcode_codes: Vec::new(),
             had_barcode_source: false,

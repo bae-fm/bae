@@ -37,6 +37,8 @@ struct ImportSearchPane: View {
     let onIdentify: () -> Void
     /// Run signal extraction and the lookups again.
     let onRerun: () -> Void
+    /// Re-ask only the lookups that failed, keeping what the others found.
+    let onRetryFailed: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
 
@@ -67,7 +69,7 @@ struct ImportSearchPane: View {
                 toolbar: state.signalsToolbar,
                 onBack: onBack,
                 onIdentify: onIdentify,
-                onRetry: onRerun,
+                onRetry: onRetryFailed,
                 onToggleSignal: onToggleSignal,
                 onRerun: onRerun,
             )
@@ -268,6 +270,7 @@ struct ImportSearchPane: View {
                 onToggleSignal: { _ in },
                 onIdentify: {},
                 onRerun: {},
+                onRetryFailed: {},
                 onSelect: { _ in },
             )
         }

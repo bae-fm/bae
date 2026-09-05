@@ -83,6 +83,18 @@ impl AppServices {
         }
     }
 
+    /// Re-ask only the lookups that failed, keeping every answer that landed.
+    /// A live driver retries its failed providers in place; a candidate
+    /// showing a resumed verdict has no driver and no per-provider answers
+    /// to keep, so a fresh interactive run replaces the stored answer.
+    pub fn retry_failed_identify(&self, candidate_key: String) {
+        if self.inner.identify.is_running(&candidate_key) {
+            self.inner.identify.retry_failed(&candidate_key);
+        } else {
+            self.inner.sweep.rerun_for_explicit_lookup(candidate_key);
+        }
+    }
+
     /// Every key with something in flight right now.
     pub fn candidate_runtimes(
         &self,

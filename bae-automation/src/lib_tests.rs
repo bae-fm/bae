@@ -274,8 +274,8 @@ mod identify_mirrors {
     use bae_core::identify::combine::ResultProvenance;
     use bae_core::identify::state::SignalsContext;
     use bae_core::identify::{
-        BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState, SignalKind, SignalState,
-        ToolbarSignal,
+        BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
+        ProviderBarcodeLookup, SignalKind, SignalState, ToolbarSignal,
     };
     use bae_core::import::search::MetadataResult;
     use bae_core::import::MetadataSource;
@@ -314,6 +314,7 @@ mod identify_mirrors {
 
     fn empty_context() -> SignalsContext {
         SignalsContext {
+            providers: Vec::new(),
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             barcode_codes: Vec::new(),
             had_barcode_source: false,
@@ -421,28 +422,63 @@ mod identify_mirrors {
         assert_eq!(json["track_count"], 9);
     }
 
+    /// A run in flight crosses as its steps, each provider's barcode walk on
+    /// its own: MusicBrainz still trying a code while Discogs has already
+    /// matched it.
     #[test]
-    fn triangulating_barcode_looking_up_drops_remaining() {
+    fn triangulating_lists_each_provider_s_barcode_walk() {
         let state = IdentifyState::Triangulating {
             discid: DiscidProgress::LookingUp,
-            barcode: BarcodeProgress::LookingUp {
-                current: "0123456789012".to_string(),
-                position: 2,
-                total: 3,
-                remaining: vec!["9999999999999".to_string()],
+            barcode: BarcodeProgress::Lookups {
+                codes: vec!["0123456789012".to_string(), "9999999999999".to_string()],
+                providers: vec![
+                    ProviderBarcodeLookup {
+                        source: MetadataSource::MusicBrainz,
+                        state: BarcodeLookupState::Trying { index: 1 },
+                    },
+                    ProviderBarcodeLookup {
+                        source: MetadataSource::Discogs,
+                        state: BarcodeLookupState::Matched {
+                            code: Some("0123456789012".to_string()),
+                            results: vec![(
+                                metadata_result("rel-dg", "group-1"),
+                                library_status("rel-dg"),
+                            )],
+                        },
+                    },
+                ],
             },
             catalog: CatalogProgress::Skipped,
-            context: empty_context(),
+            context: SignalsContext {
+                disc_id: DiscIdSignal::Computed {
+                    disc_id: "disc-hash".to_string(),
+                    track_count: 9,
+                    source_file: Some("rip.log".to_string()),
+                },
+                ..empty_context()
+            },
         };
 
         let json = serde_json::to_value(automation_identify_state(state)).unwrap();
         assert_eq!(json["kind"], "triangulating");
-        assert_eq!(json["discid"]["kind"], "looking_up");
-        assert_eq!(json["barcode"]["kind"], "looking_up");
-        assert_eq!(json["barcode"]["current"], "0123456789012");
-        assert_eq!(json["barcode"]["position"], 2);
-        assert_eq!(json["barcode"]["total"], 3);
-        assert!(json["barcode"].get("remaining").is_none());
+        let run = &json["run"];
+        assert_eq!(run["disc_id"]["kind"], "read");
+        assert_eq!(run["disc_id"]["disc_id"], "disc-hash");
+        assert_eq!(run["disc_id"]["source_file"], "rip.log");
+        assert_eq!(run["disc_id"]["lookup"]["kind"], "looking_up");
+        assert_eq!(run["barcode"]["kind"], "lookups");
+        let providers = run["barcode"]["providers"].as_array().unwrap();
+        assert_eq!(providers[0]["source"], "music_brainz");
+        assert_eq!(providers[0]["state"]["kind"], "trying");
+        assert_eq!(providers[0]["state"]["barcode"], "9999999999999");
+        assert_eq!(providers[0]["state"]["position"], 2);
+        assert_eq!(providers[0]["state"]["total"], 2);
+        assert_eq!(providers[1]["source"], "discogs");
+        assert_eq!(providers[1]["state"]["kind"], "matched");
+        assert_eq!(providers[1]["state"]["barcode"], "0123456789012");
+        assert_eq!(providers[1]["state"]["count"], 1);
+        assert!(providers[1]["state"].get("results").is_none());
+        assert_eq!(run["catalog"]["kind"], "none_found");
     }
 
     #[test]

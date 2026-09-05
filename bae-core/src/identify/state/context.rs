@@ -9,6 +9,7 @@
 use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult, SourceFailure,
 };
+use crate::import::MetadataSource;
 use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue};
 
 /// Everything a settled state needs to re-derive its outcome when the user toggles
@@ -20,6 +21,10 @@ use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, Source
 /// re-fetching. `excluded` survives every new snapshot.
 #[derive(Clone, Debug, PartialEq)]
 pub struct SignalsContext {
+    /// The providers this run asks — MusicBrainz, and Discogs when it is
+    /// configured. Fixed when the run starts (or re-runs), so a lookup that
+    /// starts later, like a chosen catalog number's, asks the same ones.
+    pub providers: Vec<MetadataSource>,
     /// The disc-ID signal (value + its inherent `DiscToc` origin).
     pub disc_id: DiscIdSignal,
     /// The barcode code payloads with their origins.
@@ -78,9 +83,10 @@ pub struct SignalsContext {
 
 impl SignalsContext {
     /// No signals known yet — the context on entry to `Triangulating`, before the
-    /// first `SignalsUpdated`.
-    pub(super) fn empty() -> Self {
+    /// first `SignalsUpdated`. `providers` is what the run will ask.
+    pub(super) fn empty(providers: Vec<MetadataSource>) -> Self {
         Self {
+            providers,
             disc_id: DiscIdSignal::Absent { track_count: 0 },
             barcode_codes: Vec::new(),
             had_barcode_source: false,
@@ -143,7 +149,7 @@ impl SignalsContext {
         self.barcode_failures = barcode.failures();
         self.barcode_scan_failure = barcode.scan_failure().cloned();
         self.catalog_failures = catalog.failures();
-        self.matched_barcode = barcode.matched_barcode().map(str::to_string);
+        self.matched_barcode = barcode.matched_barcode(self.matched_barcode.as_deref());
     }
 
     /// The disc-ID results combine sees — empty when the signal is unchecked.

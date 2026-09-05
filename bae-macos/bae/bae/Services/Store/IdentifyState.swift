@@ -6,14 +6,10 @@ import Foundation
 /// switches on the variant to render banners and match lists.
 enum IdentifyState: Equatable {
     case idle
-    /// Both signals running in parallel. Per-signal progress lets the UI
-    /// show side-by-side pipes ("Computing disc-id ✓ · Looking up barcode
-    /// 2 of 3..."). The pipeline transitions to a terminal state once
-    /// both pipes settle.
-    case triangulating(
-        discid: BridgeDiscidProgress,
-        barcode: BridgeBarcodeProgress
-    )
+    /// Lookups in flight, laid out as the steps the run is taking — one per
+    /// signal, each provider's part of it reported on its own. The pipeline
+    /// transitions to a terminal state once every step settles.
+    case triangulating(run: BridgeIdentifyRun)
     /// The matches as group cards, in match order. Usually one card; signals
     /// that named different releases give several, which is the same list of
     /// things to pick from either way.
@@ -44,8 +40,8 @@ enum IdentifyState: Equatable {
     init(bridge: BridgeIdentifyState) {
         switch bridge {
         case .idle: self = .idle
-        case .triangulating(let discid, let barcode):
-            self = .triangulating(discid: discid, barcode: barcode)
+        case .triangulating(let run):
+            self = .triangulating(run: run)
         case .found(
             let groups,
             let libraryStatuses,

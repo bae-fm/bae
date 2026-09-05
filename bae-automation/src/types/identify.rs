@@ -7,49 +7,104 @@
 
 use super::*;
 
-/// Projects bae-core's `identify::DiscidProgress` — mid-flight result payloads
-/// reduce to a count; the full match set surfaces only in a terminal state.
+/// Mirrors bae-core's `identify::LookupView` — how one provider's lookup of
+/// one value is going. Mid-flight result payloads reduce to a count; the full
+/// match set surfaces only in a terminal state.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationDiscidProgress {
-    Computing,
+pub enum AutomationLookupState {
     LookingUp,
-    Done { n_results: u32 },
-    Skipped,
+    Found { count: u32 },
+    NoMatch,
     Failed { failure: AutomationLookupFailure },
 }
 
-/// Projects bae-core's `identify::BarcodeProgress` — mid-flight result payloads
-/// reduce to a count; the full match set surfaces only in a terminal state.
+/// Mirrors bae-core's `identify::DiscIdStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationBarcodeProgress {
-    Scanning,
-    LookingUp {
-        current: String,
+pub enum AutomationDiscIdStep {
+    Reading,
+    Absent,
+    ReadFailed {
+        failure: AutomationLookupFailure,
+    },
+    Read {
+        disc_id: String,
+        source_file: Option<String>,
+        lookup: AutomationLookupState,
+    },
+}
+
+/// Mirrors bae-core's `identify::BarcodeLookupView`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationBarcodeLookupState {
+    Trying {
+        barcode: String,
         position: u32,
         total: u32,
     },
-    Done {
-        n_results: u32,
+    Matched {
+        barcode: Option<String>,
+        count: u32,
     },
-    /// No provider answered, each with its own reason.
+    Exhausted,
     Failed {
-        failures: Vec<AutomationSourceFailure>,
+        failure: AutomationLookupFailure,
     },
-    /// Reading the candidate's barcodes failed, so no provider was asked.
+}
+
+/// Mirrors bae-core's `identify::ProviderBarcodeLookupView`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationProviderBarcodeLookup {
+    pub source: AutomationMetadataSource,
+    pub state: AutomationBarcodeLookupState,
+}
+
+/// Mirrors bae-core's `identify::BarcodeStepView`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationBarcodeStep {
+    AwaitingArtwork,
+    Absent,
+    NoCodes,
     ScanFailed {
         failure: AutomationLookupFailure,
     },
-    Skipped,
+    Lookups {
+        codes: Vec<String>,
+        providers: Vec<AutomationProviderBarcodeLookup>,
+    },
 }
 
-/// One provider that failed one lookup, and how. Mirrors bae-core's
-/// `import::SourceFailure`.
+/// Mirrors bae-core's `identify::ProviderLookupView`.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationSourceFailure {
+pub struct AutomationProviderLookup {
     pub source: AutomationMetadataSource,
-    pub failure: AutomationLookupFailure,
+    pub state: AutomationLookupState,
+}
+
+/// Mirrors bae-core's `identify::CatalogStepView`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationCatalogStep {
+    NoneFound,
+    Unchosen {
+        available: u32,
+    },
+    Chosen {
+        value: String,
+        lookups: Vec<AutomationProviderLookup>,
+    },
+}
+
+/// Mirrors bae-core's `identify::IdentifyRunView` — a run in flight as the
+/// steps it is taking, each provider's part of each reported on its own.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationIdentifyRun {
+    pub disc_id: AutomationDiscIdStep,
+    pub barcode: AutomationBarcodeStep,
+    pub catalog: AutomationCatalogStep,
 }
 
 /// Mirrors bae-core's `identify::ResultProvenance`, paired with the release id
@@ -93,8 +148,7 @@ pub enum AutomationIdentifyFailure {
 pub enum AutomationIdentifyState {
     Idle,
     Triangulating {
-        discid: AutomationDiscidProgress,
-        barcode: AutomationBarcodeProgress,
+        run: AutomationIdentifyRun,
     },
     Found {
         groups: Vec<AutomationReleaseGroup>,

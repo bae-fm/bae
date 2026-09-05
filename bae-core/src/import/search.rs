@@ -347,64 +347,6 @@ pub struct SourceFailure {
     pub failure: LookupFailure,
 }
 
-/// Every configured provider's answer to one lookup, kept apart so a surface
-/// can show what one source found while naming the one that failed.
-#[derive(Debug, Clone)]
-pub struct ProviderLookups {
-    pub musicbrainz: SourceLookup,
-    /// `None` when Discogs is not configured.
-    pub discogs: Option<SourceLookup>,
-}
-
-impl ProviderLookups {
-    /// Both providers at once; neither waits on the other.
-    pub async fn run(
-        musicbrainz: impl std::future::Future<Output = SourceLookup>,
-        discogs: Option<impl std::future::Future<Output = SourceLookup>>,
-    ) -> Self {
-        match discogs {
-            Some(discogs) => {
-                let (musicbrainz, discogs) = tokio::join!(musicbrainz, discogs);
-                Self {
-                    musicbrainz,
-                    discogs: Some(discogs),
-                }
-            }
-            None => Self {
-                musicbrainz: musicbrainz.await,
-                discogs: None,
-            },
-        }
-    }
-
-    /// What answered: MusicBrainz's results, then Discogs's.
-    pub fn results(&self) -> Vec<MetadataResult> {
-        let mut results = self.musicbrainz.as_deref().unwrap_or_default().to_vec();
-        if let Some(Ok(discogs)) = &self.discogs {
-            results.extend(discogs.iter().cloned());
-        }
-        results
-    }
-
-    /// Who failed.
-    pub fn failures(&self) -> Vec<SourceFailure> {
-        let mut failures = Vec::new();
-        if let Err(failure) = &self.musicbrainz {
-            failures.push(SourceFailure {
-                source: MetadataSource::MusicBrainz,
-                failure: failure.clone(),
-            });
-        }
-        if let Some(Err(failure)) = &self.discogs {
-            failures.push(SourceFailure {
-                source: MetadataSource::Discogs,
-                failure: failure.clone(),
-            });
-        }
-        failures
-    }
-}
-
 /// A typed manual search, one of three modes. Every configured provider is
 /// asked; [`search_source`] runs one of them.
 #[derive(Debug, Clone, PartialEq, Eq)]

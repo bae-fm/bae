@@ -169,7 +169,7 @@ pub use mapping::{
     SheetBound, SheetGroup, TrackMapping, TracklistSource,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use search::{ProviderLookups, SearchQuery, SourceFailure, SourceLookup};
+pub use search::{SearchQuery, SourceFailure, SourceLookup};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

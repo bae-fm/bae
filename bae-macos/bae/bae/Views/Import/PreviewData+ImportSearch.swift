@@ -585,17 +585,44 @@
         /// Find online before an automatic run starts.
         static let searchStateIdle = searchState(identifyState: .idle)
 
-        /// Auto-lookup in progress: the disc ID has landed, the barcode is
-        /// still out, and the catalog waits for a pick.
-        static let searchStateTriangulating = searchState(
-            identifyState: .triangulating(
-                discid: .done(nResults: 1),
-                barcode: .lookingUp(
-                    current: "0123456789012",
-                    position: 1,
-                    total: 2
-                )
+        /// Auto-lookup in progress: the disc ID has landed, Discogs has
+        /// answered the barcode while MusicBrainz is still out, and the
+        /// catalog waits for a pick.
+        static let identifyRunInFlight = BridgeIdentifyRun(
+            discId: .read(
+                discId: "Xx0Yy1Zz2Aa3Bb4Cc5Dd6Ee7-",
+                sourceFile: "Artist Name - Album Title One.log",
+                lookup: .found(count: 1)
             ),
+            barcode: .lookups(
+                codes: ["0123456789012", "9999999999999"],
+                providers: [
+                    BridgeProviderBarcodeLookup(
+                        source: .musicBrainz,
+                        state: .trying(
+                            barcode: "0123456789012",
+                            position: 1,
+                            total: 2
+                        )
+                    ),
+                    BridgeProviderBarcodeLookup(
+                        source: .discogs,
+                        state: .matched(barcode: "0123456789012", count: 2)
+                    ),
+                ]
+            ),
+            catalog: .unchosen(available: 3)
+        )
+
+        /// A run that has only just started: nothing read yet.
+        static let identifyRunStarting = BridgeIdentifyRun(
+            discId: .reading,
+            barcode: .awaitingArtwork,
+            catalog: .noneFound
+        )
+
+        static let searchStateTriangulating = searchState(
+            identifyState: .triangulating(run: identifyRunInFlight),
             toolbar: toolbarIdentifying,
             signals: settledSignals
         )

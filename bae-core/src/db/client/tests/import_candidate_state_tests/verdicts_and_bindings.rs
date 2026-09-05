@@ -464,7 +464,12 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
     let hash = candidate.content_hash();
     store_candidate_state(&db, &candidate, "/music/Some Album").await;
 
-    let (state, _) = identify_step(IdentifyState::Idle, IdentifyEvent::Started);
+    let (state, _) = identify_step(
+        IdentifyState::Idle,
+        IdentifyEvent::Started {
+            providers: vec![crate::import::MetadataSource::MusicBrainz],
+        },
+    );
     let (state, _) = identify_step(
         state,
         IdentifyEvent::SignalsUpdated {

@@ -200,6 +200,13 @@ impl AppHandle {
         self.services.rerun_identify(candidate_key);
     }
 
+    /// Re-ask only the lookups that failed, keeping what every other provider
+    /// found. A live driver retries in place; a candidate showing a resumed
+    /// verdict has no live answers to keep, so a fresh run replaces it.
+    pub fn retry_failed_identify_for_candidate(&self, candidate_key: String) {
+        self.services.retry_failed_identify(candidate_key);
+    }
+
     /// Replace candidate metadata from a source. An external release's
     /// documents land before provenance does, so the next value draws whole.
     /// Identification writes the same record itself when a verdict settles on

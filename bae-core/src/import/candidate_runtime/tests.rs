@@ -45,6 +45,7 @@ fn progress(key: &str, percent: u8) -> ImportEvent {
 
 fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
+        providers: Vec::new(),
         disc_id: crate::signals::DiscIdSignal::Absent { track_count },
         barcode_codes: Vec::new(),
         had_barcode_source: false,

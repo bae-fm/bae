@@ -298,16 +298,6 @@ pub(super) fn automation_release_group(group: ReleaseGroup) -> AutomationRelease
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(super) fn automation_source_failure(
-    failure: bae_core::import::SourceFailure,
-) -> AutomationSourceFailure {
-    AutomationSourceFailure {
-        source: failure.source.into(),
-        failure: automation_lookup_failure(failure.failure),
-    }
-}
-
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn automation_identify_failure(
     failure: bae_core::identify::IdentifyFailure,
 ) -> AutomationIdentifyFailure {

@@ -628,64 +628,118 @@ impl BridgeSignalsToolbar {
     }
 }
 
-/// Per-signal disc-ID progress inside `Triangulating`. Settled variants
-/// (`Done`, `Skipped`, `Failed`) tell the UI this pipe is finished.
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeDiscidProgress {
-    Computing,
+/// How one provider's lookup of one value is going. Mirrors
+/// `bae_core::identify::LookupView`: a run in flight reports counts, and the
+/// matches themselves surface from the terminal state.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeLookupState {
     LookingUp,
-    Done {
-        n_results: u32,
-    },
-    /// No disc-ID artifacts (LOG/CUE) available for this candidate.
-    Skipped,
-    Failed {
-        failure: BridgeLookupFailure,
+    Found { count: u32 },
+    NoMatch,
+    Failed { failure: BridgeLookupFailure },
+}
+
+/// The disc-ID step of a run: read off a LOG or CUE, then looked up on
+/// MusicBrainz. Mirrors `bae_core::identify::DiscIdStepView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDiscIdStep {
+    /// Extraction has not reported yet.
+    Reading,
+    /// No LOG or CUE to read one off.
+    Absent,
+    /// A LOG or CUE was there and no disc ID could be derived from it.
+    ReadFailed { failure: BridgeLookupFailure },
+    Read {
+        disc_id: String,
+        /// The candidate-relative path of the file it came from. `None` for
+        /// a release re-identified from its stored tracks.
+        source_file: Option<String>,
+        lookup: BridgeLookupState,
     },
 }
 
-/// Per-signal barcode progress inside `Triangulating`. `LookingUp` carries
-/// position + total so the UI can render "Looking up barcode 2 of 3."
-#[derive(Debug, Clone, uniffi::Enum)]
-pub enum BridgeBarcodeProgress {
-    Scanning,
-    LookingUp {
-        current: String,
+/// One provider's walk through the candidate's barcodes. Mirrors
+/// `bae_core::identify::BarcodeLookupView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeBarcodeLookupState {
+    /// Asking about `barcode`, the `position`th of `total`.
+    Trying {
+        barcode: String,
         position: u32,
         total: u32,
     },
-    Done {
-        n_results: u32,
+    /// A code matched. `None` when the provider's answer was stood back up
+    /// from a settled run, which keeps what it found but not which code
+    /// found it.
+    Matched {
+        barcode: Option<String>,
+        count: u32,
     },
-    /// No provider answered, each with its own reason.
+    /// Every code tried, none matched.
+    Exhausted,
     Failed {
-        failures: Vec<BridgeSourceFailure>,
-    },
-    /// Reading the candidate's barcodes failed, so no provider was asked.
-    ScanFailed {
         failure: BridgeLookupFailure,
     },
-    /// No artwork to scan.
-    Skipped,
 }
 
-/// One provider that failed one lookup, and how. Mirrors
-/// `bae_core::import::SourceFailure`.
+/// One provider and its barcode walk. Mirrors
+/// `bae_core::identify::ProviderBarcodeLookupView`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeSourceFailure {
+pub struct BridgeProviderBarcodeLookup {
     pub source: BridgeMetadataSource,
-    pub failure: BridgeLookupFailure,
+    pub state: BridgeBarcodeLookupState,
 }
 
-#[cfg(feature = "desktop")]
-impl BridgeSourceFailure {
-    pub(crate) fn from_core(failure: bae_core::import::SourceFailure) -> Self {
-        let bae_core::import::SourceFailure { source, failure } = failure;
-        Self {
-            source: BridgeMetadataSource::from_core(source),
-            failure: BridgeLookupFailure::from_core(failure),
-        }
-    }
+/// The barcode step of a run: read off the artwork, then every provider
+/// tries the codes in order on its own. Mirrors
+/// `bae_core::identify::BarcodeStepView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeBarcodeStep {
+    /// The artwork is still being read; the lookups start once it has been.
+    AwaitingArtwork,
+    /// No barcode source at all.
+    Absent,
+    /// There was a source and it held no code.
+    NoCodes,
+    /// Reading the candidate's barcodes failed, so no provider was asked.
+    ScanFailed { failure: BridgeLookupFailure },
+    Lookups {
+        codes: Vec<String>,
+        providers: Vec<BridgeProviderBarcodeLookup>,
+    },
+}
+
+/// One provider's part of the chosen catalog number's lookup. Mirrors
+/// `bae_core::identify::ProviderLookupView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeProviderLookup {
+    pub source: BridgeMetadataSource,
+    pub state: BridgeLookupState,
+}
+
+/// The catalog step of a run: looked up only once the user picks one of the
+/// numbers extraction found. Mirrors `bae_core::identify::CatalogStepView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeCatalogStep {
+    /// Extraction found no catalog number to offer.
+    NoneFound,
+    /// Numbers were found and none is chosen yet: the step waits on a pick.
+    Unchosen { available: u32 },
+    Chosen {
+        value: String,
+        lookups: Vec<BridgeProviderLookup>,
+    },
+}
+
+/// A run in flight, as the steps it is taking — one per signal, each with
+/// what extraction produced for it and every provider's lookup of it, so a
+/// surface lists the run row by row and each row settles on its own. Mirrors
+/// `bae_core::identify::IdentifyRunView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeIdentifyRun {
+    pub disc_id: BridgeDiscIdStep,
+    pub barcode: BridgeBarcodeStep,
+    pub catalog: BridgeCatalogStep,
 }
 
 /// The disc-ID signal. Mirrors `bae_core::signals::DiscIdSignal`.
@@ -769,13 +823,10 @@ pub struct BridgeResultProvenance {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeIdentifyState {
     Idle,
-    /// Both signals running in parallel. Per-signal progress lets the UI
-    /// show side-by-side pipes ("Computing disc-id ✓ · Looking up barcode
-    /// 2 of 3..."). The pipeline transitions to a terminal state once
-    /// both pipes settle.
+    /// Lookups in flight, laid out as the steps the run is taking. The
+    /// pipeline transitions to a terminal state once every step settles.
     Triangulating {
-        discid: BridgeDiscidProgress,
-        barcode: BridgeBarcodeProgress,
+        run: BridgeIdentifyRun,
     },
     Found {
         /// The matches as group cards, in match order — the UI renders one card

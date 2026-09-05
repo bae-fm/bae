@@ -7,48 +7,111 @@
 use super::*;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn automation_discid_progress(
-    progress: bae_core::identify::DiscidProgressView,
-) -> AutomationDiscidProgress {
-    use bae_core::identify::DiscidProgressView;
-    match progress {
-        DiscidProgressView::Computing => AutomationDiscidProgress::Computing,
-        DiscidProgressView::LookingUp => AutomationDiscidProgress::LookingUp,
-        DiscidProgressView::Done { n_results } => AutomationDiscidProgress::Done { n_results },
-        DiscidProgressView::Skipped => AutomationDiscidProgress::Skipped,
-        DiscidProgressView::Failed { failure } => AutomationDiscidProgress::Failed {
+fn automation_lookup_state(view: bae_core::identify::LookupView) -> AutomationLookupState {
+    use bae_core::identify::LookupView;
+    match view {
+        LookupView::LookingUp => AutomationLookupState::LookingUp,
+        LookupView::Found { count } => AutomationLookupState::Found { count },
+        LookupView::NoMatch => AutomationLookupState::NoMatch,
+        LookupView::Failed { failure } => AutomationLookupState::Failed {
             failure: automation_lookup_failure(failure),
         },
     }
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub(crate) fn automation_barcode_progress(
-    progress: bae_core::identify::BarcodeProgressView,
-) -> AutomationBarcodeProgress {
-    use bae_core::identify::BarcodeProgressView;
-    match progress {
-        BarcodeProgressView::Scanning => AutomationBarcodeProgress::Scanning,
-        BarcodeProgressView::LookingUp {
-            current,
-            position,
-            total,
-        } => AutomationBarcodeProgress::LookingUp {
-            current,
-            position,
-            total,
-        },
-        BarcodeProgressView::Done { n_results } => AutomationBarcodeProgress::Done { n_results },
-        BarcodeProgressView::Failed { failures } => AutomationBarcodeProgress::Failed {
-            failures: failures
-                .into_iter()
-                .map(automation_source_failure)
-                .collect(),
-        },
-        BarcodeProgressView::ScanFailed { failure } => AutomationBarcodeProgress::ScanFailed {
+fn automation_disc_id_step(view: bae_core::identify::DiscIdStepView) -> AutomationDiscIdStep {
+    use bae_core::identify::DiscIdStepView;
+    match view {
+        DiscIdStepView::Reading => AutomationDiscIdStep::Reading,
+        DiscIdStepView::Absent => AutomationDiscIdStep::Absent,
+        DiscIdStepView::ReadFailed { failure } => AutomationDiscIdStep::ReadFailed {
             failure: automation_lookup_failure(failure),
         },
-        BarcodeProgressView::Skipped => AutomationBarcodeProgress::Skipped,
+        DiscIdStepView::Read {
+            disc_id,
+            source_file,
+            lookup,
+        } => AutomationDiscIdStep::Read {
+            disc_id,
+            source_file,
+            lookup: automation_lookup_state(lookup),
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_barcode_step(view: bae_core::identify::BarcodeStepView) -> AutomationBarcodeStep {
+    use bae_core::identify::{BarcodeLookupView, BarcodeStepView};
+    match view {
+        BarcodeStepView::AwaitingArtwork => AutomationBarcodeStep::AwaitingArtwork,
+        BarcodeStepView::Absent => AutomationBarcodeStep::Absent,
+        BarcodeStepView::NoCodes => AutomationBarcodeStep::NoCodes,
+        BarcodeStepView::ScanFailed { failure } => AutomationBarcodeStep::ScanFailed {
+            failure: automation_lookup_failure(failure),
+        },
+        BarcodeStepView::Lookups { codes, providers } => AutomationBarcodeStep::Lookups {
+            codes,
+            providers: providers
+                .into_iter()
+                .map(|provider| AutomationProviderBarcodeLookup {
+                    source: provider.source.into(),
+                    state: match provider.state {
+                        BarcodeLookupView::Trying {
+                            barcode,
+                            position,
+                            total,
+                        } => AutomationBarcodeLookupState::Trying {
+                            barcode,
+                            position,
+                            total,
+                        },
+                        BarcodeLookupView::Matched { barcode, count } => {
+                            AutomationBarcodeLookupState::Matched { barcode, count }
+                        }
+                        BarcodeLookupView::Exhausted => AutomationBarcodeLookupState::Exhausted,
+                        BarcodeLookupView::Failed { failure } => {
+                            AutomationBarcodeLookupState::Failed {
+                                failure: automation_lookup_failure(failure),
+                            }
+                        }
+                    },
+                })
+                .collect(),
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_catalog_step(view: bae_core::identify::CatalogStepView) -> AutomationCatalogStep {
+    use bae_core::identify::CatalogStepView;
+    match view {
+        CatalogStepView::NoneFound => AutomationCatalogStep::NoneFound,
+        CatalogStepView::Unchosen { available } => AutomationCatalogStep::Unchosen { available },
+        CatalogStepView::Chosen { value, lookups } => AutomationCatalogStep::Chosen {
+            value,
+            lookups: lookups
+                .into_iter()
+                .map(|lookup| AutomationProviderLookup {
+                    source: lookup.source.into(),
+                    state: automation_lookup_state(lookup.state),
+                })
+                .collect(),
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_identify_run(view: bae_core::identify::IdentifyRunView) -> AutomationIdentifyRun {
+    let bae_core::identify::IdentifyRunView {
+        disc_id,
+        barcode,
+        catalog,
+    } = view;
+    AutomationIdentifyRun {
+        disc_id: automation_disc_id_step(disc_id),
+        barcode: automation_barcode_step(barcode),
+        catalog: automation_catalog_step(catalog),
     }
 }
 
@@ -81,12 +144,9 @@ pub(crate) fn automation_identify_state(
     use bae_core::identify::IdentifyStateView;
     match IdentifyStateView::from(state) {
         IdentifyStateView::Idle => AutomationIdentifyState::Idle,
-        IdentifyStateView::Triangulating { discid, barcode } => {
-            AutomationIdentifyState::Triangulating {
-                discid: automation_discid_progress(discid),
-                barcode: automation_barcode_progress(barcode),
-            }
-        }
+        IdentifyStateView::Triangulating { run } => AutomationIdentifyState::Triangulating {
+            run: automation_identify_run(run),
+        },
         IdentifyStateView::Found {
             groups,
             library_statuses,

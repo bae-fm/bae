@@ -24,10 +24,10 @@ struct ShownIdentifyStateTests {
         let shown = shownIdentifyState(
             resumed: .notFoundAnywhere,
             runtime: runtime(
-                .triangulating(discid: .computing, barcode: .scanning)
+                .triangulating(run: PreviewData.identifyRunStarting)
             )
         )
-        #expect(shown == .triangulating(discid: .computing, barcode: .scanning))
+        #expect(shown == .triangulating(run: PreviewData.identifyRunStarting))
     }
 
     @Test("nothing running leaves the resumed state")

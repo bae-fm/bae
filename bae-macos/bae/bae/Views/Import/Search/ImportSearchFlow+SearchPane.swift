@@ -74,6 +74,9 @@ extension ImportSearchFlow {
                 services.importer.identifyForExplicitLookup(key)
             },
             onRerun: { services.importer.rerunIdentifyForCandidate(key) },
+            onRetryFailed: {
+                services.importer.retryFailedIdentifyForCandidate(key)
+            },
             onSelect: onSelect,
         )
         // Every release the pane is offering is watched for library membership

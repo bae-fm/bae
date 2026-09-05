@@ -164,6 +164,7 @@ impl TerminalVerdict {
         // leaves core: the bridge crosses matches and result sections, and
         // the resumed state's toolbar is empty rather than derived from this.
         let empty_context = |track_count: u32| SignalsContext {
+            providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count },
             barcode_codes: Vec::new(),
             had_barcode_source: false,
@@ -265,6 +266,7 @@ mod tests {
     /// only that `Idle`/`Triangulating` carry one and still aren't terminal.
     fn mk_context(track_count: u32) -> SignalsContext {
         SignalsContext {
+            providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count },
             barcode_codes: vec![],
             had_barcode_source: false,
@@ -388,6 +390,7 @@ mod tests {
     #[test]
     fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
         let context = SignalsContext {
+            providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
             barcode_codes: vec![],
             had_barcode_source: true,
@@ -437,6 +440,7 @@ mod tests {
     #[test]
     fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
         let context = SignalsContext {
+            providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
             barcode_codes: vec![],
             had_barcode_source: true,

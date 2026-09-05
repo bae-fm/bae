@@ -215,15 +215,14 @@ impl BridgeFileEvidence {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeDiscidProgress {
-    fn from_view(p: bae_core::identify::DiscidProgressView) -> Self {
-        use bae_core::identify::DiscidProgressView;
-        match p {
-            DiscidProgressView::Computing => BridgeDiscidProgress::Computing,
-            DiscidProgressView::LookingUp => BridgeDiscidProgress::LookingUp,
-            DiscidProgressView::Done { n_results } => BridgeDiscidProgress::Done { n_results },
-            DiscidProgressView::Skipped => BridgeDiscidProgress::Skipped,
-            DiscidProgressView::Failed { failure } => BridgeDiscidProgress::Failed {
+impl BridgeLookupState {
+    fn from_view(v: bae_core::identify::LookupView) -> Self {
+        use bae_core::identify::LookupView;
+        match v {
+            LookupView::LookingUp => BridgeLookupState::LookingUp,
+            LookupView::Found { count } => BridgeLookupState::Found { count },
+            LookupView::NoMatch => BridgeLookupState::NoMatch,
+            LookupView::Failed { failure } => BridgeLookupState::Failed {
                 failure: BridgeLookupFailure::from_core(failure),
             },
         }
@@ -231,31 +230,105 @@ impl BridgeDiscidProgress {
 }
 
 #[cfg(feature = "desktop")]
-impl BridgeBarcodeProgress {
-    fn from_view(p: bae_core::identify::BarcodeProgressView) -> Self {
-        use bae_core::identify::BarcodeProgressView;
-        match p {
-            BarcodeProgressView::Scanning => BridgeBarcodeProgress::Scanning,
-            BarcodeProgressView::LookingUp {
-                current,
-                position,
-                total,
-            } => BridgeBarcodeProgress::LookingUp {
-                current,
-                position,
-                total,
-            },
-            BarcodeProgressView::Done { n_results } => BridgeBarcodeProgress::Done { n_results },
-            BarcodeProgressView::Failed { failures } => BridgeBarcodeProgress::Failed {
-                failures: failures
-                    .into_iter()
-                    .map(BridgeSourceFailure::from_core)
-                    .collect(),
-            },
-            BarcodeProgressView::ScanFailed { failure } => BridgeBarcodeProgress::ScanFailed {
+impl BridgeDiscIdStep {
+    fn from_view(v: bae_core::identify::DiscIdStepView) -> Self {
+        use bae_core::identify::DiscIdStepView;
+        match v {
+            DiscIdStepView::Reading => BridgeDiscIdStep::Reading,
+            DiscIdStepView::Absent => BridgeDiscIdStep::Absent,
+            DiscIdStepView::ReadFailed { failure } => BridgeDiscIdStep::ReadFailed {
                 failure: BridgeLookupFailure::from_core(failure),
             },
-            BarcodeProgressView::Skipped => BridgeBarcodeProgress::Skipped,
+            DiscIdStepView::Read {
+                disc_id,
+                source_file,
+                lookup,
+            } => BridgeDiscIdStep::Read {
+                disc_id,
+                source_file,
+                lookup: BridgeLookupState::from_view(lookup),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeBarcodeStep {
+    fn from_view(v: bae_core::identify::BarcodeStepView) -> Self {
+        use bae_core::identify::{BarcodeLookupView, BarcodeStepView};
+        match v {
+            BarcodeStepView::AwaitingArtwork => BridgeBarcodeStep::AwaitingArtwork,
+            BarcodeStepView::Absent => BridgeBarcodeStep::Absent,
+            BarcodeStepView::NoCodes => BridgeBarcodeStep::NoCodes,
+            BarcodeStepView::ScanFailed { failure } => BridgeBarcodeStep::ScanFailed {
+                failure: BridgeLookupFailure::from_core(failure),
+            },
+            BarcodeStepView::Lookups { codes, providers } => BridgeBarcodeStep::Lookups {
+                codes,
+                providers: providers
+                    .into_iter()
+                    .map(|provider| BridgeProviderBarcodeLookup {
+                        source: BridgeMetadataSource::from_core(provider.source),
+                        state: match provider.state {
+                            BarcodeLookupView::Trying {
+                                barcode,
+                                position,
+                                total,
+                            } => BridgeBarcodeLookupState::Trying {
+                                barcode,
+                                position,
+                                total,
+                            },
+                            BarcodeLookupView::Matched { barcode, count } => {
+                                BridgeBarcodeLookupState::Matched { barcode, count }
+                            }
+                            BarcodeLookupView::Exhausted => BridgeBarcodeLookupState::Exhausted,
+                            BarcodeLookupView::Failed { failure } => {
+                                BridgeBarcodeLookupState::Failed {
+                                    failure: BridgeLookupFailure::from_core(failure),
+                                }
+                            }
+                        },
+                    })
+                    .collect(),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeCatalogStep {
+    fn from_view(v: bae_core::identify::CatalogStepView) -> Self {
+        use bae_core::identify::CatalogStepView;
+        match v {
+            CatalogStepView::NoneFound => BridgeCatalogStep::NoneFound,
+            CatalogStepView::Unchosen { available } => BridgeCatalogStep::Unchosen { available },
+            CatalogStepView::Chosen { value, lookups } => BridgeCatalogStep::Chosen {
+                value,
+                lookups: lookups
+                    .into_iter()
+                    .map(|lookup| BridgeProviderLookup {
+                        source: BridgeMetadataSource::from_core(lookup.source),
+                        state: BridgeLookupState::from_view(lookup.state),
+                    })
+                    .collect(),
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeIdentifyRun {
+    fn from_view(v: bae_core::identify::IdentifyRunView) -> Self {
+        let bae_core::identify::IdentifyRunView {
+            disc_id,
+            barcode,
+            catalog,
+        } = v;
+        BridgeIdentifyRun {
+            disc_id: BridgeDiscIdStep::from_view(disc_id),
+            barcode: BridgeBarcodeStep::from_view(barcode),
+            catalog: BridgeCatalogStep::from_view(catalog),
         }
     }
 }
@@ -421,12 +494,9 @@ impl BridgeIdentifyState {
         use bae_core::identify::IdentifyStateView;
         match IdentifyStateView::from(s) {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,
-            IdentifyStateView::Triangulating { discid, barcode } => {
-                BridgeIdentifyState::Triangulating {
-                    discid: BridgeDiscidProgress::from_view(discid),
-                    barcode: BridgeBarcodeProgress::from_view(barcode),
-                }
-            }
+            IdentifyStateView::Triangulating { run } => BridgeIdentifyState::Triangulating {
+                run: BridgeIdentifyRun::from_view(run),
+            },
             IdentifyStateView::Found {
                 groups,
                 library_statuses,
@@ -513,47 +583,110 @@ fn status_map(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bae_core::identify::state::SignalsContext;
+    use bae_core::identify::{
+        BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
+        ProviderBarcodeLookup,
+    };
+    use bae_core::import::MetadataSource;
+    use bae_core::signals::{DiscIdSignal, LookupFailure, SignalOrigin, SourcedValue};
 
-    /// A provider that failed the barcode lookup crosses with its name on it,
-    /// so a surface can say which one to retry.
-    #[test]
-    fn barcode_progress_failure_crosses_bridge_with_its_provider() {
-        let progress = bae_core::identify::BarcodeProgress::Failed {
-            failures: vec![bae_core::import::SourceFailure {
-                source: bae_core::import::MetadataSource::Discogs,
-                failure: bae_core::signals::LookupFailure::Diagnostic {
-                    detail: "provider lookup failed".to_string(),
-                },
-            }],
-        };
-
-        let view = bae_core::identify::BarcodeProgressView::from(progress);
-        match BridgeBarcodeProgress::from_view(view) {
-            BridgeBarcodeProgress::Failed { failures } => assert_eq!(
-                failures,
-                vec![BridgeSourceFailure {
-                    source: BridgeMetadataSource::Discogs,
-                    failure: BridgeLookupFailure::Diagnostic {
-                        detail: "provider lookup failed".to_string(),
-                    },
-                }]
-            ),
-            other => panic!("expected failed barcode progress, got {other:?}"),
+    fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
+        IdentifyState::Triangulating {
+            discid: DiscidProgress::Skipped { track_count: 9 },
+            barcode,
+            catalog: CatalogProgress::Skipped,
+            context: SignalsContext {
+                providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
+                disc_id: DiscIdSignal::Absent { track_count: 9 },
+                barcode_codes: vec![SourcedValue::new(
+                    "0123456789012".to_string(),
+                    SignalOrigin::Artwork,
+                )],
+                had_barcode_source: true,
+                catalogs: Vec::new(),
+                chosen_catalog: None,
+                disc_excluded: false,
+                barcode_excluded: false,
+                discid_results: Vec::new(),
+                barcode_results: Vec::new(),
+                catalog_results: Vec::new(),
+                discid_failure: None,
+                barcode_failures: Vec::new(),
+                barcode_scan_failure: None,
+                catalog_failures: Vec::new(),
+                matched_barcode: None,
+                track_count: 9,
+            },
         }
+    }
+
+    fn barcode_step(state: IdentifyState) -> BridgeBarcodeStep {
+        match BridgeIdentifyState::from_core(state) {
+            BridgeIdentifyState::Triangulating { run } => run.barcode,
+            other => panic!("expected a run in flight, got {other:?}"),
+        }
+    }
+
+    /// A provider that failed its barcode walk crosses with its name on it
+    /// and beside the provider still walking, so a surface can say which one
+    /// to retry while the other keeps going.
+    #[test]
+    fn a_failed_provider_crosses_beside_the_one_still_looking() {
+        let step = barcode_step(in_flight(BarcodeProgress::Lookups {
+            codes: vec!["0123456789012".to_string()],
+            providers: vec![
+                ProviderBarcodeLookup {
+                    source: MetadataSource::MusicBrainz,
+                    state: BarcodeLookupState::Trying { index: 0 },
+                },
+                ProviderBarcodeLookup {
+                    source: MetadataSource::Discogs,
+                    state: BarcodeLookupState::Failed {
+                        failure: LookupFailure::Diagnostic {
+                            detail: "provider lookup failed".to_string(),
+                        },
+                    },
+                },
+            ],
+        }));
+        let BridgeBarcodeStep::Lookups { codes, providers } = step else {
+            panic!("a walk in flight crosses as lookups, got {step:?}");
+        };
+        assert_eq!(codes, vec!["0123456789012".to_string()]);
+        assert_eq!(
+            providers,
+            vec![
+                BridgeProviderBarcodeLookup {
+                    source: BridgeMetadataSource::MusicBrainz,
+                    state: BridgeBarcodeLookupState::Trying {
+                        barcode: "0123456789012".to_string(),
+                        position: 1,
+                        total: 1,
+                    },
+                },
+                BridgeProviderBarcodeLookup {
+                    source: BridgeMetadataSource::Discogs,
+                    state: BridgeBarcodeLookupState::Failed {
+                        failure: BridgeLookupFailure::Diagnostic {
+                            detail: "provider lookup failed".to_string(),
+                        },
+                    },
+                },
+            ]
+        );
     }
 
     /// Reading the candidate's barcodes failing is not a provider's failure,
     /// and crosses as its own variant rather than as an unattributed one.
     #[test]
     fn a_failed_barcode_scan_crosses_as_its_own_variant() {
-        let progress = bae_core::identify::BarcodeProgress::ScanFailed {
-            failure: bae_core::signals::LookupFailure::ArtworkAnalysis,
-        };
-
-        let view = bae_core::identify::BarcodeProgressView::from(progress);
+        let step = barcode_step(in_flight(BarcodeProgress::ScanFailed {
+            failure: LookupFailure::ArtworkAnalysis,
+        }));
         assert!(matches!(
-            BridgeBarcodeProgress::from_view(view),
-            BridgeBarcodeProgress::ScanFailed {
+            step,
+            BridgeBarcodeStep::ScanFailed {
                 failure: BridgeLookupFailure::ArtworkAnalysis
             }
         ));

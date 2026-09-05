@@ -71,6 +71,8 @@ private struct ImportOperations: Sendable {
         @Sendable (String, BridgeSignalToggle) ->
             Void
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
+    /// Re-ask only the lookups that failed, keeping what the others found.
+    let retryFailedIdentifyForCandidate: @Sendable (String) -> Void
     let setCandidateCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let setCandidateEditField:
@@ -191,6 +193,9 @@ private struct ImportOperations: Sendable {
             },
             rerunIdentifyForCandidate: {
                 handle.rerunIdentifyForCandidate(candidateKey: $0)
+            },
+            retryFailedIdentifyForCandidate: {
+                handle.retryFailedIdentifyForCandidate(candidateKey: $0)
             },
             setCandidateCover: {
                 try await handle.setCandidateCover(candidateKey: $0, cover: $1)
@@ -343,6 +348,8 @@ final class Importer: Sendable, Observable {
             },
         rerunIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
+        retryFailedIdentifyForCandidate:
+            @escaping @Sendable (String) -> Void = { _ in },
         setCandidateCover:
             @escaping @Sendable (String, BridgeCoverSelection) async throws ->
             Void = { _, _ in },
@@ -406,6 +413,7 @@ final class Importer: Sendable, Observable {
             subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
             toggleSignalForCandidate: toggleSignalForCandidate,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
+            retryFailedIdentifyForCandidate: retryFailedIdentifyForCandidate,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
@@ -571,6 +579,11 @@ extension Importer {
 
     func rerunIdentifyForCandidate(_ candidateKey: String) {
         operations.rerunIdentifyForCandidate(candidateKey)
+    }
+
+    /// Re-ask only the lookups that failed, keeping what the others found.
+    func retryFailedIdentifyForCandidate(_ candidateKey: String) {
+        operations.retryFailedIdentifyForCandidate(candidateKey)
     }
 
     /// Record the cover this candidate commits with.

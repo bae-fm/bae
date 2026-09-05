@@ -2,13 +2,13 @@
 //! per-candidate cancellation. One `IdentifyServiceHandle` per app; each
 //! candidate runs in its own spawned driver task.
 
-use super::annotate_lookups;
+use super::annotate_with_library_status;
 use super::barcode::lookup_barcode;
 use super::catalog::lookup_catalog;
 use super::discid::lookup_and_resolve;
-use super::state::{step, Effect, IdentifyEvent, IdentifyState, SignalToggle};
-use crate::import::search::SourceFailure;
-use crate::import::ImportEvent;
+use super::state::{step, Effect, IdentifyEvent, IdentifyState, LookupOutcome, SignalToggle};
+use crate::import::search::SourceLookup;
+use crate::import::{ImportEvent, MetadataSource};
 use crate::library::LibraryManager;
 use crate::util::rate_limiter::CallPriority;
 use std::collections::HashMap;
@@ -36,20 +36,29 @@ fn broadcast_state_change(tx: &broadcast::Sender<ImportEvent>, event: ImportEven
     }
 }
 
-fn barcode_lookup_failed(barcode: String, failures: Vec<SourceFailure>) -> IdentifyEvent {
-    debug!("Barcode lookup failed for {barcode}: {failures:?}");
-    IdentifyEvent::BarcodeLookupFailed {
-        for_barcode: barcode,
-        failures,
+/// The providers a run asks: MusicBrainz always, Discogs when it has a
+/// usable key. Read when the run starts and again on a re-run, so a key
+/// added since joins the next run.
+fn run_providers(library_manager: &LibraryManager) -> Vec<MetadataSource> {
+    let mut providers = vec![MetadataSource::MusicBrainz];
+    if library_manager.discogs_is_usable() {
+        providers.push(MetadataSource::Discogs);
     }
+    providers
 }
 
-fn catalog_lookup_failed(catalog: String, failures: Vec<SourceFailure>) -> IdentifyEvent {
-    debug!("Catalog lookup failed for {catalog}: {failures:?}");
-    IdentifyEvent::CatalogLookupFailed {
-        for_catalog: catalog,
-        failures,
+/// Pair one provider's results with live library status. The library check
+/// is bae's own work rather than the provider's, so a check that fails names
+/// this provider's lookup as producing nothing usable and leaves every other
+/// provider's answer alone.
+async fn annotate_lookup(lookup: SourceLookup, library_manager: &LibraryManager) -> LookupOutcome {
+    let results = lookup?;
+    if results.is_empty() {
+        return Ok(Vec::new());
     }
+    annotate_with_library_status(results, library_manager)
+        .await
+        .map_err(|detail| crate::signals::LookupFailure::Diagnostic { detail })
 }
 
 /// Thread-safe handle to the running identify service.
@@ -213,7 +222,14 @@ impl IdentifyServiceHandle {
     /// re-dispatches from the retained signals, keeping the user's exclusions. A
     /// no-op when the candidate isn't running.
     pub fn rerun(&self, key: &str) {
-        self.push_event(key, IdentifyEvent::ReRun, "rerun");
+        let providers = run_providers(&self.inner.library_manager);
+        self.push_event(key, IdentifyEvent::ReRun { providers }, "rerun");
+    }
+
+    /// Re-ask only the lookups that failed, keeping what every other provider
+    /// found. A no-op when the candidate isn't running.
+    pub fn retry_failed(&self, key: &str) {
+        self.push_event(key, IdentifyEvent::RetryFailed, "retry_failed");
     }
 
     /// Push an event into a running driver's inbox. With no live driver the event
@@ -297,7 +313,12 @@ async fn run_driver(
         }
     });
 
-    emit_step(&event_tx, IdentifyEvent::Started);
+    emit_step(
+        &event_tx,
+        IdentifyEvent::Started {
+            providers: run_providers(&inner.library_manager),
+        },
+    );
 
     let mut state = IdentifyState::Idle;
 
@@ -391,52 +412,55 @@ fn dispatch_effect(
             });
         }
 
-        // Both providers are asked at once and answer for themselves. Results
-        // from either make the lookup a match, with the provider that failed
-        // named alongside them; only a lookup nothing answered is a failure.
-        Effect::LookupBarcode { barcode } => {
+        // Each provider is asked on its own task and answers for itself, so
+        // one landing never waits on the other.
+        Effect::LookupBarcode { source, barcode } => {
             let library_manager = inner.library_manager.clone();
             runtime.spawn(async move {
-                let lookups = lookup_barcode(&barcode, &library_manager, priority).await;
+                let lookup = lookup_barcode(source, &barcode, &library_manager, priority).await;
                 if token.is_cancelled() {
                     return;
                 }
-                let (results, failures) = annotate_lookups(lookups, &library_manager).await;
-                let event = if !results.is_empty() {
-                    IdentifyEvent::BarcodeLookupMatched {
+                let outcome = annotate_lookup(lookup, &library_manager).await;
+                if let Err(failure) = &outcome {
+                    debug!(
+                        "{} barcode lookup failed for {barcode}: {failure:?}",
+                        source.as_str()
+                    );
+                }
+                emit_step(
+                    &event_tx,
+                    IdentifyEvent::BarcodeLookupAnswered {
+                        source,
                         for_barcode: barcode,
-                        results,
-                        failures,
-                    }
-                } else if failures.is_empty() {
-                    IdentifyEvent::BarcodeLookupMissed {
-                        for_barcode: barcode,
-                    }
-                } else {
-                    barcode_lookup_failed(barcode, failures)
-                };
-                emit_step(&event_tx, event);
+                        outcome,
+                    },
+                );
             });
         }
 
-        Effect::LookupCatalog { catalog } => {
+        Effect::LookupCatalog { source, catalog } => {
             let library_manager = inner.library_manager.clone();
             runtime.spawn(async move {
-                let lookups = lookup_catalog(&catalog, &library_manager, priority).await;
+                let lookup = lookup_catalog(source, &catalog, &library_manager, priority).await;
                 if token.is_cancelled() {
                     return;
                 }
-                let (results, failures) = annotate_lookups(lookups, &library_manager).await;
-                let event = if results.is_empty() && !failures.is_empty() {
-                    catalog_lookup_failed(catalog, failures)
-                } else {
-                    IdentifyEvent::CatalogLookupCompleted {
+                let outcome = annotate_lookup(lookup, &library_manager).await;
+                if let Err(failure) = &outcome {
+                    debug!(
+                        "{} catalog lookup failed for {catalog}: {failure:?}",
+                        source.as_str()
+                    );
+                }
+                emit_step(
+                    &event_tx,
+                    IdentifyEvent::CatalogLookupAnswered {
+                        source,
                         for_catalog: catalog,
-                        results,
-                        failures,
-                    }
-                };
-                emit_step(&event_tx, event);
+                        outcome,
+                    },
+                );
             });
         }
     }
