@@ -1,6 +1,5 @@
 /// A second import over a library that already holds a release: the sequential
-/// case, the failure paths that must leave the prior release untouched, and the
-/// successful replacement.
+/// case, and the refusal that leaves the prior release untouched.
 /// 5. Two sequential imports both succeed and produce separate albums.
 #[tokio::test]
 async fn two_sequential_imports() {
@@ -21,8 +20,8 @@ async fn two_sequential_imports() {
         fs::create_dir_all(&album_dir).unwrap();
         // Distinct filename per album so the two imports carry different content
         // hashes. The content hash is the relative path + size of each file, and
-        // re-importing the same content overwrites the prior release, so reusing
-        // one name would make the second import delete the first.
+        // a folder whose content is already imported is refused, so reusing one
+        // name would make the second import fail as a re-import.
         let track_name = format!("01 Track {}.flac", i + 1);
         generate_album_files(&album_dir, &[track_name.as_str()]);
 
@@ -80,12 +79,16 @@ async fn two_sequential_imports() {
     assert_eq!(album2.title, "Second Album");
 }
 
+/// A folder that is already in the library is not imported again: the second
+/// `ImportCommand` is refused before anything runs, and the prior release —
+/// its files, its blob reference — is left exactly as it was. Changing an
+/// imported release is the library editor's job, not a re-import's.
 #[tokio::test]
-async fn reimport_cover_download_failure_preserves_prior_release() {
+async fn an_imported_folder_is_refused_a_second_import() {
     support::tracing_init();
     let f = ImportFixture::new().await;
 
-    let album_dir = f.temp_path().join("cover-failure-reimport");
+    let album_dir = f.temp_path().join("already-imported");
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
         &album_dir,
@@ -109,80 +112,67 @@ async fn reimport_cover_download_failure_preserves_prior_release() {
     .await
     .expect("initial import succeeds");
     assert_release_has_external_ref(&f, &prior_release_id).await;
+    let content_hash =
+        f.db.find_release_by_id(&prior_release_id)
+            .await
+            .unwrap()
+            .expect("prior release exists")
+            .content_hash
+            .clone()
+            .unwrap();
 
-    let result = import_folder(
-        &f,
-        &album_dir,
-        Some(CoverSelection::Remote(
-            "http://127.0.0.1:9/cover.jpg".to_string(),
-            MetadataSource::MusicBrainz,
-        )),
-        StorageMode::Local,
-        MetadataProvenance::FileTags,
-    )
-    .await;
+    // Whatever the second attempt asks for — a different storage mode, a cover
+    // that could never download — it is refused as already imported before
+    // any of that is tried.
+    for (cover, storage_mode) in [
+        (None, StorageMode::Local),
+        (
+            Some(CoverSelection::Remote(
+                "http://127.0.0.1:9/cover.jpg".to_string(),
+                MetadataSource::MusicBrainz,
+            )),
+            StorageMode::Local,
+        ),
+    ] {
+        let error = import_folder(
+            &f,
+            &album_dir,
+            cover,
+            storage_mode,
+            MetadataProvenance::FileTags,
+        )
+        .await
+        .expect_err("an imported folder is refused a second import");
+        assert!(
+            error.contains("already been imported"),
+            "unexpected error: {error}"
+        );
+    }
 
-    assert!(result.is_err(), "cover download should fail");
     assert_release_has_external_ref(&f, &prior_release_id).await;
+    assert_eq!(
+        f.db.release_ids_for_content_hash(&content_hash)
+            .await
+            .unwrap(),
+        vec![prior_release_id],
+        "the prior release still carries the content hash, alone"
+    );
+    assert_eq!(
+        f.db.queued_delete_count_for_test().await.unwrap(),
+        0,
+        "a refused re-import queues nothing for deletion"
+    );
 }
 
+/// The same refusal for a release that lives in the cloud: nothing is queued
+/// for deletion, since nothing replaced it.
 #[tokio::test]
-async fn reimport_decode_verification_failure_preserves_prior_release() {
-    support::tracing_init();
-    let f = ImportFixture::new().await;
-    f.set_decode_verification(false);
-
-    let album_dir = f.temp_path().join("decode-failure-reimport");
-    fs::create_dir_all(&album_dir).unwrap();
-    generate_tagged_album_files(
-        &album_dir,
-        "Album Title",
-        "Artist Name",
-        None,
-        &[TaggedTrack {
-            filename: "01 Track Title.flac",
-            title: "Track Title",
-            track_number: 1,
-        }],
-    );
-    truncate_flac_body(&album_dir.join("01 Track Title.flac"));
-
-    let (prior_release_id, _) = import_folder(
-        &f,
-        &album_dir,
-        None,
-        StorageMode::Local,
-        MetadataProvenance::FileTags,
-    )
-    .await
-    .expect("initial import succeeds while decode verification is disabled");
-    assert_release_has_external_ref(&f, &prior_release_id).await;
-
-    f.set_decode_verification(true);
-    let result = import_folder(
-        &f,
-        &album_dir,
-        None,
-        StorageMode::Local,
-        MetadataProvenance::FileTags,
-    )
-    .await;
-
-    let error = result.expect_err("decode verification should fail");
-    assert!(
-        error.contains("decode verification failed"),
-        "unexpected error: {error}"
-    );
-    assert_release_has_external_ref(&f, &prior_release_id).await;
-}
-
-#[tokio::test]
-async fn successful_reimport_replaces_prior_release_once() {
+async fn a_remote_imported_folder_is_refused_a_second_import() {
     support::tracing_init();
     let f = ImportFixture::new().await;
     f.connect_cloud().await;
 
-    let album_dir = f.temp_path().join("successful-reimport");
+    let album_dir = f.temp_path().join("already-imported-remote");
     fs::create_dir_all(&album_dir).unwrap();
     generate_tagged_album_files(
         &album_dir,
@@ -210,19 +200,15 @@ async fn successful_reimport_replaces_prior_release_once() {
         .drain_uploads_expecting_work()
         .await
         .unwrap();
-    assert_eq!(
-        upload_count, 1,
-        "initial remote import should upload one file"
-    );
+    assert_eq!(upload_count, 1, "initial remote import should upload one file");
     let prior_release =
         f.db.find_release_by_id(&prior_release_id)
             .await
             .unwrap()
             .expect("prior release exists after upload");
     assert!(prior_release.remote, "prior release should be remote");
-    let content_hash = prior_release.content_hash.clone().unwrap();
 
-    let (replacement_release_id, _) = import_folder(
+    let error = import_folder(
         &f,
         &album_dir,
         None,
@@ -230,28 +216,22 @@ async fn successful_reimport_replaces_prior_release_once() {
         MetadataProvenance::FileTags,
     )
     .await
-    .expect("re-import succeeds");
-
+    .expect_err("an imported folder is refused a second import");
+    assert!(
+        error.contains("already been imported"),
+        "unexpected error: {error}"
+    );
     assert!(
         f.db.find_release_by_id(&prior_release_id)
             .await
             .unwrap()
-            .is_none(),
-        "prior release should be replaced"
-    );
-    let release_ids =
-        f.db.release_ids_for_content_hash(&content_hash)
-            .await
-            .unwrap();
-    assert_eq!(
-        release_ids,
-        vec![replacement_release_id],
-        "one release should carry the re-imported content hash"
+            .is_some(),
+        "the remote release stays"
     );
     assert_eq!(
         f.db.queued_delete_count_for_test().await.unwrap(),
-        1,
-        "replacing the prior remote release should queue its cloud blob for deletion"
+        0,
+        "a refused re-import queues no cloud blob for deletion"
     );
 }
 

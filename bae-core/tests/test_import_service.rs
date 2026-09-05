@@ -33,7 +33,6 @@ struct ImportFixture {
     db: Database,
     handle: bae_core::import::ImportServiceHandle,
     library_manager: LibraryManager,
-    config_handle: Arc<bae_core::config::ConfigHandle>,
     ids: Arc<dyn coven::IdProvider>,
     _temp: TempDir,
 }
@@ -79,7 +78,6 @@ impl ImportFixture {
             db,
             handle,
             library_manager,
-            config_handle,
             ids,
             _temp: temp,
         }
@@ -99,12 +97,6 @@ impl ImportFixture {
             )
             .await
             .expect("connect in-memory cloud home");
-    }
-
-    fn set_decode_verification(&self, verify: bool) {
-        self.config_handle
-            .update(|c| c.verify_decode_on_import = verify)
-            .expect("set verify_decode_on_import");
     }
 }
 
