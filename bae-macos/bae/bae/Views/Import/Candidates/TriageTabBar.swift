@@ -56,6 +56,7 @@ struct TriageTabBar: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isActive ? Theme.accent.opacity(0.14) : Color.clear)
             )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
