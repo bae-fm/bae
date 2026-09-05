@@ -273,6 +273,22 @@ public sealed class SortCriteria<TField> where TField : struct, Enum
         Changed?.Invoke();
     }
 
+    // Re-point a criterion at another field in place: its position and direction
+    // stay, so "sort by title, then year" becomes "sort by artist, then year" in
+    // one step rather than a remove and an add. A field already in the list is
+    // refused — a field sorts in one direction, and the pill for it is elsewhere.
+    public void SetField(TField field, TField replacement)
+    {
+        var index = IndexOf(field);
+        if (index < 0 || EqualityComparer<TField>.Default.Equals(field, replacement) || HasField(replacement))
+        {
+            return;
+        }
+
+        _criteria[index] = _criteria[index] with { Field = replacement };
+        Changed?.Invoke();
+    }
+
     public void SetDirection(TField field, SortDirection direction)
     {
         var index = IndexOf(field);

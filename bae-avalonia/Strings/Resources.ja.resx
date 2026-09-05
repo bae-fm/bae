@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ディスクID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>アーティスト</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>並べ替えを追加</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>並べ替え項目を変更</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>並べ替えを削除</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>追加日</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>昇順で並べ替え</value></data>

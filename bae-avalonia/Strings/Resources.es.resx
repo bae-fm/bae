@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID de disco</value></data>
   <data name="sort.artist" xml:space="preserve"><value>artista</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>añadir orden</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>cambiar campo de orden</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>eliminar orden</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>fecha de adición</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>orden ascendente</value></data>

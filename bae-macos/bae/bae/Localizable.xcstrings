@@ -1,573 +1,573 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Browse all images": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تصفّح جميع الصور"
+    "Browse all images" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تصفّح جميع الصور"
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Преглед на всички изображения"
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преглед на всички изображения"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "সব ছবি দেখুন"
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সব ছবি দেখুন"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Procházet všechny obrázky"
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procházet všechny obrázky"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle Bilder durchsuchen"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle Bilder durchsuchen"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Browse all images"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse all images"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explorar todas las imágenes"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explorar todas las imágenes"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Parcourir toutes les images"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parcourir toutes les images"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "બધી છબીઓ જુઓ"
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "બધી છબીઓ જુઓ"
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "עיון בכל התמונות"
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עיון בכל התמונות"
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "सभी छवियाँ देखें"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सभी छवियाँ देखें"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pregledaj sve slike"
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregledaj sve slike"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sfoglia tutte le immagini"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sfoglia tutte le immagini"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "すべての画像を見る"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "すべての画像を見る"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಎಲ್ಲ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಿ"
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಎಲ್ಲ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಿ"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모든 이미지 둘러보기"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "모든 이미지 둘러보기"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "എല്ലാ ചിത്രങ്ങളും കാണുക"
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "എല്ലാ ചിത്രങ്ങളും കാണുക"
           }
         },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "सर्व प्रतिमा पहा"
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सर्व प्रतिमा पहा"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alle afbeeldingen bekijken"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle afbeeldingen bekijken"
           }
         },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਸਾਰੀਆਂ ਤਸਵੀਰਾਂ ਵੇਖੋ"
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਸਾਰੀਆਂ ਤਸਵੀਰਾਂ ਵੇਖੋ"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Przeglądaj wszystkie obrazy"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przeglądaj wszystkie obrazy"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explorar todas as imagens"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explorar todas as imagens"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "எல்லாப் படங்களையும் உலாவுக"
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "எல்லாப் படங்களையும் உலாவுக"
           }
         },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "అన్ని చిత్రాలను చూడండి"
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "అన్ని చిత్రాలను చూడండి"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เรียกดูรูปภาพทั้งหมด"
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เรียกดูรูปภาพทั้งหมด"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tüm görsellere göz at"
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tüm görsellere göz at"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Переглянути всі зображення"
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переглянути всі зображення"
           }
         },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تمام تصاویر دیکھیں"
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تمام تصاویر دیکھیں"
           }
         },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duyệt tất cả hình ảnh"
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duyệt tất cả hình ảnh"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "浏览所有图片"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浏览所有图片"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "瀏覽所有圖片"
-          }
-        }
-      }
-    },
-    "Current Cover": {
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "الغلاف الحالي"
-          }
-        },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Текуща обложка"
-          }
-        },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "বর্তমান প্রচ্ছদ"
-          }
-        },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktuální obal"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aktuelles Cover"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Current Cover"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Portada actual"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pochette actuelle"
-          }
-        },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "વર્તમાન કવર"
-          }
-        },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "העטיפה הנוכחית"
-          }
-        },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "वर्तमान कवर"
-          }
-        },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Trenutačni omot"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copertina attuale"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "現在のカバー"
-          }
-        },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಪ್ರಸ್ತುತ ಮುಖಪುಟ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "현재 커버"
-          }
-        },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "നിലവിലെ കവർ"
-          }
-        },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "सध्याचे मुखपृष्ठ"
-          }
-        },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Huidige hoes"
-          }
-        },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਮੌਜੂਦਾ ਕਵਰ"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bieżąca okładka"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Capa atual"
-          }
-        },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "தற்போதைய அட்டைப்படம்"
-          }
-        },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ప్రస్తుత కవర్"
-          }
-        },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ปกปัจจุบัน"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geçerli kapak"
-          }
-        },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Поточна обкладинка"
-          }
-        },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "موجودہ سرورق"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ảnh bìa hiện tại"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "当前封面"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目前封面"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏覽所有圖片"
           }
         }
       }
     },
-    "View in Lightbox": {
-      "comment": "Open artwork for browsing without changing the release cover",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "العرض في عارض الصور"
+    "Current Cover" : {
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "الغلاف الحالي"
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Преглед във визуализатора на изображения"
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текуща обложка"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ছবি দর্শকে দেখুন"
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "বর্তমান প্রচ্ছদ"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zobrazit v prohlížeči obrázků"
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktuální obal"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "In Bildansicht öffnen"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktuelles Cover"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "View in Lightbox"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current Cover"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver en el visor de imágenes"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portada actual"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvrir dans la visionneuse"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pochette actuelle"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "છબી દર્શકમાં જુઓ"
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "વર્તમાન કવર"
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "הצג במציג התמונות"
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "העטיפה הנוכחית"
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "छवि दर्शक में देखें"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "वर्तमान कवर"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otvori u pregledniku slika"
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trenutačni omot"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apri nel visualizzatore di immagini"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copertina attuale"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "画像ビューアで表示"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "現在のカバー"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಚಿತ್ರ ವೀಕ್ಷಕದಲ್ಲಿ ನೋಡಿ"
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಪ್ರಸ್ತುತ ಮುಖಪುಟ"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이미지 뷰어에서 보기"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "현재 커버"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ചിത്രദർശിനിയിൽ കാണുക"
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "നിലവിലെ കവർ"
           }
         },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "प्रतिमा दर्शकात पहा"
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "सध्याचे मुखपृष्ठ"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Openen in afbeeldingsviewer"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Huidige hoes"
           }
         },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਚਿੱਤਰ ਦਰਸ਼ਕ ਵਿੱਚ ਵੇਖੋ"
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਮੌਜੂਦਾ ਕਵਰ"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Otwórz w przeglądarce obrazów"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bieżąca okładka"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ver no visualizador de imagens"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capa atual"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "படக் காட்சியில் பார்"
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "தற்போதைய அட்டைப்படம்"
           }
         },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "చిత్ర వీక్షణిలో చూడండి"
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ప్రస్తుత కవర్"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ดูในโปรแกรมดูภาพ"
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปกปัจจุบัน"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Görsel Görüntüleyicide Aç"
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geçerli kapak"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Переглянути в переглядачі зображень"
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поточна обкладинка"
           }
         },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تصویری ناظر میں دیکھیں"
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "موجودہ سرورق"
           }
         },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Xem trong trình xem ảnh"
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ảnh bìa hiện tại"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在图片查看器中查看"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当前封面"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在圖片檢視器中檢視"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目前封面"
+          }
+        }
+      }
+    },
+    "View in Lightbox" : {
+      "comment" : "Open artwork for browsing without changing the release cover",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "العرض في عارض الصور"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Преглед във визуализатора на изображения"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ছবি দর্শকে দেখুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zobrazit v prohlížeči obrázků"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Bildansicht öffnen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View in Lightbox"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver en el visor de imágenes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir dans la visionneuse"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "છબી દર્શકમાં જુઓ"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצג במציג התמונות"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "छवि दर्शक में देखें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otvori u pregledniku slika"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apri nel visualizzatore di immagini"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画像ビューアで表示"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಚಿತ್ರ ವೀಕ್ಷಕದಲ್ಲಿ ನೋಡಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "이미지 뷰어에서 보기"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ചിത്രദർശിനിയിൽ കാണുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "प्रतिमा दर्शकात पहा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Openen in afbeeldingsviewer"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਚਿੱਤਰ ਦਰਸ਼ਕ ਵਿੱਚ ਵੇਖੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otwórz w przeglądarce obrazów"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver no visualizador de imagens"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "படக் காட்சியில் பார்"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "చిత్ర వీక్షణిలో చూడండి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ดูในโปรแกรมดูภาพ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Görsel Görüntüleyicide Aç"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переглянути в переглядачі зображень"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تصویری ناظر میں دیکھیں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xem trong trình xem ảnh"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在图片查看器中查看"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在圖片檢視器中檢視"
           }
         }
       }
@@ -59533,384 +59533,384 @@
         }
       }
     },
-    "No linked release": {
-      "comment": "Cover picker: the release has no external metadata identity",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "لا يوجد إصدار مرتبط"
+    "No linked release" : {
+      "comment" : "Cover picker: the release has no external metadata identity",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "لا يوجد إصدار مرتبط"
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Няма свързано издание"
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Няма свързано издание"
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "কোনো রিলিজ সংযুক্ত নেই"
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "কোনো রিলিজ সংযুক্ত নেই"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Žádné propojené vydání"
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Žádné propojené vydání"
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Keine verknüpfte Veröffentlichung"
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine verknüpfte Veröffentlichung"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No linked release"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No linked release"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ninguna edición vinculada"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna edición vinculada"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucune parution liée"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune parution liée"
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "કોઈ રિલીઝ જોડાયેલી નથી"
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "કોઈ રિલીઝ જોડાયેલી નથી"
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "אין מהדורה מקושרת"
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מהדורה מקושרת"
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "कोई रिलीज़ लिंक नहीं है"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कोई रिलीज़ लिंक नहीं है"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nema povezanog izdanja"
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema povezanog izdanja"
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nessuna pubblicazione collegata"
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nessuna pubblicazione collegata"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "リリースがリンクされていません"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "リリースがリンクされていません"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಯಾವುದೇ ಬಿಡುಗಡೆ ಲಿಂಕ್ ಆಗಿಲ್ಲ"
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಯಾವುದೇ ಬಿಡುಗಡೆ ಲಿಂಕ್ ಆಗಿಲ್ಲ"
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "연결된 릴리스 없음"
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "연결된 릴리스 없음"
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "റിലീസ് ലിങ്ക് ചെയ്തിട്ടില്ല"
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "റിലീസ് ലിങ്ക് ചെയ്തിട്ടില്ല"
           }
         },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "कोणतेही प्रकाशन जोडलेले नाही"
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "कोणतेही प्रकाशन जोडलेले नाही"
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Geen gekoppelde uitgave"
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geen gekoppelde uitgave"
           }
         },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਕੋਈ ਰਿਲੀਜ਼ ਲਿੰਕ ਨਹੀਂ ਕੀਤੀ"
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਕੋਈ ਰਿਲੀਜ਼ ਲਿੰਕ ਨਹੀਂ ਕੀਤੀ"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Brak powiązanego wydania"
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brak powiązanego wydania"
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum lançamento vinculado"
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum lançamento vinculado"
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "இணைக்கப்பட்ட வெளியீடு இல்லை"
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "இணைக்கப்பட்ட வெளியீடு இல்லை"
           }
         },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "విడుదల లింక్ చేయబడలేదు"
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "విడుదల లింక్ చేయబడలేదు"
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ยังไม่ได้เชื่อมโยงรุ่นวางจำหน่าย"
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ยังไม่ได้เชื่อมโยงรุ่นวางจำหน่าย"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bağlı sürüm yok"
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bağlı sürüm yok"
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Немає пов’язаного видання"
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Немає пов’язаного видання"
           }
         },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "کوئی ریلیز منسلک نہیں"
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "کوئی ریلیز منسلک نہیں"
           }
         },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chưa liên kết bản phát hành"
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chưa liên kết bản phát hành"
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未关联发行版本"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未关联发行版本"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未連結發行版本"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未連結發行版本"
           }
         }
       }
     },
-    "Link a Discogs or MusicBrainz release to browse its artwork.": {
-      "comment": "Cover picker: identify a release before looking up remote artwork",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "اربط إصدارًا من Discogs أو MusicBrainz لتصفح صوره."
+    "Link a Discogs or MusicBrainz release to browse its artwork." : {
+      "comment" : "Cover picker: identify a release before looking up remote artwork",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "اربط إصدارًا من Discogs أو MusicBrainz لتصفح صوره."
           }
         },
-        "bg": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Свържете издание от Discogs или MusicBrainz, за да разгледате изображенията му."
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свържете издание от Discogs или MusicBrainz, за да разгледате изображенията му."
           }
         },
-        "bn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ছবি দেখতে Discogs বা MusicBrainz-এর একটি রিলিজ সংযুক্ত করুন।"
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ছবি দেখতে Discogs বা MusicBrainz-এর একটি রিলিজ সংযুক্ত করুন।"
           }
         },
-        "cs": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Propojte vydání z Discogs nebo MusicBrainz a prohlédněte si jeho obrázky."
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Propojte vydání z Discogs nebo MusicBrainz a prohlédněte si jeho obrázky."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Verknüpfe eine Veröffentlichung von Discogs oder MusicBrainz, um ihre Bilder anzusehen."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verknüpfe eine Veröffentlichung von Discogs oder MusicBrainz, um ihre Bilder anzusehen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Link a Discogs or MusicBrainz release to browse its artwork."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Link a Discogs or MusicBrainz release to browse its artwork."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vincula una edición de Discogs o MusicBrainz para ver sus imágenes."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincula una edición de Discogs o MusicBrainz para ver sus imágenes."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Associez une parution Discogs ou MusicBrainz pour parcourir ses images."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Associez une parution Discogs ou MusicBrainz pour parcourir ses images."
           }
         },
-        "gu": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "તેની છબીઓ જોવા માટે Discogs અથવા MusicBrainz રિલીઝ જોડો."
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "તેની છબીઓ જોવા માટે Discogs અથવા MusicBrainz રિલીઝ જોડો."
           }
         },
-        "he": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "יש לקשר מהדורה מ־Discogs או מ־MusicBrainz כדי לעיין בתמונות שלה."
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יש לקשר מהדורה מ־Discogs או מ־MusicBrainz כדי לעיין בתמונות שלה."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "चित्र देखने के लिए Discogs या MusicBrainz की रिलीज़ लिंक करें।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "चित्र देखने के लिए Discogs या MusicBrainz की रिलीज़ लिंक करें।"
           }
         },
-        "hr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Povežite izdanje s Discogsa ili MusicBrainza kako biste pregledali njegove slike."
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Povežite izdanje s Discogsa ili MusicBrainza kako biste pregledali njegove slike."
           }
         },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collega una pubblicazione di Discogs o MusicBrainz per sfogliarne le immagini."
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collega una pubblicazione di Discogs o MusicBrainz per sfogliarne le immagini."
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "DiscogsまたはMusicBrainzのリリースをリンクすると、アートワークを閲覧できます。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "DiscogsまたはMusicBrainzのリリースをリンクすると、アートワークを閲覧できます。"
           }
         },
-        "kn": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ಅದರ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಲು Discogs ಅಥವಾ MusicBrainz ಬಿಡುಗಡೆಯನ್ನು ಲಿಂಕ್ ಮಾಡಿ."
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಅದರ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಲು Discogs ಅಥವಾ MusicBrainz ಬಿಡುಗಡೆಯನ್ನು ಲಿಂಕ್ ಮಾಡಿ."
           }
         },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Discogs 또는 MusicBrainz 릴리스를 연결하면 아트워크를 볼 수 있습니다."
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discogs 또는 MusicBrainz 릴리스를 연결하면 아트워크를 볼 수 있습니다."
           }
         },
-        "ml": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ചിത്രങ്ങൾ കാണാൻ Discogs അല്ലെങ്കിൽ MusicBrainz റിലീസ് ലിങ്ക് ചെയ്യുക."
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ചിത്രങ്ങൾ കാണാൻ Discogs അല്ലെങ്കിൽ MusicBrainz റിലീസ് ലിങ്ക് ചെയ്യുക."
           }
         },
-        "mr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "त्याची चित्रे पाहण्यासाठी Discogs किंवा MusicBrainz प्रकाशन जोडा."
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "त्याची चित्रे पाहण्यासाठी Discogs किंवा MusicBrainz प्रकाशन जोडा."
           }
         },
-        "nl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Koppel een uitgave van Discogs of MusicBrainz om de afbeeldingen te bekijken."
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppel een uitgave van Discogs of MusicBrainz om de afbeeldingen te bekijken."
           }
         },
-        "pa": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ਤਸਵੀਰਾਂ ਵੇਖਣ ਲਈ Discogs ਜਾਂ MusicBrainz ਦੀ ਰਿਲੀਜ਼ ਲਿੰਕ ਕਰੋ।"
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਤਸਵੀਰਾਂ ਵੇਖਣ ਲਈ Discogs ਜਾਂ MusicBrainz ਦੀ ਰਿਲੀਜ਼ ਲਿੰਕ ਕਰੋ।"
           }
         },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Powiąż wydanie z Discogs lub MusicBrainz, aby przeglądać jego grafiki."
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Powiąż wydanie z Discogs lub MusicBrainz, aby przeglądać jego grafiki."
           }
         },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vincule um lançamento do Discogs ou MusicBrainz para ver suas imagens."
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincule um lançamento do Discogs ou MusicBrainz para ver suas imagens."
           }
         },
-        "ta": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "அதன் படங்களைப் பார்க்க Discogs அல்லது MusicBrainz வெளியீட்டை இணைக்கவும்."
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "அதன் படங்களைப் பார்க்க Discogs அல்லது MusicBrainz வெளியீட்டை இணைக்கவும்."
           }
         },
-        "te": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "చిత్రాలను చూడటానికి Discogs లేదా MusicBrainz విడుదలను లింక్ చేయండి."
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "చిత్రాలను చూడటానికి Discogs లేదా MusicBrainz విడుదలను లింక్ చేయండి."
           }
         },
-        "th": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "เชื่อมโยงรุ่นวางจำหน่ายจาก Discogs หรือ MusicBrainz เพื่อดูภาพประกอบ"
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เชื่อมโยงรุ่นวางจำหน่ายจาก Discogs หรือ MusicBrainz เพื่อดูภาพประกอบ"
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Görsellerine göz atmak için bir Discogs veya MusicBrainz sürümü bağlayın."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Görsellerine göz atmak için bir Discogs veya MusicBrainz sürümü bağlayın."
           }
         },
-        "uk": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пов’яжіть видання з Discogs або MusicBrainz, щоб переглянути його зображення."
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пов’яжіть видання з Discogs або MusicBrainz, щоб переглянути його зображення."
           }
         },
-        "ur": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "تصاویر دیکھنے کے لیے Discogs یا MusicBrainz کی ریلیز منسلک کریں۔"
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تصاویر دیکھنے کے لیے Discogs یا MusicBrainz کی ریلیز منسلک کریں۔"
           }
         },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Liên kết bản phát hành trên Discogs hoặc MusicBrainz để xem hình ảnh."
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liên kết bản phát hành trên Discogs hoặc MusicBrainz để xem hình ảnh."
           }
         },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "关联 Discogs 或 MusicBrainz 发行版本以浏览其图片。"
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关联 Discogs 或 MusicBrainz 发行版本以浏览其图片。"
           }
         },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "連結 Discogs 或 MusicBrainz 發行版本以瀏覽其圖片。"
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "連結 Discogs 或 MusicBrainz 發行版本以瀏覽其圖片。"
           }
         }
       }
@@ -75413,6 +75413,197 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "移除排序條件"
+          }
+        }
+      }
+    },
+    "Change sort field" : {
+      "comment" : "Album sort pill: help on the field menu that re-points this criterion",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تغيير حقل الفرز"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Промяна на полето за подреждане"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "সাজানোর ক্ষেত্র পরিবর্তন করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Změnit pole řazení"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sortierfeld ändern"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change sort field"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar campo de orden"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Changer le champ de tri"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ગોઠવણી ફીલ્ડ બદલો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שנה שדה מיון"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "छंटाई फ़ील्ड बदलें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Promijeni polje sortiranja"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia campo di ordinamento"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "並べ替え項目を変更"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ವಿಂಗಡಣೆ ಕ್ಷೇತ್ರ ಬದಲಾಯಿಸಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "정렬 필드 변경"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ക്രമീകരണ ഫീൽഡ് മാറ്റുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "क्रमवारी फील्ड बदला"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sorteerveld wijzigen"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਛਾਂਟ ਖੇਤਰ ਬਦਲੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zmień pole sortowania"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alterar campo de ordenação"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "வரிசைப்படுத்தல் புலத்தை மாற்று"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "క్రమబద్ధీకరణ ఫీల్డ్ మార్చు"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "เปลี่ยนฟิลด์การเรียงลำดับ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sıralama alanını değiştir"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Змінити поле сортування"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ترتیب کا فیلڈ بدلیں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đổi trường sắp xếp"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更改排序字段"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "變更排序欄位"
           }
         }
       }

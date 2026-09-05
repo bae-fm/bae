@@ -21,11 +21,11 @@ extension BridgeSortCriterion: SortCriterionRepresentable {}
 extension BridgeComposerSortCriterion: SortCriterionRepresentable {}
 extension BridgeArtistSortCriterion: SortCriterionRepresentable {}
 
-/// One mode's sort criteria as capsule pills: clicking a pill inverts its
-/// direction, the trailing "x" removes it, and the "+" menu is the only
-/// dropdown left, offering fields not already in use. Field switching and
-/// reordering are gone by design — the sort is built by adding and removing
-/// pills. Shared by the album, composer, and artist library modes.
+/// One mode's sort criteria as capsule pills: a pill's field menu re-points
+/// it, its arrow inverts its direction, the trailing "x" removes it, and the
+/// "+" menu appends a field not already in use. Reordering is gone by
+/// design — precedence is the order pills were added. Shared by the album,
+/// composer, and artist library modes.
 struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
     @Binding
     var criteria: [Criterion]
@@ -36,7 +36,9 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
                 let field = criterion.field
                 SortCriterionPill(
                     criterion: $criterion,
+                    takenFields: usedFields.subtracting([field]),
                     canRemove: criteria.count > 1,
+                    onSetField: { criteria.replaceField(field, with: $0) },
                     onRemove: { criteria.removeAll { $0.field == field } },
                 )
             }
@@ -72,6 +74,24 @@ struct SortCriteriaRow<Criterion: SortCriterionRepresentable>: View {
 
     private var usedFields: Set<Criterion.Field> {
         Set(criteria.map(\.field))
+    }
+}
+
+extension Array where Element: SortCriterionRepresentable {
+    /// Re-point the criterion sorting by `field` at `replacement`, keeping its
+    /// place and direction. Nothing changes when `field` is not here or when
+    /// `replacement` already is: a field sorts once, in one pill.
+    mutating func replaceField(
+        _ field: Element.Field,
+        with replacement: Element.Field
+    ) {
+        guard let index = firstIndex(where: { $0.field == field }),
+            !contains(where: { $0.field == replacement })
+        else { return }
+        self[index] = Element(
+            field: replacement,
+            direction: self[index].direction
+        )
     }
 }
 

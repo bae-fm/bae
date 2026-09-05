@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>డిస్క్ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>కళాకారుడు</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>క్రమబద్ధీకరణ జోడించు</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>క్రమబద్ధీకరణ ఫీల్డ్ మార్చు</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>క్రమబద్ధీకరణ తీసివేయి</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>జోడించిన తేదీ</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>ఆరోహణ క్రమంలో క్రమబద్ధీకరించు</value></data>

@@ -108,6 +108,39 @@ public sealed class LibrarySortTests
     }
 
     [Fact]
+    public void SetField_RepointsInPlace_KeepingPositionAndDirection()
+    {
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
+        criteria.Add(AlbumSortField.Title);
+        criteria.SetDirection(AlbumSortField.Title, SortDirection.Descending);
+
+        criteria.SetField(AlbumSortField.Title, AlbumSortField.Artist);
+
+        Assert.Equal(
+            new[] { AlbumSortField.DateAdded, AlbumSortField.Artist },
+            criteria.Items.Select(c => c.Field).ToArray());
+        Assert.Equal(SortDirection.Descending, criteria.Items[1].Direction);
+    }
+
+    [Fact]
+    public void SetField_RefusesAFieldAlreadyInTheList()
+    {
+        var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);
+        criteria.Add(AlbumSortField.Title);
+        var count = 0;
+        criteria.Changed += () => count++;
+
+        criteria.SetField(AlbumSortField.Title, AlbumSortField.DateAdded); // taken by the other pill
+        criteria.SetField(AlbumSortField.Title, AlbumSortField.Title); // no change
+        criteria.SetField(AlbumSortField.Year, AlbumSortField.Artist); // not in the list
+
+        Assert.Equal(0, count);
+        Assert.Equal(
+            new[] { AlbumSortField.DateAdded, AlbumSortField.Title },
+            criteria.Items.Select(c => c.Field).ToArray());
+    }
+
+    [Fact]
     public void Changed_FiresOnRealMutationsOnly()
     {
         var criteria = new SortCriteria<AlbumSortField>(LibrarySortVocab.Album);

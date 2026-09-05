@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>รหัสดิสก์</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ศิลปิน</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>เพิ่มการเรียงลำดับ</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>เปลี่ยนฟิลด์การเรียงลำดับ</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>ลบการเรียงลำดับ</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>วันที่เพิ่ม</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>เรียงจากน้อยไปมาก</value></data>

@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>Disc ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>sanatçı</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>sıralama ekle</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>sıralama alanını değiştir</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>sıralamayı kaldır</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>eklenme tarihi</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>artan sırada sırala</value></data>

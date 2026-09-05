@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ਡਿਸਕ ID</value></data>
   <data name="sort.artist" xml:space="preserve"><value>ਕਲਾਕਾਰ</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>ਲੜੀਬੱਧ ਜੋੜੋ</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>ਲੜੀਬੱਧ ਖੇਤਰ ਬਦਲੋ</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>ਲੜੀਬੱਧ ਹਟਾਓ</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>ਸ਼ਾਮਲ ਕਰਨ ਦੀ ਤਾਰੀਖ਼</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>ਵਧਦੇ ਕ੍ਰਮ ਵਿੱਚ ਲੜੀਬੱਧ ਕਰੋ</value></data>

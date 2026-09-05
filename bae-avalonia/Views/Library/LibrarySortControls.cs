@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
@@ -9,9 +10,9 @@ using Avalonia.Media;
 namespace Bae.Desktop;
 
 // The library sort surface, rendered into the header band opposite the mode
-// heading: a pill per sort criterion (a button that inverts that field's
-// direction, plus an "✕" that removes it) and a "+" whose menu adds an unused
-// field. The same pill surface renders for all three browse modes over each mode's
+// heading: a pill per sort criterion (its field, whose menu re-points it at
+// another field; an arrow that inverts its direction; an "✕" that removes it)
+// and a "+" whose menu adds an unused field. The same pill surface renders for all three browse modes over each mode's
 // own criteria list. Every mutation goes through the LibrarySort model, which
 // raises Changed — the store reloads the affected list off that; this only builds
 // controls and re-renders itself, so it stays a thin renderer of the model.
@@ -59,16 +60,59 @@ internal sealed class LibrarySortControls
         }
     }
 
-    // A criterion pill: the main button (field label + direction arrow) sets the
-    // opposite direction — an absolute set computed from the rendered direction,
-    // not a blind toggle. A trailing "✕" removes it, shown only when more than one
-    // remains.
+    // A criterion pill in three parts. The field name opens a menu of every
+    // field: the current one is checked, one another pill holds is disabled,
+    // and choosing one re-points this criterion in place — so changing what a
+    // single pill sorts by is one pick, not a remove and an add. The arrow sets
+    // the opposite direction — an absolute set computed from the rendered
+    // direction, not a blind toggle. A trailing "✕" removes it, shown only when
+    // more than one remains.
     private Control BuildPill<TField>(SortCriteria<TField> criteria, SortCriterion<TField> criterion)
         where TField : struct, Enum
     {
-        var arrow = criterion.Direction == SortDirection.Ascending ? "↑" : "↓";
-        var opposite = LibrarySortVocab.Opposite(criterion.Direction);
         var label = Loc.Chrome(criteria.Vocab.LabelKey(criterion.Field));
+
+        var pill = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 6,
+        };
+        pill.Children.Add(BuildFieldButton(criteria, criterion, label));
+        pill.Children.Add(BuildDirectionButton(criteria, criterion, label));
+        if (criteria.CanRemove)
+        {
+            pill.Children.Add(BuildRemoveButton(criteria, criterion));
+        }
+        return pill;
+    }
+
+    private Button BuildFieldButton<TField>(
+        SortCriteria<TField> criteria,
+        SortCriterion<TField> criterion,
+        string label)
+        where TField : struct, Enum
+    {
+        var items = new List<MenuItem>();
+        foreach (var field in criteria.Vocab.CanonicalFields)
+        {
+            var target = field;
+            var isCurrent = EqualityComparer<TField>.Default.Equals(field, criterion.Field);
+            var item = new MenuItem
+            {
+                Header = Loc.Chrome(criteria.Vocab.LabelKey(field)),
+                ToggleType = MenuItemToggleType.CheckBox,
+                IsChecked = isCurrent,
+                // Another pill already sorts by it; that pill is where it lives.
+                IsEnabled = isCurrent || criteria.AvailableToAdd.Contains(field),
+            };
+            item.Click += (_, _) =>
+            {
+                criteria.SetField(criterion.Field, target);
+                Render();
+            };
+            items.Add(item);
+        }
 
         var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
         var labelText = new TextBlock
@@ -79,6 +123,32 @@ internal sealed class LibrarySortControls
             VerticalAlignment = VerticalAlignment.Center,
         };
         labelText[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
+        var chevron = new TextBlock
+        {
+            Text = "⌄",
+            FontSize = 10,
+            FontWeight = FontWeight.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        chevron[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
+        content.Children.Add(labelText);
+        content.Children.Add(chevron);
+
+        var button = Pill(content, new Thickness(12, 7));
+        button.Flyout = new MenuFlyout { ItemsSource = items };
+        Avalonia.Automation.AutomationProperties.SetName(button, label);
+        ToolTip.SetTip(button, Loc.Chrome("sort.criterion.field"));
+        return button;
+    }
+
+    private Button BuildDirectionButton<TField>(
+        SortCriteria<TField> criteria,
+        SortCriterion<TField> criterion,
+        string label)
+        where TField : struct, Enum
+    {
+        var arrow = criterion.Direction == SortDirection.Ascending ? "↑" : "↓";
+        var opposite = LibrarySortVocab.Opposite(criterion.Direction);
         var arrowText = new TextBlock
         {
             Text = arrow,
@@ -87,23 +157,22 @@ internal sealed class LibrarySortControls
             VerticalAlignment = VerticalAlignment.Center,
         };
         arrowText[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
-        content.Children.Add(labelText);
-        content.Children.Add(arrowText);
 
-        var toggle = Pill(content, new Thickness(12, 7));
-        Avalonia.Automation.AutomationProperties.SetName(toggle, label);
-        ToolTip.SetTip(toggle, Loc.Chrome(LibrarySortVocab.DirectionActionKey(opposite)));
+        var toggle = Pill(arrowText, new Thickness(9, 7));
+        var action = Loc.Chrome(LibrarySortVocab.DirectionActionKey(opposite));
+        Avalonia.Automation.AutomationProperties.SetName(toggle, $"{label}: {action}");
+        ToolTip.SetTip(toggle, action);
         toggle.Click += (_, _) =>
         {
             criteria.SetDirection(criterion.Field, opposite);
             Render();
         };
+        return toggle;
+    }
 
-        if (!criteria.CanRemove)
-        {
-            return toggle;
-        }
-
+    private Button BuildRemoveButton<TField>(SortCriteria<TField> criteria, SortCriterion<TField> criterion)
+        where TField : struct, Enum
+    {
         var remove = Pill(new TextBlock { Text = "✕", FontSize = 9 }, new Thickness(7));
         Avalonia.Automation.AutomationProperties.SetName(remove, Loc.Chrome("sort.criterion.remove"));
         ToolTip.SetTip(remove, Loc.Chrome("sort.criterion.remove"));
@@ -112,16 +181,7 @@ internal sealed class LibrarySortControls
             criteria.Remove(criterion.Field);
             Render();
         };
-
-        var pill = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            VerticalAlignment = VerticalAlignment.Center,
-            Spacing = 6,
-        };
-        pill.Children.Add(toggle);
-        pill.Children.Add(remove);
-        return pill;
+        return remove;
     }
 
     // The "+" menu of unused fields, present only when a field remains to add.

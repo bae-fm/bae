@@ -210,6 +210,7 @@
   <data name="signal.kind.disc_id" xml:space="preserve"><value>ID на диска</value></data>
   <data name="sort.artist" xml:space="preserve"><value>изпълнител</value></data>
   <data name="sort.criterion.add" xml:space="preserve"><value>добавяне на сортиране</value></data>
+  <data name="sort.criterion.field" xml:space="preserve"><value>промяна на полето за сортиране</value></data>
   <data name="sort.criterion.remove" xml:space="preserve"><value>премахване на сортиране</value></data>
   <data name="sort.dateAdded" xml:space="preserve"><value>дата на добавяне</value></data>
   <data name="sort.direction.ascending" xml:space="preserve"><value>възходящо сортиране</value></data>
