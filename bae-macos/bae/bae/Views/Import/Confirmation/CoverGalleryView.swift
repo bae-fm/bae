@@ -6,6 +6,8 @@ struct CoverGalleryView: View {
     let remoteItems: RemoteCoverItems
     let releaseItems: [CoverItem]
     let selectedCover: BridgeCoverSelection?
+    var currentCover: CoverItem?
+    var initialLayout: ArtworkBrowserState.Layout = .grid
     var isSaving = false
     var errorMessage: String?
     var onRefresh: (() -> Void)?
@@ -14,16 +16,15 @@ struct CoverGalleryView: View {
     let onDone: () -> Void
 
     @State
-    private var cursor: Cursor<CoverItem>?
-    @State
-    private var isLightboxPresented = false
+    private var browser = ArtworkBrowserState(layout: .grid)
     @FocusState
     private var previewFocused: Bool
 
-    var body: some View {
+    private var gallery: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Text("Change Cover").font(.title2.weight(.semibold))
+                Text(initialLayout == .lightbox ? "Images" : "Change Cover")
+                    .font(.title2.weight(.semibold))
                 Spacer()
                 if let onRefresh, remoteItems.canRefresh {
                     Button(action: onRefresh) {
@@ -40,17 +41,43 @@ struct CoverGalleryView: View {
             HStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
-                        section(
-                            "Remote Sources",
-                            icon: "globe",
-                            items: remoteItems.items
-                        )
-                        remoteStatus
-                        section(
-                            "Release Files",
-                            icon: "folder",
-                            items: releaseItems
-                        )
+                        Picker(
+                            "Source",
+                            selection: Binding(
+                                get: { browser.filter },
+                                set: { browser.setFilter($0) }
+                            )
+                        ) {
+                            ForEach(
+                                ArtworkBrowserState.Filter.allCases,
+                                id: \.self
+                            ) { filter in
+                                Text(verbatim: filter.label).tag(filter)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        if let cover = browser.currentCover {
+                            section(
+                                "Current Cover",
+                                icon: "photo",
+                                items: [cover]
+                            )
+                        }
+                        if browser.showsRemoteSources {
+                            section(
+                                "Remote Sources",
+                                icon: "globe",
+                                items: browser.remoteItems
+                            )
+                            remoteStatus
+                        }
+                        if browser.showsReleaseFiles {
+                            section(
+                                "Release Files",
+                                icon: "folder",
+                                items: browser.releaseItems
+                            )
+                        }
                     }
                     .padding(24)
                 }
@@ -73,54 +100,130 @@ struct CoverGalleryView: View {
                 Spacer(minLength: 12)
                 ProgressView().controlSize(.small).opacity(isSaving ? 1 : 0)
                 Button("Use This Cover") {
-                    if let cursor { onSelect(cursor.current) }
+                    if let cursor = browser.cursor { onSelect(cursor.current) }
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .disabled(
-                    cursor == nil || cursor?.current.id == selectedCover
+                    browser.cursor?.current.selection == nil
+                        || browser.cursor?.current.selection == selectedCover
                         || isSaving
                 )
             }
             .padding(24)
         }
         .background(Theme.background)
-        .disabled(isLightboxPresented)
-        .accessibilityHidden(isLightboxPresented)
-        .overlay {
-            if isLightboxPresented, let cursor {
-                LightboxView(
-                    cursor: cursor,
-                    onUpdate: { self.cursor = $0 },
-                    onDismiss: {
-                        isLightboxPresented = false
-                        previewFocused = true
-                    }
-                )
+    }
+
+    var body: some View {
+        Group {
+            if initialLayout == .lightbox {
+                CoverPickerFrame { gallery }
+            }
+            else {
+                gallery
             }
         }
-        .onAppear { rebuild() }
+        .disabled(browser.layout == .lightbox)
+        .accessibilityHidden(browser.layout == .lightbox)
+        .overlay {
+            if browser.layout == .lightbox {
+                VStack(spacing: 0) {
+                    if let cursor = browser.cursor {
+                        LightboxView(
+                            cursor: cursor,
+                            onUpdate: { browser.cursor = $0 },
+                            onDismiss: {
+                                if initialLayout == .lightbox {
+                                    onDone()
+                                }
+                                else {
+                                    showGrid()
+                                }
+                            },
+                            onBrowseAll: showGrid
+                        )
+                    }
+                    else {
+                        if remoteItems.isLoading {
+                            ProgressView("Fetching covers...")
+                                .frame(
+                                    maxWidth: .infinity,
+                                    maxHeight: .infinity
+                                )
+                        }
+                        else {
+                            ContentUnavailableView(
+                                "No cover art available",
+                                systemImage: "photo"
+                            )
+                        }
+                        Button("Browse all images", action: showGrid)
+                        Button("Done", action: onDone)
+                            .keyboardShortcut(.cancelAction)
+                    }
+                    if remoteItems.hasStatus || errorMessage != nil {
+                        lightboxStatus
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.background)
+            }
+        }
+        .onAppear {
+            browser.layout = initialLayout
+            rebuild()
+        }
         .onChange(of: remoteItems) { _, _ in rebuild() }
         .onChange(of: releaseItems) { _, _ in rebuild() }
+        .onChange(of: currentCover?.previewContent) { _, _ in rebuild() }
+        .onChange(of: browser.layout) { _, layout in
+            previewFocused = layout == .grid
+        }
         .onKeyPress(.leftArrow) {
-            guard !isLightboxPresented else { return .ignored }
-            cursor?.goToPrevious()
+            guard browser.layout == .grid else { return .ignored }
+            browser.cursor?.goToPrevious()
             return .handled
         }
         .onKeyPress(.rightArrow) {
-            guard !isLightboxPresented else { return .ignored }
-            cursor?.goToNext()
+            guard browser.layout == .grid else { return .ignored }
+            browser.cursor?.goToNext()
             return .handled
         }
     }
 
     private func rebuild() {
-        cursor = Cursor(
-            items: remoteItems.items + releaseItems,
-            preferring: cursor?.current.id ?? selectedCover
+        browser.update(
+            currentCover: currentCover,
+            remoteItems: remoteItems.items,
+            releaseItems: releaseItems,
+            selectedCover: selectedCover
         )
     }
 
+    private func showGrid() {
+        browser.layout = .grid
+    }
+
+    @ViewBuilder
+    private var lightboxStatus: some View {
+        VStack(spacing: 8) {
+            if browser.cursor != nil || !remoteItems.isLoading { remoteStatus }
+            if let errorMessage {
+                Text(errorMessage).foregroundStyle(.red).textSelection(.enabled)
+            }
+            if let message = remoteItems.failureMessage {
+                Text(message).foregroundStyle(.red).textSelection(.enabled)
+                if let onRefresh { Button("Retry", action: onRefresh) }
+            }
+        }
+        .font(.callout)
+        .padding(12)
+    }
+
+}
+
+extension CoverGalleryView {
     private func section(
         _ title: LocalizedStringKey,
         icon: String,
@@ -148,7 +251,7 @@ struct CoverGalleryView: View {
 
     private func tile(for item: CoverItem) -> some View {
         Button {
-            cursor?.select(id: item.id)
+            browser.cursor?.select(id: item.id)
         } label: {
             VStack(alignment: .leading, spacing: 8) {
                 ImageView(
@@ -164,7 +267,7 @@ struct CoverGalleryView: View {
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(
-                            cursor?.current.id == item.id
+                            browser.cursor?.current.id == item.id
                                 ? Color.accentColor : .clear,
                             lineWidth: 2
                         )
@@ -174,7 +277,10 @@ struct CoverGalleryView: View {
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(.white, Color.accentColor)
                         .padding(8)
-                        .opacity(item.id == selectedCover ? 1 : 0)
+                        .opacity(
+                            item.id == .currentCover
+                                || item.selection == selectedCover ? 1 : 0
+                        )
                 }
                 Text(verbatim: item.label)
                     .font(.callout)
@@ -191,14 +297,14 @@ struct CoverGalleryView: View {
         .help(item.label)
         .accessibilityLabel(item.label)
         .accessibilityAddTraits(
-            cursor?.current.id == item.id ? .isSelected : []
+            browser.cursor?.current.id == item.id ? .isSelected : []
         )
         .disabled(isSaving)
         .simultaneousGesture(
             TapGesture(count: 2)
                 .onEnded {
-                    cursor?.select(id: item.id)
-                    isLightboxPresented = true
+                    browser.cursor?.select(id: item.id)
+                    browser.layout = .lightbox
                 }
         )
     }
@@ -234,10 +340,10 @@ extension CoverGalleryView {
 
     @ViewBuilder
     private var preview: some View {
-        if let cursor {
+        if let cursor = browser.cursor {
             VStack(spacing: 20) {
                 Button {
-                    isLightboxPresented = true
+                    browser.layout = .lightbox
                 } label: {
                     ImageView(
                         content: cursor.current.previewContent,
@@ -258,6 +364,8 @@ extension CoverGalleryView {
                 .accessibilityLabel(Text("View in Lightbox"))
                 .help("View in Lightbox")
                 .keyboardShortcut(.space, modifiers: [])
+                .focusable()
+                .focusEffectDisabled()
                 .focused($previewFocused)
                 .disabled(isSaving)
                 Text(verbatim: cursor.current.label)
@@ -270,7 +378,7 @@ extension CoverGalleryView {
                     .foregroundStyle(.secondary)
                 HStack(spacing: 20) {
                     Button {
-                        self.cursor?.goToPrevious()
+                        browser.cursor?.goToPrevious()
                     } label: {
                         Image(systemName: "chevron.left")
                     }
@@ -278,7 +386,7 @@ extension CoverGalleryView {
                     Text("\(cursor.index + 1) of \(cursor.items.count)")
                         .monospacedDigit().foregroundStyle(.secondary)
                     Button {
-                        self.cursor?.goToNext()
+                        browser.cursor?.goToNext()
                     } label: {
                         Image(systemName: "chevron.right")
                     }

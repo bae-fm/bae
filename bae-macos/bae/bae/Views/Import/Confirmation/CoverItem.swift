@@ -8,11 +8,21 @@ struct CoverItem: LightboxImage {
         lhs.id == rhs.id
     }
 
-    var id: BridgeCoverSelection { selection }
-    var selection: BridgeCoverSelection {
+    enum Identity: Hashable {
+        case selection(BridgeCoverSelection)
+        case currentCover
+    }
+
+    var id: Identity {
+        if let selection { return .selection(selection) }
+        return .currentCover
+    }
+
+    var selection: BridgeCoverSelection? {
         switch content {
         case .candidate(let choice): choice.selection
         case .releaseFile(_, let file): .releaseImage(fileId: file.id)
+        case .currentCover: nil
         }
     }
     var previewContent: ImageContent {
@@ -23,13 +33,15 @@ struct CoverItem: LightboxImage {
                 releaseId: releaseId,
                 source: .releaseFile(fileId: file.id)
             )
+        case .currentCover(let releaseId, let image):
+            .releaseImage(releaseId: releaseId, source: .cover(image: image))
         }
     }
 
     var thumbnailContent: ImageContent {
         switch content {
         case .candidate(let choice): choice.thumbnailContent
-        case .releaseFile: previewContent
+        case .releaseFile, .currentCover: previewContent
         }
     }
 
@@ -39,12 +51,14 @@ struct CoverItem: LightboxImage {
             bridgeMetadataSourceName(source: remote.source)
         case .releaseImage: String(localized: "Release Files")
         case .embeddedCover: coreString("ui.import.metadata.file_tags")
+        case nil: String(localized: "Library")
         }
     }
 
     enum Content {
         case candidate(BridgeCoverChoice)
         case releaseFile(releaseId: String, file: BridgeFile)
+        case currentCover(releaseId: String, image: BridgeImageRef)
     }
 
     let content: Content
@@ -61,6 +75,11 @@ struct CoverItem: LightboxImage {
     init(releaseId: String, file: BridgeFile) {
         content = .releaseFile(releaseId: releaseId, file: file)
         label = file.originalFilename
+    }
+
+    init(releaseId: String, cover: BridgeImageRef) {
+        content = .currentCover(releaseId: releaseId, image: cover)
+        label = String(localized: "Current Cover")
     }
 }
 
@@ -115,5 +134,13 @@ enum RemoteCoverItems: Equatable {
     var failureMessage: String? {
         if case .failed(_, let message) = self { return message }
         return nil
+    }
+
+    var hasStatus: Bool {
+        switch self {
+        case .loading, .unlinked: true
+        case .linked(let items): items.isEmpty
+        case .failed(_, let message): message != nil
+        }
     }
 }

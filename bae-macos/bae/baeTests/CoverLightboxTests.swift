@@ -29,7 +29,7 @@ struct CoverLightboxTests {
             CoverGalleryView(
                 remoteItems: .linked([front, booklet]),
                 releaseItems: [file],
-                selectedCover: front.id,
+                selectedCover: front.selection,
                 onSelect: { selected = $0 },
                 onDone: { dismissed = true }
             )

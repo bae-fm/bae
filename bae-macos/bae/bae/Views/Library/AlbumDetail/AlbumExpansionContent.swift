@@ -8,7 +8,7 @@ struct AlbumExpansionContent: View {
     let summary: AlbumSummary
     /// Fat detail for the release the user is currently viewing.
     let selectedRelease: ReleaseDetail
-    let lightboxItems: [LightboxItem]
+    let onBrowseImages: () -> Void
     /// Cursor over the album's releases. Drives the release picker and
     /// guarantees a valid selection on every read.
     @Binding
@@ -39,8 +39,6 @@ struct AlbumExpansionContent: View {
 
     @Environment(LibraryStore.self)
     private var libraryStore
-    @Environment(UiStore.self)
-    private var uiStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -50,11 +48,7 @@ struct AlbumExpansionContent: View {
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                     .shadow(color: .black.opacity(0.6), radius: 20, y: 12)
                     .contentShape(Rectangle())
-                    .onTapGesture {
-                        if !lightboxItems.isEmpty {
-                            uiStore.presentLightbox(items: lightboxItems)
-                        }
-                    }
+                    .onTapGesture(perform: onBrowseImages)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(summary.title)
                         .font(.system(size: 30, weight: .heavy))

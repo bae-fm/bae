@@ -59,9 +59,8 @@ extension ImportView {
     private func openGallery(images: [BridgeMappingImage], at path: String) {
         let items = images.map { image in
             LightboxItem(
-                id: image.localPath,
                 label: image.name,
-                source: .local(path: image.localPath)
+                path: image.localPath
             )
         }
         guard !items.isEmpty else { return }

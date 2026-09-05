@@ -58,7 +58,7 @@
             AlbumExpansionContent(
                 summary: summary,
                 selectedRelease: selectedRelease,
-                lightboxItems: [],
+                onBrowseImages: {},
                 releaseCursor: releaseCursor,
                 currentTrackId: currentTrackId,
                 loadingTrackId: loadingTrackId,

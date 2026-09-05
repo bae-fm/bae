@@ -48,8 +48,16 @@
         }
 
         static func lightbox() -> some View {
-            CoverLightboxPreviewScene(items: remoteItems + releaseItems)
-                .environment(PreviewData.artImageStore())
+            CoverGalleryView(
+                remoteItems: .linked(remoteItems),
+                releaseItems: releaseItems,
+                selectedCover: remoteItems[1].selection,
+                initialLayout: .lightbox,
+                onRefresh: {},
+                onSelect: { _ in },
+                onDone: {}
+            )
+            .environment(PreviewData.artImageStore())
         }
 
         static func unlinked() -> some View {
@@ -100,28 +108,6 @@
                 ),
                 label: filename
             )
-        }
-    }
-
-    private struct CoverLightboxPreviewScene: View {
-        @State
-        private var cursor: Cursor<CoverItem>
-
-        init(items: [CoverItem]) {
-            guard let cursor = Cursor(items: items, preferring: items[1].id)
-            else {
-                preconditionFailure("The artwork preview contains a booklet")
-            }
-            _cursor = State(initialValue: cursor)
-        }
-
-        var body: some View {
-            LightboxView(
-                cursor: cursor,
-                onUpdate: { cursor = $0 },
-                onDismiss: {}
-            )
-            .background(Theme.background)
         }
     }
 

@@ -15,43 +15,20 @@ protocol LightboxImage: Identifiable, Equatable {
 }
 
 struct LightboxItem: LightboxImage {
-    let id: String
+    var id: String { path }
     let label: String
-    /// Where the lightbox reads this item's bytes.
-    let source: Source
+    let path: String
 
-    /// The byte source for a lightbox item: a release's gallery slot (its cover
-    /// or an image file) read via the bridge from the whole `BridgeGallerySource`,
-    /// or an import-candidate file already on disk (the folder-import gallery).
-    enum Source: Equatable {
-        case gallery(releaseId: String, source: BridgeGallerySource)
-        case local(path: String)
-    }
-
-    /// What this item shows, in the strip and full-screen alike.
-    var content: ImageContent {
-        switch source {
-        case .gallery(let releaseId, let gallerySource):
-            return .releaseImage(releaseId: releaseId, source: gallerySource)
-        case .local(let path):
-            return .localFile(path: path)
-        }
-    }
-
-    var previewContent: ImageContent { content }
-    var thumbnailContent: ImageContent { content }
-    var sourceLabel: String {
-        switch source {
-        case .gallery: String(localized: "Library")
-        case .local: String(localized: "Release Files")
-        }
-    }
+    var previewContent: ImageContent { .localFile(path: path) }
+    var thumbnailContent: ImageContent { previewContent }
+    var sourceLabel: String { String(localized: "Release Files") }
 }
 
 struct LightboxView<Item: LightboxImage>: View {
     let cursor: Cursor<Item>
     let onUpdate: (Cursor<Item>) -> Void
     let onDismiss: () -> Void
+    var onBrowseAll: (() -> Void)?
 
     @Environment(ImageStore.self)
     private var imageStore
@@ -100,7 +77,7 @@ struct LightboxView<Item: LightboxImage>: View {
                         closeButtonOverlay
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .task(id: cursor.current.id) {
+                    .task(id: cursor.current.previewContent) {
                         await loadCurrentImage(containerSize: geo.size)
                     }
                 }
@@ -149,7 +126,7 @@ struct LightboxView<Item: LightboxImage>: View {
             return .handled
         }
         .onAppear { focused = true }
-        .onChange(of: cursor.current.id) { _, _ in
+        .onChange(of: cursor.current.previewContent) { _, _ in
             magnification = 1.0
             fullResImageUpgradeTask?.cancel()
             fullResImageUpgradeTask = nil
@@ -372,6 +349,19 @@ extension LightboxView {
     fileprivate var closeButtonOverlay: some View {
         VStack {
             HStack {
+                if let onBrowseAll {
+                    Button(action: onBrowseAll) {
+                        Label(
+                            "Browse all images",
+                            systemImage: "square.grid.2x2"
+                        )
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(.white)
+                    .padding(10)
+                    .background(.black.opacity(0.4), in: Capsule())
+                    .padding(12)
+                }
                 Spacer()
                 circleIconButton(
                     systemName: "xmark",
@@ -448,14 +438,12 @@ private struct LiveTextOverlay: NSViewRepresentable {
     #Preview {
         if let cursor = Cursor(items: [
             LightboxItem(
-                id: "1",
                 label: "Front.jpg",
-                source: .local(path: "/tmp/fake/Front.jpg")
+                path: "/tmp/fake/Front.jpg"
             ),
             LightboxItem(
-                id: "2",
                 label: "Back.jpg",
-                source: .local(path: "/tmp/fake/Back.jpg")
+                path: "/tmp/fake/Back.jpg"
             ),
         ]) {
             LightboxView(cursor: cursor, onUpdate: { _ in }, onDismiss: {})

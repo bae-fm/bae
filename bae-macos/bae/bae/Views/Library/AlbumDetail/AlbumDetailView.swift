@@ -59,18 +59,10 @@ struct AlbumDetailView: View {
                     AlbumExpansionContent(
                         summary: summary,
                         selectedRelease: selectedDetail,
-                        // Every gallery item carries the whole `BridgeGallery-
-                        // Source`; the lightbox passes it to `fetchReleaseImageBytes`,
-                        // which dispatches the read in core. The UI never inspects
-                        // the source to pick a fetch.
-                        lightboxItems: selectedDetail.galleryItems.map { item in
-                            LightboxItem(
-                                id: item.id,
-                                label: item.label,
-                                source: .gallery(
-                                    releaseId: selectedReleaseId,
-                                    source: item.source
-                                )
+                        onBrowseImages: {
+                            presentCoverSheet(
+                                release: selectedDetail,
+                                layout: .lightbox
                             )
                         },
                         releaseCursor: releaseCursorBinding(summary: summary),
@@ -108,7 +100,8 @@ struct AlbumDetailView: View {
                         },
                         onChangeCover: {
                             presentCoverSheet(
-                                selectedReleaseId: selectedReleaseId
+                                release: selectedDetail,
+                                layout: .grid
                             )
                         },
                         onEditMetadata: {
@@ -261,25 +254,39 @@ struct AlbumDetailView: View {
 // MARK: - Modal presenters
 
 extension AlbumDetailView {
-    private func presentCoverSheet(selectedReleaseId: String) {
+    private func presentCoverSheet(
+        release: ReleaseDetail,
+        layout: ArtworkBrowserState.Layout
+    ) {
+        let selectedReleaseId = release.id
         let releaseEditor = releaseEditor
         uiStore.presentModal {
-            CoverPickerFrame {
-                CoverSheetView(
-                    releaseId: selectedReleaseId,
-                    fetchRemoteCovers: {
-                        try await releaseEditor.fetchRemoteCovers(
-                            .release(releaseId: selectedReleaseId)
-                        )
-                    },
-                    onSelect: { selection in
-                        try await releaseEditor.changeCover(
-                            selectedReleaseId,
-                            selection
-                        )
-                    },
-                    onDone: { uiStore.dismissModal() }
-                )
+            let picker = CoverSheetView(
+                releaseId: selectedReleaseId,
+                initialRelease: release,
+                initialLayout: layout,
+                onFindRelease: {
+                    uiStore.dismissModal()
+                    presentReIdentifySheet(release: release)
+                },
+                fetchRemoteCovers: {
+                    try await releaseEditor.fetchRemoteCovers(
+                        .release(releaseId: selectedReleaseId)
+                    )
+                },
+                onSelect: { selection in
+                    try await releaseEditor.changeCover(
+                        selectedReleaseId,
+                        selection
+                    )
+                },
+                onDone: { uiStore.dismissModal() }
+            )
+            if layout == .lightbox {
+                picker
+            }
+            else {
+                CoverPickerFrame { picker }
             }
         }
     }
