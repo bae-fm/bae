@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Arena</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Vincula una edición de Discogs o MusicBrainz para ver sus imágenes.</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>മണൽ</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>ചിത്രങ്ങൾ കാണാൻ Discogs അല്ലെങ്കിൽ MusicBrainz റിലീസ് ലിങ്ക് ചെയ്യുക.</value>
+  </data>
 </root>

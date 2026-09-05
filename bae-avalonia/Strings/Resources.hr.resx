@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Pijesak</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Povežite izdanje s Discogsa ili MusicBrainza kako biste pregledali njegove slike.</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>모래</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Discogs 또는 MusicBrainz 릴리스를 연결하면 아트워크를 볼 수 있습니다.</value>
+  </data>
 </root>

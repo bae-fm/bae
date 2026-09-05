@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Zand</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Koppel een uitgave van Discogs of MusicBrainz om de afbeeldingen te bekijken.</value>
+  </data>
 </root>

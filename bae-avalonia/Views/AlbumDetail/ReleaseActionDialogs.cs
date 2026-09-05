@@ -456,17 +456,26 @@ internal sealed class ReleaseActionDialogs
                 return;
             }
             loading.IsVisible = false;
-            if (result.Covers is null)
+            if (result.Gallery is null)
             {
                 ShowError(Loc.Chrome("cover.fetch_failed"));
                 return;
             }
-            if (result.Covers.Length == 0)
+            if (result.Gallery is BridgeRemoteCoverGallery.Unlinked)
+            {
+                remoteGrid.Children.Add(DialogUi.Body(Loc.Chrome("cover.unlinked")));
+                return;
+            }
+            if (result.Gallery is not BridgeRemoteCoverGallery.Linked linked)
+            {
+                throw new InvalidOperationException($"Unknown remote cover gallery: {result.Gallery}");
+            }
+            if (linked.Covers.Length == 0)
             {
                 remoteGrid.Children.Add(DialogUi.Body(Loc.Chrome("cover.none_remote")));
                 return;
             }
-            foreach (var cover in result.Covers)
+            foreach (var cover in linked.Covers)
             {
                 var image = new Image();
                 var url = ReleaseEditorService.RemoteCoverThumbnailUrl(cover);

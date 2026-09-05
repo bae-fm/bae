@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Пісочний</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Пов’яжіть видання з Discogs або MusicBrainz, щоб переглянути його зображення.</value>
+  </data>
 </root>

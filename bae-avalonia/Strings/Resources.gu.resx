@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>રેતી</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>તેની છબીઓ જોવા માટે Discogs અથવા MusicBrainz રિલીઝ જોડો.</value>
+  </data>
 </root>

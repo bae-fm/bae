@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Kum</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Görsellerine göz atmak için bir Discogs veya MusicBrainz sürümü bağlayın.</value>
+  </data>
 </root>

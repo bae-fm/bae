@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>रेत</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>चित्र देखने के लिए Discogs या MusicBrainz की रिलीज़ लिंक करें।</value>
+  </data>
 </root>

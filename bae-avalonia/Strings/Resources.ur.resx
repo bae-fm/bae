@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>ریت</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>تصاویر دیکھنے کے لیے Discogs یا MusicBrainz کی ریلیز منسلک کریں۔</value>
+  </data>
 </root>

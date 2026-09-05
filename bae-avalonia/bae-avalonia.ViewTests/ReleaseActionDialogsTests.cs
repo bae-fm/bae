@@ -29,6 +29,40 @@ public sealed class ReleaseActionDialogsTests
         Assert.Contains(Loc.Chrome("album.edit.reset"), buttons);
     }
 
+    [AvaloniaTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MissingReleaseIdentityHasADifferentMessageFromAnEmptyGallery(bool unlinked)
+    {
+        BridgeRemoteCoverGallery gallery = unlinked
+            ? new BridgeRemoteCoverGallery.Unlinked()
+            : new BridgeRemoteCoverGallery.Linked(Array.Empty<BridgeRemoteCover>());
+        var releaseEditor = new ReleaseEditorService
+        {
+            FetchRemoteCovers = _ => Task.FromResult(
+                (true, ((BridgeRemoteCoverGallery?)gallery, (string?)null))),
+        };
+        using var app = AppService.Stubbed(
+            new SessionStore(Dispatcher.UIThread),
+            Dispatcher.UIThread,
+            new LibraryService(),
+            releaseEditor: releaseEditor);
+        var host = new ModalHost();
+        var dialogs = new ReleaseActionDialogs(app, host, new LightboxOverlay());
+        var presentation = dialogs.ShowChangeCover("release-1", Array.Empty<BridgeFile>());
+        try
+        {
+            var text = host.GetLogicalDescendants().OfType<TextBlock>().Select(block => block.Text).ToArray();
+            Assert.Contains(Loc.Chrome(unlinked ? "cover.unlinked" : "cover.none_remote"), text);
+            Assert.DoesNotContain(Loc.Chrome(unlinked ? "cover.none_remote" : "cover.unlinked"), text);
+        }
+        finally
+        {
+            host.Close();
+            await presentation;
+        }
+    }
+
     private static async Task<string[]> Buttons(bool canResetToSource)
     {
         var seed = new BridgeReleaseEditSeed(

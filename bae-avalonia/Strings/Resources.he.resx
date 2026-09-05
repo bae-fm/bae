@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>חול</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>יש לקשר מהדורה מ־Discogs או מ־MusicBrainz כדי לעיין בתמונות שלה.</value>
+  </data>
 </root>

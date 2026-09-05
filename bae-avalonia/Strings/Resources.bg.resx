@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Пясъчен</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Свържете издание от Discogs или MusicBrainz, за да разгледате изображенията му.</value>
+  </data>
 </root>

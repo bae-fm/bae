@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Sable</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Associez une parution Discogs ou MusicBrainz pour parcourir ses images.</value>
+  </data>
 </root>

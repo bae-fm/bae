@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>ಮರಳು</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>ಅದರ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಲು Discogs ಅಥವಾ MusicBrainz ಬಿಡುಗಡೆಯನ್ನು ಲಿಂಕ್ ಮಾಡಿ.</value>
+  </data>
 </root>

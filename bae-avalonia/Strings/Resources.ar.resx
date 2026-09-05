@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>رملي</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>اربط إصدارًا من Discogs أو MusicBrainz لتصفح صوره.</value>
+  </data>
 </root>

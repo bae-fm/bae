@@ -578,4 +578,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Sand</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Link a Discogs or MusicBrainz release to browse its artwork.</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>বালি</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>ছবি দেখতে Discogs বা MusicBrainz-এর একটি রিলিজ সংযুক্ত করুন।</value>
+  </data>
 </root>

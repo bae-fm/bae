@@ -20,9 +20,9 @@ internal sealed class ReleaseEditorService
     public Func<string, string, Task<(bool Current, string? Error)>> SetPrimaryRelease { get; init; }
         = (_, _) => throw new InvalidOperationException("ReleaseEditorService stub: SetPrimaryRelease not wired");
 
-    /// <summary>Remote cover candidates from MusicBrainz / Discogs — a network read,
-    /// so async; the picker fills its remote section in when this lands.</summary>
-    public Func<string, Task<(bool Current, (BridgeRemoteCover[]? Covers, string? Error) Result)>> FetchRemoteCovers { get; init; }
+    /// <summary>Remote artwork, including whether the release has an external
+    /// identity. The picker renders unlinked and empty linked galleries separately.</summary>
+    public Func<string, Task<(bool Current, (BridgeRemoteCoverGallery? Gallery, string? Error) Result)>> FetchRemoteCovers { get; init; }
         = _ => throw new InvalidOperationException("ReleaseEditorService stub: FetchRemoteCovers not wired");
 
     /// <summary>Write the chosen cover (a release image or a downloaded remote one).

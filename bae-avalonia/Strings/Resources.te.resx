@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>ఇసుక</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>చిత్రాలను చూడటానికి Discogs లేదా MusicBrainz విడుదలను లింక్ చేయండి.</value>
+  </data>
 </root>

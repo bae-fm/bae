@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Cát</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Liên kết bản phát hành trên Discogs hoặc MusicBrainz để xem hình ảnh.</value>
+  </data>
 </root>

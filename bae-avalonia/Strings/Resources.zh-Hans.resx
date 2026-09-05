@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>沙色</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>关联 Discogs 或 MusicBrainz 发行版本以浏览其图片。</value>
+  </data>
 </root>

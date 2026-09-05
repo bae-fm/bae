@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Sabbia</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Collega una pubblicazione di Discogs o MusicBrainz per sfogliarne le immagini.</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>サンド</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>DiscogsまたはMusicBrainzのリリースをリンクすると、アートワークを閲覧できます。</value>
+  </data>
 </root>

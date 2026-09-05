@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>ทราย</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>เชื่อมโยงรุ่นวางจำหน่ายจาก Discogs หรือ MusicBrainz เพื่อดูภาพประกอบ</value>
+  </data>
 </root>

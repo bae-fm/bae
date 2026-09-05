@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Areia</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Vincule um lançamento do Discogs ou MusicBrainz para ver suas imagens.</value>
+  </data>
 </root>

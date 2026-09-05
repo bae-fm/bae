@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>वाळू</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>त्याची चित्रे पाहण्यासाठी Discogs किंवा MusicBrainz प्रकाशन जोडा.</value>
+  </data>
 </root>

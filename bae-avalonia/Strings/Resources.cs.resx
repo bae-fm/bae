@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>Pískový</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>Propojte vydání z Discogs nebo MusicBrainz a prohlédněte si jeho obrázky.</value>
+  </data>
 </root>

@@ -551,4 +551,7 @@
   <data name="appearance.sand" xml:space="preserve">
     <value>மணல்</value>
   </data>
+  <data name="cover.unlinked" xml:space="preserve">
+    <value>அதன் படங்களைப் பார்க்க Discogs அல்லது MusicBrainz வெளியீட்டை இணைக்கவும்.</value>
+  </data>
 </root>
