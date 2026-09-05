@@ -42,6 +42,19 @@ impl LibraryManager {
         self.database.subscribe_import_candidate(key)
     }
 
+    /// Record the pane's per-candidate state between visits.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn save_import_candidate_session(
+        &self,
+        content_hash: &str,
+        session: &crate::import::CandidateSession,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .save_import_candidate_session(content_hash, session)
+            .await?)
+    }
+
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn load_import_candidate(
         &self,

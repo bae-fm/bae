@@ -192,7 +192,7 @@ struct ImportMappingPaneTests {
                 metadataProvenance: nil
             )
         )
-        browsing.metadataPresentation = .findOnline
+        browsing.session.presentation = .findOnline
         browsing.resumedIdentifyState = IdentifyState(
             bridge: PreviewData.bridgeDisagreementState
         )
@@ -453,6 +453,8 @@ extension ImportMappingPaneTests {
         let before = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]?.detail
         )
+        let writes = SessionWriteRecorder()
+        store.sessionWriter = .recording { writes.record($0) }
         let recorder = Recorder()
         recorder.pickFailure = StubError.notImplemented
 
@@ -472,7 +474,10 @@ extension ImportMappingPaneTests {
         let candidate = try #require(
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
-        #expect(candidate.error != nil)
+        #expect(
+            writes.errors(forKey: MappingFixtures.candidateKey)
+                .contains { $0 != nil }
+        )
         #expect(candidate.provenanceInFlight == nil)
         #expect(candidate.detail == before)
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)

@@ -615,6 +615,7 @@ impl crate::types::BridgeImportCandidateDetail {
             remote_covers: _,
             signals,
             failure,
+            session,
         } = detail;
         Self {
             candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
@@ -642,6 +643,7 @@ impl crate::types::BridgeImportCandidateDetail {
             cover: cover.map(crate::types::BridgeCoverChoice::from_core),
             signals: signals.map(crate::types::BridgeSignals::from_core),
             failure: failure.map(crate::types::BridgeImportFailure::from_core),
+            session: crate::types::BridgeCandidateSession::from_core(session),
         }
     }
 }

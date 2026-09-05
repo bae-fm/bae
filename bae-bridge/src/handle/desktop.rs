@@ -559,6 +559,53 @@ impl AppHandle {
         .await
     }
 
+    /// Record which surface the pane's metadata slot shows for a candidate,
+    /// so clicking away and back lands on the same one.
+    pub async fn set_candidate_presentation(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        presentation: crate::types::BridgeMetadataPresentation,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_presentation(&candidate_key, presentation.into_core())
+                .await
+                .map_err(BridgeError::candidate_mutation)
+        })
+        .await
+    }
+
+    /// Record the typed-search form as the person left it.
+    pub async fn set_candidate_search_form(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        search: crate::types::BridgeSearchForm,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_search_form(&candidate_key, search.into_core())
+                .await
+                .map_err(BridgeError::candidate_mutation)
+        })
+        .await
+    }
+
+    /// Record the last command the pane ran for a candidate when it failed,
+    /// or clear it for the next command.
+    pub async fn set_candidate_pane_error(
+        self: std::sync::Arc<Self>,
+        candidate_key: String,
+        error: Option<String>,
+    ) -> Result<(), BridgeError> {
+        self.run_exported(move |this| async move {
+            this.services
+                .import_set_candidate_pane_error(&candidate_key, error)
+                .await
+                .map_err(BridgeError::candidate_mutation)
+        })
+        .await
+    }
+
     /// Record one album-level field of the candidate's metadata form as the
     /// user left it.
     pub async fn set_candidate_edit_field(

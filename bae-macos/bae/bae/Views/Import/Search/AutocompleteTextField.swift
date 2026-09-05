@@ -22,6 +22,9 @@ struct AutocompleteTextField: View {
     /// clicked elsewhere is honoured while a redraw with an old one is not.
     var focusRequest: Int = 0
     var onSubmit: (() -> Void)?
+    /// The field gave the keyboard up — Tab, a click elsewhere, Enter. What
+    /// it holds is what the person left in it.
+    var onEditingEnded: (() -> Void)?
 
     var body: some View {
         ZStack(alignment: .trailing) {
@@ -31,6 +34,7 @@ struct AutocompleteTextField: View {
                 suggestions: suggestions,
                 focusRequest: focusRequest,
                 onSubmit: onSubmit,
+                onEditingEnded: onEditingEnded,
             )
             if isLoading {
                 ProgressView()
@@ -61,6 +65,7 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
     let suggestions: [String]
     let focusRequest: Int
     var onSubmit: (() -> Void)?
+    var onEditingEnded: (() -> Void)?
 
     func makeNSView(context: Context) -> NSTextField {
         let field = NSTextField()
@@ -166,6 +171,10 @@ private struct InlineCompletionTextFieldNS: NSViewRepresentable {
         @objc
         func submit(_: NSTextField) {
             parent.onSubmit?()
+        }
+
+        func controlTextDidEndEditing(_: Notification) {
+            parent.onEditingEnded?()
         }
     }
 }

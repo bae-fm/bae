@@ -52,6 +52,22 @@ enum CandidateMetadataPresentation: Equatable {
     case draft
     case findOnline
     case fileTags
+
+    init(bridge: BridgeMetadataPresentation) {
+        switch bridge {
+        case .draft: self = .draft
+        case .findOnline: self = .findOnline
+        case .fileTags: self = .fileTags
+        }
+    }
+
+    var bridge: BridgeMetadataPresentation {
+        switch self {
+        case .draft: .draft
+        case .findOnline: .findOnline
+        case .fileTags: .fileTags
+        }
+    }
 }
 
 /// One metadata application from its click until both the bridge command and
@@ -158,6 +174,75 @@ struct CandidateSearchState: Equatable {
     var searchCatalog: String = ""
     var searchBarcode: String = ""
     var activeTab: SearchTab = .general
+
+    init(
+        searchArtist: String = "",
+        searchAlbum: String = "",
+        searchCatalog: String = "",
+        searchBarcode: String = "",
+        activeTab: SearchTab = .general
+    ) {
+        self.searchArtist = searchArtist
+        self.searchAlbum = searchAlbum
+        self.searchCatalog = searchCatalog
+        self.searchBarcode = searchBarcode
+        self.activeTab = activeTab
+    }
+
+    init(bridge: BridgeSearchForm) {
+        searchArtist = bridge.artist
+        searchAlbum = bridge.album
+        searchCatalog = bridge.catalog
+        searchBarcode = bridge.barcode
+        activeTab =
+            switch bridge.tab {
+            case .general: .general
+            case .catalogNumber: .catalogNumber
+            case .barcode: .barcode
+            }
+    }
+
+    var bridge: BridgeSearchForm {
+        let tab: BridgeSearchTab =
+            switch activeTab {
+            case .general: .general
+            case .catalogNumber: .catalogNumber
+            case .barcode: .barcode
+            }
+        return BridgeSearchForm(
+            tab: tab,
+            artist: searchArtist,
+            album: searchAlbum,
+            catalog: searchCatalog,
+            barcode: searchBarcode
+        )
+    }
+}
+
+// MARK: - CandidateSessionState
+
+/// Where the pane was when the person last left this candidate: which
+/// surface the metadata slot shows, the typed-search form, and the last
+/// command that failed. Core stores it with the candidate, so clicking away
+/// and a relaunch both come back to the same pane; a re-identify session,
+/// which has no stored candidate, keeps its own in memory.
+struct CandidateSessionState: Equatable {
+    var presentation: CandidateMetadataPresentation = .draft
+    var search = CandidateSearchState()
+    /// The last command this pane ran, when it failed — a selection whose
+    /// read dropped, a write that would not land, a commit the fields do not
+    /// support. Shown in the banner and cleared by the next command.
+    var error: String?
+
+    init() {}
+
+    init(bridge: BridgeCandidateSession) {
+        presentation = CandidateMetadataPresentation(
+            bridge: bridge.presentation
+        )
+        search = CandidateSearchState(bridge: bridge.search)
+        error = bridge.error
+    }
 }
 
 // MARK: - Candidate
@@ -194,17 +279,13 @@ struct Candidate: Equatable, Identifiable {
     var libraryStatusSubscriptions:
         [ReleaseLibraryStatusSubscriptionKey: ReleaseLibraryStatusObservation] =
             [:]
-    /// The last command this pane ran, when it failed — a selection whose read
-    /// dropped, a write that would not land, a commit the fields do not
-    /// support. Shown in the banner and cleared by the next command.
-    var error: String?
+    /// Where the pane was when the person last left this candidate. A folder
+    /// candidate's comes with its detail; a re-identify session's lives here.
+    var session = CandidateSessionState()
     /// The metadata source currently being selected. A release row uses its
     /// release ID for selection feedback while the pane keeps showing stored
     /// data.
     var metadataApplicationSession: CandidateMetadataApplicationSession?
-    /// The draft or temporary source browser occupying the metadata slot.
-    /// Browsing never replaces the stored draft; applying a result does.
-    var metadataPresentation: CandidateMetadataPresentation = .draft
     /// The lazy File Tags read for this candidate. It is session state rather
     /// than candidate detail: reading tags does not choose that seed.
     var fileTagsPreview: CandidateFileTagsPreviewState = .unloaded
@@ -221,7 +302,15 @@ struct Candidate: Equatable, Identifiable {
         }
         return releaseId
     }
-    var search: CandidateSearchState = .init()
+
+    /// The draft or temporary source browser occupying the metadata slot.
+    /// Browsing never replaces the stored draft; applying a result does.
+    var metadataPresentation: CandidateMetadataPresentation {
+        session.presentation
+    }
+    var search: CandidateSearchState { session.search }
+    /// The last command this pane ran, when it failed.
+    var error: String? { session.error }
 
     var id: String {
         key
@@ -247,7 +336,7 @@ struct Candidate: Equatable, Identifiable {
         )
         row = detail.row
         self.detail = detail
-        metadataPresentation = Self.initialPresentation(for: detail)
+        session = CandidateSessionState(bridge: detail.session)
     }
 
     /// This row over `existing`'s session state: the list re-read the folder,
@@ -256,13 +345,10 @@ struct Candidate: Equatable, Identifiable {
         var copy = self
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
-        copy.error = existing.error
         copy.metadataApplicationSession = existing.metadataApplicationSession
-        copy.metadataPresentation = existing.metadataPresentation
         copy.fileTagsPreview =
             files.fileTagsIdentity == existing.files.fileTagsIdentity
             ? existing.fileTagsPreview : .unloaded
-        copy.search = existing.search
         return copy
     }
 
@@ -360,17 +446,6 @@ struct Candidate: Equatable, Identifiable {
                 metadataProvenance
         else { return nil }
         return (source: source, releaseId: releaseId)
-    }
-
-    private static func initialPresentation(
-        for detail: BridgeImportCandidateDetail
-    ) -> CandidateMetadataPresentation {
-        guard detail.metadataProvenance == nil else { return .draft }
-        return switch detail.initialMetadataSource {
-        case .findOnline: .findOnline
-        case .fileTags: .fileTags
-        case .none: .draft
-        }
     }
 
     /// The signals identification settled on for this candidate's files, as

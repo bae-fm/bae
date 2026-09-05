@@ -212,9 +212,13 @@ struct ImportSearchFlowMetadataApplicationTests {
         #expect(confirmation.count == 1)
     }
 
-    @Test("a failed choice does not confirm and shows the error")
-    func failedChoiceDoesNotConfirmAndShowsError() async throws {
+    /// The failure's line is stored with the candidate — core delivers it
+    /// back on the next detail — rather than kept in the pane.
+    @Test("a failed choice does not confirm and records the error")
+    func failedChoiceDoesNotConfirmAndRecordsError() async throws {
         let store = unsettledStore()
+        let writes = SessionWriteRecorder()
+        store.sessionWriter = .recording { writes.record($0) }
         let confirmation = ConfirmationRecorder()
         let importer = Importer(
             applyCandidateExternalMetadata: { _, _ in
@@ -231,13 +235,13 @@ struct ImportSearchFlowMetadataApplicationTests {
             onConfirmed: confirmation.record
         )
         await waitUntil {
-            store.candidate(forKey: MappingFixtures.candidateKey)?.error != nil
+            writes.errors(forKey: MappingFixtures.candidateKey)
+                .contains { $0 != nil }
         }
 
         let after = try #require(
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
-        #expect(after.error != nil)
         #expect(after.provenanceInFlight == nil)
         #expect(after.pickedRelease == nil)
         #expect(confirmation.count == 0)

@@ -73,6 +73,11 @@ private struct ImportOperations: Sendable {
     let rerunIdentifyForCandidate: @Sendable (String) -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let retryFailedIdentifyForCandidate: @Sendable (String) -> Void
+    let setCandidatePresentation:
+        @Sendable (String, BridgeMetadataPresentation) async throws -> Void
+    let setCandidateSearchForm:
+        @Sendable (String, BridgeSearchForm) async throws -> Void
+    let setCandidatePaneError: @Sendable (String, String?) async throws -> Void
     let setCandidateCover:
         @Sendable (String, BridgeCoverSelection) async throws -> Void
     let setCandidateEditField:
@@ -196,6 +201,24 @@ private struct ImportOperations: Sendable {
             },
             retryFailedIdentifyForCandidate: {
                 handle.retryFailedIdentifyForCandidate(candidateKey: $0)
+            },
+            setCandidatePresentation: {
+                try await handle.setCandidatePresentation(
+                    candidateKey: $0,
+                    presentation: $1
+                )
+            },
+            setCandidateSearchForm: {
+                try await handle.setCandidateSearchForm(
+                    candidateKey: $0,
+                    search: $1
+                )
+            },
+            setCandidatePaneError: {
+                try await handle.setCandidatePaneError(
+                    candidateKey: $0,
+                    error: $1
+                )
             },
             setCandidateCover: {
                 try await handle.setCandidateCover(candidateKey: $0, cover: $1)
@@ -350,6 +373,21 @@ final class Importer: Sendable, Observable {
             @escaping @Sendable (String) -> Void = { _ in },
         retryFailedIdentifyForCandidate:
             @escaping @Sendable (String) -> Void = { _ in },
+        setCandidatePresentation:
+            @escaping @Sendable (String, BridgeMetadataPresentation)
+            async throws ->
+            Void = { _, _ in },
+        setCandidateSearchForm:
+            @escaping @Sendable (String, BridgeSearchForm) async throws -> Void =
+            {
+                _,
+                _ in
+            },
+        setCandidatePaneError:
+            @escaping @Sendable (String, String?) async throws -> Void = {
+                _,
+                _ in
+            },
         setCandidateCover:
             @escaping @Sendable (String, BridgeCoverSelection) async throws ->
             Void = { _, _ in },
@@ -414,6 +452,9 @@ final class Importer: Sendable, Observable {
             toggleSignalForCandidate: toggleSignalForCandidate,
             rerunIdentifyForCandidate: rerunIdentifyForCandidate,
             retryFailedIdentifyForCandidate: retryFailedIdentifyForCandidate,
+            setCandidatePresentation: setCandidatePresentation,
+            setCandidateSearchForm: setCandidateSearchForm,
+            setCandidatePaneError: setCandidatePaneError,
             setCandidateCover: setCandidateCover,
             setCandidateEditField: setCandidateEditField,
             setCandidateAlbumArtists: setCandidateAlbumArtists,
@@ -584,6 +625,33 @@ extension Importer {
     /// Re-ask only the lookups that failed, keeping what the others found.
     func retryFailedIdentifyForCandidate(_ candidateKey: String) {
         operations.retryFailedIdentifyForCandidate(candidateKey)
+    }
+
+    /// Record which surface the pane's metadata slot shows for a candidate.
+    func setCandidatePresentation(
+        _ candidateKey: String,
+        _ presentation: BridgeMetadataPresentation
+    ) async throws {
+        try await operations.setCandidatePresentation(
+            candidateKey,
+            presentation
+        )
+    }
+
+    /// Record the typed-search form as the person left it.
+    func setCandidateSearchForm(
+        _ candidateKey: String,
+        _ search: BridgeSearchForm
+    ) async throws {
+        try await operations.setCandidateSearchForm(candidateKey, search)
+    }
+
+    /// Record the last command the pane ran for a candidate when it failed,
+    /// or clear it for the next command.
+    func setCandidatePaneError(_ candidateKey: String, _ error: String?)
+        async throws
+    {
+        try await operations.setCandidatePaneError(candidateKey, error)
     }
 
     /// Record the cover this candidate commits with.

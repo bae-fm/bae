@@ -111,6 +111,9 @@ pub struct DbCandidatePaneRows {
     pub metadata_draft: crate::import::RawReleaseEdit,
     /// Physical track decisions, independent of metadata replacement.
     pub(crate) track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
+    /// Where the pane was when the person last left this candidate. `None`
+    /// before the pane has been touched.
+    pub session: Option<crate::import::CandidateSession>,
     /// The last import of this candidate that failed.
     pub failure: Option<crate::import::ImportFailure>,
 }

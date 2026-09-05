@@ -52,7 +52,7 @@ extension ImportView {
     ) {
         // Start each attempt from a clean error state so a prior failed
         // command's banner does not linger over a succeeding retry.
-        importStore.mutateCandidate(forKey: candidate.key) { $0.error = nil }
+        importStore.clearPaneError(forKey: candidate.key)
         candidateMutationTasks[candidate.key]?.cancel()
         candidateMutationTasks[candidate.key] = Task { @MainActor in
             do {
@@ -65,9 +65,7 @@ extension ImportView {
             }
             catch {
                 if let line = error.displayLine {
-                    importStore.mutateCandidate(forKey: candidate.key) {
-                        $0.error = line
-                    }
+                    importStore.recordPaneError(line, forKey: candidate.key)
                 }
                 else {
                     uiStore.showError(error)

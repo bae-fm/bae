@@ -172,6 +172,145 @@ pub struct BridgeImportCandidateDetail {
     pub signals: Option<BridgeSignals>,
     /// The last import of this candidate that failed.
     pub failure: Option<BridgeImportFailure>,
+    /// Where the pane was when the person last left this candidate, or where
+    /// it opens for one nobody has touched. Written through
+    /// `set_candidate_presentation`, `set_candidate_search_form` and
+    /// `set_candidate_pane_error`; the next value of this carries it back.
+    pub session: BridgeCandidateSession,
+}
+
+/// Which surface the pane's metadata slot shows. Mirrors
+/// `bae_core::import::MetadataPresentation`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeMetadataPresentation {
+    Draft,
+    FindOnline,
+    FileTags,
+}
+
+/// Which query the typed-search form is asking. Mirrors
+/// `bae_core::import::SearchTab`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSearchTab {
+    General,
+    CatalogNumber,
+    Barcode,
+}
+
+/// The typed-search form as the person left it. Mirrors
+/// `bae_core::import::SearchForm`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeSearchForm {
+    pub tab: BridgeSearchTab,
+    pub artist: String,
+    pub album: String,
+    pub catalog: String,
+    pub barcode: String,
+}
+
+/// The pane's per-candidate state between visits. Mirrors
+/// `bae_core::import::CandidateSession`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeCandidateSession {
+    pub presentation: BridgeMetadataPresentation,
+    pub search: BridgeSearchForm,
+    /// The last command the pane ran for this candidate, when it failed.
+    pub error: Option<String>,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeMetadataPresentation {
+    pub(crate) fn from_core(p: bae_core::import::MetadataPresentation) -> Self {
+        use bae_core::import::MetadataPresentation;
+        match p {
+            MetadataPresentation::Draft => Self::Draft,
+            MetadataPresentation::FindOnline => Self::FindOnline,
+            MetadataPresentation::FileTags => Self::FileTags,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::MetadataPresentation {
+        use bae_core::import::MetadataPresentation;
+        match self {
+            Self::Draft => MetadataPresentation::Draft,
+            Self::FindOnline => MetadataPresentation::FindOnline,
+            Self::FileTags => MetadataPresentation::FileTags,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSearchTab {
+    fn from_core(t: bae_core::import::SearchTab) -> Self {
+        use bae_core::import::SearchTab;
+        match t {
+            SearchTab::General => Self::General,
+            SearchTab::CatalogNumber => Self::CatalogNumber,
+            SearchTab::Barcode => Self::Barcode,
+        }
+    }
+
+    fn into_core(self) -> bae_core::import::SearchTab {
+        use bae_core::import::SearchTab;
+        match self {
+            Self::General => SearchTab::General,
+            Self::CatalogNumber => SearchTab::CatalogNumber,
+            Self::Barcode => SearchTab::Barcode,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSearchForm {
+    fn from_core(f: bae_core::import::SearchForm) -> Self {
+        let bae_core::import::SearchForm {
+            tab,
+            artist,
+            album,
+            catalog,
+            barcode,
+        } = f;
+        Self {
+            tab: BridgeSearchTab::from_core(tab),
+            artist,
+            album,
+            catalog,
+            barcode,
+        }
+    }
+
+    pub(crate) fn into_core(self) -> bae_core::import::SearchForm {
+        let Self {
+            tab,
+            artist,
+            album,
+            catalog,
+            barcode,
+        } = self;
+        bae_core::import::SearchForm {
+            tab: tab.into_core(),
+            artist,
+            album,
+            catalog,
+            barcode,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeCandidateSession {
+    pub(crate) fn from_core(s: bae_core::import::CandidateSession) -> Self {
+        let bae_core::import::CandidateSession {
+            presentation,
+            search,
+            error,
+        } = s;
+        Self {
+            presentation: BridgeMetadataPresentation::from_core(presentation),
+            search: BridgeSearchForm::from_core(search),
+            error,
+        }
+    }
 }
 
 /// An import that failed, as the pane still shows it after a relaunch.

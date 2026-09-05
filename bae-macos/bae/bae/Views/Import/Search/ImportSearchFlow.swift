@@ -2,41 +2,6 @@ import BaeKit
 import SwiftUI
 
 enum ImportSearchFlow {
-    // MARK: - Bindings that read/write Candidate.search on the store
-
-    @MainActor
-    static func makeActiveTabBinding(
-        importStore: ImportStore,
-        key: String,
-        candidate: Candidate
-    ) -> Binding<SearchTab> {
-        Binding(
-            get: { candidate.search.activeTab },
-            set: { newValue in
-                importStore.mutateCandidate(forKey: key) {
-                    $0.search.activeTab = newValue
-                }
-            },
-        )
-    }
-
-    @MainActor
-    static func makeSearchFieldBinding(
-        importStore: ImportStore,
-        key: String,
-        candidate: Candidate,
-        field: WritableKeyPath<CandidateSearchState, String>
-    ) -> Binding<String> {
-        Binding(
-            get: { candidate.search[keyPath: field] },
-            set: { newValue in
-                importStore.mutateCandidate(forKey: key) {
-                    $0.search[keyPath: field] = newValue
-                }
-            },
-        )
-    }
-
     // MARK: - Search dispatch
 
     /// Submit the form's query. Fire-and-forget: every configured provider is
@@ -46,13 +11,11 @@ enum ImportSearchFlow {
     static func startSearch(
         importer: Importer,
         importStore: ImportStore,
-        key: String
+        key: String,
+        form: CandidateSearchState
     ) {
-        guard let snapshot = importStore.candidate(forKey: key) else {
-            return
-        }
-        importStore.mutateCandidate(forKey: key) { $0.error = nil }
-        importer.startCandidateSearch(key, searchQuery(from: snapshot.search))
+        importStore.clearPaneError(forKey: key)
+        importer.startCandidateSearch(key, searchQuery(from: form))
     }
 
     /// The bridge query for the active tab: the general (artist/album),

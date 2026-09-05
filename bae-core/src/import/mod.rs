@@ -69,6 +69,7 @@ pub mod release_group;
 pub mod search;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod service;
+pub mod session;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod sweep;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -172,6 +173,7 @@ pub use mapping::{
 pub use search::{SearchQuery, SourceFailure, SourceLookup};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use service::ImportService;
+pub use session::{CandidateSession, MetadataPresentation, SearchForm, SearchTab};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use sweep::QueueSweepHandle;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

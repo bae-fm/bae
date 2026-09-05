@@ -2,6 +2,9 @@ import BaeKit
 import Combine
 import OrderedCollections
 import SwiftUI
+import os.log
+
+private let importStoreLogger = Logger.bae("ImportStore")
 
 /// Session state for the import flow. Mixed-writer: core drives the list, the
 /// per-candidate reads and preview state through value subscriptions, while
@@ -88,6 +91,11 @@ class ImportStore {
     /// subscription per key; the key leaves when its read says the folder is
     /// gone.
     var selectedCandidates: OrderedDictionary<String, Candidate> = [:]
+    /// Where a folder candidate's session writes go: core stores them with
+    /// the candidate and the next detail carries them back. A re-identify
+    /// session has no stored candidate, so its session stays in memory here.
+    /// Inert until the app wires the importer in.
+    var sessionWriter = CandidateSessionWriter.inert
 
     /// Re-identify candidates — one per active "Re-identify..." sheet.
     /// Keyed by `reidentify:{releaseId}` so identify events route the same
@@ -208,8 +216,8 @@ class ImportStore {
             provenance: provenance,
             onConfirmed: onConfirmed
         )
+        clearPaneError(forKey: key)
         mutateCandidate(forKey: key) { candidate in
-            candidate.error = nil
             candidate.metadataApplicationSession = session
         }
         return session
@@ -241,10 +249,10 @@ class ImportStore {
         else {
             return
         }
+        if let error {
+            recordPaneError(error, forKey: key)
+        }
         mutateCandidate(forKey: key) { candidate in
-            if let error {
-                candidate.error = error
-            }
             candidate.metadataApplicationSession = nil
         }
     }
@@ -272,8 +280,8 @@ extension ImportStore {
         guard let candidate = candidate(forKey: key) else { return nil }
         guard !candidate.fileTagsPreview.isLoading else { return nil }
         let session = CandidateFileTagsPreviewSession()
+        clearPaneError(forKey: key)
         mutateCandidate(forKey: key) { candidate in
-            candidate.error = nil
             candidate.fileTagsPreview = .loading(session)
         }
         return session
@@ -306,9 +314,9 @@ extension ImportStore {
         else { return }
         mutateCandidate(forKey: key) { candidate in
             candidate.fileTagsPreview = .failed
-            if let error {
-                candidate.error = error
-            }
+        }
+        if let error {
+            recordPaneError(error, forKey: key)
         }
     }
 
@@ -344,12 +352,78 @@ extension ImportStore {
         }
     }
 
+    /// Put the draft or one source browser in the metadata slot. A folder
+    /// candidate's choice is stored with it and comes back on its next detail;
+    /// a re-identify session's is kept here.
     func presentMetadata(
         _ presentation: CandidateMetadataPresentation,
         forKey key: String
     ) {
-        mutateCandidate(forKey: key) {
-            $0.metadataPresentation = presentation
+        updateSession(
+            forKey: key,
+            memory: { $0.presentation = presentation },
+            stored: { writer in
+                try await writer.setPresentation(key, presentation.bridge)
+            }
+        )
+    }
+
+    /// The typed-search form as the person left it.
+    func commitSearchForm(_ form: CandidateSearchState, forKey key: String) {
+        updateSession(
+            forKey: key,
+            memory: { $0.search = form },
+            stored: { writer in try await writer.setSearchForm(key, form.bridge)
+            }
+        )
+    }
+
+    /// The last command the pane ran for a candidate failed: its line goes in
+    /// the banner until the next command clears it.
+    func recordPaneError(_ error: String, forKey key: String) {
+        updateSession(
+            forKey: key,
+            memory: { $0.error = error },
+            stored: { writer in try await writer.setError(key, error) }
+        )
+    }
+
+    /// Start a command from a clean banner, so a prior failure's line does
+    /// not linger over a succeeding retry.
+    func clearPaneError(forKey key: String) {
+        updateSession(
+            forKey: key,
+            memory: { $0.error = nil },
+            stored: { writer in try await writer.setError(key, nil) }
+        )
+    }
+
+    /// One session change, routed by what the key names: a re-identify
+    /// session is edited in memory, a folder candidate's is written through
+    /// core, which delivers it back on the candidate's next detail. A write
+    /// that fails is told to the person rather than left as a pane state the
+    /// store never saw.
+    private func updateSession(
+        forKey key: String,
+        memory: @escaping (inout CandidateSessionState) -> Void,
+        stored write:
+            @escaping @Sendable (CandidateSessionWriter) async throws -> Void
+    ) {
+        if key.hasPrefix("reidentify:") {
+            mutateReIdentifyCandidate(key: key) { memory(&$0.session) }
+            return
+        }
+        let writer = sessionWriter
+        Task {
+            do {
+                try await write(writer)
+            }
+            catch {
+                importStoreLogger.error(
+                    "session write for \(key) failed: \(String(describing: error))"
+                )
+                await writer.reportFailure(error)
+            }
         }
     }
 
@@ -403,10 +477,7 @@ extension ImportStore {
                             .libraryStatusSubscriptions[statusKey]?
                             .identity == identity
                     else { return }
-                    self?
-                        .mutateCandidate(forKey: key) {
-                            $0.error = line
-                        }
+                    self?.recordPaneError(line, forKey: key)
                 }
             )
             observation.install(subscription)

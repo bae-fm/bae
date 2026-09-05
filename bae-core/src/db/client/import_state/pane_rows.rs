@@ -369,7 +369,7 @@ fn mapping_file_columns(
 }
 
 /// Everything one candidate's pane settled: its cover, its album fields, its
-/// row edits and the failure its last import left.
+/// row edits, the failure its last import left, and where the pane was.
 pub(crate) fn load_pane_rows_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -388,6 +388,7 @@ pub(crate) fn load_pane_rows_on(
             .remove(content_hash)
             .unwrap_or_default(),
         failure: load_failure_on(sql, content_hash)?,
+        session: load_session_on(sql, content_hash)?,
     })
 }
 

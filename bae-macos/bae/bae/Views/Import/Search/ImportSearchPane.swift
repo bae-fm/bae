@@ -12,17 +12,12 @@ struct ImportSearchPane: View {
     let state: ImportSearchState
     /// Leave the pane. `nil` for a surface that owns its own way out.
     let onBack: (() -> Void)?
-    @Binding
-    var activeTab: SearchTab
-    @Binding
-    var searchArtist: String
-    @Binding
-    var searchAlbum: String
-    @Binding
-    var searchCatalog: String
-    @Binding
-    var searchBarcode: String
-    let onSearch: () -> Void
+    /// The typed-search form as the candidate stores it.
+    let form: CandidateSearchState
+    /// The form as the person left it, to store with the candidate.
+    let onCommitForm: (CandidateSearchState) -> Void
+    /// Search with the form as it stands.
+    let onSearch: (CandidateSearchState) -> Void
     /// Drop the submitted search, giving the result area back to identify.
     let onClearSearch: () -> Void
     /// Re-ask only the providers whose part of the search failed.
@@ -79,11 +74,8 @@ struct ImportSearchPane: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             ImportSearchFormView(
-                activeTab: $activeTab,
-                searchArtist: $searchArtist,
-                searchAlbum: $searchAlbum,
-                searchCatalog: $searchCatalog,
-                searchBarcode: $searchBarcode,
+                form: form,
+                onCommit: onCommitForm,
                 signals: state.signals,
                 focusRequest: formFocusRequest,
                 onSearch: onSearch,
@@ -95,9 +87,13 @@ struct ImportSearchPane: View {
         .onChange(of: area, initial: true) { _, area in
             guard area == .nothingFound || area == .noSignals else { return }
             formFocusRequest += 1
-            guard searchArtist.isEmpty, searchAlbum.isEmpty else { return }
+            guard form.searchArtist.isEmpty, form.searchAlbum.isEmpty else {
+                return
+            }
             if let seed = state.signals?.text.freeText.first {
-                searchArtist = seed
+                var seeded = form
+                seeded.searchArtist = seed
+                onCommitForm(seeded)
             }
         }
     }
@@ -301,12 +297,12 @@ struct ImportSearchPane: View {
             ImportSearchPane(
                 state: state,
                 onBack: {},
-                activeTab: .constant(.general),
-                searchArtist: .constant(searchArtist),
-                searchAlbum: .constant(searchAlbum),
-                searchCatalog: .constant(""),
-                searchBarcode: .constant(""),
-                onSearch: {},
+                form: CandidateSearchState(
+                    searchArtist: searchArtist,
+                    searchAlbum: searchAlbum
+                ),
+                onCommitForm: { _ in },
+                onSearch: { _ in },
                 onClearSearch: {},
                 onRetrySearch: {},
                 onOpenSettings: {},

@@ -28,6 +28,7 @@ use super::types::{MetadataProvenance, RawReleaseEdit};
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};
+use crate::import::CandidateSession;
 use crate::library::{LibraryPageWindow, LibraryPageWindows};
 use crate::signals::Signals;
 use std::collections::{BTreeMap, BTreeSet};
@@ -347,11 +348,26 @@ pub struct ImportCandidateDetailProjection {
     pub signals: Option<Signals>,
     /// The last import of this candidate that failed.
     pub failure: Option<ImportFailure>,
+    /// Where the pane was when the person last left this candidate. `None`
+    /// before the pane has been touched.
+    pub session: Option<CandidateSession>,
 }
 
 impl ImportCandidateDetailProjection {
+    /// The pane's session: the stored one, or the one the pane opens on for
+    /// a candidate nobody has touched.
+    pub fn session_or_initial(&self) -> CandidateSession {
+        self.session.clone().unwrap_or_else(|| {
+            CandidateSession::initial(
+                self.metadata_provenance.as_ref(),
+                self.initial_metadata_source,
+            )
+        })
+    }
+
     /// The pane's value, with this key's runtime applied.
     pub fn resolve(self, facts: &TriageRuntimeFacts) -> ImportCandidateDetail {
+        let session = self.session_or_initial();
         let Self {
             candidate,
             actionable,
@@ -372,6 +388,7 @@ impl ImportCandidateDetailProjection {
             remote_covers,
             signals,
             failure,
+            session: _,
         } = self;
         let file_evidence = signals
             .as_ref()
@@ -445,6 +462,7 @@ impl ImportCandidateDetailProjection {
             remote_covers,
             signals,
             failure,
+            session,
         }
     }
 }
@@ -475,6 +493,9 @@ pub struct ImportCandidateDetail {
     pub remote_covers: Vec<RemoteCover>,
     pub signals: Option<Signals>,
     pub failure: Option<ImportFailure>,
+    /// Where the pane was when the person last left this candidate, or where
+    /// it opens for one nobody has touched.
+    pub session: CandidateSession,
 }
 
 /// The item references one window asks for, clamped to what the list holds.

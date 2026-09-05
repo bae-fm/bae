@@ -15,6 +15,7 @@ mod edits;
 mod import;
 mod scan;
 mod search;
+mod session;
 mod watch;
 
 use super::candidate_runtime::CandidateRuntime;

@@ -6,6 +6,7 @@ mod metadata_rows;
 mod pane_rows;
 mod prepared_asset_rows;
 mod rows;
+mod session_rows;
 mod signal_rows;
 mod verdict_rows;
 mod watched_folder_removal;
@@ -22,6 +23,7 @@ use prepared_asset_rows::replace_prepared_assets;
 pub(super) use rows::{
     load_matches_on, load_provenance_partners_on, load_states_on, metadata_provenance_of,
 };
+use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};
 
 use crate::import::folder_scanner::{

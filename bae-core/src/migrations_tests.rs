@@ -8,6 +8,8 @@ use std::sync::Arc;
 mod migration_fifteen;
 #[path = "migrations_tests/migration_fourteen.rs"]
 mod migration_fourteen;
+#[path = "migrations_tests/migration_seventeen.rs"]
+mod migration_seventeen;
 #[path = "migrations_tests/migration_sixteen.rs"]
 mod migration_sixteen;
 #[path = "migrations_tests/migration_ten.rs"]

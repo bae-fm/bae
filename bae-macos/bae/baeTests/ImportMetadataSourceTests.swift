@@ -81,57 +81,42 @@ private final class MetadataSourceRecorder {
 struct ImportMetadataSourceTests {}
 
 extension ImportMetadataSourceTests {
-    @Test("an unpopulated draft opens its configured source")
-    func unpopulatedDraftOpensConfiguredSource() throws {
-        for (source, expected) in [
+    /// Which surface the pane opens on is core's answer, stored with the
+    /// candidate: what the detail says is what shows.
+    @Test("the pane opens where the candidate's stored session says")
+    func paneOpensWhereTheStoredSessionSays() throws {
+        for (stored, expected) in [
             (
-                BridgeDefaultImportMetadataSource.findOnline,
+                BridgeMetadataPresentation.findOnline,
                 CandidateMetadataPresentation.findOnline
             ),
             (.fileTags, .fileTags),
-            (.none, .draft),
+            (.draft, .draft),
         ] {
             let detail = MappingFixtures.detail(
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
-                initialMetadataSource: source
+                presentation: stored
             )
 
             #expect(Candidate(detail: detail).metadataPresentation == expected)
         }
     }
 
-    @Test("an applied source opens the editable draft")
-    func appliedSourceOpensDraft() {
-        for provenance in [
-            BridgeMetadataProvenance.fileTags,
-            .externalRelease(
-                source: .musicBrainz,
-                releaseId: "release",
-                partners: []
-            ),
-        ] {
-            let detail = MappingFixtures.detail(
-                mapping: nil,
-                metadataProvenance: provenance,
-                initialMetadataSource: .findOnline
-            )
-
-            #expect(
-                Candidate(detail: detail).metadataPresentation == .draft
-            )
-        }
-    }
-
-    @Test("a detail refresh preserves the open source browser")
-    func detailRefreshPreservesPresentation() throws {
+    /// Choosing a surface is written to core, not kept in the pane: the
+    /// store records the write, and the next detail is what the pane shows.
+    @Test("choosing a surface writes it through, and the detail shows it")
+    func choosingASurfaceWritesItThrough() throws {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
             edit: MappingFixtures.blankEdit,
             initialMetadataSource: .none
         )
+        let writes = PresentationWriteRecorder()
+        store.sessionWriter = .recording { writes.record($0) }
+
         store.presentMetadata(
             .fileTags,
             forKey: MappingFixtures.candidateKey
@@ -143,13 +128,17 @@ extension ImportMetadataSourceTests {
                 mapping: nil,
                 edit: MappingFixtures.blankEdit,
                 metadataProvenance: nil,
-                initialMetadataSource: .findOnline
+                presentation: .fileTags
             )
         )
 
         #expect(
             store.candidate(forKey: MappingFixtures.candidateKey)?
                 .metadataPresentation == .fileTags
+        )
+        #expect(
+            writes.presentations(forKey: MappingFixtures.candidateKey)
+                == [.fileTags]
         )
     }
 
@@ -207,7 +196,6 @@ extension ImportMetadataSourceTests {
         let previewing = try #require(
             store.candidate(forKey: MappingFixtures.candidateKey)
         )
-        #expect(previewing.metadataPresentation == .fileTags)
         #expect(previewing.metadataProvenance == MappingFixtures.provenance)
         #expect(previewing.detail == beforeDetail)
         #expect(recorder.previewedKeys == [MappingFixtures.candidateKey])
@@ -244,10 +232,6 @@ extension ImportMetadataSourceTests {
                 .commandRevision == 1
         }
         #expect(recorder.fileTagApplications == [MappingFixtures.candidateKey])
-        #expect(
-            store.candidate(forKey: MappingFixtures.candidateKey)?
-                .metadataPresentation == .fileTags
-        )
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,
@@ -268,13 +252,14 @@ extension ImportMetadataSourceTests {
     @Test("applying an online result waits for the matching release detail")
     func onlineApplicationWaitsForMatchingDetail() async throws {
         let key = MappingFixtures.candidateKey
+        // The pane is on Find online, as the candidate's stored session says.
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
-            edit: MappingFixtures.blankEdit
+            edit: MappingFixtures.blankEdit,
+            presentation: .findOnline
         )
         let recorder = MetadataSourceRecorder()
-        store.presentMetadata(.findOnline, forKey: key)
 
         ImportSearchFlow.applyMetadata(
             importer: recorder.importer,
@@ -307,13 +292,11 @@ extension ImportMetadataSourceTests {
                     source: .musicBrainz,
                     releaseId: "different",
                     partners: []
-                )
+                ),
+                presentation: .findOnline
             )
         )
-        #expect(
-            store.candidate(forKey: key)?
-                .metadataApplicationSession != nil
-        )
+        #expect(store.candidate(forKey: key)?.metadataApplicationSession != nil)
 
         store.applyCandidateDetail(
             key: key,
@@ -349,7 +332,7 @@ extension ImportMetadataSourceTests {
 
     @Test("a failed File tags preview remains retryable")
     func failedFileTagsPreviewRemainsRetryable() async throws {
-        let store = MappingFixtures.store(mapping: nil)
+        let store = MappingFixtures.store(mapping: nil, presentation: .fileTags)
         let recorder = MetadataSourceRecorder()
         recorder.previewFailure = StubError.notImplemented
         let candidate = try #require(
@@ -892,4 +875,28 @@ extension NSRect {
 private struct MetadataCardFocusLayout {
     let findOnline: NSRect
     let fileTags: NSRect
+}
+
+/// Every presentation write the store made, so a test can read what it would
+/// have stored with the candidate.
+private final class PresentationWriteRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var writes: [CandidateSessionWrite] = []
+
+    func record(_ write: CandidateSessionWrite) {
+        lock.withLock { writes.append(write) }
+    }
+
+    func presentations(forKey key: String) -> [BridgeMetadataPresentation] {
+        lock.withLock {
+            writes.compactMap { write in
+                if case .presentation(let written, let presentation) = write,
+                    written == key
+                {
+                    return presentation
+                }
+                return nil
+            }
+        }
+    }
 }

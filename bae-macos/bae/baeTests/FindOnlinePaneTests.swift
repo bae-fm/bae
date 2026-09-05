@@ -126,14 +126,11 @@ struct FindOnlineFormFocusTests {
 
     private func form(focusRequest: Int) -> ImportSearchFormView {
         ImportSearchFormView(
-            activeTab: .constant(.general),
-            searchArtist: .constant(""),
-            searchAlbum: .constant(""),
-            searchCatalog: .constant(""),
-            searchBarcode: .constant(""),
+            form: CandidateSearchState(),
+            onCommit: { _ in },
             signals: nil,
             focusRequest: focusRequest,
-            onSearch: {},
+            onSearch: { _ in },
         )
     }
 }

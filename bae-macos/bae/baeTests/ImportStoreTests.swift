@@ -215,7 +215,8 @@ private func detail(
     resumedIdentifyState: BridgeIdentifyState = .idle,
     row: BridgeTriageRow? = nil,
     cover: BridgeCoverChoice? = nil,
-    release: BridgeReleaseDetail? = nil
+    release: BridgeReleaseDetail? = nil,
+    presentation: BridgeMetadataPresentation = .draft
 ) -> BridgeImportCandidateDetail {
     BridgeImportCandidateDetail(
         candidate: bridgeFolder(
@@ -243,7 +244,8 @@ private func detail(
         ),
         cover: cover,
         signals: nil,
-        failure: nil
+        failure: nil,
+        session: MappingFixtures.session(presentation: presentation)
     )
 }
 
@@ -282,7 +284,6 @@ struct ImportStoreCandidateDetailTests {
             name: "A"
         )
         existing.libraryStatuses = ["rel-1": makeStatus(albumId: "al-1")]
-        existing.error = "the last command failed"
         let pendingPick = BridgeMetadataProvenance.externalRelease(
             source: .musicBrainz,
             releaseId: "rel-1",
@@ -292,31 +293,30 @@ struct ImportStoreCandidateDetailTests {
             CandidateMetadataApplicationSession(
                 provenance: pendingPick
             )
-        existing.metadataPresentation = .fileTags
         existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
-        existing.search.searchAlbum = "typed album"
         store.selectedCandidates["/w1/a"] = existing
 
-        // Same key, renamed + skip flipped.
+        // Same key, renamed + skip flipped, and the pane's stored session
+        // moved on.
         store.applyCandidateDetail(
             key: "/w1/a",
             detail: detail(
                 folderPath: "/w1/a",
                 watchedFolderPath: "/w1",
                 name: "A-renamed",
-                skipped: true
+                skipped: true,
+                presentation: .fileTags
             )
         )
 
         let merged = try #require(store.selectedCandidates["/w1/a"])
-        // The user's work on this pane survives; the read only re-read the
-        // folder.
+        // The work this pane holds in memory survives; the read only re-read
+        // the folder.
         #expect(merged.libraryStatuses["rel-1"] != nil)
-        #expect(merged.error == "the last command failed")
         #expect(merged.provenanceInFlight == pendingPick)
-        #expect(merged.metadataPresentation == .fileTags)
         #expect(merged.fileTagsPreview.edit == MappingFixtures.albumSeed)
-        #expect(merged.search.searchAlbum == "typed album")
+        // The pane's session is the candidate's, so it comes with the read.
+        #expect(merged.metadataPresentation == .fileTags)
         // Scan fields come from the incoming read.
         #expect(merged.displayName == "A-renamed")
         #expect(merged.files.files.isEmpty)

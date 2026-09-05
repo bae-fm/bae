@@ -434,6 +434,7 @@ pub(super) fn load_candidate_detail_on(
         remote_covers,
         signals,
         failure: pane_rows.failure,
+        session: pane_rows.session,
     }))
 }
 

@@ -93,6 +93,10 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
         let cast = Cast(handle: appHandle)
         let importStore = ImportStore()
         let importer = Importer(handle: appHandle)
+        importStore.sessionWriter = CandidateSessionWriter(
+            importer: importer,
+            reportFailure: { uiStore.showError($0) }
+        )
         self.uiStore = uiStore
         self.importStore = importStore
         // Seed the Exporting pane from the in-memory export queue.

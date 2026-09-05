@@ -443,6 +443,7 @@ extension MappingFixtures {
         metadataRevision: UInt64 = 1,
         initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
         failure: BridgeImportFailure? = nil,
+        presentation: BridgeMetadataPresentation = .draft,
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough"
     ) -> BridgeImportCandidateDetail {
@@ -499,7 +500,25 @@ extension MappingFixtures {
                 ),
             cover: nil,
             signals: nil,
-            failure: failure
+            failure: failure,
+            session: session(presentation: presentation)
+        )
+    }
+
+    /// A pane session with an empty form and no banner, on `presentation`.
+    static func session(
+        presentation: BridgeMetadataPresentation = .draft
+    ) -> BridgeCandidateSession {
+        BridgeCandidateSession(
+            presentation: presentation,
+            search: BridgeSearchForm(
+                tab: .general,
+                artist: "",
+                album: "",
+                catalog: "",
+                barcode: ""
+            ),
+            error: nil
         )
     }
 
@@ -510,7 +529,8 @@ extension MappingFixtures {
         mapping: BridgeMappingTable?,
         metadataProvenance: BridgeMetadataProvenance? = provenance,
         edit: BridgeRawReleaseEdit = albumEdit,
-        initialMetadataSource: BridgeDefaultImportMetadataSource = .none
+        initialMetadataSource: BridgeDefaultImportMetadataSource = .none,
+        presentation: BridgeMetadataPresentation = .draft
     ) -> ImportStore {
         let store = ImportStore()
         store.applyCandidateDetail(
@@ -519,7 +539,8 @@ extension MappingFixtures {
                 mapping: mapping,
                 edit: edit,
                 metadataProvenance: metadataProvenance,
-                initialMetadataSource: initialMetadataSource
+                initialMetadataSource: initialMetadataSource,
+                presentation: presentation
             )
         )
         return store

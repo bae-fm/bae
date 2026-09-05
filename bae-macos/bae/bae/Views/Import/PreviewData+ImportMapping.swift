@@ -435,7 +435,8 @@
             edit: BridgeRawReleaseEdit = blankDraftValues,
             mapping: BridgeMappingTable,
             cover: BridgeCoverChoice? = nil,
-            failure: BridgeImportFailure? = nil
+            failure: BridgeImportFailure? = nil,
+            presentation: BridgeMetadataPresentation = .draft
         ) -> Candidate {
             Candidate(
                 detail: BridgeImportCandidateDetail(
@@ -471,7 +472,18 @@
                     mapping: mapping,
                     cover: cover,
                     signals: nil,
-                    failure: failure
+                    failure: failure,
+                    session: BridgeCandidateSession(
+                        presentation: presentation,
+                        search: BridgeSearchForm(
+                            tab: .general,
+                            artist: "",
+                            album: "",
+                            catalog: "",
+                            barcode: ""
+                        ),
+                        error: nil
+                    )
                 )
             )
         }
@@ -563,7 +575,7 @@
         @MainActor
         static let unreadFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.metadataPresentation = .fileTags
+            candidate.session.presentation = .fileTags
             return candidate
         }()
 
@@ -572,7 +584,7 @@
         @MainActor
         static let unidentifiedFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.metadataPresentation = .fileTags
+            candidate.session.presentation = .fileTags
             candidate.fileTagsPreview = .loaded(releaseSeedBridge)
             return candidate
         }()
@@ -580,7 +592,7 @@
         @MainActor
         static let loadingFileTagsMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.metadataPresentation = .fileTags
+            candidate.session.presentation = .fileTags
             candidate.fileTagsPreview = .loading(
                 CandidateFileTagsPreviewSession()
             )
@@ -605,7 +617,7 @@
         @MainActor
         static let severalMatchesMappingCandidate: Candidate = {
             var candidate = unidentifiedMappingCandidate
-            candidate.metadataPresentation = .findOnline
+            candidate.session.presentation = .findOnline
             candidate.resumedIdentifyState = .found(
                 groups: [searchGroupExact],
                 libraryStatuses: [:],

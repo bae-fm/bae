@@ -46,22 +46,21 @@ extension ImportSearchFlow {
     ) -> some View {
         let key = input.key
         let importStore = services.importStore
-        let fields = searchFieldBindings(importStore: importStore, input: input)
         let state = searchPaneState(candidate: input.candidate, input: input)
 
         ImportSearchPane(
             state: state,
             onBack: onBack,
-            activeTab: fields.activeTab,
-            searchArtist: fields.artist,
-            searchAlbum: fields.album,
-            searchCatalog: fields.catalog,
-            searchBarcode: fields.barcode,
-            onSearch: {
+            form: input.candidate.search,
+            onCommitForm: { form in
+                importStore.commitSearchForm(form, forKey: key)
+            },
+            onSearch: { form in
                 startSearch(
                     importer: services.importer,
                     importStore: importStore,
-                    key: key
+                    key: key,
+                    form: form
                 )
             },
             onClearSearch: { services.importer.clearCandidateSearch(key) },
@@ -112,46 +111,6 @@ extension ImportSearchFlow {
                         sourceGroupId: release.sourceGroupId
                     )
                 }
-        )
-    }
-
-    /// The tab/text bindings the pane's form edits, each writing back through
-    /// `mutateCandidate` so edits land on the candidate in the store.
-    struct SearchFieldBindings {
-        let activeTab: Binding<SearchTab>
-        let artist: Binding<String>
-        let album: Binding<String>
-        let catalog: Binding<String>
-        let barcode: Binding<String>
-    }
-
-    @MainActor
-    private static func searchFieldBindings(
-        importStore: ImportStore,
-        input: SearchPaneInput
-    ) -> SearchFieldBindings {
-        let candidate = input.candidate
-        let key = input.key
-        func text(
-            _ field: WritableKeyPath<CandidateSearchState, String>
-        ) -> Binding<String> {
-            makeSearchFieldBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate,
-                field: field
-            )
-        }
-        return SearchFieldBindings(
-            activeTab: makeActiveTabBinding(
-                importStore: importStore,
-                key: key,
-                candidate: candidate
-            ),
-            artist: text(\.searchArtist),
-            album: text(\.searchAlbum),
-            catalog: text(\.searchCatalog),
-            barcode: text(\.searchBarcode)
         )
     }
 
