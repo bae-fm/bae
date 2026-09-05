@@ -7,9 +7,16 @@ import Foundation
 enum IdentifyState: Equatable {
     case idle
     /// Lookups in flight, laid out as the steps the run is taking — one per
-    /// signal, each provider's part of it reported on its own. The pipeline
-    /// transitions to a terminal state once every step settles.
-    case triangulating(run: BridgeIdentifyRun)
+    /// signal, each provider's part of it reported on its own — with the
+    /// matches the answered lookups have combined to so far, shaped as
+    /// `found`'s are. The pipeline transitions to a terminal state once every
+    /// step settles.
+    case triangulating(
+        run: BridgeIdentifyRun,
+        groups: [ReleaseGroup],
+        libraryStatuses: [String: BridgeLibraryStatus],
+        provenance: [String: BridgeResultProvenance],
+    )
     /// The matches as group cards, in match order. Usually one card; signals
     /// that named different releases give several, which is the same list of
     /// things to pick from either way.
@@ -40,8 +47,18 @@ enum IdentifyState: Equatable {
     init(bridge: BridgeIdentifyState) {
         switch bridge {
         case .idle: self = .idle
-        case .triangulating(let run):
-            self = .triangulating(run: run)
+        case .triangulating(
+            let run,
+            let groups,
+            let libraryStatuses,
+            let provenance
+        ):
+            self = .triangulating(
+                run: run,
+                groups: groups.map(ReleaseGroup.init(bridge:)),
+                libraryStatuses: libraryStatuses,
+                provenance: provenance,
+            )
         case .found(
             let groups,
             let libraryStatuses,
@@ -78,7 +95,8 @@ enum IdentifyState: Equatable {
         switch self {
         case .found(_, let statuses, _, _): statuses
         case .failed(_, _, let statuses, _): statuses
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly: [:]
+        case .triangulating(_, _, let statuses, _): statuses
+        case .idle, .notFoundAnywhere, .manualOnly: [:]
         }
     }
 }

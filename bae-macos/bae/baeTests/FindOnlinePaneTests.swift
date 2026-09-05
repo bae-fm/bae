@@ -156,7 +156,12 @@ struct FindOnlineVerdictTests {
     @Test("a run under way says so and offers nothing")
     func triangulatingWorks() {
         let verdict = FindOnlineVerdict(
-            state: .triangulating(run: PreviewData.identifyRunStarting),
+            state: .triangulating(
+                run: PreviewData.identifyRunStarting,
+                groups: [],
+                libraryStatuses: [:],
+                provenance: [:]
+            ),
             toolbar: PreviewData.toolbarBothRunning
         )
 
@@ -297,7 +302,10 @@ struct FindOnlineResultAreaTests {
         #expect(
             FindOnlineResultArea(
                 identifyState: .triangulating(
-                    run: PreviewData.identifyRunStarting
+                    run: PreviewData.identifyRunStarting,
+                    groups: [],
+                    libraryStatuses: [:],
+                    provenance: [:]
                 ),
                 hasSearch: false
             ) == .identifying

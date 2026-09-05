@@ -823,10 +823,15 @@ pub struct BridgeResultProvenance {
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeIdentifyState {
     Idle,
-    /// Lookups in flight, laid out as the steps the run is taking. The
-    /// pipeline transitions to a terminal state once every step settles.
+    /// Lookups in flight, laid out as the steps the run is taking, with the
+    /// matches the answered lookups have combined to so far — shaped exactly
+    /// as `Found`'s, so a surface lists them the same way. The pipeline
+    /// transitions to a terminal state once every step settles.
     Triangulating {
         run: BridgeIdentifyRun,
+        groups: Vec<BridgeReleaseGroup>,
+        library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
+        provenance: std::collections::HashMap<String, BridgeResultProvenance>,
     },
     Found {
         /// The matches as group cards, in match order — the UI renders one card

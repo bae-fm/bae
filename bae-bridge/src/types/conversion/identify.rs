@@ -494,8 +494,22 @@ impl BridgeIdentifyState {
         use bae_core::identify::IdentifyStateView;
         match IdentifyStateView::from(s) {
             IdentifyStateView::Idle => BridgeIdentifyState::Idle,
-            IdentifyStateView::Triangulating { run } => BridgeIdentifyState::Triangulating {
+            IdentifyStateView::Triangulating {
+                run,
+                groups,
+                library_statuses,
+                provenance,
+            } => BridgeIdentifyState::Triangulating {
                 run: BridgeIdentifyRun::from_view(run),
+                groups: groups
+                    .into_iter()
+                    .map(BridgeReleaseGroup::from_core)
+                    .collect(),
+                library_statuses: status_map(library_statuses),
+                provenance: provenance
+                    .into_iter()
+                    .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
+                    .collect(),
             },
             IdentifyStateView::Found {
                 groups,
@@ -623,7 +637,7 @@ mod tests {
 
     fn barcode_step(state: IdentifyState) -> BridgeBarcodeStep {
         match BridgeIdentifyState::from_core(state) {
-            BridgeIdentifyState::Triangulating { run } => run.barcode,
+            BridgeIdentifyState::Triangulating { run, .. } => run.barcode,
             other => panic!("expected a run in flight, got {other:?}"),
         }
     }

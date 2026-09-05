@@ -622,7 +622,12 @@
         )
 
         static let searchStateTriangulating = searchState(
-            identifyState: .triangulating(run: identifyRunInFlight),
+            identifyState: .triangulating(
+                run: identifyRunInFlight,
+                groups: [searchGroupExact],
+                libraryStatuses: [:],
+                provenance: searchProvenanceExact
+            ),
             toolbar: toolbarIdentifying,
             signals: settledSignals
         )

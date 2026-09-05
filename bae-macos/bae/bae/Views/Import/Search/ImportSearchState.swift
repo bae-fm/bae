@@ -24,13 +24,15 @@ struct ImportSearchState {
     /// verdict resumed from the store — whose raw signals were never stored.
     let signalsToolbar: BridgeSignalsToolbar
 
-    /// The album cards identification is offering. A failed run still carries
-    /// whatever the surviving source found.
+    /// The album cards identification is offering. A run still going offers
+    /// what has landed so far; a failed run still carries whatever the
+    /// surviving source found.
     var identifiedGroups: [ReleaseGroup] {
         switch identifyState {
         case .found(let groups, _, _, _): groups
         case .failed(_, let groups, _, _): groups
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly: []
+        case .triangulating(_, let groups, _, _): groups
+        case .idle, .notFoundAnywhere, .manualOnly: []
         }
     }
 
@@ -39,7 +41,8 @@ struct ImportSearchState {
         switch identifyState {
         case .found(_, _, _, let provenance): provenance
         case .failed(_, _, _, let provenance): provenance
-        case .idle, .triangulating, .notFoundAnywhere, .manualOnly: [:]
+        case .triangulating(_, _, _, let provenance): provenance
+        case .idle, .notFoundAnywhere, .manualOnly: [:]
         }
     }
 

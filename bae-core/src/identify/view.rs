@@ -17,7 +17,7 @@
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
-use super::combine::ResultProvenance;
+use super::combine::{combine_results, CombineOutcome, ResultProvenance};
 use super::state::{
     BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
     LookupState, SignalsContext,
@@ -140,9 +140,15 @@ pub struct IdentifyRunView {
 pub enum IdentifyStateView {
     Idle,
 
-    /// Lookups in flight, laid out as the steps the run is taking.
+    /// Lookups in flight, laid out as the steps the run is taking, with the
+    /// matches every answered lookup has combined to so far — the same
+    /// combine the settle runs, so what a person sees mid-run is what the
+    /// verdict lands on, and a row that has landed does not jump at settle.
     Triangulating {
         run: IdentifyRunView,
+        groups: Vec<ReleaseGroup>,
+        library_statuses: Vec<LibraryStatus>,
+        provenance: Vec<(String, ResultProvenance)>,
     },
 
     /// The matches, bucketed into their release groups — one card per group,
@@ -193,13 +199,21 @@ impl From<IdentifyState> for IdentifyStateView {
                 barcode,
                 catalog,
                 context,
-            } => IdentifyStateView::Triangulating {
-                run: IdentifyRunView {
-                    disc_id: disc_id_step(discid, &context),
-                    barcode: barcode_step(barcode),
-                    catalog: catalog_step(catalog, &context),
-                },
-            },
+            } => {
+                let (matches, library_statuses, provenance) =
+                    live_matches(&discid, &barcode, &catalog, &context);
+                let (groups, provenance) = fold_matches(matches, provenance);
+                IdentifyStateView::Triangulating {
+                    run: IdentifyRunView {
+                        disc_id: disc_id_step(discid, &context),
+                        barcode: barcode_step(barcode),
+                        catalog: catalog_step(catalog, &context),
+                    },
+                    groups,
+                    library_statuses,
+                    provenance,
+                }
+            }
 
             IdentifyState::Found {
                 matches,
@@ -241,6 +255,38 @@ impl From<IdentifyState> for IdentifyStateView {
                 }
             }
         }
+    }
+}
+
+/// What the answered lookups combine to so far. Each signal contributes what
+/// its providers have returned — a provider still looking adds nothing yet —
+/// and a signal the user unchecked adds nothing at all, exactly as the settle
+/// treats it. A lookup that has not answered leaves its signal empty, which
+/// combine reads as taking no part, so the first answer shows on its own and
+/// later ones narrow or widen it the way the verdict will.
+fn live_matches(
+    discid: &DiscidProgress,
+    barcode: &BarcodeProgress,
+    catalog: &CatalogProgress,
+    context: &SignalsContext,
+) -> (
+    Vec<crate::import::search::MetadataResult>,
+    Vec<LibraryStatus>,
+    Vec<ResultProvenance>,
+) {
+    let unless = |excluded: bool, results: Vec<_>| if excluded { Vec::new() } else { results };
+    let outcome = combine_results(
+        unless(context.disc_excluded, discid.results()),
+        unless(context.barcode_excluded, barcode.results()),
+        unless(context.chosen_catalog.is_none(), catalog.results()),
+    );
+    match outcome {
+        CombineOutcome::Found {
+            matches,
+            library_statuses,
+            provenance,
+        } => (matches, library_statuses, provenance),
+        CombineOutcome::NotFoundAnywhere => (Vec::new(), Vec::new(), Vec::new()),
     }
 }
 
@@ -370,5 +416,119 @@ fn found_or_no_match(count: usize) -> LookupView {
         LookupView::Found {
             count: count as u32,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::LibraryStatus;
+    use crate::identify::state::{BarcodeLookupState, ProviderBarcodeLookup};
+    use crate::import::search::MetadataResult;
+    use crate::import::MetadataSource;
+    use crate::signals::{SignalOrigin, SourcedValue};
+
+    fn result(source: MetadataSource, release_id: &str) -> (MetadataResult, LibraryStatus) {
+        (
+            MetadataResult {
+                source,
+                release_id: release_id.to_string(),
+                title: "Album".to_string(),
+                artist: None,
+                year: None,
+                format: None,
+                label: None,
+                catalog_number: None,
+                country: None,
+                barcode: None,
+                cover_art: None,
+                source_group_id: Some("g".to_string()),
+                source_tracks: None,
+            },
+            LibraryStatus {
+                release_id: release_id.to_string(),
+                release_in_library: false,
+                album_in_library: false,
+                album_title: None,
+                album_id: None,
+            },
+        )
+    }
+
+    fn context() -> SignalsContext {
+        SignalsContext {
+            providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
+            disc_id: DiscIdSignal::Absent { track_count: 9 },
+            barcode_codes: vec![SourcedValue::new("A".to_string(), SignalOrigin::Artwork)],
+            had_barcode_source: true,
+            catalogs: Vec::new(),
+            chosen_catalog: None,
+            disc_excluded: false,
+            barcode_excluded: false,
+            discid_results: Vec::new(),
+            barcode_results: Vec::new(),
+            catalog_results: Vec::new(),
+            discid_failure: None,
+            barcode_failures: Vec::new(),
+            barcode_scan_failure: None,
+            catalog_failures: Vec::new(),
+            matched_barcode: None,
+            track_count: 9,
+        }
+    }
+
+    fn in_flight(context: SignalsContext) -> IdentifyState {
+        IdentifyState::Triangulating {
+            discid: DiscidProgress::Skipped { track_count: 9 },
+            barcode: BarcodeProgress::Lookups {
+                codes: vec!["A".to_string()],
+                providers: vec![
+                    ProviderBarcodeLookup {
+                        source: MetadataSource::MusicBrainz,
+                        state: BarcodeLookupState::Trying { index: 0 },
+                    },
+                    ProviderBarcodeLookup {
+                        source: MetadataSource::Discogs,
+                        state: BarcodeLookupState::Matched {
+                            code: Some("A".to_string()),
+                            results: vec![result(MetadataSource::Discogs, "dg-1")],
+                        },
+                    },
+                ],
+            },
+            catalog: CatalogProgress::Skipped,
+            context,
+        }
+    }
+
+    /// What one provider found shows while the other is still looking, with
+    /// the provenance the settled verdict will give it.
+    #[test]
+    fn a_landed_provider_s_matches_show_before_the_other_answers() {
+        let IdentifyStateView::Triangulating {
+            groups, provenance, ..
+        } = IdentifyStateView::from(in_flight(context()))
+        else {
+            panic!("a run in flight");
+        };
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].pressings[0].releases[0].release_id, "dg-1");
+        assert_eq!(provenance.len(), 1);
+        assert_eq!(provenance[0].0, "dg-1");
+        assert!(provenance[0].1.by_barcode);
+    }
+
+    /// A signal the user unchecked contributes nothing mid-run, as it will
+    /// contribute nothing at settle.
+    #[test]
+    fn an_excluded_signal_s_matches_do_not_show() {
+        let mut context = context();
+        context.barcode_excluded = true;
+        let IdentifyStateView::Triangulating { groups, .. } =
+            IdentifyStateView::from(in_flight(context))
+        else {
+            panic!("a run in flight");
+        };
+        assert!(groups.is_empty());
     }
 }

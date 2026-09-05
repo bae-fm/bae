@@ -147,8 +147,13 @@ pub enum AutomationIdentifyFailure {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationIdentifyState {
     Idle,
+    /// Lookups in flight, with the matches the answered lookups have combined
+    /// to so far, shaped as `Found`'s are.
     Triangulating {
         run: AutomationIdentifyRun,
+        groups: Vec<AutomationReleaseGroup>,
+        library_statuses: Vec<AutomationLibraryStatus>,
+        provenance: Vec<AutomationResultProvenance>,
     },
     Found {
         groups: Vec<AutomationReleaseGroup>,

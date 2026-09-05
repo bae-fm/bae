@@ -144,8 +144,22 @@ pub(crate) fn automation_identify_state(
     use bae_core::identify::IdentifyStateView;
     match IdentifyStateView::from(state) {
         IdentifyStateView::Idle => AutomationIdentifyState::Idle,
-        IdentifyStateView::Triangulating { run } => AutomationIdentifyState::Triangulating {
+        IdentifyStateView::Triangulating {
+            run,
+            groups,
+            library_statuses,
+            provenance,
+        } => AutomationIdentifyState::Triangulating {
             run: automation_identify_run(run),
+            groups: groups.into_iter().map(automation_release_group).collect(),
+            library_statuses: library_statuses
+                .into_iter()
+                .map(automation_library_status)
+                .collect(),
+            provenance: provenance
+                .into_iter()
+                .map(|(release_id, p)| automation_result_provenance(release_id, p))
+                .collect(),
         },
         IdentifyStateView::Found {
             groups,

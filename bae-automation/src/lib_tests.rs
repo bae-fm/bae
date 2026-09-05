@@ -479,6 +479,15 @@ mod identify_mirrors {
         assert_eq!(providers[1]["state"]["count"], 1);
         assert!(providers[1]["state"].get("results").is_none());
         assert_eq!(run["catalog"]["kind"], "none_found");
+        // Discogs's match is already on the list while MusicBrainz is out.
+        let groups = json["groups"].as_array().unwrap();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(
+            groups[0]["pressings"][0]["releases"][0]["release_id"],
+            "rel-dg"
+        );
+        assert_eq!(json["provenance"][0]["release_id"], "rel-dg");
+        assert_eq!(json["provenance"][0]["by_barcode"], true);
     }
 
     #[test]
