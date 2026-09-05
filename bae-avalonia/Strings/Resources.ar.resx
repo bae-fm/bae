@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>الاسم (ي–أ)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>قيد الانتظار</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>تم</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>اختر طبعة</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>اختلاف الأعداد أو المدد</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>موجود بالفعل في المكتبة</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>لا يوجد تطابق</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>لا يزال قيد التحديد</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>جارٍ التحديد</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>الانتقال إلى مرشَّح ما زال قيد التعرّف</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} محدد</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>جاهز</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>في انتظار التحديد</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>جارٍ التحديد…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>تعذّر الإكمال. ستُعاد المحاولة</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>تصفية…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>إضافة مجلد…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>لا شيء هنا بعد</value></data>

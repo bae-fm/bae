@@ -303,8 +303,8 @@ fn the_automatic_queue_is_published_as_one_current_runtime_snapshot() {
     assert_eq!(queued.len(), 2);
     for key in [first, second] {
         assert_eq!(
-            crate::import::triage::TriageRuntimeFacts::of(&queued[key]).identify_phase,
-            Some(crate::import::IdentifyPhase::Queued)
+            crate::import::triage::TriageRuntimeFacts::of(&queued[key]).identification,
+            Some(crate::import::IdentificationStatus::Queued)
         );
     }
     assert!(matches!(
@@ -509,6 +509,51 @@ fn a_stored_verdict_clears_the_recorded_terminal_state() {
     // A genuine mid-run cancel empties the key.
     runtime.record_event(&identify(key, crate::identify::IdentifyState::Idle));
     assert!(runtime.get(key).is_none());
+}
+
+#[test]
+fn a_failed_finalization_replaces_progress_without_discarding_the_result() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&identify(
+        key,
+        crate::identify::IdentifyState::ManualOnly {
+            track_count: 9,
+            context: signals_context(9),
+        },
+    ));
+
+    runtime.fail_identification(key, "database write failed".to_string());
+
+    let recorded = runtime.get(key).expect("the failure remains visible");
+    assert!(matches!(
+        recorded
+            .identify
+            .as_ref()
+            .and_then(CandidateIdentifyRuntime::state),
+        Some(crate::identify::IdentifyState::ManualOnly { .. })
+    ));
+    assert_eq!(
+        crate::import::triage::TriageRuntimeFacts::of(&recorded).identification,
+        Some(crate::import::IdentificationStatus::FinalizationFailed {
+            error: "database write failed".to_string(),
+        })
+    );
+
+    runtime.record_event(&identify(
+        key,
+        crate::identify::IdentifyState::ManualOnly {
+            track_count: 9,
+            context: signals_context(9),
+        },
+    ));
+    assert!(matches!(
+        crate::import::triage::TriageRuntimeFacts::of(
+            &runtime.get(key).expect("the failure remains visible")
+        )
+        .identification,
+        Some(crate::import::IdentificationStatus::FinalizationFailed { .. })
+    ));
 }
 
 /// A claimed import outlives the run's write: the key keeps the half that is

@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>নাম (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>অপেক্ষমাণ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>সম্পন্ন</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>একটি প্রেসিং বেছে নিন</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>সংখ্যা বা দৈর্ঘ্যে অমিল</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>আগে থেকেই লাইব্রেরিতে</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>কোনো মিল পাওয়া যায়নি</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>এখনও শনাক্ত করা হচ্ছে</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>শনাক্ত করা হচ্ছে</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>এখনও শনাক্ত হচ্ছে এমন প্রার্থীতে যান</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count}টি নির্বাচিত</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>প্রস্তুত</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>শনাক্তকরণের অপেক্ষায়</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>শনাক্ত করা হচ্ছে…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>সম্পূর্ণ করা যায়নি। আবার চেষ্টা করা হবে</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ফিল্টার…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ফোল্ডার যোগ করুন…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>এখানে এখনও কিছু নেই</value></data>

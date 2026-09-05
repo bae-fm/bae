@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>שם (ת׳–א׳)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>ממתינים</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>הושלמו</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>בחרו תקליט</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>הכמות או האורכים אינם תואמים</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>כבר בספרייה</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>אין התאמה</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>עדיין בזיהוי</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>מזהה</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>מעבר למועמד שעדיין בזיהוי</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} נבחרו</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>מוכן</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ממתין לזיהוי</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>מזהה…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>לא הצליח להשלים. ננסה שוב</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>סינון…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>הוספת תיקייה…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>אין כאן עדיין כלום</value></data>

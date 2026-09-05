@@ -297,10 +297,10 @@ fn place_row(
             lead_status,
         )
     });
-    let known = match (answer, facts.identify_phase) {
+    let known = match (answer, facts.identification.clone()) {
         (Some(classification), _) => CandidateAnswer::Classified(classification),
-        (None, Some(phase)) => CandidateAnswer::Unanswered(phase),
-        (None, None) => CandidateAnswer::Idle,
+        (None, Some(status)) => CandidateAnswer::Identification(status),
+        (None, None) => CandidateAnswer::Unidentified,
     };
     let skipped = rows.skipped.contains(&(
         row.watched_folder_path.clone(),
@@ -476,13 +476,7 @@ fn summarise(
         };
         let row = &placed[index].row;
         if first_unidentified.is_none()
-            && matches!(
-                &row.placement,
-                TriagePlacement::NeedsYou {
-                    reason: crate::import::NeedsYouReason::StillIdentifying { .. },
-                    ..
-                }
-            )
+            && matches!(&row.placement, TriagePlacement::Identification { .. })
         {
             first_unidentified = Some(FirstUnidentifiedRowRef {
                 candidate_key: row.candidate_key.clone(),

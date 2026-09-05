@@ -252,8 +252,8 @@ struct Finished {
     representative_key: String,
     identity: CandidateIdentity,
     candidate_keys: Vec<String>,
-    rehome: Vec<FolderCandidate>,
-    stored: bool,
+    current_candidates: Vec<FolderCandidate>,
+    outcome: FinishCandidateOutcome,
 }
 
 type CandidateIdentity = (String, u64);
@@ -489,27 +489,42 @@ async fn run_pass_once(
                         let deferred = finishing_members
                             .remove(&done.identity)
                             .expect("finishing identity is registered before its task starts");
-                        if done.stored {
-                            answered_identities.insert(done.identity.clone());
-                            pending.retain(|job| job.identity != done.identity);
-                        } else {
-                            for candidate in done.rehome {
-                                enqueue_automatic_candidate(context, &mut pending, candidate);
+                        let stored = matches!(&done.outcome, FinishCandidateOutcome::Stored);
+                        match done.outcome {
+                            FinishCandidateOutcome::Stored => {
+                                answered_identities.insert(done.identity.clone());
+                                pending.retain(|job| job.identity != done.identity);
+                                for key in &done.candidate_keys {
+                                    context.import.clear_automatic_identification(key);
+                                }
                             }
-                            for candidate in deferred {
-                                enqueue_automatic_candidate(context, &mut pending, candidate);
+                            FinishCandidateOutcome::Superseded => {
+                                for candidate in
+                                    done.current_candidates.into_iter().chain(deferred)
+                                {
+                                    enqueue_automatic_candidate(context, &mut pending, candidate);
+                                }
                             }
-                        }
-                        for key in done.candidate_keys {
-                            if done.stored {
-                                context.import.clear_automatic_identification(&key);
+                            FinishCandidateOutcome::Failed { error } => {
+                                warn!(
+                                    "sweep: could not commit identification for {} ({error})",
+                                    done.representative_key
+                                );
+                                for candidate in
+                                    done.current_candidates.into_iter().chain(deferred)
+                                {
+                                    context.import.fail_identification(
+                                        &candidate.path.to_string_lossy(),
+                                        error.clone(),
+                                    );
+                                }
                             }
                         }
                         let newly_answered = known_identities
                             .iter()
                             .filter(|(_, identity)| *identity == &done.identity)
                             .map(|(key, _)| key)
-                            .filter(|key| done.stored && answered_keys.insert((*key).clone()))
+                            .filter(|key| stored && answered_keys.insert((*key).clone()))
                             .count() as u32;
                         if newly_answered > 0 {
                             identified = identified.saturating_add(newly_answered).min(total);
@@ -539,8 +554,17 @@ async fn run_pass_once(
                     // slot is free now.
                     // A state from another run of the same candidate -- an
                     // earlier one still broadcasting -- is not this pass's.
-                    let settled = (state.is_terminal()
-                        && in_flight.get(&candidate_key).is_some_and(|entry| entry.run == run))
+                    let ours = in_flight
+                        .get(&candidate_key)
+                        .filter(|entry| entry.run == run);
+                    if let Some(entry) = ours {
+                        for member_key in entry.job.candidate_keys() {
+                            if member_key != candidate_key {
+                                context.import.report_identification(&member_key, &state);
+                            }
+                        }
+                    }
+                    let settled = (state.is_terminal() && ours.is_some())
                     .then(|| in_flight.remove(&candidate_key))
                     .flatten();
                     if let Some(entry) = settled {
@@ -551,35 +575,28 @@ async fn run_pass_once(
                         let child = token.child_token();
                         finishing.spawn(async move {
                             let candidate_keys = entry.job.candidate_keys().collect();
-                            let stored = finish_candidate(&context, &entry, state, &child).await;
-                            let rehome = if stored
-                                || usable_current_candidate(
-                                    &context,
-                                    &representative_key,
-                                    &identity,
-                                )
-                                .await
-                            {
+                            let outcome = finish_candidate(&context, &entry, state, &child).await;
+                            let current_candidates = if matches!(
+                                &outcome,
+                                FinishCandidateOutcome::Stored
+                            ) {
                                 Vec::new()
                             } else {
-                                let mut rehome = Vec::new();
+                                let mut current = Vec::new();
                                 for candidate in &entry.job.candidates {
                                     let key = candidate.path.to_string_lossy();
-                                    if key != representative_key
-                                        && usable_current_candidate(&context, &key, &identity)
-                                            .await
-                                    {
-                                        rehome.push(candidate.clone());
+                                    if usable_current_candidate(&context, &key, &identity).await {
+                                        current.push(candidate.clone());
                                     }
                                 }
-                                rehome
+                                current
                             };
                             Finished {
                                 representative_key,
                                 identity,
                                 candidate_keys,
-                                rehome,
-                                stored,
+                                current_candidates,
+                                outcome,
                             }
                         });
                     }
@@ -890,30 +907,6 @@ async fn run_pass_for_test(context: &SweepContext, token: &CancellationToken) {
     let mut config = context.library_manager.subscribe_config_changes();
     run_pass(context, token, &mut event_rx, &mut config).await;
     relay.abort();
-}
-
-/// The candidates the sweep is responsible for: New ones only.
-///
-/// Added candidates are already in the library and skipped candidates reflect
-/// an explicit user decision, so neither belongs in automatic identification.
-///
-/// Read from the tables rather than through the list: a pass is planned right
-/// after the event that changed the queue — a skip, a scan item — and the
-/// list's query lands after the commit it reflects, so it can still describe
-/// the queue before that change.
-async fn new_candidates(
-    context: &SweepContext,
-) -> Result<Vec<FolderCandidate>, crate::library::LibraryError> {
-    let candidates = context.library_manager.load_sweepable_candidates().await?;
-    let runtime = context.import.candidate_runtimes();
-    Ok(candidates
-        .into_iter()
-        .filter(|candidate| {
-            runtime
-                .get(candidate.path.to_string_lossy().as_ref())
-                .is_none_or(|runtime| runtime.import.is_none())
-        })
-        .collect())
 }
 
 /// The scanned folder candidate behind `key` when it is actionable, read by

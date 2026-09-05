@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>ਨਾਂ (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>ਬਕਾਇਆ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>ਮੁਕੰਮਲ</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ਛਪਾਈ ਚੁਣੋ</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>ਗਿਣਤੀ ਜਾਂ ਲੰਬਾਈ ਮੇਲ ਨਹੀਂ ਖਾਂਦੀ</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ਪਹਿਲਾਂ ਹੀ ਲਾਇਬ੍ਰੇਰੀ ਵਿੱਚ</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>ਕੋਈ ਮੇਲ ਨਹੀਂ ਮਿਲਿਆ</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ਹਾਲੇ ਵੀ ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ਅਜੇ ਪਛਾਣੇ ਜਾ ਰਹੇ ਉਮੀਦਵਾਰ ਤੇ ਜਾਓ</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} ਚੁਣੇ ਗਏ</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>ਤਿਆਰ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ਪਛਾਣ ਦੀ ਉਡੀਕ ਵਿੱਚ</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>ਪਛਾਣ ਹੋ ਰਹੀ ਹੈ…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>ਪੂਰਾ ਨਹੀਂ ਹੋ ਸਕਿਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਹੋਵੇਗੀ</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ਫਿਲਟਰ…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ਫੋਲਡਰ ਜੋੜੋ…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ਇੱਥੇ ਹਾਲੇ ਕੁਝ ਨਹੀਂ ਹੈ</value></data>

@@ -1,5 +1,17 @@
 use super::*;
 
+#[derive(Debug)]
+pub(super) enum FinishCandidateOutcome {
+    Stored,
+    Superseded,
+    Failed { error: String },
+}
+
+enum FinalizationError {
+    Superseded,
+    Failed(String),
+}
+
 enum SettledLead {
     NoExternalRelease,
     ExternalRelease {
@@ -79,33 +91,34 @@ async fn metadata_or_failed_verdict(
     }
 }
 
-/// Turn one candidate's terminal state into a stored row, or into nothing.
-/// Returns whether a row was written.
+/// Turn one candidate's terminal state into a stored row, a superseded result,
+/// or an explicit commit failure.
 pub(super) async fn finish_candidate(
     context: &SweepContext,
     entry: &InFlight,
     state: IdentifyState,
     token: &CancellationToken,
-) -> bool {
-    // Only in-flight states fail conversion. Provider failures convert to an
-    // explicit failed verdict and are stored below.
-    let Ok(mut verdict) = TerminalVerdict::try_from(state) else {
-        return false;
-    };
+) -> FinishCandidateOutcome {
+    let mut verdict = TerminalVerdict::try_from(state)
+        .expect("the sweep finalizes only terminal identify states");
 
     let Some(signals) = entry.signals.as_ref() else {
-        warn!(
-            "sweep: {} reached a verdict with no signals; writing no row",
-            entry.job.representative().path.display()
-        );
-        return false;
+        return FinishCandidateOutcome::Failed {
+            error: format!(
+                "{} reached a verdict with no settled signals",
+                entry.job.representative().path.display()
+            ),
+        };
     };
     let candidate = entry.job.representative();
-    let Some(settled_lead) =
-        settle_lead(context, &mut verdict, candidate, &signals.durations, token).await
-    else {
-        return false;
-    };
+    let settled_lead =
+        match settle_lead(context, &mut verdict, candidate, &signals.durations, token).await {
+            Ok(settled) => settled,
+            Err(FinalizationError::Superseded) => return FinishCandidateOutcome::Superseded,
+            Err(FinalizationError::Failed(error)) => {
+                return FinishCandidateOutcome::Failed { error };
+            }
+        };
 
     let mut metadata = metadata_or_failed_verdict(
         context,
@@ -117,11 +130,9 @@ pub(super) async fn finish_candidate(
     .await;
     if let Err(error) = preserve_current_mapping_decisions(context, candidate, &mut metadata).await
     {
-        warn!(
-            "sweep: could not preserve the current mappings for {} ({error}); writing no row",
-            candidate.path.display()
-        );
-        return false;
+        return FinishCandidateOutcome::Failed {
+            error: error.to_string(),
+        };
     }
     save(
         context,
@@ -130,7 +141,7 @@ pub(super) async fn finish_candidate(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
         &verdict,
-        Some(signals.clone()),
+        signals.clone(),
         candidate.file_edit_revision,
         entry.expected_metadata_revision,
         metadata,
@@ -172,23 +183,14 @@ pub(super) async fn save(
     content_hash: &str,
     folder_path: &str,
     verdict: &TerminalVerdict,
-    signals: Option<crate::signals::Signals>,
+    signals: crate::signals::Signals,
     expected_edit_revision: u64,
     expected_metadata_revision: u64,
     metadata: crate::import::CandidateMetadataDraft,
-) -> bool {
+) -> FinishCandidateOutcome {
     if token.is_cancelled() {
-        return false;
+        return FinishCandidateOutcome::Superseded;
     }
-    // A verdict with no signals behind it is not a verdict: the state machine
-    // reaches a terminal state only from a settled snapshot, so this cannot
-    // happen once it has passed `Triangulating` — and if it somehow does, the
-    // row is refused and the next pass asks again rather than storing a
-    // candidate whose signals nothing recorded.
-    let Some(signals) = signals else {
-        warn!("sweep: {folder_path} reached a verdict with no signals; writing no row");
-        return false;
-    };
     let row = NewImportCandidateVerdict {
         content_hash: content_hash.to_string(),
         folder_path: folder_path.to_string(),
@@ -205,11 +207,9 @@ pub(super) async fn save(
     {
         Ok(wrote) => wrote,
         Err(e) => {
-            warn!(
-                "sweep: could not store the verdict for {} ({e}); it is retried next pass",
-                row.folder_path
-            );
-            return false;
+            return FinishCandidateOutcome::Failed {
+                error: e.to_string(),
+            };
         }
     };
     if !wrote {
@@ -217,12 +217,12 @@ pub(super) async fn save(
             "sweep: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
             row.folder_path, expected_edit_revision, expected_metadata_revision
         );
-        return false;
+        return FinishCandidateOutcome::Superseded;
     }
     context
         .import
         .announce_candidate_verdict_stored(candidate_key.to_string());
-    true
+    FinishCandidateOutcome::Stored
 }
 
 /// The one pressing a verdict's matches describe, or `None` when they describe
@@ -265,17 +265,17 @@ async fn settle_lead(
     candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
     token: &CancellationToken,
-) -> Option<SettledLead> {
+) -> Result<SettledLead, FinalizationError> {
     let TerminalVerdict::Found {
         matches,
         track_count,
         ..
     } = verdict
     else {
-        return Some(SettledLead::NoExternalRelease);
+        return Ok(SettledLead::NoExternalRelease);
     };
     let Some(pressing) = sole_pressing(matches) else {
-        return Some(SettledLead::NoExternalRelease);
+        return Ok(SettledLead::NoExternalRelease);
     };
     let (primary, partners) = pressing.claims();
 
@@ -298,7 +298,7 @@ async fn settle_lead(
     let payloads = tokio::select! {
         biased;
         // Shutdown is not a provider answer and writes nothing.
-        _ = token.cancelled() => return None,
+        _ = token.cancelled() => return Err(FinalizationError::Superseded),
         payloads = settle => payloads,
     };
     let payloads = match payloads {
@@ -314,18 +314,14 @@ async fn settle_lead(
                 )],
                 track_count: *track_count,
             };
-            return Some(SettledLead::NoExternalRelease);
+            return Ok(SettledLead::NoExternalRelease);
         }
     };
     let audio_durations =
         match crate::import::track_slots::audio_durations(&candidate.files, durations) {
             Ok(durations) => durations,
             Err(error) => {
-                warn!(
-                    "sweep: {} has incomplete audio timing ({error}); writing no row",
-                    candidate.path.display()
-                );
-                return None;
+                return Err(FinalizationError::Failed(error.to_string()));
             }
         };
     match payloads.source_tracks_for_audio(&audio_durations) {
@@ -341,7 +337,7 @@ async fn settle_lead(
                 .find(|result| result.source == primary.source && result.release_id == primary.id)
                 .expect("the pressing's primary is one of the verdict's matches")
                 .source_tracks = Some(source_tracks);
-            Some(SettledLead::ExternalRelease {
+            Ok(SettledLead::ExternalRelease {
                 provenance: pressing.pick(),
                 payloads,
             })
@@ -359,7 +355,7 @@ async fn settle_lead(
                 )],
                 track_count: *track_count,
             };
-            Some(SettledLead::NoExternalRelease)
+            Ok(SettledLead::NoExternalRelease)
         }
     }
 }
@@ -390,27 +386,22 @@ pub(super) async fn record_explicit_lookup_verdict(
     context: &SweepContext,
     run: IdentifyRunId,
     candidate_key: String,
+    candidate: FolderCandidate,
     token: &CancellationToken,
 ) {
-    // Subscribe before reading the candidate, so no state change can land in
+    // Subscribe before reading the revision, so no state change can land in
     // between.
     let mut bus = context.import.subscribe_events();
-    let Some(candidate) = folder_candidate(context, &candidate_key).await else {
-        // Not a scanned folder candidate — a library release being
-        // re-identified. It has no content hash to key a row by.
-        return;
-    };
-    let expected_metadata_revision = match super::candidate_metadata_revision(context, &candidate)
-        .await
-    {
-        Ok(revision) => revision,
-        Err(error) => {
-            warn!(
-                    "sweep: cannot read the metadata revision for {candidate_key} ({error}); recording no verdict"
-                );
-            return;
-        }
-    };
+    let expected_metadata_revision =
+        match super::candidate_metadata_revision(context, &candidate).await {
+            Ok(revision) => revision,
+            Err(error) => {
+                context
+                    .import
+                    .fail_identification(&candidate_key, error.to_string());
+                return;
+            }
+        };
     let mut entry = ExplicitLookupInFlight {
         candidate,
         signals: None,
@@ -451,12 +442,13 @@ pub(super) async fn record_explicit_lookup_verdict(
                 // queue treats as answered, and the promise that an answered
                 // lead opens offline holds however the answer was reached.
                 let Some(signals) = entry.signals.as_ref() else {
-                    warn!(
-                        "sweep: {candidate_key} reached a verdict with no signals; writing no row"
+                    context.import.fail_identification(
+                        &candidate_key,
+                        format!("{candidate_key} reached a verdict with no settled signals"),
                     );
-                    continue;
+                    return;
                 };
-                let Some(settled_lead) = settle_lead(
+                let settled_lead = match settle_lead(
                     context,
                     &mut verdict,
                     &entry.candidate,
@@ -464,8 +456,13 @@ pub(super) async fn record_explicit_lookup_verdict(
                     token,
                 )
                 .await
-                else {
-                    continue;
+                {
+                    Ok(settled) => settled,
+                    Err(FinalizationError::Superseded) => return,
+                    Err(FinalizationError::Failed(error)) => {
+                        context.import.fail_identification(&candidate_key, error);
+                        return;
+                    }
                 };
                 let mut metadata = metadata_or_failed_verdict(
                     context,
@@ -479,26 +476,31 @@ pub(super) async fn record_explicit_lookup_verdict(
                     preserve_current_mapping_decisions(context, &entry.candidate, &mut metadata)
                         .await
                 {
-                    warn!(
-                        "sweep: could not preserve the current mappings for {candidate_key} ({error}); writing no verdict"
-                    );
-                    continue;
+                    context
+                        .import
+                        .fail_identification(&candidate_key, error.to_string());
+                    return;
                 }
-                if save(
+                match save(
                     context,
                     token,
                     &candidate_key,
                     &entry.candidate.files.content_hash(),
                     &entry.candidate.path.to_string_lossy(),
                     &verdict,
-                    Some(signals.clone()),
+                    signals.clone(),
                     entry.candidate.file_edit_revision,
                     entry.expected_metadata_revision,
                     metadata,
                 )
                 .await
                 {
-                    return;
+                    FinishCandidateOutcome::Stored => return,
+                    FinishCandidateOutcome::Superseded => return,
+                    FinishCandidateOutcome::Failed { error } => {
+                        context.import.fail_identification(&candidate_key, error);
+                        return;
+                    }
                 }
             }
             // The candidate is gone, or is a different shape than the run was
@@ -518,18 +520,15 @@ pub(super) async fn record_explicit_lookup_verdict(
             }
             Ok(_) => {}
             Err(broadcast::error::RecvError::Lagged(n)) => {
-                warn!(
-                    "sweep: explicit Lookup recorder for {candidate_key} lagged by {n} events; writing no verdict"
+                context.import.fail_identification(
+                    &candidate_key,
+                    format!(
+                        "the identification event stream dropped {n} events before the result could be stored"
+                    ),
                 );
                 return;
             }
             Err(broadcast::error::RecvError::Closed) => return,
         }
     }
-}
-
-/// The scanned folder candidate behind a key, or `None` when the key names
-/// something else (a library release being re-identified) or nothing.
-async fn folder_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
-    super::actionable_candidate(context, key).await
 }

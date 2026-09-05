@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Název (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Čekající</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Hotové</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Vyberte lis</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Počty nebo délky se neshodují</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Už v knihovně</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>Bez shody</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Stále se identifikuje</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifikace</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Přejít na kandidáta, který se stále identifikuje</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Vybráno: {count}</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>Připraveno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeká na identifikaci</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifikace…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Nepodařilo se dokončit. Zkusíme to znovu</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrovat…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Přidat složku…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Zatím tu nic není</value></data>

@@ -180,9 +180,9 @@ pub use track_slots::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use triage::{
-    CandidateAnswer, IdentifyPhase, MatchEvidence, MatchedPressing, MatchedRelease, MatchedSignal,
-    NeedsYouGroup, NeedsYouReason, TriageGroup, TriageImportStatus, TriageMetadataSummary,
-    TriagePlacement, TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
+    CandidateAnswer, IdentificationStatus, MatchEvidence, MatchedPressing, MatchedRelease,
+    MatchedSignal, TriageGroup, TriageImportStatus, TriageMetadataSummary, TriagePlacement,
+    TriageRow, TriageRuntimeFacts, TriageSkipAction, TriageTab, TriageTabCounts,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use types::CandidateMappingPreparation;

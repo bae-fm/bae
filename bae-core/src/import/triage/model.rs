@@ -18,18 +18,17 @@ pub enum TriageTab {
 pub enum TriagePlacement {
     /// Pending without a question or an automatic action in flight.
     Pending,
+    /// Identification owns this candidate. Its state is carried whole so a
+    /// queued job, a running lookup, a result being committed, and a failed
+    /// commit cannot be rendered as one another.
+    Identification {
+        status: IdentificationStatus,
+    },
     /// Exactly one match, not in the library, counts and lengths agree — safe
     /// to import unattended.
     Ready,
     NeedsYou {
-        /// The question this row batches under. Derived from `reason` at
-        /// construction and never independently: group 3 collapses four
-        /// classification variants into one question, so the two must not be
-        /// able to disagree.
-        group: NeedsYouGroup,
-        /// The classification's own variant, kept whole so the row can name the
-        /// disagreement precisely even when its group cannot.
-        reason: NeedsYouReason,
+        reason: NeedsYou,
     },
     /// An import claimed this candidate and has not finished. Its own variant
     /// rather than a Needs-you group: nothing is being asked of the user, and
@@ -52,6 +51,7 @@ impl TriagePlacement {
     pub fn tab(&self) -> TriageTab {
         match self {
             Self::Pending
+            | Self::Identification { .. }
             | Self::Ready
             | Self::NeedsYou { .. }
             | Self::Importing
@@ -65,7 +65,9 @@ impl TriagePlacement {
     /// where skipping it means anything: the attempt is what decides it now.
     pub fn skip_action(&self) -> Option<TriageSkipAction> {
         match self {
-            Self::Pending | Self::Ready | Self::NeedsYou { .. } => Some(TriageSkipAction::Skip),
+            Self::Pending | Self::Identification { .. } | Self::Ready | Self::NeedsYou { .. } => {
+                Some(TriageSkipAction::Skip)
+            }
             Self::Skipped => Some(TriageSkipAction::Unskip),
             Self::Importing | Self::Failed | Self::Done => None,
         }
@@ -81,102 +83,19 @@ pub enum TriageSkipAction {
     Unskip,
 }
 
-/// The Needs-you groups, in the order the sidebar stacks them. Declaration
-/// order *is* display order — [`NeedsYouGroup::IN_ORDER`] hands it to a surface
-/// so neither UI invents its own.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum NeedsYouGroup {
-    /// Several pressings matched.
-    PickAPressing,
-    /// The folder and the source disagree about what is here. Four
-    /// classification variants share this group because they are one question
-    /// to the user; the row's `reason` still names which.
-    CountsOrLengthsDisagree,
-    AlreadyInLibrary,
-    /// An automatic provider lookup failed and awaits an explicit retry.
-    LookupFailed,
-    /// Nothing matched, or there was nothing to look up.
-    NoMatch,
-    /// No verdict yet.
-    StillIdentifying,
-}
-
-impl NeedsYouGroup {
-    pub const IN_ORDER: [Self; 6] = [
-        Self::PickAPressing,
-        Self::CountsOrLengthsDisagree,
-        Self::AlreadyInLibrary,
-        Self::LookupFailed,
-        Self::NoMatch,
-        Self::StillIdentifying,
-    ];
-
-    /// The group a reason batches under. The one place the collapse happens.
-    pub fn of(reason: &NeedsYouReason) -> Self {
-        let needs_you = match reason {
-            NeedsYouReason::StillIdentifying { .. } => return Self::StillIdentifying,
-            NeedsYouReason::Disagreement(needs_you) => needs_you,
-        };
-        match needs_you {
-            NeedsYou::SeveralMatches { .. } => Self::PickAPressing,
-            NeedsYou::TrackCountDisagrees { .. }
-            | NeedsYou::DurationsDisagree { .. }
-            | NeedsYou::SourceLengthsUnknown
-            | NeedsYou::LocalDurationUnknown => Self::CountsOrLengthsDisagree,
-            NeedsYou::AlreadyInLibrary => Self::AlreadyInLibrary,
-            NeedsYou::LookupFailed => Self::LookupFailed,
-            NeedsYou::NoMatch | NeedsYou::NothingToLookUp => Self::NoMatch,
-        }
-    }
-}
-
-/// Why a row needs you.
-///
-/// [`NeedsYou`] rides along whole rather than being re-spelled here — it
-/// already carries every operand a row states its disagreement with.
+/// What identification is doing for a candidate with no stored verdict.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum NeedsYouReason {
-    /// The stored verdict classified to this.
-    Disagreement(NeedsYou),
-    /// No stored verdict yet. Work in progress, not a decision anyone is being
-    /// asked for — and `phase` says *which* kind of work in progress, because
-    /// three unlike states share this group.
-    StillIdentifying { phase: IdentifyPhase },
-}
-
-/// How far identification has got for a candidate with no stored verdict.
-///
-/// Without this the row cannot tell three different things apart, and the
-/// design's dimmed group is supposed to show which: a candidate the sweep has
-/// not reached, one being worked on, and a terminal run whose verdict has not
-/// been stored. Provider failures do not use the third state; they are stored
-/// failed verdicts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IdentifyPhase {
-    /// Nothing has run yet: the sweep has not reached this candidate.
+pub enum IdentificationStatus {
+    /// The candidate has been admitted but its driver has not started.
     Queued,
-    /// A run is in flight — signals are being gathered, or a lookup is out.
+    /// Signals are being gathered or a provider lookup is in flight.
     Running,
-    /// A run settled but its verdict is not stored yet. This is normally the
-    /// moment between accepting the terminal state and completing its write;
-    /// a write failure can leave the run here.
-    NoAnswer,
-}
-
-impl IdentifyPhase {
-    /// Read the phase off the candidate's live identify state. Only meaningful
-    /// when no verdict is stored: with one stored, the classification is the
-    /// answer and the phase says nothing.
-    pub fn of(state: &IdentifyState) -> Self {
-        match state {
-            IdentifyState::Idle => Self::Queued,
-            IdentifyState::Triangulating { .. } => Self::Running,
-            IdentifyState::Found { .. }
-            | IdentifyState::NotFoundAnywhere { .. }
-            | IdentifyState::ManualOnly { .. }
-            | IdentifyState::Failed { .. } => Self::NoAnswer,
-        }
-    }
+    /// The identify reducer has a terminal result and the sweep is committing
+    /// its verdict, metadata, and prepared documents.
+    Finalizing,
+    /// The terminal result could not be committed. The result stays available
+    /// to the candidate pane and the diagnostic says why the row stopped.
+    FinalizationFailed { error: String },
 }
 
 /// What is known about one candidate: the classification of its stored verdict,
@@ -188,8 +107,8 @@ impl IdentifyPhase {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CandidateAnswer {
     Classified(QueueClassification),
-    Idle,
-    Unanswered(IdentifyPhase),
+    Unidentified,
+    Identification(IdentificationStatus),
 }
 
 /// Which signal produced a match — the row's trailing evidence chip, and the

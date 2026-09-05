@@ -25,18 +25,6 @@ fn pairing_cancellation_crosses_the_bridge_as_cancellation() {
 mod triage_tests {
     use super::*;
 
-    /// The stacking order the UIs iterate is core's, spelled once on this side
-    /// so mobile builds carry it too. This is what keeps the two spellings from
-    /// drifting — reorder either and it fails.
-    #[test]
-    fn group_order_mirrors_core() {
-        let core: Vec<BridgeNeedsYouGroup> = bae_core::import::NeedsYouGroup::IN_ORDER
-            .iter()
-            .map(|group| BridgeNeedsYouGroup::from_core(*group))
-            .collect();
-        assert_eq!(bridge_needs_you_groups_in_order(), core);
-    }
-
     /// The badge row is a projection of the identify state, so the two cross
     /// as one value rather than side by side: a state with signals carries its
     /// badges, and `Idle` carries none.
@@ -100,14 +88,14 @@ mod triage_tests {
     /// rule.
     #[test]
     fn tab_of_placement_mirrors_core() {
-        use bae_core::import::{NeedsYouGroup, NeedsYouReason, TriagePlacement, TriageTab};
+        use bae_core::import::{IdentificationStatus, TriagePlacement, TriageTab};
         for core in [
             TriagePlacement::Ready,
+            TriagePlacement::Identification {
+                status: IdentificationStatus::Queued,
+            },
             TriagePlacement::NeedsYou {
-                group: NeedsYouGroup::StillIdentifying,
-                reason: NeedsYouReason::StillIdentifying {
-                    phase: bae_core::import::IdentifyPhase::Queued,
-                },
+                reason: bae_core::identify::NeedsYou::SeveralMatches { count: 2 },
             },
             TriagePlacement::Importing,
             TriagePlacement::Done,

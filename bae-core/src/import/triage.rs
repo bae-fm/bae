@@ -100,16 +100,15 @@ pub fn place(
     }
     let reason = match answer {
         CandidateAnswer::Classified(QueueClassification::Ready) => return TriagePlacement::Ready,
-        CandidateAnswer::Classified(QueueClassification::NeedsYou(needs_you)) => {
-            NeedsYouReason::Disagreement(needs_you.clone())
+        CandidateAnswer::Classified(QueueClassification::NeedsYou(needs_you)) => needs_you.clone(),
+        CandidateAnswer::Unidentified => return TriagePlacement::Pending,
+        CandidateAnswer::Identification(status) => {
+            return TriagePlacement::Identification {
+                status: status.clone(),
+            }
         }
-        CandidateAnswer::Idle => return TriagePlacement::Pending,
-        CandidateAnswer::Unanswered(phase) => NeedsYouReason::StillIdentifying { phase: *phase },
     };
-    TriagePlacement::NeedsYou {
-        group: NeedsYouGroup::of(&reason),
-        reason,
-    }
+    TriagePlacement::NeedsYou { reason }
 }
 
 /// Where a candidate's import stands, from the three places that can say so.
@@ -147,7 +146,7 @@ pub fn import_status_of(
 /// the queue as projected.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TriageRuntimeFacts {
-    pub identify_phase: Option<IdentifyPhase>,
+    pub identification: Option<IdentificationStatus>,
     /// Whether an import owns this candidate right now. How far it has got is
     /// the runtime's, read by the leaf that draws the bar.
     pub importing: bool,
@@ -158,7 +157,7 @@ impl Default for TriageRuntimeFacts {
     /// import has claimed it.
     fn default() -> Self {
         Self {
-            identify_phase: None,
+            identification: None,
             importing: false,
         }
     }
@@ -167,12 +166,46 @@ impl Default for TriageRuntimeFacts {
 impl TriageRuntimeFacts {
     pub fn of(runtime: &CandidateRuntimeSnapshot) -> Self {
         Self {
-            identify_phase: runtime.identify.as_ref().map(|identify| {
-                identify
-                    .state()
-                    .map_or(IdentifyPhase::Queued, IdentifyPhase::of)
+            identification: runtime.identify.as_ref().map(|identify| {
+                if let Some(error) = identify.finalization_failure() {
+                    return IdentificationStatus::FinalizationFailed {
+                        error: error.to_string(),
+                    };
+                }
+                match identify.state() {
+                    None => IdentificationStatus::Queued,
+                    Some(IdentifyState::Triangulating { .. }) => IdentificationStatus::Running,
+                    Some(
+                        IdentifyState::Found { .. }
+                        | IdentifyState::NotFoundAnywhere { .. }
+                        | IdentifyState::ManualOnly { .. }
+                        | IdentifyState::Failed { .. },
+                    ) => IdentificationStatus::Finalizing,
+                    Some(IdentifyState::Idle) => {
+                        unreachable!("idle identification has no runtime value")
+                    }
+                }
             }),
             importing: runtime.import.is_some(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_terminal_identify_result_is_not_a_needs_you_question() {
+        let placement = place(
+            false,
+            false,
+            None,
+            None,
+            false,
+            &CandidateAnswer::Identification(IdentificationStatus::Finalizing),
+        );
+
+        assert!(!matches!(placement, TriagePlacement::NeedsYou { .. }));
     }
 }

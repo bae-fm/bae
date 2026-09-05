@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Naziv (Ž–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Na čekanju</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Gotovo</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Odaberite izdanje</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Broj ili trajanja se ne slažu</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Već u fonoteci</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>Bez podudaranja</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Još se identificira</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identifikacija</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Idi na kandidata koji se još prepoznaje</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Odabrano: {count}</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>Spremno</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Čeka identifikaciju</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identifikacija…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Nije se moglo dovršiti. Pokušat ćemo ponovno</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtriraj…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Dodaj mapu…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Ovdje još nema ničega</value></data>

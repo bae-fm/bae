@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>பெயர் (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>நிலுவையில்</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>முடிந்தது</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ஒரு அச்சுப் பதிப்பைத் தேர்வு செய்</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>எண்ணிக்கை அல்லது நீளம் ஒத்துப்போகவில்லை</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ஏற்கனவே நூலகத்தில்</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>பொருத்தம் கிடைக்கவில்லை</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>இன்னும் அடையாளம் காணப்படும் வேட்பாளருக்குச் செல்</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} தேர்ந்தெடுக்கப்பட்டன</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>தயார்</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>அடையாளம் காண காத்திருக்கிறது</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>அடையாளம் காணப்படுகிறது…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கப்படும்</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>வடிகட்டு…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>கோப்புறையைச் சேர்…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>இங்கு இன்னும் எதுவும் இல்லை</value></data>

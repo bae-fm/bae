@@ -910,30 +910,34 @@ async fn a_stored_verdict_carries_its_durations_and_signals() {
     );
 }
 
-/// A verdict with no signals behind it is not a verdict: the state machine
-/// only reaches a terminal state from a settled snapshot, so a row with
-/// nothing recorded is refused and the next pass asks again.
+/// A terminal state without its settled signals cannot be committed, and the
+/// finalizer reports that failure instead of pretending the candidate remains
+/// queued for another pass.
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
-async fn a_verdict_with_no_signals_writes_nothing() {
+async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let fixture = Fixture::new("verdict-without-signals").await;
-    let dir = fixture.disc_id_candidate("Album");
-    fixture.scan(1).await;
+    let candidate = synthetic_candidate("/missing-signals", 321);
+    let entry = InFlight {
+        job: IdentifyJob {
+            identity: candidate_identity(&candidate),
+            candidates: vec![candidate],
+        },
+        run: IdentifyRunId::for_test(1),
+        signals: None,
+        expected_metadata_revision: 0,
+    };
 
-    let wrote = crate::import::sweep::settle::save(
+    let outcome = finish_candidate(
         &fixture.context(),
+        &entry,
+        TerminalVerdict::NotFoundAnywhere.resume_state(&|_| {
+            unreachable!("a no-match verdict names no release")
+        }),
         &CancellationToken::new(),
-        &dir.to_string_lossy(),
-        &fixture.content_hash(&dir),
-        &dir.to_string_lossy(),
-        &TerminalVerdict::NotFoundAnywhere,
-        None,
-        0,
-        0,
-        blank_metadata_for_dir(&dir),
     )
     .await;
 
-    assert!(!wrote);
-    assert!(fixture.identified_for(&dir).await.is_none());
+    assert!(matches!(outcome, FinishCandidateOutcome::Failed { .. }));
+    assert!(fixture.stored().await.is_empty());
 }

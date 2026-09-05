@@ -80,9 +80,52 @@ async fn a_planned_candidate_is_queued_before_its_driver_reports() {
         panic!("the pass admits its queue atomically before starting drivers");
     };
     assert_eq!(
-        crate::import::TriageRuntimeFacts::of(&runtimes[&key]).identify_phase,
-        Some(crate::import::IdentifyPhase::Queued)
+        crate::import::TriageRuntimeFacts::of(&runtimes[&key]).identification,
+        Some(crate::import::IdentificationStatus::Queued)
     );
+
+    fixture.provider.release();
+    tokio::time::timeout(Duration::from_secs(20), pass)
+        .await
+        .expect("the pass finishes after the provider resumes")
+        .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn every_candidate_sharing_an_identify_job_reports_its_live_status() {
+    let fixture = Fixture::new("shared-job-status").await;
+    let first = fixture.disc_id_candidate("First");
+    let second = fixture.disc_id_candidate("Second");
+    let keys = [
+        first.to_string_lossy().into_owned(),
+        second.to_string_lossy().into_owned(),
+    ];
+    fixture.provider.route("/discid/", 200, "{}");
+    fixture.provider.hold("/discid/");
+    fixture.scan(2).await;
+
+    let context = fixture.context();
+    let token = CancellationToken::new();
+    let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
+
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let runtimes = fixture.import.candidate_runtimes();
+            let all_running = keys.iter().all(|key| {
+                runtimes.get(key).is_some_and(|runtime| {
+                    crate::import::TriageRuntimeFacts::of(runtime).identification
+                        == Some(crate::import::IdentificationStatus::Running)
+                })
+            });
+            if all_running {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("every member reports the shared job's running state");
 
     fixture.provider.release();
     tokio::time::timeout(Duration::from_secs(20), pass)

@@ -8,10 +8,10 @@
 //! release an import wrote, the error one failed with. Whoever wants those
 //! reads the rows.
 //!
-//! A terminal identify state stays here only across the interval between the
-//! reducer producing it and the verdict transaction committing it. The stored
-//! event then removes it. If that write fails, the state remains visible and
-//! the operation reports the write failure to its initiator.
+//! A terminal identify state stays here across the interval between the reducer
+//! producing it and the verdict transaction committing it. The stored event
+//! then removes it. A failed commit becomes an explicit runtime failure rather
+//! than a terminal result that still looks in flight.
 //!
 //! Changes are published per key — one [`CandidateRuntimeChange`] for the one
 //! candidate an event concerned — so a consumer holding the list never
@@ -258,6 +258,38 @@ impl CandidateRuntime {
         });
     }
 
+    /// Identification reached a terminal result but could not commit it.
+    /// Preserve the result for the pane and attach the failure that stopped the
+    /// row, replacing either the representative's terminal state or a grouped
+    /// candidate's queue marker.
+    pub(super) fn fail_identification(&self, candidate_key: &str, error: String) {
+        self.set(candidate_key, |runtime| {
+            runtime.identify = Some(match runtime.identify.take() {
+                Some(identify) => identify.into_finalization_failed(error),
+                None => CandidateIdentifyRuntime::finalization_failed(error),
+            });
+        });
+    }
+
+    /// Report the shared identify job's state for one of its candidate keys.
+    /// Duplicate-content candidates have one driver but every row represents
+    /// the same live job, so the sweep applies each driver state to every key.
+    pub(super) fn report_identification(
+        &self,
+        candidate_key: &str,
+        state: &crate::identify::IdentifyState,
+    ) {
+        let current = self.get(candidate_key).and_then(|runtime| runtime.identify);
+        let preserves_current = current.as_ref().is_some_and(|identify| {
+            (matches!(state, crate::identify::IdentifyState::Idle) && identify.is_terminal())
+                || (state.is_terminal() && identify.is_finalization_failed())
+        });
+        if !preserves_current {
+            let identify = CandidateIdentifyRuntime::from_state(state.clone());
+            self.set(candidate_key, |runtime| runtime.identify = identify);
+        }
+    }
+
     /// Record that an import owns this candidate.
     ///
     /// Written when the import command is queued, not when the worker's first
@@ -347,16 +379,7 @@ impl CandidateRuntime {
                 // The retained terminal state covers the interval before the
                 // verdict's durable write lands. `CandidateVerdictStored`
                 // below clears it after the transaction commits.
-                let torn_down = matches!(state, crate::identify::IdentifyState::Idle)
-                    && self.get(candidate_key).is_some_and(|runtime| {
-                        runtime
-                            .identify
-                            .is_some_and(|identify| identify.is_terminal())
-                    });
-                if !torn_down {
-                    let identify = CandidateIdentifyRuntime::from_state(state.clone());
-                    self.set(candidate_key, |runtime| runtime.identify = identify);
-                }
+                self.report_identification(candidate_key, state);
             }
             // The candidate's answer now lives in its stored verdict row, and
             // the candidate list serves it from there as the resumed state.

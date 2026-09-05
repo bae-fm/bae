@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>പേര് (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>തീർപ്പാക്കാത്തവ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>പൂർത്തിയായി</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ഒരു പ്രസ്സിംഗ് തിരഞ്ഞെടുക്കുക</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>എണ്ണമോ ദൈർഘ്യമോ യോജിക്കുന്നില്ല</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ഇതിനകം ലൈബ്രറിയിൽ</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>പൊരുത്തം കണ്ടെത്തിയില്ല</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ഇപ്പോഴും തിരിച്ചറിയുന്നു</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>തിരിച്ചറിയുന്നു</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ഇപ്പോഴും തിരിച്ചറിയുന്ന ഇനത്തിലേക്ക് പോകുക</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} തിരഞ്ഞെടുത്തു</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>തയ്യാർ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>തിരിച്ചറിയലിനായി കാത്തിരിക്കുന്നു</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>തിരിച്ചറിയുന്നു…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>പൂർത്തിയാക്കാനായില്ല. വീണ്ടും ശ്രമിക്കും</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ഫിൽട്ടർ…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ഫോൾഡർ ചേർക്കുക…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ഇവിടെ ഇതുവരെ ഒന്നുമില്ല</value></data>

@@ -415,6 +415,18 @@ impl ImportServiceHandle {
         self.runtime.clear_automatic_identification(candidate_key);
     }
 
+    pub(crate) fn fail_identification(&self, candidate_key: &str, error: String) {
+        self.runtime.fail_identification(candidate_key, error);
+    }
+
+    pub(crate) fn report_identification(
+        &self,
+        candidate_key: &str,
+        state: &crate::identify::IdentifyState,
+    ) {
+        self.runtime.report_identification(candidate_key, state);
+    }
+
     /// The signals extraction has found for one key so far. `None` before the
     /// first snapshot, and for a key whose run settled in an earlier session —
     /// what that run stored is on the candidate's row instead.

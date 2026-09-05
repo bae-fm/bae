@@ -215,13 +215,12 @@ pub enum BridgeTriageTab {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeTriagePlacement {
     Pending,
+    Identification {
+        status: BridgeIdentificationStatus,
+    },
     Ready,
     NeedsYou {
-        /// The header this row stacks under.
-        group: BridgeNeedsYouGroup,
-        /// The question itself, with its operands, so the row's line can be
-        /// precise where its group header cannot.
-        reason: BridgeNeedsYouReason,
+        reason: BridgeNeedsYou,
     },
     /// An import claimed this candidate and has not finished. Not Done: the
     /// folder is not in the library until the import says it is. How far it
@@ -243,42 +242,17 @@ pub enum BridgeTriageSkipAction {
     Unskip,
 }
 
-/// The Needs-you group headers. Each UI localizes the variant from its own
-/// catalog; the stacking order comes from
-/// [`bridge_needs_you_groups_in_order`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeNeedsYouGroup {
-    PickAPressing,
-    CountsOrLengthsDisagree,
-    AlreadyInLibrary,
-    LookupFailed,
-    NoMatch,
-    StillIdentifying,
-}
-
+/// What identification is doing for a candidate with no stored verdict.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeNeedsYouReason {
-    Disagreement {
-        disagreement: BridgeNeedsYou,
-    },
-    /// No verdict yet — the row is dimmed and leaves this group on its own.
-    /// `phase` says which of three unlike states it is in, so the row can say
-    /// so rather than showing all three identically.
-    StillIdentifying {
-        phase: BridgeIdentifyPhase,
-    },
-}
-
-/// How far identification has got for a candidate with no stored verdict.
-/// Mirror of `bae_core::import::IdentifyPhase`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeIdentifyPhase {
-    /// Nothing has run yet: the sweep has not reached this candidate.
+pub enum BridgeIdentificationStatus {
+    /// Admitted to the queue but not started.
     Queued,
-    /// A run is in flight.
+    /// Signals or provider lookups are in flight.
     Running,
-    /// A run settled but its verdict has not been stored yet.
-    NoAnswer,
+    /// A terminal result is being committed.
+    Finalizing,
+    /// The terminal result could not be committed.
+    FinalizationFailed { error: BridgeError },
 }
 
 /// Mirror of bae-core's `identify::NeedsYou`: one variant per question the user
@@ -334,27 +308,12 @@ pub fn bridge_needs_you_key(needs_you: &BridgeNeedsYou) -> String {
     needs_you.loc_key().to_string()
 }
 
-/// The Needs-you groups in the order the sidebar stacks them. Ordering is a
-/// domain decision, so it is stated once rather than in each UI. Mirrors
-/// `bae_core::import::NeedsYouGroup::IN_ORDER`, which `triage_group_order`
-/// pins it against.
-#[uniffi::export]
-pub fn bridge_needs_you_groups_in_order() -> Vec<BridgeNeedsYouGroup> {
-    vec![
-        BridgeNeedsYouGroup::PickAPressing,
-        BridgeNeedsYouGroup::CountsOrLengthsDisagree,
-        BridgeNeedsYouGroup::AlreadyInLibrary,
-        BridgeNeedsYouGroup::LookupFailed,
-        BridgeNeedsYouGroup::NoMatch,
-        BridgeNeedsYouGroup::StillIdentifying,
-    ]
-}
-
 /// Which tab a placement puts the row in — the filter a tab bar applies.
 #[uniffi::export]
 pub fn bridge_triage_tab(placement: &BridgeTriagePlacement) -> BridgeTriageTab {
     match placement {
         BridgeTriagePlacement::Pending
+        | BridgeTriagePlacement::Identification { .. }
         | BridgeTriagePlacement::Ready
         | BridgeTriagePlacement::NeedsYou { .. }
         | BridgeTriagePlacement::Importing

@@ -494,7 +494,7 @@ async fn an_active_import_omits_its_previous_persisted_failure_from_the_detail()
         .unwrap()
         .expect("the stored candidate has a detail")
         .resolve(&crate::import::TriageRuntimeFacts {
-            identify_phase: None,
+            identification: None,
             importing: true,
         });
 

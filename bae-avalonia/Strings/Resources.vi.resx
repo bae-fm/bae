@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Tên (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>Đang chờ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Hoàn tất</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Chọn bản ép</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Số lượng hoặc thời lượng không khớp</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Đã có trong thư viện</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>Không khớp</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Vẫn đang nhận dạng</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Đang nhận dạng</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Đến ứng viên vẫn đang được nhận dạng</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>Đã chọn {count}</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>Sẵn sàng</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>Đang chờ nhận dạng</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Đang nhận dạng…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Không hoàn tất được. Sẽ thử lại</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Lọc…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Thêm thư mục…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Chưa có gì ở đây</value></data>

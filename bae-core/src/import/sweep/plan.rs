@@ -1,5 +1,35 @@
 use super::*;
 
+/// The candidates the sweep is responsible for: New ones only.
+///
+/// Added candidates are already in the library and skipped candidates reflect
+/// an explicit user decision, so neither belongs in automatic identification.
+///
+/// Read from the tables rather than through the list: a pass is planned right
+/// after the event that changed the queue — a skip, a scan item — and the
+/// list's query lands after the commit it reflects, so it can still describe
+/// the queue before that change.
+pub(super) async fn new_candidates(
+    context: &SweepContext,
+) -> Result<Vec<FolderCandidate>, crate::library::LibraryError> {
+    let candidates = context.library_manager.load_sweepable_candidates().await?;
+    let runtime = context.import.candidate_runtimes();
+    Ok(candidates
+        .into_iter()
+        .filter(|candidate| {
+            runtime
+                .get(candidate.path.to_string_lossy().as_ref())
+                .is_none_or(|runtime| {
+                    runtime.import.is_none()
+                        && runtime
+                            .identify
+                            .as_ref()
+                            .is_none_or(|identify| !identify.is_finalization_failed())
+                })
+        })
+        .collect())
+}
+
 pub(super) fn enqueue_candidate(pending: &mut VecDeque<IdentifyJob>, candidate: FolderCandidate) {
     let identity = candidate_identity(&candidate);
     if let Some(job) = pending.iter_mut().find(|job| job.identity == identity) {

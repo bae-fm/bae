@@ -158,9 +158,8 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void AVerdictSettlingUnderTheOpenPaneKeepsItsSelection()
     {
-        var identifying = new BridgeTriagePlacement.NeedsYou(
-            BridgeNeedsYouGroup.StillIdentifying,
-            new BridgeNeedsYouReason.StillIdentifying(BridgeIdentifyPhase.Running));
+        var identifying = new BridgeTriagePlacement.Identification(
+            new BridgeIdentificationStatus.Running());
         var (view, app) = BuildSection(
             MatchedItems(identifying, BridgeTriageSkipAction.Skip),
             MatchedSummary(identifying, BridgeTriageTab.Pending),
@@ -179,11 +178,9 @@ public sealed class ImportSectionViewTests
     [AvaloniaFact]
     public void IdentificationPhaseLivesOnTheTrailingIndicatorTooltip()
     {
-        var phase = BridgeIdentifyPhase.Running;
-        var label = BridgeDisplay.LocalizedLine(phase);
-        var placement = new BridgeTriagePlacement.NeedsYou(
-            BridgeNeedsYouGroup.StillIdentifying,
-            new BridgeNeedsYouReason.StillIdentifying(phase));
+        var status = new BridgeIdentificationStatus.Running();
+        var label = BridgeDisplay.LocalizedLine(status);
+        var placement = new BridgeTriagePlacement.Identification(status);
         var view = BuildView(
             MatchedItems(placement, BridgeTriageSkipAction.Skip),
             MatchedSummary(placement, BridgeTriageTab.Pending));
@@ -195,6 +192,30 @@ public sealed class ImportSectionViewTests
         Assert.Contains(
             row.GetLogicalDescendants().OfType<Control>(),
             control => Equals(ToolTip.GetTip(control), label));
+        Assert.Equal(0.6, row.Opacity);
+    }
+
+    [AvaloniaFact]
+    public void AFinalizationFailureReplacesTheInProgressPresentation()
+    {
+        var failure = new BridgeException.Diagnostic(
+            new BridgeErrorCategory.Import(), "the verdict could not be stored");
+        var status = new BridgeIdentificationStatus.FinalizationFailed(failure);
+        var placement = new BridgeTriagePlacement.Identification(status);
+        var view = BuildView(
+            MatchedItems(placement, BridgeTriageSkipAction.Skip),
+            MatchedSummary(placement, BridgeTriageTab.Pending));
+
+        var row = CandidateRow(view);
+        var label = BridgeDisplay.LocalizedLine(failure);
+        Assert.Contains(
+            row.GetLogicalDescendants().OfType<TextBlock>(),
+            text => text.Text == label);
+        Assert.Empty(row.GetLogicalDescendants().OfType<Spinner>());
+        Assert.Contains(
+            row.GetLogicalDescendants().OfType<Control>(),
+            control => Equals(ToolTip.GetTip(control), label));
+        Assert.Equal(1, row.Opacity);
     }
 
     // A folder group renders as a header row with its rows as siblings, so

@@ -242,7 +242,7 @@ pub enum BridgeEntityKind {
     File,
 }
 
-#[derive(Debug, Clone, thiserror::Error, uniffi::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum BridgeError {
     /// The user cancelled — the UI shows nothing.
     #[error("cancelled")]

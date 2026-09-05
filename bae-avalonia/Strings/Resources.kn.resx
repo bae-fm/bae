@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>ಹೆಸರು (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>ಬಾಕಿ</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>ಮುಗಿದಿದೆ</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>ಪ್ರೆಸಿಂಗ್ ಆಯ್ಕೆಮಾಡಿ</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>ಸಂಖ್ಯೆ ಅಥವಾ ಅವಧಿ ಹೊಂದಿಕೆಯಾಗುತ್ತಿಲ್ಲ</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>ಈಗಾಗಲೇ ಗ್ರಂಥಾಲಯದಲ್ಲಿ</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>ಹೊಂದಾಣಿಕೆ ಸಿಕ್ಕಿಲ್ಲ</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>ಇನ್ನೂ ಗುರುತಿಸಲಾಗುತ್ತಿರುವ ಅಭ್ಯರ್ಥಿಗೆ ಹೋಗಿ</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} ಆಯ್ಕೆಯಾಗಿವೆ</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>ಸಿದ್ಧ</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ಗುರುತಿಸುವಿಕೆಗೆ ಕಾಯುತ್ತಿದೆ</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>ಗುರುತಿಸಲಾಗುತ್ತಿದೆ…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>ಪೂರ್ಣಗೊಳಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಲಾಗುವುದು</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ಫಿಲ್ಟರ್…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ಫೋಲ್ಡರ್ ಸೇರಿಸಿ…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>ಇಲ್ಲಿ ಇನ್ನೂ ಏನೂ ಇಲ್ಲ</value></data>

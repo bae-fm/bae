@@ -256,10 +256,7 @@ fn a_verdict_at_a_stale_edit_revision_is_not_the_row_s_answer() {
 
     assert!(matches!(
         row_for(&flat, "Release").placement,
-        TriagePlacement::NeedsYou {
-            reason: crate::import::NeedsYouReason::StillIdentifying { .. },
-            ..
-        }
+        TriagePlacement::Identification { .. }
     ));
 }
 
@@ -311,7 +308,7 @@ fn a_claimed_import_places_the_row_as_importing() {
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            identify_phase: Some(IdentifyPhase::Queued),
+            identification: Some(IdentificationStatus::Queued),
             importing: true,
         },
     )]);
@@ -457,7 +454,7 @@ fn retrying_a_failed_import_moves_it_through_importing_to_done() {
     let running = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            identify_phase: Some(IdentifyPhase::Queued),
+            identification: Some(IdentificationStatus::Queued),
             importing: true,
         },
     )]);
@@ -531,7 +528,7 @@ fn a_running_import_outranks_the_release_it_has_not_finished_writing() {
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            identify_phase: Some(IdentifyPhase::Queued),
+            identification: Some(IdentificationStatus::Queued),
             importing: true,
         },
     )]);
@@ -552,13 +549,13 @@ fn a_running_import_outranks_the_release_it_has_not_finished_writing() {
 }
 
 #[test]
-fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
+fn the_identification_rides_on_a_row_with_no_stored_verdict() {
     let mut rows = queue();
     rows.candidates = vec![candidate("Release")];
     let facts = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            identify_phase: Some(IdentifyPhase::Running),
+            identification: Some(IdentificationStatus::Running),
             importing: false,
         },
     )]);
@@ -575,11 +572,8 @@ fn the_identify_phase_rides_on_a_row_with_no_stored_verdict() {
 
     assert_eq!(
         row_for(&flat, "Release").placement,
-        TriagePlacement::NeedsYou {
-            group: crate::import::NeedsYouGroup::StillIdentifying,
-            reason: crate::import::NeedsYouReason::StillIdentifying {
-                phase: IdentifyPhase::Running,
-            },
+        TriagePlacement::Identification {
+            status: IdentificationStatus::Running,
         }
     );
 }
@@ -894,10 +888,7 @@ fn a_seed_at_a_stale_edit_revision_does_not_answer_the_row() {
     let row = row_for(&flat, "Release");
     assert!(matches!(
         row.placement,
-        TriagePlacement::NeedsYou {
-            reason: crate::import::NeedsYouReason::StillIdentifying { .. },
-            ..
-        }
+        TriagePlacement::Identification { .. }
     ));
     assert_eq!(row.metadata_provenance, None);
 }
@@ -944,7 +935,7 @@ fn a_seed_does_not_outrank_skipped_done_or_importing() {
     let running = BTreeMap::from([(
         key("Release"),
         TriageRuntimeFacts {
-            identify_phase: Some(IdentifyPhase::Queued),
+            identification: Some(IdentificationStatus::Queued),
             importing: true,
         },
     )]);

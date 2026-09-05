@@ -57,7 +57,7 @@ struct TriageRowView: View {
     var body: some View {
         rowContent
             .groupMemberRail(isGroupMember)
-            .opacity(isPending ? 0.6 : 1)
+            .opacity(identificationInProgress ? 0.6 : 1)
             .contentShape(Rectangle())
             .contextMenu {
                 if let skipAction = row.skipAction {
@@ -107,8 +107,11 @@ struct TriageRowView: View {
         row.resolvedBoundaries.filter(isCombined)
     }
 
-    private var isPending: Bool {
-        if case .needsYou(_, .stillIdentifying) = row.placement {
+    private var identificationInProgress: Bool {
+        if case .identification(let status) = row.placement {
+            if case .finalizationFailed = status {
+                return false
+            }
             return true
         }
         return false
@@ -208,27 +211,28 @@ extension TriageRowView {
         switch row.placement {
         case .pending:
             return nil
+        case .identification(let status):
+            if case .finalizationFailed(let error) = status {
+                return error.displayLine
+            }
+            return nil
         case .ready:
             return nil
         case .skipped:
             return nil
-        case .needsYou(let group, let reason):
+        case .needsYou(let reason):
             switch reason {
-            case .stillIdentifying:
+            case .alreadyInLibrary:
                 return nil
-            case .disagreement(let needsYou):
-                switch group {
-                case .alreadyInLibrary:
-                    return nil
-                case .pickAPressing:
-                    return nil
-                case .noMatch:
-                    return nil
-                case .lookupFailed:
-                    return nil
-                default:
-                    return needsYou.localizedText
-                }
+            case .severalMatches:
+                return nil
+            case .noMatch, .nothingToLookUp:
+                return nil
+            case .lookupFailed:
+                return nil
+            case .trackCountDisagrees, .durationsDisagree,
+                .sourceLengthsUnknown, .localDurationUnknown:
+                return reason.localizedText
             }
         case .importing, .failed, .done:
             return importStatusLine
@@ -253,10 +257,12 @@ extension TriageRowView {
         switch row.placement {
         case .pending:
             EmptyView()
+        case .identification(let status):
+            identificationTrailing(status)
         case .ready:
             EmptyView()
-        case .needsYou(let group, let reason):
-            needsYouTrailing(group: group, reason: reason)
+        case .needsYou(let reason):
+            needsYouTrailing(reason)
         case .importing:
             // The line under the title carries the bar; nothing trails it.
             EmptyView()
@@ -268,37 +274,43 @@ extension TriageRowView {
     }
 
     @ViewBuilder
-    private func needsYouTrailing(
-        group: BridgeNeedsYouGroup,
-        reason: BridgeNeedsYouReason
+    private func identificationTrailing(
+        _ status: BridgeIdentificationStatus
     ) -> some View {
-        switch reason {
-        case .stillIdentifying(let phase):
-            if phase == .running {
-                ProgressView()
-                    .controlSize(.small)
-                    .help(phase.localizedText)
+        switch status {
+        case .queued:
+            trailingIcon("clock", tint: .secondary)
+                .help(String(localized: "Waiting to be identified"))
+        case .running, .finalizing:
+            ProgressView()
+                .controlSize(.small)
+                .help(String(localized: "Identifying\u{2026}"))
+        case .finalizationFailed(let error):
+            if let line = error.displayLine {
+                trailingIcon("exclamationmark.triangle.fill", tint: .orange)
+                    .help(line)
             }
             else {
-                trailingIcon("clock", tint: .secondary)
-                    .help(phase.localizedText)
-            }
-        case .disagreement(let needsYou):
-            switch group {
-            case .pickAPressing:
-                chip(needsYou.localizedText, tint: .orange)
-            case .alreadyInLibrary:
-                chip(needsYou.localizedText, tint: .blue)
-            case .countsOrLengthsDisagree:
-                trailingIcon("questionmark.circle", tint: .orange)
-            case .lookupFailed:
                 trailingIcon("exclamationmark.triangle.fill", tint: .orange)
-                    .help(needsYou.localizedText)
-            case .noMatch:
-                EmptyView()
-            case .stillIdentifying:
-                EmptyView()
             }
+        }
+    }
+
+    @ViewBuilder
+    private func needsYouTrailing(_ reason: BridgeNeedsYou) -> some View {
+        switch reason {
+        case .severalMatches:
+            chip(reason.localizedText, tint: .orange)
+        case .alreadyInLibrary:
+            chip(reason.localizedText, tint: .blue)
+        case .trackCountDisagrees, .durationsDisagree,
+            .sourceLengthsUnknown, .localDurationUnknown:
+            trailingIcon("questionmark.circle", tint: .orange)
+        case .lookupFailed:
+            trailingIcon("exclamationmark.triangle.fill", tint: .orange)
+                .help(reason.localizedText)
+        case .noMatch, .nothingToLookUp:
+            EmptyView()
         }
     }
 
@@ -435,9 +447,9 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                 onSkip: { _ in }
             )
             TriageRowView(
-                row: PreviewData.triageRowStillIdentifying,
+                row: PreviewData.triageRowIdentifying,
                 coverContent: importStore.sidebarCover(
-                    for: PreviewData.triageRowStillIdentifying
+                    for: PreviewData.triageRowIdentifying
                 ),
                 uploadObservation: nil,
                 selection: nil,

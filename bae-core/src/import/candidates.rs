@@ -89,6 +89,10 @@ pub struct CandidateIdentifyRuntime(CandidateIdentifyRuntimeKind);
 enum CandidateIdentifyRuntimeKind {
     Queued(IdentifyQueueOwner),
     Reported(crate::identify::IdentifyState),
+    FinalizationFailed {
+        state: Option<crate::identify::IdentifyState>,
+        error: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,6 +114,10 @@ impl CandidateIdentifyRuntime {
         ))
     }
 
+    pub(crate) fn finalization_failed(error: String) -> Self {
+        Self(CandidateIdentifyRuntimeKind::FinalizationFailed { state: None, error })
+    }
+
     /// Wrap a driver's non-idle state. Idle is represented by this value being
     /// absent from [`CandidateRuntimeSnapshot`].
     pub fn from_state(state: crate::identify::IdentifyState) -> Option<Self> {
@@ -128,7 +136,33 @@ impl CandidateIdentifyRuntime {
         match &self.0 {
             CandidateIdentifyRuntimeKind::Queued(_) => false,
             CandidateIdentifyRuntimeKind::Reported(state) => state.is_terminal(),
+            CandidateIdentifyRuntimeKind::FinalizationFailed { .. } => true,
         }
+    }
+
+    pub(crate) fn is_finalization_failed(&self) -> bool {
+        matches!(
+            self.0,
+            CandidateIdentifyRuntimeKind::FinalizationFailed { .. }
+        )
+    }
+
+    pub(crate) fn finalization_failure(&self) -> Option<&str> {
+        match &self.0 {
+            CandidateIdentifyRuntimeKind::FinalizationFailed { error, .. } => Some(error),
+            CandidateIdentifyRuntimeKind::Queued(_) | CandidateIdentifyRuntimeKind::Reported(_) => {
+                None
+            }
+        }
+    }
+
+    pub(crate) fn into_finalization_failed(self, error: String) -> Self {
+        let state = match self.0 {
+            CandidateIdentifyRuntimeKind::Queued(_) => None,
+            CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
+            CandidateIdentifyRuntimeKind::FinalizationFailed { state, .. } => state,
+        };
+        Self(CandidateIdentifyRuntimeKind::FinalizationFailed { state, error })
     }
 
     /// The state a driver reported, or `None` while the work is queued.
@@ -136,6 +170,7 @@ impl CandidateIdentifyRuntime {
         match &self.0 {
             CandidateIdentifyRuntimeKind::Queued(_) => None,
             CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
+            CandidateIdentifyRuntimeKind::FinalizationFailed { state, .. } => state.as_ref(),
         }
     }
 
@@ -144,6 +179,7 @@ impl CandidateIdentifyRuntime {
         match self.0 {
             CandidateIdentifyRuntimeKind::Queued(_) => None,
             CandidateIdentifyRuntimeKind::Reported(state) => Some(state),
+            CandidateIdentifyRuntimeKind::FinalizationFailed { state, .. } => state,
         }
     }
 }

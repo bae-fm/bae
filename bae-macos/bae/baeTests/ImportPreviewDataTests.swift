@@ -179,23 +179,47 @@ struct ImportPreviewDataTests {
             guard case .candidate(_, let row, _) = item else { return nil }
             return row
         }
-        let needsYouGroups = rows.compactMap { row -> BridgeNeedsYouGroup? in
-            guard case .needsYou(let group, _) = row.placement else {
-                return nil
-            }
-            return group
-        }
-
         #expect(rows.contains { $0.placement == .ready })
         #expect(rows.contains { $0.placement == .importing })
         #expect(rows.contains { $0.placement == .failed })
         #expect(rows.contains { $0.placement == .done })
         #expect(rows.contains { $0.placement == .skipped })
-        #expect(needsYouGroups.contains(.pickAPressing))
-        #expect(needsYouGroups.contains(.countsOrLengthsDisagree))
-        #expect(needsYouGroups.contains(.alreadyInLibrary))
-        #expect(needsYouGroups.contains(.noMatch))
-        #expect(needsYouGroups.contains(.stillIdentifying))
+        #expect(
+            rows.contains { row in
+                if case .needsYou(.severalMatches) = row.placement {
+                    return true
+                }
+                return false
+            }
+        )
+        #expect(
+            rows.contains { row in
+                if case .needsYou(.trackCountDisagrees) = row.placement {
+                    return true
+                }
+                return false
+            }
+        )
+        #expect(
+            rows.contains { row in
+                if case .needsYou(.alreadyInLibrary) = row.placement {
+                    return true
+                }
+                return false
+            }
+        )
+        #expect(
+            rows.contains { row in
+                if case .needsYou(.noMatch) = row.placement { return true }
+                return false
+            }
+        )
+        #expect(
+            rows.contains { row in
+                if case .identification = row.placement { return true }
+                return false
+            }
+        )
         #expect(
             entries.filter {
                 if case .invalid = $0 { return true }

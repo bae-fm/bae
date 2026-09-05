@@ -126,11 +126,13 @@ internal sealed partial class ImportSectionView
         Grid.SetColumn(trailing, 3);
         grid.Children.Add(trailing);
 
-        var isPending = row.Placement is BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying };
+        var identificationInProgress =
+            row.Placement is BridgeTriagePlacement.Identification identifying
+            && identifying.Status is not BridgeIdentificationStatus.FinalizationFailed;
         var host = new Border
         {
             Child = grid,
-            Opacity = isPending || !row.Actionable ? 0.6 : 1,
+            Opacity = identificationInProgress || !row.Actionable ? 0.6 : 1,
             Background = Brushes.Transparent,
             IsEnabled = row.Actionable,
         };
@@ -269,15 +271,17 @@ internal sealed partial class ImportSectionView
     {
         BridgeTriagePlacement.Ready or BridgeTriagePlacement.Skipped =>
             RowArtist(row),
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.StillIdentifying } => null,
-        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement) =>
+        BridgeTriagePlacement.Identification { Status: BridgeIdentificationStatus.FinalizationFailed failed } =>
+            BridgeDisplay.LocalizedLine(failed.Error),
+        BridgeTriagePlacement.Identification => null,
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.AlreadyInLibrary } =>
             RowArtist(row),
-        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.PickAPressing, BridgeNeedsYouReason.Disagreement) =>
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.SeveralMatches } =>
             row.Matched?.Artist,
-        BridgeTriagePlacement.NeedsYou(BridgeNeedsYouGroup.LookupFailed, BridgeNeedsYouReason.Disagreement) =>
+        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYou.LookupFailed } =>
             null,
-        BridgeTriagePlacement.NeedsYou { Reason: BridgeNeedsYouReason.Disagreement disagreement } =>
-            BridgeDisplay.LocalizedLine(disagreement.DisagreementValue),
+        BridgeTriagePlacement.NeedsYou needsYou =>
+            BridgeDisplay.LocalizedLine(needsYou.Reason),
         BridgeTriagePlacement.Importing or BridgeTriagePlacement.Failed or BridgeTriagePlacement.Done =>
             ImportSubLine(row),
         _ => null,
@@ -333,8 +337,8 @@ internal sealed partial class ImportSectionView
     // where the folder is this one row.
     private Control? BuildRowActions(BridgeTriageRow row)
     {
-        if (row.Placement is not BridgeTriagePlacement.NeedsYou(
-                BridgeNeedsYouGroup.AlreadyInLibrary, BridgeNeedsYouReason.Disagreement))
+        if (row.Placement is not BridgeTriagePlacement.NeedsYou
+            { Reason: BridgeNeedsYou.AlreadyInLibrary })
         {
             return null;
         }
@@ -369,8 +373,10 @@ internal sealed partial class ImportSectionView
         {
             case BridgeTriagePlacement.Ready:
                 return new Panel();
-            case BridgeTriagePlacement.NeedsYou(var group, var reason):
-                return NeedsYouTrailing(row, group, reason);
+            case BridgeTriagePlacement.Identification identifying:
+                return IdentificationTrailing(identifying.Status);
+            case BridgeTriagePlacement.NeedsYou(var reason):
+                return NeedsYouTrailing(row, reason);
             case BridgeTriagePlacement.Importing:
                 return new Spinner { Width = 14, Height = 14 };
             case BridgeTriagePlacement.Failed:
@@ -381,35 +387,39 @@ internal sealed partial class ImportSectionView
         }
     }
 
-    private Control NeedsYouTrailing(BridgeTriageRow row, BridgeNeedsYouGroup group, BridgeNeedsYouReason reason)
+    private static Control IdentificationTrailing(BridgeIdentificationStatus status)
     {
-        switch (reason)
+        Control indicator = status switch
         {
-            case BridgeNeedsYouReason.StillIdentifying stillIdentifying:
-                // A run in flight spins; one waiting its turn, or one that
-                // settled without an answer worth keeping, shows the clock —
-                // the same two glyphs the macOS row uses for the same three
-                // phases.
-                Control indicator = stillIdentifying.Phase == BridgeIdentifyPhase.Running
-                    ? new Spinner { Width = 14, Height = 14 }
-                    : Icons.Glyph(Icons.Clock, 14, "BaeTextSecondaryBrush");
-                ToolTip.SetTip(
-                    indicator,
-                    BridgeDisplay.LocalizedLine(stillIdentifying.Phase));
-                return indicator;
-            case BridgeNeedsYouReason.Disagreement disagreement:
-                return group switch
-                {
-                    BridgeNeedsYouGroup.PickAPressing => Chip(BridgeDisplay.LocalizedLine(disagreement.DisagreementValue), "BaeWarningBrush"),
-                    BridgeNeedsYouGroup.AlreadyInLibrary => Chip(BridgeDisplay.LocalizedLine(disagreement.DisagreementValue), "BaeInfoBrush"),
-                    BridgeNeedsYouGroup.CountsOrLengthsDisagree => DotIcon("BaeWarningBrush"),
-                    BridgeNeedsYouGroup.LookupFailed => LookupFailedIcon(disagreement.DisagreementValue),
-                    BridgeNeedsYouGroup.NoMatch => SearchManuallyChip(row),
-                    _ => new Panel(),
-                };
-            default:
-                return new Panel();
-        }
+            BridgeIdentificationStatus.Queued =>
+                Icons.Glyph(Icons.Clock, 14, "BaeTextSecondaryBrush"),
+            BridgeIdentificationStatus.Running or BridgeIdentificationStatus.Finalizing =>
+                new Spinner { Width = 14, Height = 14 },
+            BridgeIdentificationStatus.FinalizationFailed =>
+                DotIcon("BaeWarningBrush"),
+            _ => new Panel(),
+        };
+        ToolTip.SetTip(indicator, BridgeDisplay.LocalizedLine(status));
+        return indicator;
+    }
+
+    private Control NeedsYouTrailing(BridgeTriageRow row, BridgeNeedsYou reason)
+    {
+        return reason switch
+        {
+            BridgeNeedsYou.SeveralMatches =>
+                Chip(BridgeDisplay.LocalizedLine(reason), "BaeWarningBrush"),
+            BridgeNeedsYou.AlreadyInLibrary =>
+                Chip(BridgeDisplay.LocalizedLine(reason), "BaeInfoBrush"),
+            BridgeNeedsYou.TrackCountDisagrees
+                or BridgeNeedsYou.DurationsDisagree
+                or BridgeNeedsYou.SourceLengthsUnknown
+                or BridgeNeedsYou.LocalDurationUnknown => DotIcon("BaeWarningBrush"),
+            BridgeNeedsYou.LookupFailed => LookupFailedIcon(reason),
+            BridgeNeedsYou.NoMatch or BridgeNeedsYou.NothingToLookUp =>
+                SearchManuallyChip(row),
+            _ => new Panel(),
+        };
     }
 
     private static Control LookupFailedIcon(BridgeNeedsYou failure)

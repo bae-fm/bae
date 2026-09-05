@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>이름(Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>대기 중</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>완료</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>프레싱 선택</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>곡 수 또는 길이 불일치</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>라이브러리에 이미 있음</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>일치 항목 없음</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>아직 식별 중</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>식별 중</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>아직 식별 중인 항목으로 이동</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count}개 선택됨</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>준비됨</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>식별 대기 중</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>식별 중…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>완료하지 못했습니다. 다시 시도합니다</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>필터…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>폴더 추가…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>아직 아무것도 없습니다</value></data>

@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>नाव (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>प्रलंबित</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>पूर्ण</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>प्रेसिंग निवडा</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>संख्या किंवा कालावधी जुळत नाही</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>आधीच लायब्ररीमध्ये</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>जुळणी सापडली नाही</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>अजून ओळखत आहे</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ओळखत आहे</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>अजून ओळखल्या जाणाऱ्या उमेदवाराकडे जा</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} निवडले</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>तयार</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ओळखीच्या प्रतीक्षेत</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>ओळखत आहे…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>पूर्ण होऊ शकले नाही। पुन्हा प्रयत्न होईल</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>फिल्टर…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>फोल्डर जोडा…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>इथे अजून काहीच नाही</value></data>

@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>Nom (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>En attente</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>Terminés</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>Choisir un pressage</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>Nombre ou durées divergents</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>Déjà dans la bibliothèque</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>Sans correspondance</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>Identification en cours</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>Identification</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>Aller à un candidat encore en cours d’identification</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} sélectionnés</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>Prêt</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>En attente d'identification</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>Identification…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>Impossible de terminer. Nouvelle tentative prévue</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>Filtrer…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>Ajouter un dossier…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>Rien ici pour l'instant</value></data>

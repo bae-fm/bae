@@ -12,7 +12,7 @@ use crate::import::folder_scanner::InvalidReason;
 use crate::import::search::SourceTracks;
 use crate::import::types::MetadataSource;
 use crate::import::{FolderScanStatus, ImportedRelease};
-use crate::import::{IdentifyPhase, TriageImportStatus, TriagePlacement};
+use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 
 mod flatten;
 mod flatten_groups;
@@ -208,7 +208,7 @@ fn queued_request(view: ImportListView, display_paths: &[&str]) -> ImportListReq
                 (
                     key(display_path),
                     TriageRuntimeFacts {
-                        identify_phase: Some(IdentifyPhase::Queued),
+                        identification: Some(IdentificationStatus::Queued),
                         importing: false,
                     },
                 )

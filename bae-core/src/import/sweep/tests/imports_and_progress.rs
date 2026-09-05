@@ -622,15 +622,15 @@ async fn a_cancelled_candidate_writes_no_row() {
     let verdict = TerminalVerdict::NotFoundAnywhere;
     let cancelled = CancellationToken::new();
     cancelled.cancel();
-    assert!(
-        !save(
+    assert!(matches!(
+        save(
             &fixture.context(),
             &cancelled,
             "/x",
             "hash-x",
             "/x",
             &verdict,
-            Some(crate::signals::Signals {
+            crate::signals::Signals {
                 disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
                 barcode: crate::signals::BarcodeSignal::Absent,
                 text: crate::signals::TextSignal::Settled {
@@ -638,14 +638,14 @@ async fn a_cancelled_candidate_writes_no_row() {
                     free_text: Vec::new(),
                 },
                 durations: crate::import::probe::SourceDurations::default(),
-            }),
+            },
             0,
             0,
             blank_metadata_for_dir(&dir),
         )
         .await,
-        "the write is gated on the token, not only the lookup before it"
-    );
+        FinishCandidateOutcome::Superseded
+    ));
     let stored = fixture.stored().await;
     assert!(
         stored.values().all(|row| row.identify.is_none()),

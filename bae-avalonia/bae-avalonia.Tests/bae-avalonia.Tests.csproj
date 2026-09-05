@@ -23,10 +23,10 @@
       mapping, the restore-on-launch playback preference, and the album-grid
       multi-selection) — plain BCL types; the stores and views that render
       bridge snapshots are verified by compilation. TriageListModel (the import
-      sidebar's filter/group/sort) reads BridgeTriagePlacement straight off
-      core's BridgeTriageTab/BridgeNeedsYouGroupsInOrder FFI calls rather than
-      re-deriving tab membership itself, so it falls in the "verified by
-      compilation" half too — it cannot run without the native bridge loaded.
+      sidebar's filter/group/sort) reads BridgeTriagePlacement and asks core
+      for its BridgeTriageTab rather than re-deriving tab membership itself, so
+      it falls in the "verified by compilation" half too — it cannot run
+      without the native bridge loaded.
       The import mapping pane is NOT here: its table is bae-core's projection,
       which names bridge types all the way down, so the counts, the tally's
       arguments and the rendering are exercised from bae-avalonia.ViewTests.

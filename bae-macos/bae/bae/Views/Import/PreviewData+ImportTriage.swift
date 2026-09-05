@@ -245,10 +245,7 @@
         static let triageRowPickAPressing = triageRow(
             for: importTabSeveralMatchesCandidate,
             placement: .needsYou(
-                group: .pickAPressing,
-                reason: .disagreement(
-                    disagreement: .severalMatches(count: 2)
-                )
+                reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
             // Several matches — the pressing is exactly what's unsettled, so
@@ -275,8 +272,7 @@
         static let triageRowSeveralMatchesFromSignals = triageRow(
             for: importTabDisagreementCandidate,
             placement: .needsYou(
-                group: .pickAPressing,
-                reason: .disagreement(disagreement: .severalMatches(count: 2))
+                reason: .severalMatches(count: 2)
             ),
             skipAction: .skip,
             matched: nil,
@@ -287,10 +283,7 @@
         static let triageRowTrackMismatch = triageRow(
             for: importTabTrackMismatchCandidate,
             placement: .needsYou(
-                group: .countsOrLengthsDisagree,
-                reason: .disagreement(
-                    disagreement: .trackCountDisagrees(local: 1, source: 10)
-                )
+                reason: .trackCountDisagrees(local: 1, source: 10)
             ),
             skipAction: .skip,
             matched: triageMatch(
@@ -306,8 +299,7 @@
         static let triageRowAlreadyInLibrary = triageRow(
             for: importTabAlreadyInLibraryCandidate,
             placement: .needsYou(
-                group: .alreadyInLibrary,
-                reason: .disagreement(disagreement: .alreadyInLibrary)
+                reason: .alreadyInLibrary
             ),
             skipAction: .skip,
             matched: triageMatch(
@@ -324,8 +316,7 @@
         static let triageRowNoMatch = triageRow(
             for: importTabNoMatchCandidate,
             placement: .needsYou(
-                group: .noMatch,
-                reason: .disagreement(disagreement: .noMatch)
+                reason: .noMatch
             ),
             skipAction: .skip,
             matched: nil,
@@ -333,12 +324,9 @@
             selectable: false
         )
 
-        static let triageRowStillIdentifying = triageRow(
+        static let triageRowIdentifying = triageRow(
             for: importTabIdentifyingCandidate,
-            placement: .needsYou(
-                group: .stillIdentifying,
-                reason: .stillIdentifying(phase: .running)
-            ),
+            placement: .identification(status: .running),
             skipAction: .skip,
             matched: nil,
             metadataSummary: nil,
@@ -442,8 +430,7 @@
             triageRow(
                 for: importTabGroupedCandidates[1],
                 placement: .needsYou(
-                    group: .noMatch,
-                    reason: .disagreement(disagreement: .noMatch)
+                    reason: .noMatch
                 ),
                 skipAction: .skip,
                 matched: nil,
@@ -481,7 +468,7 @@
             triageRowTrackMismatch,
             triageRowAlreadyInLibrary,
             triageRowNoMatch,
-            triageRowStillIdentifying,
+            triageRowIdentifying,
             triageRowImporting,
             triageRowFailed,
         ]
@@ -524,9 +511,9 @@
             groupKeys: [importTabGroupKey],
             ready: readyRows(importTabPendingRows + triageGroupedRows),
             firstUnidentified: BridgeFirstUnidentifiedRowRef(
-                candidateKey: triageRowStillIdentifying.candidateKey,
+                candidateKey: triageRowIdentifying.candidateKey,
                 stableKey:
-                    "candidate:\(triageRowStillIdentifying.candidateKey)",
+                    "candidate:\(triageRowIdentifying.candidateKey)",
                 groupKey: nil,
                 visiblePosition: 0
             )

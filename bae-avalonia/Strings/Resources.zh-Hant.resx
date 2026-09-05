@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>名稱（Z–A）</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>待處理</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>已完成</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>選擇壓片版本</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>曲目數或長度不一致</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>已在資料庫中</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>找不到符合項目</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>仍在識別</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>識別中</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>跳至仍在辨識的候選項</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>已選取 {count} 項</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>就緒</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>等待識別</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>識別中…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>無法完成。將重試</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>篩選…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>加入資料夾…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>這裡還沒有內容</value></data>

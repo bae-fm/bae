@@ -371,11 +371,6 @@
   <data name="import.sort.name_za" xml:space="preserve"><value>નામ (Z–A)</value></data>
   <data name="import.tab.pending" xml:space="preserve"><value>બાકી</value></data>
   <data name="import.tab.done" xml:space="preserve"><value>પૂર્ણ</value></data>
-  <data name="import.needs_you.pick_a_pressing" xml:space="preserve"><value>પ્રેસિંગ પસંદ કરો</value></data>
-  <data name="import.needs_you.counts_or_lengths_disagree" xml:space="preserve"><value>સંખ્યા કે લંબાઈ મેળ ખાતી નથી</value></data>
-  <data name="import.needs_you.already_in_library" xml:space="preserve"><value>પહેલેથી લાઇબ્રેરીમાં</value></data>
-  <data name="import.needs_you.no_match" xml:space="preserve"><value>કોઈ મેળ મળ્યો નથી</value></data>
-  <data name="import.needs_you.still_identifying" xml:space="preserve"><value>હજી ઓળખાઈ રહ્યું છે</value></data>
   <data name="import.progress.identifying" xml:space="preserve"><value>ઓળખાઈ રહ્યું છે</value></data>
   <data name="import.progress.go_to_unidentified" xml:space="preserve"><value>હજુ ઓળખાઈ રહેલા ઉમેદવાર પર જાઓ</value></data>
   <data name="import.footbar.selected" xml:space="preserve"><value>{count} પસંદ કરેલા</value></data>
@@ -391,7 +386,6 @@
   <data name="import.row.ready" xml:space="preserve"><value>તૈયાર</value></data>
   <data name="import.phase.queued" xml:space="preserve"><value>ઓળખની રાહમાં</value></data>
   <data name="import.phase.running" xml:space="preserve"><value>ઓળખાઈ રહ્યું છે…</value></data>
-  <data name="import.phase.no_answer" xml:space="preserve"><value>પૂર્ણ થઈ શક્યું નથી. ફરી પ્રયાસ થશે</value></data>
   <data name="import.filter.placeholder" xml:space="preserve"><value>ફિલ્ટર…</value></data>
   <data name="import.folder.add" xml:space="preserve"><value>ફોલ્ડર ઉમેરો…</value></data>
   <data name="import.empty.nothing_here" xml:space="preserve"><value>અહીં હજી કંઈ નથી</value></data>

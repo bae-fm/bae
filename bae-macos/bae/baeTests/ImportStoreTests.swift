@@ -167,32 +167,6 @@ private func readyRow(
     )
 }
 
-/// A Needs-you row in `group`, never selectable.
-private func needsYouRow(
-    _ key: String,
-    title: String,
-    group: BridgeNeedsYouGroup,
-    reason: BridgeNeedsYouReason
-) -> BridgeTriageRow {
-    BridgeTriageRow(
-        candidateKey: key,
-        folderName: title,
-        watchedFolderPath: "/w",
-        displayPath: title,
-        resolvedBoundaries: [],
-        combineAncestorKey: nil,
-        actionable: true,
-        placement: .needsYou(group: group, reason: reason),
-        skipAction: .skip,
-        matched: nil,
-        metadataSummary: nil,
-        coverThumbnail: nil,
-        selectable: false,
-        importStatus: nil,
-        metadataProvenance: nil
-    )
-}
-
 private func doneRow(_ key: String, title: String) -> BridgeTriageRow {
     BridgeTriageRow(
         candidateKey: key,

@@ -303,12 +303,6 @@ internal static class BridgeDisplay
         };
     }
 
-    /// <summary>
-    /// The still-identifying row's sub-line. UI-owned chrome, not a
-    /// <c>Core</c> catalog key: the phase names three different kinds of "no
-    /// verdict yet," and none of them is a sentence bae-core authored — it only
-    /// hands over which of the three this candidate is in.
-    /// </summary>
     /// <summary>The localized label for a Done row's in-progress import step —
     /// a raw <c>BridgeImportStep</c> off <c>BridgeTriageRow.ImportStatus</c>,
     /// not the string-tag round trip <see cref="PrepareStepKey"/>/
@@ -322,11 +316,17 @@ internal static class BridgeDisplay
         _ => string.Empty,
     };
 
-    internal static string LocalizedLine(BridgeIdentifyPhase phase) => phase switch
+    /// <summary>
+    /// The identification row's activity label. A failed finalization carries
+    /// its typed error and uses the same error renderer as every other failure.
+    /// </summary>
+    internal static string? LocalizedLine(BridgeIdentificationStatus status) => status switch
     {
-        BridgeIdentifyPhase.Queued => Loc.Chrome("import.phase.queued"),
-        BridgeIdentifyPhase.Running => Loc.Chrome("import.phase.running"),
-        BridgeIdentifyPhase.NoAnswer => Loc.Chrome("import.phase.no_answer"),
+        BridgeIdentificationStatus.Queued => Loc.Chrome("import.phase.queued"),
+        BridgeIdentificationStatus.Running or BridgeIdentificationStatus.Finalizing =>
+            Loc.Chrome("import.phase.running"),
+        BridgeIdentificationStatus.FinalizationFailed failed =>
+            LocalizedLine(failed.Error),
         _ => string.Empty,
     };
 

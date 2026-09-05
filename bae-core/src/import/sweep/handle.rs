@@ -97,7 +97,7 @@ impl QueueSweepHandle {
             .import
             .queue_explicit_identification(&candidate_key);
         let run = self.context.identify.new_run();
-        self.record_explicit_lookup(run, candidate_key.clone());
+        self.record_explicit_lookup(run, candidate_key.clone(), candidate.clone());
         self.context
             .identify
             .start(run, candidate_key.clone(), CallPriority::Interactive);
@@ -113,7 +113,12 @@ impl QueueSweepHandle {
 
     /// Persist the verdict of an explicit Lookup after its lead documents have
     /// been stored.
-    pub fn record_explicit_lookup(&self, run: IdentifyRunId, candidate_key: String) {
+    fn record_explicit_lookup(
+        &self,
+        run: IdentifyRunId,
+        candidate_key: String,
+        candidate: FolderCandidate,
+    ) {
         let context = self.context.clone();
         let token = self.token.child_token();
         if self.token.is_cancelled() {
@@ -121,7 +126,8 @@ impl QueueSweepHandle {
         }
         self.tasks.spawn_on(
             async move {
-                record_explicit_lookup_verdict(&context, run, candidate_key, &token).await;
+                record_explicit_lookup_verdict(&context, run, candidate_key, candidate, &token)
+                    .await;
             },
             &self.runtime_handle,
         );

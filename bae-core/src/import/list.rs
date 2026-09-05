@@ -382,10 +382,10 @@ impl ImportCandidateDetailProjection {
         } else {
             failure
         };
-        let known = match (answer.filter(|_| actionable), facts.identify_phase) {
+        let known = match (answer.filter(|_| actionable), facts.identification.clone()) {
             (Some(classification), _) => CandidateAnswer::Classified(classification),
-            (None, Some(phase)) => CandidateAnswer::Unanswered(phase),
-            (None, None) => CandidateAnswer::Idle,
+            (None, Some(status)) => CandidateAnswer::Identification(status),
+            (None, None) => CandidateAnswer::Unidentified,
         };
         let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
         let placement = place(

@@ -302,10 +302,12 @@ impl crate::types::BridgeTriagePlacement {
         use bae_core::import::TriagePlacement as P;
         match placement {
             P::Pending => Self::Pending,
+            P::Identification { status } => Self::Identification {
+                status: crate::types::BridgeIdentificationStatus::from_core(status),
+            },
             P::Ready => Self::Ready,
-            P::NeedsYou { group, reason } => Self::NeedsYou {
-                group: crate::types::BridgeNeedsYouGroup::from_core(group),
-                reason: crate::types::BridgeNeedsYouReason::from_core(reason),
+            P::NeedsYou { reason } => Self::NeedsYou {
+                reason: crate::types::BridgeNeedsYou::from_core(reason),
             },
             P::Importing => Self::Importing,
             P::Failed => Self::Failed,
@@ -316,43 +318,16 @@ impl crate::types::BridgeTriagePlacement {
 }
 
 #[cfg(feature = "desktop")]
-impl crate::types::BridgeNeedsYouGroup {
-    pub(crate) fn from_core(group: bae_core::import::NeedsYouGroup) -> Self {
-        use bae_core::import::NeedsYouGroup as G;
-        match group {
-            G::PickAPressing => Self::PickAPressing,
-            G::CountsOrLengthsDisagree => Self::CountsOrLengthsDisagree,
-            G::AlreadyInLibrary => Self::AlreadyInLibrary,
-            G::LookupFailed => Self::LookupFailed,
-            G::NoMatch => Self::NoMatch,
-            G::StillIdentifying => Self::StillIdentifying,
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeNeedsYouReason {
-    pub(crate) fn from_core(reason: bae_core::import::NeedsYouReason) -> Self {
-        use bae_core::import::NeedsYouReason as R;
-        match reason {
-            R::Disagreement(needs_you) => Self::Disagreement {
-                disagreement: crate::types::BridgeNeedsYou::from_core(needs_you),
+impl crate::types::BridgeIdentificationStatus {
+    pub(crate) fn from_core(status: bae_core::import::IdentificationStatus) -> Self {
+        use bae_core::import::IdentificationStatus as S;
+        match status {
+            S::Queued => Self::Queued,
+            S::Running => Self::Running,
+            S::Finalizing => Self::Finalizing,
+            S::FinalizationFailed { error } => Self::FinalizationFailed {
+                error: crate::types::BridgeError::from_core(bae_core::ui::UiError::import(error)),
             },
-            R::StillIdentifying { phase } => Self::StillIdentifying {
-                phase: crate::types::BridgeIdentifyPhase::from_core(phase),
-            },
-        }
-    }
-}
-
-#[cfg(feature = "desktop")]
-impl crate::types::BridgeIdentifyPhase {
-    pub(crate) fn from_core(phase: bae_core::import::IdentifyPhase) -> Self {
-        use bae_core::import::IdentifyPhase as P;
-        match phase {
-            P::Queued => Self::Queued,
-            P::Running => Self::Running,
-            P::NoAnswer => Self::NoAnswer,
         }
     }
 }
