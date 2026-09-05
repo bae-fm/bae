@@ -258,6 +258,14 @@ impl CandidateRuntime {
         });
     }
 
+    /// The answer a run reached will never be stored — the candidate changed
+    /// shape, was skipped, imported, or removed while it ran — so the key has
+    /// nothing in flight. Left in place, the terminal state would read as a
+    /// commit still pending, for good.
+    pub(super) fn discard_identification(&self, candidate_key: &str) {
+        self.set(candidate_key, |runtime| runtime.identify = None);
+    }
+
     /// Identification reached a terminal result but could not commit it.
     /// Preserve the result for the pane and attach the failure that stopped the
     /// row, replacing either the representative's terminal state or a grouped

@@ -111,14 +111,22 @@ pub(super) async fn finish_candidate(
         };
     };
     let candidate = entry.job.representative();
-    let settled_lead =
-        match settle_lead(context, &mut verdict, candidate, &signals.durations, token).await {
-            Ok(settled) => settled,
-            Err(FinalizationError::Superseded) => return FinishCandidateOutcome::Superseded,
-            Err(FinalizationError::Failed(error)) => {
-                return FinishCandidateOutcome::Failed { error };
-            }
-        };
+    let settled_lead = match settle_lead(
+        context,
+        &mut verdict,
+        candidate,
+        &signals.durations,
+        CallPriority::Background,
+        token,
+    )
+    .await
+    {
+        Ok(settled) => settled,
+        Err(FinalizationError::Superseded) => return FinishCandidateOutcome::Superseded,
+        Err(FinalizationError::Failed(error)) => {
+            return FinishCandidateOutcome::Failed { error };
+        }
+    };
 
     let mut metadata = metadata_or_failed_verdict(
         context,
@@ -259,11 +267,16 @@ fn sole_pressing(matches: &[MetadataResult]) -> Option<crate::import::release_gr
 ///
 /// A release some other candidate already settled costs nothing: its documents
 /// are read back and the tracklist re-derived from them.
+///
+/// `priority` is the run's own: a person's explicit lookup fetches its lead
+/// ahead of the sweep's queued calls, so the verdict they are watching for
+/// does not wait behind a queue nobody is watching.
 async fn settle_lead(
     context: &SweepContext,
     verdict: &mut TerminalVerdict,
     candidate: &FolderCandidate,
     durations: &crate::import::probe::SourceDurations,
+    priority: CallPriority,
     token: &CancellationToken,
 ) -> Result<SettledLead, FinalizationError> {
     let TerminalVerdict::Found {
@@ -280,17 +293,14 @@ async fn settle_lead(
     let (primary, partners) = pressing.claims();
 
     let settle = async {
-        let payloads = crate::import::service::prepare_release(
-            &context.library_manager,
-            &primary,
-            CallPriority::Background,
-        )
-        .await?;
+        let payloads =
+            crate::import::service::prepare_release(&context.library_manager, &primary, priority)
+                .await?;
         crate::import::service::prepare_partners(
             &context.library_manager,
             &primary,
             &partners,
-            CallPriority::Background,
+            priority,
         )
         .await?;
         Ok::<_, crate::import::ImportError>(payloads)
@@ -453,12 +463,16 @@ pub(super) async fn record_explicit_lookup_verdict(
                     &mut verdict,
                     &entry.candidate,
                     &signals.durations,
+                    CallPriority::Interactive,
                     token,
                 )
                 .await
                 {
                     Ok(settled) => settled,
-                    Err(FinalizationError::Superseded) => return,
+                    Err(FinalizationError::Superseded) => {
+                        context.import.discard_identification(&candidate_key);
+                        return;
+                    }
                     Err(FinalizationError::Failed(error)) => {
                         context.import.fail_identification(&candidate_key, error);
                         return;
@@ -496,7 +510,14 @@ pub(super) async fn record_explicit_lookup_verdict(
                 .await
                 {
                     FinishCandidateOutcome::Stored => return,
-                    FinishCandidateOutcome::Superseded => return,
+                    FinishCandidateOutcome::Superseded => {
+                        info!(
+                            "lookup: {candidate_key} changed while its answer was being \
+                             stored; the answer is discarded"
+                        );
+                        context.import.discard_identification(&candidate_key);
+                        return;
+                    }
                     FinishCandidateOutcome::Failed { error } => {
                         context.import.fail_identification(&candidate_key, error);
                         return;
@@ -511,11 +532,13 @@ pub(super) async fn record_explicit_lookup_verdict(
             Ok(ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key: key }))
                 if key == candidate_key =>
             {
+                context.import.discard_identification(&candidate_key);
                 return;
             }
             Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))
                 if candidate.path.to_string_lossy() == candidate_key.as_str() =>
             {
+                context.import.discard_identification(&candidate_key);
                 return;
             }
             Ok(_) => {}

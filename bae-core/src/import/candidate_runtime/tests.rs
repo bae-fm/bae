@@ -581,3 +581,26 @@ fn a_stored_verdict_keeps_a_key_whose_import_is_running() {
     assert!(recorded.identify.is_none());
     assert!(recorded.import.is_some());
 }
+
+/// An answer that will never be stored — the candidate moved on while its run
+/// settled — leaves nothing in flight. Kept, the terminal state would read as
+/// a commit still pending, for good.
+#[test]
+fn discarding_an_unstorable_answer_leaves_nothing_in_flight() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel";
+    runtime.record_event(&identify(
+        key,
+        crate::identify::IdentifyState::NotFoundAnywhere {
+            context: signals_context(9),
+        },
+    ));
+    assert!(runtime
+        .get(key)
+        .and_then(|runtime| runtime.identify)
+        .is_some_and(|identify| identify.is_terminal()));
+
+    runtime.discard_identification(key);
+
+    assert!(runtime.get(key).is_none());
+}

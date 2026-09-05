@@ -423,6 +423,12 @@ impl ImportServiceHandle {
         self.runtime.fail_identification(candidate_key, error);
     }
 
+    /// An identification's answer was not stored because the candidate moved
+    /// on while it ran, so nothing is pending for the key any more.
+    pub(crate) fn discard_identification(&self, candidate_key: &str) {
+        self.runtime.discard_identification(candidate_key);
+    }
+
     pub(crate) fn report_identification(
         &self,
         candidate_key: &str,
@@ -661,6 +667,10 @@ impl ImportServiceHandle {
     /// the shape the verdict describes — its files were re-decided, it was
     /// skipped, it is already in the library, or an import has claimed it.
     ///
+    /// The default metadata source plays no part: it decides which candidates
+    /// the sweep picks up on its own, not whether an answer a run reached —
+    /// a person's explicit lookup included — is worth keeping.
+    ///
     /// The commit lock spans the check and the write, and everything that can
     /// invalidate a verdict — a scan, a file re-decision, a skip, an import
     /// claim — is written under the same lock, so a `true` return means the row
@@ -674,7 +684,7 @@ impl ImportServiceHandle {
         row: &crate::db::NewImportCandidateVerdict,
     ) -> Result<bool, crate::library::LibraryError> {
         let _commit = self.folder_state_commit.lock().await;
-        let Some(candidate) = self.sweepable_candidate(candidate_key).await? else {
+        let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };
         if candidate.files.content_hash() != row.content_hash
@@ -687,17 +697,15 @@ impl ImportServiceHandle {
             .await
     }
 
-    /// The candidate at `key` as the queue sweep is responsible for it: a
-    /// stored, actionable folder that is not skipped, not already in the
-    /// library, and not claimed by an import. Read from the tables and the
-    /// runtime right now rather than through the list — the sweep asks this
-    /// straight after the event that changed the answer, and the list's query
-    /// lands after the commit it reflects.
+    /// The candidate at `key` as the queue sweep is responsible for it: an
+    /// answerable candidate (below) whose initial metadata source is Find
+    /// online — the sweep looks up on its own only what the person asked it
+    /// to.
     pub(crate) async fn sweepable_candidate(
         &self,
         key: &str,
     ) -> Result<Option<FolderCandidate>, crate::library::LibraryError> {
-        let Some(candidate) = self.stored_actionable_candidate(key).await? else {
+        let Some(candidate) = self.answerable_candidate(key).await? else {
             return Ok(None);
         };
         let initial_source = self
@@ -708,6 +716,22 @@ impl ImportServiceHandle {
         if initial_source != Some(crate::config::DefaultImportMetadataSource::FindOnline) {
             return Ok(None);
         }
+        Ok(Some(candidate))
+    }
+
+    /// The candidate at `key` as an identification can still answer it: a
+    /// stored, actionable folder that is not skipped, not already in the
+    /// library, and not claimed by an import. Read from the tables and the
+    /// runtime right now rather than through the list — the caller asks this
+    /// straight after the event that changed the answer, and the list's query
+    /// lands after the commit it reflects.
+    pub(crate) async fn answerable_candidate(
+        &self,
+        key: &str,
+    ) -> Result<Option<FolderCandidate>, crate::library::LibraryError> {
+        let Some(candidate) = self.stored_actionable_candidate(key).await? else {
+            return Ok(None);
+        };
         let skipped = self
             .folder_registry
             .lock()

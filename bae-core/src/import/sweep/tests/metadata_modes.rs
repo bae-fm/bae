@@ -162,6 +162,52 @@ async fn interactive_lookup_runs_while_automatic_lookup_is_off() {
     assert!(fixture.provider.count_containing("/discid/") > 0);
 }
 
+/// The default metadata source decides what the sweep picks up on its own,
+/// not whether an answer a person asked for is kept: with the default set to
+/// none, an explicit Lookup still stores its verdict, and nothing is left
+/// pending on the key once it has.
+#[tokio::test(flavor = "multi_thread")]
+#[serial(musicbrainz)]
+async fn explicit_lookup_stores_its_verdict_whatever_the_default_source() {
+    let fixture = Fixture::new("explicit-with-default-none").await;
+    fixture
+        .manager
+        .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::None)
+        .unwrap();
+    let dir = fixture.disc_id_candidate("Candidate");
+    let key = dir.to_string_lossy().into_owned();
+    let probed = fixture.probed_total_ms(&dir);
+    fixture.provider.route(
+        "/discid/",
+        200,
+        discid_json("mb-default-none", "rg-default-none", &[probed, 0]),
+    );
+    fixture.provider.route(
+        "/release/mb-default-none?",
+        200,
+        release_json("mb-default-none", "rg-default-none", &[probed, 0]),
+    );
+    fixture.scan(1).await;
+
+    fixture.start_explicit_lookup(&dir);
+
+    tokio::time::timeout(Duration::from_secs(20), fixture.await_identified_row(&dir))
+        .await
+        .expect("an explicit lookup stores its verdict with the default source off");
+    tokio::time::timeout(Duration::from_secs(5), async {
+        while fixture
+            .import
+            .candidate_runtimes()
+            .get(&key)
+            .is_some_and(|runtime| runtime.identify.is_some())
+        {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("a stored verdict leaves nothing pending on the key");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 #[serial(musicbrainz)]
 async fn disabling_automatic_lookup_cancels_running_background_identification() {
