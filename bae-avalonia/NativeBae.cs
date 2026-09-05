@@ -349,7 +349,7 @@ internal static partial class NativeBae
         CaptureError(() => Await(() => handle.SetPrimaryRelease(albumId, releaseId)));
 
     internal static (BridgeRemoteCover[]? Covers, string? Error) FetchRemoteCovers(AppHandle handle, string releaseId) =>
-        CaptureBridgeValue(() => Await(() => handle.FetchRemoteCovers(releaseId)));
+        CaptureBridgeValue(() => Await(() => handle.FetchRemoteCovers(new BridgeCoverTarget.Release(releaseId))));
 
     internal static string RemoteCoverThumbnailUrl(BridgeRemoteCover cover) =>
         CoverImageSourceUrl(cover.CoverChoice.ThumbnailSource);

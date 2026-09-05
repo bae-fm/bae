@@ -8,10 +8,10 @@ use super::{
 pub enum BridgeStorageInspectorFile {
     ReleaseFile {
         file: BridgeFile,
-        upload: Option<BridgeUploadFileOp>,
+        operation: Option<BridgeUploadFileOp>,
     },
     Upload {
-        upload: BridgeUploadFileOp,
+        operation: BridgeUploadFileOp,
     },
 }
 
@@ -116,9 +116,14 @@ pub fn bridge_storage_inspector_files(
     .into_iter()
     .map(|row| match row {
         StorageInspectorFile::ReleaseFile { file, upload } => {
-            BridgeStorageInspectorFile::ReleaseFile { file, upload }
+            BridgeStorageInspectorFile::ReleaseFile {
+                file,
+                operation: upload,
+            }
         }
-        StorageInspectorFile::Upload { upload } => BridgeStorageInspectorFile::Upload { upload },
+        StorageInspectorFile::Upload { upload } => {
+            BridgeStorageInspectorFile::Upload { operation: upload }
+        }
     })
     .collect()
 }
