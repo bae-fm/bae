@@ -227,4 +227,5 @@
     <string name="appearance_midnight">เที่ยงคืน</string>
     <string name="appearance_forest">ป่า</string>
     <string name="appearance_sand">ทราย</string>
+    <string name="details">รายละเอียด</string>
 </resources>

@@ -229,4 +229,5 @@
     <string name="appearance_midnight">Mitternacht</string>
     <string name="appearance_forest">Wald</string>
     <string name="appearance_sand">Sand</string>
+    <string name="details">Details</string>
 </resources>

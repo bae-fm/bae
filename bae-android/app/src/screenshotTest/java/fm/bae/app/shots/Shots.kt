@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import fm.bae.app.data.ArtworkLoadingStore
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.albumdetail.AlbumDetailScene
 import fm.bae.app.ui.appearance.AccentChoice
@@ -15,9 +16,12 @@ import fm.bae.app.ui.appearance.AppearanceMode
 import fm.bae.app.ui.appearance.AppearancePreferences
 import fm.bae.app.ui.appearance.AppearanceStore
 import fm.bae.app.ui.appearance.SurfaceTone
+import fm.bae.app.ui.library.ArtworkLoadingBanner
 import fm.bae.app.ui.library.LibraryGridScene
 import fm.bae.app.ui.onboarding.WelcomeScene
 import fm.bae.app.ui.settings.AppearanceSection
+import uniffi.bae_bridge.BridgeEagerCacheFillProgress
+import uniffi.bae_bridge.BridgeEagerCacheFillStatus
 
 // Screenshot scenes captured by scripts/shots/android.sh. Each function is one
 // scene: the plugin renders it to a PNG named after the function, and the script
@@ -148,5 +152,26 @@ private fun AppearanceScene(
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             AppearanceSection()
         }
+    }
+}
+
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(device = PHONE_SPEC, uiMode = Configuration.UI_MODE_NIGHT_YES, fontScale = 1.5f)
+@Composable
+fun ArtworkFailure() {
+    val store =
+        remember {
+            ArtworkLoadingStore {}.apply {
+                apply(
+                    BridgeEagerCacheFillStatus.Failed(
+                        titleKey = "core.artwork_cache.failed",
+                        progress = BridgeEagerCacheFillProgress(0uL, 12uL, 0uL, 980_000uL),
+                        error = "The artwork object is missing from cloud storage.",
+                    ),
+                )
+            }
+        }
+    BaeTheme {
+        ArtworkLoadingBanner(store)
     }
 }

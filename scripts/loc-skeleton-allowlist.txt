@@ -171,6 +171,7 @@ nl	settings_pause_uploads
 nl	onboarding_join_copy_code
 nl	download_remove
 nl	downloads_empty
+nl	details
 
 # ResX chrome (bae-avalonia) — keyed by the ResX data name (matching the
 # Android section above; ResX keys aren't the English source text either).
