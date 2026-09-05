@@ -1,6 +1,17 @@
 use super::*;
 
 #[test]
+fn pregap_clock_crosses_the_bridge_in_both_time_modes() {
+    let elapsed_mode = bridge_seek_bar(-1_001, 100_000, false);
+    let remaining_mode = bridge_seek_bar(-1_001, 100_000, true);
+
+    assert_eq!(remaining_mode.leading, elapsed_mode.leading);
+    assert!(elapsed_mode.leading.negative);
+    assert_eq!(elapsed_mode.leading.minutes, 0);
+    assert_eq!(elapsed_mode.leading.seconds, 2);
+}
+
+#[test]
 fn pairing_cancellation_crosses_the_bridge_as_cancellation() {
     assert!(matches!(
         BridgeError::from(bae_core::library::LibraryError::from(

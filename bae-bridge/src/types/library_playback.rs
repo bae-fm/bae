@@ -574,7 +574,8 @@ pub fn bridge_clock(ms: Option<i64>) -> Option<BridgeDurationClock> {
 /// The two clocks a seek bar shows. Mirror of bae-core's `SeekBarClocks`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeSeekBarClocks {
-    /// Elapsed, or the countdown, per `show_remaining_time`.
+    /// Pregap countdown before track start; elapsed or remaining afterward,
+    /// per `show_remaining_time`.
     pub leading: BridgeDurationClock,
     /// The track's total length; `None` when it is not known.
     pub trailing: Option<BridgeDurationClock>,
@@ -586,8 +587,9 @@ pub struct BridgeSeekBarClocks {
 /// a C# method whose name is the type's, and Windows has no compiler here.
 ///
 /// `show_remaining` is the user's `show_remaining_time` config, which the UI
-/// reads off the config mirror and never stores itself. A `duration_ms` of zero
-/// is playback reporting an unknown length: no total, and no countdown.
+/// reads off the config mirror and never stores itself. The pregap countdown
+/// overrides it while `position_ms` is negative. A `duration_ms` of zero is
+/// playback reporting an unknown length: no total, and no end countdown.
 #[uniffi::export]
 pub fn bridge_seek_bar(
     position_ms: i64,

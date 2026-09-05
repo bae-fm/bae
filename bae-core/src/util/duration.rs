@@ -79,10 +79,11 @@ impl DurationClock {
 
 /// The two clocks a seek bar shows.
 ///
-/// One decision, not four: the leading label is the elapsed position or the
-/// countdown to the end, whichever the user asked for (`show_remaining_time` in
-/// the config), and the trailing label is always the track's total length. The
-/// UI renders the two and owns neither choice.
+/// The leading label is the pregap countdown while position is negative. From
+/// track start onward it is the elapsed position or the countdown to the end,
+/// whichever the user asked for (`show_remaining_time` in the config). The
+/// trailing label is always the track's total length. The UI renders the two and
+/// owns none of these choices.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SeekBarClocks {
     pub leading: DurationClock,
@@ -102,7 +103,9 @@ impl SeekBarClocks {
                 trailing: None,
             };
         }
-        let leading = if show_remaining {
+        let leading = if position_ms < 0 {
+            DurationClock::playback_position(position_ms, Some(duration_ms))
+        } else if show_remaining {
             DurationClock::remaining(position_ms, duration_ms)
         } else {
             DurationClock::playback_position(position_ms, Some(duration_ms))
@@ -310,11 +313,9 @@ mod tests {
     }
 
     #[test]
-    fn remaining_clock_holds_the_full_track_duration_during_pregap() {
-        assert_eq!(
-            SeekBarClocks::new(-1_000, 100_000, true).leading,
-            DurationClock::remaining(0, 100_000),
-        );
+    fn pregap_countdown_overrides_the_remaining_time_preference() {
+        let pregap = SeekBarClocks::new(-1_000, 100_000, false).leading;
+        assert_eq!(SeekBarClocks::new(-1_000, 100_000, true).leading, pregap,);
     }
 
     /// A zero duration is playback saying it does not know the length. There is
