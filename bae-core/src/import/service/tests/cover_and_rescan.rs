@@ -569,12 +569,13 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
     panic!("the applied candidate was not announced");
 }
 
-#[tokio::test]
-async fn none_default_discovers_a_local_cover_without_reading_file_tags() {
+async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags(
+    source: crate::config::DefaultImportMetadataSource,
+) {
     let (service, tmp) = setup_import_service().await;
     service
         .library_manager
-        .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::None)
+        .set_default_import_metadata_source(source)
         .unwrap();
     let root = tmp.path().join("watched");
     let album = root.join("Candidate");
@@ -616,7 +617,7 @@ async fn none_default_discovers_a_local_cover_without_reading_file_tags() {
         .await
         .unwrap()
         .expect("the candidate is stored");
-    assert_eq!(detail.initial_metadata_source, crate::config::DefaultImportMetadataSource::None);
+    assert_eq!(detail.initial_metadata_source, source);
     assert_eq!(detail.metadata_provenance, None);
     assert_eq!(
         detail.cover.map(|cover| cover.selection),
@@ -631,8 +632,24 @@ async fn none_default_discovers_a_local_cover_without_reading_file_tags() {
             .expect("the candidate stamp is stored")
             .snapshot
             .is_none(),
-        "None must not read or persist file tags"
+        "a source that does not use file tags must not persist a tag snapshot"
     );
+}
+
+#[tokio::test]
+async fn none_default_discovers_a_local_cover_without_reading_file_tags() {
+    assert_default_source_discovers_a_local_cover_without_reading_file_tags(
+        crate::config::DefaultImportMetadataSource::None,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn find_online_default_discovers_a_local_cover_before_a_release_is_selected() {
+    assert_default_source_discovers_a_local_cover_without_reading_file_tags(
+        crate::config::DefaultImportMetadataSource::FindOnline,
+    )
+    .await;
 }
 
 /// A completed pass records every directory it read and when it was last
