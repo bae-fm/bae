@@ -16,6 +16,7 @@ struct ImportSearchState {
     /// Release id whose fetched candidate detail has not landed yet. The
     /// matching result row swaps its chevron for the existing spinner.
     let loadingReleaseId: String?
+    var releaseSelectionFailure: ReleaseSelectionFailure?
     let isImporting: Bool
     /// Whether core is still committing the verdict the pane shows: fetching
     /// the sole pressing's details, then storing the answer. The verdict is

@@ -128,6 +128,7 @@ struct ImportSearchPane: View {
                 provenance: state.identifiedProvenance,
                 selectedReleaseId: state.selectedReleaseId,
                 loadingReleaseId: state.loadingReleaseId,
+                releaseSelectionFailure: state.releaseSelectionFailure,
                 onSelect: onSelect,
                 trailing: {
                     ForEach(missingSourceNotes, id: \.self) { note in
@@ -256,6 +257,7 @@ struct ImportSearchPane: View {
                         provenance: state.identifiedProvenance,
                         selectedReleaseId: state.selectedReleaseId,
                         loadingReleaseId: state.loadingReleaseId,
+                        releaseSelectionFailure: state.releaseSelectionFailure,
                         onSelect: onSelect,
                         trailing: { EmptyView() },
                     )
@@ -273,6 +275,7 @@ struct ImportSearchPane: View {
                 libraryStatuses: state.libraryStatuses,
                 selectedReleaseId: state.selectedReleaseId,
                 loadingReleaseId: state.loadingReleaseId,
+                releaseSelectionFailure: state.releaseSelectionFailure,
                 onClear: onClearSearch,
                 onRetry: onRetrySearch,
                 onOpenSettings: onOpenSettings,

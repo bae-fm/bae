@@ -218,7 +218,7 @@ class ImportStore {
         )
         clearPaneError(forKey: key)
         mutateCandidate(forKey: key) { candidate in
-            candidate.metadataApplicationSession = session
+            candidate.metadataApplication = .applying(session)
         }
         return session
     }
@@ -249,11 +249,26 @@ class ImportStore {
         else {
             return
         }
-        if let error {
-            recordPaneError(error, forKey: key)
+        if let error,
+            case .externalRelease(let source, let releaseId, _) = session
+                .provenance
+        {
+            mutateCandidate(forKey: key) { candidate in
+                candidate.metadataApplication = .failed(
+                    ReleaseSelectionFailure(
+                        release: BridgeMetadataRef(
+                            source: source,
+                            releaseId: releaseId
+                        ),
+                        message: error
+                    )
+                )
+            }
+            return
         }
+        if let error { recordPaneError(error, forKey: key) }
         mutateCandidate(forKey: key) { candidate in
-            candidate.metadataApplicationSession = nil
+            candidate.metadataApplication = nil
         }
     }
 
@@ -269,7 +284,7 @@ class ImportStore {
             guard candidate.metadataApplicationSession === session else {
                 return
             }
-            candidate.metadataApplicationSession = nil
+            candidate.metadataApplication = nil
         }
         confirmation?()
     }

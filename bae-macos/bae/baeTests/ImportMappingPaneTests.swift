@@ -441,9 +441,8 @@ extension ImportMappingPaneTests {
         )
     }
 
-    // 4b. A pick whose fetch drops stores nothing, so the pane keeps showing
-    //     what it had and says the command failed. Nothing about the candidate
-    //     is rolled back — there was nothing to roll back.
+    // A failed release read leaves the draft unchanged and names the failed
+    // pressing, without writing a candidate-wide error.
     @MainActor
     @Test("a failed pick leaves the pane as it was and states the failure")
     func aFailedPickLeavesThePaneAsItWas() async throws {
@@ -475,9 +474,15 @@ extension ImportMappingPaneTests {
             store.selectedCandidates[MappingFixtures.candidateKey]
         )
         #expect(
-            writes.errors(forKey: MappingFixtures.candidateKey)
+            !writes.errors(forKey: MappingFixtures.candidateKey)
                 .contains { $0 != nil }
         )
+        #expect(candidate.error == nil)
+        #expect(
+            candidate.releaseSelectionFailure?.release.releaseId
+                == "another-pressing"
+        )
+        #expect(candidate.releaseSelectionFailure?.message.isEmpty == false)
         #expect(candidate.provenanceInFlight == nil)
         #expect(candidate.detail == before)
         #expect(candidate.metadataProvenance == MappingFixtures.provenance)

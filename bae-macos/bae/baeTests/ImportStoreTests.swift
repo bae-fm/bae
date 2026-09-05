@@ -289,9 +289,11 @@ struct ImportStoreCandidateDetailTests {
             releaseId: "rel-1",
             partners: []
         )
-        existing.metadataApplicationSession =
-            CandidateMetadataApplicationSession(
-                provenance: pendingPick
+        existing.metadataApplication =
+            .applying(
+                CandidateMetadataApplicationSession(
+                    provenance: pendingPick
+                )
             )
         existing.fileTagsPreview = .loaded(MappingFixtures.albumSeed)
         store.selectedCandidates["/w1/a"] = existing

@@ -107,7 +107,7 @@ extension ImportMetadataSourceTests {
     /// Choosing a surface is written to core, not kept in the pane: the
     /// store records the write, and the next detail is what the pane shows.
     @Test("choosing a surface writes it through, and the detail shows it")
-    func choosingASurfaceWritesItThrough() throws {
+    func choosingASurfaceWritesItThrough() async throws {
         let store = MappingFixtures.store(
             mapping: nil,
             metadataProvenance: nil,
@@ -121,6 +121,9 @@ extension ImportMetadataSourceTests {
             .fileTags,
             forKey: MappingFixtures.candidateKey
         )
+        await waitUntil {
+            !writes.presentations(forKey: MappingFixtures.candidateKey).isEmpty
+        }
 
         store.applyCandidateDetail(
             key: MappingFixtures.candidateKey,

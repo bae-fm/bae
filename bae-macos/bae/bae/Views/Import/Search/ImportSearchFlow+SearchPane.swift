@@ -139,6 +139,7 @@ extension ImportSearchFlow {
             search: input.runtime?.search,
             selectedReleaseId: input.selectedReleaseId,
             loadingReleaseId: candidate.loadingReleaseId,
+            releaseSelectionFailure: candidate.releaseSelectionFailure,
             isImporting: isImporting(candidate),
             isFinalizing: candidate.row?.placement
                 == .identification(status: .finalizing),

@@ -14,6 +14,7 @@ struct FindOnlineSearchResults: View {
     let libraryStatuses: [String: BridgeLibraryStatus]
     let selectedReleaseId: String?
     let loadingReleaseId: String?
+    var releaseSelectionFailure: ReleaseSelectionFailure?
     let onClear: () -> Void
     let onRetry: () -> Void
     let onOpenSettings: () -> Void
@@ -35,6 +36,7 @@ struct FindOnlineSearchResults: View {
                 libraryStatuses: libraryStatuses,
                 selectedReleaseId: selectedReleaseId,
                 loadingReleaseId: loadingReleaseId,
+                releaseSelectionFailure: releaseSelectionFailure,
                 onSelect: onSelect,
                 trailing: {
                     emptyLine

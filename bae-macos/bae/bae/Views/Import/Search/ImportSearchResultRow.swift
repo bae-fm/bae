@@ -24,6 +24,7 @@ struct ImportSearchResultRow: View {
     /// Whether this row's pick is being read right now — the row itself
     /// carries the spinner, so the list stays put while the release loads.
     var isLoading: Bool = false
+    var failure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
 
     private var isInLibrary: Bool {
@@ -31,6 +32,14 @@ struct ImportSearchResultRow: View {
     }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            resultButton
+            failureLine
+        }
+        .background(rowBackground)
+    }
+
+    private var resultButton: some View {
         ZStack {
             Button {
                 onSelect(pressing)
@@ -59,16 +68,46 @@ struct ImportSearchResultRow: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
-        .background(rowBackground)
+    }
+
+    private var rowFailure: ReleaseSelectionFailure? {
+        failure.flatMap { $0.matches(pressing) ? $0 : nil }
+    }
+
+    private var failureLine: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.red)
+            Text(rowFailure?.message ?? "")
+                .foregroundStyle(.red)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button("Retry") { onSelect(pressing) }
+                .buttonStyle(.link)
+                .disabled(isImporting || isLoading)
+        }
+        .font(.caption)
+        .padding(.horizontal, 10)
+        .padding(.bottom, 8)
+        .frame(height: rowFailure == nil ? 0 : nil, alignment: .top)
+        .clipped()
+        .opacity(rowFailure == nil ? 0 : 1)
+        .allowsHitTesting(rowFailure != nil)
+        .accessibilityHidden(rowFailure == nil)
     }
 
     private var rowBackground: some View {
         RoundedRectangle(cornerRadius: 7)
-            .fill(isSelected ? Theme.accent.opacity(0.12) : .clear)
+            .fill(
+                isSelected || rowFailure != nil
+                    ? Theme.accent.opacity(0.12) : .clear
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(
-                        isSelected ? Theme.accent.opacity(0.4) : .clear,
+                        isSelected || rowFailure != nil
+                            ? Theme.accent.opacity(0.4) : .clear,
                         lineWidth: 1
                     )
             )

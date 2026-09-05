@@ -282,10 +282,23 @@ struct Candidate: Equatable, Identifiable {
     /// Where the pane was when the person last left this candidate. A folder
     /// candidate's comes with its detail; a re-identify session's lives here.
     var session = CandidateSessionState()
-    /// The metadata source currently being selected. A release row uses its
-    /// release ID for selection feedback while the pane keeps showing stored
-    /// data.
-    var metadataApplicationSession: CandidateMetadataApplicationSession?
+    /// The current metadata selection attempt. Its release row owns loading
+    /// and failure feedback while the pane keeps showing the stored draft.
+    var metadataApplication: CandidateMetadataApplication?
+
+    var metadataApplicationSession: CandidateMetadataApplicationSession? {
+        guard case .applying(let session) = metadataApplication else {
+            return nil
+        }
+        return session
+    }
+
+    var releaseSelectionFailure: ReleaseSelectionFailure? {
+        guard case .failed(let failure) = metadataApplication else {
+            return nil
+        }
+        return failure
+    }
     /// The lazy File Tags read for this candidate. It is session state rather
     /// than candidate detail: reading tags does not choose that seed.
     var fileTagsPreview: CandidateFileTagsPreviewState = .unloaded
@@ -345,7 +358,7 @@ struct Candidate: Equatable, Identifiable {
         var copy = self
         copy.libraryStatuses = existing.libraryStatuses
         copy.libraryStatusSubscriptions = existing.libraryStatusSubscriptions
-        copy.metadataApplicationSession = existing.metadataApplicationSession
+        copy.metadataApplication = existing.metadataApplication
         copy.fileTagsPreview =
             files.fileTagsIdentity == existing.files.fileTagsIdentity
             ? existing.fileTagsPreview : .unloaded

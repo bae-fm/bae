@@ -212,9 +212,7 @@ struct ImportSearchFlowMetadataApplicationTests {
         #expect(confirmation.count == 1)
     }
 
-    /// The failure's line is stored with the candidate — core delivers it
-    /// back on the next detail — rather than kept in the pane.
-    @Test("a failed choice does not confirm and records the error")
+    @Test("a failed choice does not confirm and keeps its error on the release")
     func failedChoiceDoesNotConfirmAndRecordsError() async throws {
         let store = unsettledStore()
         let writes = SessionWriteRecorder()
@@ -235,8 +233,8 @@ struct ImportSearchFlowMetadataApplicationTests {
             onConfirmed: confirmation.record
         )
         await waitUntil {
-            writes.errors(forKey: MappingFixtures.candidateKey)
-                .contains { $0 != nil }
+            store.candidate(forKey: MappingFixtures.candidateKey)?
+                .releaseSelectionFailure != nil
         }
 
         let after = try #require(
@@ -244,6 +242,15 @@ struct ImportSearchFlowMetadataApplicationTests {
         )
         #expect(after.provenanceInFlight == nil)
         #expect(after.pickedRelease == nil)
+        #expect(after.error == nil)
+        #expect(
+            after.releaseSelectionFailure?.release.releaseId
+                == MappingFixtures.releaseId
+        )
+        #expect(
+            !writes.errors(forKey: MappingFixtures.candidateKey)
+                .contains { $0 != nil }
+        )
         #expect(confirmation.count == 0)
     }
 

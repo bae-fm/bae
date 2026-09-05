@@ -20,6 +20,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
     let selectedReleaseId: String?
     /// Release id whose candidate detail is being fetched, if any.
     let loadingReleaseId: String?
+    var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
     @ViewBuilder
     let trailing: () -> Trailing
@@ -35,6 +36,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
                         provenance: provenance,
                         selectedReleaseId: selectedReleaseId,
                         loadingReleaseId: loadingReleaseId,
+                        releaseSelectionFailure: releaseSelectionFailure,
                         onSelect: onSelect,
                     )
                 }
@@ -70,6 +72,7 @@ struct ReleaseGroupSection: View {
     /// The pressing whose pick is being read right now — its row carries a
     /// spinner while the list stays put.
     var loadingReleaseId: String?
+    var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
 
     var body: some View {
@@ -95,6 +98,7 @@ struct ReleaseGroupSection: View {
                         provenance: provenance[pressing.id],
                         isSelected: isSelected(pressing),
                         isLoading: isLoading(pressing),
+                        failure: releaseSelectionFailure,
                         onSelect: onSelect,
                     )
                 }
