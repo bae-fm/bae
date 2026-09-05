@@ -19,6 +19,18 @@ struct ShotScene {
     /// verification sheet. A scene is present only when it has a real staging;
     /// a missing scene is a deliberate omission, never a swallowed failure.
     static let all: [ShotScene] = [
+        ShotScene(
+            id: "cover-picker-wide",
+            size: CGSize(width: 1_148, height: 868)
+        ) {
+            AnyView(CoverPickerPreviewScene())
+        },
+        ShotScene(
+            id: "cover-picker-short",
+            size: CGSize(width: 800, height: 520)
+        ) {
+            AnyView(CoverPickerPreviewScene())
+        },
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
             AnyView(PreviewScenes.welcome())
         },
