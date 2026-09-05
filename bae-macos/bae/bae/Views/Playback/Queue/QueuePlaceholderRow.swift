@@ -8,7 +8,7 @@ struct QueuePlaceholderRow: View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 8)
                 .fill(.secondary.opacity(0.15))
-                .frame(width: 44, height: 44)
+                .frame(width: 48, height: 48)
             VStack(alignment: .leading, spacing: 4) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.15))
@@ -16,6 +16,9 @@ struct QueuePlaceholderRow: View {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.12))
                     .frame(width: 90, height: 10)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.12))
+                    .frame(width: 120, height: 10)
             }
             Spacer()
         }

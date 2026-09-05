@@ -8,19 +8,21 @@ struct QueueRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ImageView(imageRef: item.coverImage, pointSize: 44)
-                .frame(width: 44, height: 44)
+            ImageView(imageRef: item.coverImage, pointSize: 56)
+                .frame(width: 56, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.body)
                     .lineLimit(1)
-                if !item.albumTitle.isEmpty {
-                    Text(item.albumTitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+                Text(item.artistNames)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(item.albumTitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             Spacer(minLength: 0)
             if !item.durationLabel.isEmpty {
@@ -41,7 +43,7 @@ struct QueueRowPlaceholder: View {
         HStack(spacing: 12) {
             RoundedRectangle(cornerRadius: 4)
                 .fill(.secondary.opacity(0.15))
-                .frame(width: 44, height: 44)
+                .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 6) {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.15))
@@ -49,6 +51,9 @@ struct QueueRowPlaceholder: View {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(.secondary.opacity(0.12))
                     .frame(width: 100, height: 10)
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(.secondary.opacity(0.12))
+                    .frame(width: 120, height: 10)
             }
             Spacer(minLength: 0)
         }

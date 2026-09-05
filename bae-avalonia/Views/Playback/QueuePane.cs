@@ -27,6 +27,7 @@ namespace Bae.Desktop;
 internal sealed class QueuePane : IDisposable
 {
     private const double Width = 420;
+    private const double EntryRowHeight = 62;
 
     private readonly AppService _app;
     private readonly Border _host;
@@ -388,13 +389,13 @@ internal sealed class QueuePane : IDisposable
         var contextStart = ContextStartRow();
         scroller.ScrollChanged += (_, _) =>
         {
-            const double estimatedRowHeight = 58;
+            const double estimatedRowHeight = EntryRowHeight;
             var first = Math.Max(0, (int)(scroller.Offset.Y / estimatedRowHeight) - contextStart);
             var last = Math.Max(first, (int)((scroller.Offset.Y + scroller.Viewport.Height) / estimatedRowHeight) - contextStart);
             _app.PlaybackStore.ReportVisibleContextRange(first, last);
         };
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            _app.PlaybackStore.ReportVisibleContextRange(0, Math.Max(0, (int)(scroller.Viewport.Height / 58))));
+            _app.PlaybackStore.ReportVisibleContextRange(0, Math.Max(0, (int)(scroller.Viewport.Height / EntryRowHeight))));
         // A card dropped anywhere on the list appends to Up Next (a precise
         // drop-at-index and in-list reorder land with the reorder change).
         EnableQueueDrop(scroller);
@@ -468,7 +469,7 @@ internal sealed class QueuePane : IDisposable
     {
         SectionHeaderRow header => BuildSectionHeader(header),
         EntryRow entry => BuildEntryRow(entry),
-        ContextPlaceholderRow => new Border { Height = 58 },
+        ContextPlaceholderRow => new Border { Height = EntryRowHeight },
         EmptyManualRow => BuildEmptyDropArea(),
         _ => new Control(),
     };
@@ -550,15 +551,18 @@ internal sealed class QueuePane : IDisposable
             cover,
             ImageContent.ForLibraryImage(row.Entry.CoverImage),
             ImageWidths.Row);
-        var art = new Border { Width = 44, Height = 44, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = cover };
+        var art = new Border { Width = 48, Height = 48, CornerRadius = new CornerRadius(8), ClipToBounds = true, Child = cover };
         art[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeElevatedBrush");
 
         var title = new TextBlock { Text = row.Entry.Title, FontSize = 13, FontWeight = FontWeight.SemiBold, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis };
         title[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
+        var artist = new TextBlock { Text = row.Entry.ArtistNames, FontSize = 11, FontWeight = FontWeight.Medium, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis };
+        artist[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         var album = new TextBlock { Text = row.Entry.AlbumTitle, FontSize = 11, FontWeight = FontWeight.Medium, MaxLines = 1, TextTrimming = TextTrimming.CharacterEllipsis };
         album[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextSecondaryBrush");
         var textColumn = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         textColumn.Children.Add(title);
+        textColumn.Children.Add(artist);
         textColumn.Children.Add(album);
 
         var duration = new TextBlock { Text = BridgeDisplay.Clock(row.Entry.DurationClock), FontSize = 11, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };

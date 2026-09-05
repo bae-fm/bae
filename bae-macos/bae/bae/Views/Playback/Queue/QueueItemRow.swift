@@ -1,7 +1,7 @@
 import BaeKit
 import SwiftUI
 
-/// One loaded queue row: cover art (with a hover play overlay), title/album, and
+/// One loaded queue row: cover art (with a hover play overlay), title/artist/album, and
 /// a duration that swaps for a remove button on hover. It has no state of its
 /// own beyond the remove button's own hover; the row hover is the section's
 /// (only one row is ever hovered at a time), flowing in and back out via
@@ -25,6 +25,10 @@ struct QueueItemRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
                     .font(.system(size: 13, weight: .semibold))
+                    .lineLimit(1)
+                Text(item.artistNames)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Text(item.albumTitle)
                     .font(.system(size: 11, weight: .medium))
@@ -96,20 +100,20 @@ struct QueueItemRow: View {
     // so revealing it on hover doesn't resize the row and re-lay-out the lane.
     private var artWithHoverOverlay: some View {
         ZStack {
-            ImageView(imageRef: item.coverImage, pointSize: 44)
-                .frame(width: 44, height: 44)
+            ImageView(imageRef: item.coverImage, pointSize: 48)
+                .frame(width: 48, height: 48)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             RoundedRectangle(cornerRadius: 8)
                 .fill(.black.opacity(0.5))
-                .frame(width: 44, height: 44)
+                .frame(width: 48, height: 48)
                 .opacity(isHovered ? 1 : 0)
             Button(action: { onSkipTo(item.id) }) {
                 Image(systemName: "play.fill")
                     .font(.caption)
                     .foregroundColor(.white)
                     // The whole hovered cover is the target, not the glyph.
-                    .frame(width: 44, height: 44)
+                    .frame(width: 48, height: 48)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

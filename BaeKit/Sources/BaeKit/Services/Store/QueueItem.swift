@@ -9,6 +9,7 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
     /// their own lane's instance).
     public let trackId: String
     public let title: String
+    public let artistNames: String
     public let durationClock: BridgeDurationClock?
     public let albumTitle: String
     public let coverImage: BridgeImageRef?
@@ -23,6 +24,7 @@ public struct QueueItem: Identifiable, Equatable, Sendable {
         entryId = bridge.entryId
         trackId = bridge.trackId
         title = bridge.title
+        artistNames = bridge.artistNames
         durationClock = bridge.durationClock
         albumTitle = bridge.albumTitle
         coverImage = bridge.coverImage

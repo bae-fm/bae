@@ -42,7 +42,7 @@ import fm.bae.app.ui.components.CoverImage
 import uniffi.bae_bridge.BridgeDurationClock
 
 // The queue's row renderers — the current-track row, a loaded queue row, the
-// not-yet-loaded skeleton, and the shared title/artist block. Kept beside the
+// not-yet-loaded skeleton, and the shared title/artist/album block. Kept beside the
 // screen scaffolding in QueueScreen.kt, which addresses and lays them out.
 
 @Composable
@@ -98,7 +98,7 @@ internal fun QueueRow(
             cover = item.coverImage,
             cornerRadius = 4.dp,
             iconPadding = 12.dp,
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier.size(56.dp),
         )
         Spacer(modifier = Modifier.width(12.dp))
         QueueItemText(item, modifier = Modifier.weight(1f))
@@ -142,7 +142,7 @@ internal fun QueueRowPlaceholder() {
         Box(
             modifier =
                 Modifier
-                    .size(48.dp)
+                    .size(56.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(placeholderColor),
         )
@@ -163,6 +163,14 @@ internal fun QueueRowPlaceholder() {
                         .clip(RoundedCornerShape(3.dp))
                         .background(placeholderColor),
             )
+            Spacer(modifier = Modifier.height(6.dp))
+            Box(
+                modifier =
+                    Modifier
+                        .size(width = 120.dp, height = 10.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(placeholderColor),
+            )
         }
     }
 }
@@ -180,12 +188,13 @@ private fun QueueItemText(
             maxLines = 1,
         )
         Text(
-            text =
-                if (item.albumTitle.isEmpty()) {
-                    item.artist
-                } else {
-                    "${item.artist}, ${item.albumTitle}"
-                },
+            text = item.artist,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Text(
+            text = item.albumTitle,
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
