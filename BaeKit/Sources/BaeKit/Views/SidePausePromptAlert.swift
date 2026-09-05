@@ -83,7 +83,7 @@ public struct SidePausePromptAlert: ViewModifier {
                                 playbackStore.dismissSidePausePrompt(prompt)
                                 playback.resume()
                             }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(PrimaryButtonStyle())
                             .keyboardShortcut(.defaultAction)
                         }
                         .padding(.top, 8)
@@ -94,7 +94,7 @@ public struct SidePausePromptAlert: ViewModifier {
                     .clipShape(RoundedRectangle(cornerRadius: 22))
                     .overlay {
                         RoundedRectangle(cornerRadius: 22)
-                            .stroke(.white.opacity(0.12), lineWidth: 1)
+                            .stroke(Theme.hairline, lineWidth: 1)
                     }
                     .shadow(radius: 20)
                     .focusable()

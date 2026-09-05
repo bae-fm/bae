@@ -15,6 +15,10 @@ extension EnvironmentValues {
 // MARK: - SwiftUI bridge
 
 struct PreviewProgressRepresentable: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     @Environment(\.previewProgressPublisher)
     private var publisher
     let durationMs: UInt64
@@ -29,6 +33,7 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
             showsRemainingTimeToggle: false,
             fixedSliderWidth: nil
         )
+        view.accent = NSColor(accent.color(in: colorScheme))
         view.onSeek = onSeek
         view.setDuration(durationMs: durationMs)
         context.coordinator.subscribe(to: publisher, view: view)
@@ -36,6 +41,7 @@ struct PreviewProgressRepresentable: NSViewRepresentable {
     }
 
     func updateNSView(_ view: SeekBarNSView, context _: Context) {
+        view.accent = NSColor(accent.color(in: colorScheme))
         view.onSeek = onSeek
         view.setDuration(durationMs: durationMs)
     }

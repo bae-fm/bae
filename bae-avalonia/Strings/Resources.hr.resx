@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>pretraživanje {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} nije odgovorio: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} nije postavljen</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Izgled</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Način</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Sustav</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Svijetli</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Tamni</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Boja naglaska</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Ton pozadine</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutralni</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Škriljevac</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Šljiva</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Plava</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Indigo</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Ljubičasta</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Ružičasta</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Crvena</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Jantarna</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Zelena</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Modrozelena</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Izgled nije moguće spremiti: {error}</value>
+  </data>
 </root>

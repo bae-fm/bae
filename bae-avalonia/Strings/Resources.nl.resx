@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>zoeken op {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} reageerde niet: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} is niet ingesteld</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Weergave</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Modus</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Systeem</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Licht</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Donker</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Accentkleur</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Achtergrondtint</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutraal</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Leisteen</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Pruim</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Blauw</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Indigo</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Paars</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Roze</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Rood</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Amber</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Groen</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Blauwgroen</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Weergave kon niet worden opgeslagen: {error}</value>
+  </data>
 </root>

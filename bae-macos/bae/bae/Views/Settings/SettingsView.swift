@@ -1,12 +1,14 @@
 import SwiftUI
 
 enum SettingsTab: Hashable, CaseIterable {
-    case library, playback, importing, casting, formats, automation, subsonic,
+    case library, appearance, playback, importing, casting, formats, automation,
+        subsonic,
         discogs, about
 
     var title: LocalizedStringKey {
         switch self {
         case .library: "Library"
+        case .appearance: "Appearance"
         case .playback: "Playback"
         case .importing: "Import"
         case .casting: "Casting"
@@ -21,6 +23,7 @@ enum SettingsTab: Hashable, CaseIterable {
     var symbol: String {
         switch self {
         case .library: "books.vertical"
+        case .appearance: "paintpalette"
         case .playback: "play.circle"
         case .importing: "square.and.arrow.down"
         case .casting: "hifispeaker"
@@ -89,6 +92,8 @@ struct SettingsView: View {
         switch selectedTab {
         case .library:
             LibrarySettingsTab(onForgetLibrary: onForgetLibrary)
+        case .appearance:
+            AppearanceSettingsTab()
         case .playback:
             PlaybackSettingsTab()
         case .importing:

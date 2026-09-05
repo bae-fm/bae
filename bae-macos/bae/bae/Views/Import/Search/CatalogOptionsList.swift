@@ -45,15 +45,17 @@ struct CatalogOptionsList: View {
 /// custom row to text — the value, the count and the origin all disappear. A
 /// row that draws its own box keeps its layout.
 struct SignalCheckbox: View {
+    @Environment(\.accentChoice)
+    private var accent
     let isOn: Bool
 
     var body: some View {
         RoundedRectangle(cornerRadius: 3.5)
-            .fill(isOn ? Color.accentColor : .clear)
+            .fill(isOn ? accent.buttonColor : .clear)
             .overlay {
                 RoundedRectangle(cornerRadius: 3.5)
                     .strokeBorder(
-                        isOn ? .clear : .white.opacity(0.25),
+                        isOn ? .clear : Color.primary.opacity(0.25),
                         lineWidth: 1.5
                     )
             }

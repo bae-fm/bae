@@ -207,4 +207,23 @@
     <string name="settings_casting">Yayınlama</string>
     <string name="settings_enable_casting">Yayınlamayı etkinleştir</string>
     <string name="settings_casting_help">Ağınızdaki Cast, AirPlay ve UPnP alıcılarında çalar. Kapalıyken bae cihaz aramaz.</string>
+    <string name="appearance_title">Görünüm</string>
+    <string name="appearance_mode">Mod</string>
+    <string name="appearance_system">Sistem</string>
+    <string name="appearance_light">Açık</string>
+    <string name="appearance_dark">Koyu</string>
+    <string name="appearance_accent">Vurgu rengi</string>
+    <string name="appearance_tone">Arka plan tonu</string>
+    <string name="appearance_neutral">Nötr</string>
+    <string name="appearance_slate">Arduvaz</string>
+    <string name="appearance_plum">Mürdüm</string>
+    <string name="appearance_blue">Mavi</string>
+    <string name="appearance_indigo">Çivit</string>
+    <string name="appearance_purple">Mor</string>
+    <string name="appearance_pink">Pembe</string>
+    <string name="appearance_red">Kırmızı</string>
+    <string name="appearance_amber">Kehribar</string>
+    <string name="appearance_green">Yeşil</string>
+    <string name="appearance_teal">Petrol yeşili</string>
+    <string name="appearance_save_failed">Görünüm kaydedilemedi: %1$s</string>
 </resources>

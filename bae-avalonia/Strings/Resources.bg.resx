@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>търсене в {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} не отговори: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} не е настроен</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Външен вид</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Режим</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Системен</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Светъл</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Тъмен</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Акцентен цвят</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Тон на фона</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Неутрален</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Сивосин</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Сливов</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Син</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Индиго</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Лилав</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Розов</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Червен</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Кехлибарен</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Зелен</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Синьозелен</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Външният вид не можа да бъде запазен: {error}</value>
+  </data>
 </root>

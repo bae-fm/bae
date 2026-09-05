@@ -66,7 +66,7 @@ public struct UnlockView: View {
                             Text("Unlock")
                         }
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(!isValidHex || isUnlocking)
                     .keyboardShortcut(.defaultAction)
                 }

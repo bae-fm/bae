@@ -62,7 +62,7 @@ struct CoverGalleryView: View {
                 preview
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(24)
-                    .background(.black.opacity(0.12))
+                    .background(Theme.well)
             }
             Divider()
             HStack(spacing: 16) {
@@ -77,7 +77,7 @@ struct CoverGalleryView: View {
                 Button("Use This Cover") {
                     if let cursor { onSelect(cursor.current) }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .disabled(
                     cursor == nil || cursor?.current.id == selectedCover
@@ -145,7 +145,7 @@ struct CoverGalleryView: View {
                 .frame(height: 138)
                 .frame(maxWidth: .infinity)
                 .padding(8)
-                .background(.white.opacity(0.035))
+                .background(Theme.hover)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
                 .overlay {
                     RoundedRectangle(cornerRadius: 8)

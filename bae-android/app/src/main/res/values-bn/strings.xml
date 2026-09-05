@@ -207,4 +207,23 @@
     <string name="settings_casting">কাস্টিং</string>
     <string name="settings_enable_casting">কাস্টিং সক্ষম করুন</string>
     <string name="settings_casting_help">আপনার নেটওয়ার্কের Cast, AirPlay ও UPnP রিসিভারে বাজায়। বন্ধ থাকলে bae কোনো ডিভাইস খোঁজে না।</string>
+    <string name="appearance_title">চেহারা</string>
+    <string name="appearance_mode">মোড</string>
+    <string name="appearance_system">সিস্টেম</string>
+    <string name="appearance_light">হালকা</string>
+    <string name="appearance_dark">গাঢ়</string>
+    <string name="appearance_accent">অ্যাকসেন্ট রং</string>
+    <string name="appearance_tone">পটভূমির আভা</string>
+    <string name="appearance_neutral">নিরপেক্ষ</string>
+    <string name="appearance_slate">স্লেট</string>
+    <string name="appearance_plum">প্লাম</string>
+    <string name="appearance_blue">নীল</string>
+    <string name="appearance_indigo">ইন্ডিগো</string>
+    <string name="appearance_purple">বেগুনি</string>
+    <string name="appearance_pink">গোলাপি</string>
+    <string name="appearance_red">লাল</string>
+    <string name="appearance_amber">অ্যাম্বার</string>
+    <string name="appearance_green">সবুজ</string>
+    <string name="appearance_teal">নীলচে সবুজ</string>
+    <string name="appearance_save_failed">চেহারা সংরক্ষণ করা যায়নি: %1$s</string>
 </resources>

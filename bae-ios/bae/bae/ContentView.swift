@@ -100,7 +100,7 @@ struct ContentView: View {
                                 trigger: "the retry button"
                             )
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                     }
                     .padding()
 

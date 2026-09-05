@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} میں تلاش ہو رہی ہے…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} نے جواب نہیں دیا: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ترتیب نہیں دیا گیا</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>ظاہری شکل</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>موڈ</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>سسٹم</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>ہلکا</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>گہرا</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>نمایاں رنگ</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>پس منظر کی رنگت</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>غیر جانب دار</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>سلیٹ</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>آلوبخارا</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>نیلا</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>انڈیگو</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>جامنی</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>گلابی</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>سرخ</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>کہربائی</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>سبز</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>نیلا سبز</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>ظاہری شکل محفوظ نہیں ہو سکی: {error}</value>
+  </data>
 </root>

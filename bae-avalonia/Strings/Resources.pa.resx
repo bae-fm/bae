@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} ਵਿੱਚ ਖੋਜ ਰਹੇ ਹਾਂ…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} ਨੇ ਜਵਾਬ ਨਹੀਂ ਦਿੱਤਾ: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ਸੈੱਟ ਅੱਪ ਨਹੀਂ ਹੈ</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>ਦਿੱਖ</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>ਮੋਡ</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>ਸਿਸਟਮ</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>ਹਲਕਾ</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>ਗੂੜ੍ਹਾ</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>ਮੁੱਖ ਰੰਗ</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>ਪਿਛੋਕੜ ਦੀ ਰੰਗਤ</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>ਨਿਰਪੱਖ</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>ਸਲੇਟ</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>ਪਲਮ</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>ਨੀਲਾ</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>ਇੰਡੀਗੋ</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>ਜਾਮਨੀ</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>ਗੁਲਾਬੀ</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>ਲਾਲ</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>ਅੰਬਰ</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>ਹਰਾ</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>ਨੀਲਾ-ਹਰਾ</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>ਦਿੱਖ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ: {error}</value>
+  </data>
 </root>

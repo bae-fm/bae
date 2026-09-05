@@ -80,26 +80,9 @@ struct AlbumExpansionContent: View {
                         .foregroundStyle(.tertiary)
                     HStack(spacing: 10) {
                         Button(action: onPlay) {
-                            HStack(spacing: 7) {
-                                Image(systemName: "play.fill")
-                                    .font(.system(size: 12, weight: .bold))
-                                Text("Play")
-                                    .font(.system(size: 15, weight: .bold))
-                            }
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 9)
-                            .background(
-                                Theme.accent,
-                                in: RoundedRectangle(cornerRadius: 10)
-                            )
-                            .shadow(
-                                color: Theme.accent.opacity(0.22),
-                                radius: 5,
-                                y: 3
-                            )
+                            Label("Play", systemImage: "play.fill")
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(PrimaryButtonStyle())
                         albumMenu
                     }
                     .padding(
@@ -128,7 +111,7 @@ struct AlbumExpansionContent: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.45), radius: 28, y: 18)
         .overlay(alignment: .topTrailing) {
@@ -180,7 +163,7 @@ struct AlbumExpansionContent: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 36, height: 36)
                 .background(
-                    .white.opacity(0.07),
+                    Theme.hover,
                     in: RoundedRectangle(cornerRadius: 10)
                 )
         }

@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 @testable import bae
@@ -22,6 +23,11 @@ struct ShotScene {
     /// present; `welcome-restore` has no iOS equivalent and is deliberately
     /// absent rather than faked.
     static let all: [ShotScene] = [
+        ShotScene(id: "appearance", size: phoneSize) {
+            AnyView(
+                Form { AppearanceControls() }.scrollContentBackground(.hidden).windowBackground()
+            )
+        },
         ShotScene(id: "welcome", size: phoneSize) {
             AnyView(PreviewScenes.welcome())
         },

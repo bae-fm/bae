@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>กำลังค้นหาใน {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} ไม่ตอบสนอง: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>ยังไม่ได้ตั้งค่า {source}</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>รูปลักษณ์</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>โหมด</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>ระบบ</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>สว่าง</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>มืด</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>สีเน้น</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>โทนพื้นหลัง</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>กลาง</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>เทาอมฟ้า</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>ม่วงพลัม</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>น้ำเงิน</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>คราม</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>ม่วง</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>ชมพู</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>แดง</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>อำพัน</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>เขียว</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>เขียวอมฟ้า</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>บันทึกรูปลักษณ์ไม่ได้: {error}</value>
+  </data>
 </root>

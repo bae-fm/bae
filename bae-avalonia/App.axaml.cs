@@ -20,6 +20,7 @@ public sealed partial class App : Application
     private UpdateService? _updateService;
     private MainWindow? _main;
     private WelcomeWindow? _welcome;
+    private AppearanceStore? _appearance;
 
     // The intent this launch's own argv carried, held until a library opens and the
     // main window can act on it. A launch that lands on the welcome window instead
@@ -78,7 +79,11 @@ public sealed partial class App : Application
         }
     }
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        AppearancePalette.Bundled.Apply(this, AppearancePreferences.Default);
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -88,6 +93,11 @@ public sealed partial class App : Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            _appearance = AppearanceStore.FromFile(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                Edition, "appearance.json"));
+            _appearance.Changed += () => AppearancePalette.Bundled.Apply(this, _appearance.Current);
+            AppearancePalette.Bundled.Apply(this, _appearance.Current);
             // Every quit funnels through here: the last window closing, the OS
             // asking the app to exit, and the now-playing surface's Quit command.
             desktop.ShutdownRequested += (_, args) => QuitAfterTeardown(desktop, args);
@@ -260,7 +270,7 @@ public sealed partial class App : Application
     private void FinishOpenLibrary()
     {
         var main = new MainWindow(
-            Session, MediaControl, Updates, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
+            Session, MediaControl, Updates, _appearance!, CloseLibrary, SwitchLibrary, ApplyUpdateAndRestart);
         _main = main;
         main.Show();
         // Attach from here rather than from the window's own Opened/Closed: a swap

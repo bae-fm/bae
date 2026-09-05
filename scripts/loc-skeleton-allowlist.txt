@@ -287,3 +287,9 @@ vi	settings.formats.codec_aac
 vi	settings.formats.codec_mp3
 vi	settings.formats.codec_opus
 vi	settings.formats.token.album
+
+# Dutch color names retain the same spelling as English.
+nl	appearance_indigo
+nl	appearance_amber
+nl	appearance.indigo
+nl	appearance.amber

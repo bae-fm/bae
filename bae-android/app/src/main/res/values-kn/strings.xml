@@ -207,4 +207,23 @@
     <string name="settings_casting">ಕಾಸ್ಟಿಂಗ್</string>
     <string name="settings_enable_casting">ಕಾಸ್ಟಿಂಗ್ ಸಕ್ರಿಯಗೊಳಿಸಿ</string>
     <string name="settings_casting_help">ನಿಮ್ಮ ನೆಟ್‌ವರ್ಕ್‌ನಲ್ಲಿನ Cast, AirPlay ಮತ್ತು UPnP ರಿಸೀವರ್‌ಗಳಲ್ಲಿ ಪ್ಲೇ ಮಾಡುತ್ತದೆ. ಆಫ್ ಇರುವಾಗ bae ಯಾವುದೇ ಸಾಧನವನ್ನು ಹುಡುಕುವುದಿಲ್ಲ.</string>
+    <string name="appearance_title">ಗೋಚರತೆ</string>
+    <string name="appearance_mode">ಮೋಡ್</string>
+    <string name="appearance_system">ಸಿಸ್ಟಂ</string>
+    <string name="appearance_light">ತಿಳಿ</string>
+    <string name="appearance_dark">ಗಾಢ</string>
+    <string name="appearance_accent">ಮುಖ್ಯ ಬಣ್ಣ</string>
+    <string name="appearance_tone">ಹಿನ್ನೆಲೆಯ ಛಾಯೆ</string>
+    <string name="appearance_neutral">ತಟಸ್ಥ</string>
+    <string name="appearance_slate">ಸ್ಲೇಟ್</string>
+    <string name="appearance_plum">ಪ್ಲಮ್</string>
+    <string name="appearance_blue">ನೀಲಿ</string>
+    <string name="appearance_indigo">ಇಂಡಿಗೊ</string>
+    <string name="appearance_purple">ನೇರಳೆ</string>
+    <string name="appearance_pink">ಗುಲಾಬಿ</string>
+    <string name="appearance_red">ಕೆಂಪು</string>
+    <string name="appearance_amber">ಅಂಬರ್</string>
+    <string name="appearance_green">ಹಸಿರು</string>
+    <string name="appearance_teal">ನೀಲಿ ಹಸಿರು</string>
+    <string name="appearance_save_failed">ಗೋಚರತೆಯನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ: %1$s</string>
 </resources>

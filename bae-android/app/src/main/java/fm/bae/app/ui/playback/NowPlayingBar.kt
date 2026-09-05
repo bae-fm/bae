@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +49,7 @@ import fm.bae.app.playback.NowPlaying
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
 import fm.bae.app.ui.components.CoverImage
+import fm.bae.app.ui.components.PrimaryButton
 import uniffi.bae_bridge.BridgeRepeatMode
 import uniffi.bae_bridge.bridgeNextRepeatMode
 
@@ -172,7 +172,7 @@ fun SidePauseAlert(track: fm.bae.app.playback.NowPlaying) {
             },
             text = { Text(context.coreString(prompt.messageKey)) },
             confirmButton = {
-                Button(onClick = { dismissedPromptId = prompt.id }) {
+                PrimaryButton(onClick = { dismissedPromptId = prompt.id }) {
                     Text(stringResource(R.string.close))
                 }
             },

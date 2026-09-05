@@ -91,7 +91,7 @@ internal static class AlbumExpansionView
             ?? detail.Releases[0];
 
         // ── Actions ───────────────────────────────────────────────────────────
-        var playButton = PrimaryButton(Loc.Chrome("action.play"));
+        var playButton = DialogUi.Primary(Loc.Chrome("action.play"));
         playButton.Click += (_, _) => PlayRelease(app, selectedRelease, shuffle: false);
         var shuffleButton = new Button { Content = Loc.Chrome("album.shuffle") };
         shuffleButton.Click += (_, _) => PlayRelease(app, selectedRelease, shuffle: true);
@@ -262,14 +262,6 @@ internal static class AlbumExpansionView
         closeButton.Click += (_, _) => onClose();
 
         return new Panel { Children = { panelCard, closeButton } };
-    }
-
-    private static Button PrimaryButton(string text)
-    {
-        var button = new Button { Content = text };
-        button[!Button.BackgroundProperty] = new DynamicResourceExtension("BaeAccentBrush");
-        button[!Button.ForegroundProperty] = new DynamicResourceExtension("BaeOnAccentBrush");
-        return button;
     }
 
     private static void PlayRelease(AppService app, Release release, bool shuffle)

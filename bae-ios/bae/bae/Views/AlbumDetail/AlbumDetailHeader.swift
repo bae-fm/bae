@@ -62,7 +62,7 @@ struct AlbumDetailHeader: View {
             } label: {
                 Label("Play", systemImage: "play.fill")
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PrimaryButtonStyle())
             Button {
                 playback.playRelease(releaseId, nil, true)
             } label: {

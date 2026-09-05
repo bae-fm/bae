@@ -19,6 +19,9 @@ struct ShotScene {
     /// verification sheet. A scene is present only when it has a real staging;
     /// a missing scene is a deliberate omission, never a swallowed failure.
     static let all: [ShotScene] = [
+        ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
+            AnyView(AppearanceSettingsTab())
+        },
         ShotScene(
             id: "cover-picker-wide",
             size: CGSize(width: 1_148, height: 868)
@@ -33,6 +36,9 @@ struct ShotScene {
         },
         ShotScene(id: "story-1-first-run", size: WelcomeWindow.size) {
             AnyView(PreviewScenes.welcome())
+        },
+        ShotScene(id: "album-detail", size: CGSize(width: 1100, height: 800)) {
+            AnyView(PreviewScenes.albumDetail())
         },
         ShotScene(id: "story-3-empty-library", size: MainWindow.defaultSize) {
             AnyView(PreviewScenes.libraryEmpty())

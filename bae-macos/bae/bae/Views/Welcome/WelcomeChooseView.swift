@@ -210,7 +210,7 @@ struct WelcomeChooseView: View {
     private var firstRunActions: some View {
         VStack(spacing: 12) {
             Button(action: doCreate) { createButtonLabel }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .frame(width: 240)
                 .disabled(isCreating || isRestoring)
                 .keyboardShortcut(.defaultAction)

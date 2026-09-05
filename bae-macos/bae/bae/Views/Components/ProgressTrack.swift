@@ -3,20 +3,18 @@ import BaeKit
 import SwiftUI
 
 /// The one way a progress bar is drawn in this app: a rounded low-opacity
-/// track with an accent-gradient fill pill. `ProgressTrackNSView` renders it,
+/// track with an accent fill pill. `ProgressTrackNSView` renders it,
 /// `SlimSeekSliderCell` calls the same drawing under the seek knob math, and
 /// `ProgressTrackBar` exposes it to SwiftUI layouts as a value prop — the
 /// drawing and the indeterminate animation stay in AppKit/Core Animation
 /// either way, so no progress rendering rides the SwiftUI render loop.
 enum ProgressTrackDrawing {
-    static let blendFraction: CGFloat = 0.25
-
     /// Draws the track pill and, for a positive fraction, the accent fill pill
     /// (never narrower than its own height, so a tiny fraction still reads as
     /// a pill rather than a sliver).
-    static func draw(in bar: NSRect, fraction: Double?) {
+    static func draw(in bar: NSRect, fraction: Double?, accent: NSColor) {
         let radius = bar.height / 2
-        NSColor.white.withAlphaComponent(0.12).setFill()
+        NSColor.labelColor.withAlphaComponent(0.12).setFill()
         NSBezierPath(roundedRect: bar, xRadius: radius, yRadius: radius).fill()
 
         guard let fraction else {
@@ -33,17 +31,8 @@ enum ProgressTrackDrawing {
             xRadius: radius,
             yRadius: radius
         )
-        let base = NSColor(Theme.accent)
-        guard
-            let lighter = base.blended(withFraction: blendFraction, of: .white),
-            let gradient = NSGradient(starting: base, ending: lighter)
-        else {
-            assertionFailure("accent gradient could not be built")
-            base.setFill()
-            fillPath.fill()
-            return
-        }
-        gradient.draw(in: fillPath, angle: 0)
+        accent.setFill()
+        fillPath.fill()
     }
 }
 
@@ -65,22 +54,22 @@ final class ProgressTrackNSView: NSView {
     }
 
     private let indeterminateClip = CALayer()
-    private let indeterminatePill = CAGradientLayer()
+    private let indeterminatePill = CALayer()
     private static let marchAnimationKey = "march"
 
-    init() {
+    var accent: NSColor {
+        didSet {
+            indeterminatePill.backgroundColor = accent.cgColor
+            needsDisplay = true
+        }
+    }
+
+    init(accent: NSColor) {
+        self.accent = accent
         super.init(frame: .zero)
         wantsLayer = true
 
-        let base = NSColor(Theme.accent)
-        let lighter =
-            base.blended(
-                withFraction: ProgressTrackDrawing.blendFraction,
-                of: .white
-            ) ?? base
-        indeterminatePill.colors = [base.cgColor, lighter.cgColor]
-        indeterminatePill.startPoint = CGPoint(x: 0, y: 0.5)
-        indeterminatePill.endPoint = CGPoint(x: 1, y: 0.5)
+        indeterminatePill.backgroundColor = accent.cgColor
         indeterminateClip.masksToBounds = true
         indeterminateClip.addSublayer(indeterminatePill)
     }
@@ -104,7 +93,11 @@ final class ProgressTrackNSView: NSView {
     }
 
     override func draw(_: NSRect) {
-        ProgressTrackDrawing.draw(in: trackRect, fraction: progress)
+        ProgressTrackDrawing.draw(
+            in: trackRect,
+            fraction: progress,
+            accent: accent
+        )
     }
 
     override func layout() {
@@ -159,16 +152,23 @@ final class ProgressTrackNSView: NSView {
 /// the rendering stays in AppKit. A bar with text describing it is drawn by
 /// `ProgressLine`; this alone is for a bar that stands by itself.
 struct ProgressTrackBar: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     /// 0...1 for a determinate fill; nil for the indeterminate marching pill.
     var progress: Double?
 
     func makeNSView(context _: Context) -> ProgressTrackNSView {
-        let view = ProgressTrackNSView()
+        let view = ProgressTrackNSView(
+            accent: NSColor(accent.color(in: colorScheme))
+        )
         view.progress = progress
         return view
     }
 
     func updateNSView(_ view: ProgressTrackNSView, context _: Context) {
+        view.accent = NSColor(accent.color(in: colorScheme))
         view.progress = progress
     }
 

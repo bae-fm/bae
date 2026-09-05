@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -212,7 +211,7 @@ private fun QRScannerOverlay(
                 modifier = Modifier.background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(8.dp)).padding(8.dp),
             )
         }
-        Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
+        PrimaryButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) {
             Text(stringResource(R.string.cancel))
         }
     }

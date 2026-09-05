@@ -205,4 +205,23 @@
     <string name="settings_casting">Truyền</string>
     <string name="settings_enable_casting">Bật truyền</string>
     <string name="settings_casting_help">Phát tới các thiết bị nhận Cast, AirPlay và UPnP trong mạng của bạn. Khi tắt, bae không tìm thiết bị nào.</string>
+    <string name="appearance_title">Giao diện</string>
+    <string name="appearance_mode">Chế độ</string>
+    <string name="appearance_system">Hệ thống</string>
+    <string name="appearance_light">Sáng</string>
+    <string name="appearance_dark">Tối</string>
+    <string name="appearance_accent">Màu nhấn</string>
+    <string name="appearance_tone">Tông màu nền</string>
+    <string name="appearance_neutral">Trung tính</string>
+    <string name="appearance_slate">Xám đá</string>
+    <string name="appearance_plum">Tím mận</string>
+    <string name="appearance_blue">Xanh dương</string>
+    <string name="appearance_indigo">Chàm</string>
+    <string name="appearance_purple">Tím</string>
+    <string name="appearance_pink">Hồng</string>
+    <string name="appearance_red">Đỏ</string>
+    <string name="appearance_amber">Hổ phách</string>
+    <string name="appearance_green">Xanh lá</string>
+    <string name="appearance_teal">Xanh ngọc</string>
+    <string name="appearance_save_failed">Không thể lưu giao diện: %1$s</string>
 </resources>

@@ -207,4 +207,23 @@
     <string name="settings_casting">കാസ്റ്റിംഗ്</string>
     <string name="settings_enable_casting">കാസ്റ്റിംഗ് പ്രവർത്തനക്ഷമമാക്കുക</string>
     <string name="settings_casting_help">നിങ്ങളുടെ നെറ്റ്‌വർക്കിലെ Cast, AirPlay, UPnP റിസീവറുകളിൽ പ്ലേ ചെയ്യുന്നു. ഓഫ് ആയിരിക്കുമ്പോൾ bae ഉപകരണങ്ങൾ തിരയില്ല.</string>
+    <string name="appearance_title">രൂപം</string>
+    <string name="appearance_mode">മോഡ്</string>
+    <string name="appearance_system">സിസ്റ്റം</string>
+    <string name="appearance_light">ഇളം</string>
+    <string name="appearance_dark">ഇരുണ്ട</string>
+    <string name="appearance_accent">പ്രധാന നിറം</string>
+    <string name="appearance_tone">പശ്ചാത്തല വർണഭാവം</string>
+    <string name="appearance_neutral">നിഷ്പക്ഷം</string>
+    <string name="appearance_slate">സ്ലേറ്റ്</string>
+    <string name="appearance_plum">പ്ലം</string>
+    <string name="appearance_blue">നീല</string>
+    <string name="appearance_indigo">ഇൻഡിഗോ</string>
+    <string name="appearance_purple">പർപ്പിൾ</string>
+    <string name="appearance_pink">പിങ്ക്</string>
+    <string name="appearance_red">ചുവപ്പ്</string>
+    <string name="appearance_amber">ആംബർ</string>
+    <string name="appearance_green">പച്ച</string>
+    <string name="appearance_teal">നീലകലർന്ന പച്ച</string>
+    <string name="appearance_save_failed">രൂപം സംരക്ഷിക്കാനായില്ല: %1$s</string>
 </resources>

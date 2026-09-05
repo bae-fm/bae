@@ -78,7 +78,7 @@ struct QueueItemRow: View {
         // the drag coordinator's row-pitch math depends on.
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(.white.opacity(isHovered ? 0.06 : 0))
+                .fill(Color.primary.opacity(isHovered ? 0.06 : 0))
         )
         .contentShape(Rectangle())
         .onHover(perform: onHoverChanged)

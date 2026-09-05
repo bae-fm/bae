@@ -57,7 +57,7 @@ extension View {
         .overlay(alignment: .leading) {
             if isGroupMember {
                 Rectangle()
-                    .fill(.white.opacity(0.08))
+                    .fill(Theme.hairline)
                     .frame(width: 1)
                     .padding(.leading, ImportListHierarchyLayout.railInset)
             }

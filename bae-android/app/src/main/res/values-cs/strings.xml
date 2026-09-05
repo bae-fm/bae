@@ -211,4 +211,23 @@
     <string name="settings_casting">Odesílání</string>
     <string name="settings_enable_casting">Povolit odesílání</string>
     <string name="settings_casting_help">Přehrává na přijímače Cast, AirPlay a UPnP ve vaší síti. Když je vypnuto, bae žádná zařízení nehledá.</string>
+    <string name="appearance_title">Vzhled</string>
+    <string name="appearance_mode">Režim</string>
+    <string name="appearance_system">Podle systému</string>
+    <string name="appearance_light">Světlý</string>
+    <string name="appearance_dark">Tmavý</string>
+    <string name="appearance_accent">Barva zvýraznění</string>
+    <string name="appearance_tone">Odstín pozadí</string>
+    <string name="appearance_neutral">Neutrální</string>
+    <string name="appearance_slate">Břidlicový</string>
+    <string name="appearance_plum">Švestkový</string>
+    <string name="appearance_blue">Modrá</string>
+    <string name="appearance_indigo">Indigová</string>
+    <string name="appearance_purple">Fialová</string>
+    <string name="appearance_pink">Růžová</string>
+    <string name="appearance_red">Červená</string>
+    <string name="appearance_amber">Jantarová</string>
+    <string name="appearance_green">Zelená</string>
+    <string name="appearance_teal">Modrozelená</string>
+    <string name="appearance_save_failed">Vzhled se nepodařilo uložit: %1$s</string>
 </resources>

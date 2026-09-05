@@ -89,7 +89,7 @@ struct TrackRowView: View {
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(.white.opacity(isHovered ? 0.05 : 0))
+                    .fill(Color.primary.opacity(isHovered ? 0.05 : 0))
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Theme.accent.opacity(highlightOpacity))
             }

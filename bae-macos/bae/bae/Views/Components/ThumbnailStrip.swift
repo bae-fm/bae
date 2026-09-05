@@ -101,7 +101,7 @@ struct ThumbnailStrip<Item: Identifiable & Equatable, Content: View>: View {
                 centered: true,
                 onSelect: { _ in },
                 stroke: { _, isCurrent in
-                    isCurrent ? (Theme.accent, 2) : (.white.opacity(0.1), 1)
+                    isCurrent ? (Theme.accent, 2) : (Theme.hairline, 1)
                 },
                 content: { item in item.color }
             )

@@ -274,7 +274,7 @@ struct SyncSetupWizard: View {
             Button(connectTitle(for: provider)) {
                 connect(provider: provider)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PrimaryButtonStyle())
             .keyboardShortcut(.defaultAction)
             .disabled(isWorking || !connectReady(for: provider))
         }

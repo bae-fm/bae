@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -46,6 +45,7 @@ import fm.bae.app.OpenLibrary
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeMember
@@ -243,7 +243,7 @@ private fun MembersList(
         if (membership.selfIsOwner) {
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Button(onClick = onAddDevice) {
+                PrimaryButton(onClick = onAddDevice) {
                     Text(stringResource(R.string.members_add_device))
                 }
             }

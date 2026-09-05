@@ -207,4 +207,23 @@
     <string name="settings_casting">کاسٹنگ</string>
     <string name="settings_enable_casting">کاسٹنگ فعال کریں</string>
     <string name="settings_casting_help">آپ کے نیٹ ورک پر Cast، AirPlay اور UPnP ریسیورز پر چلاتا ہے۔ بند ہونے پر bae کوئی ڈیوائس تلاش نہیں کرتا۔</string>
+    <string name="appearance_title">ظاہری شکل</string>
+    <string name="appearance_mode">موڈ</string>
+    <string name="appearance_system">سسٹم</string>
+    <string name="appearance_light">ہلکا</string>
+    <string name="appearance_dark">گہرا</string>
+    <string name="appearance_accent">نمایاں رنگ</string>
+    <string name="appearance_tone">پس منظر کی رنگت</string>
+    <string name="appearance_neutral">غیر جانب دار</string>
+    <string name="appearance_slate">سلیٹ</string>
+    <string name="appearance_plum">آلوبخارا</string>
+    <string name="appearance_blue">نیلا</string>
+    <string name="appearance_indigo">انڈیگو</string>
+    <string name="appearance_purple">جامنی</string>
+    <string name="appearance_pink">گلابی</string>
+    <string name="appearance_red">سرخ</string>
+    <string name="appearance_amber">کہربائی</string>
+    <string name="appearance_green">سبز</string>
+    <string name="appearance_teal">نیلا سبز</string>
+    <string name="appearance_save_failed">ظاہری شکل محفوظ نہیں ہو سکی: %1$s</string>
 </resources>

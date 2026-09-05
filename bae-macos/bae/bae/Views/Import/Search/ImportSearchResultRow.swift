@@ -102,7 +102,7 @@ struct ImportSearchResultRow: View {
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)
                     .background(
-                        .white.opacity(0.05),
+                        Theme.hover,
                         in: RoundedRectangle(cornerRadius: 4)
                     )
                     .lineLimit(1)
@@ -141,8 +141,7 @@ struct ImportSearchResultRow: View {
         }
     }
 
-    /// The badges read in the system accent, not the brand one: the brand
-    /// accent is what a picked row wears, and a badge is not a selection.
+    /// Signal badges use the accent as an informational tint.
     private func signalBadge(_ kind: BridgeSignalKind, on: Bool) -> some View {
         Text(SignalBadgeStyle.label(for: kind))
             .font(.system(size: 10.5, weight: .semibold))
@@ -200,7 +199,7 @@ struct ImportSearchResultRow: View {
             Image(systemName: "chevron.right")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(
-                    isSelected ? Theme.accent : Color.white.opacity(0.3)
+                    isSelected ? Theme.accent : Color.primary.opacity(0.3)
                 )
                 .opacity(isLoading ? 0 : 1)
         }

@@ -162,7 +162,7 @@ struct ImportSheetDiscMenu: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 3)
             .background(
-                .white.opacity(hovering ? 0.13 : 0.09),
+                Color.primary.opacity(hovering ? 0.13 : 0.09),
                 in: RoundedRectangle(cornerRadius: 6)
             )
         }

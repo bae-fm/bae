@@ -215,4 +215,23 @@
     <string name="settings_casting">الإرسال</string>
     <string name="settings_enable_casting">تفعيل الإرسال</string>
     <string name="settings_casting_help">يشغّل الصوت على أجهزة استقبال Cast وAirPlay وUPnP على شبكتك. عند إيقافه، لا يبحث bae عن أي أجهزة.</string>
+    <string name="appearance_title">المظهر</string>
+    <string name="appearance_mode">الوضع</string>
+    <string name="appearance_system">النظام</string>
+    <string name="appearance_light">فاتح</string>
+    <string name="appearance_dark">داكن</string>
+    <string name="appearance_accent">لون التمييز</string>
+    <string name="appearance_tone">درجة لون الخلفية</string>
+    <string name="appearance_neutral">محايد</string>
+    <string name="appearance_slate">أردوازي</string>
+    <string name="appearance_plum">برقوقي</string>
+    <string name="appearance_blue">أزرق</string>
+    <string name="appearance_indigo">نيلي</string>
+    <string name="appearance_purple">بنفسجي</string>
+    <string name="appearance_pink">وردي</string>
+    <string name="appearance_red">أحمر</string>
+    <string name="appearance_amber">كهرماني</string>
+    <string name="appearance_green">أخضر</string>
+    <string name="appearance_teal">أزرق مخضر</string>
+    <string name="appearance_save_failed">تعذّر حفظ المظهر: %1$s</string>
 </resources>

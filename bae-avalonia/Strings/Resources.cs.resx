@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>hledání v {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} neodpověděl: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} není nastaven</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Vzhled</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Režim</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Podle systému</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Světlý</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Tmavý</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Barva zvýraznění</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Odstín pozadí</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutrální</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Břidlicový</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Švestkový</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Modrá</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Indigová</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Fialová</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Růžová</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Červená</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Jantarová</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Zelená</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Modrozelená</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Vzhled se nepodařilo uložit: {error}</value>
+  </data>
 </root>

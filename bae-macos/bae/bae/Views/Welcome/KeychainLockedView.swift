@@ -33,7 +33,7 @@ struct KeychainLockedView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: WelcomeLayout.columnWidth)
             Button("Try again", action: onRetry)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
             Spacer()
         }

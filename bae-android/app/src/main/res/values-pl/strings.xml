@@ -211,4 +211,23 @@
     <string name="settings_casting">Przesyłanie</string>
     <string name="settings_enable_casting">Włącz przesyłanie</string>
     <string name="settings_casting_help">Odtwarza na odbiornikach Cast, AirPlay i UPnP w Twojej sieci. Gdy jest wyłączone, bae nie szuka urządzeń.</string>
+    <string name="appearance_title">Wygląd</string>
+    <string name="appearance_mode">Tryb</string>
+    <string name="appearance_system">Systemowy</string>
+    <string name="appearance_light">Jasny</string>
+    <string name="appearance_dark">Ciemny</string>
+    <string name="appearance_accent">Kolor akcentu</string>
+    <string name="appearance_tone">Odcień tła</string>
+    <string name="appearance_neutral">Neutralny</string>
+    <string name="appearance_slate">Łupkowy</string>
+    <string name="appearance_plum">Śliwkowy</string>
+    <string name="appearance_blue">Niebieski</string>
+    <string name="appearance_indigo">Indygo</string>
+    <string name="appearance_purple">Fioletowy</string>
+    <string name="appearance_pink">Różowy</string>
+    <string name="appearance_red">Czerwony</string>
+    <string name="appearance_amber">Bursztynowy</string>
+    <string name="appearance_green">Zielony</string>
+    <string name="appearance_teal">Morski</string>
+    <string name="appearance_save_failed">Nie udało się zapisać wyglądu: %1$s</string>
 </resources>

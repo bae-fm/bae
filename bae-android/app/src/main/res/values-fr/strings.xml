@@ -208,4 +208,23 @@
     <string name="settings_casting">Diffusion</string>
     <string name="settings_enable_casting">Activer la diffusion</string>
     <string name="settings_casting_help">Lit sur les récepteurs Cast, AirPlay et UPnP de votre réseau. Désactivé, bae ne recherche aucun appareil.</string>
+    <string name="appearance_title">Apparence</string>
+    <string name="appearance_mode">Mode</string>
+    <string name="appearance_system">Système</string>
+    <string name="appearance_light">Clair</string>
+    <string name="appearance_dark">Sombre</string>
+    <string name="appearance_accent">Couleur d’accentuation</string>
+    <string name="appearance_tone">Teinte du fond</string>
+    <string name="appearance_neutral">Neutre</string>
+    <string name="appearance_slate">Ardoise</string>
+    <string name="appearance_plum">Prune</string>
+    <string name="appearance_blue">Bleu</string>
+    <string name="appearance_indigo">Indigo</string>
+    <string name="appearance_purple">Violet</string>
+    <string name="appearance_pink">Rose</string>
+    <string name="appearance_red">Rouge</string>
+    <string name="appearance_amber">Ambre</string>
+    <string name="appearance_green">Vert</string>
+    <string name="appearance_teal">Bleu canard</string>
+    <string name="appearance_save_failed">Impossible d’enregistrer l’apparence : %1$s</string>
 </resources>

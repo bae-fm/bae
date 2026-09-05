@@ -207,4 +207,23 @@
     <string name="settings_casting">કાસ્ટિંગ</string>
     <string name="settings_enable_casting">કાસ્ટિંગ સક્ષમ કરો</string>
     <string name="settings_casting_help">તમારા નેટવર્ક પરના Cast, AirPlay અને UPnP રિસીવર પર વગાડે છે. બંધ હોય ત્યારે bae કોઈ ઉપકરણ શોધતું નથી.</string>
+    <string name="appearance_title">દેખાવ</string>
+    <string name="appearance_mode">મોડ</string>
+    <string name="appearance_system">સિસ્ટમ</string>
+    <string name="appearance_light">આછો</string>
+    <string name="appearance_dark">ઘેરો</string>
+    <string name="appearance_accent">મુખ્ય રંગ</string>
+    <string name="appearance_tone">પૃષ્ઠભૂમિની છટા</string>
+    <string name="appearance_neutral">તટસ્થ</string>
+    <string name="appearance_slate">સ્લેટ</string>
+    <string name="appearance_plum">પ્લમ</string>
+    <string name="appearance_blue">વાદળી</string>
+    <string name="appearance_indigo">ઇન્ડિગો</string>
+    <string name="appearance_purple">જાંબલી</string>
+    <string name="appearance_pink">ગુલાબી</string>
+    <string name="appearance_red">લાલ</string>
+    <string name="appearance_amber">અંબર</string>
+    <string name="appearance_green">લીલો</string>
+    <string name="appearance_teal">વાદળી લીલો</string>
+    <string name="appearance_save_failed">દેખાવ સાચવી શકાયો નહીં: %1$s</string>
 </resources>

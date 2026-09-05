@@ -84,19 +84,19 @@ struct FieldChrome: ViewModifier {
         }
     }
 
-    private var fill: Color {
+    private var fill: AnyShapeStyle {
         switch style {
         case .boxed:
-            focused ? Theme.fieldHover : Theme.field
+            AnyShapeStyle(focused ? Theme.fieldHover : Theme.field)
         case .inline:
             if focused {
-                .white.opacity(0.06)
+                AnyShapeStyle(Theme.hover)
             }
             else if hovering {
-                .white.opacity(0.05)
+                AnyShapeStyle(Theme.hover)
             }
             else {
-                .clear
+                AnyShapeStyle(Color.clear)
             }
         }
     }
@@ -104,7 +104,7 @@ struct FieldChrome: ViewModifier {
     private var ring: Color {
         switch style {
         case .boxed:
-            focused ? Theme.accent : .white.opacity(0.07)
+            focused ? Theme.accent : Theme.hairline
         case .inline:
             focused ? Theme.accent.opacity(0.6) : .clear
         }

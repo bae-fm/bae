@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// The close control shared by docked panes and expanded detail cards.
@@ -15,7 +16,7 @@ struct PanelCloseButton: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 30, height: 30)
                 .background(
-                    .white.opacity(0.06),
+                    Theme.hover,
                     in: RoundedRectangle(cornerRadius: 9)
                 )
         }

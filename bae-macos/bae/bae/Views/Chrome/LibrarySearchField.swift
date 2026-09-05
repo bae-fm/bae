@@ -29,7 +29,7 @@ struct LibrarySearchField: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 20, height: 20)
                         .background(
-                            Circle().fill(Color.white.opacity(0.12))
+                            Circle().fill(Theme.hover)
                         )
                         .contentShape(Circle())
                 }
@@ -42,7 +42,7 @@ struct LibrarySearchField: View {
         // only while the field has focus.
         .background(
             RoundedRectangle(cornerRadius: 9)
-                .fill(TitleBarChrome.well)
+                .fill(Theme.well)
                 .overlay(
                     RoundedRectangle(cornerRadius: 9)
                         .strokeBorder(

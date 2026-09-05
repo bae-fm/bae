@@ -85,7 +85,7 @@ struct KeychainRestoreSection: View {
                                     Button("Restore") {
                                         onRestore(entry)
                                     }
-                                    .buttonStyle(.borderedProminent)
+                                    .buttonStyle(PrimaryButtonStyle())
                                     .keyboardShortcut(.defaultAction)
                                     // Disabled (not just hidden) when Connect is
                                     // the active control or a restore is running,

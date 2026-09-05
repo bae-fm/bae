@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>ricerca su {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} non ha risposto: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} non è configurato</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Aspetto</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Modalità</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Sistema</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Chiaro</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Scuro</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Colore di risalto</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Tonalità dello sfondo</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutro</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Ardesia</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Prugna</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Blu</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Indaco</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Viola</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Rosa</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Rosso</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Ambra</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Verde</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Verde petrolio</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Impossibile salvare l’aspetto: {error}</value>
+  </data>
 </root>

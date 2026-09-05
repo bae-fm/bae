@@ -88,10 +88,10 @@ struct BaeApp: App {
                 startupError: startupError,
                 diagnostics: diagnostics
             )
-            .tint(Theme.accent)
+            .appAppearance()
             #else
             ContentView(startupError: startupError, diagnostics: diagnostics)
-                .tint(Theme.accent)
+                .appAppearance()
             #endif
         }
     }

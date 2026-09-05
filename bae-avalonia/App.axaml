@@ -2,87 +2,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Bae.Desktop.App"
              RequestedThemeVariant="Default">
-  <!--
-    The app tracks the OS appearance: RequestedThemeVariant stays Default so
-    Avalonia picks Dark or Light from the system. The bae palette is expressed
-    as variant-scoped resource dictionaries so both variants are complete by
-    construction; no view carries a literal color — every brush is one of the
-    semantic keys below, resolved per variant.
-
-    Dark uses the existing bae tokens (background #0F0F17, surface #171721,
-    elevated #1C1C28, field #101019, terracotta #D97857 accent). Light is a
-    first-pass palette in the same design language: warm near-white surfaces and
-    the terracotta accent family darkened for contrast on light.
-  -->
   <Application.Resources>
     <ResourceDictionary>
-      <ResourceDictionary.ThemeDictionaries>
-
-        <ResourceDictionary x:Key="Dark">
-          <Color x:Key="BaeBackgroundColor">#0F0F17</Color>
-          <Color x:Key="BaeSurfaceColor">#171721</Color>
-          <Color x:Key="BaeElevatedColor">#1C1C28</Color>
-          <Color x:Key="BaeFieldColor">#101019</Color>
-          <Color x:Key="BaeAccentColor">#D97857</Color>
-          <Color x:Key="BaeAccentHoverColor">#E08A6A</Color>
-          <Color x:Key="BaeAccentPressedColor">#C1684A</Color>
-          <Color x:Key="BaeOnAccentColor">#FFFFFF</Color>
-          <Color x:Key="BaeTextPrimaryColor">#F0F0F5</Color>
-          <Color x:Key="BaeTextSecondaryColor">#9A9AA5</Color>
-          <Color x:Key="BaeDangerColor">#E8836F</Color>
-          <Color x:Key="BaeHairlineColor">#22FFFFFF</Color>
-          <Color x:Key="BaeScrimColor">#73000000</Color>
-          <!-- The multi-selection tint over an album card's cover: the accent at a
-               low alpha, so a selected card reads as accented without hiding the
-               art. Toggled 0/1 by the card's opacity, never re-inserted. -->
-          <Color x:Key="BaeSelectionTintColor">#3CD97857</Color>
-          <!-- Settled-positive state (a signal that found matches / confirms). -->
-          <Color x:Key="BaeSuccessColor">#6BCB77</Color>
-          <!-- Needs-a-decision state (the triage sidebar's "pick a pressing" /
-               "counts or lengths disagree" stripe and chip). -->
-          <Color x:Key="BaeWarningColor">#E0A458</Color>
-          <!-- Settled-but-worth-noting state (the triage sidebar's
-               "already in library" stripe and chip). -->
-          <Color x:Key="BaeInfoColor">#6FA8DC</Color>
-          <!-- FluentTheme's focus ring reads SystemAccentColor; point it at the
-               terracotta. The accent button background is driven by the Style
-               overrides below (FluentTheme paints it on the template's content
-               presenter, so the color has to be set there). -->
-          <Color x:Key="SystemAccentColor">#D97857</Color>
-        </ResourceDictionary>
-
-        <ResourceDictionary x:Key="Light">
-          <Color x:Key="BaeBackgroundColor">#FBF8F5</Color>
-          <Color x:Key="BaeSurfaceColor">#FFFFFF</Color>
-          <Color x:Key="BaeElevatedColor">#F1ECE5</Color>
-          <Color x:Key="BaeFieldColor">#FFFFFF</Color>
-          <Color x:Key="BaeAccentColor">#C25B3A</Color>
-          <Color x:Key="BaeAccentHoverColor">#CE6A48</Color>
-          <Color x:Key="BaeAccentPressedColor">#A94E31</Color>
-          <Color x:Key="BaeOnAccentColor">#FFFFFF</Color>
-          <Color x:Key="BaeTextPrimaryColor">#1A1A22</Color>
-          <Color x:Key="BaeTextSecondaryColor">#6B6B72</Color>
-          <Color x:Key="BaeDangerColor">#C0392B</Color>
-          <Color x:Key="BaeHairlineColor">#14000000</Color>
-          <Color x:Key="BaeScrimColor">#59000000</Color>
-          <Color x:Key="BaeSelectionTintColor">#2EC25B3A</Color>
-          <Color x:Key="BaeSuccessColor">#2E8B45</Color>
-          <Color x:Key="BaeWarningColor">#B8791F</Color>
-          <Color x:Key="BaeInfoColor">#2E6DA4</Color>
-          <Color x:Key="SystemAccentColor">#C25B3A</Color>
-        </ResourceDictionary>
-
-      </ResourceDictionary.ThemeDictionaries>
-
-      <!-- Semantic brushes over the variant colors above. Views bind these, so
+      <!-- Semantic brushes over the shared appearance palette. Views bind these, so
            the same markup renders correct in either variant. -->
       <SolidColorBrush x:Key="BaeBackgroundBrush" Color="{DynamicResource BaeBackgroundColor}" />
       <SolidColorBrush x:Key="BaeSurfaceBrush" Color="{DynamicResource BaeSurfaceColor}" />
       <SolidColorBrush x:Key="BaeElevatedBrush" Color="{DynamicResource BaeElevatedColor}" />
       <SolidColorBrush x:Key="BaeFieldBrush" Color="{DynamicResource BaeFieldColor}" />
       <SolidColorBrush x:Key="BaeAccentBrush" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="BaeAccentHoverBrush" Color="{DynamicResource BaeAccentHoverColor}" />
-      <SolidColorBrush x:Key="BaeAccentPressedBrush" Color="{DynamicResource BaeAccentPressedColor}" />
+      <SolidColorBrush x:Key="BaePrimaryHoverBrush" Color="{DynamicResource BaePrimaryHoverColor}" />
+      <SolidColorBrush x:Key="BaePrimaryPressedBrush" Color="{DynamicResource BaePrimaryPressedColor}" />
       <SolidColorBrush x:Key="BaeOnAccentBrush" Color="{DynamicResource BaeOnAccentColor}" />
       <SolidColorBrush x:Key="BaeTextPrimaryBrush" Color="{DynamicResource BaeTextPrimaryColor}" />
       <SolidColorBrush x:Key="BaeTextSecondaryBrush" Color="{DynamicResource BaeTextSecondaryColor}" />
@@ -94,36 +24,57 @@
       <SolidColorBrush x:Key="BaeWarningBrush" Color="{DynamicResource BaeWarningColor}" />
       <SolidColorBrush x:Key="BaeInfoBrush" Color="{DynamicResource BaeInfoColor}" />
 
-      <!-- FluentTheme's Slider paints its filled track and thumb from these
-           accent resources; overriding them keeps the scrubber and volume slider
-           terracotta instead of the stock blue, in both variants. -->
+      <!-- Progress uses the selected accent, with a flat fill in every state. -->
       <SolidColorBrush x:Key="SliderTrackValueFill" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{DynamicResource BaeAccentHoverColor}" />
-      <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{DynamicResource BaeAccentPressedColor}" />
+      <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="{DynamicResource BaeAccentColor}" />
+      <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="{DynamicResource BaeAccentColor}" />
       <SolidColorBrush x:Key="SliderThumbBackground" Color="{DynamicResource BaeAccentColor}" />
-      <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{DynamicResource BaeAccentHoverColor}" />
-      <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{DynamicResource BaeAccentPressedColor}" />
+      <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="{DynamicResource BaeAccentColor}" />
+      <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="{DynamicResource BaeAccentColor}" />
+      <SolidColorBrush x:Key="BaePrimaryBrush" Color="{DynamicResource BaePrimaryColor}" />
+      <SolidColorBrush x:Key="BaeHoverBrush" Color="{DynamicResource BaeHoverColor}" />
+      <SolidColorBrush x:Key="BaeWellBrush" Color="{DynamicResource BaeWellColor}" />
+      <SolidColorBrush x:Key="BaeTileBrush" Color="{DynamicResource BaeTileColor}" />
+      <SolidColorBrush x:Key="BaePlaceholderBrush" Color="{DynamicResource BaePlaceholderColor}" />
     </ResourceDictionary>
   </Application.Resources>
 
   <Application.Styles>
     <FluentTheme />
 
-    <!-- The prominent (accent) button in the bae terracotta, in both variants.
-         FluentTheme paints the accent background on the template's content
-         presenter, so the override targets it there; the base FluentTheme accent
-         would otherwise be its default blue. -->
+    <!-- Primary actions use one flat fill. Navigation and icon controls stay
+         neutral; Fluent retains its focus and keyboard behavior. -->
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="Button.navigation:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BaeHoverBrush}" />
+    </Style>
+    <Style Selector="Button.navigation:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BaeTileBrush}" />
+    </Style>
+    <Style Selector="Window">
+      <Setter Property="Background" Value="{DynamicResource BaeBackgroundBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource BaeTextPrimaryBrush}" />
+    </Style>
     <Style Selector="Button.accent">
       <Setter Property="Foreground" Value="{DynamicResource BaeOnAccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Button.accent /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaeAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource BaePrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
     <Style Selector="Button.accent:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaeAccentHoverBrush}" />
+      <Setter Property="Background" Value="{DynamicResource BaePrimaryHoverBrush}" />
     </Style>
     <Style Selector="Button.accent:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource BaeAccentPressedBrush}" />
+      <Setter Property="Background" Value="{DynamicResource BaePrimaryPressedBrush}" />
+    </Style>
+    <Style Selector="Button.accent:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource BaeElevatedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource BaeTextSecondaryBrush}" />
+      <Setter Property="Opacity" Value="0.6" />
     </Style>
   </Application.Styles>
 </Application>

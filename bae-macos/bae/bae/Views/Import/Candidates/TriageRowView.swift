@@ -362,9 +362,8 @@ extension TriageRowView {
     }
 }
 
-/// The bulk-select checkbox, drawn by hand: the system checkbox is a filled
-/// square that disappears against the dark list, so this one is an open
-/// outline at rest and the accent tile with a mark when set.
+/// The bulk-select checkbox has an open outline at rest and an accent fill
+/// when selected, with the checkmark contrasted against it in either mode.
 private struct TriageCheckboxToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button {
@@ -375,7 +374,7 @@ private struct TriageCheckboxToggleStyle: ToggleStyle {
                     .fill(Theme.accent)
                     .opacity(configuration.isOn ? 1 : 0)
                 RoundedRectangle(cornerRadius: 4)
-                    .strokeBorder(.white.opacity(0.3), lineWidth: 1.5)
+                    .strokeBorder(Color.primary.opacity(0.3), lineWidth: 1.5)
                     .opacity(configuration.isOn ? 0 : 1)
                 Image(systemName: "checkmark")
                     .font(.system(size: 9, weight: .bold))

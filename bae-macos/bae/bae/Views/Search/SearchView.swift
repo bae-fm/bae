@@ -49,9 +49,9 @@ struct SearchView: View {
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                .strokeBorder(Theme.hairline, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.7), radius: 30, y: 22)
+        .shadow(color: .black.opacity(0.18), radius: 18, y: 8)
         // The result list's height is measured (`contentHeight` above), so on
         // the mount frame the card would render as a zero-height sliver of
         // chrome before the measurement lands. Hold it invisible until then;
@@ -233,7 +233,7 @@ private struct SearchResultRow: View {
             .contentShape(Rectangle())
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(hovering ? 0.05 : 0))
+                    .fill(Color.primary.opacity(hovering ? 0.05 : 0))
             )
         }
         .buttonStyle(.plain)

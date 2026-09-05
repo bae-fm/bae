@@ -15,6 +15,10 @@ extension EnvironmentValues {
 // MARK: - SwiftUI bridge
 
 struct PlaybackProgressRepresentable: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     @Environment(\.playbackPositionPublisher)
     private var positionPublisher
     /// The user's elapsed-vs-remaining choice, read off the config mirror. The
@@ -44,6 +48,7 @@ struct PlaybackProgressRepresentable: NSViewRepresentable {
     }
 
     private func apply(to view: SeekBarNSView) {
+        view.accent = NSColor(accent.color(in: colorScheme))
         view.onSeek = onSeek
         view.onToggleRemainingTime = onToggleRemainingTime
         view.showRemainingTime = showRemainingTime

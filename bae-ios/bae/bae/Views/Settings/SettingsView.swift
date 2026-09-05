@@ -4,9 +4,8 @@ import os.log
 
 private let logger = Logger.bae("Settings")
 
-/// Minimal per-device settings: the library's sync status, and a destructive
-/// action to remove the library from this device. Read-only otherwise — v1
-/// mobile doesn't edit library config. Presented as a sheet from `LibraryView`.
+/// Device appearance, playback, casting, and library settings.
+/// Presented as a sheet from LibraryView.
 struct SettingsView: View {
     @Environment(ConfigStore.self)
     private var configStore
@@ -41,6 +40,9 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Appearance") {
+                    AppearanceControls()
+                }
                 if holder.hasMultipleLibraries {
                     Section("Library") {
                         ForEach(holder.libraries, id: \.id) { library in
@@ -173,6 +175,8 @@ struct SettingsView: View {
                     LabeledContent("Version", value: Self.appVersion)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .windowBackground()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

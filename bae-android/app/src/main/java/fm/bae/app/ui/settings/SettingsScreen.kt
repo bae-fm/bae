@@ -18,7 +18,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -56,6 +55,7 @@ import fm.bae.app.RestorePlaybackPref
 import fm.bae.app.localizedLine
 import fm.bae.app.ui.BaeTheme
 import fm.bae.app.ui.PreviewData
+import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -147,6 +147,8 @@ private fun SettingsSections(
 ) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         SettingsTopBar(onBack = onBack)
+        AppearanceSection()
+        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         if (libraries.size > 1) {
             SettingsLibrarySection(
                 libraries = libraries,
@@ -377,7 +379,7 @@ private fun SettingsDevicesSection(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Button(onClick = onManageDevices) {
+        PrimaryButton(onClick = onManageDevices) {
             Text(stringResource(R.string.settings_manage_devices))
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -403,7 +405,7 @@ private fun SettingsLeaveSection(onRequestLeave: () -> Unit) {
         modifier = Modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Button(
+        PrimaryButton(
             onClick = onRequestLeave,
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
         ) {

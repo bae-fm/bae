@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 struct ImportCandidateBulkSelectionPane: View {
@@ -11,7 +12,7 @@ struct ImportCandidateBulkSelectionPane: View {
             Button("Skip All") {
                 Task { await skipAction.perform() }
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(!skipAction.isEnabled)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

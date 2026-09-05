@@ -23,6 +23,7 @@ public sealed class SettingsImportTests
             new LibraryService());
         var settings = new SettingsWindow(
             app,
+            new AppearanceStore(AppearancePreferences.Default, _ => { }),
             new UpdateService(),
             () => Task.CompletedTask,
             _ => Task.CompletedTask,

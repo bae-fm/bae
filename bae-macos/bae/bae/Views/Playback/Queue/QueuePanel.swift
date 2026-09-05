@@ -55,7 +55,7 @@ struct QueuePanel: View {
         .background(Theme.surface)
         .overlay(alignment: .leading) {
             Rectangle()
-                .fill(.white.opacity(0.07))
+                .fill(Theme.hairline)
                 .frame(width: 1)
         }
     }

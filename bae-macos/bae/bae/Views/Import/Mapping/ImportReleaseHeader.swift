@@ -257,7 +257,7 @@ struct ImportReleaseHeader: View {
         .padding(16)
         .frame(width: Self.coverSize, height: Self.coverSize)
         .background(
-            inviting ? Theme.accent.opacity(0.06) : .white.opacity(0.03)
+            inviting ? Theme.accent.opacity(0.06) : Theme.hover
         )
         .overlay {
             RoundedRectangle(cornerRadius: 8)
@@ -265,7 +265,7 @@ struct ImportReleaseHeader: View {
                 .foregroundStyle(
                     inviting
                         ? AnyShapeStyle(Theme.accent)
-                        : AnyShapeStyle(.white.opacity(0.16))
+                        : AnyShapeStyle(Color.primary.opacity(0.16))
                 )
         }
     }

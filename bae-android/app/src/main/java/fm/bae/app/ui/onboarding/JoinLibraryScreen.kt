@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -29,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fm.bae.app.OAuthLinker
 import fm.bae.app.R
+import fm.bae.app.ui.components.PrimaryButton
 import uniffi.bae_bridge.BridgeCloudProvider
 
 /** Join by scanning the one pairing code displayed on an existing device. */
@@ -66,7 +66,7 @@ fun JoinLibraryScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        Button(
+        PrimaryButton(
             onClick = joinLauncher::join,
             enabled = joinLauncher.joinReady,
             modifier = Modifier.width(220.dp),

@@ -77,6 +77,7 @@ internal static class SmokeCreate
                 new StorageDialog(app, modalHost),
                 new SettingsWindow(
                     app,
+                    new AppearanceStore(AppearancePreferences.Default, _ => { }),
                     new UpdateService(),
                     closeLibrary,
                     switchLibrary,

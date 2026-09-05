@@ -207,4 +207,23 @@
     <string name="settings_casting">காஸ்ட்</string>
     <string name="settings_enable_casting">காஸ்ட் இயக்கு</string>
     <string name="settings_casting_help">உங்கள் நெட்வொர்க்கில் உள்ள Cast, AirPlay மற்றும் UPnP ரிசீவர்களில் இயக்கும். அணைத்திருக்கும்போது bae சாதனங்களைத் தேடாது.</string>
+    <string name="appearance_title">தோற்றம்</string>
+    <string name="appearance_mode">முறை</string>
+    <string name="appearance_system">கணினி அமைப்பு</string>
+    <string name="appearance_light">வெளிர்</string>
+    <string name="appearance_dark">இருள்</string>
+    <string name="appearance_accent">முதன்மை நிறம்</string>
+    <string name="appearance_tone">பின்னணி நிறச்சாயல்</string>
+    <string name="appearance_neutral">நடுநிலை</string>
+    <string name="appearance_slate">ஸ்லேட்</string>
+    <string name="appearance_plum">பிளம்</string>
+    <string name="appearance_blue">நீலம்</string>
+    <string name="appearance_indigo">கருநீலம்</string>
+    <string name="appearance_purple">ஊதா</string>
+    <string name="appearance_pink">இளஞ்சிவப்பு</string>
+    <string name="appearance_red">சிவப்பு</string>
+    <string name="appearance_amber">அம்பர்</string>
+    <string name="appearance_green">பச்சை</string>
+    <string name="appearance_teal">நீலப்பச்சை</string>
+    <string name="appearance_save_failed">தோற்றத்தைச் சேமிக்க முடியவில்லை: %1$s</string>
 </resources>

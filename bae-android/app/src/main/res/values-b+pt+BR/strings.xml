@@ -208,4 +208,23 @@
     <string name="settings_casting">Transmissão</string>
     <string name="settings_enable_casting">Ativar a transmissão</string>
     <string name="settings_casting_help">Reproduz em receptores Cast, AirPlay e UPnP da sua rede. Quando está desativado, o bae não procura dispositivos.</string>
+    <string name="appearance_title">Aparência</string>
+    <string name="appearance_mode">Modo</string>
+    <string name="appearance_system">Sistema</string>
+    <string name="appearance_light">Claro</string>
+    <string name="appearance_dark">Escuro</string>
+    <string name="appearance_accent">Cor de destaque</string>
+    <string name="appearance_tone">Tom do fundo</string>
+    <string name="appearance_neutral">Neutro</string>
+    <string name="appearance_slate">Ardósia</string>
+    <string name="appearance_plum">Ameixa</string>
+    <string name="appearance_blue">Azul</string>
+    <string name="appearance_indigo">Índigo</string>
+    <string name="appearance_purple">Roxo</string>
+    <string name="appearance_pink">Rosa</string>
+    <string name="appearance_red">Vermelho</string>
+    <string name="appearance_amber">Âmbar</string>
+    <string name="appearance_green">Verde</string>
+    <string name="appearance_teal">Azul-petróleo</string>
+    <string name="appearance_save_failed">Não foi possível salvar a aparência: %1$s</string>
 </resources>

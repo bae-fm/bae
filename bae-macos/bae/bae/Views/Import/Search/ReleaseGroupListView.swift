@@ -84,7 +84,7 @@ struct ReleaseGroupSection: View {
     private var pressings: some View {
         HStack(spacing: 0) {
             Rectangle()
-                .fill(.white.opacity(0.07))
+                .fill(Theme.hairline)
                 .frame(width: 1)
             VStack(spacing: 1) {
                 ForEach(group.pressings) { pressing in

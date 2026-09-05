@@ -124,7 +124,7 @@ struct RestoreFromCloudView: View {
                 Button("Restore") {
                     doRestoreFromCode()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(isRestoring || !restoreReady)
                 .keyboardShortcut(.defaultAction)
             }

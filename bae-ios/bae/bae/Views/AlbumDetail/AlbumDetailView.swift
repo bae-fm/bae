@@ -183,8 +183,8 @@ struct AlbumDetailView: View {
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(
                                     id == activeReleaseId(summary: summary)
-                                        ? Theme.accentSoft
-                                        : Theme.surfaceElevated
+                                        ? AnyShapeStyle(Theme.accentSoft)
+                                        : AnyShapeStyle(Theme.surfaceElevated)
                                 )
                         )
                     }

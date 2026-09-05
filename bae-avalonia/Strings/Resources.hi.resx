@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} में खोज रहे हैं…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} ने जवाब नहीं दिया: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} सेट अप नहीं है</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>दिखावट</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>मोड</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>सिस्टम</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>हल्का</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>गहरा</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>मुख्य रंग</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>पृष्ठभूमि की रंगत</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>तटस्थ</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>स्लेट</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>प्लम</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>नीला</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>इंडिगो</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>बैंगनी</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>गुलाबी</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>लाल</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>ऐंबर</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>हरा</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>नीला-हरा</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>दिखावट सहेजी नहीं जा सकी: {error}</value>
+  </data>
 </root>

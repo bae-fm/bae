@@ -370,6 +370,7 @@ extension BaeApp {
                     }
                 }
             }
+            .appAppearance()
             .navigationTitle(appDelegate.hasShell ? windowTitle : "bae")
             .onAppear {
                 #if !DEBUG
@@ -394,6 +395,7 @@ extension BaeApp {
         Window("Storage Manager", id: "storage-manager") {
             if appDelegate.runtime.startsApplicationServices {
                 StorageManagerWindowRoot(appDelegate: appDelegate)
+                    .appAppearance()
             }
             else {
                 EmptyView()
@@ -437,6 +439,7 @@ extension BaeApp {
                 checkForUpdatesViewModel:
                     appDelegate.applicationServices?.checkForUpdatesViewModel
             )
+            .appAppearance()
         }
         // Never restored, for the reason the Storage Manager window is not:
         // a restored auxiliary window marks the session as already presented

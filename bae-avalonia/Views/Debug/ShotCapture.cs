@@ -46,20 +46,21 @@ internal static class ShotCapture
     // One capture scene: a stable id (the gallery scene key, shared across
     // platforms) and a fixed logical size, with a builder that renders the
     // composition against fixtures.
-    private readonly record struct Scene(string Id, int Width, int Height, Func<Control> Build);
+    private readonly record struct Scene(string Id, int Width, int Height, Func<AppearancePreferences, Control> Build);
 
     // The scene registry: desktop-story ids (notes/desktop-stories.md). Each scene
     // renders through a production builder over fixtures — none needs a live
     // library handle.
     private static IReadOnlyList<Scene> Scenes { get; } = new[]
     {
-        new Scene("story-1-first-run", 900, 600, BuildWelcome),
+        new Scene("appearance", 650, 400, BuildAppearance),
+        new Scene("story-1-first-run", 900, 600, _ => BuildWelcome()),
         new Scene("story-3-empty-library", 1350, 850, BuildEmptyLibrary),
         new Scene(
             "import-release-queue",
             900,
             700,
-            () => BuildImportQueue(
+            _ => BuildImportQueue(
                 PreviewData.ImportItems,
                 PreviewData.ImportSummary,
                 BridgeTriageTab.Pending,
@@ -68,7 +69,7 @@ internal static class ShotCapture
             "import-release-ambiguity-narrow",
             520,
             700,
-            () => BuildImportQueue(
+            _ => BuildImportQueue(
                 PreviewData.ImportItems,
                 PreviewData.ImportSummary,
                 BridgeTriageTab.Pending,
@@ -77,7 +78,7 @@ internal static class ShotCapture
             "import-release-queue-collapsed",
             900,
             700,
-            () => BuildImportQueue(
+            _ => BuildImportQueue(
                 PreviewData.ImportCollapsedItems,
                 PreviewData.ImportSummary,
                 BridgeTriageTab.Pending,
@@ -86,7 +87,7 @@ internal static class ShotCapture
             "import-release-scanning-refresh",
             900,
             700,
-            () => BuildImportQueue(
+            _ => BuildImportQueue(
                 PreviewData.ImportItems,
                 PreviewData.ImportScanningSummary,
                 BridgeTriageTab.Pending,
@@ -95,7 +96,7 @@ internal static class ShotCapture
             "import-release-resolved-reversal",
             900,
             700,
-            () => BuildImportQueue(
+            _ => BuildImportQueue(
                 PreviewData.ImportResolvedItems,
                 PreviewData.ImportResolvedSummary,
                 BridgeTriageTab.Pending,
@@ -104,7 +105,7 @@ internal static class ShotCapture
             "import-metadata-sources",
             1200,
             820,
-            BuildImportMetadataSources),
+            _ => BuildImportMetadataSources()),
     };
 
     // True when args carry the capture flag; then outputDir is the directory that
@@ -153,9 +154,18 @@ internal static class ShotCapture
         Log("capture begin");
 
         var sceneId = OptionAfter(args, SceneFlag);
-        var variant = OptionAfter(args, VariantFlag) == "light" ? ThemeVariant.Light : ThemeVariant.Dark;
-        Application.Current!.RequestedThemeVariant = variant;
-        Log($"variant={variant}, requested scene={sceneId ?? "(all)"}");
+        var mode = OptionAfter(args, VariantFlag) switch
+        {
+            null or "dark" => AppearanceMode.Dark,
+            "light" => AppearanceMode.Light,
+            _ => throw new ArgumentException("Capture variant must be dark or light"),
+        };
+        var preferences = new AppearancePreferences(
+            mode,
+            ReadChoice(args, "--capture-accent", AccentChoice.Blue),
+            ReadChoice(args, "--capture-tone", SurfaceTone.Neutral));
+        AppearancePalette.Bundled.Apply(Application.Current!, preferences);
+        Log($"appearance={preferences}, requested scene={sceneId ?? "(all)"}");
 
         var failed = false;
         var rendered = 0;
@@ -168,7 +178,7 @@ internal static class ShotCapture
             rendered++;
             try
             {
-                Capture(scene, outputDir);
+                Capture(scene, outputDir, preferences);
                 Log($"scene '{scene.Id}': done");
             }
             catch (Exception exception)
@@ -188,7 +198,21 @@ internal static class ShotCapture
         return failed ? 1 : 0;
     }
 
-    private static void Capture(Scene scene, string outputDir)
+    private static T ReadChoice<T>(IReadOnlyList<string> args, string flag, T defaultChoice) where T : struct, Enum
+    {
+        var text = OptionAfter(args, flag);
+        if (text is null) return defaultChoice;
+        if (Enum.TryParse<T>(text, ignoreCase: true, out var choice) && Enum.IsDefined(choice)) return choice;
+        throw new ArgumentException($"Unknown {flag}: {text}");
+    }
+
+    private static Control BuildAppearance(AppearancePreferences preferences) => new Border
+    {
+        Padding = new Thickness(20),
+        Child = new AppearanceSection(new AppearanceStore(preferences, _ => { }), message => throw new IOException(message)),
+    };
+
+    private static void Capture(Scene scene, string outputDir, AppearancePreferences preferences)
     {
         Log($"scene '{scene.Id}': build start");
         var root = new Border
@@ -198,7 +222,7 @@ internal static class ShotCapture
         };
         // A solid page background so the PNG is opaque rather than transparent.
         root[!Border.BackgroundProperty] = new DynamicResourceExtension("BaeBackgroundBrush");
-        root.Child = scene.Build();
+        root.Child = scene.Build(preferences);
 
         var window = new Window
         {
@@ -259,7 +283,7 @@ internal static class ShotCapture
     // reads that empty-state branch off the stub, so the shot exercises
     // the shipped composition — the session has no handle and every other service
     // is a fail-loud stub, so nothing on this path reaches a live library.
-    private static Control BuildEmptyLibrary()
+    private static Control BuildEmptyLibrary(AppearancePreferences preferences)
     {
         var session = new SessionStore(Dispatcher.UIThread);
         var settings = new SettingsService
@@ -280,7 +304,7 @@ internal static class ShotCapture
             new ReleaseActionDialogs(app, modalHost, lightbox),
             new ImportDialogs(modalHost, lightbox, app.Images, _ => Task.CompletedTask),
             new StorageDialog(app, modalHost),
-            new SettingsWindow(app, new UpdateService(), closeLibrary, switchLibrary, () => Task.CompletedTask),
+            new SettingsWindow(app, new AppearanceStore(preferences, _ => { }), new UpdateService(), closeLibrary, switchLibrary, () => Task.CompletedTask),
             new LibrariesDialog(app, modalHost, switchLibrary),
             closeLibrary);
     }

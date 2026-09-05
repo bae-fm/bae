@@ -207,4 +207,23 @@
     <string name="settings_casting">కాస్టింగ్</string>
     <string name="settings_enable_casting">కాస్టింగ్ ప్రారంభించు</string>
     <string name="settings_casting_help">మీ నెట్‌వర్క్‌లోని Cast, AirPlay, UPnP రిసీవర్‌లలో ప్లే చేస్తుంది. ఆఫ్‌లో ఉన్నప్పుడు bae పరికరాల కోసం వెతకదు.</string>
+    <string name="appearance_title">రూపం</string>
+    <string name="appearance_mode">మోడ్</string>
+    <string name="appearance_system">సిస్టమ్</string>
+    <string name="appearance_light">లేత</string>
+    <string name="appearance_dark">ముదురు</string>
+    <string name="appearance_accent">ప్రధాన రంగు</string>
+    <string name="appearance_tone">నేపథ్య ఛాయ</string>
+    <string name="appearance_neutral">తటస్థం</string>
+    <string name="appearance_slate">స్లేట్</string>
+    <string name="appearance_plum">ప్లమ్</string>
+    <string name="appearance_blue">నీలం</string>
+    <string name="appearance_indigo">ఇండిగో</string>
+    <string name="appearance_purple">ఊదా</string>
+    <string name="appearance_pink">గులాబీ</string>
+    <string name="appearance_red">ఎరుపు</string>
+    <string name="appearance_amber">అంబర్</string>
+    <string name="appearance_green">ఆకుపచ్చ</string>
+    <string name="appearance_teal">నీలి ఆకుపచ్చ</string>
+    <string name="appearance_save_failed">రూపాన్ని సేవ్ చేయలేకపోయాం: %1$s</string>
 </resources>

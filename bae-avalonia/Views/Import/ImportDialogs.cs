@@ -129,7 +129,7 @@ internal sealed class ImportDialogs
                 tile.BorderThickness = new Thickness(0);
             }
             picked.BorderThickness = new Thickness(2);
-            picked.BorderBrush = Brushes.DeepSkyBlue;
+            picked[!Button.BorderBrushProperty] = new Avalonia.Markup.Xaml.MarkupExtensions.DynamicResourceExtension("BaeAccentBrush");
             onPick(cover);
         }
 

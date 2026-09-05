@@ -207,4 +207,23 @@
     <string name="settings_casting">ਕਾਸਟਿੰਗ</string>
     <string name="settings_enable_casting">ਕਾਸਟਿੰਗ ਚਾਲੂ ਕਰੋ</string>
     <string name="settings_casting_help">ਤੁਹਾਡੇ ਨੈੱਟਵਰਕ ਦੇ Cast, AirPlay ਅਤੇ UPnP ਰਿਸੀਵਰਾਂ \'ਤੇ ਚਲਾਉਂਦਾ ਹੈ। ਬੰਦ ਹੋਣ \'ਤੇ bae ਕੋਈ ਡੀਵਾਈਸ ਨਹੀਂ ਲੱਭਦਾ।</string>
+    <string name="appearance_title">ਦਿੱਖ</string>
+    <string name="appearance_mode">ਮੋਡ</string>
+    <string name="appearance_system">ਸਿਸਟਮ</string>
+    <string name="appearance_light">ਹਲਕਾ</string>
+    <string name="appearance_dark">ਗੂੜ੍ਹਾ</string>
+    <string name="appearance_accent">ਮੁੱਖ ਰੰਗ</string>
+    <string name="appearance_tone">ਪਿਛੋਕੜ ਦੀ ਰੰਗਤ</string>
+    <string name="appearance_neutral">ਨਿਰਪੱਖ</string>
+    <string name="appearance_slate">ਸਲੇਟ</string>
+    <string name="appearance_plum">ਪਲਮ</string>
+    <string name="appearance_blue">ਨੀਲਾ</string>
+    <string name="appearance_indigo">ਇੰਡੀਗੋ</string>
+    <string name="appearance_purple">ਜਾਮਨੀ</string>
+    <string name="appearance_pink">ਗੁਲਾਬੀ</string>
+    <string name="appearance_red">ਲਾਲ</string>
+    <string name="appearance_amber">ਅੰਬਰ</string>
+    <string name="appearance_green">ਹਰਾ</string>
+    <string name="appearance_teal">ਨੀਲਾ-ਹਰਾ</string>
+    <string name="appearance_save_failed">ਦਿੱਖ ਸੁਰੱਖਿਅਤ ਨਹੀਂ ਕੀਤੀ ਜਾ ਸਕੀ: %1$s</string>
 </resources>

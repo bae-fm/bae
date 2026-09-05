@@ -99,7 +99,7 @@ struct StepRow<Trailing: View>: View {
         switch glyph {
         case .waiting:
             Circle()
-                .fill(.white.opacity(0.18))
+                .fill(Color.primary.opacity(0.18))
                 .frame(width: 5, height: 5)
         case .working:
             ProgressView()
@@ -111,7 +111,7 @@ struct StepRow<Trailing: View>: View {
                 .foregroundStyle(.green)
         case .none:
             RoundedRectangle(cornerRadius: 1)
-                .fill(.white.opacity(0.25))
+                .fill(Color.primary.opacity(0.25))
                 .frame(width: 8, height: 1.5)
         case .failed:
             Image(systemName: "exclamationmark.triangle.fill")

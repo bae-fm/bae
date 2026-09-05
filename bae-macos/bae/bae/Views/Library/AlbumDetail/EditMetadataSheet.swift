@@ -135,7 +135,7 @@ struct EditMetadataSheet: View {
                     Button("Save") {
                         session.save(onSuccess: onSaved)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                 }
             }
@@ -143,7 +143,7 @@ struct EditMetadataSheet: View {
         .padding()
         .background(Theme.surface)
         .overlay(alignment: .top) {
-            Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+            Rectangle().fill(Theme.hairline).frame(height: 1)
         }
     }
 }

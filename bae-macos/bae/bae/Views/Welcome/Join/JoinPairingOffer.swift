@@ -58,7 +58,7 @@ struct JoinPairingOffer: View {
                 }
                 .buttonStyle(.bordered)
                 Button("Join") { onJoin() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(isJoining || !joinReady)
                     .keyboardShortcut(.defaultAction)
             }

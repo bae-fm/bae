@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>recherche sur {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} n'a pas répondu : {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} n'est pas configuré</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Apparence</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Système</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Couleur d’accentuation</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Teinte du fond</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutre</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Ardoise</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Prune</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Bleu</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Indigo</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Violet</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Rose</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Rouge</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Ambre</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Vert</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Bleu canard</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Impossible d’enregistrer l’apparence : {error}</value>
+  </data>
 </root>

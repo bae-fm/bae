@@ -15,7 +15,7 @@ struct ReleaseGroupCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(
                     RoundedRectangle(cornerRadius: 7)
-                        .strokeBorder(.white.opacity(0.08), lineWidth: 1)
+                        .strokeBorder(Theme.hairline, lineWidth: 1)
                 )
 
             VStack(alignment: .leading, spacing: 1) {

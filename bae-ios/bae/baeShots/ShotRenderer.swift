@@ -1,8 +1,9 @@
+import BaeKit
 import SwiftUI
 import UIKit
 
 /// Renders a `ShotScene` offscreen into a deterministic 3x PNG. The view is
-/// hosted in a dark-appearance key window, laid out, given time for its async
+/// hosted in a key window with the requested appearance, given time for its async
 /// content to settle, then captured at a fixed scale so the pixels are the same
 /// on any simulator the harness runs on.
 @MainActor
@@ -12,17 +13,34 @@ enum ShotRenderer {
     /// device-independent.
     static let scale: CGFloat = 3
 
-    static func renderPNG(_ scene: ShotScene) async throws -> Data {
+    static func renderPNG(
+        _ scene: ShotScene,
+        mode: AppearanceMode,
+        tone: SurfaceTone,
+        accent: AccentChoice
+    ) async throws -> Data {
+        let suite = "fm.bae.appearance-shots"
+        guard let defaults = UserDefaults(suiteName: suite) else {
+            preconditionFailure("Cannot create screenshot preferences")
+        }
+        defaults.set(mode.rawValue, forKey: "appearance.mode")
+        defaults.set(accent.rawValue, forKey: "appearance.accent")
+        defaults.set(tone.rawValue, forKey: "appearance.tone")
+        defer { defaults.removePersistentDomain(forName: suite) }
         let bounds = CGRect(origin: .zero, size: scene.size)
 
-        let host = UIHostingController(rootView: scene.makeView())
-        host.overrideUserInterfaceStyle = .dark
+        let host = UIHostingController(
+            rootView: scene.makeView().defaultAppStorage(defaults)
+                .appearance(mode: mode, accent: accent, tone: tone)
+        )
+        host.overrideUserInterfaceStyle = mode == .dark ? .dark : .light
         host.view.frame = bounds
 
         let window = UIWindow(frame: bounds)
-        window.overrideUserInterfaceStyle = .dark
+        window.overrideUserInterfaceStyle = mode == .dark ? .dark : .light
         window.rootViewController = host
         window.makeKeyAndVisible()
+        defer { window.isHidden = true }
 
         await settle(view: host.view)
 

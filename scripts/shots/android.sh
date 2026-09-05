@@ -49,7 +49,7 @@ echo "android shots: rendering scenes (updateFullDebugScreenshotTest)..."
 # Scene registry: <preview-function-name>:<scene-id>. The plugin writes each
 # rendered PNG under reference/<package path>/ named "<function>_<hashes>.png",
 # so the basename starts with the preview function name.
-SCENES="Welcome:welcome LibraryGrid:library-grid AlbumDetail:album-detail"
+SCENES="Welcome:welcome LibraryGrid:library-grid AlbumDetail:album-detail WelcomeLight:welcome-light LibraryGridLight:library-grid-light AlbumDetailLight:album-detail-light AppearanceLightNeutral:appearance-light-neutral AppearanceDarkNeutral:appearance-dark-neutral AppearanceLightSlate:appearance-light-slate AppearanceDarkSlate:appearance-dark-slate AppearanceLightPlum:appearance-light-plum AppearanceDarkPlum:appearance-dark-plum"
 
 for entry in $SCENES; do
     func="${entry%%:*}"

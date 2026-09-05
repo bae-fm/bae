@@ -156,7 +156,7 @@ struct ApproveDeviceSheet: View {
                 Button("Cancel") { Task { await dismissPairing() } }
                     .buttonStyle(.bordered)
                 Button("Approve") { approve(session, device) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
             Spacer()

@@ -10,13 +10,19 @@ import SwiftUI
 /// input: the queue panel's now-playing card shows where playback is; seeking
 /// stays with the transport bar.
 final class ProgressStripNSView: NSView {
-    private let bar = ProgressTrackNSView()
+    private let bar: ProgressTrackNSView
+
+    var accent: NSColor {
+        get { bar.accent }
+        set { bar.accent = newValue }
+    }
     private let elapsedField: NSTextField
 
     private var positionMs: Int64 = 0
     private var durationMs: UInt64?
 
-    init() {
+    init(accent: NSColor) {
+        bar = ProgressTrackNSView(accent: accent)
         elapsedField = NSTextField(labelWithString: "")
         elapsedField.font = .monospacedDigitSystemFont(
             ofSize: 10,
@@ -87,6 +93,10 @@ final class ProgressStripNSView: NSView {
 // MARK: - SwiftUI bridge
 
 struct ProgressStripRepresentable: NSViewRepresentable {
+    @Environment(\.accentChoice)
+    private var accent
+    @Environment(\.colorScheme)
+    private var colorScheme
     @Environment(\.playbackPositionPublisher)
     private var positionPublisher
 
@@ -95,12 +105,16 @@ struct ProgressStripRepresentable: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> ProgressStripNSView {
-        let view = ProgressStripNSView()
+        let view = ProgressStripNSView(
+            accent: NSColor(accent.color(in: colorScheme))
+        )
         context.coordinator.subscribe(to: positionPublisher, view: view)
         return view
     }
 
-    func updateNSView(_: ProgressStripNSView, context _: Context) {}
+    func updateNSView(_ view: ProgressStripNSView, context _: Context) {
+        view.accent = NSColor(accent.color(in: colorScheme))
+    }
 
     class Coordinator {
         private var cancellable: AnyCancellable?

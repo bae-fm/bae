@@ -23,6 +23,15 @@ val releaseKeystore = System.getenv("ANDROID_KEYSTORE_FILE")
 fun buildConfigString(value: String?): String =
     value?.let { "\"${it.replace("\\", "\\\\").replace("\"", "\\\"")}\"" } ?: "null"
 
+// Bundle the canonical palette as a raw resource, including in layoutlib previews.
+val appearanceResources by tasks.registering(Copy::class) {
+    from("../../BaeKit/Sources/BaeKit/Resources/AppearancePalette.json")
+    rename { "appearance_palette.json" }
+    into(layout.buildDirectory.dir("generated/appearanceResources/raw"))
+}
+
+tasks.named("preBuild") { dependsOn(appearanceResources) }
+
 android {
     namespace = "fm.bae.app"
     compileSdk = 35
@@ -168,6 +177,7 @@ android {
     }
 
     sourceSets {
+        getByName("main").res.srcDir(layout.buildDirectory.dir("generated/appearanceResources"))
         // Each edition compiles against its own uniffi bindings: the full
         // bindings (built --features oauth-providers) carry the OAuth functions;
         // the baeium bindings (built with no features) lack them, so any stray

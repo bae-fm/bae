@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source}-ൽ തിരയുന്നു…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} പ്രതികരിച്ചില്ല: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} സജ്ജീകരിച്ചിട്ടില്ല</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>രൂപം</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>മോഡ്</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>സിസ്റ്റം</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>ഇളം</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>ഇരുണ്ട</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>പ്രധാന നിറം</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>പശ്ചാത്തല വർണഭാവം</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>നിഷ്പക്ഷം</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>സ്ലേറ്റ്</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>പ്ലം</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>നീല</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>ഇൻഡിഗോ</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>പർപ്പിൾ</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>പിങ്ക്</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>ചുവപ്പ്</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>ആംബർ</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>പച്ച</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>നീലകലർന്ന പച്ച</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>രൂപം സംരക്ഷിക്കാനായില്ല: {error}</value>
+  </data>
 </root>

@@ -214,9 +214,8 @@ struct QueueView: View {
 
     // MARK: - Now Playing
 
-    /// The now-playing card: cover, an accent eyebrow label, title/artist, and
-    /// a slim progress strip. Tinted with the accent so the playing track reads
-    /// as a distinct object above the queue lanes, not another row.
+    /// The now-playing card: cover, title/artist, and a slim progress strip
+    /// on an elevated neutral surface above the queue lanes.
     private var nowPlayingCard: some View {
         HStack(alignment: .top, spacing: 12) {
             nowPlayingArt
@@ -258,7 +257,7 @@ struct QueueView: View {
             )
             .foregroundStyle(.secondary)
             .background(
-                .white.opacity(0.06),
+                Theme.hover,
                 in: RoundedRectangle(cornerRadius: 9)
             )
         }
@@ -268,7 +267,7 @@ struct QueueView: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(.white.opacity(0.08), lineWidth: 1)
+                .stroke(Theme.hairline, lineWidth: 1)
         )
         .padding(.horizontal, 14)
         .padding(.bottom, 6)

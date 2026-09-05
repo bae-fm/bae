@@ -207,4 +207,23 @@
     <string name="settings_casting">कास्टिंग</string>
     <string name="settings_enable_casting">कास्टिंग सक्षम करा</string>
     <string name="settings_casting_help">तुमच्या नेटवर्कवरील Cast, AirPlay आणि UPnP रिसीव्हरवर वाजवते. बंद असताना bae कोणतेही डिव्हाइस शोधत नाही.</string>
+    <string name="appearance_title">देखावा</string>
+    <string name="appearance_mode">मोड</string>
+    <string name="appearance_system">सिस्टीम</string>
+    <string name="appearance_light">फिकट</string>
+    <string name="appearance_dark">गडद</string>
+    <string name="appearance_accent">मुख्य रंग</string>
+    <string name="appearance_tone">पार्श्वभूमीची छटा</string>
+    <string name="appearance_neutral">तटस्थ</string>
+    <string name="appearance_slate">स्लेट</string>
+    <string name="appearance_plum">प्लम</string>
+    <string name="appearance_blue">निळा</string>
+    <string name="appearance_indigo">इंडिगो</string>
+    <string name="appearance_purple">जांभळा</string>
+    <string name="appearance_pink">गुलाबी</string>
+    <string name="appearance_red">लाल</string>
+    <string name="appearance_amber">अंबर</string>
+    <string name="appearance_green">हिरवा</string>
+    <string name="appearance_teal">निळसर हिरवा</string>
+    <string name="appearance_save_failed">देखावा जतन करता आला नाही: %1$s</string>
 </resources>

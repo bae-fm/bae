@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -43,6 +42,7 @@ import fm.bae.app.OAuthLinker
 import fm.bae.app.R
 import fm.bae.app.ui.BaeAppChrome
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.components.PrimaryButton
 import fm.bae.app.ui.components.QRScannerScreen
 import kotlinx.coroutines.launch
 import uniffi.bae_bridge.BridgeJoiningDeviceJoinProgress
@@ -269,7 +269,7 @@ private fun OnboardingIdleContent(
         )
         Spacer(modifier = Modifier.height(32.dp))
         val buttonWidth = Modifier.width(200.dp)
-        Button(onClick = callbacks.onJoinLibrary, modifier = buttonWidth) {
+        PrimaryButton(onClick = callbacks.onJoinLibrary, modifier = buttonWidth) {
             Text(stringResource(R.string.onboarding_join_library))
         }
         Spacer(modifier = Modifier.height(8.dp))

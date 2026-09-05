@@ -97,7 +97,7 @@ struct ImportedReleasePane: View {
                 Button("Save") {
                     session.save(onSuccess: {})
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(session.isBusy)
             }
             if let message = session.validationMessage
@@ -130,7 +130,7 @@ struct ImportedReleasePane: View {
                     .padding(.horizontal, 2)
                     .padding(.vertical, 10)
                     .overlay(alignment: .top) {
-                        Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+                        Rectangle().fill(Theme.hairline).frame(height: 1)
                     }
             }
         }
@@ -418,7 +418,7 @@ private struct ReadOnlyCandidateMappingTable: View {
         .font(.system(size: 12))
         .padding(.vertical, 10)
         .overlay(alignment: .top) {
-            Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            Rectangle().fill(Theme.hairline).frame(height: 1)
         }
     }
 

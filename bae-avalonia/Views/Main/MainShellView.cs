@@ -29,9 +29,9 @@ internal sealed class MainShellView : UserControl, System.IDisposable
     private Button? _queueButton;
 
     // The two switcher segments, restyled as the active section changes.
-    private Border _librarySegment = null!;
+    private Button _librarySegment = null!;
     private TextBlock _libraryLabel = null!;
-    private Border _importSegment = null!;
+    private Button _importSegment = null!;
     private TextBlock _importLabel = null!;
 
     public MainShellView(
@@ -142,7 +142,7 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         var grid = new Grid { Margin = new Thickness(16, 0), VerticalAlignment = VerticalAlignment.Center };
 
         // The Library/Import switcher: a segmented pill centered in the bar, the
-        // active segment filled with the accent.
+        // active segment resting on a neutral tile.
         var pill = new Border
         {
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -150,13 +150,13 @@ internal sealed class MainShellView : UserControl, System.IDisposable
             Padding = new Thickness(4),
             BorderThickness = new Thickness(1),
         };
-        SetBg(pill, "BaeFieldBrush");
+        SetBg(pill, "BaeWellBrush");
         SetBorder(pill, "BaeHairlineBrush");
         var segments = new StackPanel { Orientation = Orientation.Horizontal };
         (_librarySegment, _libraryLabel) = BuildSegment(Loc.Chrome("section.library"));
         (_importSegment, _importLabel) = BuildSegment(Loc.Chrome("section.import"));
-        _librarySegment.PointerPressed += (_, _) => ShowLibrary();
-        _importSegment.PointerPressed += (_, _) => ShowImport();
+        _librarySegment.Click += (_, _) => ShowLibrary();
+        _importSegment.Click += (_, _) => ShowImport();
         segments.Children.Add(_librarySegment);
         segments.Children.Add(_importSegment);
         pill.Child = segments;
@@ -206,25 +206,27 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         return menu;
     }
 
-    private static (Border Segment, TextBlock Label) BuildSegment(string text)
+    private static (Button Segment, TextBlock Label) BuildSegment(string text)
     {
-        var segment = new Border
+        var segment = new Button
         {
             CornerRadius = new CornerRadius(8),
             Padding = new Thickness(20, 7),
             Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
         };
+        segment.Classes.Add("navigation");
         var label = new TextBlock
         {
             Text = text,
             FontSize = 14.5,
             FontWeight = FontWeight.Bold,
         };
-        segment.Child = label;
+        segment.Content = label;
         return (segment, label);
     }
 
-    // Fill the active segment with the accent and de-emphasize the other, matching
+    // Give the active segment a neutral tile and de-emphasize the other, matching
     // the visible section.
     private void SetActiveSection(bool import)
     {
@@ -232,12 +234,12 @@ internal sealed class MainShellView : UserControl, System.IDisposable
         StyleSegment(_importSegment, _importLabel, active: import);
     }
 
-    private static void StyleSegment(Border segment, TextBlock label, bool active)
+    private static void StyleSegment(Button segment, TextBlock label, bool active)
     {
         if (active)
         {
-            SetBg(segment, "BaeAccentBrush");
-            label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeOnAccentBrush");
+            segment[!Button.BackgroundProperty] = new DynamicResourceExtension("BaeTileBrush");
+            label[!TextBlock.ForegroundProperty] = new DynamicResourceExtension("BaeTextPrimaryBrush");
         }
         else
         {
@@ -348,8 +350,8 @@ internal sealed class MainShellView : UserControl, System.IDisposable
             Height = 48,
             CornerRadius = new CornerRadius(24),
         };
-        SetBg(circle, "BaeAccentBrush");
-        var glyph = Icons.Glyph(Icons.Play, 20, "BaeOnAccentBrush");
+        SetBg(circle, "BaeTileBrush");
+        var glyph = Icons.Glyph(Icons.Play, 20, "BaeTextPrimaryBrush");
         glyph.HorizontalAlignment = HorizontalAlignment.Center;
         glyph.VerticalAlignment = VerticalAlignment.Center;
         circle.Child = glyph;

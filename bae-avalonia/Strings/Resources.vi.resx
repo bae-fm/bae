@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>đang tìm trên {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} không phản hồi: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} chưa được thiết lập</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Giao diện</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Chế độ</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Hệ thống</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Sáng</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Tối</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Màu nhấn</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Tông màu nền</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Trung tính</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Xám đá</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Tím mận</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Xanh dương</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Chàm</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Tím</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Hồng</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Đỏ</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Hổ phách</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Xanh lá</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Xanh ngọc</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Không thể lưu giao diện: {error}</value>
+  </data>
 </root>

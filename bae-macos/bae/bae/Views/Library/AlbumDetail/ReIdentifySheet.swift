@@ -205,13 +205,13 @@ struct ReIdentifySheet: View {
             Button("Set identity") {
                 commit(pressing.reseed)
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(PrimaryButtonStyle())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Theme.surface)
         .overlay(alignment: .top) {
-            Rectangle().fill(.white.opacity(0.08)).frame(height: 1)
+            Rectangle().fill(Theme.hairline).frame(height: 1)
         }
     }
 
@@ -239,7 +239,7 @@ struct ReIdentifySheet: View {
                 Button("Refresh from new source") {
                     refreshMetadata()
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
             }
         }
@@ -280,7 +280,7 @@ struct ReIdentifySheet: View {
             // still gets routed to the new album. Pure-identify errors
             // (no commit) just close.
             Button("Close") { closeAndNavigate() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
                 .keyboardShortcut(.defaultAction)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

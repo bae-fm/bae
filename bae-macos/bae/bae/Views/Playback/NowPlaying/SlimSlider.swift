@@ -16,10 +16,10 @@ struct SlimSlider: View {
             let width = geo.size.width
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.10))
+                    .fill(Color.primary.opacity(0.10))
                     .frame(height: 5)
                 Capsule()
-                    .fill(Color.white.opacity(0.75))
+                    .fill(Color.primary.opacity(0.75))
                     .frame(width: CGFloat(clamped) * width, height: 5)
             }
             .frame(

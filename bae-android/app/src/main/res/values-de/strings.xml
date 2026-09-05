@@ -207,4 +207,23 @@
     <string name="settings_casting">Übertragung</string>
     <string name="settings_enable_casting">Übertragung aktivieren</string>
     <string name="settings_casting_help">Gibt auf Cast-, AirPlay- und UPnP-Empfängern in deinem Netzwerk wieder. Ist es aus, sucht bae nicht nach Geräten.</string>
+    <string name="appearance_title">Erscheinungsbild</string>
+    <string name="appearance_mode">Modus</string>
+    <string name="appearance_system">System</string>
+    <string name="appearance_light">Hell</string>
+    <string name="appearance_dark">Dunkel</string>
+    <string name="appearance_accent">Akzentfarbe</string>
+    <string name="appearance_tone">Hintergrundton</string>
+    <string name="appearance_neutral">Neutral</string>
+    <string name="appearance_slate">Schiefer</string>
+    <string name="appearance_plum">Pflaume</string>
+    <string name="appearance_blue">Blau</string>
+    <string name="appearance_indigo">Indigo</string>
+    <string name="appearance_purple">Violett</string>
+    <string name="appearance_pink">Rosa</string>
+    <string name="appearance_red">Rot</string>
+    <string name="appearance_amber">Bernstein</string>
+    <string name="appearance_green">Grün</string>
+    <string name="appearance_teal">Blaugrün</string>
+    <string name="appearance_save_failed">Erscheinungsbild konnte nicht gespeichert werden: %1$s</string>
 </resources>

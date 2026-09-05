@@ -47,7 +47,7 @@ struct ImageView: View {
                     .aspectRatio(contentMode: contentMode)
             }
             else {
-                Theme.placeholder
+                Rectangle().fill(Theme.placeholder)
             }
         }
         .task(id: content) {

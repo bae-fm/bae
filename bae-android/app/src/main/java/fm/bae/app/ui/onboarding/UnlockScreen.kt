@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -32,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import fm.bae.app.R
 import fm.bae.app.ui.BaeTheme
+import fm.bae.app.ui.components.PrimaryButton
 import kotlinx.coroutines.launch
 
 private const val HEX_KEY_LENGTH = 64
@@ -124,7 +124,7 @@ private fun UnlockForm(
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = callbacks.onUnlock, enabled = isValidHex && !isUnlocking) {
+        PrimaryButton(onClick = callbacks.onUnlock, enabled = isValidHex && !isUnlocking) {
             if (isUnlocking) {
                 CircularProgressIndicator(modifier = Modifier.height(20.dp))
             } else {

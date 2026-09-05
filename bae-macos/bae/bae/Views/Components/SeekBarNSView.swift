@@ -18,6 +18,11 @@ class SeekBarNSView: NSView {
     /// minus-prefixed countdown. The preview player has no such choice.
     private let showsRemainingTimeToggle: Bool
 
+    var accent: NSColor {
+        get { slider.accent }
+        set { slider.accent = newValue }
+    }
+
     var onSeek: ((Double) -> Void)?
     /// Called when the user clicks the leading label. The owner writes the new
     /// value to the config; its subscription sets `showRemainingTime`

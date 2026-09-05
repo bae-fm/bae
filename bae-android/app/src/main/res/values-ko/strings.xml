@@ -205,4 +205,23 @@
     <string name="settings_casting">캐스트</string>
     <string name="settings_enable_casting">캐스트 사용</string>
     <string name="settings_casting_help">네트워크의 Cast, AirPlay, UPnP 수신기로 재생합니다. 꺼져 있는 동안 bae는 기기를 찾지 않습니다.</string>
+    <string name="appearance_title">화면 모양</string>
+    <string name="appearance_mode">모드</string>
+    <string name="appearance_system">시스템</string>
+    <string name="appearance_light">라이트</string>
+    <string name="appearance_dark">다크</string>
+    <string name="appearance_accent">강조 색상</string>
+    <string name="appearance_tone">배경 색조</string>
+    <string name="appearance_neutral">중립</string>
+    <string name="appearance_slate">슬레이트</string>
+    <string name="appearance_plum">자두색</string>
+    <string name="appearance_blue">파랑</string>
+    <string name="appearance_indigo">남색</string>
+    <string name="appearance_purple">보라</string>
+    <string name="appearance_pink">분홍</string>
+    <string name="appearance_red">빨강</string>
+    <string name="appearance_amber">호박색</string>
+    <string name="appearance_green">초록</string>
+    <string name="appearance_teal">청록</string>
+    <string name="appearance_save_failed">화면 모양을 저장하지 못했습니다: %1$s</string>
 </resources>

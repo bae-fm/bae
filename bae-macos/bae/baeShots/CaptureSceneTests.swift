@@ -1,3 +1,4 @@
+import BaeKit
 import Foundation
 import Testing
 
@@ -14,18 +15,36 @@ struct CaptureSceneTests {
         let out = try Self.outputDirectory()
 
         var failures: [String] = []
-        for scene in ShotScene.all {
-            do {
-                let data = try await ShotRenderer.renderPNG(scene)
-                guard !data.isEmpty else {
-                    failures.append("\(scene.id): rendered no bytes")
-                    continue
+        for mode in [AppearanceMode.dark, .light] {
+            for tone in SurfaceTone.allCases {
+                for scene in ShotScene.all {
+                    do {
+                        let accent: AccentChoice =
+                            tone == .plum
+                            ? .purple : tone == .slate ? .teal : .blue
+                        let data = try await ShotRenderer.renderPNG(
+                            scene,
+                            mode: mode,
+                            tone: tone,
+                            accent: accent
+                        )
+                        guard !data.isEmpty else {
+                            failures.append("\(scene.id): rendered no bytes")
+                            continue
+                        }
+                        let suffix =
+                            mode == .dark && tone == .neutral
+                            ? "" : "-\(mode.rawValue)-\(tone.rawValue)"
+                        let url = out.appendingPathComponent(
+                            "\(scene.id)\(suffix)@macos.png"
+                        )
+                        try data.write(to: url)
+                    }
+                    catch {
+                        failures.append("\(scene.id): \(error)")
+                    }
                 }
-                let url = out.appendingPathComponent("\(scene.id)@macos.png")
-                try data.write(to: url)
-            }
-            catch {
-                failures.append("\(scene.id): \(error)")
+
             }
         }
 

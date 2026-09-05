@@ -29,7 +29,7 @@ struct FindOnlineHeader: View {
                 .buttonStyle(.link)
                 .font(.system(size: 13))
                 Rectangle()
-                    .fill(.white.opacity(0.1))
+                    .fill(Theme.hairline)
                     .frame(width: 1, height: 14)
             }
             Text("Find online")

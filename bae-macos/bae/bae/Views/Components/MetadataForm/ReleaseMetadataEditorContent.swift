@@ -192,7 +192,7 @@ struct ReleaseMetadataEditorContent: View {
         .padding(.vertical, 6)
         .frame(minHeight: 40)
         .overlay(alignment: .top) {
-            Rectangle().fill(.white.opacity(0.07)).frame(height: 1)
+            Rectangle().fill(Theme.hairline).frame(height: 1)
         }
     }
 

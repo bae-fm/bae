@@ -42,7 +42,7 @@ struct ModalOverlay<Content: View>: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 Button("Done") {}
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
             }
             .padding(32)
             .frame(width: 320)

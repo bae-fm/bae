@@ -41,8 +41,6 @@ struct NowPlayingBar: View {
 
     @State
     private var queueButtonDropTargeted = false
-    @State
-    private var playHovering = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -205,19 +203,8 @@ struct NowPlayingBar: View {
             targetSize: 48,
             onToggle: onPlayPause,
         )
-        .foregroundStyle(Color(white: 0.12))
-        // The window pins the dark scheme, but this control sits on a light
-        // circle: force the light scheme so the loading spinner (an
-        // NSProgressIndicator, which ignores `.tint`) draws dark on it.
-        .environment(\.colorScheme, .light)
-        .background(Circle().fill(Color(white: 0.97)))
-        .shadow(color: .black.opacity(0.5), radius: 9, y: 5)
-        .scaleEffect(playHovering ? 1.05 : 1.0)
-        .onHover { hovering in
-            withAnimation(.easeInOut(duration: 0.12)) {
-                playHovering = hovering
-            }
-        }
+        .foregroundStyle(.primary)
+        .background(Circle().fill(Theme.tile))
     }
 
     private var progressBar: some View {

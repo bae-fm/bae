@@ -85,7 +85,7 @@ struct ImportMetadataSourceSection: View {
                         .controlSize(.small)
                         .opacity(isReading ? 1 : 0)
                     Button("Apply") { onUseFileTags() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(isReading)
                 }
                 .padding(14)

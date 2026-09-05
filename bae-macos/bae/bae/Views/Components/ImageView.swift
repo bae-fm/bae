@@ -149,11 +149,13 @@ struct ImagePlaceholderView: View {
     var body: some View {
         switch reason {
         case .loading:
-            Theme.placeholder.overlay {
-                ProgressView().controlSize(.small).scaleEffect(loadingScale)
-            }
+            Rectangle().fill(Theme.placeholder)
+                .overlay {
+                    ProgressView().controlSize(.small).scaleEffect(loadingScale)
+                }
         case .unavailable:
-            Theme.placeholder.overlay { icon("photo", .tertiary) }
+            Rectangle().fill(Theme.placeholder)
+                .overlay { icon("photo", .tertiary) }
         case .failed:
             Theme.accent.opacity(0.16)
                 .overlay { icon("exclamationmark.triangle.fill", Theme.accent) }

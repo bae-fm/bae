@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} 검색 중…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source}이(가) 응답하지 않았습니다: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source}이(가) 설정되지 않았습니다</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>화면 모양</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>모드</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>시스템</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>라이트</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>다크</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>강조 색상</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>배경 색조</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>중립</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>슬레이트</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>자두색</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>파랑</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>남색</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>보라</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>분홍</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>빨강</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>호박색</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>초록</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>청록</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>화면 모양을 저장하지 못했습니다: {error}</value>
+  </data>
 </root>

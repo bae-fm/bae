@@ -205,4 +205,23 @@
     <string name="settings_casting">การแคสต์</string>
     <string name="settings_enable_casting">เปิดใช้การแคสต์</string>
     <string name="settings_casting_help">เล่นไปยังตัวรับ Cast, AirPlay และ UPnP ในเครือข่ายของคุณ เมื่อปิดอยู่ bae จะไม่ค้นหาอุปกรณ์</string>
+    <string name="appearance_title">รูปลักษณ์</string>
+    <string name="appearance_mode">โหมด</string>
+    <string name="appearance_system">ระบบ</string>
+    <string name="appearance_light">สว่าง</string>
+    <string name="appearance_dark">มืด</string>
+    <string name="appearance_accent">สีเน้น</string>
+    <string name="appearance_tone">โทนพื้นหลัง</string>
+    <string name="appearance_neutral">กลาง</string>
+    <string name="appearance_slate">เทาอมฟ้า</string>
+    <string name="appearance_plum">ม่วงพลัม</string>
+    <string name="appearance_blue">น้ำเงิน</string>
+    <string name="appearance_indigo">คราม</string>
+    <string name="appearance_purple">ม่วง</string>
+    <string name="appearance_pink">ชมพู</string>
+    <string name="appearance_red">แดง</string>
+    <string name="appearance_amber">อำพัน</string>
+    <string name="appearance_green">เขียว</string>
+    <string name="appearance_teal">เขียวอมฟ้า</string>
+    <string name="appearance_save_failed">บันทึกรูปลักษณ์ไม่ได้: %1$s</string>
 </resources>

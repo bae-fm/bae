@@ -150,7 +150,7 @@ struct ApproveDeviceView: View {
                 Button("Cancel") { Task { await dismissPairing() } }
                     .buttonStyle(.bordered)
                 Button("Approve") { approve(session, device) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
             }
             Spacer()
         }

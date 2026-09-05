@@ -129,6 +129,7 @@
   -->
   <ItemGroup>
     <EmbeddedResource Include="Strings\Resources*.resx" />
+    <EmbeddedResource Include="..\BaeKit\Sources\BaeKit\Resources\AppearancePalette.json" LogicalName="Bae.AppearancePalette.json" />
   </ItemGroup>
 
   <Target Name="GenerateCoreResx" BeforeTargets="AssignTargetPaths;PrepareResourceNames">

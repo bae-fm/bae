@@ -61,7 +61,7 @@ struct ImportSheetBindingMenu: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
             .background(
-                .white.opacity(hovering ? 0.07 : 0),
+                Color.primary.opacity(hovering ? 0.07 : 0),
                 in: RoundedRectangle(cornerRadius: 4)
             )
         }

@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} இல் தேடுகிறது…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} பதிலளிக்கவில்லை: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} அமைக்கப்படவில்லை</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>தோற்றம்</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>முறை</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>கணினி அமைப்பு</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>வெளிர்</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>இருள்</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>முதன்மை நிறம்</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>பின்னணி நிறச்சாயல்</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>நடுநிலை</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>ஸ்லேட்</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>பிளம்</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>நீலம்</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>கருநீலம்</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>ஊதா</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>இளஞ்சிவப்பு</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>சிவப்பு</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>அம்பர்</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>பச்சை</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>நீலப்பச்சை</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>தோற்றத்தைச் சேமிக்க முடியவில்லை: {error}</value>
+  </data>
 </root>

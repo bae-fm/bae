@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>szukanie w {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} nie odpowiedział: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} nie jest skonfigurowany</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Wygląd</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Tryb</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Systemowy</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Jasny</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Ciemny</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Kolor akcentu</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Odcień tła</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutralny</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Łupkowy</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Śliwkowy</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Niebieski</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Indygo</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Fioletowy</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Różowy</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Czerwony</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Bursztynowy</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Zielony</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Morski</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>Nie udało się zapisać wyglądu: {error}</value>
+  </data>
 </root>

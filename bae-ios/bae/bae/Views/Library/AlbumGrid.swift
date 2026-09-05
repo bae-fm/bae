@@ -67,7 +67,7 @@ private struct AlbumCell: View {
                 )
             }
             else {
-                Theme.placeholder
+                Rectangle().fill(Theme.placeholder)
                     .aspectRatio(1, contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }

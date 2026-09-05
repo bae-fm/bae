@@ -209,4 +209,23 @@
     <string name="settings_casting">Emitiranje</string>
     <string name="settings_enable_casting">Omogući emitiranje</string>
     <string name="settings_casting_help">Reproducira na Cast, AirPlay i UPnP prijamnicima na vašoj mreži. Dok je isključeno, bae ne traži uređaje.</string>
+    <string name="appearance_title">Izgled</string>
+    <string name="appearance_mode">Način</string>
+    <string name="appearance_system">Sustav</string>
+    <string name="appearance_light">Svijetli</string>
+    <string name="appearance_dark">Tamni</string>
+    <string name="appearance_accent">Boja naglaska</string>
+    <string name="appearance_tone">Ton pozadine</string>
+    <string name="appearance_neutral">Neutralni</string>
+    <string name="appearance_slate">Škriljevac</string>
+    <string name="appearance_plum">Šljiva</string>
+    <string name="appearance_blue">Plava</string>
+    <string name="appearance_indigo">Indigo</string>
+    <string name="appearance_purple">Ljubičasta</string>
+    <string name="appearance_pink">Ružičasta</string>
+    <string name="appearance_red">Crvena</string>
+    <string name="appearance_amber">Jantarna</string>
+    <string name="appearance_green">Zelena</string>
+    <string name="appearance_teal">Modrozelena</string>
+    <string name="appearance_save_failed">Izgled nije moguće spremiti: %1$s</string>
 </resources>

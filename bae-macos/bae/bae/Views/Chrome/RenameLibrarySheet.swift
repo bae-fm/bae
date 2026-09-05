@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// Identifies the library being renamed and carries the in-progress
@@ -56,7 +57,7 @@ struct RenameLibrarySheet: View {
                 Button("Cancel") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 Button("Rename") { onCommit(state.newName) }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
                     .disabled(
                         state.newName

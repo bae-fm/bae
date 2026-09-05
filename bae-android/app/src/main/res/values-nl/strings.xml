@@ -207,4 +207,23 @@
     <string name="settings_casting">Casten</string>
     <string name="settings_enable_casting">Casten inschakelen</string>
     <string name="settings_casting_help">Speelt af op Cast-, AirPlay- en UPnP-ontvangers in je netwerk. Als dit uit staat, zoekt bae niet naar apparaten.</string>
+    <string name="appearance_title">Weergave</string>
+    <string name="appearance_mode">Modus</string>
+    <string name="appearance_system">Systeem</string>
+    <string name="appearance_light">Licht</string>
+    <string name="appearance_dark">Donker</string>
+    <string name="appearance_accent">Accentkleur</string>
+    <string name="appearance_tone">Achtergrondtint</string>
+    <string name="appearance_neutral">Neutraal</string>
+    <string name="appearance_slate">Leisteen</string>
+    <string name="appearance_plum">Pruim</string>
+    <string name="appearance_blue">Blauw</string>
+    <string name="appearance_indigo">Indigo</string>
+    <string name="appearance_purple">Paars</string>
+    <string name="appearance_pink">Roze</string>
+    <string name="appearance_red">Rood</string>
+    <string name="appearance_amber">Amber</string>
+    <string name="appearance_green">Groen</string>
+    <string name="appearance_teal">Blauwgroen</string>
+    <string name="appearance_save_failed">Weergave kon niet worden opgeslagen: %1$s</string>
 </resources>

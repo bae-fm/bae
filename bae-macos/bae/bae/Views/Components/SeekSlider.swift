@@ -5,6 +5,10 @@ import BaeKit
 /// position. `mouseDown` blocks until the user releases, so `isDragging` is
 /// accurate. Used by `SeekBarNSView`.
 class SeekSlider: NSSlider {
+    var accent: NSColor = .controlAccentColor {
+        didSet { needsDisplay = true }
+    }
+
     var onSeekComplete: ((Double) -> Void)?
     private(set) var isDragging = false
 
@@ -61,7 +65,14 @@ final class SlimSeekSliderCell: NSSliderCell {
         let span = maxValue - minValue
         let fraction =
             span > 0 ? min(max((doubleValue - minValue) / span, 0), 1) : 0
-        ProgressTrackDrawing.draw(in: bar, fraction: fraction)
+        guard let slider = controlView as? SeekSlider else {
+            preconditionFailure("SlimSeekSliderCell belongs to SeekSlider")
+        }
+        ProgressTrackDrawing.draw(
+            in: bar,
+            fraction: fraction,
+            accent: slider.accent
+        )
     }
 
     override func drawKnob(_: NSRect) {

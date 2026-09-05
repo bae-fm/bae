@@ -10,10 +10,14 @@ struct PressableIconButtonStyle: ButtonStyle {
                 // Inset from the label's (hit-target-sized) bounds: the ring
                 // marks the control, not the whole hitbox.
                 Circle()
-                    .fill(.white.opacity(configuration.isPressed ? 0.18 : 0))
+                    .fill(
+                        Color.primary.opacity(
+                            configuration.isPressed ? 0.18 : 0
+                        )
+                    )
                     .padding(4)
             )
-            .scaleEffect(configuration.isPressed ? 0.78 : 1)
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
             // Press-down feedback is INSTANT (no animation on the way in —
             // any ease there reads as the click not registering); only the
             // release relaxes with an ease.

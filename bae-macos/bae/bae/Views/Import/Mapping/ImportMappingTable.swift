@@ -317,7 +317,7 @@ extension View {
             .background(background)
             .overlay(alignment: .top) {
                 Rectangle()
-                    .fill(.white.opacity(0.07))
+                    .fill(Theme.hairline)
                     .frame(height: 1)
             }
     }

@@ -1,6 +1,7 @@
 package fm.bae.app.ui.playback
 
 import android.content.Context
+import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.util.TypedValue
 import android.view.Gravity
@@ -8,11 +9,13 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.C
@@ -80,10 +83,16 @@ fun PlaybackProgressAndroidView(
         remember(player, context, showRemaining) {
             player.position.map { context.seekBarState(it, showRemaining) }
         }
+    val colors = MaterialTheme.colorScheme
     AndroidView(
         modifier = modifier,
         factory = { viewContext -> PlaybackProgressView(viewContext) },
         update = { view ->
+            view.applyColors(
+                accent = colors.primary.toArgb(),
+                track = colors.onSurface.copy(alpha = 0.12f).toArgb(),
+                text = colors.onSurfaceVariant.toArgb(),
+            )
             view.bind(
                 state = state,
                 onSeekRatio = { ratio ->
@@ -157,6 +166,18 @@ internal class PlaybackProgressView(
         addView(trailingTextView)
     }
 
+    fun applyColors(
+        accent: Int,
+        track: Int,
+        text: Int,
+    ) {
+        seekBar.progressTintList = ColorStateList.valueOf(accent)
+        seekBar.thumbTintList = ColorStateList.valueOf(accent)
+        seekBar.progressBackgroundTintList = ColorStateList.valueOf(track)
+        leadingTextView.setTextColor(text)
+        trailingTextView.setTextColor(text)
+    }
+
     fun setPosition(state: SeekBarState) {
         leadingTextView.text = state.leading
         trailingTextView.text = state.trailing
@@ -207,7 +228,6 @@ internal class PlaybackProgressView(
         TextView(context).apply {
             typeface = Typeface.MONOSPACE
             setTextSize(TypedValue.COMPLEX_UNIT_SP, TIME_LABEL_TEXT_SIZE_SP)
-            setTextColor(resolveThemeColor(android.R.attr.textColorSecondary))
             gravity = Gravity.CENTER
             layoutParams =
                 LayoutParams(
@@ -229,10 +249,4 @@ internal class PlaybackProgressView(
                 value.toFloat(),
                 resources.displayMetrics,
             ).toInt()
-
-    private fun resolveThemeColor(attribute: Int): Int {
-        val outValue = TypedValue()
-        context.theme.resolveAttribute(attribute, outValue, true)
-        return outValue.data
-    }
 }

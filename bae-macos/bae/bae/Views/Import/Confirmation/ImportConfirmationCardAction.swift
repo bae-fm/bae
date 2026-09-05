@@ -77,14 +77,14 @@ struct ImportConfirmationCardAction: View {
                     .frame(width: 200)
             case .error:
                 Button("Retry Import") { onConfirmImport() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(PrimaryButtonStyle())
             case .complete:
                 EmptyView()
             }
         }
         else {
             Button("Import") { onConfirmImport() }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
         }
     }
 }

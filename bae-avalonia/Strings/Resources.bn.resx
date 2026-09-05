@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source}-এ খোঁজা হচ্ছে…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} সাড়া দেয়নি: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} সেট আপ করা নেই</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>চেহারা</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>মোড</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>সিস্টেম</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>হালকা</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>গাঢ়</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>অ্যাকসেন্ট রং</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>পটভূমির আভা</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>নিরপেক্ষ</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>স্লেট</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>প্লাম</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>নীল</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>ইন্ডিগো</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>বেগুনি</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>গোলাপি</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>লাল</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>অ্যাম্বার</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>সবুজ</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>নীলচে সবুজ</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>চেহারা সংরক্ষণ করা যায়নি: {error}</value>
+  </data>
 </root>

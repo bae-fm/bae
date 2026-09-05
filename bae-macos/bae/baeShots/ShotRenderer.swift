@@ -1,9 +1,9 @@
 import AppKit
+import BaeKit
 import SwiftUI
 
 /// Renders a `ShotScene` offscreen into a deterministic 2x PNG. The view is
-/// hosted in a borderless dark-appearance window (matching the app's pinned
-/// dark scheme), laid out, given time for its async content to settle, then
+/// hosted in a window with the requested appearance, laid out, settled, then
 /// captured into a manually sized bitmap so the pixel scale is fixed regardless
 /// of the host machine's display.
 @MainActor
@@ -12,20 +12,44 @@ enum ShotRenderer {
     /// screen so a headless or non-Retina host produces the same pixels.
     static let scale = 2
 
-    static func renderPNG(_ scene: ShotScene) async throws -> Data {
+    static func renderPNG(
+        _ scene: ShotScene,
+        mode: AppearanceMode,
+        tone: SurfaceTone,
+        accent: AccentChoice
+    ) async throws -> Data {
+        let suite = "fm.bae.appearance-shots"
+        guard let defaults = UserDefaults(suiteName: suite) else {
+            preconditionFailure("Cannot create screenshot preferences")
+        }
+        defaults.set(mode.rawValue, forKey: "appearance.mode")
+        defaults.set(accent.rawValue, forKey: "appearance.accent")
+        defaults.set(tone.rawValue, forKey: "appearance.tone")
+        defer { defaults.removePersistentDomain(forName: suite) }
         let bounds = NSRect(origin: .zero, size: scene.size)
-        let host = NSHostingView(rootView: scene.makeView())
+        let host = NSHostingView(
+            rootView: scene.makeView().defaultAppStorage(defaults)
+                .appearance(mode: mode, accent: accent, tone: tone)
+        )
         host.frame = bounds
 
-        let window = NSWindow(
+        let window = ShotWindow(
             contentRect: bounds,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
-        window.appearance = NSAppearance(named: .darkAqua)
+        window.appearance = NSAppearance(
+            named: mode == .dark ? .darkAqua : .aqua
+        )
+        window.isReleasedWhenClosed = false
         window.contentView = host
+        NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        defer {
+            window.contentView = nil
+            window.close()
+        }
 
         await settle(host: host)
 
@@ -86,4 +110,8 @@ enum ShotError: Error, CustomStringConvertible {
             "failed to PNG-encode scene \(id)"
         }
     }
+}
+
+private final class ShotWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
 }

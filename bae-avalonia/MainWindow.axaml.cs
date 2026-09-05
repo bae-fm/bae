@@ -27,6 +27,7 @@ internal sealed partial class MainWindow : Window
         SessionStore session,
         IMediaControl mediaControl,
         UpdateService updates,
+        AppearanceStore appearance,
         Func<Task> closeLibrary,
         Func<string, Task> switchLibrary,
         Func<Task> applyUpdateAndRestart)
@@ -65,7 +66,7 @@ internal sealed partial class MainWindow : Window
         // section drives the process-wide update service, and applying a staged
         // update exits the app, so the coordinator owns that path too.
         var settingsWindow = new SettingsWindow(
-            _app, updates, closeLibrary, switchLibrary, applyUpdateAndRestart);
+            _app, appearance, updates, closeLibrary, switchLibrary, applyUpdateAndRestart);
         _shell = new MainShellView(
             _app, dialogs, importDialogs, storageDialog, settingsWindow, librariesDialog, closeLibrary);
         var root = new Panel();

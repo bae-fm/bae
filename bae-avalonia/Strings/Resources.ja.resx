@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} を検索中…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} が応答しませんでした: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} は設定されていません</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>外観</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>モード</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>システム</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>ライト</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>ダーク</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>アクセントカラー</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>背景の色調</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>ニュートラル</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>スレート</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>プラム</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>ブルー</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>インディゴ</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>パープル</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>ピンク</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>レッド</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>アンバー</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>グリーン</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>ティール</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>外観を保存できませんでした：{error}</value>
+  </data>
 </root>

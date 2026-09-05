@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>{source} ನಲ್ಲಿ ಹುಡುಕಲಾಗುತ್ತಿದೆ…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} ಪ್ರತಿಕ್ರಿಯಿಸಲಿಲ್ಲ: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} ಸಿದ್ಧಪಡಿಸಿಲ್ಲ</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>ಗೋಚರತೆ</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>ಮೋಡ್</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>ಸಿಸ್ಟಂ</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>ತಿಳಿ</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>ಗಾಢ</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>ಮುಖ್ಯ ಬಣ್ಣ</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>ಹಿನ್ನೆಲೆಯ ಛಾಯೆ</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>ತಟಸ್ಥ</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>ಸ್ಲೇಟ್</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>ಪ್ಲಮ್</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>ನೀಲಿ</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>ಇಂಡಿಗೊ</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>ನೇರಳೆ</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>ಗುಲಾಬಿ</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>ಕೆಂಪು</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>ಅಂಬರ್</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>ಹಸಿರು</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>ನೀಲಿ ಹಸಿರು</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>ಗೋಚರತೆಯನ್ನು ಉಳಿಸಲಾಗಲಿಲ್ಲ: {error}</value>
+  </data>
 </root>

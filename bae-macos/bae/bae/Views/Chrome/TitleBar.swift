@@ -66,10 +66,10 @@ struct TitleBar: View {
         // The bar is the window's own ground with a hairline under it, not a
         // raised band: the controls on it are what set it apart.
         .background {
-            Theme.background
+            Rectangle().fill(Theme.background)
                 .overlay(alignment: .bottom) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.07))
+                        .fill(Theme.hairline)
                         .frame(height: 1)
                 }
         }
@@ -128,7 +128,7 @@ private struct SectionSegmentedControl: View {
         .padding(3)
         .background(
             RoundedRectangle(cornerRadius: 9)
-                .fill(TitleBarChrome.well)
+                .fill(Theme.well)
         )
         .accessibilityElement(children: .contain)
     }
@@ -148,7 +148,8 @@ private struct SectionSegmentedControl: View {
                 .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 6.5)
-                        .fill(active ? TitleBarChrome.tile : Color.clear)
+                        .fill(Theme.tile)
+                        .opacity(active ? 1 : 0)
                         .shadow(
                             color: .black.opacity(active ? 0.45 : 0),
                             radius: 1.5,
@@ -163,13 +164,6 @@ private struct SectionSegmentedControl: View {
             active ? [.isButton, .isSelected] : .isButton
         )
     }
-}
-
-/// The title bar's two fills: the sunken well the segmented control and the
-/// search field sit in, and the raised tile the active segment stands on.
-enum TitleBarChrome {
-    static let well = Color.black.opacity(0.28)
-    static let tile = Color(red: 0.165, green: 0.165, blue: 0.192)
 }
 
 #if DEBUG

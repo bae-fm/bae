@@ -205,4 +205,23 @@
     <string name="settings_casting">投放</string>
     <string name="settings_enable_casting">啟用投放</string>
     <string name="settings_casting_help">在你網路中的 Cast、AirPlay 和 UPnP 接收裝置上播放。關閉時，bae 不會搜尋裝置。</string>
+    <string name="appearance_title">外觀</string>
+    <string name="appearance_mode">模式</string>
+    <string name="appearance_system">跟隨系統</string>
+    <string name="appearance_light">淺色</string>
+    <string name="appearance_dark">深色</string>
+    <string name="appearance_accent">強調色</string>
+    <string name="appearance_tone">背景色調</string>
+    <string name="appearance_neutral">中性</string>
+    <string name="appearance_slate">石板灰</string>
+    <string name="appearance_plum">梅紫</string>
+    <string name="appearance_blue">藍色</string>
+    <string name="appearance_indigo">靛藍</string>
+    <string name="appearance_purple">紫色</string>
+    <string name="appearance_pink">粉紅色</string>
+    <string name="appearance_red">紅色</string>
+    <string name="appearance_amber">琥珀色</string>
+    <string name="appearance_green">綠色</string>
+    <string name="appearance_teal">青色</string>
+    <string name="appearance_save_failed">無法儲存外觀：%1$s</string>
 </resources>

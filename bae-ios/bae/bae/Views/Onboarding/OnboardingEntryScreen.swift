@@ -26,7 +26,7 @@ struct OnboardingEntryScreen: View {
                     Text("Join a library")
                         .frame(maxWidth: 240)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(PrimaryButtonStyle())
 
                 Button(action: onScanRecovery) {
                     Text("Scan recovery code")

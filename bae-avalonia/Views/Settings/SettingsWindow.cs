@@ -23,6 +23,7 @@ namespace Bae.Desktop;
 internal sealed partial class SettingsWindow
 {
     private readonly AppService _app;
+    private readonly AppearanceStore _appearance;
 
     // The process-wide update service the updates section renders and drives.
     private readonly UpdateService _updates;
@@ -50,12 +51,14 @@ internal sealed partial class SettingsWindow
 
     public SettingsWindow(
         AppService app,
+        AppearanceStore appearance,
         UpdateService updates,
         Func<Task> closeToWelcome,
         Func<string, Task> switchLibrary,
         Func<Task> applyUpdateAndRestart)
     {
         _app = app;
+        _appearance = appearance;
         _updates = updates;
         _closeToWelcome = closeToWelcome;
         _switchLibrary = switchLibrary;
@@ -99,6 +102,7 @@ internal sealed partial class SettingsWindow
         content.Children.Add(libraryLabel);
         renderers.Add(fresh => libraryLabel.Text = Loc.Chrome("settings.library_label", "name", fresh.LibraryName));
 
+        content.Children.Add(new AppearanceSection(_appearance, ShowSettingsError));
         BuildPlayback(content, renderers);
         BuildImport(content, renderers);
         BuildCast(content, renderers);

@@ -33,7 +33,7 @@ struct FormSectionHeader: View {
             FormEyebrow(text: Text(verbatim: title), size: 11)
             if ruled {
                 Rectangle()
-                    .fill(.white.opacity(0.06))
+                    .fill(Theme.hover)
                     .frame(height: 1)
             }
             else {
@@ -59,7 +59,7 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay {
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(.white.opacity(0.07), lineWidth: 1)
+                    .strokeBorder(Theme.hairline, lineWidth: 1)
             }
     }
 }

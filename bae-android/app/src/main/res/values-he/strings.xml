@@ -209,4 +209,23 @@
     <string name="settings_casting">שידור</string>
     <string name="settings_enable_casting">הפעלת שידור</string>
     <string name="settings_casting_help">מנגן במקלטי Cast‏, AirPlay ו‑UPnP ברשת שלך. כשהאפשרות כבויה, bae אינו מחפש מכשירים.</string>
+    <string name="appearance_title">מראה</string>
+    <string name="appearance_mode">מצב</string>
+    <string name="appearance_system">מערכת</string>
+    <string name="appearance_light">בהיר</string>
+    <string name="appearance_dark">כהה</string>
+    <string name="appearance_accent">צבע הדגשה</string>
+    <string name="appearance_tone">גוון הרקע</string>
+    <string name="appearance_neutral">ניטרלי</string>
+    <string name="appearance_slate">צפחה</string>
+    <string name="appearance_plum">שזיף</string>
+    <string name="appearance_blue">כחול</string>
+    <string name="appearance_indigo">אינדיגו</string>
+    <string name="appearance_purple">סגול</string>
+    <string name="appearance_pink">ורוד</string>
+    <string name="appearance_red">אדום</string>
+    <string name="appearance_amber">ענבר</string>
+    <string name="appearance_green">ירוק</string>
+    <string name="appearance_teal">כחול־ירוק</string>
+    <string name="appearance_save_failed">לא ניתן לשמור את המראה: %1$s</string>
 </resources>

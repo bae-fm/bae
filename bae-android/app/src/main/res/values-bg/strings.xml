@@ -207,4 +207,23 @@
     <string name="settings_casting">Предаване</string>
     <string name="settings_enable_casting">Включване на предаването</string>
     <string name="settings_casting_help">Възпроизвежда на приемници Cast, AirPlay и UPnP в мрежата ви. Когато е изключено, bae не търси устройства.</string>
+    <string name="appearance_title">Външен вид</string>
+    <string name="appearance_mode">Режим</string>
+    <string name="appearance_system">Системен</string>
+    <string name="appearance_light">Светъл</string>
+    <string name="appearance_dark">Тъмен</string>
+    <string name="appearance_accent">Акцентен цвят</string>
+    <string name="appearance_tone">Тон на фона</string>
+    <string name="appearance_neutral">Неутрален</string>
+    <string name="appearance_slate">Сивосин</string>
+    <string name="appearance_plum">Сливов</string>
+    <string name="appearance_blue">Син</string>
+    <string name="appearance_indigo">Индиго</string>
+    <string name="appearance_purple">Лилав</string>
+    <string name="appearance_pink">Розов</string>
+    <string name="appearance_red">Червен</string>
+    <string name="appearance_amber">Кехлибарен</string>
+    <string name="appearance_green">Зелен</string>
+    <string name="appearance_teal">Синьозелен</string>
+    <string name="appearance_save_failed">Външният вид не можа да бъде запазен: %1$s</string>
 </resources>

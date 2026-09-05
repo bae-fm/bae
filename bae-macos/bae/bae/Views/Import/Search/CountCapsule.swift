@@ -1,3 +1,4 @@
+import BaeKit
 import SwiftUI
 
 /// How many releases a lookup named, as a small capsule: green when it named
@@ -25,7 +26,7 @@ struct CountCapsule: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(
-                matched ? Color.green.opacity(0.14) : .white.opacity(0.06),
+                matched ? Color.green.opacity(0.14) : Theme.hover,
                 in: RoundedRectangle(cornerRadius: 4)
             )
     }

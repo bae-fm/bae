@@ -485,4 +485,61 @@
   <data name="import.search.searching_source" xml:space="preserve"><value>buscando en {source}…</value></data>
   <data name="import.search.source_failed" xml:space="preserve"><value>{source} no respondió: {reason}</value></data>
   <data name="import.search.source_not_configured" xml:space="preserve"><value>{source} no está configurado</value></data>
+  <data name="appearance.title" xml:space="preserve">
+    <value>Apariencia</value>
+  </data>
+  <data name="appearance.mode" xml:space="preserve">
+    <value>Modo</value>
+  </data>
+  <data name="appearance.system" xml:space="preserve">
+    <value>Sistema</value>
+  </data>
+  <data name="appearance.light" xml:space="preserve">
+    <value>Claro</value>
+  </data>
+  <data name="appearance.dark" xml:space="preserve">
+    <value>Oscuro</value>
+  </data>
+  <data name="appearance.accent" xml:space="preserve">
+    <value>Color de acento</value>
+  </data>
+  <data name="appearance.tone" xml:space="preserve">
+    <value>Tono del fondo</value>
+  </data>
+  <data name="appearance.neutral" xml:space="preserve">
+    <value>Neutro</value>
+  </data>
+  <data name="appearance.slate" xml:space="preserve">
+    <value>Pizarra</value>
+  </data>
+  <data name="appearance.plum" xml:space="preserve">
+    <value>Ciruela</value>
+  </data>
+  <data name="appearance.blue" xml:space="preserve">
+    <value>Azul</value>
+  </data>
+  <data name="appearance.indigo" xml:space="preserve">
+    <value>Índigo</value>
+  </data>
+  <data name="appearance.purple" xml:space="preserve">
+    <value>Morado</value>
+  </data>
+  <data name="appearance.pink" xml:space="preserve">
+    <value>Rosa</value>
+  </data>
+  <data name="appearance.red" xml:space="preserve">
+    <value>Rojo</value>
+  </data>
+  <data name="appearance.amber" xml:space="preserve">
+    <value>Ámbar</value>
+  </data>
+  <data name="appearance.green" xml:space="preserve">
+    <value>Verde</value>
+  </data>
+  <data name="appearance.teal" xml:space="preserve">
+    <value>Verde azulado</value>
+  </data>
+  <data name="appearance.save_failed" xml:space="preserve">
+    <value>No se pudo guardar la apariencia: {error}</value>
+  </data>
 </root>
