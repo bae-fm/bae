@@ -1,6 +1,5 @@
 package fm.bae.app.ui.components
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
@@ -21,7 +20,6 @@ fun PrimaryButton(
             containerColor = LocalPrimaryFill.current,
             contentColor = Color.White,
         ),
-    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     content: @Composable RowScope.() -> Unit,
 ) {
     Button(
@@ -30,7 +28,6 @@ fun PrimaryButton(
         enabled = enabled,
         colors = colors,
         elevation = null,
-        contentPadding = contentPadding,
         content = content,
     )
 }
