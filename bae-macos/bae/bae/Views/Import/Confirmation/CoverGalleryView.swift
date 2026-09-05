@@ -15,6 +15,10 @@ struct CoverGalleryView: View {
 
     @State
     private var cursor: Cursor<CoverItem>?
+    @State
+    private var isLightboxPresented = false
+    @FocusState
+    private var previewFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -87,14 +91,30 @@ struct CoverGalleryView: View {
             .padding(24)
         }
         .background(Theme.background)
+        .disabled(isLightboxPresented)
+        .accessibilityHidden(isLightboxPresented)
+        .overlay {
+            if isLightboxPresented, let cursor {
+                LightboxView(
+                    cursor: cursor,
+                    onUpdate: { self.cursor = $0 },
+                    onDismiss: {
+                        isLightboxPresented = false
+                        previewFocused = true
+                    }
+                )
+            }
+        }
         .onAppear { rebuild() }
         .onChange(of: remoteItems) { _, _ in rebuild() }
         .onChange(of: releaseItems) { _, _ in rebuild() }
         .onKeyPress(.leftArrow) {
+            guard !isLightboxPresented else { return .ignored }
             cursor?.goToPrevious()
             return .handled
         }
         .onKeyPress(.rightArrow) {
+            guard !isLightboxPresented else { return .ignored }
             cursor?.goToNext()
             return .handled
         }
@@ -180,19 +200,46 @@ struct CoverGalleryView: View {
             cursor?.current.id == item.id ? .isSelected : []
         )
         .disabled(isSaving)
+        .simultaneousGesture(
+            TapGesture(count: 2)
+                .onEnded {
+                    cursor?.select(id: item.id)
+                    isLightboxPresented = true
+                }
+        )
     }
 
+}
+
+extension CoverGalleryView {
     @ViewBuilder
     private var preview: some View {
         if let cursor {
             VStack(spacing: 20) {
-                ImageView(
-                    content: cursor.current.previewContent,
-                    contentMode: .fit,
-                    pointSize: 800
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
+                Button {
+                    isLightboxPresented = true
+                } label: {
+                    ImageView(
+                        content: cursor.current.previewContent,
+                        contentMode: .fit,
+                        pointSize: 800
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                    .contentShape(Rectangle())
+                    .overlay(alignment: .topTrailing) {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .padding(10)
+                            .background(.regularMaterial, in: Circle())
+                            .padding(8)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text("View in Lightbox"))
+                .help("View in Lightbox")
+                .keyboardShortcut(.space, modifiers: [])
+                .focused($previewFocused)
+                .disabled(isSaving)
                 Text(verbatim: cursor.current.label)
                     .font(.headline)
                     .multilineTextAlignment(.center)

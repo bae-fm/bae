@@ -6,7 +6,15 @@ import VisionKit
 
 private let logger = Logger.bae("LightboxView")
 
-struct LightboxItem: Identifiable, Equatable {
+/// The same artwork can be browsed without adopting a cover-selection identity.
+protocol LightboxImage: Identifiable, Equatable {
+    var label: String { get }
+    var sourceLabel: String { get }
+    var previewContent: ImageContent { get }
+    var thumbnailContent: ImageContent { get }
+}
+
+struct LightboxItem: LightboxImage {
     let id: String
     let label: String
     /// Where the lightbox reads this item's bytes.
@@ -29,11 +37,20 @@ struct LightboxItem: Identifiable, Equatable {
             return .localFile(path: path)
         }
     }
+
+    var previewContent: ImageContent { content }
+    var thumbnailContent: ImageContent { content }
+    var sourceLabel: String {
+        switch source {
+        case .gallery: String(localized: "Library")
+        case .local: String(localized: "Release Files")
+        }
+    }
 }
 
-struct LightboxView: View {
-    let cursor: Cursor<LightboxItem>
-    let onUpdate: (Cursor<LightboxItem>) -> Void
+struct LightboxView<Item: LightboxImage>: View {
+    let cursor: Cursor<Item>
+    let onUpdate: (Cursor<Item>) -> Void
     let onDismiss: () -> Void
 
     @Environment(ImageStore.self)
@@ -63,7 +80,8 @@ struct LightboxView: View {
     @FocusState
     private var focused: Bool
 
-    private static let analyzer = ImageAnalyzer()
+    @State
+    private var analyzer = ImageAnalyzer()
 
     var body: some View {
         ZStack {
@@ -106,7 +124,7 @@ struct LightboxView: View {
                             )
                         }
                     ) { item in
-                        ImageView(content: item.content, pointSize: 56)
+                        ImageView(content: item.thumbnailContent, pointSize: 56)
                     }
                     .padding(.bottom, 12)
                     .fadesWhenZoomed(at: magnification)
@@ -145,11 +163,11 @@ struct LightboxView: View {
         do {
             guard
                 let source = try await imageStore.decodeSource(
-                    for: cursor.current.content
+                    for: cursor.current.previewContent
                 )
             else {
                 logger.warning(
-                    "No bytes for lightbox image \(cursor.current.id)"
+                    "No bytes for lightbox image \(cursor.current.previewContent.description)"
                 )
                 loadFailed = true
                 return nil
@@ -161,7 +179,7 @@ struct LightboxView: View {
         }
         catch {
             logger.warning(
-                "Failed to fetch lightbox image \(cursor.current.id): \(error)"
+                "Failed to fetch lightbox image \(cursor.current.previewContent.description): \(error)"
             )
             loadFailed = true
             return nil
@@ -195,7 +213,7 @@ struct LightboxView: View {
         }
         catch {
             logger.warning(
-                "Failed to decode lightbox image \(cursor.current.id): \(error)"
+                "Failed to decode lightbox image \(cursor.current.previewContent.description): \(error)"
             )
             loadFailed = true
             return
@@ -205,7 +223,7 @@ struct LightboxView: View {
 
         let configuration = ImageAnalyzer.Configuration([.text])
         do {
-            let analysis = try await Self.analyzer.analyze(
+            let analysis = try await analyzer.analyze(
                 loaded,
                 orientation: .up,
                 configuration: configuration
@@ -316,12 +334,19 @@ extension LightboxView {
     }
 
     fileprivate var labelView: some View {
-        Text(cursor.current.label)
-            .font(.callout)
-            .foregroundStyle(.white.opacity(0.7))
-            .lineLimit(1)
-            .padding(.bottom, 8)
-            .fadesWhenZoomed(at: magnification)
+        VStack(spacing: 4) {
+            Text(verbatim: cursor.current.label)
+                .font(.callout)
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(2)
+            Text(verbatim: cursor.current.sourceLabel)
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.6))
+        }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 8)
+        .fadesWhenZoomed(at: magnification)
     }
 
     fileprivate var cycleNavButtons: some View {

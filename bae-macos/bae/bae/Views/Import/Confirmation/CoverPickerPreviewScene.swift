@@ -47,6 +47,11 @@
             .background(Theme.background)
         }
 
+        static func lightbox() -> some View {
+            CoverLightboxPreviewScene(items: remoteItems + releaseItems)
+                .environment(PreviewData.artImageStore())
+        }
+
         private static func remote(
             _ image: String,
             label: String,
@@ -83,11 +88,37 @@
         }
     }
 
+    private struct CoverLightboxPreviewScene: View {
+        @State
+        private var cursor: Cursor<CoverItem>
+
+        init(items: [CoverItem]) {
+            guard let cursor = Cursor(items: items, preferring: items[1].id)
+            else {
+                preconditionFailure("The artwork preview contains a booklet")
+            }
+            _cursor = State(initialValue: cursor)
+        }
+
+        var body: some View {
+            LightboxView(
+                cursor: cursor,
+                onUpdate: { cursor = $0 },
+                onDismiss: {}
+            )
+            .background(Theme.background)
+        }
+    }
+
     #Preview("Cover gallery") {
         CoverPickerPreviewScene().frame(width: 1_148, height: 868)
     }
 
     #Preview("Cover gallery — short window") {
         CoverPickerPreviewScene().frame(width: 800, height: 520)
+    }
+
+    #Preview("Artwork lightbox") {
+        CoverPickerPreviewScene.lightbox().frame(width: 1_148, height: 868)
     }
 #endif

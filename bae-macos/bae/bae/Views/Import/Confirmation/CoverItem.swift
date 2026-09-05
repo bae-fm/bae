@@ -3,7 +3,7 @@ import Foundation
 
 /// A selectable candidate image or a persisted release file, retaining the
 /// source's identity for both previewing and saving.
-struct CoverItem: Identifiable, Equatable {
+struct CoverItem: LightboxImage {
     static func == (lhs: CoverItem, rhs: CoverItem) -> Bool {
         lhs.id == rhs.id
     }

@@ -55,6 +55,7 @@ xcodebuild -project bae.xcodeproj -scheme baeShots -configuration Debug \
 cd "$ROOT"
 missing=0
 for scene in \
+    artwork-lightbox \
     cover-picker-wide \
     cover-picker-short \
     story-1-first-run \
