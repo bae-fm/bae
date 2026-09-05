@@ -10,7 +10,9 @@ use super::{
     BarcodeProgress, CatalogProgress, DiscidProgress, LibraryStatus, MetadataResult, SourceFailure,
 };
 use crate::import::MetadataSource;
-use crate::signals::{BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue};
+use crate::signals::{
+    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, Signals, SourcedValue,
+};
 
 /// Everything a settled state needs to re-derive its outcome when the user toggles
 /// a signal or re-runs — carried unchanged through every non-`Idle` state.
@@ -27,6 +29,10 @@ pub struct SignalsContext {
     pub providers: Vec<MetadataSource>,
     /// The disc-ID signal (value + its inherent `DiscToc` origin).
     pub disc_id: DiscIdSignal,
+    /// Where the artwork pass has got to, from the latest snapshot. Progress
+    /// a surface shows, not an input the lookups read; a context stood up
+    /// from a stored verdict never saw a pass and reads `Absent`.
+    pub artwork: ArtworkScan,
     /// The barcode code payloads with their origins.
     pub barcode_codes: Vec<SourcedValue>,
     /// Whether there was a barcode source at all. Empty `barcode_codes` is
@@ -88,6 +94,7 @@ impl SignalsContext {
         Self {
             providers,
             disc_id: DiscIdSignal::Absent { track_count: 0 },
+            artwork: ArtworkScan::Absent,
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
@@ -110,8 +117,9 @@ impl SignalsContext {
     /// Results aren't touched — they're recorded as the lookups settle. A
     /// chosen catalog number that the new snapshot no longer offers is dropped;
     /// the choice has to be one of the values on the list.
-    pub(super) fn refresh_inputs(&mut self, signals: &Signals) {
+    pub(super) fn refresh_inputs(&mut self, signals: &Signals, artwork: ArtworkScan) {
         self.disc_id = signals.disc_id.clone();
+        self.artwork = artwork;
         self.barcode_codes = signals.barcode.codes().to_vec();
         self.had_barcode_source = !matches!(signals.barcode, BarcodeSignal::Absent);
         self.barcode_scan_failure = match &signals.barcode {

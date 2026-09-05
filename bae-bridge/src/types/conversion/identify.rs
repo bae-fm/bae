@@ -253,6 +253,47 @@ impl BridgeDiscIdStep {
 }
 
 #[cfg(feature = "desktop")]
+impl BridgeArtworkStep {
+    fn from_view(v: bae_core::identify::ArtworkStepView) -> Self {
+        use bae_core::identify::ArtworkStepView;
+        match v {
+            ArtworkStepView::Absent => BridgeArtworkStep::Absent,
+            ArtworkStepView::Reading {
+                current,
+                position,
+                total,
+                barcodes,
+                catalogs,
+            } => BridgeArtworkStep::Reading {
+                current,
+                position,
+                total,
+                barcodes,
+                catalogs,
+            },
+            ArtworkStepView::Read {
+                images,
+                barcodes,
+                catalogs,
+            } => BridgeArtworkStep::Read {
+                images,
+                barcodes,
+                catalogs,
+            },
+            ArtworkStepView::Failed {
+                failure,
+                read,
+                total,
+            } => BridgeArtworkStep::Failed {
+                failure: BridgeLookupFailure::from_core(failure),
+                read,
+                total,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
 impl BridgeBarcodeStep {
     fn from_view(v: bae_core::identify::BarcodeStepView) -> Self {
         use bae_core::identify::{BarcodeLookupView, BarcodeStepView};
@@ -322,11 +363,13 @@ impl BridgeIdentifyRun {
     fn from_view(v: bae_core::identify::IdentifyRunView) -> Self {
         let bae_core::identify::IdentifyRunView {
             disc_id,
+            artwork,
             barcode,
             catalog,
         } = v;
         BridgeIdentifyRun {
             disc_id: BridgeDiscIdStep::from_view(disc_id),
+            artwork: BridgeArtworkStep::from_view(artwork),
             barcode: BridgeBarcodeStep::from_view(barcode),
             catalog: BridgeCatalogStep::from_view(catalog),
         }
@@ -613,6 +656,7 @@ mod tests {
             context: SignalsContext {
                 providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
                 disc_id: DiscIdSignal::Absent { track_count: 9 },
+                artwork: bae_core::signals::ArtworkScan::Absent,
                 barcode_codes: vec![SourcedValue::new(
                     "0123456789012".to_string(),
                     SignalOrigin::Artwork,

@@ -486,6 +486,7 @@ async fn a_transport_failure_round_trips_as_a_failed_verdict() {
                 },
                 durations: crate::import::probe::SourceDurations::default(),
             },
+            artwork: crate::signals::ArtworkScan::Absent,
         },
     );
     let (state, _) = identify_step(

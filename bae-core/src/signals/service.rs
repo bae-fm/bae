@@ -10,9 +10,10 @@
 //!    gathered up front and emitted as the first `Signals`, so the disc-ID
 //!    lookup and the autocomplete populate before the first image OCR finishes.
 //! 2. **OCR stream.** Artwork images are analyzed one at a time (a single
-//!    `analyze` pass per image yields both barcodes and text). Each image that
-//!    adds a barcode or text line re-emits the cumulative `Signals`; the
-//!    barcode and text signals settle at the end.
+//!    `analyze` pass per image yields both barcodes and text). Every image
+//!    read re-emits the cumulative `Signals` with the pass's position moved
+//!    on, so a surface can show which image is being read; the barcode and
+//!    text signals settle at the end.
 //!
 //! A `Release` re-identify resolves its disc ID and artwork from the library.
 //! Every snapshot carries the whole `Signals`; the reducer and the UI overwrite
@@ -27,7 +28,8 @@ use super::release::{resolve_release_artwork_paths, resolve_release_identity};
 use crate::import::{ImportEvent, ScanEvent};
 use crate::library::LibraryManager;
 use crate::signals::{
-    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
+    ArtworkScan, BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue,
+    TextSignal,
 };
 use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;
@@ -400,7 +402,13 @@ async fn stream_extraction(
         artwork,
         durations,
     } = inputs;
+    let total = artwork.as_ref().map_or(0, |pass| pass.images.len() as u32);
     let has_artwork = artwork.is_some();
+    let position_of = |images: &[ArtworkImage], index: usize| ArtworkScan::Reading {
+        current: images[index].file_id.clone(),
+        position: index as u32 + 1,
+        total,
+    };
 
     if token.is_cancelled() {
         return;
@@ -409,6 +417,10 @@ async fn stream_extraction(
     // First snapshot: disc ID and CUE barcodes are settled and the autocomplete
     // pool is populated; barcode/text stay `Scanning` while OCR is pending.
     let classification = pool.classify();
+    let first_image = match &artwork {
+        Some(pass) => position_of(&pass.images, 0),
+        None => ArtworkScan::Absent,
+    };
     emit_signals(
         &inner,
         &key,
@@ -420,12 +432,13 @@ async fn stream_extraction(
             classification.free_text,
             durations.clone(),
         ),
+        first_image,
         priority,
     );
 
     // One OCR request at a time (Vision on the ANE is effectively serial).
     if let Some(ArtworkPass { images }) = artwork {
-        for ArtworkImage { path, file_id } in images {
+        for (index, ArtworkImage { path, file_id }) in images.iter().enumerate() {
             if token.is_cancelled() {
                 return;
             }
@@ -434,7 +447,19 @@ async fn stream_extraction(
                 Ok(analysis) => analysis,
                 Err(failure) => {
                     emit_failed_ocr_signals(
-                        &inner, &key, disc_id, &barcodes, &mut pool, failure, durations, priority,
+                        &inner,
+                        &key,
+                        disc_id,
+                        &barcodes,
+                        &mut pool,
+                        ArtworkScan::Failed {
+                            failure: failure.clone(),
+                            read: index as u32,
+                            total,
+                        },
+                        failure,
+                        durations,
+                        priority,
                     );
                     return;
                 }
@@ -444,9 +469,7 @@ async fn stream_extraction(
                 return;
             }
 
-            // Accumulate barcodes (deduped by value) and text lines; skip the emit
-            // when this image added nothing new.
-            let mut changed = false;
+            // Accumulate barcodes (deduped by value) and text lines.
             for value in analysis.barcodes {
                 // A run of one digit is printed on nothing; OCR reads them off
                 // borders and shadows, and looking one up can only miss.
@@ -456,27 +479,26 @@ async fn stream_extraction(
                 if !barcodes.iter().any(|b| b.value == value) {
                     // The image it was read off, so a surface can put the
                     // barcode on that image rather than beside the release.
-                    barcodes.push(match &file_id {
+                    barcodes.push(match file_id {
                         Some(file_id) => {
                             SourcedValue::in_file(value, SignalOrigin::Artwork, file_id.clone())
                         }
                         None => SourcedValue::new(value, SignalOrigin::Artwork),
                     });
-                    changed = true;
                 }
             }
-            let pool_before = pool.lines.len();
             for text in analysis.text_lines {
                 pool.push(SourcedLine {
                     source: Source::Artwork(path.clone()),
                     text,
                 });
             }
-            if pool.lines.len() != pool_before {
-                changed = true;
-            }
-            if !changed {
-                continue;
+
+            // The last image's snapshot is the settled one below: nothing is
+            // being read any more, and saying so twice would be one snapshot
+            // too many.
+            if index + 1 == images.len() {
+                break;
             }
 
             // Re-check cancellation before emitting; a successor's `start()` can
@@ -485,6 +507,9 @@ async fn stream_extraction(
                 return;
             }
 
+            // Every image read is a snapshot, whether or not it added anything:
+            // the pass has moved on to the next image, and that is what a
+            // surface watching the run is shown.
             let classification = pool.classify();
             emit_signals(
                 &inner,
@@ -497,6 +522,7 @@ async fn stream_extraction(
                     classification.free_text,
                     durations.clone(),
                 ),
+                position_of(&images, index + 1),
                 priority,
             );
         }
@@ -524,6 +550,11 @@ async fn stream_extraction(
             },
             durations,
         },
+        if has_artwork {
+            ArtworkScan::Done { total }
+        } else {
+            ArtworkScan::Absent
+        },
         priority,
     );
 }
@@ -535,6 +566,7 @@ fn emit_failed_ocr_signals(
     disc_id: DiscIdSignal,
     barcodes: &[SourcedValue],
     pool: &mut Pool,
+    artwork: ArtworkScan,
     failure: LookupFailure,
     durations: crate::import::probe::SourceDurations,
     priority: CallPriority,
@@ -557,6 +589,7 @@ fn emit_failed_ocr_signals(
             },
             durations,
         },
+        artwork,
         priority,
     );
 }
@@ -594,16 +627,19 @@ fn scanning_signals(
     }
 }
 
-/// Send a `Signals` snapshot on the import event bus.
+/// Send a `Signals` snapshot on the import event bus, with where the artwork
+/// pass has got to.
 fn emit_signals(
     inner: &ExtractionServiceInner,
     key: &str,
     signals: Signals,
+    artwork: ArtworkScan,
     priority: CallPriority,
 ) {
     if let Err(err) = inner.event_tx.send(ImportEvent::SignalsUpdated {
         candidate_key: key.to_string(),
         signals,
+        artwork,
         priority,
     }) {
         warn!("signals: SignalsUpdated broadcast had no subscribers for {key}: {err}");

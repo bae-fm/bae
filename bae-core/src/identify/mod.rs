@@ -50,8 +50,8 @@ pub use state::{
 pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
-    BarcodeLookupView, BarcodeStepView, CatalogStepView, DiscIdStepView, IdentifyRunView,
-    IdentifyStateView, LookupView, ProviderBarcodeLookupView, ProviderLookupView,
+    ArtworkStepView, BarcodeLookupView, BarcodeStepView, CatalogStepView, DiscIdStepView,
+    IdentifyRunView, IdentifyStateView, LookupView, ProviderBarcodeLookupView, ProviderLookupView,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

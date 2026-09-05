@@ -316,6 +316,7 @@ mod identify_mirrors {
         SignalsContext {
             providers: Vec::new(),
             disc_id: DiscIdSignal::Absent { track_count: 0 },
+            artwork: bae_core::signals::ArtworkScan::Absent,
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
@@ -466,6 +467,7 @@ mod identify_mirrors {
         assert_eq!(run["disc_id"]["disc_id"], "disc-hash");
         assert_eq!(run["disc_id"]["source_file"], "rip.log");
         assert_eq!(run["disc_id"]["lookup"]["kind"], "looking_up");
+        assert_eq!(run["artwork"]["kind"], "absent");
         assert_eq!(run["barcode"]["kind"], "lookups");
         let providers = run["barcode"]["providers"].as_array().unwrap();
         assert_eq!(providers[0]["source"], "music_brainz");

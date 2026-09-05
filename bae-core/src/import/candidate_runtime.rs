@@ -429,6 +429,7 @@ impl CandidateRuntime {
             ImportEvent::SignalsUpdated {
                 candidate_key,
                 signals,
+                artwork: _,
                 priority: _,
             } => {
                 self.inner

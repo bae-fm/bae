@@ -658,6 +658,37 @@ pub enum BridgeDiscIdStep {
     },
 }
 
+/// The artwork step of a run: the images read one at a time for barcodes and
+/// text. Mirrors `bae_core::identify::ArtworkStepView`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeArtworkStep {
+    /// Nothing to read: no images, or no analyzer on this platform.
+    Absent,
+    /// Reading `current`, the `position`th of `total`, with what the images
+    /// read so far have turned up.
+    Reading {
+        /// The image's candidate-relative path — the id its file row is
+        /// keyed by; `None` for a library release's stored cover.
+        current: Option<String>,
+        position: u32,
+        total: u32,
+        barcodes: u32,
+        catalogs: u32,
+    },
+    /// Every image read.
+    Read {
+        images: u32,
+        barcodes: u32,
+        catalogs: u32,
+    },
+    /// Reading stopped at a failure, `read` images in.
+    Failed {
+        failure: BridgeLookupFailure,
+        read: u32,
+        total: u32,
+    },
+}
+
 /// One provider's walk through the candidate's barcodes. Mirrors
 /// `bae_core::identify::BarcodeLookupView`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
@@ -738,6 +769,7 @@ pub enum BridgeCatalogStep {
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct BridgeIdentifyRun {
     pub disc_id: BridgeDiscIdStep,
+    pub artwork: BridgeArtworkStep,
     pub barcode: BridgeBarcodeStep,
     pub catalog: BridgeCatalogStep,
 }

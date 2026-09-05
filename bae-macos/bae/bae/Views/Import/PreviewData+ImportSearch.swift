@@ -594,6 +594,7 @@
                 sourceFile: "Artist Name - Album Title One.log",
                 lookup: .found(count: 1)
             ),
+            artwork: .read(images: 4, barcodes: 1, catalogs: 3),
             barcode: .lookups(
                 codes: ["0123456789012", "9999999999999"],
                 providers: [
@@ -617,6 +618,13 @@
         /// A run that has only just started: nothing read yet.
         static let identifyRunStarting = BridgeIdentifyRun(
             discId: .reading,
+            artwork: .reading(
+                current: "Front.jpg",
+                position: 1,
+                total: 4,
+                barcodes: 0,
+                catalogs: 0
+            ),
             barcode: .awaitingArtwork,
             catalog: .noneFound
         )

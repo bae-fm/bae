@@ -65,6 +65,10 @@ pub enum ImportEvent {
     SignalsUpdated {
         candidate_key: String,
         signals: crate::signals::Signals,
+        /// Where the artwork pass that feeds the snapshot has got to. Beside
+        /// the snapshot rather than in it: a stored snapshot has no pass to
+        /// report on, and this is what a surface shows as the run's step.
+        artwork: crate::signals::ArtworkScan,
         /// The extraction's own priority — same meaning as
         /// [`ImportEvent::IdentifyStateChanged`]'s.
         priority: crate::util::rate_limiter::CallPriority,

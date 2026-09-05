@@ -124,11 +124,13 @@ async fn extracted_signals_reach_the_bus_by_key_and_read_back_for_that_key() {
     services.import_emit_event_for_test(ImportEvent::SignalsUpdated {
         candidate_key: "/watch/other".to_string(),
         signals: extracted("OTHER-1"),
+        artwork: crate::signals::ArtworkScan::Absent,
         priority: CallPriority::Background,
     });
     services.import_emit_event_for_test(ImportEvent::SignalsUpdated {
         candidate_key: key.to_string(),
         signals: extracted("CAT-1"),
+        artwork: crate::signals::ArtworkScan::Absent,
         priority: CallPriority::Background,
     });
 

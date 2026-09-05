@@ -294,10 +294,11 @@ async fn run_driver(
                     Ok(ImportEvent::SignalsUpdated {
                         candidate_key,
                         signals,
+                        artwork,
                         priority: _,
                     }) if candidate_key == relay_key => {
                         if relay_event_tx
-                            .send(IdentifyEvent::SignalsUpdated { signals })
+                            .send(IdentifyEvent::SignalsUpdated { signals, artwork })
                             .is_err()
                         {
                             return;
@@ -573,6 +574,7 @@ mod tests {
             .send(ImportEvent::SignalsUpdated {
                 candidate_key: "k".to_string(),
                 signals: absent_signals(),
+                artwork: crate::signals::ArtworkScan::Absent,
                 priority: CallPriority::Interactive,
             })
             .unwrap();

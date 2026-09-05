@@ -25,7 +25,7 @@ use super::state::{
 use crate::db::LibraryStatus;
 use crate::import::release_group::ReleaseGroup;
 use crate::import::MetadataSource;
-use crate::signals::{DiscIdSignal, LookupFailure};
+use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure, SignalOrigin};
 
 /// How one provider's lookup of one value is going. The results themselves are
 /// not here: mid-flight, a surface shows only how many came back — the set
@@ -54,6 +54,38 @@ pub enum DiscIdStepView {
         /// release re-identified from its stored tracks.
         source_file: Option<String>,
         lookup: LookupView,
+    },
+}
+
+/// The artwork: read one image at a time for barcodes and text. A source,
+/// not a signal, so it has no lookups of its own — what it turns up feeds the
+/// barcode and catalog steps.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArtworkStepView {
+    /// Nothing to read: no images, or no analyzer on this platform.
+    Absent,
+    /// Reading `current`, the `position`th of `total`, with what the images
+    /// read so far have turned up.
+    Reading {
+        /// The image's candidate-relative path; `None` for a library
+        /// release's stored cover.
+        current: Option<String>,
+        position: u32,
+        total: u32,
+        barcodes: u32,
+        catalogs: u32,
+    },
+    /// Every image read.
+    Read {
+        images: u32,
+        barcodes: u32,
+        catalogs: u32,
+    },
+    /// Reading stopped at a failure, `read` images in.
+    Failed {
+        failure: LookupFailure,
+        read: u32,
+        total: u32,
     },
 }
 
@@ -131,6 +163,7 @@ pub enum CatalogStepView {
 #[derive(Debug, Clone, PartialEq)]
 pub struct IdentifyRunView {
     pub disc_id: DiscIdStepView,
+    pub artwork: ArtworkStepView,
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,
 }
@@ -206,6 +239,7 @@ impl From<IdentifyState> for IdentifyStateView {
                 IdentifyStateView::Triangulating {
                     run: IdentifyRunView {
                         disc_id: disc_id_step(discid, &context),
+                        artwork: artwork_step(&context),
                         barcode: barcode_step(barcode),
                         catalog: catalog_step(catalog, &context),
                     },
@@ -343,6 +377,48 @@ fn disc_id_step(progress: DiscidProgress, context: &SignalsContext) -> DiscIdSte
     }
 }
 
+/// The artwork step: where the pass is, from the latest snapshot, and what
+/// the images read so far turned up — only what came off the artwork, since
+/// a CUE sheet's barcode or a folder name's catalog number is not its doing.
+fn artwork_step(context: &SignalsContext) -> ArtworkStepView {
+    let from_artwork = |values: &[crate::signals::SourcedValue]| {
+        values
+            .iter()
+            .filter(|v| v.origin == SignalOrigin::Artwork)
+            .count() as u32
+    };
+    let barcodes = from_artwork(&context.barcode_codes);
+    let catalogs = from_artwork(&context.catalogs);
+    match &context.artwork {
+        ArtworkScan::Absent => ArtworkStepView::Absent,
+        ArtworkScan::Reading {
+            current,
+            position,
+            total,
+        } => ArtworkStepView::Reading {
+            current: current.clone(),
+            position: *position,
+            total: *total,
+            barcodes,
+            catalogs,
+        },
+        ArtworkScan::Done { total } => ArtworkStepView::Read {
+            images: *total,
+            barcodes,
+            catalogs,
+        },
+        ArtworkScan::Failed {
+            failure,
+            read,
+            total,
+        } => ArtworkStepView::Failed {
+            failure: failure.clone(),
+            read: *read,
+            total: *total,
+        },
+    }
+}
+
 fn barcode_step(progress: BarcodeProgress) -> BarcodeStepView {
     match progress {
         BarcodeProgress::Scanning => BarcodeStepView::AwaitingArtwork,
@@ -459,6 +535,7 @@ mod tests {
         SignalsContext {
             providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
             disc_id: DiscIdSignal::Absent { track_count: 9 },
+            artwork: crate::signals::ArtworkScan::Absent,
             barcode_codes: vec![SourcedValue::new("A".to_string(), SignalOrigin::Artwork)],
             had_barcode_source: true,
             catalogs: Vec::new(),
@@ -516,6 +593,42 @@ mod tests {
         assert_eq!(provenance.len(), 1);
         assert_eq!(provenance[0].0, "dg-1");
         assert!(provenance[0].1.by_barcode);
+    }
+
+    /// The artwork step counts only what came off the artwork: a barcode from
+    /// a CUE sheet or a catalog number from the folder name is not its doing.
+    #[test]
+    fn the_artwork_step_counts_only_what_the_artwork_turned_up() {
+        let mut context = context();
+        context.artwork = ArtworkScan::Reading {
+            current: Some("Back.jpg".to_string()),
+            position: 2,
+            total: 3,
+        };
+        context.barcode_codes = vec![
+            SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
+            SourcedValue::new("B".to_string(), SignalOrigin::CueSheet),
+        ];
+        context.catalogs = vec![
+            SourcedValue::new("LBL-1".to_string(), SignalOrigin::FolderName),
+            SourcedValue::new("LBL-2".to_string(), SignalOrigin::Artwork),
+            SourcedValue::new("LBL-3".to_string(), SignalOrigin::Artwork),
+        ];
+        let IdentifyStateView::Triangulating { run, .. } =
+            IdentifyStateView::from(in_flight(context))
+        else {
+            panic!("a run in flight");
+        };
+        assert_eq!(
+            run.artwork,
+            ArtworkStepView::Reading {
+                current: Some("Back.jpg".to_string()),
+                position: 2,
+                total: 3,
+                barcodes: 1,
+                catalogs: 2,
+            }
+        );
     }
 
     /// A signal the user unchecked contributes nothing mid-run, as it will

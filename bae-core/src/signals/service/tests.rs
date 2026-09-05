@@ -1,4 +1,5 @@
 use super::*;
+use crate::signals::ArtworkScan;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::test_logs::capture_warn_logs;
 use crate::util::rate_limiter::CallPriority;
@@ -84,14 +85,29 @@ async fn collect_signals(
     rx: &mut broadcast::Receiver<ImportEvent>,
     expected: usize,
 ) -> Vec<Signals> {
-    let mut out: Vec<Signals> = Vec::new();
+    collect_snapshots(rx, expected)
+        .await
+        .into_iter()
+        .map(|(signals, _)| signals)
+        .collect()
+}
+
+/// Every snapshot with where the artwork pass was when it went out.
+async fn collect_snapshots(
+    rx: &mut broadcast::Receiver<ImportEvent>,
+    expected: usize,
+) -> Vec<(Signals, ArtworkScan)> {
+    let mut out = Vec::new();
     while out.len() < expected {
         let event = tokio::time::timeout(Duration::from_secs(2), rx.recv())
             .await
             .expect("timed out collecting events")
             .expect("channel closed");
-        if let ImportEvent::SignalsUpdated { signals, .. } = event {
-            out.push(signals);
+        if let ImportEvent::SignalsUpdated {
+            signals, artwork, ..
+        } = event
+        {
+            out.push((signals, artwork));
         }
     }
     out
@@ -226,9 +242,29 @@ async fn emits_fast_pass_then_ocr_then_settled() {
         CallPriority::Interactive,
     );
 
-    // Fast-pass snapshot + 2 OCR snapshots + final settled = 4 snapshots.
-    let signals = collect_signals(&mut rx, 4).await;
-    assert_eq!(signals.len(), 4);
+    // Fast-pass snapshot + one per image read but the last + final settled
+    // = 3 snapshots: the last image's additions land in the settled one,
+    // which says where the pass is (finished) rather than repeating it.
+    let snapshots = collect_snapshots(&mut rx, 3).await;
+    assert_eq!(snapshots.len(), 3);
+    let artwork: Vec<&ArtworkScan> = snapshots.iter().map(|(_, a)| a).collect();
+    assert_eq!(
+        artwork,
+        vec![
+            &ArtworkScan::Reading {
+                current: Some("Back.jpg".to_string()),
+                position: 1,
+                total: 2,
+            },
+            &ArtworkScan::Reading {
+                current: Some("Cover.jpg".to_string()),
+                position: 2,
+                total: 2,
+            },
+            &ArtworkScan::Done { total: 2 },
+        ]
+    );
+    let signals: Vec<Signals> = snapshots.into_iter().map(|(s, _)| s).collect();
 
     // The folder bracket `XX34b` lands in catalogs and the path components (score 3,
     // above the cutoff) in free_text, while the text signal is still `Scanning`.
@@ -263,23 +299,17 @@ async fn emits_fast_pass_then_ocr_then_settled() {
         .iter()
         .any(|c| c.value == "XX34b"));
 
+    assert!(
+        matches!(signals[2].text, TextSignal::Settled { .. }),
+        "final text should be Settled, got {:?}",
+        signals[2].text,
+    );
     assert!(signals[2]
         .text
         .catalogs()
         .iter()
-        .any(|c| c.value == "WPCR-80001"));
-
-    assert!(
-        matches!(signals[3].text, TextSignal::Settled { .. }),
-        "final text should be Settled, got {:?}",
-        signals[3].text,
-    );
-    assert!(signals[3]
-        .text
-        .catalogs()
-        .iter()
         .any(|c| c.value == "XX34b"));
-    assert!(signals[3]
+    assert!(signals[2]
         .text
         .catalogs()
         .iter()
@@ -349,6 +379,7 @@ async fn emit_signals_warns_when_broadcast_has_no_subscribers() {
                 },
                 durations: crate::import::probe::SourceDurations::default(),
             },
+            ArtworkScan::Absent,
             CallPriority::Interactive,
         );
     });

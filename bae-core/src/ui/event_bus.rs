@@ -93,6 +93,7 @@ impl UiEventBus {
                         match event {
                             #[cfg(not(any(target_os = "ios", target_os = "android")))]
                             ImportEvent::SignalsUpdated {
+                                artwork: _,
                                 candidate_key,
                                 signals,
                                 priority: _,

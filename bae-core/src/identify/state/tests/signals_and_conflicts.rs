@@ -67,7 +67,13 @@ fn started_with(providers: Vec<MetadataSource>) -> IdentifyState {
 }
 
 fn update(state: IdentifyState, signals: Signals) -> (IdentifyState, Vec<Effect>) {
-    step(state, IdentifyEvent::SignalsUpdated { signals })
+    step(
+        state,
+        IdentifyEvent::SignalsUpdated {
+            signals,
+            artwork: crate::signals::ArtworkScan::Absent,
+        },
+    )
 }
 
 /// One provider matched `barcode`.

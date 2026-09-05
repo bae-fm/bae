@@ -41,6 +41,45 @@ fn automation_disc_id_step(view: bae_core::identify::DiscIdStepView) -> Automati
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn automation_artwork_step(view: bae_core::identify::ArtworkStepView) -> AutomationArtworkStep {
+    use bae_core::identify::ArtworkStepView;
+    match view {
+        ArtworkStepView::Absent => AutomationArtworkStep::Absent,
+        ArtworkStepView::Reading {
+            current,
+            position,
+            total,
+            barcodes,
+            catalogs,
+        } => AutomationArtworkStep::Reading {
+            current,
+            position,
+            total,
+            barcodes,
+            catalogs,
+        },
+        ArtworkStepView::Read {
+            images,
+            barcodes,
+            catalogs,
+        } => AutomationArtworkStep::Read {
+            images,
+            barcodes,
+            catalogs,
+        },
+        ArtworkStepView::Failed {
+            failure,
+            read,
+            total,
+        } => AutomationArtworkStep::Failed {
+            failure: automation_lookup_failure(failure),
+            read,
+            total,
+        },
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn automation_barcode_step(view: bae_core::identify::BarcodeStepView) -> AutomationBarcodeStep {
     use bae_core::identify::{BarcodeLookupView, BarcodeStepView};
     match view {
@@ -105,11 +144,13 @@ fn automation_catalog_step(view: bae_core::identify::CatalogStepView) -> Automat
 fn automation_identify_run(view: bae_core::identify::IdentifyRunView) -> AutomationIdentifyRun {
     let bae_core::identify::IdentifyRunView {
         disc_id,
+        artwork,
         barcode,
         catalog,
     } = view;
     AutomationIdentifyRun {
         disc_id: automation_disc_id_step(disc_id),
+        artwork: automation_artwork_step(artwork),
         barcode: automation_barcode_step(barcode),
         catalog: automation_catalog_step(catalog),
     }

@@ -16,7 +16,7 @@ use super::toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::MetadataSource;
-use crate::signals::{BarcodeSignal, LookupFailure, SignalOrigin, Signals};
+use crate::signals::{ArtworkScan, BarcodeSignal, LookupFailure, SignalOrigin, Signals};
 
 /// A signal the user acted on in the toolbar. The disc ID and barcode are
 /// checked by default and toggle off; the catalog is off until one of the
@@ -219,13 +219,15 @@ pub enum IdentifyEvent {
     },
     Cancelled,
 
-    /// The candidate's latest signals. The reducer dispatches the disc-ID lookup
-    /// once the disc ID is `Computed` and the barcode lookups once the codes have
-    /// `Settled`, and refreshes the catalog filter from every snapshot. Snapshots
-    /// stream, so this is idempotent: each signal's progress guards its own lookup
-    /// against being dispatched twice.
+    /// The candidate's latest signals, and where the artwork pass feeding
+    /// them has got to. The reducer dispatches the disc-ID lookup once the
+    /// disc ID is `Computed` and the barcode lookups once the codes have
+    /// `Settled`, and refreshes the catalog filter from every snapshot.
+    /// Snapshots stream, so this is idempotent: each signal's progress guards
+    /// its own lookup against being dispatched twice.
     SignalsUpdated {
         signals: Signals,
+        artwork: ArtworkScan,
     },
 
     // ── DiscID lookup completion ────────────────────────────────────
@@ -338,8 +340,8 @@ pub fn step(state: IdentifyState, event: IdentifyEvent) -> (IdentifyState, Vec<E
                 catalog,
                 context,
             },
-            IdentifyEvent::SignalsUpdated { signals },
-        ) => apply_signals(discid, barcode, catalog, context, signals),
+            IdentifyEvent::SignalsUpdated { signals, artwork },
+        ) => apply_signals(discid, barcode, catalog, context, signals, artwork),
 
         // ── DiscID lookup completion ───────────────────────────────────
         (
@@ -512,9 +514,10 @@ fn apply_signals(
     catalog: CatalogProgress,
     mut context: SignalsContext,
     signals: Signals,
+    artwork: ArtworkScan,
 ) -> (IdentifyState, Vec<Effect>) {
     let mut effects = Vec::new();
-    context.refresh_inputs(&signals);
+    context.refresh_inputs(&signals, artwork);
 
     let discid = match (discid, &signals.disc_id) {
         (DiscidProgress::Computing, signal) => start_discid_progress(signal, &mut effects),

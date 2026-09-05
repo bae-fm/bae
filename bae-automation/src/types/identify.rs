@@ -35,6 +35,30 @@ pub enum AutomationDiscIdStep {
     },
 }
 
+/// Mirrors bae-core's `identify::ArtworkStepView`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum AutomationArtworkStep {
+    Absent,
+    Reading {
+        current: Option<String>,
+        position: u32,
+        total: u32,
+        barcodes: u32,
+        catalogs: u32,
+    },
+    Read {
+        images: u32,
+        barcodes: u32,
+        catalogs: u32,
+    },
+    Failed {
+        failure: AutomationLookupFailure,
+        read: u32,
+        total: u32,
+    },
+}
+
 /// Mirrors bae-core's `identify::BarcodeLookupView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
@@ -103,6 +127,7 @@ pub enum AutomationCatalogStep {
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
     pub disc_id: AutomationDiscIdStep,
+    pub artwork: AutomationArtworkStep,
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
 }

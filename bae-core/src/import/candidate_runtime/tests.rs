@@ -47,6 +47,7 @@ fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
         providers: Vec::new(),
         disc_id: crate::signals::DiscIdSignal::Absent { track_count },
+        artwork: crate::signals::ArtworkScan::Absent,
         barcode_codes: Vec::new(),
         had_barcode_source: false,
         catalogs: Vec::new(),
@@ -411,6 +412,7 @@ fn extracted_signals_are_retained_without_publishing_a_runtime() {
     runtime.record_event(&ImportEvent::SignalsUpdated {
         candidate_key: key.to_string(),
         signals: extracted_signals(),
+        artwork: crate::signals::ArtworkScan::Absent,
         priority: CallPriority::Background,
     });
 

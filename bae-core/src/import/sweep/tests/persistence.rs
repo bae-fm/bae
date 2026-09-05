@@ -372,6 +372,7 @@ async fn a_settled_runs_teardown_does_not_blank_its_recorded_state() {
         context: crate::identify::state::SignalsContext {
             providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 0 },
+            artwork: crate::signals::ArtworkScan::Absent,
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),

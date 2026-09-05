@@ -166,6 +166,7 @@ impl TerminalVerdict {
         let empty_context = |track_count: u32| SignalsContext {
             providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count },
+            artwork: crate::signals::ArtworkScan::Absent,
             barcode_codes: Vec::new(),
             had_barcode_source: false,
             catalogs: Vec::new(),
@@ -268,6 +269,7 @@ mod tests {
         SignalsContext {
             providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count },
+            artwork: crate::signals::ArtworkScan::Absent,
             barcode_codes: vec![],
             had_barcode_source: false,
             catalogs: vec![],
@@ -392,6 +394,7 @@ mod tests {
         let context = SignalsContext {
             providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+            artwork: crate::signals::ArtworkScan::Absent,
             barcode_codes: vec![],
             had_barcode_source: true,
             catalogs: vec![],
@@ -442,6 +445,7 @@ mod tests {
         let context = SignalsContext {
             providers: Vec::new(),
             disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+            artwork: crate::signals::ArtworkScan::Absent,
             barcode_codes: vec![],
             had_barcode_source: true,
             catalogs: vec![],
