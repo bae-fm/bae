@@ -1,204 +1,113 @@
 import BaeKit
-import Combine
 import SwiftUI
 
-struct ReleaseImageOption: Identifiable {
-    let id: String
-    let name: String
-    let path: String?
-}
-
+/// Persisted-release artwork is read by library file identity, including files
+/// available only through cloud storage. Scanned candidate paths never enter
+/// this picker.
 struct CoverSheetView: View {
-    let releaseImages: [ReleaseImageOption]
+    let releaseId: String
     let fetchRemoteCovers: () async throws -> [BridgeRemoteCover]
-    let onSelectRemote: (BridgeRemoteCover) -> Void
-    let onSelectReleaseImage: (String) -> Void
+    let onSelect: (BridgeCoverSelection) async throws -> Void
     let onDone: () -> Void
 
+    @Environment(Library.self)
+    private var library
     @State
     private var remoteCovers: [BridgeRemoteCover] = []
     @State
+    private var releaseFiles: [BridgeFile] = []
+    @State
     private var loading = true
     @State
-    private var errorMessage: String?
+    private var saving = false
     @State
-    private var refreshSignal = PassthroughSubject<Void, Never>()
+    private var remoteError: String?
+    @State
+    private var releaseError: String?
+    @State
+    private var saveError: String?
+    @State
+    private var refreshTask: Task<Void, Never>?
+    @State
+    private var saveTask: Task<Void, Never>?
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Change Cover")
-                    .font(.headline)
-                Spacer()
-                Button("Done") { onDone() }
-                    .keyboardShortcut(.cancelAction)
-            }
-            .padding()
-            Divider()
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .foregroundStyle(.red)
-                            .font(.callout)
+        CoverGalleryView(
+            remoteItems: remoteCovers.map {
+                CoverItem(coverChoice: $0.coverChoice, label: $0.label)
+            },
+            releaseItems: releaseFiles.map {
+                CoverItem(releaseId: releaseId, file: $0)
+            },
+            selectedCover: nil,
+            isLoading: loading,
+            isSaving: saving,
+            errorMessage: saveError ?? releaseError ?? remoteError,
+            onRefresh: {
+                refreshTask?.cancel()
+                refreshTask = Task { await loadCovers() }
+            },
+            onSelect: { item in
+                guard !saving else { return }
+                saving = true
+                saveError = nil
+                saveTask = Task { @MainActor in
+                    do {
+                        try await onSelect(item.selection)
+                        saving = false
+                        onDone()
                     }
-                    Text("Remote Sources")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    if loading {
-                        HStack {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Fetching covers...")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    else if remoteCovers.isEmpty {
-                        Text("No remote covers found")
-                            .font(.callout)
-                            .foregroundStyle(.tertiary)
-                    }
-                    else {
-                        LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: 120))],
-                            spacing: 12
-                        ) {
-                            ForEach(
-                                remoteCovers,
-                                id: \.coverChoice.selection
-                            ) { cover in
-                                remoteCoverOption(cover)
-                            }
-                        }
-                    }
-                    Button(action: { refreshSignal.send() }) {
-                        Label("Refresh", systemImage: "arrow.clockwise")
-                    }
-                    .disabled(loading)
-                    if !releaseImages.isEmpty {
-                        Divider()
-                        Text("Release Files")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        LazyVGrid(
-                            columns: [GridItem(.adaptive(minimum: 120))],
-                            spacing: 12
-                        ) {
-                            ForEach(releaseImages) { item in
-                                Button(action: { onSelectReleaseImage(item.id) }
-                                ) {
-                                    VStack(spacing: 4) {
-                                        Group {
-                                            if let path = item.path {
-                                                ImageView(
-                                                    content: .localFile(
-                                                        path: path
-                                                    ),
-                                                    pointSize: 120
-                                                )
-                                            }
-                                            else {
-                                                Theme.placeholder
-                                            }
-                                        }
-                                        .frame(width: 120, height: 120)
-                                        .clipShape(
-                                            RoundedRectangle(cornerRadius: 6)
-                                        )
-                                        Text(item.name)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                            }
+                    catch is CancellationError { saving = false }
+                    catch {
+                        saving = false
+                        saveError = error.displayLine.map {
+                            String(
+                                localized: "Couldn't change the cover: \($0)"
+                            )
                         }
                     }
                 }
-                .padding()
+            },
+            onDone: onDone
+        )
+        .task(id: releaseId) { await loadCovers() }
+        .task(id: releaseId) {
+            for await result in library.releaseDetails(releaseId) {
+                do {
+                    guard let release = try result.get() else {
+                        releaseFiles = []
+                        releaseError = String(
+                            localized:
+                                "This release is no longer in the library."
+                        )
+                        continue
+                    }
+                    releaseFiles = release.imageFiles
+                    releaseError = nil
+                }
+                catch { releaseError = error.displayLine }
             }
         }
-        .task {
-            await loadCovers()
-            for await _ in refreshSignal.values {
-                await loadCovers()
-            }
+        .onDisappear {
+            refreshTask?.cancel()
+            saveTask?.cancel()
         }
     }
 
     @MainActor
     private func loadCovers() async {
         loading = true
-        remoteCovers = []
-        errorMessage = nil
+        remoteError = nil
         do {
-            let covers = try await fetchRemoteCovers()
-            remoteCovers = covers
+            remoteCovers = try await fetchRemoteCovers()
             loading = false
         }
-        catch is CancellationError {
-            // Sheet dismissed mid-fetch; teardown owns the next transition.
-        }
+        catch is CancellationError { loading = false }
         catch {
-            errorMessage = error.displayLine.map { line in
-                String(localized: "Failed to load covers: \(line)")
+            remoteError = error.displayLine.map {
+                String(localized: "Failed to load covers: \($0)")
             }
             loading = false
         }
-    }
-
-    private func remoteCoverOption(_ cover: BridgeRemoteCover) -> some View {
-        Button(action: { onSelectRemote(cover) }) {
-            VStack(spacing: 4) {
-                ImageView(
-                    content: ImageContent(
-                        bridge: cover.coverChoice.thumbnailSource
-                    ),
-                    pointSize: 120
-                )
-                .frame(width: 120, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-                Text(cover.label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
     }
 }
-
-#if DEBUG
-    #Preview("Cover Sheet") {
-        CoverSheetView(
-            releaseImages: [
-                ReleaseImageOption(id: "file-1", name: "cover.jpg", path: nil),
-                ReleaseImageOption(id: "file-2", name: "back.jpg", path: nil),
-            ],
-            fetchRemoteCovers: { PreviewData.remoteCovers },
-            onSelectRemote: { _ in },
-            onSelectReleaseImage: { _ in },
-            onDone: {},
-        )
-        .frame(width: 500, height: 450)
-        .background(Theme.surface)
-        .environment(ImageStore.stub())
-    }
-
-    #Preview("Cover Sheet Loading") {
-        CoverSheetView(
-            releaseImages: [],
-            fetchRemoteCovers: {
-                try await Task.sleep(for: .seconds(60))
-                return []
-            },
-            onSelectRemote: { _ in },
-            onSelectReleaseImage: { _ in },
-            onDone: {},
-        )
-        .frame(width: 500, height: 450)
-        .background(Theme.surface)
-        .environment(ImageStore.stub())
-    }
-#endif

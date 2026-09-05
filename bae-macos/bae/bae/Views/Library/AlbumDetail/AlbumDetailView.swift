@@ -7,8 +7,6 @@ import SwiftUI
 
 struct AlbumDetailView: View {
     let albumId: String
-    @Environment(MediaPaths.self)
-    var mediaPaths
     @Environment(Playback.self)
     var playback
     @Environment(Queue.self)
@@ -34,12 +32,6 @@ struct AlbumDetailView: View {
     @Environment(UiStore.self)
     var uiStore
 
-    @State
-    private var coverChangeError: String?
-    @State
-    private var changeCoverTask: Task<Void, Never>?
-    @State
-    private var coverSheetTask: Task<Void, Never>?
     @State
     private var transferError: String?
     @State
@@ -116,7 +108,6 @@ struct AlbumDetailView: View {
                         },
                         onChangeCover: {
                             presentCoverSheet(
-                                summary: summary,
                                 selectedReleaseId: selectedReleaseId
                             )
                         },
@@ -169,10 +160,7 @@ struct AlbumDetailView: View {
             uiStore.dismissModal()
             exportTask?.cancel()
             storageTask?.cancel()
-            changeCoverTask?.cancel()
-            coverSheetTask?.cancel()
         }
-        .errorAlert("Cover Change Failed", message: $coverChangeError)
         .errorAlert("Transfer Failed", message: $transferError)
         .errorAlert("Export Failed", message: $exportError)
         .errorAlert("Delete Failed", message: $deleteError)
@@ -273,56 +261,25 @@ struct AlbumDetailView: View {
 // MARK: - Modal presenters
 
 extension AlbumDetailView {
-    private func presentCoverSheet(
-        summary: AlbumSummary,
-        selectedReleaseId: String
-    ) {
+    private func presentCoverSheet(selectedReleaseId: String) {
         let releaseEditor = releaseEditor
-        coverSheetTask?.cancel()
-        coverSheetTask = Task { @MainActor in
-            do {
-                var releaseImages: [ReleaseImageOption] = []
-                for image in summary.releaseIds
-                    .compactMap({ libraryStore.releaseDetails[$0] })
-                    .flatMap(\.imageFiles)
-                {
-                    releaseImages.append(
-                        ReleaseImageOption(
-                            id: image.id,
-                            name: image.originalFilename,
-                            path: try await mediaPaths.filePath(image.id)
+        uiStore.presentModal {
+            CoverPickerFrame {
+                CoverSheetView(
+                    releaseId: selectedReleaseId,
+                    fetchRemoteCovers: {
+                        try await releaseEditor.fetchRemoteCovers(
+                            selectedReleaseId
                         )
-                    )
-                }
-                uiStore.presentModal {
-                    CoverSheetView(
-                        releaseImages: releaseImages,
-                        fetchRemoteCovers: {
-                            try await releaseEditor.fetchRemoteCovers(
-                                selectedReleaseId
-                            )
-                        },
-                        onSelectRemote: { cover in
-                            changeCover(
-                                releaseId: selectedReleaseId,
-                                selection: cover.coverChoice.selection,
-                            )
-                        },
-                        onSelectReleaseImage: { fileId in
-                            changeCover(
-                                releaseId: selectedReleaseId,
-                                selection: .releaseImage(fileId: fileId),
-                            )
-                        },
-                        onDone: { uiStore.dismissModal() },
-                    )
-                    .frame(width: 500, height: 450)
-                    .background(Theme.background)
-                }
-            }
-            catch is CancellationError {}
-            catch {
-                coverChangeError = error.displayLine
+                    },
+                    onSelect: { selection in
+                        try await releaseEditor.changeCover(
+                            selectedReleaseId,
+                            selection
+                        )
+                    },
+                    onDone: { uiStore.dismissModal() }
+                )
             }
         }
     }
@@ -464,29 +421,6 @@ extension AlbumDetailView {
     }
 
     // MARK: - Actions
-
-    private func changeCover(
-        releaseId: String,
-        selection: BridgeCoverSelection
-    ) {
-        let releaseEditor = releaseEditor
-        changeCoverTask?.cancel()
-        changeCoverTask = Task {
-            do {
-                try await releaseEditor.changeCover(
-                    releaseId,
-                    selection
-                )
-                uiStore.dismissModal()
-            }
-            catch is CancellationError {
-                // view dismissed mid-cover-change
-            }
-            catch {
-                coverChangeError = error.displayLine
-            }
-        }
-    }
 
     /// Run one storage transition with the shared cancel-prior/error plumbing.
     /// `transition` is the single bridge call that

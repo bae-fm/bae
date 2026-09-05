@@ -27,8 +27,6 @@ struct ImportedReleasePane: View {
     private var session: ReleaseMetadataEditSession?
     @State
     private var loadError: String?
-    @State
-    private var coverChangeTask: Task<Void, Never>?
 
     @Environment(UiStore.self)
     private var uiStore
@@ -74,7 +72,6 @@ struct ImportedReleasePane: View {
         .task(id: releaseId) { await load() }
         .onDisappear {
             session?.cancelTasks()
-            coverChangeTask?.cancel()
         }
     }
 
@@ -192,60 +189,19 @@ struct ImportedReleasePane: View {
 extension ImportedReleasePane {
     private func presentCoverPicker(_ session: ReleaseMetadataEditSession) {
         uiStore.presentModal {
-            CoverSheetView(
-                releaseImages: candidate.mapping.images.map {
-                    ReleaseImageOption(
-                        id: $0.fileId,
-                        name: $0.name,
-                        path: $0.localPath
-                    )
-                },
-                fetchRemoteCovers: {
-                    try await fetchRemoteCovers(releaseId)
-                },
-                onSelectRemote: {
-                    applyCover($0.coverChoice.selection, to: session)
-                },
-                onSelectReleaseImage: {
-                    applyCover(.releaseImage(fileId: $0), to: session)
-                },
-                onDone: { uiStore.dismissModal() }
-            )
-            .frame(width: 500, height: 450)
-            .background(Theme.background)
-        }
-    }
-
-    private func applyCover(
-        _ selection: BridgeCoverSelection,
-        to session: ReleaseMetadataEditSession
-    ) {
-        coverChangeTask?.cancel()
-        coverChangeTask = Task { @MainActor in
-            do {
-                try await changeCover(releaseId, selection)
-                uiStore.dismissModal()
-            }
-            catch is CancellationError {}
-            catch {
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        String(localized: "Couldn't change the cover: \(line)")
-                    )
-                }
-                return
-            }
-            do {
-                let refreshed = try await seedReleaseEdit(releaseId)
-                session.updateCover(refreshed.cover)
-            }
-            catch is CancellationError {}
-            catch {
-                if let line = error.displayLine {
-                    uiStore.showError(
-                        "\(String(localized: "Couldn't load image")): \(line)"
-                    )
-                }
+            CoverPickerFrame {
+                CoverSheetView(
+                    releaseId: releaseId,
+                    fetchRemoteCovers: {
+                        try await fetchRemoteCovers(releaseId)
+                    },
+                    onSelect: { selection in
+                        try await changeCover(releaseId, selection)
+                        let refreshed = try await seedReleaseEdit(releaseId)
+                        session.updateCover(refreshed.cover)
+                    },
+                    onDone: { uiStore.dismissModal() }
+                )
             }
         }
     }

@@ -35,25 +35,33 @@ struct ReleaseMetadataEditorContent: View {
     }
 
     private var cover: some View {
-        ImageView(
-            imageRef: session.cover,
-            pointSize: ReleaseMetadataHeader<EmptyView, EmptyView, EmptyView>
+        Button {
+            onEditCover?()
+        } label: {
+            ImageView(
+                imageRef: session.cover,
+                pointSize: ReleaseMetadataHeader<
+                    EmptyView, EmptyView, EmptyView
+                >
                 .coverSize
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(alignment: .topTrailing) {
-            Image(systemName: "pencil")
-                .font(.caption2)
-                .foregroundStyle(.white)
-                .padding(3)
-                .background(.black.opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-                .padding(4)
-                .opacity(onEditCover == nil ? 0 : 1)
-                .allowsHitTesting(false)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: "pencil")
+                    .font(.caption2)
+                    .foregroundStyle(.white)
+                    .padding(3)
+                    .background(.black.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .padding(4)
+                    .opacity(onEditCover == nil ? 0 : 1)
+                    .allowsHitTesting(false)
+            }
+            .contentShape(Rectangle())
         }
-        .contentShape(Rectangle())
-        .onTapGesture { onEditCover?() }
+        .buttonStyle(.plain)
+        .disabled(onEditCover == nil)
+        .accessibilityLabel(Text("Change Cover"))
     }
 
     @ViewBuilder

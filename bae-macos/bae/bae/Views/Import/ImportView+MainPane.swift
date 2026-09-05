@@ -200,17 +200,18 @@ extension ImportView {
     private func presentCoverPicker(for candidate: Candidate) {
         let key = candidate.key
         uiStore.presentModal {
-            CoverPickerView(
-                remoteCoverArts: candidate.release?.coverArt ?? [],
-                localArtwork: candidate.files.images,
-                selectedCover: candidate.cover,
-                onSelect: { selection in
-                    selectCover(selection.selection, forKey: key)
-                    uiStore.dismissModal()
-                },
-                onDone: { uiStore.dismissModal() },
-            )
-            .frame(width: 600, height: 500)
+            CoverPickerFrame {
+                CoverPickerView(
+                    remoteCoverArts: candidate.release?.coverArt ?? [],
+                    localArtwork: candidate.files.images,
+                    selectedCover: candidate.cover,
+                    onSelect: { selection in
+                        selectCover(selection.selection, forKey: key)
+                        uiStore.dismissModal()
+                    },
+                    onDone: { uiStore.dismissModal() },
+                )
+            }
         }
     }
 

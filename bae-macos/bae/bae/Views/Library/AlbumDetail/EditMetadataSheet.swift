@@ -8,6 +8,10 @@ struct EditMetadataSheet: View {
 
     @State
     private var session: ReleaseMetadataEditSession
+    @State
+    private var showingCoverPicker = false
+    @Environment(ReleaseEditor.self)
+    private var releaseEditor
 
     init(
         releaseId: String,
@@ -39,8 +43,11 @@ struct EditMetadataSheet: View {
                 header
                 Divider()
                 ScrollView {
-                    ReleaseMetadataEditorContent(session: session)
-                        .padding(24)
+                    ReleaseMetadataEditorContent(
+                        session: session,
+                        onEditCover: { showingCoverPicker = true }
+                    )
+                    .padding(24)
                 }
                 footer
             }
@@ -48,6 +55,31 @@ struct EditMetadataSheet: View {
             .background(Theme.background)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .sheet(isPresented: $showingCoverPicker) {
+                CoverSheetView(
+                    releaseId: session.releaseId,
+                    fetchRemoteCovers: {
+                        try await releaseEditor.fetchRemoteCovers(
+                            session.releaseId
+                        )
+                    },
+                    onSelect: { selection in
+                        try await releaseEditor.changeCover(
+                            session.releaseId,
+                            selection
+                        )
+                        let seed = try await releaseEditor.seedReleaseEdit(
+                            session.releaseId
+                        )
+                        session.updateCover(seed.cover)
+                    },
+                    onDone: { showingCoverPicker = false }
+                )
+                .frame(
+                    width: min(1_000, size.width),
+                    height: min(740, size.height)
+                )
+            }
         }
         .onDisappear { session.cancelTasks() }
     }
@@ -131,6 +163,7 @@ struct EditMetadataSheet: View {
         .environment(PreviewData.artistAssignmentsLibrary())
         .environment(ImageStore.stub())
         .environment(UiStore())
+        .environment(ReleaseEditor.stub())
         .preferredColorScheme(.dark)
     }
 #endif
