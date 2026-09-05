@@ -96,9 +96,8 @@ struct ReleaseMetadataEditorContent: View {
         }
     }
 
-    /// One side's rows, laid out as the import mapping table lays a side out:
-    /// the side's header, then each run under the sheet it is carved from,
-    /// with the column header once, after the first run's caption.
+    /// Shared audio gets a caption above its tracks. A source used by one
+    /// track stays in that row, beside the track's editable metadata.
     @ViewBuilder
     private func sideRows(_ side: ReleaseMetadataTrackSide, index: Int)
         -> some View
@@ -109,7 +108,9 @@ struct ReleaseMetadataEditorContent: View {
         ForEach(Array(side.groups.enumerated()), id: \.element.id) {
             groupIndex,
             group in
-            if let source = group.sharedSource {
+            let captionSource =
+                group.tracks.count > 1 ? group.sharedSource : nil
+            if let source = captionSource {
                 sharedSourceCaption(source)
             }
             if index == 0 && groupIndex == 0 {
@@ -118,7 +119,7 @@ struct ReleaseMetadataEditorContent: View {
             ForEach(group.tracks) { item in
                 trackRow(
                     item,
-                    sourceIsInCaption: group.sharedSource != nil
+                    sourceIsInCaption: captionSource != nil
                 )
             }
         }
@@ -203,10 +204,13 @@ struct ReleaseMetadataEditorContent: View {
             .opacity(onPlayTrack == nil ? 0 : 1)
             .allowsHitTesting(onPlayTrack != nil)
             if !sourceIsInCaption {
-                Text(item.context.sources.map(\.name).joined(separator: " + "))
+                let name = item.context.sources.map(\.name)
+                    .joined(separator: " + ")
+                Text(verbatim: name)
                     .font(.system(size: 12, design: .monospaced))
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .help(name)
             }
         }
         .frame(width: columns.source, alignment: .leading)
@@ -222,6 +226,7 @@ struct ReleaseMetadataEditorContent: View {
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .help(source.name)
         }
         .padding(.horizontal, ReleaseMetadataTrackColumns.rowPadding)
         .padding(.top, 8)

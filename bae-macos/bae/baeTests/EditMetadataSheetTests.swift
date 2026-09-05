@@ -140,6 +140,103 @@ struct EditMetadataSheetTests {
     }
 
     @MainActor
+    @Test(
+        "A CUE source used by one track stays in that track's row",
+        arguments: [
+            ReleaseMetadataTrackColumns.minimumTableWidth, 1_000, 1_400,
+        ]
+    )
+    func individualCueSourcesStayInline(width: CGFloat) async throws {
+        let files = try await trackTitleFrames(
+            width: width,
+            layout: .file,
+            shared: false
+        )
+        let cueFiles = try await trackTitleFrames(
+            width: width,
+            layout: .cue,
+            shared: false
+        )
+        #expect(cueFiles == files)
+    }
+
+    @MainActor
+    @Test("Tracks sharing one CUE source keep one caption above their rows")
+    func sharedCueSourceKeepsCaption() async throws {
+        let files = try await trackTitleFrames(
+            width: 1_000,
+            layout: .file,
+            shared: false
+        )
+        let shared = try await trackTitleFrames(
+            width: 1_000,
+            layout: .cue,
+            shared: true
+        )
+        #expect(shared[0].minY > files[0].minY)
+        #expect(
+            shared[1].minY - shared[0].minY == files[1].minY - files[0].minY
+        )
+        #expect(shared[0].minX == files[0].minX)
+    }
+
+    @MainActor
+    private func trackTitleFrames(
+        width: CGFloat,
+        layout: BridgeSourceAudioLayout,
+        shared: Bool
+    ) async throws -> [CGRect] {
+        var seed = PreviewData.releaseEditSeed(trackCount: 2)
+        for index in seed.display.tracks.indices {
+            seed.display.tracks[index].sources = [
+                BridgeReleaseEditTrackSource(
+                    fileId: shared ? "disc.flac" : "track-\(index).flac",
+                    name: shared
+                        ? "Disc audio.flac"
+                        : "Disc 1/0\(index + 1) A source track with a long filename.flac",
+                    layout: layout
+                )
+            ]
+        }
+        let resetEdit = seed.edit
+        let session = ReleaseMetadataEditSession(
+            releaseId: "release-test",
+            seed: seed,
+            save: { _, _ in },
+            reset: { _ in resetEdit }
+        )
+        let size = NSSize(width: width, height: 700)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            ScrollView {
+                ReleaseMetadataEditorContent(
+                    session: session,
+                    onPlayTrack: { _ in }
+                )
+            }
+            .environment(Library.stub())
+            .environment(UiStore())
+            .environment(ImageStore.stub())
+            .background(Theme.background)
+            .preferredColorScheme(.dark)
+            .frame(width: width, height: size.height, alignment: .topLeading),
+            size: size
+        )
+        defer {
+            window.contentView = nil
+            window.orderOut(nil)
+        }
+        await SnapshotTestSupport.settle(host)
+        let fields = SnapshotTestSupport.descendants(of: host)
+            .compactMap { $0 as? NSTextField }
+        return try seed.edit.tracks.map { track in
+            let field = try #require(
+                fields.first { $0.stringValue == track.title }
+            )
+            return field.convert(field.bounds, to: host)
+        }
+    }
+
+    @MainActor
     private func sheet(canResetToSource: Bool) -> EditMetadataSheet {
         var seed = PreviewData.releaseEditSeed(trackCount: 2)
         seed.canResetToSource = canResetToSource
