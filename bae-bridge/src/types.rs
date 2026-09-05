@@ -1,6 +1,8 @@
 mod configuration;
 #[cfg(feature = "desktop")]
 mod conversion;
+#[cfg(feature = "desktop")]
+mod cover;
 mod device_pairing;
 mod editing;
 mod events_and_transfers;
@@ -12,6 +14,8 @@ mod playback_values;
 mod storage_inspector;
 
 pub use configuration::*;
+#[cfg(feature = "desktop")]
+pub use cover::*;
 pub use device_pairing::*;
 pub use editing::*;
 pub use events_and_transfers::*;

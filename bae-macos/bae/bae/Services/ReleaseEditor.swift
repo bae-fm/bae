@@ -31,7 +31,8 @@ final class ReleaseEditor: Observable {
     let resetReleaseEditToSource:
         @Sendable (_ releaseId: String) async throws -> BridgeRawReleaseEdit
     let fetchRemoteCovers:
-        @Sendable (_ releaseId: String) async throws -> [BridgeRemoteCover]
+        @Sendable (_ target: BridgeCoverTarget) async throws ->
+            [BridgeRemoteCover]
 
     init(
         changeCover:
@@ -68,7 +69,8 @@ final class ReleaseEditor: Observable {
             @escaping @Sendable (String) async throws -> BridgeRawReleaseEdit =
             { _ in throw StubError.notImplemented },
         fetchRemoteCovers:
-            @escaping @Sendable (String) async throws -> [BridgeRemoteCover] = {
+            @escaping @Sendable (BridgeCoverTarget) async throws ->
+            [BridgeRemoteCover] = {
                 _ in []
             }
     ) {
@@ -126,7 +128,7 @@ final class ReleaseEditor: Observable {
                 try await handle.resetReleaseEditToSource(releaseId: $0)
             },
             fetchRemoteCovers: {
-                try await handle.fetchRemoteCovers(releaseId: $0)
+                try await handle.fetchRemoteCovers(target: $0)
             }
         )
     }

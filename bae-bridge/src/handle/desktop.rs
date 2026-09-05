@@ -706,12 +706,12 @@ impl AppHandle {
 
     pub async fn fetch_remote_covers(
         self: std::sync::Arc<Self>,
-        release_id: String,
+        target: crate::types::BridgeCoverTarget,
     ) -> Result<Vec<BridgeRemoteCover>, BridgeError> {
         self.run_exported(move |this| async move {
             let covers = this
                 .services
-                .import_fetch_remote_covers(&release_id)
+                .import_fetch_remote_covers(target.into_core())
                 .await
                 .map_err(BridgeError::import)?;
             Ok(covers

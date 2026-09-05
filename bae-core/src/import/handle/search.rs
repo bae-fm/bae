@@ -192,18 +192,66 @@ impl ImportServiceHandle {
         Ok(GroupedSearchResults { groups, statuses })
     }
 
-    /// The remote cover art options for a release, from its
-    /// `release_identities`. A MusicBrainz identity offers both the archive's
-    /// per-pressing image (from `source_release_id`) and its album-level one
-    /// (from `source_group_id`) at the archive's fixed addresses for them —
-    /// costing no request, since the picker's thumbnail fetch is what resolves
-    /// each. Discogs image URLs come from the release and master documents,
-    /// which offer every image rather than only the primary cover.
-    ///
-    /// Covers come back in resolution order and the picker renders them as-is.
-    /// A release without an external identity has no identity rows, so it returns an empty list —
-    /// there's no source to query.
+    /// Fetch complete artwork galleries when the picker opens. Dispatch on
+    /// the owner: library identities and candidate provenance are different
+    /// records, never interchangeable string identifiers.
     pub async fn fetch_remote_covers(
+        &self,
+        target: crate::import::cover_art::CoverTarget,
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        match target {
+            crate::import::cover_art::CoverTarget::Release(id) => self.release_covers(&id).await,
+            crate::import::cover_art::CoverTarget::Candidate(key) => {
+                self.candidate_covers(&key).await
+            }
+        }
+    }
+
+    async fn candidate_covers(
+        &self,
+        key: &str,
+    ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
+        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
+            self.get_candidate(key).await?
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: format!("{key} is not a scanned candidate"),
+            });
+        };
+        let state = self
+            .library_manager
+            .load_import_candidate_state(&candidate.files.content_hash())
+            .await?;
+        let Some(crate::import::MetadataProvenance::ExternalRelease {
+            source,
+            release_id,
+            partners,
+        }) = state.and_then(|state| state.metadata_provenance)
+        else {
+            return Ok(Vec::new());
+        };
+        let mut covers = Vec::new();
+        let primary = crate::import::MetadataRef::new(release_id, source);
+        for identity in std::iter::once(primary).chain(partners) {
+            let payloads = self
+                .library_manager
+                .load_release_payloads(&identity)
+                .await?
+                .ok_or_else(|| crate::import::ImportError::Internal {
+                    detail: format!(
+                        "{key} names {} release {} without archived metadata",
+                        identity.source.as_str(),
+                        identity.id
+                    ),
+                })?;
+            for cover in payloads.gallery_covers().await? {
+                crate::import::cover_art::push_unique_cover(&mut covers, cover);
+            }
+        }
+        Ok(covers)
+    }
+
+    async fn release_covers(
         &self,
         release_id: &str,
     ) -> Result<Vec<crate::import::cover_art::RemoteCover>, crate::import::ImportError> {
@@ -217,14 +265,12 @@ impl ImportServiceHandle {
         for identity in &identities {
             match identity.source {
                 MetadataSource::MusicBrainz => {
-                    let release_cover = crate::import::cover_art::RemoteCover::musicbrainz_release(
+                    let gallery = crate::import::cover_art::musicbrainz_gallery(
                         &identity.source_release_id,
-                    );
-                    let group_cover =
-                        crate::import::cover_art::RemoteCover::musicbrainz_release_group(
-                            &identity.source_group_id,
-                        );
-                    for cover in [release_cover, group_cover] {
+                        Some(&identity.source_group_id),
+                    )
+                    .await?;
+                    for cover in gallery {
                         crate::import::cover_art::push_unique_cover(&mut covers, cover);
                     }
                 }

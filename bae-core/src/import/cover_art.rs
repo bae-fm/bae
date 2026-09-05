@@ -6,6 +6,19 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use tracing::{debug, warn};
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[path = "cover_art_archive.rs"]
+mod archive;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use archive::musicbrainz_gallery;
+
+/// The persisted owner whose external identities supply a cover gallery.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub enum CoverTarget {
+    Release(String),
+    Candidate(String),
+}
+
 /// Where the Cover Art Archive serves images from. Every path under it is fixed
 /// by the entity's MusicBrainz id, so an image's address is knowable without
 /// asking the archive anything.
@@ -639,13 +652,30 @@ async fn send_image_request(
     operation: &str,
     base_delay: Duration,
 ) -> Result<ImageResponse, ImportError> {
+    match send_artwork_request(image_url, operation, base_delay).await? {
+        Some(response) => read_image_response(response, image_url).await,
+        None => Ok(ImageResponse::Nothing),
+    }
+}
+
+/// Shared transport policy for image bytes and artwork-list documents.
+async fn send_artwork_request(
+    url: &str,
+    operation: &str,
+    base_delay: Duration,
+) -> Result<Option<reqwest::Response>, ImportError> {
     let client = image_download_client()?;
     retry_classified(
         MAX_RETRIES + 1,
         operation,
         |attempt| exponential_backoff(base_delay, attempt),
         || async {
-            let response = match client.get(image_url).send().await {
+            let response = match client
+                .get(url)
+                .timeout(crate::util::http::READ_TIMEOUT)
+                .send()
+                .await
+            {
                 Ok(response) => response,
                 Err(error) if is_permanent_request_error(&error) => {
                     return ClassifiedAttempt::Permanent(ImportError::CoverArt {
@@ -660,12 +690,9 @@ async fn send_image_request(
             };
 
             if response.status().is_success() {
-                match read_image_response(response, image_url).await {
-                    Ok(body) => ClassifiedAttempt::Done(body),
-                    Err(error) => ClassifiedAttempt::Permanent(error),
-                }
+                ClassifiedAttempt::Done(Some(response))
             } else if response.status() == reqwest::StatusCode::NOT_FOUND {
-                ClassifiedAttempt::Done(ImageResponse::Nothing)
+                ClassifiedAttempt::Done(None)
             } else if is_transient_status(response.status()) {
                 ClassifiedAttempt::Retry(ImportError::CoverArt {
                     detail: format!("Image download failed with status {}", response.status()),

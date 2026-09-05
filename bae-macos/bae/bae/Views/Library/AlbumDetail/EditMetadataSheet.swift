@@ -60,7 +60,7 @@ struct EditMetadataSheet: View {
                     releaseId: session.releaseId,
                     fetchRemoteCovers: {
                         try await releaseEditor.fetchRemoteCovers(
-                            session.releaseId
+                            .release(releaseId: session.releaseId)
                         )
                     },
                     onSelect: { selection in

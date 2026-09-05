@@ -269,7 +269,7 @@ extension AlbumDetailView {
                     releaseId: selectedReleaseId,
                     fetchRemoteCovers: {
                         try await releaseEditor.fetchRemoteCovers(
-                            selectedReleaseId
+                            .release(releaseId: selectedReleaseId)
                         )
                     },
                     onSelect: { selection in

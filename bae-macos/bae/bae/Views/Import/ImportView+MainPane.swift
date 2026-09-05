@@ -52,7 +52,11 @@ extension ImportView {
                 resetReleaseEdit: releaseEditor
                     .resetReleaseEditToSource,
                 changeCover: releaseEditor.changeCover,
-                fetchRemoteCovers: releaseEditor.fetchRemoteCovers,
+                fetchRemoteCovers: {
+                    try await releaseEditor.fetchRemoteCovers(
+                        .release(releaseId: $0)
+                    )
+                },
                 onViewInLibrary: { uiStore.navigateToAlbum($0) },
                 onOpenImages: mappingActions.openImages,
                 onOpenDocument: mappingActions.openDocument,
@@ -187,8 +191,7 @@ extension ImportView {
     /// Whether the cover is worth opening a picker for: the picked release's
     /// remote art, or artwork found in the folder.
     private func hasCoverOptions(_ candidate: Candidate) -> Bool {
-        !(candidate.release?.coverArt ?? []).isEmpty
-            || !candidate.files.images.isEmpty
+        candidate.release != nil || !candidate.files.images.isEmpty
     }
 
     /// Every file the candidate holds, in one string — the identity the
@@ -205,9 +208,16 @@ extension ImportView {
                     remoteCoverArts: candidate.release?.coverArt ?? [],
                     localArtwork: candidate.files.images,
                     selectedCover: candidate.cover,
+                    fetchRemoteCovers: {
+                        try await releaseEditor.fetchRemoteCovers(
+                            .candidate(candidateKey: key)
+                        )
+                    },
                     onSelect: { selection in
-                        selectCover(selection.selection, forKey: key)
-                        uiStore.dismissModal()
+                        try await importer.setCandidateCover(
+                            key,
+                            selection.selection
+                        )
                     },
                     onDone: { uiStore.dismissModal() },
                 )

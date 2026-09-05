@@ -7,14 +7,18 @@ struct CoverPickerView: View {
     let remoteCoverArts: [BridgeRemoteCover]
     let localArtwork: [BridgeCandidateFile]
     let selectedCover: BridgeCoverChoice?
-    let onSelect: (BridgeCoverChoice) -> Void
+    let fetchRemoteCovers: () async throws -> [BridgeRemoteCover]
+    let onSelect: (BridgeCoverChoice) async throws -> Void
     let onDone: () -> Void
+    @State
+    private var state = CoverPickerState()
 
     var body: some View {
         CoverGalleryView(
-            remoteItems: remoteCoverArts.map {
-                CoverItem(coverChoice: $0.coverChoice, label: $0.label)
-            },
+            remoteItems: (state.remoteCovers ?? remoteCoverArts)
+                .map {
+                    CoverItem(coverChoice: $0.coverChoice, label: $0.label)
+                },
             releaseItems: localArtwork.map { file in
                 guard let choice = file.coverChoice else {
                     preconditionFailure(
@@ -24,16 +28,22 @@ struct CoverPickerView: View {
                 return CoverItem(coverChoice: choice, label: file.file.name)
             },
             selectedCover: selectedCover?.selection,
+            isLoading: state.isLoading,
+            isSaving: state.isSaving,
+            errorMessage: state.errorMessage,
+            onRefresh: { state.refresh(fetchRemoteCovers) },
             onSelect: { item in
                 guard case .candidate(let choice) = item.content else {
                     preconditionFailure(
                         "A candidate picker cannot contain library files"
                     )
                 }
-                onSelect(choice)
+                state.save({ try await onSelect(choice) }, onSaved: onDone)
             },
             onDone: onDone
         )
+        .task { await state.load(fetchRemoteCovers) }
+        .onDisappear { state.cancel() }
     }
 }
 
@@ -43,6 +53,7 @@ struct CoverPickerView: View {
             remoteCoverArts: PreviewData.remoteCovers,
             localArtwork: PreviewData.bridgeCandidateFiles.images,
             selectedCover: PreviewData.remoteCovers.first?.coverChoice,
+            fetchRemoteCovers: { PreviewData.remoteCovers },
             onSelect: { _ in },
             onDone: {}
         )

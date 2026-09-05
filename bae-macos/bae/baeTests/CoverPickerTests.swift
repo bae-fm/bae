@@ -148,6 +148,7 @@ struct CoverPickerTests {
                 remoteCoverArts: PreviewData.remoteCovers,
                 localArtwork: PreviewData.bridgeCandidateFiles.images,
                 selectedCover: nil,
+                fetchRemoteCovers: { PreviewData.remoteCovers },
                 onSelect: { _ in },
                 onDone: {}
             )

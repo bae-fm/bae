@@ -218,6 +218,36 @@ impl ReleasePayloads {
         Ok(unique)
     }
 
+    /// On-demand picker artwork. The archived documents supply Discogs images;
+    /// the archive supplies the MusicBrainz release and release-group galleries.
+    /// This does not change the offline metadata projection or automatic cover.
+    pub async fn gallery_covers(&self) -> Result<Vec<RemoteCover>, ImportError> {
+        let mut covers = self.covers()?;
+        covers.retain(|cover| cover.source != MetadataSource::MusicBrainz);
+        let musicbrainz = match self.release.source {
+            MetadataSource::MusicBrainz => Some(self.musicbrainz_anchor()?),
+            MetadataSource::Discogs => self.musicbrainz_xref()?,
+        };
+        if let Some(release) = musicbrainz {
+            let mut gallery = crate::import::cover_art::musicbrainz_gallery(
+                &release.id,
+                release
+                    .release_group
+                    .as_ref()
+                    .map(|group| group.id.as_str()),
+            )
+            .await?;
+            match self.release.source {
+                MetadataSource::MusicBrainz => {
+                    gallery.extend(covers);
+                    covers = gallery;
+                }
+                MetadataSource::Discogs => covers.extend(gallery),
+            }
+        }
+        Ok(covers)
+    }
+
     /// The cover a surface offers first for this release, and therefore the one
     /// an import that names no other lands. Read off [`Self::covers`] so the
     /// pane and the commit cannot default to different images.
