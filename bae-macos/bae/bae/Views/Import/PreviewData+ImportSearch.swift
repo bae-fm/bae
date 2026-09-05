@@ -817,6 +817,7 @@
                 selectedReleaseId: selectedReleaseId,
                 loadingReleaseId: loadingReleaseId,
                 isImporting: false,
+                isFinalizing: false,
                 libraryStatuses: libraryStatuses,
                 signals: signals,
                 signalsToolbar: toolbar

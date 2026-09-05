@@ -17,6 +17,10 @@ struct ImportSearchState {
     /// matching result row swaps its chevron for the existing spinner.
     let loadingReleaseId: String?
     let isImporting: Bool
+    /// Whether core is still committing the verdict the pane shows: fetching
+    /// the sole pressing's details, then storing the answer. The verdict is
+    /// final; what is pending is the pick and the row.
+    let isFinalizing: Bool
     let libraryStatuses: [String: BridgeLibraryStatus]
     let signals: Signals?
     /// The signals core extracted, as the pre-shaped badge list the Adjust

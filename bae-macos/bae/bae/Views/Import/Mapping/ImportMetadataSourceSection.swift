@@ -190,6 +190,17 @@ private struct ImportOnlineMetadataBrowser: View {
             }
             .frame(maxWidth: .infinity)
             .formGroupCard()
+            // Identification that narrows to one pressing applies it as the
+            // pick itself, the way choosing that row would. The browser then
+            // has nothing left to offer, so it closes as it does on a pick.
+            .onChange(of: candidate.pickedRelease?.releaseId) { was, now in
+                let applying =
+                    importStore.candidate(forKey: candidateKey)?
+                    .metadataApplicationSession != nil
+                if was == nil, now != nil, !applying {
+                    onBack()
+                }
+            }
         }
     }
 }

@@ -137,6 +137,7 @@ struct ImportSearchPane: View {
                     ForEach(missingSourceNotes, id: \.self) { note in
                         MissingSourceNote(text: note)
                     }
+                    finalizingLine
                 },
             )
         case .nothingFound:
@@ -207,6 +208,30 @@ struct ImportSearchPane: View {
                 localized:
                     "\(source) \(step) results are missing from this list."
             )
+        }
+    }
+
+    /// What core is still doing after the verdict: a sole pressing has its
+    /// details fetched and applied as the pick, then the answer is stored.
+    /// The list is already final, so the line sits under it rather than
+    /// replacing it.
+    @ViewBuilder
+    private var finalizingLine: some View {
+        if state.isFinalizing {
+            let pressings = state.identifiedGroups.flatMap(\.pressings).count
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.7)
+                Text(
+                    pressings == 1
+                        ? String(localized: "Fetching release details\u{2026}")
+                        : String(localized: "Saving the result\u{2026}")
+                )
+            }
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .padding(.leading, 28)
         }
     }
 
