@@ -117,6 +117,9 @@ struct EditMetadataSheetTests {
                 object: titleField
             )
         )
+        // The field's focus state follows the responder change a turn later;
+        // the save must see the field as focused, as a person's would.
+        await SnapshotTestSupport.settle(host)
 
         await withCheckedContinuation { continuation in
             session.save { continuation.resume() }
