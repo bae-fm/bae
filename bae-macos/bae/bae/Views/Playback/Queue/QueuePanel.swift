@@ -16,10 +16,22 @@ struct QueuePanel: View {
     @Environment(Queue.self)
     private var queue
 
+    @Environment(LibraryStore.self)
+    private var libraryStore
+    @Environment(UiStore.self)
+    private var uiStore
+
     let onClose: () -> Void
     let onInsertTracks: ([String], Int) -> Void
 
     var body: some View {
+        let navigation = NowPlayingNavigationAction(
+            playbackStore: playbackStore,
+            libraryStore: libraryStore,
+            uiStore: uiStore
+        )
+        let onGoToNowPlaying: (() -> Void)? =
+            navigation.isEnabled ? { navigation.perform() } : nil
         let np = playbackStore.nowPlaying
         let track = np.track
         let cover: ImageContent? =
@@ -35,6 +47,7 @@ struct QueuePanel: View {
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
             onClose: onClose,
+            onGoToNowPlaying: onGoToNowPlaying,
             onPlayPause: {
                 playback.playPause(for: playbackStore.nowPlaying)
             },
@@ -85,6 +98,8 @@ struct QueuePanel: View {
         .environment(store)
         .environment(queue)
         .environment(ImageStore.stub())
+        .environment(LibraryStore())
+        .environment(UiStore())
         .environment(
             \.playbackPositionPublisher,
             Just(

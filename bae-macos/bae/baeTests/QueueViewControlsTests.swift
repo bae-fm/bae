@@ -37,6 +37,7 @@ struct QueueViewControlsTests {
         await SnapshotTestSupport.settle(hosted.view)
 
         #expect(recorder.playPauseCount == 1)
+        #expect(recorder.navigateCount == 0)
         withExtendedLifetime(hosted.window) {}
     }
 
@@ -53,6 +54,7 @@ struct QueueViewControlsTests {
         await SnapshotTestSupport.settle(hosted.view)
 
         #expect(recorder.playPauseCount == 1)
+        #expect(recorder.navigateCount == 0)
         withExtendedLifetime(hosted.window) {}
     }
 
@@ -84,6 +86,7 @@ struct QueueViewControlsTests {
                 isPlaying: store.nowPlaying.isPlaying,
                 isLoading: store.nowPlaying.loadingTrackId != nil,
                 onClose: { recorder.closeCount += 1 },
+                onGoToNowPlaying: { recorder.navigateCount += 1 },
                 onPlayPause: { recorder.playPauseCount += 1 },
                 onClearUpNext: {},
                 onClearPlayingFrom: {},
@@ -176,6 +179,7 @@ struct QueueViewControlsTests {
     @MainActor
     private final class Recorder {
         var closeCount = 0
+        var navigateCount = 0
         var playPauseCount = 0
     }
 }

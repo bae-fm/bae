@@ -438,35 +438,11 @@ struct MainAppMenuCommands: Commands {
 
     private func goToNowPlaying() {
         let target = requireTarget()
-        guard let albumId = target.playbackStore.nowPlaying.track?.albumId
-        else {
-            preconditionFailure(
-                "Go to Now Playing is disabled without a playing album"
-            )
-        }
-        let trackId = target.playbackStore.nowPlaying.track?.trackId
-        // Store an override only when the playing track's release is not the
-        // album default; unloaded details leave the default unchanged.
-        let releaseId: String? = {
-            guard let trackId,
-                let summary = target.libraryStore.albumSummaries[albumId]
-            else {
-                return nil
-            }
-            let matchingReleaseId = summary.releaseIds.first { id in
-                target.libraryStore.releaseDetails[id]?.tracks
-                    .contains(where: { $0.id == trackId }) ?? false
-            }
-            guard let matchingReleaseId else {
-                return nil
-            }
-            return matchingReleaseId == summary.primaryReleaseId
-                ? nil : matchingReleaseId
-        }()
-        target.uiStore.navigateToAlbum(
-            albumId,
-            trackId: trackId,
-            releaseId: releaseId
+        NowPlayingNavigationAction(
+            playbackStore: target.playbackStore,
+            libraryStore: target.libraryStore,
+            uiStore: target.uiStore
         )
+        .perform()
     }
 }

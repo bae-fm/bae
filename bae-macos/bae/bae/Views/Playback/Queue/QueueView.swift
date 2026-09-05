@@ -17,6 +17,7 @@ struct QueueView: View {
     let isPlaying: Bool
     let isLoading: Bool
     let onClose: () -> Void
+    let onGoToNowPlaying: (() -> Void)?
     let onPlayPause: () -> Void
     let onClearUpNext: () -> Void
     let onClearPlayingFrom: () -> Void
@@ -222,6 +223,7 @@ struct QueueView: View {
                 .frame(width: 56, height: 56)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 4)
+                .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Now Playing")
@@ -244,6 +246,7 @@ struct QueueView: View {
                     .frame(height: 10)
                     .padding(.top, 6)
             }
+            .allowsHitTesting(false)
 
             Spacer(minLength: 0)
 
@@ -262,12 +265,23 @@ struct QueueView: View {
             )
         }
         .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12).fill(Theme.surfaceElevated)
-        )
+        .background {
+            Button {
+                onGoToNowPlaying?()
+            } label: {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Theme.surfaceElevated)
+                    .contentShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+            .disabled(onGoToNowPlaying == nil)
+            .help("Go to Now Playing")
+            .accessibilityLabel("Go to Now Playing")
+        }
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Theme.hairline, lineWidth: 1)
+                .allowsHitTesting(false)
         )
         .padding(.horizontal, 14)
         .padding(.bottom, 6)
@@ -330,6 +344,7 @@ struct QueueView: View {
                 isPlaying: store.nowPlaying.isPlaying,
                 isLoading: store.nowPlaying.loadingTrackId != nil,
                 onClose: {},
+                onGoToNowPlaying: nil,
                 onPlayPause: {},
                 onClearUpNext: {},
                 onClearPlayingFrom: {},
