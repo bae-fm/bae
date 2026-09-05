@@ -33,7 +33,8 @@ public sealed class ImportSectionViewTests
         {
             var (view, app) = BuildSection(PreviewData.ImportItems, PreviewData.ImportSummary, tab);
             var button = view.GetLogicalDescendants().OfType<Button>()
-                .Single(control => Equals(ToolTip.GetTip(control), Loc.Chrome("import.list_menu")));
+                .Single(control => Avalonia.Automation.AutomationProperties.GetName(control)
+                    == Loc.Chrome("import.list_menu"));
             RaiseClick(button);
             var flyout = Assert.IsType<MenuFlyout>(button.Flyout);
             var sorts = flyout.Items.OfType<MenuItem>().Take(4).ToArray();
