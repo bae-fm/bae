@@ -452,6 +452,7 @@ fn upload_file_op_flattens_state_into_fields() {
             file_id: "file-1".into(),
             label: bae_core::library::UploadFileLabel::Filename("01 Track Title.flac".into()),
             source_bytes_total: 1000,
+            throughput_bps: 250,
             state,
         })
     };
@@ -489,6 +490,7 @@ fn upload_file_op_flattens_state_into_fields() {
         bytes_total: 1016,
     });
     assert_eq!(uploading.state, BridgeUploadFileState::Uploading);
+    assert_eq!(uploading.throughput_bps, 250);
     assert_eq!(
         uploading.bar,
         Some(BridgeUploadBar {

@@ -46,6 +46,7 @@ struct OutboxStoreHasPendingCloudWorkTests {
                             label: .filename(name: "01 Track Title.flac"),
                             bar: nil,
                             sourceBytesTotal: 1000,
+                            throughputBps: 0,
                             state: .queued,
                             lastError: nil
                         )

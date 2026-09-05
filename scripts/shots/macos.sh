@@ -70,6 +70,8 @@ for scene in \
     storage-manager-empty \
     storage-manager-empty-ish \
     storage-manager-empty-ish-inspector \
+    storage-manager-active-file-inspector \
+    storage-manager-idle-file-inspector \
     storage-manager-one-sync-inspector
 do
     png="$OUT_DIR/${scene}@macos.png"

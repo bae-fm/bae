@@ -720,21 +720,32 @@ fn each_release_group_carries_only_its_own_upload_rate() {
     throughput.record_preparation_at(&first_key, 10_000_000, measured);
     throughput.record_upload_at(&second_key, 20_000_000, measured);
 
-    let snapshot = build_outbox_snapshot_at(
-        DbOutboxQueue {
-            uploads: vec![first, second],
-            deletes: Vec::new(),
-            make_remotes: Vec::new(),
-        },
-        &transient,
-        &throughput,
-        false,
-        measured,
-    );
-
-    assert_eq!(snapshot.upload_groups[0].throughput_bps, 1_000_000);
-    assert_eq!(snapshot.upload_groups[1].throughput_bps, 2_000_000);
-    assert_eq!(snapshot.throughput_bps, 3_000_000);
+    for paused in [false, true] {
+        let snapshot = build_outbox_snapshot_at(
+            DbOutboxQueue {
+                uploads: vec![first.clone(), second.clone()],
+                deletes: Vec::new(),
+                make_remotes: Vec::new(),
+            },
+            &transient,
+            &throughput,
+            paused,
+            measured,
+        );
+        let first_rate = if paused { 0 } else { 1_000_000 };
+        let second_rate = if paused { 0 } else { 2_000_000 };
+        assert_eq!(snapshot.upload_groups[0].throughput_bps, first_rate);
+        assert_eq!(snapshot.upload_groups[1].throughput_bps, second_rate);
+        assert_eq!(
+            snapshot.upload_groups[0].files[0].throughput_bps,
+            first_rate
+        );
+        assert_eq!(
+            snapshot.upload_groups[1].files[0].throughput_bps,
+            second_rate
+        );
+        assert_eq!(snapshot.throughput_bps, first_rate + second_rate);
+    }
 }
 
 #[test]

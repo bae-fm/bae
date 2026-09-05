@@ -9,6 +9,7 @@ mod import;
 mod library_playback;
 mod live_results;
 mod playback_values;
+mod storage_inspector;
 
 pub use configuration::*;
 pub use device_pairing::*;
@@ -19,6 +20,7 @@ pub use import::*;
 pub use library_playback::*;
 pub use live_results::*;
 pub use playback_values::*;
+pub use storage_inspector::*;
 
 #[cfg(test)]
 #[path = "types/device_pairing_progress_tests.rs"]

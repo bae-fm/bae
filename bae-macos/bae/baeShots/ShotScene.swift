@@ -165,6 +165,36 @@ struct ShotScene {
             )
         },
         ShotScene(
+            id: "storage-manager-active-file-inspector",
+            size: CGSize(width: 940, height: 700)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(
+                    selectedReleaseId: "rel-row-1",
+                    inspectorPresented: true,
+                    downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+                    outputSnapshot: PreviewData.emptyOutputSnapshot
+                )
+            )
+        },
+        ShotScene(
+            id: "storage-manager-idle-file-inspector",
+            size: CGSize(width: 940, height: 700)
+        ) {
+            AnyView(
+                StorageManagerPreviewScene(
+                    selectedReleaseId: "rel-row-1",
+                    inspectorPresented: true,
+                    downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+                    outputSnapshot: PreviewData.emptyOutputSnapshot,
+                    outboxSnapshot: PreviewData.outboxSnapshot(
+                        uploadGroups: [],
+                        deletes: []
+                    )
+                )
+            )
+        },
+        ShotScene(
             id: "storage-manager-one-sync-inspector",
             size: CGSize(width: 940, height: 600)
         ) {
@@ -173,7 +203,6 @@ struct ShotScene {
                     rows: Array(PreviewData.storageRows.prefix(2)),
                     selectedReleaseId: "rel-row-2",
                     inspectorPresented: true,
-                    inspectorTab: .transfers,
                     downloadSnapshot: PreviewData.emptyDownloadSnapshot,
                     outputSnapshot: PreviewData.emptyOutputSnapshot,
                     outboxSnapshot: PreviewData.outboxSnapshot(

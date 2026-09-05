@@ -33,7 +33,6 @@ struct StorageManagerView: View {
     private var selection: Set<String> = []
     @State
     private var inspectorPresented: Bool
-    private let initialInspectorTab: StorageInspectorTab
     /// Runs row context-menu transitions; built lazily once the services are
     /// available from the environment.
     @State
@@ -41,14 +40,12 @@ struct StorageManagerView: View {
 
     init(
         initialSelection: Set<String> = [],
-        initialInspectorPresented: Bool = false,
-        initialInspectorTab: StorageInspectorTab = .contents
+        initialInspectorPresented: Bool = false
     ) {
         _selection = State(initialValue: initialSelection)
         _inspectorPresented = State(
             initialValue: initialInspectorPresented
         )
-        self.initialInspectorTab = initialInspectorTab
     }
 
     var body: some View {
@@ -58,9 +55,7 @@ struct StorageManagerView: View {
 
             if inspectorPresented {
                 StorageInspector(
-                    releaseId: StorageInspector.releaseId(in: selection),
-                    isPresented: $inspectorPresented,
-                    initialTab: initialInspectorTab
+                    releaseId: StorageInspector.releaseId(in: selection)
                 )
             }
         }
@@ -173,13 +168,11 @@ struct StorageManagerView: View {
 
         let initialSelection: Set<String>
         let initialInspectorPresented: Bool
-        let initialInspectorTab: StorageInspectorTab
 
         init(
             rows: [BridgeStorageRow] = PreviewData.storageRows,
             selectedReleaseId: String? = nil,
             inspectorPresented: Bool = false,
-            inspectorTab: StorageInspectorTab = .contents,
             downloadSnapshot: BridgeDownloadSnapshot =
                 PreviewData
                 .downloadSnapshot(),
@@ -199,7 +192,6 @@ struct StorageManagerView: View {
             self.uiStore = uiStore
             initialSelection = selectedReleaseId.map { [$0] } ?? []
             initialInspectorPresented = inspectorPresented
-            initialInspectorTab = inspectorTab
             downloadStore = PreviewData.downloadStore(downloadSnapshot)
             outputStore = PreviewData.outputStore(outputSnapshot)
             outboxStore = PreviewData.outboxStore(outboxSnapshot)
@@ -215,8 +207,7 @@ struct StorageManagerView: View {
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -241,8 +232,7 @@ struct StorageManagerView: View {
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -264,8 +254,7 @@ struct StorageManagerView: View {
         let fixture = StorageManagerPreviewFixture()
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -295,8 +284,7 @@ struct StorageManagerView: View {
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -318,8 +306,7 @@ struct StorageManagerView: View {
         let fixture = StorageManagerPreviewFixture(rows: [])
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -343,8 +330,7 @@ struct StorageManagerView: View {
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -369,8 +355,7 @@ struct StorageManagerView: View {
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)
@@ -393,7 +378,6 @@ struct StorageManagerView: View {
             rows: Array(PreviewData.storageRows.prefix(2)),
             selectedReleaseId: "rel-row-2",
             inspectorPresented: true,
-            inspectorTab: .transfers,
             downloadSnapshot: PreviewData.emptyDownloadSnapshot,
             outputSnapshot: PreviewData.emptyOutputSnapshot,
             outboxSnapshot: PreviewData.outboxSnapshot(
@@ -403,8 +387,7 @@ struct StorageManagerView: View {
         )
         StorageManagerView(
             initialSelection: fixture.initialSelection,
-            initialInspectorPresented: fixture.initialInspectorPresented,
-            initialInspectorTab: fixture.initialInspectorTab
+            initialInspectorPresented: fixture.initialInspectorPresented
         )
         .environment(fixture.library)
         .environment(fixture.storageManagerStore)

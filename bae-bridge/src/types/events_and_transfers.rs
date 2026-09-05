@@ -527,6 +527,7 @@ pub struct BridgeUploadFileOp {
     pub label: BridgeUploadFileLabel,
     pub bar: Option<BridgeUploadBar>,
     pub source_bytes_total: u64,
+    pub throughput_bps: u64,
     pub state: BridgeUploadFileState,
     pub last_error: Option<String>,
 }

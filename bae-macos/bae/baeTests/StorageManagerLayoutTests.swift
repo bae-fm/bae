@@ -139,7 +139,7 @@ final class StorageManagerLayoutTests: XCTestCase {
         withExtendedLifetime(window) {}
     }
 
-    func testOpenInspectorHeaderStaysAtTopOfStorageContent() async throws {
+    func testInspectorFilesStartAtTopWithoutTabsOrTitleBar() async throws {
         let size = NSSize(width: 1_440, height: 900)
         let (window, host) = SnapshotTestSupport.hostInWindow(
             StorageManagerPreviewScene(
@@ -157,22 +157,19 @@ final class StorageManagerLayoutTests: XCTestCase {
         )
 
         try await settle(host)
-        let tableScrollView = try XCTUnwrap(storageTable(in: host))
-        let inspectorPicker = try XCTUnwrap(
-            SnapshotTestSupport.descendants(of: host)
-                .compactMap { $0 as? NSSegmentedControl }
-                .first { $0.segmentCount == 2 }
+        let descendants = SnapshotTestSupport.descendants(of: host)
+        XCTAssertFalse(
+            descendants.compactMap { $0 as? NSSegmentedControl }
+                .contains { $0.segmentCount == 2 }
         )
-        let tableFrame = tableScrollView.convert(
-            tableScrollView.bounds,
-            to: host
+        let fileList = try XCTUnwrap(
+            descendants.compactMap { $0 as? NSScrollView }
+                .last { $0.documentView is NSTableView }
         )
-        let pickerFrame = inspectorPicker.convert(
-            inspectorPicker.bounds,
-            to: host
-        )
-
-        XCTAssertLessThan(pickerFrame.midY, tableFrame.minY + 100)
+        let frame = fileList.convert(fileList.bounds, to: host)
+        XCTAssertGreaterThan(frame.minX, 400)
+        XCTAssertEqual(frame.minY, host.bounds.minY, accuracy: 2)
+        XCTAssertEqual(frame.height, host.bounds.height, accuracy: 2)
         withExtendedLifetime(window) {}
     }
 
@@ -196,6 +193,53 @@ final class StorageManagerLayoutTests: XCTestCase {
         let splitFrame = splitView.convert(splitView.bounds, to: host)
 
         XCTAssertEqual(splitFrame.height, host.bounds.height, accuracy: 1)
+        withExtendedLifetime(window) {}
+    }
+
+    func testInspectorShowsFileProgressAlongsideContents() async throws {
+        let size = NSSize(width: 940, height: 700)
+        let (window, host) = SnapshotTestSupport.hostInWindow(
+            StorageManagerPreviewScene(
+                selectedReleaseId: "rel-row-1",
+                inspectorPresented: true,
+                downloadSnapshot: PreviewData.emptyDownloadSnapshot,
+                outputSnapshot: PreviewData.emptyOutputSnapshot
+            )
+            .frame(width: size.width, height: size.height),
+            size: size
+        )
+        window.appearance = NSAppearance(named: .darkAqua)
+        try await settle(host)
+
+        let descendants = SnapshotTestSupport.descendants(of: host)
+        let fileList = try XCTUnwrap(
+            descendants.compactMap { $0 as? NSScrollView }
+                .last { $0.documentView is NSTableView }
+        )
+        let files = try XCTUnwrap(fileList.documentView as? NSTableView)
+        // Two contents files, one of which also uploads, and the remaining
+        // five uploads (including generated artwork) each occupy one row.
+        XCTAssertEqual(files.numberOfRows, 7)
+        XCTAssertFalse(
+            descendants.compactMap { $0 as? NSSegmentedControl }
+                .contains { $0.segmentCount == 2 }
+        )
+        XCTAssertGreaterThanOrEqual(
+            SnapshotTestSupport.descendants(of: fileList)
+                .compactMap { $0 as? ProgressTrackNSView }.count,
+            2
+        )
+        let screenshot = try await SnapshotTestSupport.capturePNG(
+            host,
+            size: size
+        )
+        let attachment = XCTAttachment(
+            data: screenshot,
+            uniformTypeIdentifier: "public.png"
+        )
+        attachment.name = "Storage inspector with file progress"
+        attachment.lifetime = .keepAlways
+        add(attachment)
         withExtendedLifetime(window) {}
     }
 

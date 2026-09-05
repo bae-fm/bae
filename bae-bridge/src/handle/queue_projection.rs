@@ -56,6 +56,7 @@ impl crate::types::BridgeUploadFileOp {
             file_id,
             label,
             source_bytes_total,
+            throughput_bps,
             state,
         } = f;
         let bar = state.bar().map(crate::types::BridgeUploadBar::from_core);
@@ -77,6 +78,7 @@ impl crate::types::BridgeUploadFileOp {
             label: crate::types::BridgeUploadFileLabel::from_core(label),
             bar,
             source_bytes_total,
+            throughput_bps,
             state,
             last_error,
         }

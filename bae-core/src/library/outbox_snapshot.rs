@@ -37,7 +37,7 @@ impl UploadBlobKey {
         Self::new(blob.blob().namespace.clone(), blob.blob().id.clone())
     }
 
-    fn stable_id(&self) -> String {
+    pub(super) fn stable_id(&self) -> String {
         format!("{}:{}", self.namespace, self.blob_id)
     }
 }
@@ -577,6 +577,8 @@ pub struct UploadFileOp {
     pub file_id: String,
     pub label: UploadFileLabel,
     pub source_bytes_total: u64,
+    /// This blob's active phase rate; zero while idle or paused.
+    pub throughput_bps: u64,
     pub state: UploadState,
 }
 
@@ -794,12 +796,18 @@ fn build_outbox_snapshot_from_rates(
             "one release cannot have conflicting queued album titles"
         );
         let file_id = blob_key.stable_id();
+        let throughput_bps = if pause_requested || state.bar().is_none() {
+            0
+        } else {
+            rates.for_uploads([&blob_key])
+        };
         group.push(
             blob_key,
             UploadFileOp {
                 file_id,
                 label: upload.label,
                 source_bytes_total: bytes_total,
+                throughput_bps,
                 state,
             },
             source_unavailable_path,

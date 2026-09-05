@@ -162,15 +162,16 @@
         /// Every durable and transient upload-file phase.
         static let uploadFileOps: [BridgeUploadFileOp] = [
             BridgeUploadFileOp(
-                fileId: "f-1",
+                fileId: "covers:rel-row-1",
                 label: .cover,
                 bar: nil,
                 sourceBytesTotal: 24_000_000,
+                throughputBps: 0,
                 state: .uploaded,
                 lastError: nil
             ),
             BridgeUploadFileOp(
-                fileId: "f-2",
+                fileId: "release_files:f-2",
                 label: .filename(name: "02 Track Title.flac"),
                 bar: BridgeUploadBar(
                     phase: .preparing,
@@ -178,19 +179,21 @@
                     bytesTotal: 31_000_000
                 ),
                 sourceBytesTotal: 31_000_000,
+                throughputBps: 1_000_000,
                 state: .preparing,
                 lastError: nil
             ),
             BridgeUploadFileOp(
-                fileId: "f-3",
+                fileId: "release_files:f-3",
                 label: .filename(name: "03 Track Title.flac"),
                 bar: nil,
                 sourceBytesTotal: 28_000_000,
+                throughputBps: 0,
                 state: .prepared,
                 lastError: nil
             ),
             BridgeUploadFileOp(
-                fileId: "f-4",
+                fileId: "release_files:rel-row-1-audio",
                 label: .filename(name: "04 Track Title.flac"),
                 bar: BridgeUploadBar(
                     phase: .uploading,
@@ -198,22 +201,25 @@
                     bytesTotal: 26_100_000
                 ),
                 sourceBytesTotal: 26_000_000,
+                throughputBps: 2_200_000,
                 state: .uploading,
                 lastError: nil
             ),
             BridgeUploadFileOp(
-                fileId: "f-5",
+                fileId: "release_files:f-5",
                 label: .filename(name: "05 Track Title.flac"),
                 bar: nil,
                 sourceBytesTotal: 22_000_000,
+                throughputBps: 0,
                 state: .retrying,
                 lastError: "Upload timed out; will retry."
             ),
             BridgeUploadFileOp(
-                fileId: "f-6",
+                fileId: "release_files:f-6",
                 label: .filename(name: "06 Track Title.flac"),
                 bar: nil,
                 sourceBytesTotal: 18_000_000,
+                throughputBps: 0,
                 state: .queued,
                 lastError: nil
             ),
@@ -259,10 +265,11 @@
             displayTitle: "Album Title B",
             files: [
                 BridgeUploadFileOp(
-                    fileId: "g-1",
+                    fileId: "release_files:rel-row-2-audio",
                     label: .filename(name: "01 Track Title.flac"),
                     bar: nil,
                     sourceBytesTotal: 18_000_000,
+                    throughputBps: 0,
                     state: .uploaded,
                     lastError: nil
                 )
@@ -293,10 +300,11 @@
             displayTitle: "Album Title C",
             files: [
                 BridgeUploadFileOp(
-                    fileId: "h-1",
+                    fileId: "release_files:rel-row-3-audio",
                     label: .filename(name: "01 Track Title.flac"),
                     bar: nil,
                     sourceBytesTotal: 24_000_000,
+                    throughputBps: 0,
                     state: .retrying,
                     lastError: "The source file is unavailable."
                 )

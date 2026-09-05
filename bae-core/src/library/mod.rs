@@ -11,6 +11,7 @@ pub mod release_queue;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
 pub mod search;
+pub mod storage_inspector;
 pub(crate) mod sync_controller;
 pub mod upload_throughput;
 pub use app_services::*;

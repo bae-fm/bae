@@ -9,12 +9,25 @@ struct StorageContentsInspector: View {
     @Environment(LibraryStore.self)
     private var libraryStore
 
+    @Environment(OutboxStore.self)
+    private var outboxStore
+
     let releaseId: String
 
     @State
     private var observationTask: Task<Void, Never>?
 
     var body: some View {
+        VStack(spacing: 0) {
+            StorageTransferControls(releaseId: releaseId)
+            fileList
+        }
+        .onAppear { startObservation() }
+        .onChange(of: releaseId) { _, _ in startObservation() }
+        .onDisappear { observationTask?.cancel() }
+    }
+
+    private var fileList: some View {
         Group {
             if let error = libraryStore.releaseDetailErrors[releaseId] {
                 LoadFailureView(line: error.line) {
@@ -22,32 +35,20 @@ struct StorageContentsInspector: View {
                 }
             }
             else if let detail = libraryStore.releaseDetails[releaseId] {
-                if detail.files.isEmpty {
-                    ContentUnavailableView(
-                        "No files",
-                        systemImage: "doc"
-                    )
+                let rows = bridgeStorageInspectorFiles(
+                    releaseId: releaseId,
+                    files: detail.files,
+                    outbox: outboxStore.snapshot
+                )
+                if rows.isEmpty {
+                    ContentUnavailableView("No files", systemImage: "doc")
                 }
                 else {
-                    Table(detail.files) {
-                        TableColumn("Name") { file in
-                            Text(file.originalFilename)
-                                .lineLimit(1)
-                        }
-                        TableColumn(coreString("core.audio.label")) { file in
-                            if let format = file.audioFormat {
-                                Text(format.text)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .width(min: 60, ideal: 80, max: 110)
-                        TableColumn("Size") { file in
-                            Text(file.fileSizeText)
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        }
-                        .width(min: 60, ideal: 80, max: 100)
+                    List(rows, id: \.identity) { row in
+                        StorageInspectorFileRow(row: row)
                     }
+                    .listStyle(.plain)
+                    .accessibilityIdentifier("storage-inspector-files")
                 }
             }
             else {
@@ -56,9 +57,6 @@ struct StorageContentsInspector: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { startObservation() }
-        .onChange(of: releaseId) { _, _ in startObservation() }
-        .onDisappear { observationTask?.cancel() }
     }
 
     private func startObservation() {
