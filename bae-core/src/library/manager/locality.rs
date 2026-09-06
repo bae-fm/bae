@@ -188,9 +188,9 @@ impl LibraryManager {
     pub async fn enqueue_pins(&self, release_ids: Vec<String>) {
         // One timestamp for the whole batch — read the clock once, not per row.
         let enqueued_at = self.clock.now().timestamp_millis();
-        let mut added_any = false;
+        let mut ops = Vec::with_capacity(release_ids.len());
         for release_id in release_ids {
-            if self.download_queue.contains(&release_id) {
+            if self.downloads.contains(&release_id) {
                 debug!("enqueue_pins: {release_id} already queued, skipping");
                 continue;
             }
@@ -218,7 +218,7 @@ impl LibraryManager {
                 continue;
             }
 
-            let op = crate::library::DownloadOp {
+            ops.push(crate::library::DownloadOp {
                 release_id: release_id.clone(),
                 title: summary.album_title,
                 file_count: summary.file_count,
@@ -226,29 +226,16 @@ impl LibraryManager {
                 created_at: enqueued_at,
                 payload: (),
                 state: crate::library::DownloadState::Queued,
-            };
-            if self.download_queue.enqueue(op) {
-                added_any = true;
-            }
+            });
         }
-
-        if added_any {
-            self.download_queue.wake();
-            self.emit_download_queue_changed();
-        }
+        self.downloads.enqueue_all(ops);
     }
 
     /// Pause or resume the download queue. While paused the worker parks instead
     /// of starting the next release; the in-flight one runs to completion.
     /// Resuming wakes the worker. Emits a fresh `DownloadQueueChanged`.
     pub fn set_downloads_paused(&self, paused: bool) {
-        let was_paused = self.download_queue.set_paused(paused);
-        if was_paused && !paused {
-            // Resume: wake the parked worker so it picks up the next release
-            // immediately rather than waiting for the next enqueue.
-            self.download_queue.wake();
-        }
-        self.emit_download_queue_changed();
+        self.downloads.set_paused(paused);
     }
 
     /// Cancel a release's download. Drops a queued/failed entry; for the active
@@ -259,17 +246,13 @@ impl LibraryManager {
         // An active entry needs no follow-up here: the aborted pin task closes its
         // progress channel, and the worker's drain clears the streamed transfer
         // action, sees the entry is gone, leaves the queue alone, and re-parks.
-        self.download_queue.cancel(release_id);
-        self.emit_download_queue_changed();
+        self.downloads.cancel(release_id);
     }
 
     /// Flip every failed download back to queued and wake the worker to retry
     /// them. Emits a fresh `DownloadQueueChanged`.
     pub fn retry_downloads(&self) {
-        if self.download_queue.retry_failed() {
-            self.download_queue.wake();
-        }
-        self.emit_download_queue_changed();
+        self.downloads.retry_failed();
     }
 
     /// The serial download worker: drains the pin queue one release at a time
@@ -289,33 +272,31 @@ impl LibraryManager {
     /// (`StorageTransferCompleted` / `StorageTransferFailed`), so there is nothing
     /// to report on the way out.
     pub(super) async fn run_download_worker(&self) {
-        use crate::library::release_queue::run_serial_worker;
         use crate::storage::transfer::TransferService;
 
-        run_serial_worker(
-            &self.download_queue,
-            "Pin",
-            |op| async move {
-                let release_id = op.release_id;
-                let initial_progress = self.initial_download_progress(&release_id).await?;
-                let transfer = TransferService::new(self.clone());
-                let drive_release_id = release_id.clone();
-                let running = transfer.pin_release(release_id, move |progress| async move {
-                    self.drive_transfer(
-                        &drive_release_id,
-                        ReleaseStorageAction::Pin,
-                        progress,
-                        None,
-                    )
-                    .await
-                    .map(|_| ())
-                });
-                Ok((initial_progress, running))
-            },
-            || self.emit_download_queue_changed(),
-            |_release_id, _result| {},
-        )
-        .await
+        self.downloads
+            .run_serial(
+                "Pin",
+                |op| async move {
+                    let release_id = op.release_id;
+                    let initial_progress = self.initial_download_progress(&release_id).await?;
+                    let transfer = TransferService::new(self.clone());
+                    let drive_release_id = release_id.clone();
+                    let running = transfer.pin_release(release_id, move |progress| async move {
+                        self.drive_transfer(
+                            &drive_release_id,
+                            ReleaseStorageAction::Pin,
+                            progress,
+                            None,
+                        )
+                        .await
+                        .map(|_| ())
+                    });
+                    Ok((initial_progress, running))
+                },
+                |_release_id, _result| {},
+            )
+            .await
     }
 
     /// Unpin a release: coven moves its blobs out of `storage/pinned/` and into the
@@ -467,7 +448,7 @@ impl LibraryManager {
             }
             Some(ReleaseStorageAction::MakeRemote | ReleaseStorageAction::Unpin) | None => {}
         }
-        if self.download_queue.contains(release_id) {
+        if self.downloads.contains(release_id) {
             self.cancel_download(release_id);
             return Ok(());
         }
@@ -519,18 +500,13 @@ impl LibraryManager {
                     self.transitions.started(release_id, action);
                 }
                 TransferProgress::Progress { progress } => {
-                    if matches!(action, ReleaseStorageAction::Pin) {
-                        if self
-                            .download_queue
-                            .set_active_progress(release_id, progress)
-                        {
-                            self.emit_download_queue_changed();
-                        } else {
-                            tracing::warn!(
-                                release_id,
-                                "ignored download progress for missing active queue row"
-                            );
-                        }
+                    if matches!(action, ReleaseStorageAction::Pin)
+                        && !self.downloads.set_active_progress(release_id, progress)
+                    {
+                        tracing::warn!(
+                            release_id,
+                            "ignored download progress for missing active queue row"
+                        );
                     }
                 }
                 TransferProgress::Complete { outcome, .. } => break Ok(outcome),

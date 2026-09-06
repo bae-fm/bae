@@ -819,7 +819,6 @@ pub struct LibraryManager {
     sync_status_values: tokio::sync::watch::Sender<crate::library::SyncStatusSnapshot>,
     outbox_values:
         tokio::sync::watch::Sender<Option<Result<crate::library::OutboxSnapshot, String>>>,
-    download_values: tokio::sync::watch::Sender<crate::library::DownloadSnapshot>,
     /// Cancellation tokens for in-progress foreground make-Local transfers,
     /// keyed by release id. `cancel_release_transition` fires the token; the
     /// transfer observes it between files, deletes the partial copies it wrote,
@@ -828,19 +827,17 @@ pub struct LibraryManager {
     /// Every storage transition in flight, and the stream the storage rows
     /// read them from.
     transitions: crate::library::storage_transitions::StorageTransitions,
-    /// In-memory queue for "Pin for offline". A single serial worker drains it
-    /// one release at a time. Shared across manager clones; transient (empty
-    /// after a restart — a release that wasn't fully pinned stays cloud-only).
-    download_queue: Arc<crate::library::DownloadQueue>,
-    /// In-memory queue for "Export…" (copy a release's files out to a folder). A
-    /// single serial worker drains it one release at a time. Shared across
-    /// manager clones; transient (empty after a restart). Export changes no
-    /// release state — it only reads and writes to a user directory. Desktop-only:
-    /// see the `export` module above.
+    /// The "Pin for offline" queue and the Downloads pane's stream. A single
+    /// serial worker drains it one release at a time. Shared across manager
+    /// clones; transient (empty after a restart — a release that wasn't fully
+    /// pinned stays cloud-only).
+    downloads: crate::library::Downloads,
+    /// The "Export…" and save queue and the Exporting pane's stream. A single
+    /// serial worker drains it one release at a time. Shared across manager
+    /// clones; transient. An output changes no release state — it only reads,
+    /// and writes to a user directory. Desktop-only: see the `output` module.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    output_queue: Arc<crate::library::OutputQueue>,
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    output_values: tokio::sync::watch::Sender<crate::library::OutputSnapshot>,
+    outputs: crate::library::Outputs,
     /// The upload observer coven reports blob transitions to. coven holds only a
     /// `Weak` to it (through `WeakUploadObserver`), so this strong `Arc` is its
     /// sole owner and its lifetime is the manager's. Its event sender feeds a task

@@ -70,19 +70,6 @@ impl LibraryManager {
         });
         let (outbox_values, _) = tokio::sync::watch::channel(None);
         let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
-        let download_queue = Arc::new(crate::library::DownloadQueue::new());
-        let (download_values, _) = tokio::sync::watch::channel(
-            crate::library::download_snapshot::build_download_snapshot(
-                &download_queue.ops(),
-                false,
-            ),
-        );
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let output_queue = Arc::new(crate::library::OutputQueue::new());
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let (output_values, _) = tokio::sync::watch::channel(
-            crate::library::output_snapshot::build_output_snapshot(&output_queue.ops(), false),
-        );
 
         let sync = SyncController::new(
             config_handle.clone(),
@@ -111,13 +98,14 @@ impl LibraryManager {
             sync_status,
             sync_status_values,
             outbox_values,
-            download_values,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
-            download_queue,
+            downloads: crate::library::Downloads::new(
+                crate::library::download_snapshot::build_download_snapshot,
+            ),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            output_queue,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            output_values,
+            outputs: crate::library::Outputs::new(
+                crate::library::output_snapshot::build_output_snapshot,
+            ),
             _upload_observer: observer,
         };
         manager.start_upload_observer_events(observer_events);
@@ -159,19 +147,6 @@ impl LibraryManager {
         });
         let (outbox_values, _) = tokio::sync::watch::channel(None);
         let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
-        let download_queue = Arc::new(crate::library::DownloadQueue::new());
-        let (download_values, _) = tokio::sync::watch::channel(
-            crate::library::download_snapshot::build_download_snapshot(
-                &download_queue.ops(),
-                false,
-            ),
-        );
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let output_queue = Arc::new(crate::library::OutputQueue::new());
-        #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        let (output_values, _) = tokio::sync::watch::channel(
-            crate::library::output_snapshot::build_output_snapshot(&output_queue.ops(), false),
-        );
 
         let sync = SyncController::new(
             config_handle.clone(),
@@ -199,13 +174,14 @@ impl LibraryManager {
             sync_status,
             sync_status_values,
             outbox_values,
-            download_values,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
-            download_queue,
+            downloads: crate::library::Downloads::new(
+                crate::library::download_snapshot::build_download_snapshot,
+            ),
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            output_queue,
-            #[cfg(not(any(target_os = "ios", target_os = "android")))]
-            output_values,
+            outputs: crate::library::Outputs::new(
+                crate::library::output_snapshot::build_output_snapshot,
+            ),
             _upload_observer: Arc::new(observer),
         };
         manager.start_upload_observer_events(observer_events);
@@ -543,55 +519,31 @@ impl LibraryManager {
         self.outbox_values.subscribe()
     }
 
-    /// Build the current download-queue snapshot and emit it as
-    /// `DownloadQueueChanged`. Called at every queue mutation (enqueue,
-    /// worker pick-up, per-file progress, success, failure, cancel, retry,
-    /// pause/resume) so the Storage Manager's Downloads pane stays current.
-    pub(crate) fn emit_download_queue_changed(&self) {
-        self.download_values.send_replace(self.download_snapshot());
-    }
-
     /// The current download-queue snapshot — per-release state and a
-    /// pre-formatted summary, built from the in-memory queue. Seeds the
-    /// Downloads pane before the first `DownloadQueueChanged` event arrives.
+    /// pre-formatted summary. Seeds the Downloads pane before the first value
+    /// arrives on the stream.
     pub fn download_snapshot(&self) -> crate::library::DownloadSnapshot {
-        crate::library::download_snapshot::build_download_snapshot(
-            &self.download_queue.ops(),
-            self.download_queue.is_paused(),
-        )
+        self.downloads.snapshot()
     }
 
     pub fn subscribe_download_values(
         &self,
     ) -> tokio::sync::watch::Receiver<crate::library::DownloadSnapshot> {
-        self.download_values.subscribe()
+        self.downloads.subscribe()
     }
 
-    /// Build the current export-queue snapshot and emit it as
-    /// `OutputQueueChanged`. Called at every queue mutation (enqueue, worker
-    /// pick-up, per-file progress, success, failure, cancel, retry,
-    /// pause/resume) so the Storage Manager's Exporting pane stays current.
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn emit_output_queue_changed(&self) {
-        self.output_values.send_replace(self.output_snapshot());
-    }
-
-    /// The current export-queue snapshot — per-release state built from the
-    /// in-memory queue. Seeds the Exporting pane before the first
-    /// `OutputQueueChanged` event arrives.
+    /// The current export-queue snapshot — per-release state. Seeds the
+    /// Exporting pane before the first value arrives on the stream.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn output_snapshot(&self) -> crate::library::OutputSnapshot {
-        crate::library::output_snapshot::build_output_snapshot(
-            &self.output_queue.ops(),
-            self.output_queue.is_paused(),
-        )
+        self.outputs.snapshot()
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub fn subscribe_output_values(
         &self,
     ) -> tokio::sync::watch::Receiver<crate::library::OutputSnapshot> {
-        self.output_values.subscribe()
+        self.outputs.subscribe()
     }
 
     /// The current outbox processing snapshot — queue depth, per-item state, and

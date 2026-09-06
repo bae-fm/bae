@@ -168,7 +168,7 @@ async fn download_queue_values_report_each_driven_file_progress() {
     let release_id = "release-progress".to_string();
     let mut values = manager.subscribe_download_values();
     values.borrow_and_update();
-    assert!(manager.download_queue.enqueue(crate::library::DownloadOp {
+    assert!(manager.downloads.enqueue_all([crate::library::DownloadOp {
         release_id: release_id.clone(),
         title: "Album Title".to_string(),
         file_count: 2,
@@ -176,14 +176,13 @@ async fn download_queue_values_report_each_driven_file_progress() {
         created_at: 0,
         payload: (),
         state: crate::library::DownloadState::Queued,
-    }));
+    }]));
     let pending = tokio::spawn(std::future::pending::<()>());
-    assert!(manager.download_queue.activate(
+    assert!(manager.downloads.activate(
         &release_id,
         pending.abort_handle(),
         crate::library::DownloadTransferProgress::new(&release_id, 0, 7).unwrap(),
     ));
-    manager.emit_download_queue_changed();
 
     let active_progress = |snapshot: &crate::library::DownloadSnapshot| {
         let op = snapshot

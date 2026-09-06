@@ -7,6 +7,7 @@ pub mod manager;
 pub mod outbox_snapshot;
 mod outbox_snapshot_summary;
 pub mod output_snapshot;
+pub mod queued_releases;
 pub mod release_queue;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod save;
@@ -32,6 +33,7 @@ pub use outbox_snapshot::{
     UploadFileOp, UploadIssue, UploadPhase, UploadProgress, UploadReleaseGroup, UploadState,
 };
 pub use output_snapshot::{OutputKind, OutputOp, OutputProgress, OutputSnapshot, OutputState};
+pub use queued_releases::QueuedReleases;
 pub use release_queue::{CountLabel, ReleaseQueue};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use save::SaveService;
@@ -54,8 +56,10 @@ use tokio::sync::watch;
 
 pub use tokio_util::sync::CancellationToken;
 
-pub type DownloadQueue = ReleaseQueue<(), DownloadTransferProgress>;
-pub type OutputQueue = ReleaseQueue<output_snapshot::OutputRequest, u8>;
+/// The pin queue with the Downloads pane's stream.
+pub type Downloads = QueuedReleases<(), DownloadTransferProgress, DownloadSnapshot>;
+/// The export and save queue with the Exporting pane's stream.
+pub type Outputs = QueuedReleases<output_snapshot::OutputRequest, u8, OutputSnapshot>;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub struct SaveTrackPlan {

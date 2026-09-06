@@ -80,7 +80,7 @@ impl LibraryManager {
             ))
         })?;
 
-        if self.output_queue.contains(release_id) {
+        if self.outputs.contains(release_id) {
             debug!("enqueue_output: {release_id} already queued, skipping");
             return Ok(());
         }
@@ -100,10 +100,7 @@ impl LibraryManager {
             payload: crate::library::output_snapshot::OutputRequest { target_dir, kind },
             state: crate::library::OutputState::Queued,
         };
-        if self.output_queue.enqueue(op) {
-            self.output_queue.wake();
-            self.emit_output_queue_changed();
-        }
+        self.outputs.enqueue_all([op]);
         Ok(())
     }
 
@@ -111,11 +108,7 @@ impl LibraryManager {
     /// starting the next release; the in-flight one runs to completion. Resuming
     /// wakes the worker. Emits a fresh `OutputQueueChanged`.
     pub fn set_outputs_paused(&self, paused: bool) {
-        let was_paused = self.output_queue.set_paused(paused);
-        if was_paused && !paused {
-            self.output_queue.wake();
-        }
-        self.emit_output_queue_changed();
+        self.outputs.set_paused(paused);
     }
 
     /// Cancel a release's export. Drops a queued/failed entry; for the active one,
@@ -124,17 +117,13 @@ impl LibraryManager {
     /// the abort leaves no output at the final path — the staging directory is
     /// removed when the aborted task's future drops. Emits a fresh snapshot.
     pub fn cancel_output(&self, release_id: &str) {
-        self.output_queue.cancel(release_id);
-        self.emit_output_queue_changed();
+        self.outputs.cancel(release_id);
     }
 
     /// Flip every failed export back to queued and wake the worker to retry them.
     /// Emits a fresh `OutputQueueChanged`.
     pub fn retry_outputs(&self) {
-        if self.output_queue.retry_failed() {
-            self.output_queue.wake();
-        }
-        self.emit_output_queue_changed();
+        self.outputs.retry_failed();
     }
 
     /// The serial export worker: drains the export queue one release at a time
@@ -146,7 +135,7 @@ impl LibraryManager {
     /// diagnostics event for the outcome. The copy itself updates the queue's
     /// per-release percent and re-emits the snapshot as it writes each file.
     pub(super) async fn run_output_worker(&self) {
-        use crate::library::release_queue::{run_serial_worker, RunningOp};
+        use crate::library::release_queue::RunningOp;
         use crate::library::OutputKind;
         use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -158,54 +147,53 @@ impl LibraryManager {
         // worker future requires.
         let running_is_save = AtomicBool::new(false);
 
-        run_serial_worker(
-            &self.output_queue,
-            "Export",
-            |op| {
-                running_is_save.store(
-                    matches!(op.payload.kind, OutputKind::Save { .. }),
-                    Ordering::Relaxed,
-                );
-                let release_id = op.release_id.clone();
-                let worker = self.clone();
-                let task = self.runtime_handle.spawn(async move {
-                    worker
-                        .export_release_to_dir(&op.release_id, op.payload)
-                        .await
-                });
-                let abort = task.abort_handle();
-                async move {
-                    let outcome = async move {
-                        match task.await {
-                            Ok(result) => result,
-                            // Aborted by a cancel, which also removed the entry — the
-                            // driver's `contains` check is what reads that as a cancel.
-                            Err(join_error) if join_error.is_cancelled() => {
-                                Err(LibraryError::Export(format!(
-                                    "export of {release_id} was cancelled"
-                                )))
+        self.outputs
+            .run_serial(
+                "Export",
+                |op| {
+                    running_is_save.store(
+                        matches!(op.payload.kind, OutputKind::Save { .. }),
+                        Ordering::Relaxed,
+                    );
+                    let release_id = op.release_id.clone();
+                    let worker = self.clone();
+                    let task = self.runtime_handle.spawn(async move {
+                        worker
+                            .export_release_to_dir(&op.release_id, op.payload)
+                            .await
+                    });
+                    let abort = task.abort_handle();
+                    async move {
+                        let outcome = async move {
+                            match task.await {
+                                Ok(result) => result,
+                                // Aborted by a cancel, which also removed the entry — the
+                                // driver's `contains` check is what reads that as a cancel.
+                                Err(join_error) if join_error.is_cancelled() => {
+                                    Err(LibraryError::Export(format!(
+                                        "export of {release_id} was cancelled"
+                                    )))
+                                }
+                                Err(join_error) => Err(LibraryError::Export(format!(
+                                    "export task for {release_id} panicked: {join_error}"
+                                ))),
                             }
-                            Err(join_error) => Err(LibraryError::Export(format!(
-                                "export task for {release_id} panicked: {join_error}"
-                            ))),
-                        }
-                    };
-                    Ok((0, RunningOp::new(abort, outcome)))
-                }
-            },
-            || self.emit_output_queue_changed(),
-            |release_id, result| {
-                let release_id = crate::diagnostics::LocalId(release_id.to_string());
-                let is_save = running_is_save.load(Ordering::Relaxed);
-                self.diagnostics.event(match (is_save, result) {
-                    (false, Ok(())) => TelemetryEvent::ExportCompleted { release_id },
-                    (false, Err(_)) => TelemetryEvent::ExportFailed { release_id },
-                    (true, Ok(())) => TelemetryEvent::SaveCompleted { release_id },
-                    (true, Err(_)) => TelemetryEvent::SaveFailed { release_id },
-                });
-            },
-        )
-        .await
+                        };
+                        Ok((0, RunningOp::new(abort, outcome)))
+                    }
+                },
+                |release_id, result| {
+                    let release_id = crate::diagnostics::LocalId(release_id.to_string());
+                    let is_save = running_is_save.load(Ordering::Relaxed);
+                    self.diagnostics.event(match (is_save, result) {
+                        (false, Ok(())) => TelemetryEvent::ExportCompleted { release_id },
+                        (false, Err(_)) => TelemetryEvent::ExportFailed { release_id },
+                        (true, Ok(())) => TelemetryEvent::SaveCompleted { release_id },
+                        (true, Err(_)) => TelemetryEvent::SaveFailed { release_id },
+                    });
+                },
+            )
+            .await
     }
 
     /// Copy a release's files verbatim to `<target_dir>/<source_folder_name>/`,
@@ -289,10 +277,7 @@ impl LibraryManager {
     }
 
     pub(super) fn set_output_progress(&self, release_id: &str, percent: u8) {
-        if self.output_queue.contains(release_id) {
-            self.output_queue.set_active_percent(release_id, percent);
-            self.emit_output_queue_changed();
-        }
+        self.outputs.set_active_percent(release_id, percent);
     }
 }
 
