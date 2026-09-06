@@ -60,14 +60,7 @@ impl LibraryManager {
                 other => coven::DbError::Message(other.to_string()),
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
-        let (sync_status_values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
-            error: None,
-            blocked: Vec::new(),
-            last_sync_time: None,
-            syncing: database.is_syncing(),
-            sync_ready: database.is_syncing(),
-        });
+        let sync_status = SyncStatus::new(database.clone());
         let (outbox_values, _) = tokio::sync::watch::channel(None);
         let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
 
@@ -96,7 +89,6 @@ impl LibraryManager {
             event_tx,
             sync,
             sync_status,
-            sync_status_values,
             outbox_values,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
             downloads: crate::library::Downloads::new(
@@ -137,14 +129,7 @@ impl LibraryManager {
             sync_paused.clone(),
         );
 
-        let sync_status = Arc::new(Mutex::new(SyncStatusState::initial(&database)));
-        let (sync_status_values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
-            error: None,
-            blocked: Vec::new(),
-            last_sync_time: None,
-            syncing: database.is_syncing(),
-            sync_ready: database.is_syncing(),
-        });
+        let sync_status = SyncStatus::new(database.clone());
         let (outbox_values, _) = tokio::sync::watch::channel(None);
         let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
 
@@ -172,7 +157,6 @@ impl LibraryManager {
             event_tx,
             sync,
             sync_status,
-            sync_status_values,
             outbox_values,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
             downloads: crate::library::Downloads::new(
@@ -260,7 +244,7 @@ impl LibraryManager {
         self.sync
             .connect_test_cloud_home(cloud_home, cipher)
             .await?;
-        self.sync_status_values.send_replace(self.get_sync_status());
+        self.sync_status.publish();
         Ok(())
     }
 
@@ -277,7 +261,7 @@ impl LibraryManager {
         self.sync
             .connect_test_cloud_home_caller_driven(cloud_home, cipher)
             .await?;
-        self.sync_status_values.send_replace(self.get_sync_status());
+        self.sync_status.publish();
         Ok(())
     }
 
@@ -420,11 +404,10 @@ impl LibraryManager {
                     last_sync_time: last_sync_update,
                     blocked: blocked_update,
                 } = SyncStatusUpdate::from_loop_status(&status);
-                let mut changed = false;
-                let mut new_failure = false;
-                let mut newly_blocked: Option<usize> = None;
-                {
-                    let mut state = lm.sync_status.lock().unwrap();
+                let (new_failure, newly_blocked) = lm.sync_status.apply(|state| {
+                    let mut changed = false;
+                    let mut new_failure = false;
+                    let mut newly_blocked: Option<usize> = None;
                     if let Some(error) = error_update {
                         if error != state.error {
                             state.error = error.clone();
@@ -462,7 +445,8 @@ impl LibraryManager {
                             }
                         }
                     }
-                }
+                    (changed, (new_failure, newly_blocked))
+                });
                 // Blocked operations wait on a person indefinitely, and the UI
                 // reports them as one localized line — without this record the
                 // reason coven gave lives nowhere a log reader can find it.
@@ -478,9 +462,6 @@ impl LibraryManager {
                         });
                     }
                 }
-                if changed {
-                    lm.sync_status_values.send_replace(lm.get_sync_status());
-                }
                 if rx.changed().await.is_err() {
                     break;
                 }
@@ -495,7 +476,7 @@ impl LibraryManager {
     pub fn subscribe_sync_status_values(
         &self,
     ) -> tokio::sync::watch::Receiver<crate::library::SyncStatusSnapshot> {
-        self.sync_status_values.subscribe()
+        self.sync_status.subscribe()
     }
 
     /// Emit a library event to all subscribers. Logs at warn-level when no

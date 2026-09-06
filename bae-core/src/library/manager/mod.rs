@@ -97,7 +97,7 @@ mod track;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) use discogs::discogs_validation_from_result;
 pub use sync_status::{BlockedSyncOperation, BlockedSyncOperationKind};
-use sync_status::{SyncStatusState, SyncStatusUpdate};
+use sync_status::{SyncStatus, SyncStatusUpdate};
 
 /// Outcome of `resolve_identity_target_album` — where a release should
 /// land after a `set_identity` call. `new_album` carries the album row
@@ -815,8 +815,8 @@ pub struct LibraryManager {
     /// throughput, pause), provider connection, membership, and the coven
     /// make-Remote/make-Local primitives.
     sync: SyncController,
-    sync_status: Arc<Mutex<SyncStatusState>>,
-    sync_status_values: tokio::sync::watch::Sender<crate::library::SyncStatusSnapshot>,
+    /// The sync banner's state and the stream the front-ends read it from.
+    sync_status: SyncStatus,
     outbox_values:
         tokio::sync::watch::Sender<Option<Result<crate::library::OutboxSnapshot, String>>>,
     /// Cancellation tokens for in-progress foreground make-Local transfers,

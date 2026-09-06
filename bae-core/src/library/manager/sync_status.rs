@@ -12,9 +12,76 @@
 use coven::SyncLoopStatus;
 use tracing::warn;
 
-use super::LibraryError;
+use super::{LibraryError, SyncStatusSnapshot};
 use crate::db::Database;
 use crate::ui::{UiError, UiErrorCategory};
+use std::sync::{Arc, Mutex};
+
+/// The banner state and the stream that carries it to the front-ends, as
+/// one owner: a change to the state is published in the same call, so no
+/// reader can see a state the stream has not followed.
+#[derive(Clone)]
+pub(super) struct SyncStatus {
+    state: Arc<Mutex<SyncStatusState>>,
+    values: tokio::sync::watch::Sender<SyncStatusSnapshot>,
+    /// Whether the loop is running is coven's to say, and the snapshot
+    /// reports it beside the banner state.
+    database: Database,
+}
+
+impl SyncStatus {
+    pub(super) fn new(database: Database) -> Self {
+        let state = SyncStatusState::initial(&database);
+        let (values, _) = tokio::sync::watch::channel(SyncStatusSnapshot {
+            error: None,
+            blocked: Vec::new(),
+            last_sync_time: None,
+            syncing: state.syncing,
+            sync_ready: database.is_syncing(),
+        });
+        Self {
+            state: Arc::new(Mutex::new(state)),
+            values,
+            database,
+        }
+    }
+
+    /// Change the state under one lock. `change` says whether it changed
+    /// anything; when it did, the new snapshot is published before this
+    /// returns. Whatever else it computed comes back to the caller.
+    pub(super) fn apply<R>(&self, change: impl FnOnce(&mut SyncStatusState) -> (bool, R)) -> R {
+        let (changed, result) = {
+            let mut state = self.state.lock().unwrap();
+            change(&mut state)
+        };
+        if changed {
+            self.publish();
+        }
+        result
+    }
+
+    /// The banner as it stands, with whether the loop is running now.
+    pub(super) fn snapshot(&self) -> SyncStatusSnapshot {
+        let state = self.state.lock().unwrap().clone();
+        SyncStatusSnapshot {
+            error: state.error,
+            blocked: state.blocked,
+            last_sync_time: state.last_sync_time,
+            syncing: state.syncing,
+            sync_ready: self.database.is_syncing(),
+        }
+    }
+
+    /// Send the stream the current snapshot. For a change outside the
+    /// state — the loop connecting — that moves what the snapshot reports.
+    pub(super) fn publish(&self) {
+        self.values.send_replace(self.snapshot());
+    }
+
+    pub(super) fn subscribe(&self) -> tokio::sync::watch::Receiver<SyncStatusSnapshot> {
+        self.values.subscribe()
+    }
+}
 
 /// The banner state bae maintains across cycles. Each field holds what the last
 /// status with a verdict on it said.
@@ -28,7 +95,7 @@ pub(super) struct SyncStatusState {
 }
 
 impl SyncStatusState {
-    pub(super) fn initial(database: &Database) -> Self {
+    fn initial(database: &Database) -> Self {
         Self {
             error: None,
             blocked: Vec::new(),

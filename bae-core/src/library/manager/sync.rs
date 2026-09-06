@@ -37,14 +37,7 @@ impl LibraryManager {
     }
 
     pub fn get_sync_status(&self) -> SyncStatusSnapshot {
-        let state = self.sync_status.lock().unwrap().clone();
-        SyncStatusSnapshot {
-            error: state.error,
-            blocked: state.blocked,
-            last_sync_time: state.last_sync_time,
-            syncing: state.syncing,
-            sync_ready: self.is_sync_ready(),
-        }
+        self.sync_status.snapshot()
     }
 
     /// Hand one operation from `SyncStatusSnapshot::blocked` back to the sync
@@ -204,10 +197,9 @@ impl LibraryManager {
     /// Write the sync-status error the UI's failure banner reads, matching the
     /// sync loop's own failure path. `None` clears it.
     fn set_sync_error(&self, error: Option<String>) {
-        {
-            let mut state = self.sync_status.lock().unwrap();
+        self.sync_status.apply(|state| {
             state.error = error.map(crate::ui::UiError::internal);
-        }
-        self.sync_status_values.send_replace(self.get_sync_status());
+            (true, ())
+        });
     }
 }
