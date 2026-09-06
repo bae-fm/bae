@@ -275,9 +275,20 @@ async fn drive_fixture(
     .expect("fixture scan");
     handle.start(
         key,
-        ExtractionSource::Folder {
-            path: folder,
-            files,
+        ExtractionSource::Candidate {
+            candidate: bae_core::import::FolderCandidate {
+                name: folder.file_name().unwrap().to_string_lossy().into_owned(),
+                display_path: folder.file_name().unwrap().to_string_lossy().into_owned(),
+                watched_folder_path: folder.to_string_lossy().into_owned(),
+                file_root: folder.clone(),
+                path: folder,
+                files,
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+                file_edit_revision: 0,
+                resolved_boundaries: Vec::new(),
+                combine_ancestor_key: None,
+            }
+            .into(),
         },
         bae_core::util::rate_limiter::CallPriority::Interactive,
     );

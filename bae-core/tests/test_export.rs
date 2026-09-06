@@ -113,8 +113,10 @@ async fn import_then_strand_in_cloud(f: &ExportFixture, album_dir: &Path) -> (St
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir.to_path_buf(),
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir.to_path_buf(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -143,8 +145,10 @@ async fn import_unknown_local(f: &ExportFixture, album_dir: &Path) -> String {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir.to_path_buf(),
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir.to_path_buf(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

@@ -141,8 +141,7 @@ async fn test_cue_ape_records_correct_durations() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -332,8 +331,7 @@ async fn test_cue_ape_records_track_timing() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -467,8 +465,7 @@ impl CueApeTestFixture {
             .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
-                folder: album_dir.clone(),
-                scope: bae_core::import::ReleaseFileScope::Recursive,
+                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,

@@ -30,8 +30,7 @@ async fn two_sequential_imports() {
             .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
-                folder: album_dir,
-                scope: bae_core::import::ReleaseFileScope::Recursive,
+                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -297,8 +296,7 @@ async fn remote_transition_failure_rolls_back_finalized_release() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Remote,
             pin: false,

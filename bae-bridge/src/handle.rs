@@ -48,6 +48,8 @@ mod configuration;
 mod device_pairing;
 pub use collection_subscription::{AlbumBrowseSubscription, ComposerBrowseSubscription};
 pub use device_pairing::BridgeDevicePairingSession;
+#[cfg(feature = "desktop")]
+mod candidate_combination;
 #[cfg(any(feature = "cast", not(any(target_os = "ios", target_os = "android"))))]
 mod desktop;
 #[cfg(feature = "desktop")]
@@ -56,6 +58,8 @@ mod desktop_services;
 mod editing_projection;
 #[cfg(feature = "desktop")]
 mod import_list;
+#[cfg(feature = "desktop")]
+pub use candidate_combination::CandidateCombinationReview;
 #[cfg(feature = "desktop")]
 pub use import_list::ImportListSubscription;
 #[cfg(feature = "desktop")]

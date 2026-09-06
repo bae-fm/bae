@@ -17,8 +17,9 @@
 
 use super::cover_art::{CoverChoice, RemoteCover};
 use super::folder_registry::WatchedFolder;
-use super::folder_scanner::{FolderCandidate, FolderReleaseDecisionKey, InvalidCandidate};
+use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
+use super::release_candidate::ReleaseCandidate;
 use super::search::ImportSearchReleaseDetail;
 use super::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
@@ -310,7 +311,8 @@ pub struct ImportListSnapshot {
 /// the runtime this process holds joins what the tables say.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetailProjection {
-    pub candidate: FolderCandidate,
+    pub candidate: ReleaseCandidate,
+    pub source_error: Option<String>,
     pub actionable: bool,
     pub skipped: bool,
     pub is_added: bool,
@@ -370,6 +372,7 @@ impl ImportCandidateDetailProjection {
         let session = self.session_or_initial();
         let Self {
             candidate,
+            source_error,
             actionable,
             skipped,
             is_added,
@@ -397,7 +400,9 @@ impl ImportCandidateDetailProjection {
         let import_status = import_status_of(
             facts.importing,
             imported_release.as_ref(),
-            failure.as_ref().map(|failure| failure.error.as_str()),
+            source_error
+                .as_deref()
+                .or_else(|| failure.as_ref().map(|failure| failure.error.as_str())),
         );
         let failure = if matches!(
             import_status.as_ref(),
@@ -428,12 +433,12 @@ impl ImportCandidateDetailProjection {
             &known,
         );
         let row = TriageRow {
-            candidate_key: candidate.path.to_string_lossy().into_owned(),
-            folder_name: candidate.name.clone(),
-            watched_folder_path: candidate.watched_folder_path.clone(),
-            display_path: candidate.display_path.clone(),
-            resolved_boundaries: candidate.resolved_boundaries.clone(),
-            combine_ancestor_key: candidate.combine_ancestor_key.clone(),
+            candidate_key: candidate.key().into_owned(),
+            folder_name: candidate.name().to_string(),
+            watched_folder_path: candidate.watched_folder_path().to_string(),
+            display_path: candidate.display_path().to_string(),
+            resolved_boundaries: candidate.resolved_boundaries().to_vec(),
+            combine_ancestor_key: candidate.combine_ancestor_key().cloned(),
             actionable,
             skip_action: actionable.then(|| placement.skip_action()).flatten(),
             selectable: actions.contains(&super::triage::CandidateAction::ImportReady),
@@ -449,7 +454,30 @@ impl ImportCandidateDetailProjection {
             metadata_provenance: metadata_provenance.clone().filter(|_| actionable),
         };
         let metadata_draft_is_blank = metadata_draft.is_blank();
+        let composition_action = if is_added
+            || facts.importing
+            || matches!(
+                facts.identification,
+                Some(
+                    super::triage::IdentificationStatus::Queued
+                        | super::triage::IdentificationStatus::Running
+                        | super::triage::IdentificationStatus::Finalizing
+                )
+            ) {
+            None
+        } else {
+            match &candidate {
+                ReleaseCandidate::Folder(_) if actionable => {
+                    Some(super::combination::CombinationAction::Combine)
+                }
+                ReleaseCandidate::Folder(_) => None,
+                ReleaseCandidate::Combined(_) => {
+                    Some(super::combination::CombinationAction::Separate)
+                }
+            }
+        };
         ImportCandidateDetail {
+            composition_action,
             candidate,
             actionable,
             skipped,
@@ -478,7 +506,8 @@ impl ImportCandidateDetailProjection {
 /// it, and the identify state it resumes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImportCandidateDetail {
-    pub candidate: FolderCandidate,
+    pub composition_action: Option<super::combination::CombinationAction>,
+    pub candidate: ReleaseCandidate,
     pub actionable: bool,
     pub skipped: bool,
     pub is_added: bool,

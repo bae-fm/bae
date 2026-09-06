@@ -34,9 +34,8 @@
 //! Cancellation and a candidate that vanished mid-flight still write nothing,
 //! because neither is an outcome of the candidate's lookup.
 
-use super::folder_scanner::FolderCandidate;
 use super::handle::{ImportEvent, ImportServiceHandle, ScanEvent};
-use super::ImportCandidateSnapshot;
+use super::release_candidate::ReleaseCandidate;
 use crate::db::{DbImportCandidateState, NewImportCandidateVerdict};
 use crate::identify::{IdentifyRunId, IdentifyServiceHandle, IdentifyState, TerminalVerdict};
 use crate::import::search::MetadataResult;
@@ -242,7 +241,7 @@ struct InFlight {
 }
 
 struct ExplicitLookupInFlight {
-    candidate: FolderCandidate,
+    candidate: ReleaseCandidate,
     signals: Option<crate::signals::Signals>,
     expected_metadata_revision: u64,
 }
@@ -252,7 +251,7 @@ struct Finished {
     representative_key: String,
     identity: CandidateIdentity,
     candidate_keys: Vec<String>,
-    current_candidates: Vec<FolderCandidate>,
+    current_candidates: Vec<ReleaseCandidate>,
     outcome: FinishCandidateOutcome,
 }
 
@@ -260,11 +259,11 @@ type CandidateIdentity = (String, u64);
 
 struct IdentifyJob {
     identity: CandidateIdentity,
-    candidates: Vec<FolderCandidate>,
+    candidates: Vec<ReleaseCandidate>,
 }
 
 impl IdentifyJob {
-    fn representative(&self) -> &FolderCandidate {
+    fn representative(&self) -> &ReleaseCandidate {
         self.candidates
             .first()
             .expect("an identify job always has a candidate")
@@ -273,7 +272,7 @@ impl IdentifyJob {
     fn candidate_keys(&self) -> impl Iterator<Item = String> + '_ {
         self.candidates
             .iter()
-            .map(|candidate| candidate.path.to_string_lossy().into_owned())
+            .map(|candidate| candidate.key().into_owned())
     }
 }
 
@@ -337,12 +336,7 @@ async fn run_pass_once(
     let total = candidates.len() as u32;
     let mut known_identities: HashMap<String, CandidateIdentity> = candidates
         .iter()
-        .map(|candidate| {
-            (
-                candidate.path.to_string_lossy().into_owned(),
-                candidate_identity(candidate),
-            )
-        })
+        .map(|candidate| (candidate.key().into_owned(), candidate_identity(candidate)))
         .collect();
 
     let stored = match context.library_manager.load_import_candidate_states().await {
@@ -359,7 +353,7 @@ async fn run_pass_once(
     let mut answered_keys: HashSet<String> = candidates
         .iter()
         .filter(|candidate| usable_stored_answer(&stored, candidate).is_some())
-        .map(|candidate| candidate.path.to_string_lossy().into_owned())
+        .map(|candidate| candidate.key().into_owned())
         .collect();
     let mut answered_identities: HashSet<CandidateIdentity> = candidates
         .iter()
@@ -387,7 +381,7 @@ async fn run_pass_once(
     let _automatic_queue = AutomaticQueueGuard(context.import.clone());
 
     let mut in_flight: HashMap<String, InFlight> = HashMap::new();
-    let mut finishing_members: HashMap<CandidateIdentity, Vec<FolderCandidate>> = HashMap::new();
+    let mut finishing_members: HashMap<CandidateIdentity, Vec<ReleaseCandidate>> = HashMap::new();
     let mut finishing = JoinSet::<Finished>::new();
 
     loop {
@@ -401,9 +395,11 @@ async fn run_pass_once(
             let Some(mut job) = pending.pop_front() else {
                 break;
             };
-            let Some(representative_index) = job.candidates.iter().position(|candidate| {
-                !context.owned_elsewhere(candidate.path.to_string_lossy().as_ref())
-            }) else {
+            let Some(representative_index) = job
+                .candidates
+                .iter()
+                .position(|candidate| !context.owned_elsewhere(candidate.key().as_ref()))
+            else {
                 debug!(
                     "sweep: every member of {:?} is identified elsewhere",
                     job.identity
@@ -415,7 +411,7 @@ async fn run_pass_once(
             };
             job.candidates.swap(0, representative_index);
             let candidate = job.representative().clone();
-            let key = candidate.path.to_string_lossy().into_owned();
+            let key = candidate.key().into_owned();
             let expected_metadata_revision = match candidate_metadata_revision(context, &candidate)
                 .await
             {
@@ -440,9 +436,8 @@ async fn run_pass_once(
                 .start(run, key.clone(), CallPriority::Background);
             context.extraction.start(
                 key.clone(),
-                ExtractionSource::Folder {
-                    path: candidate.path.clone(),
-                    files: candidate.files.clone(),
+                ExtractionSource::Candidate {
+                    candidate: candidate.clone(),
                 },
                 CallPriority::Background,
             );
@@ -514,7 +509,7 @@ async fn run_pass_once(
                                     done.current_candidates.into_iter().chain(deferred)
                                 {
                                     context.import.fail_identification(
-                                        &candidate.path.to_string_lossy(),
+                                        &candidate.key(),
                                         error.clone(),
                                     );
                                 }
@@ -584,7 +579,7 @@ async fn run_pass_once(
                             } else {
                                 let mut current = Vec::new();
                                 for candidate in &entry.job.candidates {
-                                    let key = candidate.path.to_string_lossy();
+                                    let key = candidate.key();
                                     if usable_current_candidate(&context, &key, &identity).await {
                                         current.push(candidate.clone());
                                     }
@@ -625,7 +620,7 @@ async fn run_pass_once(
                             .job
                             .candidates
                             .iter()
-                            .any(|candidate| candidate.path.to_string_lossy() == candidate_key)
+                            .any(|candidate| candidate.key() == candidate_key)
                             .then(|| representative.clone())
                     });
                     if let Some(representative) = running_representative {
@@ -633,7 +628,7 @@ async fn run_pass_once(
                             .remove(&representative)
                             .expect("located in-flight job still exists");
                         entry.job.candidates.retain(|candidate| {
-                            candidate.path.to_string_lossy() != candidate_key
+                            candidate.key() != candidate_key
                         });
                         if representative == candidate_key {
                             context.release(&representative);
@@ -646,7 +641,7 @@ async fn run_pass_once(
                     }
                     pending.retain_mut(|job| {
                         job.candidates.retain(|candidate| {
-                            candidate.path.to_string_lossy() != candidate_key
+                            candidate.key() != candidate_key
                         });
                         !job.candidates.is_empty()
                     });
@@ -801,7 +796,8 @@ async fn run_pass_once(
                 // change just cleared — so drop it. The pass this event also
                 // plans identifies the candidate again, against what it now is.
                 Some(Ok(ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }))) => {
-                    let candidate_key = candidate.path.to_string_lossy().into_owned();
+                    let candidate = ReleaseCandidate::from(candidate);
+                    let candidate_key = candidate.key().into_owned();
                     detach_candidate(
                         context,
                         &candidate_key,
@@ -881,9 +877,9 @@ async fn run_pass_once(
 fn enqueue_automatic_candidate(
     context: &SweepContext,
     pending: &mut VecDeque<IdentifyJob>,
-    candidate: FolderCandidate,
+    candidate: ReleaseCandidate,
 ) {
-    let key = candidate.path.to_string_lossy().into_owned();
+    let key = candidate.key().into_owned();
     enqueue_candidate(pending, candidate);
     context.import.requeue_automatic_identification(&key);
 }
@@ -911,14 +907,9 @@ async fn run_pass_for_test(context: &SweepContext, token: &CancellationToken) {
 
 /// The scanned folder candidate behind `key` when it is actionable, read by
 /// key. A read that fails answers no key, and says so.
-async fn actionable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
-    match context.import.get_candidate(key).await {
-        Ok(Some(ImportCandidateSnapshot::Folder {
-            candidate,
-            actionable: true,
-            ..
-        })) => Some(candidate),
-        Ok(_) => None,
+async fn actionable_candidate(context: &SweepContext, key: &str) -> Option<ReleaseCandidate> {
+    match context.import.get_release_candidate(key).await {
+        Ok(candidate) => candidate,
         Err(error) => {
             warn!("cannot read candidate {key}: {error}");
             None
@@ -929,7 +920,7 @@ async fn actionable_candidate(context: &SweepContext, key: &str) -> Option<Folde
 /// The candidate the sweep is responsible for at `key`, read exactly — see
 /// [`ImportServiceHandle::sweepable_candidate`]. A read that fails answers
 /// no candidate, and says so.
-async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<FolderCandidate> {
+async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<ReleaseCandidate> {
     match context.import.sweepable_candidate(key).await {
         Ok(candidate) => candidate,
         Err(error) => {
@@ -941,17 +932,17 @@ async fn sweepable_candidate(context: &SweepContext, key: &str) -> Option<Folder
 
 async fn candidate_metadata_revision(
     context: &SweepContext,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
 ) -> Result<u64, crate::library::LibraryError> {
     context
         .library_manager
-        .load_import_candidate_state(&candidate.files.content_hash())
+        .load_import_candidate_state(&candidate.files().content_hash())
         .await?
         .map(|state| state.metadata_revision)
         .ok_or_else(|| {
             crate::library::LibraryError::Internal(format!(
                 "candidate {} has no persisted state row",
-                candidate.path.display()
+                candidate.key()
             ))
         })
 }

@@ -598,6 +598,9 @@ public sealed class ImportMappingPaneTests
         BridgeTriageImportStatus? importStatus = null) =>
         new(
             Candidate: new BridgeFolderCandidate(
+                Combination: null,
+                CompositionAction: null,
+                SourceFileEditsAllowed: true,
                 FolderPath: CandidateKey,
                 SourceFolderName: "Album",
                 WatchedFolderPath: "/Music/Incoming",

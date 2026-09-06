@@ -12,7 +12,7 @@ struct CandidateFolderLine: View {
     let placement: BridgeTriagePlacement?
     let folderName: String
     /// The folder on disk — what the glyph reveals.
-    let folderPath: String
+    let folderPaths: [String]
     let onNavigateToPlacement: () -> Void
 
     static func placementLabel(for placement: BridgeTriagePlacement) -> String {
@@ -42,7 +42,9 @@ struct CandidateFolderLine: View {
                     .foregroundStyle(.tertiary)
             }
             Button {
-                SystemActions.revealInFinder(path: folderPath)
+                for path in folderPaths {
+                    SystemActions.revealInFinder(path: path)
+                }
             } label: {
                 Image(systemName: "folder")
                     .font(.system(size: 14))
@@ -66,7 +68,7 @@ struct CandidateFolderLine: View {
             placement: .ready,
             folderName:
                 "2010 \u{2013} Blue Sky Boys 1939\u{2013}1940 (256 kbps)",
-            folderPath: "/Music/Blue Sky Boys",
+            folderPaths: ["/Music/Blue Sky Boys"],
             onNavigateToPlacement: {}
         )
         .padding()

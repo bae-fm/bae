@@ -36,7 +36,7 @@ mod candidate_lookup {
             .get_candidate(&key)
             .await
             .expect("a scanned candidate resolves");
-        assert_eq!(found.path(), key);
+        assert_eq!(found.common().source_folders, vec![key]);
     }
 
     /// Absence is not "no evidence yet" — it is a key that names nothing.

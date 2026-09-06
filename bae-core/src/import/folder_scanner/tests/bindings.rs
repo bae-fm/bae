@@ -319,8 +319,8 @@ fn a_binding_whose_audio_disappears_is_not_kept() {
         )
         .expect("scan")
         .track_count(),
-        12,
-        "the binding applies while the audio it names is here",
+        13,
+        "the binding contributes twelve tracks alongside the loose bonus track",
     );
 
     std::fs::remove_file(album.join("cd.flac")).unwrap();

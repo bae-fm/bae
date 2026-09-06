@@ -127,7 +127,7 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
         .unwrap()
         .unwrap();
     assert_eq!(empty.scan_generation, generation);
-    assert_eq!(empty.candidate.file_edit_revision, 0);
+    assert_eq!(empty.candidate.file_edit_revision(), 0);
     assert_eq!(empty.snapshot, None);
 
     let expected = snapshot(generation, 0);
@@ -142,7 +142,7 @@ async fn file_tag_snapshot_round_trips_with_current_candidate_stamp() {
         .unwrap()
         .unwrap();
     assert_eq!(loaded.scan_generation, generation);
-    assert_eq!(loaded.candidate, candidate);
+    assert_eq!(loaded.candidate, candidate.into());
     assert_eq!(loaded.snapshot, Some(expected));
 }
 
@@ -233,7 +233,7 @@ async fn stale_generation_is_reported_and_cannot_replace_snapshot() {
         .unwrap()
         .unwrap();
     assert_eq!(loaded.scan_generation, current_generation);
-    assert_eq!(loaded.candidate.file_edit_revision, 0);
+    assert_eq!(loaded.candidate.file_edit_revision(), 0);
     assert_eq!(loaded.snapshot, Some(stored.clone()));
     assert_ne!(
         loaded.scan_generation,
@@ -285,7 +285,7 @@ async fn stale_file_edit_revision_cannot_replace_snapshot() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(loaded.candidate.file_edit_revision, 1);
+    assert_eq!(loaded.candidate.file_edit_revision(), 1);
     assert_eq!(loaded.snapshot, Some(stored.clone()));
     assert!(!db
         .replace_candidate_file_tag_snapshot(root, &key, &stored)

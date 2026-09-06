@@ -7,6 +7,41 @@ use lofty::tag::{Tag, TagType};
 use std::fs;
 use tempfile::TempDir;
 
+#[test]
+fn cue_and_loose_audio_both_keep_their_metadata_in_playback_order() {
+    use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile, SheetAudioFile, SheetBinding, SheetDisc};
+    use crate::import::file_tag_snapshot::{FileObservation, FileTagFact};
+    let audio = |name: &str| CandidateFile {
+        file: ScannedFile::new(PathBuf::from("/source").join(name), name.into(), 123, 1).with_test_flac_audio(),
+        role: FileRole::Audio, proposed_audio: true,
+    };
+    let files = CategorizedFiles { files: vec![
+        audio("a.flac"), audio("image.flac"), audio("z.flac"),
+        CandidateFile {
+            file: ScannedFile::new(PathBuf::from("/source/album.cue"), "album.cue".into(), 123, 1),
+            role: FileRole::TrackSheet {
+                sheet: cue_sheet("Album", vec![cue_track(1, "Cue One"), cue_track(2, "Cue Two")]),
+                binding: SheetBinding::Resolved { files: vec![SheetAudioFile { file_reference: "image.flac".into(), file_id: "image.flac".into() }] },
+                disc: SheetDisc::Disc { number: 2 },
+            },
+            proposed_audio: false,
+        },
+    ] };
+    let snapshot = FileTagSnapshot {
+        scan_generation: 1, file_edit_revision: 0, embedded_cover: None,
+        files: files.audio().map(|file| FileTagFact {
+            observation: FileObservation { relative_path: file.relative_path.clone(), size: file.size, modified_at_ns: file.modified_at_ns },
+            title: Some(format!("Tags {}", file.relative_path)), track_artist: Some("Track Artist".into()),
+            album_title: Some("Tagged Album".into()), album_artist: Some("Album Artist".into()),
+            year: None, track_number: None, disc_number: None,
+        }).collect(),
+    };
+    let clock = FixedClock(chrono::DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().with_timezone(&chrono::Utc));
+    let parsed = map_file_tag_snapshot_to_db(&files, &snapshot, Some("Folder"), &clock, &SequentialIdProvider::new("mixed")).unwrap();
+    assert_eq!(parsed.tracks.iter().map(|track| track.title.as_str()).collect::<Vec<_>>(), ["Tags a.flac", "Cue One", "Cue Two", "Tags z.flac"]);
+    assert_eq!(files.track_count(), 4);
+}
+
 /// Run the mapper with deterministic fakes. Exercises the real
 /// `map_file_tags_to_db`; only the clock/id inputs are faked.
 fn map_tags(audio_files: &[PathBuf]) -> Result<ParsedAlbum, ImportError> {

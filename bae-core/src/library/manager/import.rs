@@ -4,6 +4,45 @@ use super::*;
 
 impl LibraryManager {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn set_combined_candidate_skipped(
+        &self,
+        key: &str,
+        skipped: bool,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .set_combined_candidate_skipped(key, skipped)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn load_release_candidate(
+        &self,
+        key: &str,
+    ) -> Result<Option<crate::import::release_candidate::ReleaseCandidate>, LibraryError> {
+        Ok(self.database.load_release_candidate(key).await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn combine_candidates(
+        &self,
+        key: String,
+        name: String,
+        candidates: Vec<crate::import::FolderCandidate>,
+        order: crate::import::combination::CombinationTrackOrder,
+    ) -> Result<(), LibraryError> {
+        Ok(self
+            .database
+            .combine_candidates(key, name, candidates, order)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub(crate) async fn separate_combined_candidate(&self, key: &str) -> Result<(), LibraryError> {
+        Ok(self.database.separate_combined_candidate(key).await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) fn subscribe_import_list(
         &self,
         initial: crate::import::ImportListRequest,

@@ -67,6 +67,9 @@ private func bridgeFolder(
     isAdded: Bool = false
 ) -> BridgeFolderCandidate {
     BridgeFolderCandidate(
+        compositionAction: .combine,
+        combination: nil,
+        sourceFileEditsAllowed: true,
         folderPath: folderPath,
         sourceFolderName: name,
         watchedFolderPath: watchedFolderPath,

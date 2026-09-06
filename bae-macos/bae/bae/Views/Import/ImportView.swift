@@ -145,6 +145,10 @@ struct ImportView: View {
     /// per sheet, and each probes the folder's audio, so this runs when the
     /// selection's files change rather than on every render.
     func loadSheetBindingOptions(for candidate: Candidate) async {
+        guard candidate.sourceFileEditsAllowed else {
+            sheetBindingOptions = [:]
+            return
+        }
         var options: [String: [BridgeSheetBindingOption]] = [:]
         for sheet in candidate.files.trackSheets {
             do {

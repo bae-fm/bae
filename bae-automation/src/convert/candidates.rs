@@ -17,25 +17,30 @@ pub(crate) fn automation_candidate_from_folder(
     runtime: &HashMap<String, CandidateRuntimeSnapshot>,
 ) -> AutomationCandidate {
     let candidate = &folder.candidate;
-    let live = runtime.get(&candidate_path(&candidate.path));
+    let live = runtime.get(candidate.key().as_ref());
     let identify = live
         .and_then(|live| live.identify.clone())
         .and_then(bae_core::import::CandidateIdentifyRuntime::into_state)
         .unwrap_or_else(|| folder.resumed_identify_state.clone());
     AutomationCandidate::Valid {
         common: automation_candidate_common(
-            &candidate.path,
-            candidate.name.clone(),
-            candidate.watched_folder_path.clone(),
+            candidate.key().into_owned(),
+            candidate
+                .source_folders()
+                .iter()
+                .map(|path| path.to_string_lossy().into_owned())
+                .collect(),
+            candidate.name().to_string(),
+            candidate.watched_folder_path().to_string(),
             folder.skipped,
             folder.is_added,
         ),
-        track_count: candidate.files.track_count(),
+        track_count: candidate.files().track_count(),
         source_audio: candidate
-            .files
+            .files()
             .source_audio_summary()
             .map(automation_source_audio_summary),
-        content_hash: candidate.files.content_hash(),
+        content_hash: candidate.files().content_hash(),
         runtime: AutomationCandidateRuntime {
             toolbar: identify
                 .toolbar()
@@ -129,7 +134,8 @@ pub(crate) fn automation_candidate_from_invalid(
 ) -> AutomationCandidate {
     AutomationCandidate::Invalid {
         common: automation_candidate_common(
-            &candidate.path,
+            candidate.path.to_string_lossy().into_owned(),
+            vec![candidate.path.to_string_lossy().into_owned()],
             candidate.name.clone(),
             candidate.watched_folder_path.clone(),
             true,
@@ -140,27 +146,21 @@ pub(crate) fn automation_candidate_from_invalid(
 }
 
 fn automation_candidate_common(
-    path: &Path,
+    key: String,
+    source_folders: Vec<String>,
     name: String,
     watched_folder_path: String,
     skipped: bool,
     is_added: bool,
 ) -> AutomationCandidateCommon {
-    let path = candidate_path(path);
     AutomationCandidateCommon {
-        key: path.clone(),
-        path,
+        key,
+        source_folders,
         name,
         watched_folder_path,
         skipped,
         is_added,
     }
-}
-
-/// A candidate's path as both its display path and its key — the same string
-/// the import service keys its candidate state by.
-fn candidate_path(path: &Path) -> String {
-    path.to_string_lossy().to_string()
 }
 
 /// The row's import status with the running attempt's progress joined in. Only

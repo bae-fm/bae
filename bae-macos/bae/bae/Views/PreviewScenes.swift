@@ -127,6 +127,7 @@
                 onRefreshFolder: { _ in },
                 onReleaseDecision: { _, _ in },
                 onSkip: { _, _ in },
+                onReveal: { _ in },
                 onImportSelected: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))

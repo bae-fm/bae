@@ -40,6 +40,7 @@ pub enum ScanCandidateKind {
 /// One scanned folder, as the list places it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScanCandidateListRow {
+    pub source: CandidateListSource,
     pub watched_folder_path: String,
     pub path: String,
     pub kind: ScanCandidateKind,
@@ -54,6 +55,24 @@ pub struct ScanCandidateListRow {
     pub combine_ancestor_relative_path: Option<String>,
     /// Set exactly when `kind` is [`ScanCandidateKind::Invalid`].
     pub invalid_reason: Option<InvalidReason>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CandidateListSource {
+    Folder,
+    Combination {
+        skipped: bool,
+        error: Option<String>,
+    },
+}
+
+impl CandidateListSource {
+    pub(crate) fn error(&self) -> Option<&str> {
+        match self {
+            Self::Folder => None,
+            Self::Combination { error, .. } => error.as_deref(),
+        }
+    }
 }
 
 /// One `import_candidate_state` row, as the list reads it: the revision it
@@ -225,7 +244,7 @@ fn scan_statuses(
          FROM folder_scan_roots AS roots \
          LEFT JOIN scan_candidate AS candidate \
            ON candidate.watched_folder_path = roots.watched_folder_path \
-          AND candidate.generation = roots.generation \
+          AND candidate.generation = roots.generation AND candidate.source_kind = 'folder' \
          GROUP BY roots.watched_folder_path, roots.status, roots.error",
         [],
         |row| {
@@ -281,8 +300,11 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
     sql.query(
         "SELECT watched_folder_path, path, kind, name, display_path, content_hash, \
                 file_edit_revision, combine_ancestor_relative_path, invalid_reason, \
-                invalid_reason_path, COALESCE(source_date, first_seen_at) \
-         FROM scan_candidate",
+                invalid_reason_path, COALESCE(source_date, first_seen_at), source_kind, \
+                (SELECT skipped FROM candidate_combination WHERE candidate_key = path), \
+                (SELECT error FROM candidate_combination WHERE candidate_key = path) \
+         FROM scan_candidate WHERE NOT EXISTS \
+             (SELECT 1 FROM candidate_combination_member WHERE candidate_key = path)",
         [],
         |row| {
             Ok((
@@ -297,6 +319,9 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 row.get::<_, Option<String>>(8)?,
                 row.get::<_, Option<String>>(9)?,
                 row.get::<_, Option<i64>>(10)?,
+                row.get::<_, String>(11)?,
+                row.get::<_, Option<bool>>(12)?,
+                row.get::<_, Option<String>>(13)?,
             ))
         },
     )?
@@ -314,6 +339,9 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
             invalid_reason,
             invalid_reason_path,
             discovered_at,
+            source_kind,
+            combined_skipped,
+            combined_error,
         )| {
             let kind = match kind.as_str() {
                 "tentative" => ScanCandidateKind::Tentative,
@@ -322,6 +350,16 @@ fn candidate_rows(sql: &SqlReadContext<'_>) -> Result<Vec<ScanCandidateListRow>,
                 other => return Err(unreadable("kind", other)),
             };
             Ok(ScanCandidateListRow {
+                source: match source_kind.as_str() {
+                    "folder" => CandidateListSource::Folder,
+                    "combination" => CandidateListSource::Combination {
+                        skipped: combined_skipped.ok_or_else(|| {
+                            DbError::Message(format!("combination {path} has no membership record"))
+                        })?,
+                        error: combined_error,
+                    },
+                    other => return Err(unreadable("source_kind", other)),
+                },
                 watched_folder_path,
                 path,
                 kind,
@@ -581,7 +619,8 @@ fn load_sweepable_candidates_on(
     let online_candidates: HashSet<(String, String)> = sql
         .query(
             "SELECT watched_folder_path, path FROM scan_candidate \
-             WHERE kind = 'valid' AND initial_metadata_source = 'find_online'",
+             WHERE kind = 'valid' AND initial_metadata_source = 'find_online' \
+               AND NOT EXISTS (SELECT 1 FROM candidate_combination_member WHERE candidate_key = path)",
             [],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?

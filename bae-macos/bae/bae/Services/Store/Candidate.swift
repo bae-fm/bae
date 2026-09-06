@@ -329,6 +329,15 @@ struct Candidate: Equatable, Identifiable {
         key
     }
 
+    var combination: BridgeCombinationPreview? { detail?.candidate.combination }
+    var sourceFileEditsAllowed: Bool {
+        detail?.candidate.sourceFileEditsAllowed ?? false
+    }
+    var sourceFolderPaths: [String] {
+        if let combination { return combination.parts.map(\.candidateKey) }
+        return [key]
+    }
+
     init(bridge: BridgeFolderCandidate) {
         source = .folder(
             watchedFolderPath: bridge.watchedFolderPath

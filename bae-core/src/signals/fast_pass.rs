@@ -83,36 +83,38 @@ fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
 /// `spawn_blocking`. Missing text inputs are logged and skipped; invalid audio
 /// timing aborts extraction because every later track layout requires it.
 pub(super) fn gather_non_ocr_sources(
-    folder: &Path,
+    folders: &[PathBuf],
     categorized: &CategorizedFiles,
 ) -> Result<FastPass, crate::import::ImportError> {
     let mut pass = FastPass::empty();
 
-    // Path components: the candidate folder's own name and its parent's.
-    let folder_name = folder
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or_default()
-        .to_string();
-    let parent_name = folder
-        .parent()
-        .and_then(|p| p.file_name())
-        .and_then(|n| n.to_str())
-        .unwrap_or_default()
-        .to_string();
+    // Every selected source contributes its folder and parent names.
+    for folder in folders {
+        let folder_name = folder
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_string();
+        let parent_name = folder
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_string();
 
-    for raw in [&parent_name, &folder_name] {
-        if raw.is_empty() {
-            continue;
-        }
-        if let Some(stripped) = strip_path_component(raw) {
-            pass.lines.push(SourcedLine {
-                source: Source::PathComponent,
-                text: stripped,
-            });
-        }
-        for bracket in extract_folder_brackets(raw) {
-            pass.bracket_catalogs.push(bracket);
+        for raw in [&parent_name, &folder_name] {
+            if raw.is_empty() {
+                continue;
+            }
+            if let Some(stripped) = strip_path_component(raw) {
+                pass.lines.push(SourcedLine {
+                    source: Source::PathComponent,
+                    text: stripped,
+                });
+            }
+            for bracket in extract_folder_brackets(raw) {
+                pass.bracket_catalogs.push(bracket);
+            }
         }
     }
 

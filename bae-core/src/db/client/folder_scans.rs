@@ -11,7 +11,7 @@
 
 pub(super) mod columns;
 mod dates;
-mod read;
+pub(super) mod read;
 pub(super) mod write;
 
 use super::import_state::next_folder_scan_generation;

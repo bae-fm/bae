@@ -10,6 +10,8 @@ pub(crate) mod candidate_runtime;
 pub mod candidate_search;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod candidates;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod combination;
 pub mod cover_art;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod discid;
@@ -63,6 +65,8 @@ pub mod pane;
 pub mod payloads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod probe;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod release_candidate;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod release_group;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

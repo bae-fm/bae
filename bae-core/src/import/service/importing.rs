@@ -89,14 +89,12 @@ impl ImportService {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
         let content_hash = expectation.content_hash().to_string();
-        let folder_path = command.folder.to_string_lossy().into_owned();
         let edit_revision = expectation.edit_revision();
         let result = self
             .prepare_and_run_folder_import(
                 import_id.clone(),
                 candidate_key.clone(),
-                command.folder,
-                command.scope,
+                command.source,
                 expectation,
                 command.storage_mode,
                 command.pin,
@@ -124,7 +122,7 @@ impl ImportService {
                 .save_import_candidate_failure(&content_hash, edit_revision, &failure)
                 .await
             {
-                error!("could not record the failed import of {folder_path}: {write}");
+                error!("could not record the failed import of {candidate_key}: {write}");
             }
 
             send_event(
@@ -162,8 +160,7 @@ impl ImportService {
         &self,
         import_id: String,
         candidate_key: String,
-        folder: PathBuf,
-        scope: crate::import::folder_scanner::ReleaseFileScope,
+        source: crate::import::release_candidate::CandidateSource,
         expectation: ImportExpectation,
         storage_mode: StorageMode,
         pin: bool,
@@ -187,20 +184,19 @@ impl ImportService {
         );
 
         let stored_candidate = match library_manager
-            .load_folder_scan_item(&candidate_key)
+            .load_release_candidate(&candidate_key)
             .await?
         {
-            Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => candidate,
+            Some(candidate) => candidate,
             _ => {
                 return Err(crate::import::ImportError::Internal {
                     detail: format!("{candidate_key} is no longer a valid stored import candidate"),
                 })
             }
         };
-        if stored_candidate.file_root != folder
-            || stored_candidate.scope != scope
-            || stored_candidate.files.content_hash() != expected_content_hash
-            || stored_candidate.file_edit_revision != expected_edit_revision
+        if stored_candidate.source() != source
+            || stored_candidate.files().content_hash() != expected_content_hash
+            || stored_candidate.file_edit_revision() != expected_edit_revision
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(
@@ -209,7 +205,7 @@ impl ImportService {
             });
         }
         let identity_files = stored_candidate
-            .files
+            .files()
             .release_files()
             .cloned()
             .collect::<Vec<_>>();
@@ -220,7 +216,8 @@ impl ImportService {
         .map_err(|error| crate::import::ImportError::Internal {
             detail: format!("file identity validation task failed: {error}"),
         })??;
-        let categorized = stored_candidate.files;
+        let source_name = stored_candidate.name().to_string();
+        let categorized = stored_candidate.into_files();
 
         let preparation = library_manager
             .load_import_candidate_preparation(&expected_content_hash)
@@ -328,10 +325,7 @@ impl ImportService {
                 parsed
             }
             Some(crate::import::MetadataProvenance::FileTags) => {
-                let folder_name = folder
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                    .map(|s| s.to_string());
+                let folder_name = source_name.clone();
                 let clock = self.clock.clone();
                 let ids = self.ids.clone();
                 let categorized_for_seed = categorized.clone();
@@ -342,7 +336,7 @@ impl ImportService {
                     crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
                         &categorized_for_seed,
                         &snapshot,
-                        folder_name.as_deref(),
+                        Some(&folder_name),
                         clock.as_ref(),
                         ids.as_ref(),
                     )
@@ -388,10 +382,10 @@ impl ImportService {
             )
             .await?;
 
-        prepared.db_release.source_folder_name = folder
-            .file_name()
-            .and_then(|n| n.to_str())
-            .map(|s| s.to_string());
+        prepared.db_release.source_folder_name = match &source {
+            crate::import::release_candidate::CandidateSource::Folder { .. } => Some(source_name),
+            crate::import::release_candidate::CandidateSource::Combination => None,
+        };
         prepared.db_release.content_hash = Some(content_hash);
 
         // The selected remote cover and its exact prepared bytes are one
@@ -474,8 +468,7 @@ impl ImportService {
         self.run_import(
             crate::db::ImportCommitGuard::Candidate {
                 candidate_key: candidate_key.clone(),
-                folder: folder.clone(),
-                scope,
+                source,
                 expectation: expectation.clone(),
             },
             &storage_mode,

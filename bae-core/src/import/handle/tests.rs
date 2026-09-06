@@ -67,3 +67,4 @@ include!("tests/identity.rs");
 include!("tests/edit_shape.rs");
 include!("tests/candidate_state.rs");
 include!("tests/pane.rs");
+mod combinations;

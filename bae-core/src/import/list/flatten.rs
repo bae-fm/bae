@@ -152,6 +152,14 @@ pub(crate) fn flatten(
         if entry.tab != TriageTab::Pending {
             continue;
         }
+        if let ItemRef::Candidate { index, .. } = entry.item {
+            if !matches!(
+                rows.candidates[placed[index].index].source,
+                crate::db::CandidateListSource::Folder
+            ) {
+                continue;
+            }
+        }
         entry.group = group_for(
             &entry.watched_folder_path,
             &entry.display_path,
@@ -291,7 +299,11 @@ pub(crate) fn locate_candidate(
         return Ok(None);
     };
     let tab = placed.row.placement.tab();
-    let group = if tab == TriageTab::Pending {
+    let group = if tab == TriageTab::Pending
+        && matches!(
+            rows.candidates[placed.index].source,
+            crate::db::CandidateListSource::Folder
+        ) {
         let source = &rows.candidates[placed.index];
         group_for(
             &source.watched_folder_path,
@@ -344,7 +356,9 @@ fn place_row(
     let import_status = import_status_of(
         facts.importing,
         imported,
-        rows.failures.get(content_hash).map(String::as_str),
+        row.source
+            .error()
+            .or_else(|| rows.failures.get(content_hash).map(String::as_str)),
     );
     let answer = verdict.map(|verdict| {
         let lead_status = verdict
@@ -362,11 +376,14 @@ fn place_row(
         (None, Some(status)) => CandidateAnswer::Identification(status),
         (None, None) => CandidateAnswer::Unidentified,
     };
-    let skipped = rows.skipped.contains(&(
-        row.watched_folder_path.clone(),
-        candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
-            .map_err(|error| LibraryError::Internal(error.to_string()))?,
-    ));
+    let skipped = match &row.source {
+        crate::db::CandidateListSource::Combination { skipped, .. } => *skipped,
+        crate::db::CandidateListSource::Folder => rows.skipped.contains(&(
+            row.watched_folder_path.clone(),
+            candidate_relative_path(&row.watched_folder_path, Path::new(&row.path))
+                .map_err(|error| LibraryError::Internal(error.to_string()))?,
+        )),
+    };
     let metadata_provenance = state.and_then(|state| state.metadata_provenance.clone());
     let placement = place(
         skipped,
@@ -377,7 +394,7 @@ fn place_row(
         &known,
     );
     let actions = crate::import::triage::candidate_actions(
-        true,
+        row.source.error().is_none(),
         &placement,
         facts.identification.as_ref(),
         &known,
@@ -396,8 +413,13 @@ fn place_row(
         }),
         // Every row the list holds is a settled release: a tentative
         // candidate never becomes one.
-        actionable: true,
-        skip_action: placement.skip_action(),
+        actionable: row.source.error().is_none(),
+        skip_action: row
+            .source
+            .error()
+            .is_none()
+            .then(|| placement.skip_action())
+            .flatten(),
         selectable: actions.contains(&crate::import::triage::CandidateAction::ImportReady),
         actions,
         matched: verdict.and_then(MatchedRelease::of_summary),
@@ -459,7 +481,9 @@ fn grouped_roots(rows: &ImportQueueRows) -> HashSet<(String, String)> {
         }
     };
     for row in &rows.candidates {
-        if matches!(row.kind, ScanCandidateKind::Tentative) {
+        if matches!(row.kind, ScanCandidateKind::Tentative)
+            || !matches!(row.source, crate::db::CandidateListSource::Folder)
+        {
             continue;
         }
         note(&row.watched_folder_path, &row.display_path, false);

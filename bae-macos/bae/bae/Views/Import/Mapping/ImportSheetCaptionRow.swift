@@ -11,6 +11,8 @@ import SwiftUI
 /// is the other: cue filenames are arbitrary, `CD1.cue` may hold disc two, so
 /// the assignment is the truth and no name is read for it.
 struct ImportSheetCaptionRow: View {
+    @Environment(\.sourceFileEditsAllowed)
+    private var sourceFileEditsAllowed
     let sheet: BridgeSheetGroup
     /// The audio this sheet may be bound to, each already offered or refused by
     /// core. `nil` until it has been asked for; empty means there is nothing to
@@ -36,6 +38,7 @@ struct ImportSheetCaptionRow: View {
                     sheet: sheet,
                     onAssign: { actions.setSheetDisc(sheet.sheetId, $0) },
                 )
+                .disabled(!sourceFileEditsAllowed)
             }
             formatTag
             nameButton
@@ -103,6 +106,7 @@ struct ImportSheetCaptionRow: View {
                 options: options,
                 onBind: { actions.bindSheet(sheet.sheetId, $0) },
             )
+            .disabled(!sourceFileEditsAllowed)
         }
         else if let name = sheet.bound.containerName {
             Text(name)

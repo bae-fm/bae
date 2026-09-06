@@ -102,11 +102,11 @@ impl Automation {
         self.services.import_watched_folders()
     }
 
-    /// Every candidate the import tab holds, in path order.
+    /// Every candidate the import tab holds, in candidate-key order.
     ///
     /// The tab's own order is per watched folder and per tab; automation
     /// presents one flat list across both, so it walks all three tabs and
-    /// sorts by path — the key callers name candidates by.
+    /// sorts by the key callers name candidates by.
     pub async fn list_candidates(&self) -> Result<Vec<AutomationCandidate>, AutomationError> {
         let runtime = self.services.candidate_runtimes();
         let mut candidates = Vec::new();
@@ -142,7 +142,7 @@ impl Automation {
                 }
             }
         }
-        candidates.sort_by(|left, right| left.path().cmp(right.path()));
+        candidates.sort_by(|left, right| left.key().cmp(right.key()));
         Ok(candidates)
     }
 

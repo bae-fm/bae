@@ -107,6 +107,15 @@ struct ImportCandidateSelection {
     let importStore: ImportStore
     let uiStore: UiStore
 
+    var canCombine: Bool {
+        let keys = uiStore.selectedFolderCandidates
+        return keys.count >= 2
+            && keys.allSatisfy {
+                importStore.selectedCandidates[$0]?.detail?.candidate
+                    .compositionAction == .combine
+            }
+    }
+
     var offers: [ImportCandidateActionOffer] {
         let actions: [BridgeCandidateAction] = [
             .importReady, .identify, .retryIdentification,

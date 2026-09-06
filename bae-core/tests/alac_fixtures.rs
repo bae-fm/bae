@@ -107,8 +107,10 @@ async fn import_single_m4a_fixture(
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir,
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -355,8 +357,10 @@ async fn import_cue_alac_pair() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir,
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

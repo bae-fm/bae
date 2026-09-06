@@ -22,13 +22,13 @@ enum SettledLead {
 
 async fn metadata_for_settled_lead(
     context: &SweepContext,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
 ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
     match settled_lead {
         SettledLead::NoExternalRelease => {
-            let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+            let source_draft = candidate.blank_source();
             Ok(crate::import::CandidateMetadataDraft {
                 edit: source_draft.edit,
                 track_mappings: source_draft.track_mappings,
@@ -44,7 +44,13 @@ async fn metadata_for_settled_lead(
         } => {
             context
                 .import
-                .external_candidate_metadata(&payloads, candidate, durations, provenance, None)
+                .external_candidate_metadata(
+                    &payloads,
+                    candidate.files(),
+                    durations,
+                    provenance,
+                    None,
+                )
                 .await
         }
     }
@@ -52,7 +58,7 @@ async fn metadata_for_settled_lead(
 
 async fn metadata_or_failed_verdict(
     context: &SweepContext,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     settled_lead: SettledLead,
     verdict: &mut TerminalVerdict,
@@ -62,7 +68,7 @@ async fn metadata_or_failed_verdict(
         Err(error) => {
             warn!(
                 "sweep: could not project metadata for {} ({error}); storing the failure",
-                candidate.path.display()
+                candidate.key()
             );
             let track_count = match verdict {
                 TerminalVerdict::Found { track_count, .. }
@@ -78,7 +84,7 @@ async fn metadata_or_failed_verdict(
                 )],
                 track_count,
             };
-            let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+            let source_draft = candidate.blank_source();
             crate::import::CandidateMetadataDraft {
                 edit: source_draft.edit,
                 track_mappings: source_draft.track_mappings,
@@ -106,7 +112,7 @@ pub(super) async fn finish_candidate(
         return FinishCandidateOutcome::Failed {
             error: format!(
                 "{} reached a verdict with no settled signals",
-                entry.job.representative().path.display()
+                entry.job.representative().key()
             ),
         };
     };
@@ -145,12 +151,12 @@ pub(super) async fn finish_candidate(
     save(
         context,
         token,
-        &candidate.path.to_string_lossy(),
-        &candidate.files.content_hash(),
-        &candidate.path.to_string_lossy(),
+        &candidate.key(),
+        &candidate.files().content_hash(),
+        &candidate.key(),
         &verdict,
         signals.clone(),
-        candidate.file_edit_revision,
+        candidate.file_edit_revision(),
         entry.expected_metadata_revision,
         metadata,
     )
@@ -159,17 +165,17 @@ pub(super) async fn finish_candidate(
 
 async fn preserve_current_mapping_decisions(
     context: &SweepContext,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
     metadata: &mut crate::import::CandidateMetadataDraft,
 ) -> Result<(), crate::library::LibraryError> {
     let current = context
         .library_manager
-        .load_import_candidate_preparation(&candidate.files.content_hash())
+        .load_import_candidate_preparation(&candidate.files().content_hash())
         .await?
         .ok_or_else(|| {
             crate::library::LibraryError::Internal(format!(
                 "{} has no stored import preparation",
-                candidate.path.display()
+                candidate.key()
             ))
         })?;
     metadata.track_mappings = crate::import::edits::preserve_track_mapping_decisions(
@@ -274,7 +280,7 @@ fn sole_pressing(matches: &[MetadataResult]) -> Option<crate::import::release_gr
 async fn settle_lead(
     context: &SweepContext,
     verdict: &mut TerminalVerdict,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
     durations: &crate::import::probe::SourceDurations,
     priority: CallPriority,
     token: &CancellationToken,
@@ -328,7 +334,7 @@ async fn settle_lead(
         }
     };
     let audio_durations =
-        match crate::import::track_slots::audio_durations(&candidate.files, durations) {
+        match crate::import::track_slots::audio_durations(candidate.files(), durations) {
             Ok(durations) => durations,
             Err(error) => {
                 return Err(FinalizationError::Failed(error.to_string()));
@@ -396,7 +402,7 @@ pub(super) async fn record_explicit_lookup_verdict(
     context: &SweepContext,
     run: IdentifyRunId,
     candidate_key: String,
-    candidate: FolderCandidate,
+    candidate: ReleaseCandidate,
     token: &CancellationToken,
 ) {
     // Subscribe before reading the revision, so no state change can land in
@@ -499,11 +505,11 @@ pub(super) async fn record_explicit_lookup_verdict(
                     context,
                     token,
                     &candidate_key,
-                    &entry.candidate.files.content_hash(),
-                    &entry.candidate.path.to_string_lossy(),
+                    &entry.candidate.files().content_hash(),
+                    &entry.candidate.key(),
                     &verdict,
                     signals.clone(),
-                    entry.candidate.file_edit_revision,
+                    entry.candidate.file_edit_revision(),
                     entry.expected_metadata_revision,
                     metadata,
                 )

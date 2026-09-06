@@ -9,6 +9,8 @@ import SwiftUI
 /// the sentence. An excluded audio file also keeps the action that puts it back
 /// in the track list.
 struct ImportMappingFileRow: View {
+    @Environment(\.sourceFileEditsAllowed)
+    private var sourceFileEditsAllowed
     let file: BridgeMappingFile
     let previewingTarget: BridgePreviewTarget?
     /// Identifying signals extracted from this file — the rip log a disc ID
@@ -27,6 +29,7 @@ struct ImportMappingFileRow: View {
             )
             .frame(maxWidth: .infinity, alignment: .leading)
             roleControl
+                .disabled(!sourceFileEditsAllowed)
         }
     }
 

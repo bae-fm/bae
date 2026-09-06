@@ -62,20 +62,12 @@ impl ImportServiceHandle {
         crate::import::ImportError,
     > {
         let (candidate, snapshot) = self.file_tag_snapshot(candidate_key).await?;
-        let folder_name = Some(candidate.name);
-        let categorized = candidate.files;
 
         let clock = self.clock.clone();
         let ids = self.ids.clone();
         tokio::task::spawn_blocking(move || {
-            let parsed = crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
-                &categorized,
-                &snapshot,
-                folder_name.as_deref(),
-                clock.as_ref(),
-                ids.as_ref(),
-            )?;
-            Ok((parsed_album_to_user_edit(&parsed), categorized))
+            let edit = candidate.file_tag_edit(&snapshot, clock.as_ref(), ids.as_ref())?;
+            Ok((edit, candidate.into_files()))
         })
         .await
         .map_err(|e| crate::import::ImportError::Internal {
@@ -88,7 +80,7 @@ impl ImportServiceHandle {
         candidate_key: &str,
     ) -> Result<
         (
-            crate::import::folder_scanner::FolderCandidate,
+            crate::import::release_candidate::ReleaseCandidate,
             crate::import::file_tag_snapshot::FileTagSnapshot,
         ),
         crate::import::ImportError,
@@ -106,17 +98,17 @@ impl ImportServiceHandle {
         reader: std::sync::Arc<dyn crate::import::file_tag_snapshot::FileTagReader>,
     ) -> Result<
         (
-            crate::import::folder_scanner::FolderCandidate,
+            crate::import::release_candidate::ReleaseCandidate,
             crate::import::file_tag_snapshot::FileTagSnapshot,
         ),
         crate::import::ImportError,
     > {
-        let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let watched_folder_path = candidate.watched_folder_path;
+        let watched_folder_path = candidate.watched_folder_path().to_string();
         let Some(stored) = self
             .library_manager
             .load_candidate_file_tag_snapshot(&watched_folder_path, candidate_key)
@@ -131,8 +123,8 @@ impl ImportServiceHandle {
             candidate,
             snapshot: stored_snapshot,
         } = stored;
-        let audio_files = candidate.files.audio().cloned().collect::<Vec<_>>();
-        let file_edit_revision = candidate.file_edit_revision;
+        let audio_files = candidate.files().audio().cloned().collect::<Vec<_>>();
+        let file_edit_revision = candidate.file_edit_revision();
         let (snapshot, extracted) = tokio::task::spawn_blocking(move || {
             let observations = crate::import::file_tag_snapshot::observe_audio_files(&audio_files)?;
             if let Some(snapshot) = stored_snapshot.filter(|snapshot| {
@@ -191,17 +183,17 @@ impl ImportServiceHandle {
         pin: bool,
     ) -> Result<String, crate::import::ImportError> {
         let commit = self.folder_state_commit.lock().await;
-        let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
-        let content_hash = candidate.files.content_hash();
+        let content_hash = candidate.files().content_hash();
         let preparation = self
             .library_manager
             .load_import_candidate_preparation(&content_hash)
             .await?
-            .filter(|preparation| preparation.file_edit_revision == candidate.file_edit_revision)
+            .filter(|preparation| preparation.file_edit_revision == candidate.file_edit_revision())
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!(
                     "{candidate_key} has no complete preparation for its current files"
@@ -218,7 +210,7 @@ impl ImportServiceHandle {
         let file_tag_snapshot = if needs_file_tag_snapshot {
             let Some(stored) = self
                 .library_manager
-                .load_candidate_file_tag_snapshot(&candidate.watched_folder_path, candidate_key)
+                .load_candidate_file_tag_snapshot(candidate.watched_folder_path(), candidate_key)
                 .await?
             else {
                 return Err(crate::import::ImportError::Internal {
@@ -230,8 +222,8 @@ impl ImportServiceHandle {
                 candidate: snapshot_candidate,
                 snapshot,
             } = stored;
-            if snapshot_candidate.files.content_hash() != content_hash
-                || snapshot_candidate.file_edit_revision != candidate.file_edit_revision
+            if snapshot_candidate.files().content_hash() != content_hash
+                || snapshot_candidate.file_edit_revision() != candidate.file_edit_revision()
             {
                 return Err(crate::import::ImportError::FileTags {
                     detail: format!(
@@ -247,7 +239,7 @@ impl ImportServiceHandle {
                 });
             };
             if snapshot.scan_generation != scan_generation
-                || snapshot.file_edit_revision != snapshot_candidate.file_edit_revision
+                || snapshot.file_edit_revision != snapshot_candidate.file_edit_revision()
             {
                 return Err(crate::import::ImportError::FileTags {
                     detail: format!(
@@ -262,15 +254,14 @@ impl ImportServiceHandle {
         let import_id = self.library_manager.new_id();
         let expectation = crate::import::service::ImportExpectation {
             content_hash: content_hash.clone(),
-            edit_revision: candidate.file_edit_revision,
+            edit_revision: candidate.file_edit_revision(),
             metadata_revision: preparation.metadata_revision,
             file_tag_snapshot,
         };
         let command = ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
-            folder: candidate.file_root,
-            scope: candidate.scope,
+            source: candidate.source(),
             #[cfg(any(test, feature = "test-utils"))]
             selected_cover: None,
             storage_mode,
@@ -297,14 +288,14 @@ impl ImportServiceHandle {
         candidate_key: &str,
         surviving_artist_id: &str,
     ) -> Result<(), crate::import::ImportError> {
-        let Some(candidate) = self.stored_actionable_candidate(candidate_key).await? else {
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             });
         };
         self.library_manager
             .merge_import_artist_identity_conflict(
-                &candidate.files.content_hash(),
+                &candidate.files().content_hash(),
                 surviving_artist_id,
             )
             .await?;
@@ -388,23 +379,30 @@ impl ImportServiceHandle {
         &self,
         mut command: ImportCommand,
     ) -> Result<String, crate::import::ImportError> {
+        let crate::import::release_candidate::CandidateSource::Folder {
+            path: folder,
+            scope,
+        } = command.source.clone()
+        else {
+            return Err(crate::import::ImportError::Internal {
+                detail: "the folder fixture helper requires a folder source".into(),
+            });
+        };
         let categorized =
             crate::import::folder_scanner::collect_release_candidate_files_with_scope(
-                &command.folder,
-                command.scope,
+                &folder,
+                scope,
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )?;
-        let candidate_key = crate::import::folder_registry::canonical_absolute_root(
-            &command.folder.to_string_lossy(),
-        )?;
-        let candidate_name = command
-            .folder
+        let candidate_key =
+            crate::import::folder_registry::canonical_absolute_root(&folder.to_string_lossy())?;
+        let candidate_name = folder
             .file_name()
             .and_then(|name| name.to_str())
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!(
                     "test import folder has no UTF-8 directory name: {}",
-                    command.folder.display()
+                    folder.display()
                 ),
             })?
             .to_string();
@@ -416,12 +414,12 @@ impl ImportServiceHandle {
             .begin_folder_scan(&candidate_key)
             .await?;
         let candidate = crate::import::folder_scanner::FolderCandidate {
-            path: command.folder.clone(),
-            file_root: command.folder.clone(),
+            path: folder.clone(),
+            file_root: folder,
             name: candidate_name,
             files: categorized.clone(),
             watched_folder_path: candidate_key.clone(),
-            scope: command.scope,
+            scope,
             file_edit_revision: 0,
             display_path: String::new(),
             resolved_boundaries: Vec::new(),

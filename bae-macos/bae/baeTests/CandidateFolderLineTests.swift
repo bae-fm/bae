@@ -12,7 +12,7 @@ final class CandidateFolderLineTests: XCTestCase {
             CandidateFolderLine(
                 placement: .ready,
                 folderName: "Release Folder",
-                folderPath: "/library/release-folder",
+                folderPaths: ["/library/release-folder"],
                 onNavigateToPlacement: {}
             )
             .padding()
@@ -23,7 +23,7 @@ final class CandidateFolderLineTests: XCTestCase {
             CandidateFolderLine(
                 placement: nil,
                 folderName: "Release Folder",
-                folderPath: "/library/release-folder",
+                folderPaths: ["/library/release-folder"],
                 onNavigateToPlacement: {}
             )
             .padding()

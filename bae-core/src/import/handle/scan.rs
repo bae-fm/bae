@@ -12,10 +12,27 @@ impl ImportServiceHandle {
         skipped: bool,
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
-        let Some(candidate) = self.stored_actionable_candidate(&path).await? else {
+        let Some(candidate) = self.get_release_candidate(&path).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{path} is not an actionable folder candidate"),
             });
+        };
+        let crate::import::release_candidate::ReleaseCandidate::Folder(candidate) = candidate
+        else {
+            if self
+                .library_manager
+                .set_combined_candidate_skipped(&path, skipped)
+                .await?
+            {
+                send_event(
+                    &self.event_tx,
+                    ImportEvent::Scan(ScanEvent::CandidateSkipChanged {
+                        candidate_key: path,
+                        skipped,
+                    }),
+                );
+            }
+            return Ok(());
         };
         let watched_folder_path = candidate.watched_folder_path;
         let relative_candidate_path = crate::import::folder_registry::candidate_relative_path(
@@ -229,12 +246,12 @@ impl ImportServiceHandle {
     pub(crate) fn external_candidate_draft(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
-        candidate: &crate::import::folder_scanner::FolderCandidate,
+        files: &crate::import::folder_scanner::CategorizedFiles,
         durations: &crate::import::probe::SourceDurations,
     ) -> Result<crate::import::pane::CandidateSourceDraft, crate::import::ImportError> {
         let pane = crate::import::pane::release_pane(
             payloads,
-            &candidate.files,
+            files,
             durations,
             &crate::import::CandidateEditOverlay::default(),
             &[],
@@ -249,12 +266,12 @@ impl ImportServiceHandle {
     pub(crate) async fn external_candidate_metadata(
         &self,
         payloads: &crate::import::payloads::ReleasePayloads,
-        candidate: &crate::import::folder_scanner::FolderCandidate,
+        files: &crate::import::folder_scanner::CategorizedFiles,
         durations: &crate::import::probe::SourceDurations,
         provenance: crate::import::MetadataProvenance,
         fallback_cover: Option<&crate::import::CoverSelection>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
-        let source_draft = self.external_candidate_draft(payloads, candidate, durations)?;
+        let source_draft = self.external_candidate_draft(payloads, files, durations)?;
         let edit = source_draft.edit;
         let track_mappings = source_draft.track_mappings;
         let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
@@ -297,14 +314,12 @@ impl ImportServiceHandle {
         candidate_key: String,
         provenance: crate::import::MetadataProvenance,
     ) -> Result<u64, crate::import::ImportError> {
-        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(&candidate_key).await?
-        else {
+        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let content_hash = candidate.files.content_hash();
+        let content_hash = candidate.files().content_hash();
         let current = self
             .library_manager
             .load_import_candidate_preparation(&content_hash)
@@ -313,14 +328,13 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
         let expected_metadata_revision = current.metadata_revision;
-        let durations = crate::import::probe::source_durations(&candidate.files)?;
+        let durations = crate::import::probe::source_durations(candidate.files())?;
         match &provenance {
             crate::import::MetadataProvenance::FileTags => {
                 let (snapshot_candidate, snapshot) = self.file_tag_snapshot(&candidate_key).await?;
                 let pane = crate::import::pane::file_tags_pane(
-                    &snapshot_candidate.files,
+                    &snapshot_candidate,
                     &snapshot,
-                    Some(&snapshot_candidate.name),
                     &durations,
                     &crate::import::CandidateEditOverlay::default(),
                     &[],
@@ -343,7 +357,7 @@ impl ImportServiceHandle {
                 return Ok(self
                     .library_manager
                     .replace_candidate_file_tags_metadata(
-                        &snapshot_candidate.watched_folder_path,
+                        snapshot_candidate.watched_folder_path(),
                         &candidate_key,
                         &content_hash,
                         current.file_edit_revision,
@@ -379,7 +393,7 @@ impl ImportServiceHandle {
                 let mut metadata = self
                     .external_candidate_metadata(
                         &payloads,
-                        &candidate,
+                        candidate.files(),
                         &durations,
                         provenance.clone(),
                         current.cover.as_ref(),
@@ -399,10 +413,10 @@ impl ImportServiceHandle {
                 return Ok(self
                     .library_manager
                     .replace_candidate_metadata_prepared(
-                        &candidate.watched_folder_path,
+                        candidate.watched_folder_path(),
                         &content_hash,
                         &candidate_key,
-                        candidate.file_edit_revision,
+                        candidate.file_edit_revision(),
                         expected_metadata_revision,
                         &metadata,
                     )
@@ -417,14 +431,12 @@ impl ImportServiceHandle {
         &self,
         candidate_key: String,
     ) -> Result<u64, crate::import::ImportError> {
-        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(&candidate_key).await?
-        else {
+        let Some(candidate) = self.get_release_candidate(&candidate_key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not an actionable folder candidate"),
             });
         };
-        let content_hash = candidate.files.content_hash();
+        let content_hash = candidate.files().content_hash();
         let current = self
             .library_manager
             .load_import_candidate_preparation(&content_hash)
@@ -432,7 +444,7 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+        let source_draft = candidate.blank_source();
         let track_mappings = crate::import::edits::preserve_track_mapping_decisions(
             source_draft.track_mappings,
             &current.track_mappings,
@@ -447,10 +459,10 @@ impl ImportServiceHandle {
         Ok(self
             .library_manager
             .replace_candidate_metadata_prepared(
-                &candidate.watched_folder_path,
+                candidate.watched_folder_path(),
                 &content_hash,
                 &candidate_key,
-                candidate.file_edit_revision,
+                candidate.file_edit_revision(),
                 current.metadata_revision,
                 &crate::import::CandidateMetadataDraft {
                     edit: source_draft.edit,
@@ -547,7 +559,14 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let _commit = self.folder_state_commit.lock().await;
         let content_hash = files.content_hash();
-        let current_candidate = self.editable_candidate_for_commit(candidate_key).await?;
+        let crate::import::release_candidate::ReleaseCandidate::Folder(current_candidate) =
+            self.editable_candidate_for_commit(candidate_key).await?
+        else {
+            return Err(crate::import::ImportError::FileRole {
+                detail: "separate the folders before changing their file roles or CUE bindings"
+                    .into(),
+            });
+        };
         let current_files = current_candidate.files;
         let expected_revision = current_candidate.file_edit_revision;
         if current_files.content_hash() != content_hash {
@@ -679,12 +698,10 @@ impl ImportServiceHandle {
         Option<(crate::import::folder_scanner::CategorizedFiles, u64)>,
         crate::import::ImportError,
     > {
-        Ok(match self.get_candidate(candidate_key).await? {
-            Some(ImportCandidateSnapshot::Folder {
-                candidate,
-                actionable: true,
-                ..
-            }) => Some((candidate.files, candidate.file_edit_revision)),
+        Ok(match self.get_release_candidate(candidate_key).await? {
+            Some(crate::import::release_candidate::ReleaseCandidate::Folder(candidate)) => {
+                Some((candidate.files, candidate.file_edit_revision))
+            }
             _ => None,
         })
     }

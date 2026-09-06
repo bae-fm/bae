@@ -8,21 +8,20 @@ pub(super) fn require_import_commit_guard(
     match guard {
         ImportCommitGuard::Candidate {
             candidate_key,
-            folder,
-            scope,
+            source,
             expectation,
         } => {
-            let Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) =
-                super::folder_scans::load_scan_item_on(sql, candidate_key)?
+            let Some(stored) = super::import_combinations::load_candidate_on(sql, candidate_key)?
             else {
                 return Err(DbError::Message(format!(
                     "{candidate_key} is no longer a valid import candidate"
                 )));
             };
-            if candidate.file_root != *folder
-                || candidate.scope != *scope
-                || candidate.files.content_hash() != expectation.content_hash()
-                || candidate.file_edit_revision != expectation.edit_revision()
+            let candidate = stored.candidate;
+            if !stored.actionable
+                || candidate.source() != *source
+                || candidate.files().content_hash() != expectation.content_hash()
+                || candidate.file_edit_revision() != expectation.edit_revision()
             {
                 return Err(DbError::Message(format!(
                     "{candidate_key} changed before its import committed"
@@ -58,7 +57,7 @@ pub(super) fn require_import_commit_guard(
             if let Some(snapshot) = &expectation.file_tag_snapshot {
                 let stored = super::folder_scans::load_candidate_file_tag_snapshot(
                     sql,
-                    &candidate.watched_folder_path,
+                    candidate.watched_folder_path(),
                     candidate_key,
                 )?
                 .and_then(|stored| stored.snapshot);

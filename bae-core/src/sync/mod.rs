@@ -231,13 +231,14 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
 
-        // Every table is `CREATE TABLE IF NOT EXISTS` — the migration is
-        // idempotent so coven can re-run it over a snapshot-bootstrapped DB.
-        let marker = "CREATE TABLE IF NOT EXISTS ";
+        let marker = "CREATE TABLE ";
         let mut out = Vec::new();
         let mut cursor = 0;
         while let Some(rel) = sql[cursor..].find(marker) {
-            let after = cursor + rel + marker.len();
+            let mut after = cursor + rel + marker.len();
+            if sql[after..].starts_with("IF NOT EXISTS ") {
+                after += "IF NOT EXISTS ".len();
+            }
             let name: String = sql[after..]
                 .chars()
                 .take_while(|c| c.is_alphanumeric() || *c == '_')
@@ -394,6 +395,8 @@ mod tests {
             "folder_scan_generation_sequence",
             "folder_scan_roots",
             "scan_candidate",
+            "candidate_combination",
+            "candidate_combination_member",
             "scan_candidate_file",
             "scan_cue_sheet",
             "scan_cue_track",

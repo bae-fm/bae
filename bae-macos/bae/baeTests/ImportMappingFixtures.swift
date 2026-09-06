@@ -447,15 +447,7 @@ extension MappingFixtures {
         candidateKey key: String = MappingFixtures.candidateKey,
         folderName: String = "Walkthrough"
     ) -> BridgeImportCandidateDetail {
-        let folder = BridgeFolderCandidate(
-            folderPath: key,
-            sourceFolderName: folderName,
-            watchedFolderPath: "/Music/Downloads",
-            files: emptyFiles,
-            trackCount: 13,
-            skipped: false,
-            isAdded: false
-        )
+        let folder = sourceFolder(key: key, name: folderName)
         return BridgeImportCandidateDetail(
             candidate: folder,
             actionable: true,
@@ -506,6 +498,23 @@ extension MappingFixtures {
             signals: nil,
             failure: failure,
             session: session(presentation: presentation)
+        )
+    }
+
+    private static func sourceFolder(key: String, name: String)
+        -> BridgeFolderCandidate
+    {
+        BridgeFolderCandidate(
+            compositionAction: .combine,
+            combination: nil,
+            sourceFileEditsAllowed: true,
+            folderPath: key,
+            sourceFolderName: name,
+            watchedFolderPath: "/Music/Downloads",
+            files: emptyFiles,
+            trackCount: 13,
+            skipped: false,
+            isAdded: false
         )
     }
 

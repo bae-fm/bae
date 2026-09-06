@@ -79,7 +79,7 @@ pub(crate) fn load_item_by_key(
     entry_key: &str,
 ) -> Result<Option<(String, StoredScanItem)>, DbError> {
     let roots = sql.query(
-        "SELECT watched_folder_path FROM scan_candidate WHERE path = ?",
+        "SELECT watched_folder_path FROM scan_candidate WHERE path = ? AND source_kind = 'folder'",
         [entry_key],
         |row| row.get::<_, String>(0),
     )?;
@@ -110,18 +110,19 @@ pub(crate) fn load_candidate_file_tag_snapshot(
     watched_folder_path: &str,
     candidate_path: &str,
 ) -> Result<Option<DbCandidateFileTagSnapshot>, DbError> {
-    let mut current = load_candidate_items(sql, watched_folder_path, Some(candidate_path))?;
-    let Some(stored_candidate) = current.pop() else {
+    let Some(stored_candidate) =
+        super::super::import_combinations::load_candidate_on(sql, candidate_path)?
+    else {
         return Ok(None);
     };
-    validate_scan_item_ownership(
-        watched_folder_path,
-        &stored_candidate.key,
-        &stored_candidate.item,
-    )?;
-    let ScanItem::Valid(candidate) = stored_candidate.item else {
-        return Ok(None);
-    };
+    // A blocked candidate still displays its stored artwork and metadata.
+    // Operations enforce actionability before reading or changing source files.
+    let candidate = stored_candidate.candidate;
+    if candidate.watched_folder_path() != watched_folder_path {
+        return Err(DbError::Message(format!(
+            "candidate {candidate_path} does not belong to {watched_folder_path}"
+        )));
+    }
 
     let stored: Option<StoredFileTagSnapshotRow> = sql
         .query_row(
@@ -291,7 +292,7 @@ pub(crate) fn stored_entries(
 ) -> Result<Vec<(String, StoredEntry)>, DbError> {
     let mut entries: Vec<(String, StoredEntry)> = sql
         .query(
-            "SELECT path, scope FROM scan_candidate WHERE watched_folder_path = ?",
+            "SELECT path, scope FROM scan_candidate WHERE watched_folder_path = ? AND source_kind = 'folder'",
             [watched_folder_path],
             |row| {
                 Ok((
@@ -333,7 +334,7 @@ pub(crate) fn load_candidate_items(
                 file_edit_revision, combine_ancestor_relative_path, \
                 invalid_reason, invalid_reason_path \
          FROM scan_candidate \
-         WHERE watched_folder_path = :root AND (:only IS NULL OR path = :only) \
+         WHERE watched_folder_path = :root AND source_kind = 'folder' AND (:only IS NULL OR path = :only) \
          ORDER BY path",
         named_params! { ":root": watched_folder_path, ":only": only },
         |row| {
@@ -437,7 +438,7 @@ struct FileRow {
     sheet_disc_number: Option<i64>,
 }
 
-fn load_files(
+pub(crate) fn load_files(
     sql: &(impl QueryOne + QueryRows),
     watched_folder_path: &str,
     only: Option<&str>,

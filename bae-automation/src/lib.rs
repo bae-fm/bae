@@ -22,7 +22,7 @@ use bae_core::library::{AppServices, LibraryError};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 mod automation;

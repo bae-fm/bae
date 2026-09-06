@@ -34,9 +34,8 @@ impl ImportService {
             detail: format!("file-tag discovery task failed: {error}"),
         })??;
         let pane = crate::import::pane::file_tags_pane(
-            &candidate.files,
+            &candidate.clone().into(),
             &snapshot,
-            Some(&candidate.name),
             &crate::import::probe::SourceDurations::default(),
             &crate::import::CandidateEditOverlay::default(),
             &[],

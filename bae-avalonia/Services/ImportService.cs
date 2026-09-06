@@ -18,6 +18,9 @@ namespace Bae.Desktop;
 /// </summary>
 internal sealed class ImportService
 {
+    public Func<string, Task<(bool Current, (string[]? Folders, string? Error) Result)>> CandidateSourceFolders { get; init; }
+        = _ => throw new InvalidOperationException("ImportService stub: CandidateSourceFolders not wired");
+
     public Func<BridgeImportCandidateDetail, ImportCandidate> ProjectFolderCandidate { get; init; }
         = _ => throw new InvalidOperationException(
             "ImportService stub: ProjectFolderCandidate not wired");
@@ -234,6 +237,8 @@ internal sealed class ImportService
     public static ImportService FromSession(SessionStore session) => new()
     {
         ProjectFolderCandidate = NativeBae.ImportCandidateRow,
+        CandidateSourceFolders = key => session.RunForCurrentHandle(
+            handle => NativeBae.CandidateSourceFolders(handle, key)),
         CandidateRuntime = candidateKey =>
         {
             var (current, runtime) = session.WithCurrentHandle(handle =>

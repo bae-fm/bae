@@ -9,6 +9,8 @@ import SwiftUI
 /// Source. Re-pairing a settled row remains available from its context menu
 /// without occupying the table.
 struct ImportMappingTrackRow: View {
+    @Environment(\.sourceFileEditsAllowed)
+    private var sourceFileEditsAllowed
     let mapping: BridgeTrackMapping
     /// The widths the table resolved for this pane, so the row's cells land
     /// under the header's.
@@ -166,7 +168,7 @@ struct ImportMappingTrackRow: View {
     private func removal(
         _ track: BridgeRawTrackEdit
     ) -> ImportMappingRowRemoval? {
-        if case .file(let file) = mapping.source {
+        if case .file(let file) = mapping.source, sourceFileEditsAllowed {
             return ImportMappingRowRemoval(
                 label: coreString("ui.import.slots.exclude"),
                 help: coreString("ui.import.slots.exclude_help")

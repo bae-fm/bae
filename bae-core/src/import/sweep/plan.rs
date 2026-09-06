@@ -11,26 +11,25 @@ use super::*;
 /// the queue before that change.
 pub(super) async fn new_candidates(
     context: &SweepContext,
-) -> Result<Vec<FolderCandidate>, crate::library::LibraryError> {
+) -> Result<Vec<ReleaseCandidate>, crate::library::LibraryError> {
     let candidates = context.library_manager.load_sweepable_candidates().await?;
     let runtime = context.import.candidate_runtimes();
     Ok(candidates
         .into_iter()
+        .map(ReleaseCandidate::from)
         .filter(|candidate| {
-            runtime
-                .get(candidate.path.to_string_lossy().as_ref())
-                .is_none_or(|runtime| {
-                    runtime.import.is_none()
-                        && runtime
-                            .identify
-                            .as_ref()
-                            .is_none_or(|identify| !identify.is_finalization_failed())
-                })
+            runtime.get(candidate.key().as_ref()).is_none_or(|runtime| {
+                runtime.import.is_none()
+                    && runtime
+                        .identify
+                        .as_ref()
+                        .is_none_or(|identify| !identify.is_finalization_failed())
+            })
         })
         .collect())
 }
 
-pub(super) fn enqueue_candidate(pending: &mut VecDeque<IdentifyJob>, candidate: FolderCandidate) {
+pub(super) fn enqueue_candidate(pending: &mut VecDeque<IdentifyJob>, candidate: ReleaseCandidate) {
     let identity = candidate_identity(&candidate);
     if let Some(job) = pending.iter_mut().find(|job| job.identity == identity) {
         job.candidates.push(candidate);
@@ -53,7 +52,7 @@ pub(super) fn detach_candidate(
             .job
             .candidates
             .iter()
-            .any(|member| member.path.to_string_lossy() == candidate_key)
+            .any(|member| member.key() == candidate_key)
             .then(|| representative.clone())
     });
     if let Some(representative) = representative {
@@ -63,7 +62,7 @@ pub(super) fn detach_candidate(
         entry
             .job
             .candidates
-            .retain(|member| member.path.to_string_lossy() != candidate_key);
+            .retain(|member| member.key() != candidate_key);
         if representative == candidate_key {
             context.release(&representative);
             if !entry.job.candidates.is_empty() {
@@ -75,18 +74,18 @@ pub(super) fn detach_candidate(
     }
     pending.retain_mut(|job| {
         job.candidates
-            .retain(|candidate| candidate.path.to_string_lossy() != candidate_key);
+            .retain(|candidate| candidate.key() != candidate_key);
         !job.candidates.is_empty()
     });
     context.import.clear_automatic_identification(candidate_key);
 }
 
 pub(super) fn remove_finishing_member(
-    finishing_members: &mut HashMap<CandidateIdentity, Vec<FolderCandidate>>,
+    finishing_members: &mut HashMap<CandidateIdentity, Vec<ReleaseCandidate>>,
     candidate_key: &str,
 ) {
     for members in finishing_members.values_mut() {
-        members.retain(|candidate| candidate.path.to_string_lossy() != candidate_key);
+        members.retain(|candidate| candidate.key() != candidate_key);
     }
 }
 
@@ -114,17 +113,20 @@ pub(super) fn forget_candidate(
     true
 }
 
-pub(super) fn candidate_identity(candidate: &FolderCandidate) -> CandidateIdentity {
-    (candidate.files.content_hash(), candidate.file_edit_revision)
+pub(super) fn candidate_identity(candidate: &ReleaseCandidate) -> CandidateIdentity {
+    (
+        candidate.files().content_hash(),
+        candidate.file_edit_revision(),
+    )
 }
 
 pub(super) fn usable_stored_answer<'a>(
     stored: &'a HashMap<String, DbImportCandidateState>,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
 ) -> Option<&'a DbImportCandidateState> {
     stored
-        .get(&candidate.files.content_hash())
-        .filter(|row| row.file_edits.revision == candidate.file_edit_revision)
+        .get(&candidate.files().content_hash())
+        .filter(|row| row.file_edits.revision == candidate.file_edit_revision())
         .filter(|row| row.metadata_provenance.is_some() || row.identify.is_some())
 }
 
@@ -142,17 +144,17 @@ pub(super) async fn usable_current_candidate(
 /// an identification answer for that shape.
 pub(super) async fn current_stored_answer(
     context: &SweepContext,
-    candidate: &FolderCandidate,
+    candidate: &ReleaseCandidate,
 ) -> Result<bool, String> {
     let Some(row) = context
         .library_manager
-        .load_import_candidate_state(&candidate.files.content_hash())
+        .load_import_candidate_state(&candidate.files().content_hash())
         .await
         .map_err(|error| error.to_string())?
     else {
         return Ok(false);
     };
-    if row.file_edits.revision != candidate.file_edit_revision {
+    if row.file_edits.revision != candidate.file_edit_revision() {
         return Ok(false);
     }
     Ok(row.metadata_provenance.is_some() || row.identify.is_some())
@@ -160,7 +162,7 @@ pub(super) async fn current_stored_answer(
 
 /// Split the queue against what is already stored.
 pub(super) fn plan(
-    candidates: Vec<FolderCandidate>,
+    candidates: Vec<ReleaseCandidate>,
     stored: &HashMap<String, DbImportCandidateState>,
     total: u32,
 ) -> Plan {

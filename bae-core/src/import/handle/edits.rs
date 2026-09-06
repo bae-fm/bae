@@ -25,7 +25,7 @@ impl ImportServiceHandle {
         cover: crate::import::CoverSelection,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
-        let hash = candidate.files.content_hash();
+        let hash = candidate.files().content_hash();
         let revision = self
             .library_manager
             .load_import_candidate_state(&hash)
@@ -47,15 +47,15 @@ impl ImportServiceHandle {
         self.editable_candidate_revision_for_commit(
             candidate_key,
             &hash,
-            candidate.file_edit_revision,
+            candidate.file_edit_revision(),
         )
         .await?;
         self.library_manager
             .save_import_candidate_prepared_cover(
-                &candidate.watched_folder_path,
-                &candidate.path.to_string_lossy(),
+                candidate.watched_folder_path(),
+                &candidate.key(),
                 &hash,
-                candidate.file_edit_revision,
+                candidate.file_edit_revision(),
                 revision,
                 &cover,
                 remote_image.as_ref(),
@@ -72,20 +72,20 @@ impl ImportServiceHandle {
         value: String,
     ) -> Result<(), crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
-        let hash = candidate.files.content_hash();
+        let hash = candidate.files().content_hash();
         let _commit = self.folder_state_commit.lock().await;
         self.editable_candidate_revision_for_commit(
             candidate_key,
             &hash,
-            candidate.file_edit_revision,
+            candidate.file_edit_revision(),
         )
         .await?;
         self.library_manager
             .save_import_candidate_edit_field_prepared(
-                &candidate.watched_folder_path,
-                &candidate.path.to_string_lossy(),
+                candidate.watched_folder_path(),
+                &candidate.key(),
                 &hash,
-                candidate.file_edit_revision,
+                candidate.file_edit_revision(),
                 field,
                 &value,
             )
@@ -277,17 +277,13 @@ impl ImportServiceHandle {
     async fn editable_candidate(
         &self,
         candidate_key: &str,
-    ) -> Result<crate::import::folder_scanner::FolderCandidate, crate::import::ImportError> {
-        match self.get_candidate(candidate_key).await? {
-            Some(super::ImportCandidateSnapshot::Folder {
-                candidate,
-                actionable: true,
-                ..
-            }) => Ok(candidate),
-            _ => Err(crate::import::ImportError::Internal {
-                detail: format!("{candidate_key} is not an actionable folder candidate"),
-            }),
-        }
+    ) -> Result<crate::import::release_candidate::ReleaseCandidate, crate::import::ImportError>
+    {
+        self.get_release_candidate(candidate_key)
+            .await?
+            .ok_or_else(|| crate::import::ImportError::Internal {
+                detail: format!("{candidate_key} is not an actionable candidate"),
+            })
     }
 
     async fn prepared_artist_edit(
@@ -296,7 +292,7 @@ impl ImportServiceHandle {
         decide: impl FnOnce(&mut crate::import::RawReleaseEdit),
     ) -> Result<PreparedArtistEdit, crate::import::ImportError> {
         let candidate = self.editable_candidate(candidate_key).await?;
-        let files = &candidate.files;
+        let files = candidate.files();
         let hash = files.content_hash();
         let preparation = self
             .library_manager
@@ -305,7 +301,7 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        if preparation.file_edit_revision != candidate.file_edit_revision {
+        if preparation.file_edit_revision != candidate.file_edit_revision() {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });
@@ -325,8 +321,8 @@ impl ImportServiceHandle {
             )
             .await?;
         Ok(PreparedArtistEdit {
-            watched_folder_path: candidate.watched_folder_path,
-            candidate_path: candidate.path.to_string_lossy().into_owned(),
+            watched_folder_path: candidate.watched_folder_path().to_string(),
+            candidate_path: candidate.key().into_owned(),
             content_hash: hash,
             file_edit_revision: preparation.file_edit_revision,
             metadata_revision: preparation.metadata_revision,

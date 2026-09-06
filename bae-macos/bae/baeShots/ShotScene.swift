@@ -19,6 +19,12 @@ struct ShotScene {
     /// verification sheet. A scene is present only when it has a real staging;
     /// a missing scene is a deliberate omission, never a swallowed failure.
     static let all: [ShotScene] = [
+        ShotScene(
+            id: "import-combine-folders",
+            size: CGSize(width: 936, height: 696)
+        ) {
+            AnyView(ImportCombinationPreviewScene())
+        },
         ShotScene(id: "appearance", size: CGSize(width: 650, height: 400)) {
             AnyView(AppearanceSettingsTab())
         },

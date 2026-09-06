@@ -64,7 +64,7 @@ impl BridgeTrackArtistAssignments {
 
 #[cfg(feature = "desktop")]
 impl BridgeTrackUserEdit {
-    fn from_core(t: bae_core::import::TrackUserEdit) -> Self {
+    pub(crate) fn from_core(t: bae_core::import::TrackUserEdit) -> Self {
         let bae_core::import::TrackUserEdit {
             title,
             side,

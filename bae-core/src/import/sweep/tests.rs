@@ -17,6 +17,7 @@ use crate::db::{
 };
 use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
+use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
 use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
@@ -724,7 +725,7 @@ impl Fixture {
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is sweepable");
-        let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
+        let source_draft = candidate.blank_source();
         let mut edit = source_draft.edit;
         edit.album_title = "Album".to_string();
         edit.album_artist_assignments = vec![crate::import::ArtistAssignment::New {

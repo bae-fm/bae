@@ -209,9 +209,20 @@ fn folder_source(folder: PathBuf) -> ExtractionSource {
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("test candidate scan");
-    ExtractionSource::Folder {
-        path: folder,
-        files,
+    ExtractionSource::Candidate {
+        candidate: crate::import::FolderCandidate {
+            name: folder.file_name().unwrap().to_string_lossy().into_owned(),
+            display_path: folder.file_name().unwrap().to_string_lossy().into_owned(),
+            watched_folder_path: folder.to_string_lossy().into_owned(),
+            file_root: folder.clone(),
+            path: folder,
+            files,
+            scope: crate::import::ReleaseFileScope::Recursive,
+            file_edit_revision: 0,
+            resolved_boundaries: Vec::new(),
+            combine_ancestor_key: None,
+        }
+        .into(),
     }
 }
 
@@ -592,8 +603,8 @@ fn non_utf8_cue_is_decoded_not_dropped() {
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("candidate scan");
-    let pass =
-        gather_non_ocr_sources(&folder, &files).expect("scanned fixture audio has complete timing");
+    let pass = gather_non_ocr_sources(&[folder], &files)
+        .expect("scanned fixture audio has complete timing");
     let texts: Vec<&str> = pass.lines.iter().map(|l| l.text.as_str()).collect();
 
     assert!(

@@ -508,7 +508,20 @@ internal sealed partial class ImportSectionView
             items.Add(new Separator());
         }
         var reveal = new MenuItem { Header = Loc.Chrome("libraries.reveal") };
-        reveal.Click += (_, _) => RevealInFileManager.Reveal(row.CandidateKey);
+        reveal.Click += async (_, _) =>
+        {
+            var (current, result) = await _app.Import.CandidateSourceFolders(row.CandidateKey);
+            if (!current) return;
+            if (result.Error is { } error)
+            {
+                _app.ShowError(Loc.Chrome("import.error_title"), error);
+                return;
+            }
+            foreach (var folder in result.Folders!)
+            {
+                RevealInFileManager.Reveal(folder);
+            }
+        };
         items.Add(reveal);
         // A folder read as one release is this row and nothing else, so its row
         // is the only place left to say otherwise. A folder read as several is

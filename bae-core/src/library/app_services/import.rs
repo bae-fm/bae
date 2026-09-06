@@ -8,6 +8,10 @@ use crate::import::{
 };
 
 impl AppServices {
+    delegate_async!(import, import_candidate_source_folders => candidate_source_folders(key: &str) -> Result<Vec<String>, crate::import::ImportError>);
+    delegate_async!(import, import_review_combination => review_candidate_combination(keys: Vec<String>) -> Result<crate::import::combination::CombinationReview, crate::import::ImportError>);
+    delegate_async!(import, import_combine_reviewed_candidates => combine_reviewed_candidates(review: &crate::import::combination::CombinationReview, keys: Vec<String>, order: crate::import::combination::CombinationTrackOrder, name: String) -> Result<String, crate::import::ImportError>);
+    delegate_async!(import, import_separate_combined_candidate => separate_combined_candidate(key: &str) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_add_watched_folder => add_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);

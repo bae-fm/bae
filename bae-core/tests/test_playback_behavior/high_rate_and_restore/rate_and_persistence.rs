@@ -87,8 +87,7 @@ impl HighSampleRateTestFixture {
             .send_command(ImportCommand {
                 import_id: import_id.clone(),
                 candidate_key: "test".to_string(),
-                folder: album_dir.clone(),
-                scope: bae_core::import::ReleaseFileScope::Recursive,
+                source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
                 selected_cover: None,
                 storage_mode: StorageMode::Local,
                 pin: false,
@@ -500,8 +499,7 @@ async fn test_restore_emits_seeked_at_saved_position() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -596,8 +594,7 @@ async fn test_play_persists_then_stop_clears_playback_state() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

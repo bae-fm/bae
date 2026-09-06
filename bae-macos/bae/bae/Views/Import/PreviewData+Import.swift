@@ -109,6 +109,9 @@
 
         static let folderCandidates: [Candidate] = [
             BridgeFolderCandidate(
+                compositionAction: .combine,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/Album Title One",
                 sourceFolderName: "Album Title One",
                 watchedFolderPath: "/Music/Downloads",
@@ -118,6 +121,9 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
+                compositionAction: .combine,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/Album Title Two [Label CAT-002]",
                 sourceFolderName: "Album Title Two",
                 watchedFolderPath: "/Music/Downloads",
@@ -128,6 +134,9 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
+                compositionAction: .combine,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/Compilation Vol. 3",
                 sourceFolderName: "Compilation Vol. 3",
                 watchedFolderPath: "/Music/Downloads",
@@ -137,6 +146,9 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
+                compositionAction: .combine,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/EP Release",
                 sourceFolderName: "EP Release",
                 watchedFolderPath: "/Music/Downloads",
@@ -146,6 +158,9 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
+                compositionAction: nil,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/Live Recording 2023",
                 sourceFolderName: "Live Recording 2023",
                 watchedFolderPath: "/Music/Downloads",
@@ -158,6 +173,9 @@
             // Two more importable folders, so Pending shows a folder group with
             // rows in it beside a row that belongs to no group.
             BridgeFolderCandidate(
+                compositionAction: .combine,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/Album Title Three",
                 sourceFolderName: "Album Title Three",
                 watchedFolderPath: "/Music/Downloads",
@@ -167,6 +185,9 @@
                 isAdded: false
             ),
             BridgeFolderCandidate(
+                compositionAction: .combine,
+                combination: nil,
+                sourceFileEditsAllowed: true,
                 folderPath: "/Music/Downloads/Single Release",
                 sourceFolderName: "Single Release",
                 watchedFolderPath: "/Music/Downloads",
@@ -269,6 +290,9 @@
             row -> Candidate in
             var candidate = Candidate(
                 bridge: BridgeFolderCandidate(
+                    compositionAction: .combine,
+                    combination: nil,
+                    sourceFileEditsAllowed: true,
                     folderPath: row.candidateKey,
                     sourceFolderName: row.folderName,
                     watchedFolderPath: releaseQueueRoot,

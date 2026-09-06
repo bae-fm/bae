@@ -90,25 +90,16 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
     )
     .await
     .expect("the candidate list reflects the scanned folder");
-    let files = import_handle
-        .get_candidate(&key)
+    let candidate = import_handle
+        .get_release_candidate(&key)
         .await
         .expect("the candidate reads back")
-        .and_then(|snapshot| match snapshot {
-            crate::import::ImportCandidateSnapshot::Folder { candidate, .. } => {
-                Some(candidate.files)
-            }
-            _ => None,
-        })
         .expect("the accepted list holds the candidate");
 
     // Start extraction the way the bridge does, then remove the folder mid-OCR.
     extraction.start(
         key.clone(),
-        ExtractionSource::Folder {
-            path: candidate_path.clone(),
-            files,
-        },
+        ExtractionSource::Candidate { candidate },
         crate::util::rate_limiter::CallPriority::Interactive,
     );
     tokio::time::sleep(Duration::from_millis(100)).await;

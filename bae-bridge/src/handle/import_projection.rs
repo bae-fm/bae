@@ -77,24 +77,29 @@ impl crate::types::BridgeWatchedFolderScanStatus {
 #[cfg(feature = "desktop")]
 impl crate::types::BridgeFolderCandidate {
     pub(super) fn from_core(
-        candidate: bae_core::import::FolderCandidate,
+        candidate: impl Into<bae_core::import::release_candidate::ReleaseCandidate>,
         skipped: bool,
         is_added: bool,
+        composition_action: Option<bae_core::import::combination::CombinationAction>,
     ) -> Self {
-        // `track_count()` borrows `&candidate`; compute it before the move.
-        let track_count = candidate.track_count();
-        let bae_core::import::FolderCandidate {
-            path,
-            name,
-            files,
-            watched_folder_path,
-            ..
-        } = candidate;
+        let candidate = candidate.into();
+        let track_count = candidate.files().track_count();
         crate::types::BridgeFolderCandidate {
-            folder_path: path.to_string_lossy().to_string(),
-            source_folder_name: name,
-            watched_folder_path,
-            files: crate::types::BridgeCandidateFiles::from_core(files),
+            composition_action: composition_action
+                .map(crate::types::BridgeCombinationAction::from_core),
+            source_file_edits_allowed: candidate.source_file_edits_allowed(),
+            combination: match &candidate {
+                bae_core::import::release_candidate::ReleaseCandidate::Folder(_) => None,
+                bae_core::import::release_candidate::ReleaseCandidate::Combined(candidate) => {
+                    Some(crate::types::BridgeCombinationPreview::from_core(
+                        candidate.combination.clone(),
+                    ))
+                }
+            },
+            folder_path: candidate.key().into_owned(),
+            source_folder_name: candidate.name().to_string(),
+            watched_folder_path: candidate.watched_folder_path().to_string(),
+            files: crate::types::BridgeCandidateFiles::from_core(candidate.into_files()),
             track_count,
             skipped,
             is_added,
@@ -615,6 +620,7 @@ impl crate::types::BridgeImportListSnapshot {
 impl crate::types::BridgeImportCandidateDetail {
     pub(super) fn from_core(detail: bae_core::import::ImportCandidateDetail) -> Self {
         let bae_core::import::ImportCandidateDetail {
+            composition_action,
             candidate,
             actionable,
             skipped,
@@ -639,7 +645,12 @@ impl crate::types::BridgeImportCandidateDetail {
             session,
         } = detail;
         Self {
-            candidate: crate::types::BridgeFolderCandidate::from_core(candidate, skipped, is_added),
+            candidate: crate::types::BridgeFolderCandidate::from_core(
+                candidate,
+                skipped,
+                is_added,
+                composition_action,
+            ),
             actionable,
             resumed_identify_state: crate::types::BridgeIdentifyState::from_core(
                 resumed_identify_state,

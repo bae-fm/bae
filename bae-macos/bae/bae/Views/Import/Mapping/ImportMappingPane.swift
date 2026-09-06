@@ -52,12 +52,13 @@ struct ImportMappingPane: View {
                 CandidateFolderLine(
                     placement: candidate.row?.placement,
                     folderName: candidate.displayName,
-                    folderPath: candidate.key,
+                    folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {
                         onNavigateToPlacement(candidate.key)
                     }
                 )
                 metadataSourceSection
+                    .disabled(candidate.detail?.actionable != true)
                 banners
                 if candidate.detail != nil {
                     if !mapping.images.isEmpty {
@@ -71,6 +72,7 @@ struct ImportMappingPane: View {
                         actions: mappingActions,
                         editingCommands: editingCommands,
                     )
+                    .disabled(candidate.detail?.actionable != true)
                 }
             }
             .padding(.horizontal, 24)
@@ -137,6 +139,7 @@ struct ImportMappingPane: View {
             importStatus: candidate.row?.importStatus,
             error: candidate.error,
             failure: candidate.failure,
+            canEdit: candidate.detail?.actionable == true,
             onRetry: commitActions.confirmImport,
             onMergeArtists: commitActions.mergeArtists,
             onViewInLibrary: commitActions.viewInLibrary,

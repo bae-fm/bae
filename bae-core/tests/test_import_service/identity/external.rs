@@ -52,8 +52,7 @@ async fn a_picked_release_writes_its_id_and_pressing_fields() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -136,8 +135,7 @@ async fn a_user_edit_overlays_the_picked_release() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -199,7 +197,7 @@ fn seed_discogs_for_xref(release_id: &str, master_id: &str, title: &str) -> Stri
     bae_core::discogs::client::seed_master_cache(
         &rendered_master,
         Some(1996),
-        serde_json::json!({ "id": rendered_master, "year": 1996 }).to_string(),
+        serde_json::json!({ "id": rendered_master.parse::<u64>().expect("a rendered master id is numeric"), "year": 1996 }).to_string(),
     );
     let raw_json = serde_json::json!({
         "id": release_id.parse::<u64>().expect("a numeric test Discogs release id"),
@@ -325,8 +323,7 @@ async fn cross_source_writes_both_release_ids() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -391,8 +388,7 @@ async fn a_pick_with_a_partner_writes_both_identity_rows() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -461,8 +457,7 @@ async fn a_partner_replaces_an_inferred_identity_of_the_same_source() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

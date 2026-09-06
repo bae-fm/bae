@@ -57,7 +57,7 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} is not a scanned folder candidate"),
             })?;
-        let content_hash = projection.candidate.files.content_hash();
+        let content_hash = projection.candidate.files().content_hash();
         let mut session = projection.session_or_initial();
         change(&mut session);
         self.library_manager

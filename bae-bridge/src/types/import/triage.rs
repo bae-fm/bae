@@ -2,6 +2,9 @@ use super::super::*;
 
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeFolderCandidate {
+    pub composition_action: Option<BridgeCombinationAction>,
+    pub combination: Option<BridgeCombinationPreview>,
+    pub source_file_edits_allowed: bool,
     pub folder_path: String,
     pub source_folder_name: String,
     /// Absolute path of the watched folder this candidate was scanned from —

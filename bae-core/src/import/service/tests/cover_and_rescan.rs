@@ -191,8 +191,10 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .prepare_and_run_folder_import(
             "import-1".to_string(),
             folder.to_string_lossy().into_owned(),
-            folder,
-            crate::import::folder_scanner::ReleaseFileScope::Recursive,
+            crate::import::release_candidate::CandidateSource::Folder {
+                path: folder,
+                scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
+            },
             super::ImportExpectation {
                 content_hash: expected_content_hash,
                 edit_revision: 0,

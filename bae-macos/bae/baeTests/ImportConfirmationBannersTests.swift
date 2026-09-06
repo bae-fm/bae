@@ -69,6 +69,7 @@ struct ImportConfirmationBannersTests {
                 ),
                 error: nil,
                 failure: failure,
+                canEdit: true,
                 onRetry: {},
                 onMergeArtists: { _ in },
                 onViewInLibrary: { _ in }

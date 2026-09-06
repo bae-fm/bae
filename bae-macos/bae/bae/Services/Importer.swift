@@ -35,6 +35,11 @@ private final class ReleaseLibraryStatusSink: ReleaseLibraryStatusCallback,
 }
 
 private struct ImportOperations: Sendable {
+    let candidateSourceFolders: @Sendable (String) async throws -> [String]
+    let reviewCombination:
+        @Sendable ([String]) async throws ->
+            any CandidateCombinationReviewProtocol
+    let separateCombination: @Sendable (String) async throws -> Void
     let addWatchedFolder: @Sendable (String) async throws -> Void
     let removeWatchedFolder: @Sendable (String) async throws -> Void
     let refreshWatchedFolder: @Sendable (String) async throws -> Void
@@ -99,11 +104,22 @@ private struct ImportOperations: Sendable {
     let setIdentifyAutomatically: @MainActor @Sendable (Bool) throws -> Void
     let setDefaultMetadataSource:
         @MainActor @Sendable (BridgeDefaultImportMetadataSource) throws -> Void
+}
 
+extension ImportOperations {
     // Flat forwarding from AppHandleProtocol into immutable operation values.
     // swiftlint:disable:next function_body_length
     static func live(handle: any AppHandleProtocol) -> ImportOperations {
         ImportOperations(
+            candidateSourceFolders: {
+                try await handle.candidateSourceFolders(key: $0)
+            },
+            reviewCombination: {
+                try await handle.reviewCandidateCombination(keys: $0)
+            },
+            separateCombination: {
+                try await handle.separateCombinedCandidate(key: $0)
+            },
             addWatchedFolder: {
                 try await handle.addWatchedFolder(path: $0)
             },
@@ -301,6 +317,17 @@ final class Importer: Sendable, Observable {
     private let operations: ImportOperations
 
     init(
+        candidateSourceFolders:
+            @escaping @Sendable (String) async throws -> [String] = { _ in
+                throw StubError.notImplemented
+            },
+        reviewCombination:
+            @escaping @Sendable ([String]) async throws ->
+            any CandidateCombinationReviewProtocol = { _ in
+                throw StubError.notImplemented
+            },
+        separateCombination: @escaping @Sendable (String) async throws -> Void =
+            { _ in throw StubError.notImplemented },
         addWatchedFolder: @escaping @Sendable (String) async throws -> Void = {
             _ in
         },
@@ -429,6 +456,9 @@ final class Importer: Sendable, Observable {
             { _ in }
     ) {
         operations = ImportOperations(
+            candidateSourceFolders: candidateSourceFolders,
+            reviewCombination: reviewCombination,
+            separateCombination: separateCombination,
             addWatchedFolder: addWatchedFolder,
             removeWatchedFolder: removeWatchedFolder,
             refreshWatchedFolder: refreshWatchedFolder,
@@ -478,6 +508,20 @@ final class Importer: Sendable, Observable {
 }
 
 extension Importer {
+    func reviewCombination(_ keys: [String]) async throws
+        -> any CandidateCombinationReviewProtocol
+    {
+        try await operations.reviewCombination(keys)
+    }
+
+    func candidateSourceFolders(_ key: String) async throws -> [String] {
+        try await operations.candidateSourceFolders(key)
+    }
+
+    func separateCombination(_ key: String) async throws {
+        try await operations.separateCombination(key)
+    }
+
     func addWatchedFolder(_ path: String) async throws {
         try await operations.addWatchedFolder(path)
     }

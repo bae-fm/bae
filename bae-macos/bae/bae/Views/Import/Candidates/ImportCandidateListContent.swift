@@ -172,6 +172,7 @@ struct ImportCandidateListContent: View {
         ) -> Void
     /// Skip (or unskip) the candidate at `key`. Wired to the row context menu.
     let onSkip: (_ key: String, _ skipped: Bool) -> Void
+    let onReveal: (_ key: String) -> Void
     /// Import the highlighted Ready candidates.
     let onImportSelected: () -> Void
 
@@ -635,11 +636,11 @@ extension ImportCandidateListContent {
             coverContent: importStore.sidebarCover(for: row),
             uploadObservation: uploadObservation(for: row),
             isGroupMember: isGroupMember,
+            onReveal: { onReveal(row.candidateKey) },
             onSkip: { onSkip(row.candidateKey, $0) },
             onReleaseDecision: onReleaseDecision
         )
         .tag(row.candidateKey)
-        .disabled(!row.actionable)
     }
 
     private func uploadObservation(
@@ -751,6 +752,7 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
+            onReveal: { _ in },
             onImportSelected: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))
@@ -776,6 +778,7 @@ extension ImportCandidateListContent {
             onRefreshFolder: { _ in },
             onReleaseDecision: { _, _ in },
             onSkip: { _, _ in },
+            onReveal: { _ in },
             onImportSelected: {}
         )
         .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))

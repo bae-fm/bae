@@ -11,6 +11,7 @@ use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, info, warn};
 
 mod candidate_searches;
+mod combinations;
 mod edits;
 mod import;
 mod scan;
@@ -232,6 +233,16 @@ pub(crate) enum WatcherCommand {
 }
 
 impl ImportServiceHandle {
+    pub async fn get_release_candidate(
+        &self,
+        key: &str,
+    ) -> Result<
+        Option<crate::import::release_candidate::ReleaseCandidate>,
+        crate::library::LibraryError,
+    > {
+        self.library_manager.load_release_candidate(key).await
+    }
+
     pub(super) fn new(
         requests_tx: mpsc::UnboundedSender<crate::import::service::ImportWorkerMessage>,
         worker_thread: std::thread::JoinHandle<()>,
@@ -576,39 +587,19 @@ impl ImportServiceHandle {
             }))
     }
 
-    /// The stored scan entry for an actionable folder candidate at `key`, read
-    /// read under the commit lock rather than through the list's own query —
-    /// for a write whose check has to be exact, under the commit lock.
-    pub(super) async fn stored_actionable_candidate(
-        &self,
-        key: &str,
-    ) -> Result<Option<FolderCandidate>, crate::library::LibraryError> {
-        Ok(
-            match self.library_manager.load_folder_scan_item(key).await? {
-                Some(crate::import::folder_scanner::ScanItem::Valid(candidate)) => Some(candidate),
-                Some(
-                    crate::import::folder_scanner::ScanItem::Discovered(_)
-                    | crate::import::folder_scanner::ScanItem::Invalid(_)
-                    | crate::import::folder_scanner::ScanItem::Decided { .. },
-                )
-                | None => None,
-            },
-        )
-    }
-
     /// The stored candidate whose preparation may still be changed. Callers
     /// hold `folder_state_commit` across this check and the ensuing write, so
     /// an import claim cannot land between them.
     pub(super) async fn editable_candidate_for_commit(
         &self,
         key: &str,
-    ) -> Result<FolderCandidate, crate::import::ImportError> {
-        let candidate = self
-            .stored_actionable_candidate(key)
-            .await?
-            .ok_or_else(|| crate::import::ImportError::Internal {
+    ) -> Result<crate::import::release_candidate::ReleaseCandidate, crate::import::ImportError>
+    {
+        let candidate = self.get_release_candidate(key).await?.ok_or_else(|| {
+            crate::import::ImportError::Internal {
                 detail: format!("{key} is not an actionable folder candidate"),
-            })?;
+            }
+        })?;
         if self
             .runtime
             .get(key)
@@ -618,7 +609,7 @@ impl ImportServiceHandle {
         }
         if self
             .library_manager
-            .is_content_hash_imported(&candidate.files.content_hash())
+            .is_content_hash_imported(&candidate.files().content_hash())
             .await?
         {
             return Err(crate::import::ImportError::CandidateAlreadyImported);
@@ -633,10 +624,11 @@ impl ImportServiceHandle {
         key: &str,
         expected_content_hash: &str,
         expected_file_edit_revision: u64,
-    ) -> Result<FolderCandidate, crate::import::ImportError> {
+    ) -> Result<crate::import::release_candidate::ReleaseCandidate, crate::import::ImportError>
+    {
         let candidate = self.editable_candidate_for_commit(key).await?;
-        if candidate.files.content_hash() != expected_content_hash
-            || candidate.file_edit_revision != expected_file_edit_revision
+        if candidate.files().content_hash() != expected_content_hash
+            || candidate.file_edit_revision() != expected_file_edit_revision
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{key} changed before its edit could be stored"),
@@ -688,8 +680,8 @@ impl ImportServiceHandle {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };
-        if candidate.files.content_hash() != row.content_hash
-            || candidate.file_edit_revision != row.expected_edit_revision
+        if candidate.files().content_hash() != row.content_hash
+            || candidate.file_edit_revision() != row.expected_edit_revision
         {
             return Ok(false);
         }
@@ -705,7 +697,10 @@ impl ImportServiceHandle {
     pub(crate) async fn sweepable_candidate(
         &self,
         key: &str,
-    ) -> Result<Option<FolderCandidate>, crate::library::LibraryError> {
+    ) -> Result<
+        Option<crate::import::release_candidate::ReleaseCandidate>,
+        crate::library::LibraryError,
+    > {
         let Some(candidate) = self.answerable_candidate(key).await? else {
             return Ok(None);
         };
@@ -729,20 +724,27 @@ impl ImportServiceHandle {
     pub(crate) async fn answerable_candidate(
         &self,
         key: &str,
-    ) -> Result<Option<FolderCandidate>, crate::library::LibraryError> {
-        let Some(candidate) = self.stored_actionable_candidate(key).await? else {
+    ) -> Result<
+        Option<crate::import::release_candidate::ReleaseCandidate>,
+        crate::library::LibraryError,
+    > {
+        let Some(candidate) = self.get_release_candidate(key).await? else {
             return Ok(None);
         };
         let skipped = self
-            .folder_registry
-            .lock()
-            .unwrap()
-            .is_skipped(&candidate.watched_folder_path, &candidate.path)
-            .map_err(|error| crate::library::LibraryError::Internal(error.to_string()))?;
+            .library_manager
+            .load_import_candidate(key)
+            .await?
+            .ok_or_else(|| {
+                crate::library::LibraryError::Internal(format!(
+                    "{key} disappeared during identification"
+                ))
+            })?
+            .skipped;
         if skipped
             || self
                 .library_manager
-                .is_content_hash_imported(&candidate.files.content_hash())
+                .is_content_hash_imported(&candidate.files().content_hash())
                 .await?
             || self
                 .runtime

@@ -119,16 +119,12 @@ impl AutomationCandidate {
     pub(super) fn key(&self) -> &str {
         &self.common().key
     }
-
-    pub(super) fn path(&self) -> &str {
-        &self.common().path
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationCandidateCommon {
     pub key: String,
-    pub path: String,
+    pub source_folders: Vec<String>,
     pub name: String,
     pub watched_folder_path: String,
     pub skipped: bool,

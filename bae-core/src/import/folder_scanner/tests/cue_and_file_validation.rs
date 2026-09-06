@@ -880,10 +880,10 @@ fn a_stored_disc_assignment_overrules_the_default_position() {
             ("beta.cue", SheetDisc::Ignored),
         ],
     );
-    // The ignored sheet carves nothing, so only the other one's tracks count —
-    // and its own container is loose audio again.
+    // The ignored sheet carves nothing: its container is loose audio alongside
+    // the two tracks carved by the other sheet.
     assert_eq!(reopened.carving_sheets().len(), 1);
-    assert_eq!(reopened.track_count(), 2);
+    assert_eq!(reopened.track_count(), 3);
 }
 
 /// A CUE+APE pair must report the parsed TRACK count from the CUE sheet,

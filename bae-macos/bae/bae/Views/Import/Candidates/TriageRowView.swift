@@ -19,6 +19,7 @@ struct TriageRowView: View {
     /// that already observes the outbox.
     let uploadObservation: UploadObservation?
     let isGroupMember: Bool
+    let onReveal: () -> Void
     let onSkip: (_ skipped: Bool) -> Void
     let onReleaseDecision:
         (
@@ -31,6 +32,7 @@ struct TriageRowView: View {
         coverContent: ImageContent?,
         uploadObservation: UploadObservation?,
         isGroupMember: Bool,
+        onReveal: @escaping () -> Void,
         onSkip: @escaping (_ skipped: Bool) -> Void,
         onReleaseDecision:
             @escaping (
@@ -42,6 +44,7 @@ struct TriageRowView: View {
         self.coverContent = coverContent
         self.uploadObservation = uploadObservation
         self.isGroupMember = isGroupMember
+        self.onReveal = onReveal
         self.onSkip = onSkip
         self.onReleaseDecision = onReleaseDecision
     }
@@ -61,9 +64,7 @@ struct TriageRowView: View {
                     }
                     Divider()
                 }
-                Button("Reveal in Finder") {
-                    SystemActions.revealInFinder(path: row.candidateKey)
-                }
+                Button("Reveal in Finder", action: onReveal)
                 // A folder read as one release is this row and nothing else, so
                 // its row is the only place left to say otherwise. A folder read
                 // as several is a group of rows, and its header carries that
@@ -356,6 +357,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -365,6 +367,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -374,6 +377,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -383,6 +387,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -392,6 +397,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -401,6 +407,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -410,6 +417,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             TriageRowView(
@@ -419,6 +427,7 @@ extension TriageRowView {
                 ),
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
         }

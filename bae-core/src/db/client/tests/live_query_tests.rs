@@ -677,6 +677,7 @@ pub(super) fn list_request(
     crate::import::ImportListRequest {
         view: crate::import::ImportListView {
             tab,
+            order: crate::import::ImportListOrder::PathAscending,
             ..crate::import::ImportListView::default()
         },
         windows: windows

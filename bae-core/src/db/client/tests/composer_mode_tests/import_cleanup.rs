@@ -95,8 +95,10 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
         .finalize_import_atomic(
             crate::db::ImportCommitGuard::Candidate {
                 candidate_key: candidate_path.to_string_lossy().into_owned(),
-                folder: candidate_path,
-                scope: crate::import::folder_scanner::ReleaseFileScope::Direct,
+                source: crate::import::release_candidate::CandidateSource::Folder {
+                    path: candidate_path,
+                    scope: crate::import::folder_scanner::ReleaseFileScope::Direct,
+                },
                 expectation: crate::import::service::ImportExpectation {
                     content_hash,
                     edit_revision: 0,

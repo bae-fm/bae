@@ -117,12 +117,12 @@ pub(super) fn prune_other_generations(
 ) -> Result<Vec<String>, DbError> {
     let mut pruned: Vec<String> = sql.query(
         "SELECT path FROM scan_candidate \
-         WHERE watched_folder_path = ? AND generation != ?",
+         WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder'",
         params![watched_folder_path, generation],
         |row| row.get::<_, String>(0),
     )?;
     sql.execute(
-        "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND generation != ?",
+        "DELETE FROM scan_candidate WHERE watched_folder_path = ? AND generation != ? AND source_kind = 'folder'",
         params![watched_folder_path, generation],
     )?;
     pruned.sort();
@@ -213,7 +213,30 @@ fn insert_candidate(
                 .map(|key| key.relative_folder_path.as_str()),
         ],
     )?;
-    let content_hash = candidate.files.content_hash();
+    ensure_candidate_state(
+        sql,
+        &path,
+        watched_folder_path,
+        &candidate.files,
+        &crate::import::pane::blank_candidate_source(&candidate.files),
+    )?;
+    insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
+    insert_resolved_boundaries(
+        sql,
+        watched_folder_path,
+        &path,
+        &candidate.resolved_boundaries,
+    )
+}
+
+pub(crate) fn ensure_candidate_state(
+    sql: &SqlContext<'_, '_>,
+    path: &str,
+    watched_folder_path: &str,
+    files: &crate::import::folder_scanner::CategorizedFiles,
+    source_draft: &crate::import::pane::CandidateSourceDraft,
+) -> Result<(), DbError> {
+    let content_hash = files.content_hash();
     let created = sql.execute(
         "INSERT INTO import_candidate_state (content_hash, folder_path) VALUES (?, ?) \
          ON CONFLICT (content_hash) DO NOTHING",
@@ -239,7 +262,6 @@ fn insert_candidate(
         .optional()?
         .is_some();
     if !has_draft {
-        let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
         super::super::import_state::insert_draft(sql, &content_hash, &source_draft.edit)?;
         super::super::import_state::replace_track_mappings(
             sql,
@@ -253,13 +275,7 @@ fn insert_candidate(
             [&content_hash],
         )?;
     }
-    insert_candidate_files(sql, watched_folder_path, &path, &candidate.files)?;
-    insert_resolved_boundaries(
-        sql,
-        watched_folder_path,
-        &path,
-        &candidate.resolved_boundaries,
-    )
+    Ok(())
 }
 
 fn insert_invalid(

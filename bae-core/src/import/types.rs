@@ -936,8 +936,7 @@ pub struct CueAnalyzedAudioFile {
 pub struct ImportCommand {
     pub import_id: String,
     pub candidate_key: String,
-    pub folder: PathBuf,
-    pub scope: crate::import::folder_scanner::ReleaseFileScope,
+    pub source: super::release_candidate::CandidateSource,
     #[cfg(any(test, feature = "test-utils"))]
     pub selected_cover: Option<CoverSelection>,
     pub storage_mode: StorageMode,

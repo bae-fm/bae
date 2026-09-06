@@ -45,8 +45,7 @@ async fn file_tags_import_seeds_from_file_tags_and_writes_no_identity() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -142,8 +141,7 @@ async fn file_tags_preview_for_cue_matches_commit_layout() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "cue".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -230,8 +228,7 @@ async fn file_tags_import_seeds_embedded_cover_when_no_folder_image() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -298,8 +295,7 @@ async fn file_tags_import_embedded_cover_wins_over_folder_image() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -345,8 +341,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "identified".to_string(),
-            folder: identified_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: identified_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -383,8 +378,7 @@ async fn file_tags_import_always_creates_a_fresh_album() {
         .send_command(ImportCommand {
             import_id: import_id2.clone(),
             candidate_key: "file-tags".to_string(),
-            folder: file_tags_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: file_tags_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -451,8 +445,7 @@ async fn file_tags_import_with_user_edit_overlay() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

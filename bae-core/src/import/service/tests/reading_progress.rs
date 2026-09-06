@@ -70,8 +70,10 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         .prepare_and_run_folder_import(
             "import-reading-progress".to_string(),
             candidate_key.clone(),
-            folder,
-            crate::import::ReleaseFileScope::Recursive,
+            crate::import::release_candidate::CandidateSource::Folder {
+                path: folder,
+                scope: crate::import::ReleaseFileScope::Recursive,
+            },
             super::ImportExpectation {
                 content_hash: expected_content_hash,
                 edit_revision: 0,

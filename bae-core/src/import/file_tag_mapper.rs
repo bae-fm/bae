@@ -116,6 +116,17 @@ fn map_file_tag_facts_to_db(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
+    Ok(assemble_parsed_album(
+        file_tag_facts_ir(extracted, folder_name)?,
+        clock,
+        ids,
+    ))
+}
+
+fn file_tag_facts_ir(
+    extracted: &[FileTagFact],
+    folder_name: Option<&str>,
+) -> Result<ReleaseIr, ImportError> {
     if extracted.is_empty() {
         return Err(ImportError::FileTags {
             detail: "file-tag seeding requires at least one audio file".to_string(),
@@ -198,10 +209,11 @@ fn map_file_tag_facts_to_db(
         })
         .collect();
 
-    Ok(assemble_parsed_album(
-        file_tag_release_ir(album_title, &album_artist_name, year, tracks),
-        clock,
-        ids,
+    Ok(file_tag_release_ir(
+        album_title,
+        &album_artist_name,
+        year,
+        tracks,
     ))
 }
 
@@ -285,21 +297,68 @@ pub(crate) fn map_file_tag_snapshot_to_db(
         });
     }
 
-    let mut carving = categorized.carving_sheets();
-    if carving.is_empty() {
-        return map_file_tag_facts_to_db(&snapshot.files, folder_name, clock, ids);
+    use super::track_slots::{audio_layout, UnitContribution};
+    let layout = audio_layout(categorized);
+    let loose_facts = layout
+        .iter()
+        .filter(|(_, contribution)| matches!(contribution, UnitContribution::Whole))
+        .map(|(file, _)| {
+            snapshot
+                .files
+                .iter()
+                .find(|fact| fact.observation.relative_path == file.relative_path)
+                .expect("snapshot file IDs were checked against candidate audio")
+                .clone()
+        })
+        .collect::<Vec<_>>();
+    let sheets = layout
+        .iter()
+        .flat_map(|(_, contribution)| match contribution {
+            UnitContribution::Runs(sheets) => {
+                sheets.iter().map(|bound| bound.sheet).collect::<Vec<_>>()
+            }
+            _ => Vec::new(),
+        })
+        .collect::<Vec<_>>();
+    if sheets.is_empty() {
+        return map_file_tag_facts_to_db(&loose_facts, folder_name, clock, ids);
     }
-    // Sorted by the disc each sheet is assigned to, not by the name it or its
-    // container happens to carry, so this tracklist comes out in the same order
-    // `track_slots::audio_units` lays the folder's audio down — the two are
-    // zipped into track slots.
-    carving.sort_by(|a, b| {
-        a.disc_number()
-            .cmp(&b.disc_number())
-            .then_with(|| natord::compare_ignore_case(&a.file.relative_path, &b.file.relative_path))
-    });
-    let sheets = carving.iter().map(|b| b.sheet).collect::<Vec<_>>();
-    map_cue_sheets(&sheets, folder_name, clock, ids)
+    let mut release = cue_sheets_ir(&sheets, folder_name)?;
+    let mut loose_tracks = if loose_facts.is_empty() {
+        Vec::new()
+    } else {
+        file_tag_facts_ir(&loose_facts, folder_name)?.tracks
+    }
+    .into_iter();
+    let mut tracks = Vec::new();
+    for (_, contribution) in layout {
+        match contribution {
+            UnitContribution::Whole => {
+                tracks.push(loose_tracks.next().expect("one track per loose audio file"))
+            }
+            UnitContribution::Runs(sheets) => {
+                for bound in sheets {
+                    let side = i32::try_from(
+                        bound
+                            .disc_number()
+                            .expect("carving sheet has a disc number"),
+                    )
+                    .map_err(|_| ImportError::FileTags {
+                        detail: "CUE disc number exceeds supported range".into(),
+                    })?;
+                    tracks.extend(
+                        bound
+                            .sheet
+                            .playable_tracks()
+                            .map(|track| cue_track_ir(track, side)),
+                    );
+                }
+            }
+            UnitContribution::SpokenFor => {}
+        }
+    }
+    release.tracks = tracks;
+    Ok(assemble_parsed_album(release, clock, ids))
 }
 
 /// Map a CUE-backed rip's parsed sheets to a [`ParsedAlbum`] for the File Tags
@@ -325,6 +384,17 @@ fn map_cue_sheets(
     clock: &dyn Clock,
     ids: &dyn IdProvider,
 ) -> Result<ParsedAlbum, ImportError> {
+    Ok(assemble_parsed_album(
+        cue_sheets_ir(sheets, folder_name)?,
+        clock,
+        ids,
+    ))
+}
+
+fn cue_sheets_ir(
+    sheets: &[&CueSheet],
+    folder_name: Option<&str>,
+) -> Result<ReleaseIr, ImportError> {
     if sheets.is_empty() {
         return Err(ImportError::FileTags {
             detail: "CUE seeding requires at least one sheet".to_string(),
@@ -353,24 +423,26 @@ fn map_cue_sheets(
     for (disc_index, sheet) in sheets.iter().enumerate() {
         let side = disc_index as i32 + 1;
         for track in sheet.playable_tracks() {
-            // A CUE track without a TITLE is rare; seed a blank for the user
-            // rather than fabricate a placeholder.
-            let title = non_empty(track.title.clone()).unwrap_or_default();
-            tracks.push(TrackIr {
-                title,
-                side,
-                number: TrackNumber::PerSide,
-                source_position: None,
-                events: file_tag_credit_events(non_empty(track.performer.clone()).as_deref()),
-            });
+            tracks.push(cue_track_ir(track, side));
         }
     }
 
-    Ok(assemble_parsed_album(
-        file_tag_release_ir(album_title, &album_artist_name, year, tracks),
-        clock,
-        ids,
+    Ok(file_tag_release_ir(
+        album_title,
+        &album_artist_name,
+        year,
+        tracks,
     ))
+}
+
+fn cue_track_ir(track: &crate::cue_flac::CueTrack, side: i32) -> TrackIr {
+    TrackIr {
+        title: non_empty(track.title.clone()).unwrap_or_default(),
+        side,
+        number: TrackNumber::PerSide,
+        source_position: None,
+        events: file_tag_credit_events(non_empty(track.performer.clone()).as_deref()),
+    }
 }
 
 /// Parse a year from a CUE `REM DATE` value. Rippers write a bare year

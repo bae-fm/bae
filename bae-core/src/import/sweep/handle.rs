@@ -92,7 +92,7 @@ impl QueueSweepHandle {
         );
     }
 
-    fn start_explicit_lookup_run(&self, candidate_key: String, candidate: FolderCandidate) {
+    fn start_explicit_lookup_run(&self, candidate_key: String, candidate: ReleaseCandidate) {
         self.context
             .import
             .queue_explicit_identification(&candidate_key);
@@ -103,9 +103,8 @@ impl QueueSweepHandle {
             .start(run, candidate_key.clone(), CallPriority::Interactive);
         self.context.extraction.start(
             candidate_key,
-            ExtractionSource::Folder {
-                path: candidate.path,
-                files: candidate.files,
+            ExtractionSource::Candidate {
+                candidate: candidate.clone(),
             },
             CallPriority::Interactive,
         );
@@ -117,7 +116,7 @@ impl QueueSweepHandle {
         &self,
         run: IdentifyRunId,
         candidate_key: String,
-        candidate: FolderCandidate,
+        candidate: ReleaseCandidate,
     ) {
         let context = self.context.clone();
         let token = self.token.child_token();

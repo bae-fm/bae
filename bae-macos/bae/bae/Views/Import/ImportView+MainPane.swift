@@ -18,6 +18,7 @@ extension ImportView {
                 setFolderReleaseDecision(key, decision)
             },
             onSkip: { key, skipped in setCandidateSkipped(key, skipped) },
+            onReveal: revealCandidateSources,
             onImportSelected: importReadyCandidates,
         )
     }
@@ -28,7 +29,21 @@ extension ImportView {
     /// table, and commit bar.
     func mainPane(for candidate: Candidate) -> some View {
         CandidateRuntimeReader(key: candidate.key) { runtime in
-            mappingPane(for: candidate, runtime: runtime)
+            VStack(spacing: 0) {
+                if let combination = candidate.combination {
+                    ImportCombinedSourceView(
+                        combination: combination,
+                        canSeparate: candidate.detail?.candidate
+                            .compositionAction == .separate,
+                        onSeparate: { separateCombination(candidate.key) }
+                    )
+                }
+                mappingPane(for: candidate, runtime: runtime)
+            }
+            .environment(
+                \.sourceFileEditsAllowed,
+                candidate.sourceFileEditsAllowed
+            )
         }
         .id(candidate.key)
     }

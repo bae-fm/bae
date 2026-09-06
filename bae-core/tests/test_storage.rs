@@ -86,8 +86,10 @@ async fn test_local_import() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir.clone(),
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -238,8 +240,10 @@ async fn test_local_delete_preserves_files() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir.clone(),
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,
@@ -340,8 +344,10 @@ async fn run_import_with_cover_test() {
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "test".to_string(),
-            folder: album_dir.clone(),
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder {
+                path: album_dir.clone(),
+                scope: bae_core::import::ReleaseFileScope::Recursive,
+            },
             selected_cover: Some(CoverSelection::Local(selected_cover.clone())),
             storage_mode: StorageMode::Local,
             pin: false,

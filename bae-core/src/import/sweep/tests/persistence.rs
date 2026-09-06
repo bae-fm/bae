@@ -4,7 +4,7 @@ fn duplicate_content_hashes_share_one_identify_job() {
     let second = synthetic_candidate("/second", 321);
     assert_eq!(first.files.content_hash(), second.files.content_hash());
 
-    let planned = plan(vec![first.clone(), second.clone()], &HashMap::new(), 2);
+    let planned = plan(vec![first.clone().into(), second.clone().into()], &HashMap::new(), 2);
     assert_eq!(planned.identify.len(), 1);
     assert_eq!(planned.identify[0].candidates.len(), 2);
     assert_eq!(planned.identified, 0);
@@ -13,7 +13,7 @@ fn duplicate_content_hashes_share_one_identify_job() {
         first.files.content_hash(),
         row_with_verdict(&first, TerminalVerdict::NotFoundAnywhere),
     )]);
-    let planned = plan(vec![first, second], &stored, 2);
+    let planned = plan(vec![first.into(), second.into()], &stored, 2);
     assert!(planned.identify.is_empty());
     assert_eq!(planned.identified, 2);
 }
@@ -922,8 +922,8 @@ async fn a_verdict_with_no_signals_reports_a_finalization_failure() {
     let candidate = synthetic_candidate("/missing-signals", 321);
     let entry = InFlight {
         job: IdentifyJob {
-            identity: candidate_identity(&candidate),
-            candidates: vec![candidate],
+            identity: candidate_identity(&candidate.clone().into()),
+            candidates: vec![candidate.into()],
         },
         run: IdentifyRunId::for_test(1),
         signals: None,

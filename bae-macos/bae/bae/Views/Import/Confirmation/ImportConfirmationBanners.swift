@@ -19,6 +19,7 @@ struct ImportConfirmationBanners: View {
     /// relaunch. Core omits it while an import owns the candidate or after an
     /// import has completed.
     let failure: BridgeImportFailure?
+    let canEdit: Bool
     /// Try the failed import again.
     let onRetry: () -> Void
     /// Keep the named library artist and absorb the other row.
@@ -110,6 +111,7 @@ struct ImportConfirmationBanners: View {
             Spacer()
             Button("Retry") { onRetry() }
                 .controlSize(.small)
+                .disabled(!canEdit)
         }
         .padding(10)
         .background(Color.red.opacity(0.1))
@@ -149,6 +151,7 @@ struct ImportConfirmationBanners: View {
                 )
             }
             .controlSize(.small)
+            .disabled(!canEdit)
             ErrorDetailDisclosure(
                 error: error,
                 tint: .orange,
@@ -196,6 +199,7 @@ struct ImportConfirmationBanners: View {
                     ),
                     artistIdentityConflict: nil
                 ),
+                canEdit: true,
                 onRetry: {},
                 onMergeArtists: { _ in },
                 onViewInLibrary: { _ in },

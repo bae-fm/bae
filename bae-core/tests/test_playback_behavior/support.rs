@@ -495,8 +495,7 @@ where
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: candidate_key.to_string(),
-            folder: album_dir.clone(),
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir.clone(), scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

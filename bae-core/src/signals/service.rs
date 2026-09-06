@@ -43,9 +43,8 @@ use tracing::{error, warn};
 /// library release being re-identified.
 #[derive(Debug, Clone)]
 pub enum ExtractionSource {
-    Folder {
-        path: PathBuf,
-        files: crate::import::folder_scanner::CategorizedFiles,
+    Candidate {
+        candidate: crate::import::release_candidate::ReleaseCandidate,
     },
     Release {
         release_id: String,
@@ -218,13 +217,9 @@ async fn run_extraction(
     match source {
         // One scan derives every non-OCR signal in a single blocking hop, then
         // the artwork OCR streams.
-        ExtractionSource::Folder {
-            path: folder,
-            files,
-        } => {
-            let fast_folder = folder.clone();
+        ExtractionSource::Candidate { candidate } => {
             let Some(fast) = run_fast_pass_blocking(&inner.runtime_handle, move || {
-                gather_non_ocr_sources(&fast_folder, &files)
+                gather_non_ocr_sources(&candidate.source_folders(), candidate.files())
             })
             .await
             else {

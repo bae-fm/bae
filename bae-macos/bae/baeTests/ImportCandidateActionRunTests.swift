@@ -136,7 +136,8 @@ struct ImportCandidateActionRunTests {
             ImportCandidateBulkSelectionPane(
                 storageCloud: .constant(true),
                 storagePinned: .constant(true),
-                onPerform: { _ in }
+                onPerform: { _ in },
+                onCombine: {}
             )
             .environment(scene.store)
             .environment(uiStore)

@@ -212,16 +212,14 @@ impl ImportServiceHandle {
         &self,
         key: &str,
     ) -> Result<RemoteCoverGallery, crate::import::ImportError> {
-        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(key).await?
-        else {
+        let Some(candidate) = self.get_release_candidate(key).await? else {
             return Err(crate::import::ImportError::Internal {
                 detail: format!("{key} is not a scanned candidate"),
             });
         };
         let state = self
             .library_manager
-            .load_import_candidate_state(&candidate.files.content_hash())
+            .load_import_candidate_state(&candidate.files().content_hash())
             .await?;
         let Some(crate::import::MetadataProvenance::ExternalRelease {
             source,
@@ -345,14 +343,12 @@ impl ImportServiceHandle {
         candidate_key: &str,
         release: &crate::import::MetadataRef,
     ) -> Result<bool, crate::import::ImportError> {
-        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(candidate_key).await?
-        else {
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(false);
         };
         let Some(row) = self
             .library_manager
-            .load_import_candidate_state(&candidate.files.content_hash())
+            .load_import_candidate_state(&candidate.files().content_hash())
             .await?
         else {
             return Ok(false);
@@ -401,19 +397,17 @@ impl ImportServiceHandle {
         &self,
         candidate_key: &str,
     ) -> Result<Option<crate::identify::TerminalVerdict>, crate::import::ImportError> {
-        let Some(super::ImportCandidateSnapshot::Folder { candidate, .. }) =
-            self.get_candidate(candidate_key).await?
-        else {
+        let Some(candidate) = self.get_release_candidate(candidate_key).await? else {
             return Ok(None);
         };
         let Some(row) = self
             .library_manager
-            .load_import_candidate_state(&candidate.files.content_hash())
+            .load_import_candidate_state(&candidate.files().content_hash())
             .await?
         else {
             return Ok(None);
         };
-        if row.file_edits.revision != candidate.file_edit_revision {
+        if row.file_edits.revision != candidate.file_edit_revision() {
             return Ok(None);
         }
         Ok(row.identify.map(|identify| identify.verdict))

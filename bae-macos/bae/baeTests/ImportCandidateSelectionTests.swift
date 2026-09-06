@@ -48,6 +48,7 @@ struct ImportCandidateSelectionTests {
                 coverContent: nil,
                 uploadObservation: nil,
                 isGroupMember: false,
+                onReveal: {},
                 onSkip: { _ in }
             )
             .environment(ImageStore.stub())
@@ -104,6 +105,7 @@ struct ImportCandidateSelectionTests {
                 onRefreshFolder: { _ in },
                 onReleaseDecision: { _, _ in },
                 onSkip: { _, _ in },
+                onReveal: { _ in },
                 onImportSelected: {}
             )
             .environment(OutboxStore(snapshot: OutboxStore.emptySnapshot))

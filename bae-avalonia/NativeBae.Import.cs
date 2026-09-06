@@ -10,6 +10,11 @@ namespace Bae.Desktop;
 /// </summary>
 internal static partial class NativeBae
 {
+    internal static (string[]? Folders, string? Error) CandidateSourceFolders(
+        AppHandle handle,
+        string candidateKey) =>
+        CaptureBridgeValue(() => Await(() => handle.CandidateSourceFolders(candidateKey)));
+
     /// <summary>The import tab's list: one object per list, reconfigured by
     /// view and by window. The caller drives its Next loop.</summary>
     internal static IImportListSubscription SubscribeImportList(

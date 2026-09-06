@@ -12,8 +12,7 @@ async fn direct_entry_import_stores_no_metadata_provenance_or_external_identity(
         .send_command(ImportCommand {
             import_id: import_id.clone(),
             candidate_key: "direct-entry-candidate".to_string(),
-            folder: album_dir,
-            scope: bae_core::import::ReleaseFileScope::Recursive,
+            source: bae_core::import::release_candidate::CandidateSource::Folder { path: album_dir, scope: bae_core::import::ReleaseFileScope::Recursive },
             selected_cover: None,
             storage_mode: StorageMode::Local,
             pin: false,

@@ -13,6 +13,7 @@ struct ImportCandidateBulkSelectionPane: View {
     @Binding
     var storagePinned: Bool
     let onPerform: (ImportCandidateActionOffer) -> Void
+    let onCombine: () -> Void
     @State
     private var confirmation: ImportCandidateActionOffer?
 
@@ -23,6 +24,22 @@ struct ImportCandidateBulkSelectionPane: View {
                     .font(.title2.weight(.semibold))
                 Text("Each action applies only to eligible selected folders.")
                     .foregroundStyle(.secondary)
+                Button(action: onCombine) {
+                    Label(
+                        "Combine as One Release…",
+                        systemImage: "square.stack.3d.up"
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(6)
+                }
+                .disabled(
+                    uiStore.candidateActionRun.isRunning
+                        || !ImportCandidateSelection(
+                            importStore: importStore,
+                            uiStore: uiStore
+                        )
+                        .canCombine
+                )
                 ForEach(
                     ImportCandidateSelection(
                         importStore: importStore,

@@ -658,18 +658,10 @@ impl CategorizedFiles {
             .collect()
     }
 
-    /// Total track count across the release: the tracks the carving sheets
-    /// carve, or — with no sheet carving — one per audio file.
+    /// Total playable tracks, including loose audio beside carving sheets.
     pub fn track_count(&self) -> u32 {
-        let carving = self.carving_sheets();
-        if carving.is_empty() {
-            self.audio().count() as u32
-        } else {
-            carving
-                .iter()
-                .map(|carving| carving.sheet.playable_track_count() as u32)
-                .sum()
-        }
+        u32::try_from(crate::import::track_slots::audio_units(self).len())
+            .expect("release track count fits u32")
     }
 
     /// This release's audio file paths, in `relative_path` order. The File Tags

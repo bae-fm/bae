@@ -11,7 +11,7 @@ use super::*;
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct DbCandidateFileTagSnapshot {
     pub scan_generation: u64,
-    pub candidate: crate::import::folder_scanner::FolderCandidate,
+    pub candidate: crate::import::release_candidate::ReleaseCandidate,
     pub snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
 }
 
@@ -141,8 +141,7 @@ pub struct DbCandidateImportPreparation {
 pub(crate) enum ImportCommitGuard {
     Candidate {
         candidate_key: String,
-        folder: std::path::PathBuf,
-        scope: crate::import::folder_scanner::ReleaseFileScope,
+        source: crate::import::release_candidate::CandidateSource,
         expectation: crate::import::service::ImportExpectation,
     },
     #[cfg(test)]

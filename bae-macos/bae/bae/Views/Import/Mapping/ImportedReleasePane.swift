@@ -37,7 +37,7 @@ struct ImportedReleasePane: View {
                 CandidateFolderLine(
                     placement: candidate.row?.placement,
                     folderName: candidate.displayName,
-                    folderPath: candidate.key,
+                    folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {}
                 )
                 if let session {
@@ -245,7 +245,7 @@ struct ImportingCandidatePane: View {
                 CandidateFolderLine(
                     placement: candidate.row?.placement,
                     folderName: candidate.displayName,
-                    folderPath: candidate.key,
+                    folderPaths: candidate.sourceFolderPaths,
                     onNavigateToPlacement: {}
                 )
                 ProgressLine(

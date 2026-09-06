@@ -45,13 +45,19 @@ pub(crate) fn blank_candidate_draft(files: &CategorizedFiles) -> RawReleaseEdit 
 }
 
 pub(crate) fn blank_candidate_source(files: &CategorizedFiles) -> CandidateSourceDraft {
+    blank_source_for_tracks(crate::import::track_slots::direct_entry_track_rows(files))
+}
+
+pub(crate) fn blank_source_for_tracks(
+    tracks: Vec<crate::import::TrackUserEdit>,
+) -> CandidateSourceDraft {
     let draft = RawReleaseEdit::from_user_edit(
         ReleaseUserEdit {
             album_title: String::new(),
             album_artist_assignments: Vec::new(),
             album_year: None,
             pressing: crate::import::PressingEdit::blank(),
-            tracks: crate::import::track_slots::direct_entry_track_rows(files),
+            tracks,
         },
         CANDIDATE_TRACK_ID_PREFIX,
     );
@@ -315,23 +321,16 @@ pub(crate) fn source_discogs_artist_ids(
 
 /// The pane for a folder committed as its stored file-tag snapshot describes it.
 pub(crate) fn file_tags_pane(
-    files: &CategorizedFiles,
+    candidate: &super::release_candidate::ReleaseCandidate,
     snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
-    folder_name: Option<&str>,
     durations: &SourceDurations,
     overlay: &CandidateEditOverlay,
     track_edits: &[CandidateTrackEdit],
     clock: &dyn coven::Clock,
     ids: &dyn coven::IdProvider,
 ) -> Result<PanePick, ImportError> {
-    let parsed = crate::import::file_tag_mapper::map_file_tag_snapshot_to_db(
-        files,
-        snapshot,
-        folder_name,
-        clock,
-        ids,
-    )?;
-    let seed = parsed_album_to_user_edit(&parsed);
+    let seed = candidate.file_tag_edit(snapshot, clock, ids)?;
+    let files = candidate.files();
     // The folder's own tracklist states no length: a length here would be
     // the folder's own audio compared against itself.
     let source_tracks: Vec<SourceTrack> = seed
