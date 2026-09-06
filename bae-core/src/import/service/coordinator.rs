@@ -1,10 +1,10 @@
 //! Deciding when a watched root is read.
 //!
-//! The coordinator owns one schedule per root and one removal per root, and
-//! every way a scan can be asked for arrives here: a command, a filesystem
+//! Every way a scan can be asked for arrives here: a command, a filesystem
 //! event, a watch failure, the periodic tick, and — for a folder on a network
 //! volume, which has no watch worth the name — the cheap check that stands in
-//! for walking it.
+//! for walking it. What each root has going is [`ActiveRoots`]'s; this decides
+//! what to ask it for.
 //!
 //! Reading a root is [`super::scanning`]'s; this decides that it happens.
 
@@ -43,10 +43,10 @@ impl ImportService {
         let scan_ids = ids.clone();
         let scan_folder_state_commit = folder_state_commit.clone();
         let scan_folder_watcher = folder_watcher.clone();
-        let removal_backend = Arc::new(ServiceRootRemovalBackend {
-            folder_watcher: folder_watcher.clone(),
-            library_manager: library_manager.clone(),
-        });
+        let removal_backend = Arc::new(ServiceRootRemovalBackend::new(
+            folder_watcher.clone(),
+            library_manager.clone(),
+        ));
         let starter: RootScanStarter = Arc::new(move |id, path, completion_tx| {
             spawn_root_scan(
                 id,
@@ -87,12 +87,8 @@ impl ImportService {
                 .build()
                 .expect("folder scan coordinator runtime");
             runtime.block_on(async move {
-            let (completion_tx, mut completion_rx) = mpsc::unbounded_channel();
-            let (removal_tx, mut removal_rx) = mpsc::unbounded_channel();
-            let mut schedules: HashMap<PathBuf, RootScanSchedule> = HashMap::new();
-            let mut removals: HashMap<PathBuf, RootRemovalSchedule> = HashMap::new();
-            let mut next_scan_id = 0;
-            let mut next_removal_id = 0;
+            let (mut active_roots, mut scan_completion_rx, mut removal_completion_rx) =
+                ActiveRoots::new(starter, removal_backend, folder_state_commit.clone());
             // A root on a network volume answers the cheap check off the
             // coordinator, because asking 500 directories over SMB whether they
             // have moved takes seconds and the loop has commands to serve
@@ -110,47 +106,34 @@ impl ImportService {
 
                     cmd = cmd_rx.recv() => {
                         let Some(cmd) = cmd else {
-                            for schedule in schedules.values() {
-                                schedule.scan.cancellation.cancel();
-                            }
+                            active_roots.cancel_scans();
                             break;
                         };
                         match cmd {
                             WatcherCommand::RescanAll => {
                                 for root in watched_roots(&library_manager).await {
-                                    if removals.contains_key(&root) {
-                                        continue;
-                                    }
-                                    request_root_scan(
+                                    active_roots.request_scan(
                                         root,
                                         RootScanCause::Asked("every watched folder was asked for"),
                                         None,
-                                        &mut schedules,
-                                        &starter,
-                                        &completion_tx,
-                                        &mut next_scan_id,
                                     );
                                 }
                             }
                             WatcherCommand::Rescan(path) => {
-                                if removals.contains_key(&path) {
+                                if active_roots.is_being_removed(&path) {
                                     continue;
                                 }
                                 if !is_watched(&library_manager, &path).await {
                                     continue;
                                 }
-                                request_root_scan(
+                                active_roots.request_scan(
                                     path,
                                     RootScanCause::Asked("a rescan was asked for"),
                                     None,
-                                    &mut schedules,
-                                    &starter,
-                                    &completion_tx,
-                                    &mut next_scan_id,
                                 );
                             }
                             WatcherCommand::Refresh { path, completion } => {
-                                if removals.contains_key(&path) {
+                                if active_roots.is_being_removed(&path) {
                                     if completion
                                         .send(Err(format!(
                                             "{} is being removed",
@@ -174,14 +157,10 @@ impl ImportService {
                                     }
                                     continue;
                                 }
-                                request_root_scan(
+                                active_roots.request_scan(
                                     path,
                                     RootScanCause::Asked("the folder was refreshed"),
                                     Some(completion),
-                                    &mut schedules,
-                                    &starter,
-                                    &completion_tx,
-                                    &mut next_scan_id,
                                 );
                             }
                             WatcherCommand::SetFolderReleaseDecision {
@@ -189,7 +168,7 @@ impl ImportService {
                                 completion,
                             } => {
                                 let path = PathBuf::from(&target.0.watched_folder_path);
-                                if removals.contains_key(&path) {
+                                if active_roots.is_being_removed(&path) {
                                     if completion
                                         .send(Err(format!(
                                             "{} is being removed",
@@ -201,13 +180,10 @@ impl ImportService {
                                     }
                                     continue;
                                 }
-                                if let Some(schedule) = schedules.get_mut(&path) {
-                                    schedule.scan.cancellation.cancel();
-                                    schedule.pending = true;
-                                    schedule
-                                        .followup_waiters
-                                        .append(&mut schedule.current_waiters);
-                                }
+                                // What a pass over this folder is reading is
+                                // about to change, so it is replaced by one that
+                                // reads the decision this is about to write.
+                                active_roots.requeue_scan(&path);
                                 let _commit = folder_state_commit.lock().await;
                                 let stored_items = match library_manager
                                     .load_folder_scan_items(&target.0.watched_folder_path)
@@ -252,21 +228,13 @@ impl ImportService {
                                                 ),
                                             );
                                         }
-                                        if let Some(schedule) = schedules.get_mut(&path) {
-                                            schedule.followup_waiters.push(completion);
-                                        } else {
-                                            request_root_scan(
-                                                path,
-                                                RootScanCause::Asked(
-                                                    "a folder release decision changed",
-                                                ),
-                                                Some(completion),
-                                                &mut schedules,
-                                                &starter,
-                                                &completion_tx,
-                                                &mut next_scan_id,
-                                            );
-                                        }
+                                        active_roots.wait_for_next_scan(
+                                            path,
+                                            RootScanCause::Asked(
+                                                "a folder release decision changed",
+                                            ),
+                                            completion,
+                                        );
                                     }
                                     Err(error) => {
                                         if completion.send(Err(error.to_string())).is_err() {
@@ -276,92 +244,10 @@ impl ImportService {
                                 }
                             }
                             WatcherCommand::Remove { path, completion } => {
-                                if let Some(removal) = removals.get_mut(&path) {
-                                    removal.completions.push(completion);
-                                    continue;
-                                }
-                                let (scan, scan_waiters) = if let Some(mut schedule) = schedules.remove(&path) {
-                                    schedule.scan.cancellation.cancel();
-                                    let waiters = schedule
-                                        .current_waiters
-                                        .drain(..)
-                                        .chain(schedule.followup_waiters.drain(..))
-                                        .collect();
-                                    (Some(schedule.scan), waiters)
-                                } else {
-                                    (None, Vec::new())
-                                };
-                                next_removal_id += 1;
-                                let id = next_removal_id;
-                                let removal_path = path.clone();
-                                let removal_backend = removal_backend.clone();
-                                let removal_commit = folder_state_commit.clone();
-                                let removal_tx = removal_tx.clone();
-                                let task = tokio::spawn(async move {
-                                    let result = run_root_removal(
-                                        &removal_path,
-                                        scan,
-                                        removal_backend.as_ref(),
-                                        removal_commit,
-                                    )
-                                    .await;
-                                    if removal_tx
-                                        .send(RootRemovalCompletion {
-                                            id,
-                                            path: removal_path,
-                                            result,
-                                        })
-                                        .is_err()
-                                    {
-                                        debug!("folder scan coordinator ended before removal completion");
-                                    }
-                                });
-                                removals.insert(path, RootRemovalSchedule {
-                                    id,
-                                    task,
-                                    completions: vec![completion],
-                                    scan_waiters,
-                                });
+                                active_roots.remove(path, completion);
                             }
                             WatcherCommand::Shutdown { completion } => {
-                                for schedule in schedules.values_mut() {
-                                    schedule.scan.cancellation.cancel();
-                                    schedule.pending = false;
-                                    for waiter in schedule
-                                        .current_waiters
-                                        .drain(..)
-                                        .chain(schedule.followup_waiters.drain(..))
-                                    {
-                                        if waiter
-                                            .send(Err("folder scan service stopped".to_string()))
-                                            .is_err()
-                                        {
-                                            debug!("folder refresh caller dropped during shutdown");
-                                        }
-                                    }
-                                }
-                                for (_, schedule) in schedules.drain() {
-                                    if let Err(error) = schedule.scan.task.await {
-                                        error!("folder scan task failed during shutdown: {error}");
-                                    }
-                                }
-                                for (_, mut removal) in removals.drain() {
-                                    if let Err(error) = removal.task.await {
-                                        error!("folder removal task failed during shutdown: {error}");
-                                    }
-                                    for waiter in removal
-                                        .scan_waiters
-                                        .drain(..)
-                                        .chain(removal.completions.drain(..))
-                                    {
-                                        if waiter
-                                            .send(Err("folder scan service stopped".to_string()))
-                                            .is_err()
-                                        {
-                                            debug!("folder caller dropped during shutdown");
-                                        }
-                                    }
-                                }
+                                active_roots.shutdown().await;
                                 if completion.send(()).is_err() {
                                     debug!("import handle dropped during folder scan shutdown");
                                 }
@@ -369,26 +255,17 @@ impl ImportService {
                             }
                         }
                     }
-                    Some(completion) = removal_rx.recv() => {
-                        if removals
-                            .get(&completion.path)
-                            .is_none_or(|removal| removal.id != completion.id)
-                        {
-                            continue;
-                        }
-                        let Some(removal) = removals.remove(&completion.path) else {
+                    Some(completion) = removal_completion_rx.recv() => {
+                        let Some(outcome) = active_roots.finish_removal(completion).await else {
                             continue;
                         };
-                        if let Err(error) = removal.task.await {
-                            error!(
-                                "folder removal task failed for {}: {error}",
-                                completion.path.display()
-                            );
-                        }
-                        match completion.result {
-                            RootRemovalResult::Removed {
+                        match outcome {
+                            RemovalOutcome::Removed {
+                                path,
                                 commit,
                                 removed_keys,
+                                scan_waiters,
+                                callers,
                             } => {
                                 let folders = watched_folders(&library_manager).await;
                                 for candidate_key in removed_keys {
@@ -405,11 +282,11 @@ impl ImportService {
                                         ScanEvent::WatchedFoldersChanged { folders },
                                     ),
                                 );
-                                for waiter in removal.scan_waiters {
+                                for waiter in scan_waiters {
                                     if waiter
                                         .send(Err(format!(
                                             "{} is no longer watched",
-                                            completion.path.display()
+                                            path.display()
                                         )))
                                         .is_err()
                                     {
@@ -417,30 +294,14 @@ impl ImportService {
                                     }
                                 }
                                 drop(commit);
-                                for caller in removal.completions {
+                                for caller in callers {
                                     if caller.send(Ok(())).is_err() {
                                         debug!("folder removal caller dropped before completion");
                                     }
                                 }
                             }
-                            RootRemovalResult::Failed(error) => {
-                                next_scan_id += 1;
-                                let scan = starter(
-                                    next_scan_id,
-                                    completion.path.clone(),
-                                    completion_tx.clone(),
-                                );
-                                schedules.insert(
-                                    completion.path,
-                                    RootScanSchedule {
-                                        id: next_scan_id,
-                                        scan,
-                                        pending: false,
-                                        current_waiters: removal.scan_waiters,
-                                        followup_waiters: Vec::new(),
-                                    },
-                                );
-                                for caller in removal.completions {
+                            RemovalOutcome::Failed { error, callers } => {
+                                for caller in callers {
                                     if caller.send(Err(error.clone())).is_err() {
                                         debug!("folder removal caller dropped before failure");
                                     }
@@ -448,46 +309,8 @@ impl ImportService {
                             }
                         }
                     }
-                    Some(completion) = completion_rx.recv() => {
-                        if schedules
-                            .get(&completion.path)
-                            .is_none_or(|schedule| schedule.id != completion.id)
-                        {
-                            continue;
-                        }
-                        let Some(mut schedule) = schedules.remove(&completion.path) else {
-                            continue;
-                        };
-                        if let Err(error) = schedule.scan.task.await {
-                            error!(
-                                "folder scan task failed for {}: {error}",
-                                completion.path.display()
-                            );
-                        }
-                        // The scan itself is what said whether it worked. A
-                        // refresh caller is only waiting for it to be over.
-                        for waiter in schedule.current_waiters.drain(..) {
-                            if waiter.send(Ok(())).is_err() {
-                                debug!("folder refresh caller dropped before completion");
-                            }
-                        }
-                        if schedule.pending {
-                            let path = completion.path;
-                            info!(
-                                "folder scan of {} starting again: one was queued while it ran",
-                                path.display()
-                            );
-                            let current_waiters = std::mem::take(&mut schedule.followup_waiters);
-                            next_scan_id += 1;
-                            let scan = starter(next_scan_id, path.clone(), completion_tx.clone());
-                            schedules.insert(path, RootScanSchedule {
-                                id: next_scan_id,
-                                scan,
-                                pending: false,
-                                current_waiters,
-                                followup_waiters: Vec::new(),
-                            });
-                        }
+                    Some(completion) = scan_completion_rx.recv() => {
+                        active_roots.finish_scan(completion).await;
                     }
                     Some(result) = fs_rx.recv() => {
                         let events = match result {
@@ -501,17 +324,10 @@ impl ImportService {
                                 }
                                 let affected = roots_for_watch_error(&error_paths, &roots);
                                 for root in affected {
-                                    if removals.contains_key(&root) {
-                                        continue;
-                                    }
-                                    request_root_scan(
+                                    active_roots.request_scan(
                                         root,
                                         RootScanCause::WatchError,
                                         None,
-                                        &mut schedules,
-                                        &starter,
-                                        &completion_tx,
-                                        &mut next_scan_id,
                                     );
                                 }
                                 continue;
@@ -523,40 +339,22 @@ impl ImportService {
                         if !affected.is_empty() {
                             let summary = changed_events_summary(&events);
                             for root in affected {
-                                if removals.contains_key(&root) {
-                                    continue;
-                                }
-                                request_root_scan(
+                                active_roots.request_scan(
                                     root,
                                     RootScanCause::FsChange(summary.clone()),
                                     None,
-                                    &mut schedules,
-                                    &starter,
-                                    &completion_tx,
-                                    &mut next_scan_id,
                                 );
                             }
                         }
                     }
                     Some(root) = checked_rx.recv() => {
                         checking.remove(&root);
-                        if removals.contains_key(&root) {
-                            continue;
-                        }
-                        request_root_scan(
-                            root,
-                            RootScanCause::NetworkFolderMoved,
-                            None,
-                            &mut schedules,
-                            &starter,
-                            &completion_tx,
-                            &mut next_scan_id,
-                        );
+                        active_roots.request_scan(root, RootScanCause::NetworkFolderMoved, None);
                     }
                     _ = periodic.tick() => {
                         let roots = watched_roots(&library_manager).await;
                         for root in roots {
-                            if removals.contains_key(&root) {
+                            if active_roots.is_being_removed(&root) {
                                 continue;
                             }
                             // A folder on this machine's own disk has a watch
@@ -567,15 +365,7 @@ impl ImportService {
                             // asks the cheap question first rather than walking
                             // a share every quarter of an hour to learn nothing.
                             if volume_kind(&root) == VolumeKind::Local {
-                                request_root_scan(
-                                    root,
-                                    RootScanCause::Timer,
-                                    None,
-                                    &mut schedules,
-                                    &starter,
-                                    &completion_tx,
-                                    &mut next_scan_id,
-                                );
+                                active_roots.request_scan(root, RootScanCause::Timer, None);
                                 continue;
                             }
                             if !checking.insert(root.clone()) {

@@ -26,6 +26,7 @@ use {
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, error, info, warn};
 
+mod active_roots;
 mod cover_image;
 mod file_identity;
 mod folder_watcher;
@@ -35,6 +36,9 @@ mod progress;
 mod reconcile;
 mod scanning;
 
+use active_roots::{
+    ActiveRoots, RemovalOutcome, RootRemovalBackend, RootScanCause, ServiceRootRemovalBackend,
+};
 use folder_watcher::FolderWatchSnapshot;
 mod coordinator;
 use crate::import::volume::{directories_changed, directory_modified_at, volume_kind, VolumeKind};
@@ -282,16 +286,6 @@ fn roots_for_watch_error(error_paths: &[PathBuf], roots: &[PathBuf]) -> Vec<Path
     }
 }
 
-type RefreshCompletion = tokio::sync::oneshot::Sender<Result<(), String>>;
-
-struct RootScanSchedule {
-    id: u64,
-    scan: RootScanTask,
-    pending: bool,
-    current_waiters: Vec<RefreshCompletion>,
-    followup_waiters: Vec<RefreshCompletion>,
-}
-
 /// What the blocking folder walk hands back: whether it read the tree, every
 /// directory it visited, and — where it could read all of their mtimes — when
 /// each was last touched.
@@ -327,122 +321,6 @@ struct RootScanTask {
 struct RootScanCompletion {
     id: u64,
     path: PathBuf,
-}
-
-struct RootRemovalSchedule {
-    id: u64,
-    task: tokio::task::JoinHandle<()>,
-    completions: Vec<RefreshCompletion>,
-    scan_waiters: Vec<RefreshCompletion>,
-}
-
-struct RootRemovalCompletion {
-    id: u64,
-    path: PathBuf,
-    result: RootRemovalResult,
-}
-
-enum RootRemovalResult {
-    Removed {
-        commit: tokio::sync::OwnedMutexGuard<()>,
-        /// The scan entries the removal cascaded away, announced as
-        /// `CandidateRemoved` so in-flight work on them is cancelled.
-        removed_keys: Vec<String>,
-    },
-    Failed(String),
-}
-
-#[async_trait::async_trait]
-trait RootRemovalBackend: Send + Sync {
-    async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String>;
-    async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String>;
-    /// Delete the root's rows and return the scan entry keys that went with
-    /// them.
-    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String>;
-}
-
-struct ServiceRootRemovalBackend {
-    folder_watcher: Arc<FolderWatcher>,
-    library_manager: LibraryManager,
-}
-
-#[async_trait::async_trait]
-impl RootRemovalBackend for ServiceRootRemovalBackend {
-    async fn uninstall(&self, path: &Path) -> Result<FolderWatchSnapshot, String> {
-        let watcher = self.folder_watcher.clone();
-        let path = path.to_path_buf();
-        tokio::task::spawn_blocking(move || watcher.uninstall(&path))
-            .await
-            .map_err(|error| format!("folder watch removal task panicked: {error}"))?
-            .map_err(|error| error.to_string())
-    }
-
-    async fn reinstall(&self, path: &Path, snapshot: &FolderWatchSnapshot) -> Result<(), String> {
-        let watcher = self.folder_watcher.clone();
-        let path = path.to_path_buf();
-        let snapshot = snapshot.clone();
-        tokio::task::spawn_blocking(move || watcher.reinstall(&path, &snapshot))
-            .await
-            .map_err(|error| format!("folder watch restore task panicked: {error}"))?
-            .map_err(|error| error.to_string())
-    }
-
-    async fn remove_durable_root(&self, path: &Path) -> Result<Vec<String>, String> {
-        self.library_manager
-            .remove_watched_import_folder(&path.to_string_lossy())
-            .await
-            .map_err(|error| error.to_string())?
-            .ok_or_else(|| format!("{} is not a watched folder", path.display()))
-    }
-}
-
-async fn run_root_removal(
-    path: &Path,
-    scan: Option<RootScanTask>,
-    backend: &dyn RootRemovalBackend,
-    folder_state_commit: Arc<tokio::sync::Mutex<()>>,
-) -> RootRemovalResult {
-    if let Some(scan) = scan {
-        if let Err(error) = scan.task.await {
-            return RootRemovalResult::Failed(format!(
-                "folder scan task failed while removing {}: {error}",
-                path.display()
-            ));
-        }
-    }
-    let watch_snapshot = match backend.uninstall(path).await {
-        Ok(snapshot) => snapshot,
-        Err(error) => {
-            return RootRemovalResult::Failed(format!(
-                "could not remove folder watch for {}: {error}",
-                path.display()
-            ));
-        }
-    };
-    let commit = folder_state_commit.lock_owned().await;
-    let removed_keys = match backend.remove_durable_root(path).await {
-        Ok(removed_keys) => removed_keys,
-        Err(error) => {
-            drop(commit);
-            let rollback = backend.reinstall(path, &watch_snapshot).await;
-            let detail = match rollback {
-                Ok(()) => format!(
-                    "could not remove watched folder {}: {error}",
-                    path.display()
-                ),
-                Err(rollback_error) => format!(
-                    "could not remove watched folder {}: {error}; restoring its folder watch also \
-                 failed: {rollback_error}",
-                    path.display()
-                ),
-            };
-            return RootRemovalResult::Failed(detail);
-        }
-    };
-    RootRemovalResult::Removed {
-        commit,
-        removed_keys,
-    }
 }
 
 type RootScanStarter = Arc<
@@ -494,79 +372,6 @@ fn spawn_root_scan(
         }
     });
     RootScanTask { cancellation, task }
-}
-
-/// Why a root scan was asked for.
-///
-/// Logged wherever one is requested, because "the scans never stop" is a
-/// question only the thing that keeps asking for them can answer — and until
-/// now nothing recorded that. A watched network share whose own reads come
-/// back as writes would look exactly like a folder somebody keeps editing.
-pub(super) enum RootScanCause {
-    /// The filesystem reported changes under the root: the events that passed
-    /// the change filter, kind and path, and how many were filtered out.
-    FsChange(String),
-    /// The watcher itself failed, so the root is re-read to catch up on
-    /// whatever it missed.
-    WatchError,
-    /// The periodic sweep.
-    Timer,
-    /// The periodic check of a network folder found a directory that moved.
-    /// Such a folder has no watch worth the name, so this is the only thing
-    /// that notices a change made on the server or by another machine.
-    NetworkFolderMoved,
-    /// Something a person did — naming which.
-    Asked(&'static str),
-}
-
-impl std::fmt::Display for RootScanCause {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::FsChange(events) => write!(f, "filesystem change ({events})"),
-            Self::WatchError => write!(f, "the folder watcher reported an error"),
-            Self::Timer => write!(f, "the periodic sweep"),
-            Self::NetworkFolderMoved => {
-                write!(f, "the periodic check found a directory that moved")
-            }
-            Self::Asked(what) => write!(f, "{what}"),
-        }
-    }
-}
-
-fn request_root_scan(
-    path: PathBuf,
-    cause: RootScanCause,
-    waiter: Option<RefreshCompletion>,
-    schedules: &mut HashMap<PathBuf, RootScanSchedule>,
-    starter: &RootScanStarter,
-    completion_tx: &mpsc::UnboundedSender<RootScanCompletion>,
-    next_scan_id: &mut u64,
-) {
-    if let Some(schedule) = schedules.get_mut(&path) {
-        info!(
-            "folder scan of {} queued behind the one running: {cause}",
-            path.display()
-        );
-        schedule.pending = true;
-        if let Some(waiter) = waiter {
-            schedule.followup_waiters.push(waiter);
-        }
-        return;
-    }
-    info!("folder scan of {} starting: {cause}", path.display());
-    *next_scan_id += 1;
-    let id = *next_scan_id;
-    let scan = starter(id, path.clone(), completion_tx.clone());
-    schedules.insert(
-        path,
-        RootScanSchedule {
-            id,
-            scan,
-            pending: false,
-            current_waiters: waiter.into_iter().collect(),
-            followup_waiters: Vec::new(),
-        },
-    );
 }
 
 /// Reconcile the release's track rows with the folder's audio, and report which
