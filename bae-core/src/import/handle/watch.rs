@@ -1,11 +1,17 @@
 use super::*;
 
 impl ImportServiceHandle {
-    /// The current watched-folder list. The UI fetches this when the import
-    /// view appears to render the group headers, sidestepping the broadcast
-    /// race (the list is durable; events only fire on later changes).
-    pub fn watched_folders(&self) -> Vec<WatchedFolder> {
-        self.folder_registry.lock().unwrap().watched_folders()
+    /// The watched folders as the store lists them.
+    pub async fn watched_folders(&self) -> Result<Vec<WatchedFolder>, crate::import::ImportError> {
+        Ok(self.library_manager.load_watched_import_folders().await?)
+    }
+
+    async fn is_watched(&self, path: &str) -> Result<bool, crate::import::ImportError> {
+        Ok(self
+            .watched_folders()
+            .await?
+            .iter()
+            .any(|folder| folder.path == path))
     }
 
     /// Send a command to the watcher's reconciliation task, turning a closed
@@ -29,8 +35,8 @@ impl ImportServiceHandle {
     ///
     /// `path` is whatever spelling the caller had — a picker's, a `file://`
     /// drop's, a `bae://import` link's. It is settled to the one spelling the
-    /// row is keyed by before anything here uses it, so the in-memory registry,
-    /// the OS watch, and the durable row all name the folder the same way.
+    /// row is keyed by before anything here uses it, so the OS watch and the
+    /// durable row name the folder the same way.
     ///
     /// Choosing a folder that is already watched re-reads it. It is not an
     /// error and it must not be nothing: the user pointed at a folder and asked
@@ -38,7 +44,7 @@ impl ImportServiceHandle {
     /// moved — no scan, no status, no log line — is how a folder that could not
     /// be read stayed invisible however many times it was picked.
     pub async fn add_watched_folder(&self, path: String) -> Result<(), crate::import::ImportError> {
-        let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
+        let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
         let _commit = self.folder_state_commit.lock().await;
         let added = self
             .library_manager
@@ -51,11 +57,6 @@ impl ImportServiceHandle {
                 "Failed to start watching folder",
             );
         }
-        let folders = {
-            let mut registry = self.folder_registry.lock().unwrap();
-            registry.apply_added(path.clone());
-            registry.watched_folders()
-        };
         if let Err(error) = self.send_watcher_command(
             WatcherCommand::Rescan(std::path::PathBuf::from(&path)),
             "Failed to start watching folder",
@@ -63,9 +64,9 @@ impl ImportServiceHandle {
             self.library_manager
                 .remove_watched_import_folder(&path)
                 .await?;
-            self.folder_registry.lock().unwrap().apply_removed(&path);
             return Err(error);
         }
+        let folders = self.watched_folders().await?;
         send_event(
             &self.event_tx,
             ImportEvent::Scan(ScanEvent::WatchedFoldersChanged { folders }),
@@ -82,7 +83,7 @@ impl ImportServiceHandle {
         &self,
         path: String,
     ) -> Result<(), crate::import::ImportError> {
-        let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
+        let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
         let (completion, receiver) = tokio::sync::oneshot::channel();
         self.send_watcher_command(
             WatcherCommand::Remove {
@@ -100,34 +101,21 @@ impl ImportServiceHandle {
         Ok(())
     }
 
-    /// Enqueue a scan for every watched folder. Each blocking scan installs its
-    /// optional OS watch before reading the directory. An unavailable root
-    /// reports a failed scan and preserves its previous candidates.
+    /// Enqueue a scan for every watched folder. The coordinator reads the
+    /// list from the store when it takes the command, so this needs no copy
+    /// of it. Each blocking scan installs its optional OS watch before
+    /// reading the directory. An unavailable root reports a failed scan and
+    /// preserves its previous candidates.
     pub fn scan_watched_folders(&self) -> Result<(), crate::import::ImportError> {
-        let folders = self.folder_registry.lock().unwrap().watched_folders();
-        for folder in folders {
-            let path_buf = std::path::PathBuf::from(&folder.path);
-            self.send_watcher_command(
-                WatcherCommand::Rescan(path_buf),
-                "Failed to start watching folder",
-            )?;
-        }
-        Ok(())
+        self.send_watcher_command(WatcherCommand::RescanAll, "Failed to start watching folder")
     }
 
     pub async fn refresh_watched_folder(
         &self,
         path: String,
     ) -> Result<(), crate::import::ImportError> {
-        let path = crate::import::folder_registry::canonical_absolute_root(&path)?;
-        let registered = self
-            .folder_registry
-            .lock()
-            .unwrap()
-            .watched_folders()
-            .iter()
-            .any(|folder| folder.path == path);
-        if !registered {
+        let path = crate::import::watched_folder::canonical_absolute_root(&path)?;
+        if !self.is_watched(&path).await? {
             return Err(crate::import::ImportError::Watch {
                 detail: format!("{path} is not a watched folder"),
             });
@@ -153,14 +141,7 @@ impl ImportServiceHandle {
         key: FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
     ) -> Result<(), crate::import::ImportError> {
-        let registered = self
-            .folder_registry
-            .lock()
-            .unwrap()
-            .watched_folders()
-            .iter()
-            .any(|folder| folder.path == key.watched_folder_path);
-        if !registered {
+        if !self.is_watched(&key.watched_folder_path).await? {
             return Err(crate::import::ImportError::Watch {
                 detail: format!("{} is not a watched folder", key.watched_folder_path),
             });

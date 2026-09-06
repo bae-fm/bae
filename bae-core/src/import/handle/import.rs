@@ -395,7 +395,7 @@ impl ImportServiceHandle {
                 &crate::import::folder_scanner::StoredCandidateEdits::none(),
             )?;
         let candidate_key =
-            crate::import::folder_registry::canonical_absolute_root(&folder.to_string_lossy())?;
+            crate::import::watched_folder::canonical_absolute_root(&folder.to_string_lossy())?;
         let candidate_name = folder
             .file_name()
             .and_then(|name| name.to_str())

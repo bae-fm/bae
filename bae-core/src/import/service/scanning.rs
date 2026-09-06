@@ -230,7 +230,6 @@ impl ImportService {
         preparations: &crate::import::CandidatePreparations,
         clock: &coven::ClockRef,
         ids: &coven::IdRef,
-        folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
         folder_watcher: &Arc<FolderWatcher>,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
@@ -261,7 +260,6 @@ impl ImportService {
             preparations,
             clock,
             ids,
-            folder_registry,
             folder_state_commit,
             folder_watcher,
             cancellation,
@@ -341,7 +339,6 @@ impl ImportService {
         preparations: &crate::import::CandidatePreparations,
         clock: &coven::ClockRef,
         ids: &coven::IdRef,
-        folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
         folder_watcher: &Arc<FolderWatcher>,
         cancellation: &crate::import::folder_scanner::ScanCancellation,
@@ -354,6 +351,11 @@ impl ImportService {
         let stored_edits = library_manager.load_stored_candidate_edits().await?;
         let decisions = library_manager
             .load_folder_release_decisions(root_key)
+            .await?;
+        // Which candidates under this root the person skipped, read once for
+        // the pass: the stamp each written candidate carries out to the list.
+        let skipped = library_manager
+            .load_skipped_import_candidates(root_key)
             .await?;
         let root_buf = root.to_path_buf();
         let dropped_item_root = root.to_path_buf();
@@ -490,10 +492,11 @@ impl ImportService {
                     let superseded_keys = write.superseded_keys().to_vec();
                     written_keys.push(candidate.display_path.clone());
                     displaced_keys.extend(superseded_keys.iter().cloned());
-                    let skipped = folder_registry
-                        .lock()
-                        .unwrap()
-                        .is_skipped(&candidate.watched_folder_path, &candidate.path)?;
+                    let skipped =
+                        skipped.contains(&crate::import::watched_folder::candidate_relative_path(
+                            &candidate.watched_folder_path,
+                            &candidate.path,
+                        )?);
                     let is_added = library_manager
                         .is_content_hash_imported(&candidate.files.content_hash())
                         .await?;

@@ -8,7 +8,7 @@ use std::time::Duration;
 #[tokio::test]
 async fn import_list_wakes_on_a_scan_item() {
     let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
+    let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     db.save_folder_scan_item(root, generation, &scan_candidate(root, "first"))
@@ -61,7 +61,7 @@ async fn import_list_wakes_on_a_scan_item() {
 #[tokio::test]
 async fn import_list_scan_activity_excludes_retained_previous_generation_rows() {
     let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
+    let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
     let old_generation = db.begin_folder_scan(root).await.unwrap();
     for name in ["retained", "encountered"] {

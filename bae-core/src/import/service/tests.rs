@@ -1,9 +1,10 @@
 use super::*;
 use crate::config::{Config, ConfigHandle};
 use crate::db::Database;
-use crate::import::folder_registry::host_root;
+use crate::import::watched_folder::host_root;
 use coven::FixedClock;
 use coven::SequentialIdProvider;
+use std::sync::Mutex;
 use std::time::Duration;
 use tempfile::TempDir;
 
@@ -241,7 +242,6 @@ struct CoordinatorHarness {
     commands: tokio::sync::mpsc::UnboundedSender<WatcherCommand>,
     fs_events: tokio::sync::mpsc::UnboundedSender<DebounceEventResult>,
     scans: FakeScanStarter,
-    folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     library_manager: LibraryManager,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     removal_backend: Arc<FakeRemovalBackend>,
@@ -268,9 +268,6 @@ impl CoordinatorHarness {
         }
         let (commands, command_rx) = tokio::sync::mpsc::unbounded_channel();
         let (fs_events, fs_rx) = tokio::sync::mpsc::unbounded_channel();
-        let registry = Arc::new(Mutex::new(
-            ImportFolderRegistry::from_stored(roots.clone(), Vec::new()).unwrap(),
-        ));
         if let Some(root) = roots.first() {
             let root_path = PathBuf::from(root);
             let generation = service
@@ -304,7 +301,6 @@ impl CoordinatorHarness {
             fs_rx,
             service.event_tx,
             service.library_manager.clone(),
-            registry.clone(),
             folder_state_commit.clone(),
             starter,
             removal_backend.clone(),
@@ -313,7 +309,6 @@ impl CoordinatorHarness {
             commands,
             fs_events,
             scans,
-            folder_registry: registry,
             library_manager: service.library_manager,
             folder_state_commit,
             removal_backend,

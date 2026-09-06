@@ -1,6 +1,6 @@
-//! In-memory index of device-local watched-folder state stored in SQLite.
+//! A watched folder as the store names it, and the rules every spelling of
+//! a root or a candidate path is held to before it is stored or compared.
 
-use std::collections::HashSet;
 use std::path::{Component, Path};
 use tracing::warn;
 
@@ -23,90 +23,6 @@ impl WatchedFolder {
             }
         };
         Self { path, name }
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ImportFolderRegistry {
-    folders: Vec<String>,
-    skipped: HashSet<(String, String)>,
-}
-
-impl ImportFolderRegistry {
-    pub(crate) fn from_stored(
-        folders: Vec<String>,
-        skipped: Vec<(String, String)>,
-    ) -> Result<Self, crate::import::ImportError> {
-        for (index, root) in folders.iter().enumerate() {
-            validate_absolute_root(root)?;
-            if let Some(conflict) = folders[index + 1..]
-                .iter()
-                .find(|other| paths_overlap(Path::new(root), Path::new(other)))
-            {
-                return Err(crate::import::ImportError::Registry {
-                    detail: format!(
-                        "watched folders cannot overlap: {root} conflicts with {conflict}"
-                    ),
-                });
-            }
-        }
-        let folder_set: HashSet<_> = folders.iter().map(String::as_str).collect();
-        for (root, relative) in &skipped {
-            if !folder_set.contains(root.as_str()) {
-                return Err(crate::import::ImportError::Registry {
-                    detail: format!("skipped candidate belongs to unknown watched folder {root}"),
-                });
-            }
-            validate_relative_path(relative)?;
-        }
-        Ok(Self {
-            folders,
-            skipped: skipped.into_iter().collect(),
-        })
-    }
-
-    pub fn watched_folders(&self) -> Vec<WatchedFolder> {
-        self.folders
-            .iter()
-            .cloned()
-            .map(WatchedFolder::from_path)
-            .collect()
-    }
-
-    pub(crate) fn apply_added(&mut self, path: String) {
-        if !self.folders.contains(&path) {
-            self.folders.push(path);
-        }
-    }
-
-    pub(crate) fn apply_removed(&mut self, path: &str) {
-        self.folders.retain(|root| root != path);
-        self.skipped.retain(|(root, _)| root != path);
-    }
-
-    pub(crate) fn apply_skipped(
-        &mut self,
-        watched_folder_path: String,
-        relative_candidate_path: String,
-        skipped: bool,
-    ) {
-        let key = (watched_folder_path, relative_candidate_path);
-        if skipped {
-            self.skipped.insert(key);
-        } else {
-            self.skipped.remove(&key);
-        }
-    }
-
-    pub(crate) fn is_skipped(
-        &self,
-        watched_folder_path: &str,
-        candidate_path: &Path,
-    ) -> Result<bool, crate::import::ImportError> {
-        let relative = candidate_relative_path(watched_folder_path, candidate_path)?;
-        Ok(self
-            .skipped
-            .contains(&(watched_folder_path.to_string(), relative)))
     }
 }
 
@@ -133,7 +49,7 @@ impl ImportFolderRegistry {
 ///   so nothing durable can be keyed by it.
 pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, crate::import::ImportError> {
     let refuse = |reason: &str| {
-        Err(crate::import::ImportError::Registry {
+        Err(crate::import::ImportError::WatchedFolder {
             detail: format!("watched folder {reason}: {path}"),
         })
     };
@@ -159,7 +75,7 @@ pub(crate) fn canonical_absolute_root(path: &str) -> Result<String, crate::impor
 pub(crate) fn validate_absolute_root(path: &str) -> Result<(), crate::import::ImportError> {
     let canonical = canonical_absolute_root(path)?;
     if canonical != path {
-        return Err(crate::import::ImportError::Registry {
+        return Err(crate::import::ImportError::WatchedFolder {
             detail: format!(
                 "stored watched folder is not its canonical spelling {canonical}: {path}"
             ),
@@ -178,7 +94,7 @@ pub(crate) fn validate_relative_path(path: &str) -> Result<(), crate::import::Im
         .collect::<Result<Vec<_>, _>>()
         .map(|components| components.join("/"));
     if normalized.as_deref() != Ok(path) {
-        return Err(crate::import::ImportError::Registry {
+        return Err(crate::import::ImportError::WatchedFolder {
             detail: format!("candidate path must be normalized and root-relative: {path}"),
         });
     }
@@ -191,7 +107,7 @@ pub(crate) fn candidate_relative_path(
 ) -> Result<String, crate::import::ImportError> {
     let relative = candidate_path
         .strip_prefix(watched_folder_path)
-        .map_err(|_| crate::import::ImportError::Registry {
+        .map_err(|_| crate::import::ImportError::WatchedFolder {
             detail: format!(
                 "{} is outside watched folder {watched_folder_path}",
                 candidate_path.display()
@@ -201,14 +117,14 @@ pub(crate) fn candidate_relative_path(
         .components()
         .map(|component| match component {
             Component::Normal(value) => value.to_str().map(str::to_string).ok_or_else(|| {
-                crate::import::ImportError::Registry {
+                crate::import::ImportError::WatchedFolder {
                     detail: format!(
                         "candidate path is not valid Unicode: {}",
                         candidate_path.display()
                     ),
                 }
             }),
-            _ => Err(crate::import::ImportError::Registry {
+            _ => Err(crate::import::ImportError::WatchedFolder {
                 detail: format!(
                     "candidate path is not normalized below its watched folder: {}",
                     candidate_path.display()
@@ -254,57 +170,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn stored_registry_preserves_order_and_derives_names() {
-        let incoming = host_root("/Volumes/Incoming");
-        let rips = host_root("/music/rips");
-        let registry = ImportFolderRegistry::from_stored(
-            vec![incoming.clone(), rips.clone()],
-            vec![(rips.clone(), "Release".to_string())],
-        )
-        .unwrap();
-        assert_eq!(
-            registry.watched_folders(),
-            vec![
-                WatchedFolder {
-                    path: incoming,
-                    name: "Incoming".to_string(),
-                },
-                WatchedFolder {
-                    path: rips.clone(),
-                    name: "rips".to_string(),
-                },
-            ]
-        );
-        assert!(registry
-            .is_skipped(&rips, &Path::new(&rips).join("Release"))
-            .unwrap());
-    }
-
-    #[test]
-    fn stored_registry_rejects_overlapping_roots() {
-        let error = ImportFolderRegistry::from_stored(
-            vec![host_root("/music"), host_root("/music/artist")],
-            Vec::new(),
-        )
-        .unwrap_err();
-        assert!(error.to_string().contains("cannot overlap"));
-    }
-
-    #[test]
     fn root_path_uses_the_full_path_as_name() {
         let folder = WatchedFolder::from_path("/".to_string());
         assert_eq!(folder.name, "/");
-    }
-
-    #[test]
-    fn watched_root_can_itself_be_a_skipped_candidate() {
-        let release = host_root("/music/release");
-        let registry = ImportFolderRegistry::from_stored(
-            vec![release.clone()],
-            vec![(release.clone(), String::new())],
-        )
-        .unwrap();
-        assert!(registry.is_skipped(&release, Path::new(&release)).unwrap());
     }
 
     /// A drive-lettered path written with forward slashes — what Windows hands
@@ -417,30 +285,6 @@ mod tests {
     fn a_root_climbing_out_of_itself_is_refused() {
         let error = canonical_absolute_root(&host_root("/music/../rips")).unwrap_err();
         assert!(error.to_string().contains(".."), "{error}");
-    }
-
-    /// Overlap is decided on the stored spelling, so a second root written
-    /// another way still collides with the first.
-    #[test]
-    fn overlap_is_caught_across_spellings() {
-        let stored = canonical_absolute_root(&host_root("/music")).unwrap();
-        #[cfg(windows)]
-        let rewritten = canonical_absolute_root("C:/music/artist").unwrap();
-        #[cfg(not(windows))]
-        let rewritten = canonical_absolute_root("/music//artist/").unwrap();
-        let error =
-            ImportFolderRegistry::from_stored(vec![stored, rewritten], Vec::new()).unwrap_err();
-        assert!(error.to_string().contains("cannot overlap"));
-    }
-
-    /// A stored root is canonical by construction, so reading one that is not
-    /// is corrupt durable state and fails loudly rather than being rewritten
-    /// on the way in.
-    #[test]
-    fn a_stored_root_that_is_not_canonical_fails_to_load() {
-        let error =
-            ImportFolderRegistry::from_stored(vec![host_root("/music/")], Vec::new()).unwrap_err();
-        assert!(error.to_string().contains("canonical"), "{error}");
     }
 
     #[test]

@@ -272,9 +272,6 @@ async fn rescan_seeded_root(
     Result<(), crate::import::ImportError>,
 ) {
     let (event_tx, events) = tokio::sync::broadcast::channel(16);
-    let folder_registry = Arc::new(Mutex::new(
-        crate::import::folder_registry::ImportFolderRegistry::default(),
-    ));
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
     let cancellation = crate::import::folder_scanner::ScanCancellation::new();
@@ -283,10 +280,6 @@ async fn rescan_seeded_root(
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    folder_registry
-        .lock()
-        .unwrap()
-        .apply_added(root.to_string_lossy().into_owned());
     let generation = service
         .library_manager
         .begin_folder_scan(&root.to_string_lossy())
@@ -317,7 +310,6 @@ async fn rescan_seeded_root(
         preparations,
         &service.clock,
         &service.ids,
-        &folder_registry,
         &Arc::new(tokio::sync::Mutex::new(())),
         &folder_watcher,
         &cancellation,
@@ -486,9 +478,6 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
         std::fs::write(album.join("02.flac"), flac()).unwrap();
     }
     let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
-    let folder_registry = Arc::new(Mutex::new(
-        crate::import::folder_registry::ImportFolderRegistry::default(),
-    ));
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
     let commit = Arc::new(tokio::sync::Mutex::new(()));
@@ -498,10 +487,6 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    folder_registry
-        .lock()
-        .unwrap()
-        .apply_added(root.to_string_lossy().into_owned());
 
     let pass = async || {
         ImportService::rescan_and_reconcile(
@@ -511,7 +496,6 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
             &preparations,
             &service.clock,
             &service.ids,
-            &folder_registry,
             &commit,
             &folder_watcher,
             &cancellation,
@@ -553,10 +537,6 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
         .add_watched_import_folder(&root_text)
         .await
         .unwrap();
-    let folder_registry = Arc::new(Mutex::new(
-        crate::import::folder_registry::ImportFolderRegistry::default(),
-    ));
-    folder_registry.lock().unwrap().apply_added(root_text.clone());
     let (event_tx, mut events) = tokio::sync::broadcast::channel(256);
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -567,7 +547,6 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
         &preparations,
         &service.clock,
         &service.ids,
-        &folder_registry,
         &Arc::new(tokio::sync::Mutex::new(())),
         &Arc::new(super::FolderWatcher::new(fs_tx)),
         &crate::import::folder_scanner::ScanCancellation::new(),
@@ -634,10 +613,6 @@ async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags
         .add_watched_import_folder(&root_text)
         .await
         .unwrap();
-    let folder_registry = Arc::new(Mutex::new(
-        crate::import::folder_registry::ImportFolderRegistry::default(),
-    ));
-    folder_registry.lock().unwrap().apply_added(root_text.clone());
     let (event_tx, _events) = tokio::sync::broadcast::channel(256);
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
 
@@ -648,7 +623,6 @@ async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags
         &preparations,
         &service.clock,
         &service.ids,
-        &folder_registry,
         &Arc::new(tokio::sync::Mutex::new(())),
         &Arc::new(super::FolderWatcher::new(fs_tx)),
         &crate::import::folder_scanner::ScanCancellation::new(),
@@ -718,9 +692,6 @@ async fn a_pass_records_the_directories_it_read() {
     std::fs::write(album.join("01.flac"), flac()).unwrap();
 
     let (event_tx, _events) = tokio::sync::broadcast::channel(256);
-    let folder_registry = Arc::new(Mutex::new(
-        crate::import::folder_registry::ImportFolderRegistry::default(),
-    ));
     let (fs_tx, _fs_rx) = tokio::sync::mpsc::unbounded_channel();
     let folder_watcher = Arc::new(super::FolderWatcher::new(fs_tx));
     service
@@ -728,10 +699,6 @@ async fn a_pass_records_the_directories_it_read() {
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    folder_registry
-        .lock()
-        .unwrap()
-        .apply_added(root.to_string_lossy().into_owned());
     ImportService::rescan_and_reconcile(
         &root,
         &event_tx,
@@ -739,7 +706,6 @@ async fn a_pass_records_the_directories_it_read() {
         &preparations,
         &service.clock,
         &service.ids,
-        &folder_registry,
         &Arc::new(tokio::sync::Mutex::new(())),
         &folder_watcher,
         &crate::import::folder_scanner::ScanCancellation::new(),

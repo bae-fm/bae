@@ -734,7 +734,7 @@ pub(super) fn candidate_names(projection: &crate::import::ImportListProjection) 
 #[tokio::test]
 async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
     let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
+    let root = &crate::import::watched_folder::host_root("/music");
     let item = scan_candidate(root, "release");
     let crate::import::folder_scanner::ScanItem::Valid(candidate) = &item else {
         unreachable!("the fixture builds a valid candidate");
@@ -779,7 +779,7 @@ async fn import_list_moves_a_row_to_done_when_its_content_hash_is_imported() {
 #[tokio::test]
 async fn import_list_moving_the_window_reruns_without_a_commit() {
     let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
+    let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     for name in ["first", "second"] {
@@ -824,7 +824,7 @@ async fn import_list_moving_the_window_reruns_without_a_commit() {
 #[tokio::test]
 async fn import_list_withholds_a_commit_that_changes_nothing_it_reads() {
     let (db, _temp) = live_db().await;
-    let root = &crate::import::folder_registry::host_root("/music");
+    let root = &crate::import::watched_folder::host_root("/music");
     db.add_watched_import_folder(root).await.unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     for name in ["first", "second"] {

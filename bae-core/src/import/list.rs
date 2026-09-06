@@ -16,7 +16,6 @@
 //! that same pass, so none of it can disagree with the rows.
 
 use super::cover_art::{CoverChoice, RemoteCover};
-use super::folder_registry::WatchedFolder;
 use super::folder_scanner::{FolderReleaseDecisionKey, InvalidCandidate};
 use super::mapping::MappingTable;
 use super::release_candidate::ReleaseCandidate;
@@ -26,6 +25,7 @@ use super::triage::{
     TriageMetadataSummary, TriageRow, TriageRuntimeFacts, TriageTabCounts,
 };
 use super::types::{MetadataProvenance, RawReleaseEdit};
+use super::watched_folder::WatchedFolder;
 use super::{FileEvidence, ImportFailure, ImportedRelease, WatchedFolderScanStatus};
 use crate::db::LibraryStatus;
 use crate::identify::{IdentifyState, QueueClassification};

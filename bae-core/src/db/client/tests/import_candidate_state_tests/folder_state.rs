@@ -317,10 +317,9 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
 
     assert!(db.remove_watched_import_folder(root).await.unwrap().is_some());
     assert!(db
-        .load_import_folder_registry()
+        .load_watched_import_folders()
         .await
         .unwrap()
-        .watched_folders()
         .is_empty());
     assert_eq!(
         db.load_folder_release_decisions(root)
@@ -447,10 +446,9 @@ async fn watched_root_order_survives_middle_removal_and_later_add() {
         .await
         .unwrap();
     let paths: Vec<_> = db
-        .load_import_folder_registry()
+        .load_watched_import_folders()
         .await
         .unwrap()
-        .watched_folders()
         .into_iter()
         .map(|folder| folder.path)
         .collect();
@@ -494,10 +492,9 @@ async fn watched_root_spellings_settle_on_one_row() {
         );
     }
     let paths: Vec<_> = db
-        .load_import_folder_registry()
+        .load_watched_import_folders()
         .await
         .unwrap()
-        .watched_folders()
         .into_iter()
         .map(|folder| folder.path)
         .collect();
@@ -548,8 +545,32 @@ async fn corrupt_relative_folder_keys_fail_when_loaded() {
     })
     .await
     .unwrap();
-    assert!(db.load_import_folder_registry().await.is_err());
+    assert!(db.load_skipped_import_candidates(&root).await.is_err());
     assert!(db.load_folder_release_decisions(&root).await.is_err());
+}
+
+/// No two stored roots overlap: the add refuses one under another, on any
+/// spelling. Rows that overlap anyway are corrupt durable state and are read
+/// loudly rather than served as two folders.
+#[tokio::test]
+async fn overlapping_stored_roots_fail_to_load() {
+    let (db, _tmp) = empty_db().await;
+    let outer = host_root("/music");
+    let inner = host_root("/music/artist");
+    db.add_watched_import_folder(&outer).await.unwrap();
+    let error = db.add_watched_import_folder(&inner).await.unwrap_err();
+    assert!(error.to_string().contains("cannot overlap"), "{error}");
+    db.call(move |conn| {
+        conn.execute(
+            "INSERT INTO watched_import_folders (path, position) VALUES (?, 1)",
+            params![inner],
+        )?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+    let error = db.load_watched_import_folders().await.unwrap_err();
+    assert!(error.to_string().contains("cannot overlap"), "{error}");
 }
 
 /// A candidate's key is its own `path` column, so an entry can no longer

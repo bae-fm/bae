@@ -17,13 +17,7 @@ impl ImportService {
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
         let library_manager_for_handle = library_manager.clone();
-        // One `Arc` shared by the watcher (which reads the skip set while stamping
-        // candidates) and the handle (which mutates it on add/remove/skip).
-        let loaded_registry = library_manager_for_handle
-            .load_import_folder_registry()
-            .await?;
         let runtime = CandidateRuntime::default();
-        let folder_registry = Arc::new(Mutex::new(loaded_registry));
         let folder_state_commit = Arc::new(tokio::sync::Mutex::new(()));
 
         // Constructed before the watcher task spawns; the task doesn't need the
@@ -38,7 +32,6 @@ impl ImportService {
             preparations.clone(),
             clock.clone(),
             ids.clone(),
-            folder_registry.clone(),
             folder_state_commit.clone(),
             folder_watcher.clone(),
         );
@@ -83,7 +76,6 @@ impl ImportService {
             runtime_handle,
             watcher_tx,
             event_tx,
-            folder_registry,
             runtime,
             folder_state_commit,
         ))

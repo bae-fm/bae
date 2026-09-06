@@ -114,7 +114,7 @@ pub(super) fn skipped_on(
             |row| row.get(0),
         )?),
         ReleaseCandidate::Folder(candidate) => {
-            let relative = crate::import::folder_registry::candidate_relative_path(
+            let relative = crate::import::watched_folder::candidate_relative_path(
                 &candidate.watched_folder_path,
                 &candidate.path,
             )

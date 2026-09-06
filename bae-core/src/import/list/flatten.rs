@@ -14,11 +14,11 @@ use super::{
 };
 use crate::db::{ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::classify_summary;
-use crate::import::folder_registry::candidate_relative_path;
 use crate::import::triage::{
     import_status_of, place, CandidateAnswer, MatchedRelease, TriageGroup, TriageImportStatus,
     TriagePlacement, TriageRow, TriageRuntimeFacts, TriageTab, TriageTabCounts,
 };
+use crate::import::watched_folder::candidate_relative_path;
 use crate::import::FolderReleaseDecisionKey;
 use crate::library::LibraryError;
 use std::collections::{BTreeMap, HashMap, HashSet};

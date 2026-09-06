@@ -2,7 +2,7 @@
 //! watched folders.
 //!
 //! The scan coordinator owns one `FolderWatcher` and invokes it only from
-//! blocking work. UI-facing registry calls never enter notify/FSEvents.
+//! blocking work. UI-facing watched-folder calls never enter notify/FSEvents.
 
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, NoCache};

@@ -16,13 +16,13 @@ use super::identity::check_releases_in_library_on;
 use super::import_state::{load_matches_on, load_provenance_partners_on, metadata_provenance_of};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
-use crate::import::folder_registry::WatchedFolder;
 use crate::import::folder_scanner::InvalidReason;
 use crate::import::folder_scanner::ScanItem;
 use crate::import::list::{
     flatten, ImportCandidateDetailProjection, ImportListProjection, ImportListRequest,
     ImportListWindow,
 };
+use crate::import::watched_folder::WatchedFolder;
 use crate::import::{
     FolderScanStatus, ImportedRelease, MetadataProvenance, WatchedFolderScanStatus,
 };
@@ -657,7 +657,7 @@ fn load_sweepable_candidates_on(
             {
                 continue;
             }
-            let relative = crate::import::folder_registry::candidate_relative_path(
+            let relative = crate::import::watched_folder::candidate_relative_path(
                 &candidate.watched_folder_path,
                 &candidate.path,
             )

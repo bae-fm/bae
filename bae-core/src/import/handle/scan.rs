@@ -35,7 +35,7 @@ impl ImportServiceHandle {
             return Ok(());
         };
         let watched_folder_path = candidate.watched_folder_path;
-        let relative_candidate_path = crate::import::folder_registry::candidate_relative_path(
+        let relative_candidate_path = crate::import::watched_folder::candidate_relative_path(
             &watched_folder_path,
             std::path::Path::new(&path),
         )?;
@@ -44,11 +44,6 @@ impl ImportServiceHandle {
             .set_import_candidate_skipped(&watched_folder_path, &relative_candidate_path, skipped)
             .await?;
         if changed {
-            self.folder_registry.lock().unwrap().apply_skipped(
-                watched_folder_path,
-                relative_candidate_path,
-                skipped,
-            );
             send_event(
                 &self.event_tx,
                 ImportEvent::Scan(ScanEvent::CandidateSkipChanged {

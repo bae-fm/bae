@@ -272,6 +272,8 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     assert_eq!(
         f.handle
             .watched_folders()
+            .await
+            .unwrap()
             .iter()
             .map(|w| w.path.clone())
             .collect::<Vec<_>>(),
@@ -290,7 +292,7 @@ async fn remove_watched_folder_drops_folder_and_candidates() {
     // The list accessor reflects the removal synchronously; the candidate
     // list follows once its query re-reads.
     assert!(
-        f.handle.watched_folders().is_empty(),
+        f.handle.watched_folders().await.unwrap().is_empty(),
         "removed folder is gone from the persisted list"
     );
     wait_for_candidates(
@@ -349,7 +351,7 @@ async fn unavailable_watched_folder_remains_durable_and_reports_scan_failure() {
         },
     )
     .await;
-    assert_eq!(f.handle.watched_folders().len(), 1);
+    assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
 }
 
 /// A scan reads the user's stored file decisions before it walks anything. When
@@ -441,7 +443,7 @@ async fn adding_an_already_watched_folder_reads_it_again() {
         },
     )
     .await;
-    assert_eq!(f.handle.watched_folders().len(), 1);
+    assert_eq!(f.handle.watched_folders().await.unwrap().len(), 1);
 }
 
 /// A refresh waits for its scan to be over. If a watched root disappears, the

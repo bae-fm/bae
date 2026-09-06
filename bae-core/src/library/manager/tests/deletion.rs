@@ -34,7 +34,7 @@ fn create_test_release(album_id: &str) -> DbRelease {
 }
 
 async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
-    let root = crate::import::folder_registry::host_root("/music");
+    let root = crate::import::watched_folder::host_root("/music");
     let path = std::path::Path::new(&root).join("candidate");
     let path = path.to_string_lossy().into_owned();
     let files = crate::import::folder_scanner::CategorizedFiles {

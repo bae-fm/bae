@@ -29,11 +29,11 @@ pub(crate) mod file_tag_snapshot;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod file_validation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub mod folder_registry;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod folder_scanner;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(crate) mod volume;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod watched_folder;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use volume::check_period_minutes;
 // The import pipeline (scanning, transcoding, identify orchestration) is
@@ -150,8 +150,6 @@ pub use error::ImportError;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use file_evidence::{file_evidence, EvidenceSignal, FileEvidence};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use folder_registry::{ImportFolderRegistry, WatchedFolder};
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
     InvalidReason, ReleaseFileScope, ResolvedFolderReleaseBoundary,
@@ -212,3 +210,5 @@ pub use types::{
     ImportStep, MetadataRef, PayloadSource, PrepareStep, PreparedArtistImage, ReleaseReseed,
     SourcePayload, StorageMode, TrackFile,
 };
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use watched_folder::WatchedFolder;

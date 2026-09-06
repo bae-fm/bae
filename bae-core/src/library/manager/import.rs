@@ -164,10 +164,33 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn load_import_folder_registry(
+    pub async fn load_watched_import_folders(
         &self,
-    ) -> Result<crate::import::ImportFolderRegistry, LibraryError> {
-        Ok(self.database.load_import_folder_registry().await?)
+    ) -> Result<Vec<crate::import::WatchedFolder>, LibraryError> {
+        Ok(self.database.load_watched_import_folders().await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn is_import_candidate_skipped(
+        &self,
+        watched_folder_path: &str,
+        relative_candidate_path: &str,
+    ) -> Result<bool, LibraryError> {
+        Ok(self
+            .database
+            .is_import_candidate_skipped(watched_folder_path, relative_candidate_path)
+            .await?)
+    }
+
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    pub async fn load_skipped_import_candidates(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<std::collections::HashSet<String>, LibraryError> {
+        Ok(self
+            .database
+            .load_skipped_import_candidates(watched_folder_path)
+            .await?)
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]

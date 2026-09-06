@@ -11,7 +11,6 @@ use {
         DbAlbum, DbAlbumArtist, DbFile, DbRelease, DbReleaseArtistRole, DbTrack, DbTrackArtist,
         DbTrackArtistRole,
     },
-    crate::import::folder_registry::ImportFolderRegistry,
     crate::import::folder_scanner::{ScanItem, ScannedFile},
     crate::import::track_slots::{audio_units, map_source_rows, resolve_track_files},
     crate::import::types::{
@@ -21,7 +20,7 @@ use {
     notify_debouncer_full::DebounceEventResult,
     std::collections::{HashMap, HashSet},
     std::path::{Path, PathBuf},
-    std::sync::{Arc, Mutex},
+    std::sync::Arc,
 };
 
 use tokio::sync::{broadcast, mpsc};
@@ -420,7 +419,6 @@ fn spawn_root_scan(
     preparations: crate::import::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdRef,
-    folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     folder_watcher: Arc<FolderWatcher>,
     completion_tx: mpsc::UnboundedSender<RootScanCompletion>,
@@ -441,7 +439,6 @@ fn spawn_root_scan(
                 &preparations,
                 &clock,
                 &ids,
-                &folder_registry,
                 &folder_state_commit,
                 &folder_watcher,
                 &scan_cancellation,

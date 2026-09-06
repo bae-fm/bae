@@ -91,30 +91,86 @@ impl Database {
     /// to know what spelling this host stores — and two spellings of one
     /// folder can never become two rows.
     fn canonical_watched_root(path: &str) -> Result<String, DbError> {
-        crate::import::folder_registry::canonical_absolute_root(path)
+        crate::import::watched_folder::canonical_absolute_root(path)
             .map_err(|error| DbError::Message(error.to_string()))
     }
 
-    pub async fn load_import_folder_registry(
+    /// Every watched folder, in the order they were added.
+    ///
+    /// A stored root is canonical by construction and no two overlap, so a
+    /// store that says otherwise is corrupt and is read loudly rather than
+    /// quietly rewritten.
+    pub async fn load_watched_import_folders(
         &self,
-    ) -> Result<crate::import::ImportFolderRegistry, DbError> {
+    ) -> Result<Vec<crate::import::WatchedFolder>, DbError> {
+        let roots = self.watched_import_roots().await?;
+        for (index, root) in roots.iter().enumerate() {
+            crate::import::watched_folder::validate_absolute_root(root)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+            if let Some(conflict) = roots[index + 1..].iter().find(|other| {
+                crate::import::watched_folder::paths_overlap(
+                    std::path::Path::new(root),
+                    std::path::Path::new(other),
+                )
+            }) {
+                return Err(DbError::Message(format!(
+                    "watched folders cannot overlap: {root} conflicts with {conflict}"
+                )));
+            }
+        }
+        Ok(roots
+            .into_iter()
+            .map(crate::import::WatchedFolder::from_path)
+            .collect())
+    }
+
+    /// Whether the candidate at `relative_candidate_path` under the root is
+    /// one the person skipped.
+    pub async fn is_import_candidate_skipped(
+        &self,
+        watched_folder_path: &str,
+        relative_candidate_path: &str,
+    ) -> Result<bool, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let relative_candidate_path = relative_candidate_path.to_string();
         self.read(move |sql| {
-            let folders = sql.query(
-                "SELECT path FROM watched_import_folders ORDER BY position",
-                [],
-                |row| row.get::<_, String>(0),
-            )?;
-            let skipped = sql.query(
-                "SELECT watched_folder_path, relative_candidate_path \
-                     FROM skipped_import_candidates \
-                     ORDER BY watched_folder_path, relative_candidate_path",
-                [],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            crate::import::ImportFolderRegistry::from_stored(folders, skipped)
-                .map_err(|error| DbError::Message(error.to_string()))
+            Ok(sql
+                .query_row(
+                    "SELECT 1 FROM skipped_import_candidates \
+                     WHERE watched_folder_path = ? AND relative_candidate_path = ?",
+                    params![watched_folder_path, relative_candidate_path],
+                    |_| Ok(()),
+                )
+                .optional()?
+                .is_some())
         })
         .await
+    }
+
+    /// Every skipped candidate under one root, by relative path — what a scan
+    /// pass reads once so each candidate it writes is stamped without a
+    /// query of its own. A stored path is normalized by construction, so one
+    /// that is not is corrupt durable state and is read loudly.
+    pub async fn load_skipped_import_candidates(
+        &self,
+        watched_folder_path: &str,
+    ) -> Result<HashSet<String>, DbError> {
+        let watched_folder_path = watched_folder_path.to_string();
+        let paths = self
+            .read(move |sql| {
+                Ok(sql.query(
+                    "SELECT relative_candidate_path FROM skipped_import_candidates \
+                     WHERE watched_folder_path = ?",
+                    [watched_folder_path],
+                    |row| row.get::<_, String>(0),
+                )?)
+            })
+            .await?;
+        for path in &paths {
+            crate::import::watched_folder::validate_relative_path(path)
+                .map_err(|error| DbError::Message(error.to_string()))?;
+        }
+        Ok(paths.into_iter().collect())
     }
 
     /// Every watched root, in the order they were added. Read by both entry
@@ -140,7 +196,7 @@ impl Database {
             return Ok(false);
         }
         if let Some(conflict) = roots.iter().find(|root| {
-            crate::import::folder_registry::paths_overlap(
+            crate::import::watched_folder::paths_overlap(
                 std::path::Path::new(&path),
                 std::path::Path::new(root),
             )
@@ -169,7 +225,7 @@ impl Database {
         relative_candidate_path: &str,
         skipped: bool,
     ) -> Result<bool, DbError> {
-        crate::import::folder_registry::validate_relative_path(relative_candidate_path)
+        crate::import::watched_folder::validate_relative_path(relative_candidate_path)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let watched_folder_path = watched_folder_path.to_string();
         let relative_candidate_path = relative_candidate_path.to_string();
@@ -252,7 +308,7 @@ impl Database {
             ));
         }
         for (key, _) in decisions {
-            crate::import::folder_registry::validate_relative_path(&key.relative_folder_path)
+            crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)
                 .map_err(|error| DbError::Message(error.to_string()))?;
         }
         let decisions = decisions.to_vec();
@@ -334,7 +390,7 @@ impl Database {
         key: &FolderReleaseDecisionKey,
         decision: FolderReleaseDecision,
     ) -> Result<(), DbError> {
-        crate::import::folder_registry::validate_relative_path(&key.relative_folder_path)
+        crate::import::watched_folder::validate_relative_path(&key.relative_folder_path)
             .map_err(|error| DbError::Message(error.to_string()))?;
         let key = key.clone();
         let decision = match decision {
@@ -369,7 +425,7 @@ impl Database {
                 [watched_folder_path],
                 |row| {
                     let path: String = row.get(0)?;
-                    crate::import::folder_registry::validate_relative_path(&path).map_err(
+                    crate::import::watched_folder::validate_relative_path(&path).map_err(
                         |error| {
                             coven::rusqlite::Error::FromSqlConversionFailure(
                                 0,

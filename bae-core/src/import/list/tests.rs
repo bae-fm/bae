@@ -7,10 +7,10 @@
 use super::*;
 use crate::db::{CandidateStateListRow, ImportQueueRows, ScanCandidateKind, ScanCandidateListRow};
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
-use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::InvalidReason;
 use crate::import::search::SourceTracks;
 use crate::import::types::MetadataSource;
+use crate::import::watched_folder::host_root;
 use crate::import::{FolderScanStatus, ImportedRelease};
 use crate::import::{IdentificationStatus, TriageImportStatus, TriagePlacement};
 

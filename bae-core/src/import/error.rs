@@ -160,10 +160,12 @@ pub enum ImportError {
     #[error("that file's role can't be changed: {detail}")]
     FileRole { detail: String },
 
-    /// The watched-folder registry could not persist (YAML serialize / fs write).
+    /// A watched root or a candidate path under one is spelled in a way the
+    /// store refuses to key by: relative, climbing out of itself, or not the
+    /// one canonical spelling.
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    #[error("watched-folder registry: {detail}")]
-    Registry { detail: String },
+    #[error("watched folder: {detail}")]
+    WatchedFolder { detail: String },
 
     /// A folder's OS-level filesystem watch could not be installed or
     /// removed (missing path, permissions). An OS/user condition, not a

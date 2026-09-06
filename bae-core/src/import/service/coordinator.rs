@@ -20,10 +20,11 @@ impl ImportService {
     /// so changes propagate beyond the first scan.
     ///
     /// OS watch installation lives in `FolderWatcher`, owned by the handle; this
-    /// task only receives the `fs_rx` batches its callback forwards. The registry,
+    /// task only receives the `fs_rx` batches its callback forwards. The store,
     /// not a task-local set, is the single authority on what's watched:
-    /// `affected_roots` resolves each event batch against it, so events from a
-    /// watch left installed on a since-removed folder match nothing.
+    /// `affected_roots` resolves each event batch against what it lists, so
+    /// events from a watch left installed on a since-removed folder match
+    /// nothing.
     pub(super) fn start_watcher(
         cmd_rx: mpsc::UnboundedReceiver<WatcherCommand>,
         fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
@@ -32,7 +33,6 @@ impl ImportService {
         preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdRef,
-        folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         folder_watcher: Arc<FolderWatcher>,
     ) -> std::thread::JoinHandle<()> {
@@ -41,7 +41,6 @@ impl ImportService {
         let scan_preparations = preparations;
         let scan_clock = clock.clone();
         let scan_ids = ids.clone();
-        let scan_folder_registry = folder_registry.clone();
         let scan_folder_state_commit = folder_state_commit.clone();
         let scan_folder_watcher = folder_watcher.clone();
         let removal_backend = Arc::new(ServiceRootRemovalBackend {
@@ -57,7 +56,6 @@ impl ImportService {
                 scan_preparations.clone(),
                 scan_clock.clone(),
                 scan_ids.clone(),
-                scan_folder_registry.clone(),
                 scan_folder_state_commit.clone(),
                 scan_folder_watcher.clone(),
                 completion_tx,
@@ -68,7 +66,6 @@ impl ImportService {
             fs_rx,
             event_tx,
             library_manager,
-            folder_registry,
             folder_state_commit,
             starter,
             removal_backend,
@@ -80,7 +77,6 @@ impl ImportService {
         mut fs_rx: mpsc::UnboundedReceiver<DebounceEventResult>,
         event_tx: broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: LibraryManager,
-        folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
         starter: RootScanStarter,
         removal_backend: Arc<dyn RootRemovalBackend>,
@@ -120,17 +116,27 @@ impl ImportService {
                             break;
                         };
                         match cmd {
+                            WatcherCommand::RescanAll => {
+                                for root in watched_roots(&library_manager).await {
+                                    if removals.contains_key(&root) {
+                                        continue;
+                                    }
+                                    request_root_scan(
+                                        root,
+                                        RootScanCause::Asked("every watched folder was asked for"),
+                                        None,
+                                        &mut schedules,
+                                        &starter,
+                                        &completion_tx,
+                                        &mut next_scan_id,
+                                    );
+                                }
+                            }
                             WatcherCommand::Rescan(path) => {
                                 if removals.contains_key(&path) {
                                     continue;
                                 }
-                                if !folder_registry
-                                    .lock()
-                                    .unwrap()
-                                    .watched_folders()
-                                    .iter()
-                                    .any(|folder| folder.path == path.to_string_lossy())
-                                {
+                                if !is_watched(&library_manager, &path).await {
                                     continue;
                                 }
                                 request_root_scan(
@@ -156,13 +162,7 @@ impl ImportService {
                                     }
                                     continue;
                                 }
-                                if !folder_registry
-                                    .lock()
-                                    .unwrap()
-                                    .watched_folders()
-                                    .iter()
-                                    .any(|folder| folder.path == path.to_string_lossy())
-                                {
+                                if !is_watched(&library_manager, &path).await {
                                     if completion
                                         .send(Err(format!(
                                             "{} is no longer watched",
@@ -390,11 +390,7 @@ impl ImportService {
                                 commit,
                                 removed_keys,
                             } => {
-                                let folders = {
-                                    let mut registry = folder_registry.lock().unwrap();
-                                    registry.apply_removed(&completion.path.to_string_lossy());
-                                    registry.watched_folders()
-                                };
+                                let folders = watched_folders(&library_manager).await;
                                 for candidate_key in removed_keys {
                                     send_event(
                                         &event_tx,
@@ -497,13 +493,7 @@ impl ImportService {
                         let events = match result {
                             Ok(events) => events,
                             Err(errors) => {
-                                let roots: Vec<PathBuf> = folder_registry
-                                    .lock()
-                                    .unwrap()
-                                    .watched_folders()
-                                    .into_iter()
-                                    .map(|folder| PathBuf::from(folder.path))
-                                    .collect();
+                                let roots = watched_roots(&library_manager).await;
                                 let mut error_paths = Vec::new();
                                 for e in errors {
                                     error_paths.extend(e.paths.iter().cloned());
@@ -528,13 +518,7 @@ impl ImportService {
                             }
                         };
                         let changed = changed_paths(&events);
-                        let roots: Vec<PathBuf> = folder_registry
-                            .lock()
-                            .unwrap()
-                            .watched_folders()
-                            .into_iter()
-                            .map(|folder| PathBuf::from(folder.path))
-                            .collect();
+                        let roots = watched_roots(&library_manager).await;
                         let affected = affected_roots(&changed, &roots);
                         if !affected.is_empty() {
                             let summary = changed_events_summary(&events);
@@ -570,13 +554,7 @@ impl ImportService {
                         );
                     }
                     _ = periodic.tick() => {
-                        let roots: Vec<PathBuf> = folder_registry
-                            .lock()
-                            .unwrap()
-                            .watched_folders()
-                            .into_iter()
-                            .map(|folder| PathBuf::from(folder.path))
-                            .collect();
+                        let roots = watched_roots(&library_manager).await;
                         for root in roots {
                             if removals.contains_key(&root) {
                                 continue;
@@ -646,4 +624,32 @@ impl ImportService {
             });
         })
     }
+}
+
+/// What the store lists as watched. A read that fails is logged and answers
+/// nothing: there is nothing to schedule against, and the next trigger reads
+/// the store again.
+async fn watched_folders(library_manager: &LibraryManager) -> Vec<crate::import::WatchedFolder> {
+    match library_manager.load_watched_import_folders().await {
+        Ok(folders) => folders,
+        Err(error) => {
+            error!("could not read the watched folders: {error}");
+            Vec::new()
+        }
+    }
+}
+
+async fn watched_roots(library_manager: &LibraryManager) -> Vec<PathBuf> {
+    watched_folders(library_manager)
+        .await
+        .into_iter()
+        .map(|folder| PathBuf::from(folder.path))
+        .collect()
+}
+
+async fn is_watched(library_manager: &LibraryManager, path: &Path) -> bool {
+    watched_folders(library_manager)
+        .await
+        .iter()
+        .any(|folder| folder.path == path.to_string_lossy())
 }

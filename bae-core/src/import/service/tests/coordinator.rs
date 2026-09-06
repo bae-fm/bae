@@ -230,7 +230,11 @@ async fn coordinator_removal_database_failure_reinstalls_and_rescans_before_retu
         ["uninstall", "remove", "reinstall"]
     );
     assert_eq!(
-        harness.folder_registry.lock().unwrap().watched_folders(),
+        harness
+            .library_manager
+            .load_watched_import_folders()
+            .await
+            .unwrap(),
         vec![crate::import::WatchedFolder::from_path(host_root("/music"))]
     );
     harness.scans.wait_for_count(2).await;
@@ -500,10 +504,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         .add_watched_import_folder(&root.to_string_lossy())
         .await
         .unwrap();
-    let registry = Arc::new(Mutex::new(
-        ImportFolderRegistry::from_stored(vec![root.to_string_lossy().into_owned()], Vec::new())
-            .unwrap(),
-    ));
     let (watch_tx, _watch_rx) = tokio::sync::mpsc::unbounded_channel();
     let watcher = Arc::new(FolderWatcher::new(watch_tx));
     let (completion_tx, mut completion_rx) = tokio::sync::mpsc::unbounded_channel();
@@ -517,7 +517,6 @@ async fn cancelled_scan_task_does_not_begin_a_durable_generation() {
         preparations.clone(),
         service.clock.clone(),
         service.ids.clone(),
-        registry,
         Arc::new(tokio::sync::Mutex::new(())),
         watcher,
         completion_tx,

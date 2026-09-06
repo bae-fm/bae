@@ -1,8 +1,8 @@
-use crate::import::folder_registry::{ImportFolderRegistry, WatchedFolder};
 use crate::import::folder_scanner::{
     FolderCandidate, FolderReleaseDecision, FolderReleaseDecisionKey, InvalidCandidate,
 };
 use crate::import::types::{ImportCommand, ImportProgress, MetadataSource, StorageMode};
+use crate::import::watched_folder::WatchedFolder;
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
 use crate::library::LibraryManager;
 use std::collections::HashMap;
@@ -139,7 +139,6 @@ pub struct ImportServiceHandle {
     ids: coven::IdRef,
     /// Unified event channel — all import service events go here.
     event_tx: broadcast::Sender<ImportEvent>,
-    folder_registry: Arc<Mutex<ImportFolderRegistry>>,
     runtime: CandidateRuntime,
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
@@ -217,6 +216,8 @@ pub enum ScanEvent {
 /// watches from blocking work as directories are reached; synchronous callers
 /// only persist intent and enqueue commands.
 pub(crate) enum WatcherCommand {
+    /// Read every watched folder the store lists.
+    RescanAll,
     Rescan(std::path::PathBuf),
     Refresh {
         path: std::path::PathBuf,
@@ -257,7 +258,6 @@ impl ImportServiceHandle {
         runtime_handle: tokio::runtime::Handle,
         watcher_tx: mpsc::UnboundedSender<WatcherCommand>,
         event_tx: broadcast::Sender<ImportEvent>,
-        folder_registry: Arc<Mutex<ImportFolderRegistry>>,
         runtime: CandidateRuntime,
         folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     ) -> Self {
@@ -269,7 +269,6 @@ impl ImportServiceHandle {
             clock,
             ids,
             event_tx,
-            folder_registry,
             runtime,
             folder_state_commit,
             watcher_tx,
@@ -565,12 +564,15 @@ impl ImportServiceHandle {
             Some(crate::import::folder_scanner::ScanItem::Decided { .. }) | None => None,
         };
         if let Some((candidate, actionable)) = candidate {
+            let relative = crate::import::watched_folder::candidate_relative_path(
+                &candidate.watched_folder_path,
+                &candidate.path,
+            )
+            .map_err(|error| crate::library::LibraryError::Internal(error.to_string()))?;
             let skipped = self
-                .folder_registry
-                .lock()
-                .unwrap()
-                .is_skipped(&candidate.watched_folder_path, &candidate.path)
-                .map_err(|error| crate::library::LibraryError::Internal(error.to_string()))?;
+                .library_manager
+                .is_import_candidate_skipped(&candidate.watched_folder_path, &relative)
+                .await?;
             let is_added = self
                 .library_manager
                 .is_content_hash_imported(&candidate.files.content_hash())

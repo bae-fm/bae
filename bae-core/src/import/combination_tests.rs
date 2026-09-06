@@ -1,6 +1,6 @@
 use super::*;
-use crate::import::folder_registry::host_root;
 use crate::import::folder_scanner::{CandidateFile, ReleaseFileScope, ScannedFile};
+use crate::import::watched_folder::host_root;
 use std::path::PathBuf;
 
 fn folder(name: &str) -> FolderCandidate {

@@ -135,7 +135,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
 #[tokio::test]
 async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
     let (manager, _temp) = setup_test_manager().await;
-    let root = PathBuf::from(crate::import::folder_registry::host_root("/music"));
+    let root = PathBuf::from(crate::import::watched_folder::host_root("/music"));
     manager
         .add_watched_import_folder(&root.to_string_lossy())
         .await
@@ -144,11 +144,6 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
         .start_import_service(tokio::runtime::Handle::current())
         .await
         .unwrap();
-    handle
-        .folder_registry
-        .lock()
-        .unwrap()
-        .apply_added(root.to_string_lossy().into_owned());
     // A row under `Collection`, so the decision the removal races is one the
     // list really offers: a header over rows can be read as one release.
     let folder = root.join("Collection").join("Album");

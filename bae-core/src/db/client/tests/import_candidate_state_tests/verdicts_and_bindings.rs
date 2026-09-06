@@ -1,6 +1,6 @@
 use super::super::*;
 use crate::identify::{ResultProvenance, TerminalVerdict};
-use crate::import::folder_registry::host_root;
+use crate::import::watched_folder::host_root;
 use crate::import::folder_scanner::{CandidateFile, CategorizedFiles, FileRole, ScannedFile};
 use crate::import::search::MetadataResult;
 use coven::FixedClock;

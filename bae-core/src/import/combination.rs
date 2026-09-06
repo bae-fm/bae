@@ -151,7 +151,7 @@ impl CandidateCombination {
                 });
             }
             let prefix = format!("{:02} - {}/", position + 1, candidate.name);
-            super::folder_registry::validate_relative_path(prefix.trim_end_matches('/'))?;
+            super::watched_folder::validate_relative_path(prefix.trim_end_matches('/'))?;
             let part_tracks = super::track_slots::direct_entry_track_rows(&candidate.files);
             if part_tracks.is_empty() {
                 return Err(ImportError::Internal {

@@ -42,7 +42,7 @@ mod candidate_state_rows;
 mod coven_capabilities;
 mod identity;
 // Watched folders, folder scans and the import candidate queue. Reads
-// `import::folder_registry` and `import::FolderScanStatus`, both desktop-only,
+// `import::watched_folder` and `import::FolderScanStatus`, both desktop-only,
 // and every caller is a gated import module — the mobile builds are sync and
 // playback clients with no import pipeline.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
