@@ -272,7 +272,7 @@ mod identify_mirrors {
     use super::*;
     use bae_core::db::LibraryStatus;
     use bae_core::identify::combine::ResultProvenance;
-    use bae_core::identify::state::SignalsContext;
+    use bae_core::identify::state::{DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
         ProviderBarcodeLookup, SignalKind, SignalState, ToolbarSignal,
@@ -315,22 +315,10 @@ mod identify_mirrors {
     fn empty_context() -> SignalsContext {
         SignalsContext {
             providers: Vec::new(),
-            disc_id: DiscIdSignal::Absent { track_count: 0 },
             artwork: bae_core::signals::ArtworkScan::Absent,
-            barcode_codes: Vec::new(),
-            had_barcode_source: false,
-            catalogs: Vec::new(),
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: Vec::new(),
-            barcode_results: Vec::new(),
-            catalog_results: Vec::new(),
-            discid_failure: None,
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: None,
+            disc: Default::default(),
+            barcode: Default::default(),
+            catalog: Default::default(),
             track_count: 0,
         }
     }
@@ -452,10 +440,13 @@ mod identify_mirrors {
             catalog: CatalogProgress::Skipped,
             context: SignalsContext {
                 providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
-                disc_id: DiscIdSignal::Computed {
-                    disc_id: "disc-hash".to_string(),
-                    track_count: 9,
-                    source_file: Some("rip.log".to_string()),
+                disc: DiscIdEvidence {
+                    signal: DiscIdSignal::Computed {
+                        disc_id: "disc-hash".to_string(),
+                        track_count: 9,
+                        source_file: Some("rip.log".to_string()),
+                    },
+                    ..Default::default()
                 },
                 ..empty_context()
             },

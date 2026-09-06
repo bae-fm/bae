@@ -645,7 +645,7 @@ fn status_map(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bae_core::identify::state::SignalsContext;
+    use bae_core::identify::state::{BarcodeEvidence, DiscIdEvidence, SignalsContext};
     use bae_core::identify::{
         BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
         ProviderBarcodeLookup,
@@ -676,25 +676,20 @@ mod tests {
             catalog: CatalogProgress::Skipped,
             context: SignalsContext {
                 providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
-                disc_id: DiscIdSignal::Absent { track_count: 9 },
                 artwork: bae_core::signals::ArtworkScan::Absent,
-                barcode_codes: vec![SourcedValue::new(
-                    "0123456789012".to_string(),
-                    SignalOrigin::Artwork,
-                )],
-                had_barcode_source: true,
-                catalogs: Vec::new(),
-                chosen_catalog: None,
-                disc_excluded: false,
-                barcode_excluded: false,
-                discid_results: Vec::new(),
-                barcode_results: Vec::new(),
-                catalog_results: Vec::new(),
-                discid_failure: None,
-                barcode_failures: Vec::new(),
-                barcode_scan_failure: None,
-                catalog_failures: Vec::new(),
-                matched_barcode: None,
+                disc: DiscIdEvidence {
+                    signal: DiscIdSignal::Absent { track_count: 9 },
+                    ..Default::default()
+                },
+                barcode: BarcodeEvidence {
+                    codes: vec![SourcedValue::new(
+                        "0123456789012".to_string(),
+                        SignalOrigin::Artwork,
+                    )],
+                    had_source: true,
+                    ..Default::default()
+                },
+                catalog: Default::default(),
                 track_count: 9,
             },
         }

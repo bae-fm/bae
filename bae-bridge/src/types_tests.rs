@@ -34,22 +34,13 @@ mod triage_tests {
 
         let context = bae_core::identify::state::SignalsContext {
             providers: Vec::new(),
-            disc_id: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
             artwork: bae_core::signals::ArtworkScan::Absent,
-            barcode_codes: Vec::new(),
-            had_barcode_source: false,
-            catalogs: Vec::new(),
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: Vec::new(),
-            barcode_results: Vec::new(),
-            catalog_results: Vec::new(),
-            discid_failure: None,
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: None,
+            disc: bae_core::identify::state::DiscIdEvidence {
+                signal: bae_core::signals::DiscIdSignal::Absent { track_count: 9 },
+                ..Default::default()
+            },
+            barcode: Default::default(),
+            catalog: Default::default(),
             track_count: 9,
         };
         let live = IdentifyState::ManualOnly {

@@ -11,7 +11,7 @@
 //! pipe holds one entry per provider, and settles only once every one of them
 //! has.
 
-use super::{Effect, SignalState, SignalsContext};
+use super::{BarcodeEvidence, CatalogEvidence, Effect, SignalState, SignalsContext};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::MetadataSource;
@@ -330,31 +330,31 @@ fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalS
 
 // ── Standing a settled context back up ──────────────────────────────────────
 
-/// The disc-ID pipe a settled context stands back up as. The lookup failure is
-/// checked first: `disc_id` only ever reports whether a disc ID could be
-/// *computed* (a readable TOC), so a lookup that ran against a perfectly good
-/// disc ID and then hit a network/provider error would otherwise read as
-/// `Computed` with zero results — indistinguishable from a clean no-match.
-/// `context.discid_failure` is what tells the two apart.
+/// The disc-ID pipe a settled context stands back up as. The recorded lookup
+/// failure is checked first: the signal only ever reports whether a disc ID
+/// could be *computed* (a readable TOC), so a lookup that ran against a
+/// perfectly good disc ID and then hit a network/provider error would otherwise
+/// read as `Computed` with zero results — indistinguishable from a clean
+/// no-match. `context.disc.failure` is what tells the two apart.
 ///
 /// This is what a state that has left `Triangulating` re-enters it with when
 /// another signal starts a lookup, and what its badge state is read off.
 pub(super) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgress {
     let track_count = context.track_count;
-    if let Some(failure) = &context.discid_failure {
+    if let Some(failure) = &context.disc.failure {
         return DiscidProgress::Failed {
             failure: failure.clone(),
             track_count,
         };
     }
-    match &context.disc_id {
+    match &context.disc.signal {
         DiscIdSignal::Absent { .. } => DiscidProgress::Skipped { track_count },
         DiscIdSignal::Failed { failure, .. } => DiscidProgress::Failed {
             failure: failure.clone(),
             track_count,
         },
         DiscIdSignal::Computed { .. } => DiscidProgress::Done {
-            results: context.discid_results.clone(),
+            results: context.disc.results.clone(),
             track_count,
         },
     }
@@ -364,39 +364,40 @@ pub(super) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgres
 /// provider, each holding what the context recorded for it. Scanned and found
 /// nothing settles as `NoCodes`, while nothing to scan at all is a skip.
 pub(super) fn settled_barcode_progress(context: &SignalsContext) -> BarcodeProgress {
-    if let Some(failure) = &context.barcode_scan_failure {
+    let barcode = &context.barcode;
+    if let Some(failure) = &barcode.scan_failure {
         return BarcodeProgress::ScanFailed {
             failure: failure.clone(),
         };
     }
-    if context.barcode_codes.is_empty() {
-        return if context.had_barcode_source {
+    if barcode.codes.is_empty() {
+        return if barcode.had_source {
             BarcodeProgress::NoCodes
         } else {
             BarcodeProgress::Skipped
         };
     }
     BarcodeProgress::Lookups {
-        codes: code_values(&context.barcode_codes),
+        codes: code_values(&barcode.codes),
         providers: context
             .providers
             .iter()
             .map(|&source| ProviderBarcodeLookup {
                 source,
-                state: recorded_barcode_state(context, source),
+                state: recorded_barcode_state(barcode, source),
             })
             .collect(),
     }
 }
 
-/// What the context recorded for one provider's barcode walk.
-fn recorded_barcode_state(context: &SignalsContext, source: MetadataSource) -> BarcodeLookupState {
-    if let Some(failure) = context.barcode_failures.iter().find(|f| f.source == source) {
+/// What the evidence recorded for one provider's barcode walk.
+fn recorded_barcode_state(barcode: &BarcodeEvidence, source: MetadataSource) -> BarcodeLookupState {
+    if let Some(failure) = barcode.failures.iter().find(|f| f.source == source) {
         return BarcodeLookupState::Failed {
             failure: failure.failure.clone(),
         };
     }
-    let results = results_from(&context.barcode_results, source);
+    let results = results_from(&barcode.results, source);
     if results.is_empty() {
         BarcodeLookupState::Exhausted
     } else {
@@ -409,7 +410,7 @@ fn recorded_barcode_state(context: &SignalsContext, source: MetadataSource) -> B
 
 /// The catalog pipe a settled context stands back up as.
 pub(super) fn settled_catalog_progress(context: &SignalsContext) -> CatalogProgress {
-    if context.chosen_catalog.is_none() {
+    if context.catalog.chosen.is_none() {
         return CatalogProgress::Skipped;
     }
     CatalogProgress::Lookups {
@@ -418,20 +419,20 @@ pub(super) fn settled_catalog_progress(context: &SignalsContext) -> CatalogProgr
             .iter()
             .map(|&source| ProviderLookup {
                 source,
-                state: recorded_catalog_state(context, source),
+                state: recorded_catalog_state(&context.catalog, source),
             })
             .collect(),
     }
 }
 
-fn recorded_catalog_state(context: &SignalsContext, source: MetadataSource) -> LookupState {
-    if let Some(failure) = context.catalog_failures.iter().find(|f| f.source == source) {
+fn recorded_catalog_state(catalog: &CatalogEvidence, source: MetadataSource) -> LookupState {
+    if let Some(failure) = catalog.failures.iter().find(|f| f.source == source) {
         return LookupState::Failed {
             failure: failure.failure.clone(),
         };
     }
     LookupState::Done {
-        results: results_from(&context.catalog_results, source),
+        results: results_from(&catalog.results, source),
     }
 }
 

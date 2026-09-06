@@ -315,9 +315,9 @@ fn live_matches(
 ) {
     let unless = |excluded: bool, results: Vec<_>| if excluded { Vec::new() } else { results };
     let outcome = combine_results(
-        unless(context.disc_excluded, discid.results()),
-        unless(context.barcode_excluded, barcode.results()),
-        unless(context.chosen_catalog.is_none(), catalog.results()),
+        unless(context.disc.excluded, discid.results()),
+        unless(context.barcode.excluded, barcode.results()),
+        unless(context.catalog.chosen.is_none(), catalog.results()),
     );
     match outcome {
         CombineOutcome::Found {
@@ -347,7 +347,7 @@ fn fold_matches(
 /// The disc-ID step: what extraction read, from the context, and how far
 /// MusicBrainz's lookup of it has got, from the pipe.
 fn disc_id_step(progress: DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
-    let (disc_id, source_file) = match &context.disc_id {
+    let (disc_id, source_file) = match &context.disc.signal {
         DiscIdSignal::Computed {
             disc_id,
             source_file,
@@ -392,8 +392,8 @@ fn artwork_step(context: &SignalsContext) -> ArtworkStepView {
             .filter(|v| v.origin == SignalOrigin::Artwork)
             .count() as u32
     };
-    let barcodes = from_artwork(&context.barcode_codes);
-    let catalogs = from_artwork(&context.catalogs);
+    let barcodes = from_artwork(&context.barcode.codes);
+    let catalogs = from_artwork(&context.catalog.numbers);
     match &context.artwork {
         ArtworkScan::Absent => ArtworkStepView::Absent,
         ArtworkScan::Reading {
@@ -461,12 +461,12 @@ fn barcode_step(progress: BarcodeProgress) -> BarcodeStepView {
 }
 
 fn catalog_step(progress: CatalogProgress, context: &SignalsContext) -> CatalogStepView {
-    let Some(value) = &context.chosen_catalog else {
-        return if context.catalogs.is_empty() {
+    let Some(value) = &context.catalog.chosen else {
+        return if context.catalog.numbers.is_empty() {
             CatalogStepView::NoneFound
         } else {
             CatalogStepView::Unchosen {
-                available: context.catalogs.len() as u32,
+                available: context.catalog.numbers.len() as u32,
             }
         };
     };
@@ -504,7 +504,9 @@ fn found_or_no_match(count: usize) -> LookupView {
 mod tests {
     use super::*;
     use crate::db::LibraryStatus;
-    use crate::identify::state::{BarcodeLookupState, ProviderBarcodeLookup};
+    use crate::identify::state::{
+        BarcodeEvidence, BarcodeLookupState, CatalogEvidence, DiscIdEvidence, ProviderBarcodeLookup,
+    };
     use crate::import::search::MetadataResult;
     use crate::import::MetadataSource;
     use crate::signals::{SignalOrigin, SourcedValue};
@@ -539,22 +541,17 @@ mod tests {
     fn context() -> SignalsContext {
         SignalsContext {
             providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
-            disc_id: DiscIdSignal::Absent { track_count: 9 },
             artwork: crate::signals::ArtworkScan::Absent,
-            barcode_codes: vec![SourcedValue::new("A".to_string(), SignalOrigin::Artwork)],
-            had_barcode_source: true,
-            catalogs: Vec::new(),
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: Vec::new(),
-            barcode_results: Vec::new(),
-            catalog_results: Vec::new(),
-            discid_failure: None,
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: None,
+            disc: DiscIdEvidence {
+                signal: DiscIdSignal::Absent { track_count: 9 },
+                ..Default::default()
+            },
+            barcode: BarcodeEvidence {
+                codes: vec![SourcedValue::new("A".to_string(), SignalOrigin::Artwork)],
+                had_source: true,
+                ..Default::default()
+            },
+            catalog: CatalogEvidence::default(),
             track_count: 9,
         }
     }
@@ -610,11 +607,11 @@ mod tests {
             position: 2,
             total: 3,
         };
-        context.barcode_codes = vec![
+        context.barcode.codes = vec![
             SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
             SourcedValue::new("B".to_string(), SignalOrigin::CueSheet),
         ];
-        context.catalogs = vec![
+        context.catalog.numbers = vec![
             SourcedValue::new("LBL-1".to_string(), SignalOrigin::FolderName),
             SourcedValue::new("LBL-2".to_string(), SignalOrigin::Artwork),
             SourcedValue::new("LBL-3".to_string(), SignalOrigin::Artwork),
@@ -641,7 +638,7 @@ mod tests {
     #[test]
     fn an_excluded_signal_s_matches_do_not_show() {
         let mut context = context();
-        context.barcode_excluded = true;
+        context.barcode.excluded = true;
         let IdentifyStateView::Triangulating { groups, .. } =
             IdentifyStateView::from(in_flight(context))
         else {

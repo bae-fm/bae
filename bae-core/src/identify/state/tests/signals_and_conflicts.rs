@@ -192,7 +192,7 @@ fn started_enters_triangulating_awaiting_signals() {
         } => {
             assert!(matches!(discid, DiscidProgress::Computing));
             assert!(matches!(barcode, BarcodeProgress::Scanning));
-            assert!(context.catalogs.is_empty());
+            assert!(context.catalog.numbers.is_empty());
             assert_eq!(context.providers, vec![MB, DG]);
         }
         other => panic!("expected Triangulating, got {other:?}"),
@@ -416,9 +416,9 @@ fn empty_intersection_is_conflict() {
             assert_eq!(matches.len(), 2);
             assert!(provenance[0].by_disc_id && !provenance[0].by_barcode);
             assert!(!provenance[1].by_disc_id && provenance[1].by_barcode);
-            assert_eq!(context.discid_results.len(), 1);
-            assert_eq!(context.barcode_results.len(), 1);
-            assert_eq!(context.matched_barcode.as_deref(), Some("BAR"));
+            assert_eq!(context.disc.results.len(), 1);
+            assert_eq!(context.barcode.results.len(), 1);
+            assert_eq!(context.barcode.matched.as_deref(), Some("BAR"));
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -456,7 +456,7 @@ fn a_provider_s_walk_stops_at_its_first_match() {
             ..
         } => {
             assert!(provenance[0].by_barcode && !provenance[0].by_disc_id);
-            assert_eq!(context.matched_barcode.as_deref(), Some("B"));
+            assert_eq!(context.barcode.matched.as_deref(), Some("B"));
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -517,8 +517,8 @@ fn each_provider_walks_the_codes_on_its_own() {
             assert_eq!(matches.len(), 1);
             assert_eq!(matches[0].source, DG);
             assert!(provenance[0].by_barcode);
-            assert_eq!(context.matched_barcode.as_deref(), Some("A"));
-            assert!(context.barcode_failures.is_empty());
+            assert_eq!(context.barcode.matched.as_deref(), Some("A"));
+            assert!(context.barcode.failures.is_empty());
         }
         other => panic!("expected Found, got {other:?}"),
     }
@@ -558,7 +558,7 @@ fn the_matched_code_is_the_earliest_any_provider_matched() {
         matches.iter().map(|m| m.source).collect::<Vec<_>>(),
         vec![MB, DG]
     );
-    assert_eq!(context.matched_barcode.as_deref(), Some("A"));
+    assert_eq!(context.barcode.matched.as_deref(), Some("A"));
 }
 
 /// An answer for a code the provider's walk has already moved past is stale
@@ -667,7 +667,7 @@ fn a_failed_provider_does_not_stop_the_other_s_walk() {
                 })]
             );
             assert_eq!(matches.len(), 1, "MusicBrainz's match still stands");
-            assert_eq!(context.matched_barcode.as_deref(), Some("B"));
+            assert_eq!(context.barcode.matched.as_deref(), Some("B"));
         }
         other => panic!("expected Failed with the surviving match, got {other:?}"),
     }
@@ -718,9 +718,9 @@ fn retry_re_asks_only_the_failed_provider() {
             matches, context, ..
         } => {
             assert_eq!(matches.len(), 2);
-            assert!(context.barcode_failures.is_empty());
+            assert!(context.barcode.failures.is_empty());
             // A matched earlier than B, so the retried provider's code wins.
-            assert_eq!(context.matched_barcode.as_deref(), Some("A"));
+            assert_eq!(context.barcode.matched.as_deref(), Some("A"));
         }
         other => panic!("expected Found after the retry, got {other:?}"),
     }

@@ -21,7 +21,7 @@
 //! `Idle` and `Triangulating` have no terminal verdict.
 
 use super::combine::ResultProvenance;
-use super::state::{IdentifyState, SignalsContext};
+use super::state::{BarcodeEvidence, DiscIdEvidence, IdentifyState, SignalsContext};
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::signals::LookupFailure;
 
@@ -103,7 +103,7 @@ impl TryFrom<IdentifyState> for TerminalVerdict {
                 matches,
                 track_count,
                 provenance,
-                matched_barcode: context.matched_barcode,
+                matched_barcode: context.barcode.matched,
             }),
 
             IdentifyState::NotFoundAnywhere { context: _ } => Ok(Self::NotFoundAnywhere),
@@ -165,22 +165,13 @@ impl TerminalVerdict {
         // the resumed state's toolbar is empty rather than derived from this.
         let empty_context = |track_count: u32| SignalsContext {
             providers: Vec::new(),
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count },
             artwork: crate::signals::ArtworkScan::Absent,
-            barcode_codes: Vec::new(),
-            had_barcode_source: false,
-            catalogs: Vec::new(),
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: Vec::new(),
-            barcode_results: Vec::new(),
-            catalog_results: Vec::new(),
-            discid_failure: None,
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: None,
+            disc: DiscIdEvidence {
+                signal: crate::signals::DiscIdSignal::Absent { track_count },
+                ..Default::default()
+            },
+            barcode: BarcodeEvidence::default(),
+            catalog: Default::default(),
             track_count,
         };
         match self {
@@ -197,7 +188,10 @@ impl TerminalVerdict {
                     track_count,
                     provenance,
                     context: SignalsContext {
-                        matched_barcode,
+                        barcode: BarcodeEvidence {
+                            matched: matched_barcode,
+                            ..Default::default()
+                        },
                         ..empty_context(track_count)
                     },
                 }
@@ -268,22 +262,13 @@ mod tests {
     fn mk_context(track_count: u32) -> SignalsContext {
         SignalsContext {
             providers: Vec::new(),
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count },
             artwork: crate::signals::ArtworkScan::Absent,
-            barcode_codes: vec![],
-            had_barcode_source: false,
-            catalogs: vec![],
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: vec![],
-            barcode_results: vec![],
-            catalog_results: vec![],
-            discid_failure: None,
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: None,
+            disc: DiscIdEvidence {
+                signal: crate::signals::DiscIdSignal::Absent { track_count },
+                ..Default::default()
+            },
+            barcode: BarcodeEvidence::default(),
+            catalog: Default::default(),
             track_count,
         }
     }
@@ -359,10 +344,10 @@ mod tests {
         else {
             panic!("a found verdict resumes as Found");
         };
-        assert_eq!(context.matched_barcode.as_deref(), Some("5099969394522"));
+        assert_eq!(context.barcode.matched.as_deref(), Some("5099969394522"));
         // The signal inputs themselves are not retained — a re-run re-extracts
         // them, and the resumed state draws no signals toolbar.
-        assert!(context.barcode_codes.is_empty());
+        assert!(context.barcode.codes.is_empty());
     }
 
     /// The reducer exposes a failed lookup directly, and verdict conversion
@@ -370,7 +355,7 @@ mod tests {
     #[test]
     fn a_recorded_discid_failure_derives_and_stores_as_failed() {
         let mut context = mk_context(11);
-        context.discid_failure = Some(crate::signals::LookupFailure::Provider { status: None });
+        context.disc.failure = Some(crate::signals::LookupFailure::Provider { status: None });
         let state = crate::identify::state::re_derive_for_tests(context);
         assert!(matches!(state, IdentifyState::Failed { .. }));
         let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -387,29 +372,23 @@ mod tests {
 
     /// Signals that share no result settle as one `Found` over their union, so
     /// what stores is a single match list — not two sections. Both
-    /// `discid_failure` and `barcode_failure` are `None` here, so this also
-    /// stands as the positive case for a union-shaped `Found`.
+    /// Neither signal recorded a failure here, so this also stands as the
+    /// positive case for a union-shaped `Found`.
     #[test]
     fn a_union_of_disagreeing_signals_stores_as_one_match_list() {
         let context = SignalsContext {
-            providers: Vec::new(),
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
-            artwork: crate::signals::ArtworkScan::Absent,
-            barcode_codes: vec![],
-            had_barcode_source: true,
-            catalogs: vec![],
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: vec![(mk_result("rel-a"), mk_status("rel-a"))],
-            barcode_results: vec![(mk_result("rel-b"), mk_status("rel-b"))],
-            catalog_results: vec![],
-            discid_failure: None,
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: Some("012345".to_string()),
-            track_count: 9,
+            disc: DiscIdEvidence {
+                signal: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+                results: vec![(mk_result("rel-a"), mk_status("rel-a"))],
+                ..Default::default()
+            },
+            barcode: BarcodeEvidence {
+                had_source: true,
+                results: vec![(mk_result("rel-b"), mk_status("rel-b"))],
+                matched: Some("012345".to_string()),
+                ..Default::default()
+            },
+            ..mk_context(9)
         };
         let state = crate::identify::state::re_derive_for_tests(context);
         let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -443,27 +422,20 @@ mod tests {
     #[test]
     fn a_union_reached_with_a_recorded_discid_failure_is_failed() {
         let context = SignalsContext {
-            providers: Vec::new(),
-            disc_id: crate::signals::DiscIdSignal::Absent { track_count: 9 },
-            artwork: crate::signals::ArtworkScan::Absent,
-            barcode_codes: vec![],
-            had_barcode_source: true,
-            catalogs: vec![],
-            chosen_catalog: None,
-            disc_excluded: false,
-            barcode_excluded: false,
-            discid_results: vec![],
-            barcode_results: vec![
-                (mk_result("rel-1"), mk_status("rel-1")),
-                (mk_result("rel-2"), mk_status("rel-2")),
-            ],
-            catalog_results: vec![],
-            discid_failure: Some(crate::signals::LookupFailure::Network),
-            barcode_failures: Vec::new(),
-            barcode_scan_failure: None,
-            catalog_failures: Vec::new(),
-            matched_barcode: None,
-            track_count: 9,
+            disc: DiscIdEvidence {
+                signal: crate::signals::DiscIdSignal::Absent { track_count: 9 },
+                failure: Some(crate::signals::LookupFailure::Network),
+                ..Default::default()
+            },
+            barcode: BarcodeEvidence {
+                had_source: true,
+                results: vec![
+                    (mk_result("rel-1"), mk_status("rel-1")),
+                    (mk_result("rel-2"), mk_status("rel-2")),
+                ],
+                ..Default::default()
+            },
+            ..mk_context(9)
         };
         let state = crate::identify::state::re_derive_for_tests(context);
         let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -489,7 +461,7 @@ mod tests {
     #[test]
     fn discid_failure_derives_to_failed() {
         let mut context = mk_context(7);
-        context.discid_failure = Some(crate::signals::LookupFailure::Network);
+        context.disc.failure = Some(crate::signals::LookupFailure::Network);
         let state = crate::identify::state::re_derive_for_tests(context);
         assert!(matches!(state, IdentifyState::Failed { .. }));
         let verdict = TerminalVerdict::try_from(state).unwrap();
@@ -506,7 +478,7 @@ mod tests {
     #[test]
     fn barcode_failure_derives_to_failed() {
         let mut context = mk_context(7);
-        context.barcode_failures = vec![SourceFailure {
+        context.barcode.failures = vec![SourceFailure {
             source: MetadataSource::Discogs,
             failure: crate::signals::LookupFailure::Timeout,
         }];
@@ -531,9 +503,9 @@ mod tests {
     #[test]
     fn a_partial_barcode_answer_keeps_its_matches_on_a_failed_state() {
         let mut context = mk_context(7);
-        context.had_barcode_source = true;
-        context.barcode_results = vec![(mk_result("rel-mb"), mk_status("rel-mb"))];
-        context.barcode_failures = vec![SourceFailure {
+        context.barcode.had_source = true;
+        context.barcode.results = vec![(mk_result("rel-mb"), mk_status("rel-mb"))];
+        context.barcode.failures = vec![SourceFailure {
             source: MetadataSource::Discogs,
             failure: crate::signals::LookupFailure::Network,
         }];
@@ -565,8 +537,8 @@ mod tests {
     #[test]
     fn both_providers_answering_the_barcode_is_found() {
         let mut context = mk_context(7);
-        context.had_barcode_source = true;
-        context.barcode_results = vec![
+        context.barcode.had_source = true;
+        context.barcode.results = vec![
             (mk_result("rel-mb"), mk_status("rel-mb")),
             (mk_result("rel-dg"), mk_status("rel-dg")),
         ];
@@ -579,8 +551,8 @@ mod tests {
     #[test]
     fn a_barcode_failure_with_no_results_carries_no_matches() {
         let mut context = mk_context(7);
-        context.had_barcode_source = true;
-        context.barcode_failures = vec![SourceFailure {
+        context.barcode.had_source = true;
+        context.barcode.failures = vec![SourceFailure {
             source: MetadataSource::Discogs,
             failure: crate::signals::LookupFailure::Network,
         }];
@@ -595,8 +567,8 @@ mod tests {
     #[test]
     fn chosen_catalog_failure_derives_to_failed() {
         let mut context = mk_context(7);
-        context.chosen_catalog = Some("CAT-7".to_string());
-        context.catalog_failures = vec![SourceFailure {
+        context.catalog.chosen = Some("CAT-7".to_string());
+        context.catalog.failures = vec![SourceFailure {
             source: MetadataSource::MusicBrainz,
             failure: crate::signals::LookupFailure::Network,
         }];

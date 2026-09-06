@@ -330,10 +330,10 @@ fn toolbar_keeps_failed_barcode_lookup_after_settle() {
 }
 
 /// Mirrors `toolbar_keeps_failed_barcode_lookup_after_settle` for the disc-ID
-/// side. Before `discid_failure` existed on `SignalsContext`, the settled badge
-/// read off `context.disc_id` (still `Computed` — that only reports whether a
-/// disc ID could be derived, not whether its lookup succeeded) and the empty
-/// `discid_results`, landing on `NoMatch` — indistinguishable from a lookup
+/// side. Before the disc-ID evidence recorded a lookup `failure`, the settled
+/// badge read off `context.disc.signal` (still `Computed` — that only reports
+/// whether a disc ID could be derived, not whether its lookup succeeded) and
+/// the empty `results`, landing on `NoMatch` — indistinguishable from a lookup
 /// that ran cleanly and found nothing. This is the case `identify::verdict`
 /// depends on being distinguishable, since a `NotFoundAnywhere` masking a
 /// failure must not be persisted as a permanent verdict.

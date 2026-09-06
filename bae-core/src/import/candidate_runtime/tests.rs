@@ -46,22 +46,13 @@ fn progress(key: &str, percent: u8) -> ImportEvent {
 fn signals_context(track_count: u32) -> crate::identify::state::SignalsContext {
     crate::identify::state::SignalsContext {
         providers: Vec::new(),
-        disc_id: crate::signals::DiscIdSignal::Absent { track_count },
         artwork: crate::signals::ArtworkScan::Absent,
-        barcode_codes: Vec::new(),
-        had_barcode_source: false,
-        catalogs: Vec::new(),
-        chosen_catalog: None,
-        disc_excluded: false,
-        barcode_excluded: false,
-        discid_results: Vec::new(),
-        barcode_results: Vec::new(),
-        catalog_results: Vec::new(),
-        discid_failure: None,
-        barcode_failures: Vec::new(),
-        barcode_scan_failure: None,
-        catalog_failures: Vec::new(),
-        matched_barcode: None,
+        disc: crate::identify::state::DiscIdEvidence {
+            signal: crate::signals::DiscIdSignal::Absent { track_count },
+            ..Default::default()
+        },
+        barcode: Default::default(),
+        catalog: Default::default(),
         track_count,
     }
 }
