@@ -60,7 +60,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::ComposerPageProjection,
     ) -> (Vec<ComposerSummary>, u64) {
-        let images = composer_image_refs(projection.image_versions);
+        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         let rows = resolve_composer_rows(projection.rows, &images);
         (rows, projection.total_count)
     }
@@ -71,7 +71,7 @@ impl LibraryManager {
         request_revision: u64,
         cause: coven::ReconfigurableLiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<ComposerSummary> {
-        let images = composer_image_refs(projection.image_versions);
+        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         crate::library::LibraryBrowseSnapshot {
             windows: projection
                 .windows
@@ -155,34 +155,8 @@ impl LibraryManager {
         projection: crate::db::ComposerDetailProjection,
     ) -> Option<ComposerDetail> {
         let raw = projection.detail?;
-        let images = projection
-            .image_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Artist,
-                    },
-                )
-            })
-            .collect::<HashMap<_, _>>();
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Cover,
-                    },
-                )
-            })
-            .collect::<HashMap<_, _>>();
+        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let work_groups = raw
             .work_groups
             .into_iter()
@@ -292,20 +266,7 @@ impl LibraryManager {
         projection: crate::db::WorkDetailProjection,
     ) -> Option<WorkDetail> {
         let raw = projection.detail?;
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Cover,
-                    },
-                )
-            })
-            .collect::<HashMap<_, _>>();
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let work_cover = raw
             .work
             .representative_release_id
@@ -329,20 +290,6 @@ impl LibraryManager {
             tracks: raw.tracks,
         })
     }
-}
-
-fn composer_image_refs(versions: HashMap<String, String>) -> HashMap<String, ImageRef> {
-    versions
-        .into_iter()
-        .map(|(id, version)| {
-            let image = ImageRef {
-                id: id.clone(),
-                version,
-                image_type: crate::db::LibraryImageType::Artist,
-            };
-            (id, image)
-        })
-        .collect()
 }
 
 fn resolve_composer_rows(

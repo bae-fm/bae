@@ -229,21 +229,7 @@ mod tests {
     use crate::import::MetadataSource;
 
     fn mk_result(release_id: &str) -> MetadataResult {
-        MetadataResult {
-            source: MetadataSource::MusicBrainz,
-            release_id: release_id.to_string(),
-            title: "Album".to_string(),
-            artist: None,
-            year: None,
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-            cover_art: None,
-            source_group_id: Some("group-1".to_string()),
-            source_tracks: None,
-        }
+        MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, Some("group-1"))
     }
 
     fn mk_status(release_id: &str) -> LibraryStatus {

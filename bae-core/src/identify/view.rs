@@ -313,11 +313,10 @@ fn live_matches(
     Vec<LibraryStatus>,
     Vec<ResultProvenance>,
 ) {
-    let unless = |excluded: bool, results: Vec<_>| if excluded { Vec::new() } else { results };
     let outcome = combine_results(
-        unless(context.disc.excluded, discid.results()),
-        unless(context.barcode.excluded, barcode.results()),
-        unless(context.catalog.chosen.is_none(), catalog.results()),
+        context.disc.active(discid.results()),
+        context.barcode.active(barcode.results()),
+        context.catalog.active(catalog.results()),
     );
     match outcome {
         CombineOutcome::Found {
@@ -513,21 +512,7 @@ mod tests {
 
     fn result(source: MetadataSource, release_id: &str) -> (MetadataResult, LibraryStatus) {
         (
-            MetadataResult {
-                source,
-                release_id: release_id.to_string(),
-                title: "Album".to_string(),
-                artist: None,
-                year: None,
-                format: None,
-                label: None,
-                catalog_number: None,
-                country: None,
-                barcode: None,
-                cover_art: None,
-                source_group_id: Some("g".to_string()),
-                source_tracks: None,
-            },
+            MetadataResult::for_test(source, release_id, Some("g")),
             LibraryStatus {
                 release_id: release_id.to_string(),
                 release_in_library: false,

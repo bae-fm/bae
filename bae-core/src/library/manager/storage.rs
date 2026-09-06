@@ -194,20 +194,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::StoragePageProjection,
     ) -> Result<(StoragePage, u64), LibraryError> {
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Cover,
-                    },
-                )
-            })
-            .collect::<HashMap<_, _>>();
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let has_cloud_home = self.has_cloud_home();
         let pin_states = self.page_pin_states(&projection.rows).await?;
         let mut rows = Vec::with_capacity(projection.rows.len());

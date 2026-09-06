@@ -55,6 +55,35 @@ pub struct MetadataResult {
     pub source_tracks: Option<SourceTracks>,
 }
 
+#[cfg(any(test, feature = "test-utils"))]
+impl MetadataResult {
+    /// A placeholder result: the source, the release it names, and the source
+    /// group it belongs to — the three things identify's tests vary. Every
+    /// other field is the empty value, so a test that cares about one of them
+    /// sets it with struct-update syntax.
+    pub fn for_test(
+        source: MetadataSource,
+        release_id: &str,
+        source_group_id: Option<&str>,
+    ) -> Self {
+        Self {
+            source,
+            release_id: release_id.to_string(),
+            title: "Album".to_string(),
+            artist: None,
+            year: None,
+            format: None,
+            label: None,
+            catalog_number: None,
+            country: None,
+            barcode: None,
+            cover_art: None,
+            source_group_id: source_group_id.map(str::to_string),
+            source_tracks: None,
+        }
+    }
+}
+
 /// What a source said about a release's tracklist, once something asked.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum SourceTracks {

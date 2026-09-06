@@ -85,13 +85,20 @@ impl DiscIdEvidence {
         self.failure = None;
     }
 
-    /// The results combine sees — empty when the signal is unchecked.
-    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+    /// `results` as the current selection sees them: nothing when the user
+    /// unchecked the disc ID. Takes the results rather than reading `self.results`
+    /// so a lookup still in flight can be combined under the same rule.
+    pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
         if self.excluded {
             Vec::new()
         } else {
-            self.results.clone()
+            results
         }
+    }
+
+    /// The results combine sees — empty when the signal is unchecked.
+    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+        self.active(self.results.clone())
     }
 
     /// A failure belonging to evidence the current selection still uses. A
@@ -171,13 +178,21 @@ impl BarcodeEvidence {
         self.matched = None;
     }
 
-    /// The results combine sees — empty when the signal is unchecked.
-    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+    /// `results` as the current selection sees them: nothing when the user
+    /// unchecked the barcode. Takes the results rather than reading
+    /// `self.results` so a lookup still in flight can be combined under the same
+    /// rule.
+    pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
         if self.excluded {
             Vec::new()
         } else {
-            self.results.clone()
+            results
         }
+    }
+
+    /// The results combine sees — empty when the signal is unchecked.
+    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+        self.active(self.results.clone())
     }
 
     /// Failures belonging to evidence the current selection still uses.
@@ -235,14 +250,22 @@ impl CatalogEvidence {
         self.failures.clear();
     }
 
-    /// The results combine sees. Nothing chosen means nothing ran, so they are
-    /// empty and the catalog takes no part.
-    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+    /// `results` as the current selection sees them. Nothing chosen means
+    /// nothing ran, so the catalog takes no part. Takes the results rather than
+    /// reading `self.results` so a lookup still in flight can be combined under
+    /// the same rule.
+    pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
         if self.chosen.is_none() {
             Vec::new()
         } else {
-            self.results.clone()
+            results
         }
+    }
+
+    /// The results combine sees. Nothing chosen means nothing ran, so they are
+    /// empty and the catalog takes no part.
+    pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
+        self.active(self.results.clone())
     }
 
     /// Failures belonging to evidence the current selection still uses.

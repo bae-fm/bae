@@ -146,21 +146,7 @@ mod tests {
     use super::*;
 
     fn mk_result(release_id: &str, group_id: Option<&str>) -> MetadataResult {
-        MetadataResult {
-            source: MetadataSource::MusicBrainz,
-            release_id: release_id.to_string(),
-            title: "Album".to_string(),
-            artist: None,
-            year: None,
-            format: None,
-            label: None,
-            catalog_number: None,
-            country: None,
-            barcode: None,
-            cover_art: None,
-            source_group_id: group_id.map(str::to_string),
-            source_tracks: None,
-        }
+        MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, group_id)
     }
 
     fn mk_status(release_id: &str) -> LibraryStatus {

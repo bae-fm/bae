@@ -282,10 +282,11 @@ mod identify_mirrors {
     use bae_core::signals::{
         BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
     };
+    /// The mirrors render every populated field, so this fills the ones the
+    /// placeholder leaves empty. `source_tracks` stays unasked: these fixtures
+    /// exercise provenance and pressing alignment, not the Ready rule.
     fn metadata_result(release_id: &str, group_id: &str) -> MetadataResult {
         MetadataResult {
-            source: MetadataSource::MusicBrainz,
-            release_id: release_id.to_string(),
             title: "Album Title".to_string(),
             artist: Some("Artist Name".to_string()),
             year: Some(1999),
@@ -293,12 +294,7 @@ mod identify_mirrors {
             label: Some("Label Name".to_string()),
             catalog_number: Some("CAT-1".to_string()),
             country: Some("US".to_string()),
-            barcode: None,
-            cover_art: None,
-            source_group_id: Some(group_id.to_string()),
-            // Nobody asked the source for its tracklist: these fixtures
-            // exercise provenance and pressing alignment, not the Ready rule.
-            source_tracks: None,
+            ..MetadataResult::for_test(MetadataSource::MusicBrainz, release_id, Some(group_id))
         }
     }
 

@@ -67,7 +67,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::AlbumPageProjection,
     ) -> (Vec<AlbumSummary>, u64) {
-        let covers = album_cover_refs(projection.cover_versions);
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let rows = resolve_album_rows(projection.rows, &covers);
         (rows, projection.total_count)
     }
@@ -78,7 +78,7 @@ impl LibraryManager {
         request_revision: u64,
         cause: coven::ReconfigurableLiveQueryCause,
     ) -> crate::library::LibraryBrowseSnapshot<AlbumSummary> {
-        let covers = album_cover_refs(projection.cover_versions);
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         crate::library::LibraryBrowseSnapshot {
             windows: projection
                 .windows
@@ -125,18 +125,7 @@ impl LibraryManager {
         let Some(raw) = projection.detail else {
             return Ok(None);
         };
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                let image = ImageRef {
-                    id: id.clone(),
-                    version,
-                    image_type: crate::db::LibraryImageType::Cover,
-                };
-                (id, image)
-            })
-            .collect();
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         self.resolve_album_detail_with_covers(raw, covers)
             .await
             .map(Some)
@@ -197,34 +186,8 @@ impl LibraryManager {
         &self,
         projection: crate::db::LibrarySearchProjection,
     ) -> SearchResults {
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Cover,
-                    },
-                )
-            })
-            .collect();
-        let artist_images = projection
-            .artist_image_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Artist,
-                    },
-                )
-            })
-            .collect();
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
+        let artist_images = image_refs(projection.artist_image_versions, LibraryImageType::Artist);
         SearchResults::from_raw(projection.results, &covers, &artist_images)
     }
 
@@ -262,20 +225,6 @@ impl LibraryManager {
 
         Ok(())
     }
-}
-
-fn album_cover_refs(versions: HashMap<String, String>) -> HashMap<String, ImageRef> {
-    versions
-        .into_iter()
-        .map(|(id, version)| {
-            let image = ImageRef {
-                id: id.clone(),
-                version,
-                image_type: crate::db::LibraryImageType::Cover,
-            };
-            (id, image)
-        })
-        .collect()
 }
 
 fn resolve_album_rows(

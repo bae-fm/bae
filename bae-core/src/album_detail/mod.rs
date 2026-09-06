@@ -421,6 +421,28 @@ pub struct ImageRef {
     pub image_type: LibraryImageType,
 }
 
+/// Turn a subject-id -> content-version map — the shape the DB and every
+/// live-query projection carry images in — into the [`ImageRef`]s a resolver
+/// looks its subjects up in.
+pub(crate) fn image_refs(
+    versions: std::collections::HashMap<String, String>,
+    image_type: LibraryImageType,
+) -> std::collections::HashMap<String, ImageRef> {
+    versions
+        .into_iter()
+        .map(|(id, version)| {
+            (
+                id.clone(),
+                ImageRef {
+                    id,
+                    version,
+                    image_type: image_type.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
 /// Where a gallery slot's bytes come from. Each variant is self-contained: a cover
 /// is read by its [`ImageRef`], a release-file image by its file id.
 /// `read_gallery_bytes` dispatches on this, so the UI never picks a source itself.

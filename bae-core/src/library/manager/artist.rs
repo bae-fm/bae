@@ -108,18 +108,7 @@ impl LibraryManager {
         &self,
         projection: crate::db::ArtistPageProjection,
     ) -> (Vec<ArtistSummary>, u64) {
-        let images = projection
-            .image_versions
-            .into_iter()
-            .map(|(id, version)| {
-                let image = ImageRef {
-                    id: id.clone(),
-                    version,
-                    image_type: crate::db::LibraryImageType::Artist,
-                };
-                (id, image)
-            })
-            .collect::<HashMap<_, _>>();
+        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
         let rows = projection
             .rows
             .into_iter()
@@ -171,34 +160,8 @@ impl LibraryManager {
         projection: crate::db::ArtistDetailProjection,
     ) -> Option<ArtistDetail> {
         let raw = projection.detail?;
-        let images = projection
-            .image_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Artist,
-                    },
-                )
-            })
-            .collect::<HashMap<_, _>>();
-        let covers = projection
-            .cover_versions
-            .into_iter()
-            .map(|(id, version)| {
-                (
-                    id.clone(),
-                    ImageRef {
-                        id,
-                        version,
-                        image_type: crate::db::LibraryImageType::Cover,
-                    },
-                )
-            })
-            .collect::<HashMap<_, _>>();
+        let images = image_refs(projection.image_versions, LibraryImageType::Artist);
+        let covers = image_refs(projection.cover_versions, LibraryImageType::Cover);
         let image = images.get(&raw.artist.artist.id).cloned();
         Some(ArtistDetail {
             artist: ArtistSummary::from_raw(raw.artist, image),

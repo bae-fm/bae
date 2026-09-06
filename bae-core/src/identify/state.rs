@@ -621,44 +621,47 @@ fn settle_if_ready(state: IdentifyState) -> (IdentifyState, Vec<Effect>) {
 /// Mid-`Triangulating` an exclusion is only recorded — the in-flight lookups
 /// keep running, and the settle applies it.
 fn apply_toggle(state: IdentifyState, signal: SignalToggle) -> (IdentifyState, Vec<Effect>) {
-    let SignalToggle::Catalog(value) = signal else {
-        let exclude_disc = matches!(signal, SignalToggle::Disc);
-        return match state {
-            IdentifyState::Triangulating {
-                discid,
-                barcode,
-                catalog,
-                mut context,
-            } => {
-                toggle_exclusion(&mut context, exclude_disc);
-                (
-                    IdentifyState::Triangulating {
-                        discid,
-                        barcode,
-                        catalog,
-                        context,
-                    },
-                    vec![],
-                )
-            }
-            IdentifyState::Found { mut context, .. }
-            | IdentifyState::NotFoundAnywhere { mut context }
-            | IdentifyState::ManualOnly { mut context, .. }
-            | IdentifyState::Failed { mut context, .. } => {
-                toggle_exclusion(&mut context, exclude_disc);
-                (re_derive(context), vec![])
-            }
-            IdentifyState::Idle => (IdentifyState::Idle, vec![]),
-        };
-    };
-    choose_catalog(state, value)
+    match signal {
+        SignalToggle::Disc => flip_exclusion(state, |context| &mut context.disc.excluded),
+        SignalToggle::Barcode => flip_exclusion(state, |context| &mut context.barcode.excluded),
+        SignalToggle::Catalog(value) => choose_catalog(state, value),
+    }
 }
 
-fn toggle_exclusion(context: &mut SignalsContext, disc: bool) {
-    if disc {
-        context.disc.excluded = !context.disc.excluded;
-    } else {
-        context.barcode.excluded = !context.barcode.excluded;
+/// Flip the exclusion flag `excluded_in` names, in whatever context the state
+/// carries.
+fn flip_exclusion(
+    state: IdentifyState,
+    excluded_in: impl Fn(&mut SignalsContext) -> &mut bool,
+) -> (IdentifyState, Vec<Effect>) {
+    match state {
+        IdentifyState::Triangulating {
+            discid,
+            barcode,
+            catalog,
+            mut context,
+        } => {
+            let excluded = excluded_in(&mut context);
+            *excluded = !*excluded;
+            (
+                IdentifyState::Triangulating {
+                    discid,
+                    barcode,
+                    catalog,
+                    context,
+                },
+                vec![],
+            )
+        }
+        IdentifyState::Found { mut context, .. }
+        | IdentifyState::NotFoundAnywhere { mut context }
+        | IdentifyState::ManualOnly { mut context, .. }
+        | IdentifyState::Failed { mut context, .. } => {
+            let excluded = excluded_in(&mut context);
+            *excluded = !*excluded;
+            (re_derive(context), vec![])
+        }
+        IdentifyState::Idle => (IdentifyState::Idle, vec![]),
     }
 }
 

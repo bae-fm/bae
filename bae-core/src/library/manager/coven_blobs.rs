@@ -121,7 +121,7 @@ impl LibraryManager {
         &self,
         release_ids: &[String],
     ) -> Result<HashMap<String, ImageRef>, LibraryError> {
-        Ok(image_ref_map(
+        Ok(image_refs(
             self.database.cover_versions(release_ids).await?,
             LibraryImageType::Cover,
         ))
@@ -131,7 +131,7 @@ impl LibraryManager {
         &self,
         artist_ids: &[String],
     ) -> Result<HashMap<String, ImageRef>, LibraryError> {
-        Ok(image_ref_map(
+        Ok(image_refs(
             self.database.artist_image_versions(artist_ids).await?,
             LibraryImageType::Artist,
         ))
@@ -340,25 +340,6 @@ impl LibraryManager {
         self.database.write_library_image_blob(image, bytes).await?;
         Ok(())
     }
-}
-
-fn image_ref_map(
-    versions: HashMap<String, String>,
-    image_type: LibraryImageType,
-) -> HashMap<String, ImageRef> {
-    versions
-        .into_iter()
-        .map(|(id, version)| {
-            (
-                id.clone(),
-                ImageRef {
-                    id,
-                    version,
-                    image_type: image_type.clone(),
-                },
-            )
-        })
-        .collect()
 }
 
 /// One blob of a release's pinned set, with the plaintext byte size its row
