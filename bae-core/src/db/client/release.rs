@@ -1,8 +1,6 @@
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+use super::import_state::require_import_commit_guard;
 use super::*;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-mod import_guard;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-use import_guard::require_import_commit_guard;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod fail_import;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

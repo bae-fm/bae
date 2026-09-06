@@ -113,6 +113,44 @@ impl ImportExpectation {
     pub(crate) fn metadata_revision(&self) -> u64 {
         self.metadata_revision
     }
+
+    /// Whether `current` is still the candidate this import was prepared
+    /// from. The library write asks this inside its own transaction, so
+    /// nothing can move the candidate between the answer and the commit.
+    pub(crate) fn verify(
+        &self,
+        candidate_key: &str,
+        source: &crate::import::release_candidate::CandidateSource,
+        current: Option<&crate::import::preparation::CommittingCandidate>,
+    ) -> Result<(), String> {
+        let Some(current) = current else {
+            return Err(format!(
+                "{candidate_key} is no longer a valid import candidate"
+            ));
+        };
+        if !current.actionable
+            || current.source != *source
+            || current.content_hash != self.content_hash
+            || current.file_edit_revision != self.edit_revision
+        {
+            return Err(format!(
+                "{candidate_key} changed before its import committed"
+            ));
+        }
+        if current.prepared_revisions != Some((self.edit_revision, self.metadata_revision)) {
+            return Err(format!(
+                "{candidate_key}'s prepared metadata changed before its import committed"
+            ));
+        }
+        if let Some(snapshot) = &self.file_tag_snapshot {
+            if current.file_tag_snapshot.as_ref() != Some(snapshot) {
+                return Err(format!(
+                    "{candidate_key}'s file-tag reading changed before its import committed"
+                ));
+            }
+        }
+        Ok(())
+    }
 }
 
 pub struct ImportService {

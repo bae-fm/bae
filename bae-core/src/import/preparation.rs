@@ -24,6 +24,20 @@ pub enum MetadataAuthor {
     User,
 }
 
+/// The stored candidate as a library import finds it at commit time: what
+/// the scan lists at the key, and the revisions its preparation is at.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct CommittingCandidate {
+    pub actionable: bool,
+    pub source: crate::import::release_candidate::CandidateSource,
+    pub content_hash: String,
+    pub file_edit_revision: u64,
+    /// The state row's file and metadata revisions, or `None` when no row
+    /// is stored under the content hash the import was prepared from.
+    pub prepared_revisions: Option<(u64, u64)>,
+    pub file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+}
+
 /// One candidate's stored state.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidatePreparation {

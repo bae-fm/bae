@@ -2,6 +2,7 @@ use super::*;
 
 mod edit_rows;
 mod failure_rows;
+mod import_commit;
 mod pane_rows;
 mod preparation_rows;
 mod prepared_asset_rows;
@@ -14,6 +15,7 @@ mod watched_folder_removal;
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
+pub(super) use import_commit::require_import_commit_guard;
 pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
 pub(crate) use preparation_rows::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
