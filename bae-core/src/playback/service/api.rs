@@ -197,8 +197,8 @@ pub(crate) enum PlaybackCommand {
     SaveState(oneshot::Sender<()>),
     /// Switch playback to a remote renderer: stop the local renderer (keeping the
     /// queue) and reissue the current track to the device at its current
-    /// position. The connected channel, URL providers, and format gate ride in
-    /// the payload.
+    /// position. The connected channel and the device's view of this library's
+    /// media ride in the payload.
     PlayOn(Box<RemoteConnect>),
     /// Switch playback to an AirPlay receiver: keep decoding locally but swap the
     /// output sink to push audio to the device. The sink, name, and latency ride
@@ -340,25 +340,21 @@ impl PlaybackHandle {
         dispatch_command(&self.command_tx, PlaybackCommand::SetMuted(muted));
     }
     /// Switch playback to a remote renderer over `channel`, minting each track's
-    /// media URL through the injected providers and gating its served format
-    /// through `stream_format` (the flavor's safe-set). The channel is already
-    /// connected (bae-desktop builds it off the service thread).
+    /// media through `media_source` (the device's view of this library). The
+    /// channel is already connected (bae-desktop builds it off the service
+    /// thread).
     pub fn play_on(
         &self,
         channel: Box<dyn crate::renderer::RendererChannel>,
         device_name: String,
-        stream_url_provider: crate::renderer::MediaUrlProvider,
-        cover_url_provider: crate::renderer::CoverUrlProvider,
-        stream_format: crate::renderer::StreamFormatFn,
+        media_source: crate::renderer::RendererMediaSource,
     ) {
         dispatch_command(
             &self.command_tx,
             PlaybackCommand::PlayOn(Box::new(RemoteConnect::new(
                 channel,
                 device_name,
-                stream_url_provider,
-                cover_url_provider,
-                stream_format,
+                media_source,
             ))),
         );
     }

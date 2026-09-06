@@ -147,9 +147,11 @@ fn remote_connect(channel: FakeRendererChannel) -> RemoteConnect {
     RemoteConnect::new(
         Box::new(channel),
         "Living Room".to_string(),
-        test_stream_provider(),
-        Arc::new(|_| None),
-        cast_stream_format,
+        crate::renderer::RendererMediaSource::new(
+            test_stream_provider(),
+            Arc::new(|_| None),
+            cast_stream_format,
+        ),
     )
 }
 

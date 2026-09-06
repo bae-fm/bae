@@ -811,7 +811,7 @@ impl AppServices {
     delegate_sync!(playback, playback_set_volume => set_volume(volume: f32) -> ());
     delegate_async!(playback, playback_get_volume => get_volume() -> f32);
     delegate_sync!(playback, playback_set_muted => set_muted(muted: bool) -> ());
-    delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device_name: String, stream_url_provider: crate::renderer::MediaUrlProvider, cover_url_provider: crate::renderer::CoverUrlProvider, stream_format: crate::renderer::StreamFormatFn) -> ());
+    delegate_sync!(playback, playback_play_on => play_on(channel: Box<dyn crate::renderer::RendererChannel>, device_name: String, media_source: crate::renderer::RendererMediaSource) -> ());
     delegate_sync!(playback, playback_play_on_airplay => play_on_airplay(sink: Box<dyn crate::playback::airplay_output::AirPlaySink>, device_name: String, latency_frames: u32) -> ());
     delegate_sync!(playback, playback_stop_remote => stop_remote() -> ());
     delegate_sync!(playback, playback_preview_play => preview_play(target: crate::playback::PreviewTarget) -> ());

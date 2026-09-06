@@ -26,8 +26,9 @@ use bae_core::playback::airplay_output::{AirPlaySink, Ap2Sink, RaopSink};
 use bae_core::playback::PlaybackProgress;
 use bae_core::renderer::{
     cast_stream_format, dlna_stream_format, CoverUrlProvider, MediaUrlProvider, RendererChannel,
-    RendererConnection, RendererDevice, RendererDiscovery, RendererServiceType,
-    RendererStreamFormat, ReportedRenderer, StreamFormatFn, TRANSCODE_BITRATE_KBPS,
+    RendererConnection, RendererDevice, RendererDiscovery, RendererMediaSource,
+    RendererServiceType, RendererStreamFormat, ReportedRenderer, StreamFormatFn,
+    TRANSCODE_BITRATE_KBPS,
 };
 use md5::{Digest, Md5};
 use rand::RngCore;
@@ -385,8 +386,8 @@ impl CastController {
 
     /// Play to the device named by `device_id`: build its control channel from
     /// the device's connection (Cast or UPnP), ensure the ephemeral server is
-    /// serving, and hand the playback service the channel plus the URL providers
-    /// and the flavor's stream-format gate.
+    /// serving, and hand the playback service the channel plus the media source
+    /// the device fetches each track through.
     pub async fn cast_to(&self, device_id: &str) -> Result<(), CastError> {
         if !self.enabled() {
             return Err(CastError::Disabled);
@@ -471,9 +472,7 @@ impl CastController {
         self.services.playback_play_on(
             channel,
             device.name,
-            stream_provider,
-            cover_provider,
-            stream_format,
+            RendererMediaSource::new(stream_provider, cover_provider, stream_format),
         );
         Ok(())
     }

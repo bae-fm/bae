@@ -19,7 +19,7 @@ use std::time::Duration;
 
 use super::*;
 use crate::renderer::{
-    RendererMedia, RendererPlayerState, RendererSession, RendererSessionStatus, StreamFormatFn,
+    RendererMedia, RendererMediaSource, RendererPlayerState, RendererSession, RendererSessionStatus,
 };
 
 /// Where the current track plays. `Local` is the default; `Remote` holds the live
@@ -171,17 +171,14 @@ impl std::fmt::Debug for AirPlayConnect {
 }
 
 /// A live remote-renderer session and the state the service needs to keep serving
-/// it: the URL providers (to mint each track's media as the queue advances), the
-/// flavor's stream-format gate (to pick raw vs. transcode per codec), and the
-/// device's last reported position (for the handoff back to local playback when
-/// remote playback stops). The device name isn't held here — it rides the
-/// `RemoteStatusChanged` event out to the UI, which caches it.
+/// it: where the device reaches this library's media (to mint each track's media
+/// as the queue advances) and the device's last reported position (for the
+/// handoff back to local playback when remote playback stops). The device name
+/// isn't held here — it rides the `RemoteStatusChanged` event out to the UI,
+/// which caches it.
 pub(super) struct RemoteRenderer {
     session: RendererSession,
-    stream_url_provider: crate::renderer::MediaUrlProvider,
-    cover_url_provider: crate::renderer::CoverUrlProvider,
-    /// The flavor-specific safe-set gate (Cast vs. DLNA differ on Opus).
-    stream_format: StreamFormatFn,
+    media_source: RendererMediaSource,
     /// The device's most recent playback position, updated from each status.
     /// Local playback resumes here when remote playback ends.
     last_position: Duration,
@@ -189,31 +186,25 @@ pub(super) struct RemoteRenderer {
 
 /// Everything a `PlayOn` command carries to start remote playback: the connected
 /// channel (built off the service thread by bae-desktop), the device's display
-/// name, the injected URL providers, and the flavor's stream-format gate. A
-/// manual `Debug` keeps `PlaybackCommand`'s derive working without the un-`Debug`
+/// name, and where that device reaches this library's media. A manual `Debug`
+/// keeps `PlaybackCommand`'s derive working without the un-`Debug`
 /// channel/closures.
 pub(crate) struct RemoteConnect {
     channel: Box<dyn crate::renderer::RendererChannel>,
     device_name: String,
-    stream_url_provider: crate::renderer::MediaUrlProvider,
-    cover_url_provider: crate::renderer::CoverUrlProvider,
-    stream_format: StreamFormatFn,
+    media_source: RendererMediaSource,
 }
 
 impl RemoteConnect {
     pub(super) fn new(
         channel: Box<dyn crate::renderer::RendererChannel>,
         device_name: String,
-        stream_url_provider: crate::renderer::MediaUrlProvider,
-        cover_url_provider: crate::renderer::CoverUrlProvider,
-        stream_format: StreamFormatFn,
+        media_source: RendererMediaSource,
     ) -> Self {
         Self {
             channel,
             device_name,
-            stream_url_provider,
-            cover_url_provider,
-            stream_format,
+            media_source,
         }
     }
 }
@@ -255,9 +246,7 @@ impl PlaybackService {
         let RemoteConnect {
             channel,
             device_name,
-            stream_url_provider,
-            cover_url_provider,
-            stream_format,
+            media_source,
         } = connect;
 
         let current = self.current_track_id().map(str::to_string);
@@ -279,9 +268,7 @@ impl PlaybackService {
         session.set_volume(volume);
         self.renderer = Renderer::Remote(RemoteRenderer {
             session,
-            stream_url_provider,
-            cover_url_provider,
-            stream_format,
+            media_source,
             last_position: position,
         });
         emit_progress(
@@ -478,18 +465,15 @@ impl PlaybackService {
         let replay_gain_mode = self.library_manager.get_config().replay_gain_mode;
         let prepared = finalize_playback_track(resolved, track_info, Vec::new(), replay_gain_mode);
 
-        // The content-type gate is decided here, where the track's type is
-        // known, through the flavor's own safe-set, and passed to the provider
-        // (which renders the URL) so the URL's format and the declared MIME below
-        // never disagree.
         let Renderer::Remote(remote) = &self.renderer else {
             // Raced out of remote playback before the resolve returned.
             return;
         };
-        let format = (remote.stream_format)(&content_type);
-
-        let url = match (remote.stream_url_provider)(track_id, format) {
-            Ok(url) => url,
+        // Serving is resolved here, where the track's source codec is known, so
+        // the flavor's format gate picks the URL and the MIME declared below from
+        // the same decision.
+        let served = match remote.media_source.serve_track(track_id, &content_type) {
+            Ok(served) => served,
             Err(reason) => {
                 error!("remote: failed to mint media URL for {track_id}: {reason}");
                 self.fail_remote(crate::ui::PlaybackErrorReason::internal(
@@ -500,12 +484,12 @@ impl PlaybackService {
             }
         };
         let media = RendererMedia {
-            url,
-            content_type: format.content_type_str(&content_type),
+            url: served.url,
+            content_type: served.content_type,
             title: prepared.track_info.track_title.clone(),
             artist: prepared.track_info.artist_names.clone(),
             album: prepared.track_info.album_title.clone(),
-            cover_url: (remote.cover_url_provider)(track_id),
+            cover_url: served.cover_url,
             duration: Some(prepared.duration),
         };
         let start_position = start.position(prepared.total_pregap_ms());
