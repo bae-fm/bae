@@ -582,4 +582,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Link a Discogs or MusicBrainz release to browse its artwork.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>Search {source}</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>Identification results</value>
+  </data>
 </root>

@@ -227,6 +227,7 @@ internal sealed partial class ImportMappingPane : UserControl
 
     private static string SourceSearchTag(BridgeSourceSearch state) => state switch
     {
+        BridgeSourceSearch.NotRequested => "not-requested",
         BridgeSourceSearch.NotConfigured => "unconfigured",
         BridgeSourceSearch.Searching => "searching",
         BridgeSourceSearch.Done done => $"done:{done.Count}",
@@ -589,6 +590,13 @@ internal sealed partial class ImportMappingPane : UserControl
             || (_candidate?.Release?.CoverArt.Length ?? 0) > 0,
         Library = _app.Library,
         OnPresent = PresentMetadata,
+        OnSearchSource = source =>
+        {
+            if (_candidate?.Edit is { } edit)
+            {
+                SearchSource(ArtistAssignmentDisplay.Join(edit.AlbumArtistAssignments), edit.AlbumTitle, source);
+            }
+        },
         OnReadFileTags = () =>
         {
             if (_key is { } key)

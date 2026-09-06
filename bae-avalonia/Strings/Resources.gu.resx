@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>તેની છબીઓ જોવા માટે Discogs અથવા MusicBrainz રિલીઝ જોડો.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>{source} માં શોધો</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>ઓળખનાં પરિણામો</value>
+  </data>
 </root>

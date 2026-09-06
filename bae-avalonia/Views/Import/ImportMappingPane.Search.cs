@@ -97,7 +97,7 @@ internal sealed partial class ImportMappingPane
         header.Children.Add(ImportPaneUi.Cell(
             Loc.Chrome("import.search.results_for", "query", SearchQuerySummary(search.Query)),
             secondary: true));
-        var clear = ImportPaneUi.RowButton(Loc.Chrome("action.clear"));
+        var clear = ImportPaneUi.RowButton(Loc.Chrome("import.search.identification_results"));
         clear.Click += (_, _) =>
         {
             if (_key is { } key)
@@ -144,12 +144,26 @@ internal sealed partial class ImportMappingPane
             }
         }
 
-        if (search.Settled && choices.Count == 0)
+        if (search.NoMatches)
         {
             column.Children.Add(ImportPaneUi.Cell(
                 Loc.Chrome("search.no_matches"), secondary: true));
         }
         return column;
+    }
+
+    private void SearchSource(string? artist, string title, BridgeMetadataSource source)
+    {
+        if (_key is not { } key)
+        {
+            return;
+        }
+        _manualSearchType = ManualSearchType.General;
+        _searchArtist = artist ?? string.Empty;
+        _searchAlbum = title;
+        _app.Import.StartSourceCandidateSearch(key, ManualSearchQuery(), source);
+        _import.PresentMetadata(key, ImportMetadataPresentation.FindOnline);
+        Render();
     }
 
     private Control SourceFailureRow(
@@ -329,7 +343,7 @@ internal sealed partial class ImportMappingPane
     {
         var row = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"),
             ColumnSpacing = 8,
             Margin = new Thickness(4, 6),
         };
@@ -344,6 +358,9 @@ internal sealed partial class ImportMappingPane
         };
         Grid.SetColumn(progress, 1);
         row.Children.Add(progress);
+        var search = ImportSourceSearchMenu.Build(source => SearchSource(choice.Artist, choice.Title, source));
+        Grid.SetColumn(search, 2);
+        row.Children.Add(search);
         return row;
     }
 }

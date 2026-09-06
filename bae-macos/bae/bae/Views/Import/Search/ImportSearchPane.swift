@@ -36,6 +36,7 @@ struct ImportSearchPane: View {
     let onRetryFailed: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
+    let onSourceSearch: (ReleaseGroup, BridgeMetadataSource) -> Void
 
     /// The form's first field takes the keyboard on every new value. A
     /// person with nothing to pick is going to type, so an empty result area
@@ -130,6 +131,7 @@ struct ImportSearchPane: View {
                 loadingReleaseId: state.loadingReleaseId,
                 releaseSelectionFailure: state.releaseSelectionFailure,
                 onSelect: onSelect,
+                onSourceSearch: onSourceSearch,
                 trailing: {
                     ForEach(missingSourceNotes, id: \.self) { note in
                         MissingSourceNote(text: note)
@@ -259,6 +261,7 @@ struct ImportSearchPane: View {
                         loadingReleaseId: state.loadingReleaseId,
                         releaseSelectionFailure: state.releaseSelectionFailure,
                         onSelect: onSelect,
+                        onSourceSearch: onSourceSearch,
                         trailing: { EmptyView() },
                     )
                 }
@@ -280,6 +283,7 @@ struct ImportSearchPane: View {
                 onRetry: onRetrySearch,
                 onOpenSettings: onOpenSettings,
                 onSelect: onSelect,
+                onSourceSearch: onSourceSearch,
             )
         }
     }
@@ -314,6 +318,7 @@ struct ImportSearchPane: View {
                 onRerun: {},
                 onRetryFailed: {},
                 onSelect: { _ in },
+                onSourceSearch: { _, _ in },
             )
         }
     }

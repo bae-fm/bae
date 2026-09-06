@@ -37,6 +37,7 @@ internal sealed class ImportMetadataSourceSection
     internal required Control? CommitRow { get; init; }
     internal required LibraryService Library { get; init; }
     internal required Action<ImportMetadataPresentation> OnPresent { get; init; }
+    internal required Action<BridgeMetadataSource> OnSearchSource { get; init; }
     internal required Action OnReadFileTags { get; init; }
     internal required Action OnUseFileTags { get; init; }
     internal required Action OnClearMetadata { get; init; }
@@ -102,12 +103,11 @@ internal sealed class ImportMetadataSourceSection
         layout.Children.Add(cover);
 
         var editor = new StackPanel { Spacing = 12 };
-        editor.Children.Add(SourceActions());
         editor.Children.Add(ReleaseFields(edit));
         Grid.SetColumn(editor, 1);
         layout.Children.Add(editor);
 
-        var body = new StackPanel { Spacing = 12, Children = { layout } };
+        var body = new StackPanel { Spacing = 12, Children = { SourceActions(), layout } };
         if (CommitRow is not null)
         {
             body.Children.Add(CommitRow);
@@ -117,17 +117,20 @@ internal sealed class ImportMetadataSourceSection
 
     private Control SourceActions()
     {
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
-        };
+        var actions = new WrapPanel { Orientation = Orientation.Horizontal };
         actions.Children.Add(ActionButton(
             Loc.Chrome("import.metadata.find_online_ellipsis"),
             () => OnPresent(ImportMetadataPresentation.FindOnline)));
+        var search = ImportSourceSearchMenu.Build(OnSearchSource);
+        search.IsEnabled = !IsReading;
+        actions.Children.Add(search);
         actions.Children.Add(ActionButton(
             Loc.Core("ui.import.metadata.file_tags") + "…",
             () => OnPresent(ImportMetadataPresentation.FileTags)));
+        foreach (var action in actions.Children)
+        {
+            action.Margin = new Thickness(0, 0, 6, 6);
+        }
         return actions;
     }
 
@@ -255,22 +258,8 @@ internal sealed class ImportMetadataSourceSection
         }
         summary.Children.Add(facts);
         summary.Children.Add(ImportPaneUi.Cell(sourceAudioLine, secondary: true));
-        var summaryRow = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            ColumnSpacing = 14,
-        };
-        summaryRow.Children.Add(summary);
-
-        if (actionControl is not null)
-        {
-            actionControl.VerticalAlignment = VerticalAlignment.Top;
-            Grid.SetColumn(actionControl, 1);
-            summaryRow.Children.Add(actionControl);
-        }
-
         var metadata = new StackPanel { Spacing = 12 };
-        metadata.Children.Add(summaryRow);
+        metadata.Children.Add(summary);
         if (edit is not null)
         {
             metadata.Children.Add(new Expander
@@ -288,7 +277,12 @@ internal sealed class ImportMetadataSourceSection
         Grid.SetColumn(metadata, 1);
         grid.Children.Add(metadata);
 
-        var body = new StackPanel { Spacing = 12, Children = { grid } };
+        var body = new StackPanel { Spacing = 12 };
+        if (actionControl is not null)
+        {
+            body.Children.Add(actionControl);
+        }
+        body.Children.Add(grid);
         if (includeSelectedValues && CommitRow is not null)
         {
             body.Children.Add(CommitRow);
@@ -391,13 +385,13 @@ internal sealed class ImportMetadataSourceSection
     {
         var text = new TextBlock
         {
-            Text = label,
+            Text = uri is null ? label : label + " ↗",
             FontSize = 10.5,
             FontWeight = FontWeight.Medium,
             VerticalAlignment = VerticalAlignment.Center,
         };
         text[!TextBlock.ForegroundProperty] =
-            new DynamicResourceExtension("BaeTextSecondaryBrush");
+            new DynamicResourceExtension(uri is null ? "BaeTextSecondaryBrush" : "BaeAccentBrush");
         var chip = new Border
         {
             CornerRadius = new CornerRadius(999),

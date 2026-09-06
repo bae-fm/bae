@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Powiąż wydanie z Discogs lub MusicBrainz, aby przeglądać jego grafiki.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>Szukaj w {source}</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>Wyniki identyfikacji</value>
+  </data>
 </root>

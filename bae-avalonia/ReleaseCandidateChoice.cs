@@ -23,6 +23,8 @@ public sealed class ReleaseCandidateChoice
 
     internal BridgeMetadataSource Source => _lead.Source;
     public string ReleaseId => _lead.ReleaseId;
+    internal string Title => _group.Title;
+    internal string? Artist => _group.Artist;
 
     /// <summary>What picking this row claims, as core settled it.</summary>
     internal BridgeMetadataProvenance Provenance => _pressing.Pick;

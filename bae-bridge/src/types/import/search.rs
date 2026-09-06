@@ -27,8 +27,7 @@ pub struct BridgeMetadataResult {
     pub source_group_id: Option<String>,
 }
 
-/// Search query — one of the three search modes. Every configured provider is
-/// asked, so the query names none.
+/// Search query — one of the three search modes, independent of the chosen provider.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSearchQuery {
     General { artist: String, album: String },
@@ -109,6 +108,7 @@ pub struct BridgePressing {
 /// through the search's `groups`, so a source reports only how many it found.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
+    NotRequested,
     /// Discogs without a usable key: it was never asked.
     NotConfigured,
     Searching,
@@ -125,6 +125,7 @@ impl BridgeSourceSearch {
     fn from_core(search: bae_core::import::SourceSearch) -> Self {
         use bae_core::import::SourceSearch;
         match search {
+            SourceSearch::NotRequested => Self::NotRequested,
             SourceSearch::NotConfigured => Self::NotConfigured,
             SourceSearch::Searching => Self::Searching,
             SourceSearch::Done { results } => Self::Done {
@@ -152,12 +153,15 @@ pub struct BridgeCandidateSearch {
     /// Whether every source has landed — nothing is still looking. Crossed
     /// rather than folded per surface, so "still searching" means one thing.
     pub settled: bool,
+    /// At least one provider answered successfully and none found a release.
+    pub no_matches: bool,
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_core::import::CandidateSearch) -> Self {
         let settled = search.is_settled();
+        let no_matches = search.has_no_matches();
         let bae_core::import::CandidateSearch {
             query,
             musicbrainz,
@@ -167,6 +171,7 @@ impl BridgeCandidateSearch {
         } = search;
         Self {
             settled,
+            no_matches,
             query: BridgeSearchQuery::from_core(query),
             musicbrainz: BridgeSourceSearch::from_core(musicbrainz),
             discogs: BridgeSourceSearch::from_core(discogs),

@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Vincule um lançamento do Discogs ou MusicBrainz para ver suas imagens.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>Buscar no {source}</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>Resultados da identificação</value>
+  </data>
 </root>

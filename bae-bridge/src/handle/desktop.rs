@@ -491,6 +491,20 @@ impl AppHandle {
             .import_start_candidate_search(candidate_key, query.into_core());
     }
 
+    /// Search only the requested provider; results use the candidate's existing search stream.
+    pub fn start_source_candidate_search(
+        &self,
+        candidate_key: String,
+        query: crate::types::BridgeSearchQuery,
+        source: crate::types::BridgeMetadataSource,
+    ) {
+        self.services.import_start_source_candidate_search(
+            candidate_key,
+            query.into_core(),
+            source.into_core(),
+        );
+    }
+
     /// Re-ask only the providers whose part of the search failed, keeping what
     /// the others found. A no-op when the candidate has no search running.
     pub fn retry_candidate_search(&self, candidate_key: String) {

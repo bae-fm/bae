@@ -19,6 +19,8 @@ struct ShotScene {
     /// verification sheet. A scene is present only when it has a real staging;
     /// a missing scene is a deliberate omission, never a swallowed failure.
     static let all: [ShotScene] = [
+        importMetadataDraft,
+        importSearchResults,
         ShotScene(
             id: "import-combine-folders",
             size: CGSize(width: 936, height: 696)
@@ -249,4 +251,41 @@ struct ShotScene {
             )
         },
     ]
+}
+
+extension ShotScene {
+    private static let importMetadataDraft = ShotScene(
+        id: "import-metadata-draft",
+        size: CGSize(width: 800, height: 700)
+    ) {
+        AnyView(
+            ImportMappingPreview.make(
+                candidate: PreviewData.mappingCandidate,
+                storageCloud: .constant(true),
+                storagePinned: .constant(true)
+            )
+            .importPreviewEnvironment()
+        )
+    }
+
+    private static let importSearchResults = ShotScene(
+        id: "import-search-results",
+        size: CGSize(width: 800, height: 520)
+    ) {
+        AnyView(
+            FindOnlineSearchResults(
+                search: PreviewData.manualSearchRun,
+                isImporting: false,
+                libraryStatuses: [:],
+                selectedReleaseId: nil,
+                loadingReleaseId: nil,
+                onClear: {},
+                onRetry: {},
+                onOpenSettings: {},
+                onSelect: { _ in },
+                onSourceSearch: { _, _ in }
+            )
+            .importPreviewEnvironment()
+        )
+    }
 }

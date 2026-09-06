@@ -22,6 +22,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
+    let onSourceSearch: (ReleaseGroup, BridgeMetadataSource) -> Void
     @ViewBuilder
     let trailing: () -> Trailing
 
@@ -38,6 +39,7 @@ struct ReleaseGroupListView<Trailing: View>: View {
                         loadingReleaseId: loadingReleaseId,
                         releaseSelectionFailure: releaseSelectionFailure,
                         onSelect: onSelect,
+                        onSourceSearch: onSourceSearch,
                     )
                 }
                 trailing()
@@ -74,10 +76,15 @@ struct ReleaseGroupSection: View {
     var loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onSelect: (Pressing) -> Void
+    let onSourceSearch: (ReleaseGroup, BridgeMetadataSource) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ReleaseGroupCard(group: group)
+            HStack(alignment: .top, spacing: 12) {
+                ReleaseGroupCard(group: group)
+                ImportSourceSearchMenu { onSourceSearch(group, $0) }
+                    .disabled(isImporting)
+            }
             pressings
         }
     }
@@ -134,6 +141,7 @@ struct ReleaseGroupSection: View {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
             trailing: { EmptyView() },
         )
         .frame(width: 620, height: 520)
@@ -148,6 +156,7 @@ struct ReleaseGroupSection: View {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
             trailing: { EmptyView() },
         )
         .frame(width: 620, height: 520)
@@ -163,6 +172,7 @@ struct ReleaseGroupSection: View {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
             trailing: {
                 MissingSourceNote(
                     text: String(

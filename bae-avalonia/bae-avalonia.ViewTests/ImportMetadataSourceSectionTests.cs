@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Avalonia;
+using Avalonia.Threading;
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
@@ -15,6 +17,34 @@ namespace Bae.Desktop.ViewTests;
 
 public sealed class ImportMetadataSourceSectionTests
 {
+    [AvaloniaFact]
+    public void SourceActionsFitAboveTheReleaseAtNarrowWidths()
+    {
+        foreach (var blank in new[] { false, true })
+        {
+            var section = Build(draftIsBlank: blank);
+            var window = new Window { Width = 380, Height = 700, Content = section };
+            window.Show();
+            try
+            {
+                Dispatcher.UIThread.RunJobs();
+                var cover = Assert.Single(section.GetLogicalDescendants().OfType<Image>());
+                var coverTop = cover.TranslatePoint(default, section)!.Value.Y;
+                foreach (var label in new[] {
+                    Loc.Chrome("import.metadata.find_online_ellipsis"),
+                    Loc.Chrome("action.search"),
+                    Loc.Core("ui.import.metadata.file_tags") + "…" })
+                {
+                    var button = ButtonNamed(section, label);
+                    var origin = button.TranslatePoint(default, section)!.Value;
+                    Assert.True(origin.Y + button.Bounds.Height <= coverTop);
+                    Assert.True(origin.X + button.Bounds.Width <= section.Bounds.Width);
+                }
+            }
+            finally { window.Close(); }
+        }
+    }
+
     [AvaloniaFact]
     public void BlankDraftOffersBothPrefillSourcesAndEditableFields()
     {
@@ -55,7 +85,7 @@ public sealed class ImportMetadataSourceSectionTests
 
         var card = Assert.IsType<Border>(section);
         var body = Assert.IsType<StackPanel>(card.Child);
-        var layout = Assert.IsType<Grid>(Assert.Single(body.Children));
+        var layout = Assert.Single(body.Children.OfType<Grid>());
         Assert.Equal(2, layout.ColumnDefinitions.Count);
         var editor = Assert.IsType<StackPanel>(
             Assert.Single(layout.Children, child => Grid.GetColumn(child) == 1));
@@ -226,6 +256,7 @@ public sealed class ImportMetadataSourceSectionTests
             CommitRow = null,
             Library = new LibraryService(),
             OnPresent = onPresent ?? (_ => { }),
+            OnSearchSource = _ => { },
             OnReadFileTags = () => { },
             OnUseFileTags = onUseFileTags ?? (() => { }),
             OnClearMetadata = onClearMetadata ?? (() => { }),

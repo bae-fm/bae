@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>关联 Discogs 或 MusicBrainz 发行版本以浏览其图片。</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>在 {source} 中搜索</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>识别结果</value>
+  </data>
 </root>

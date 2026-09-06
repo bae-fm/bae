@@ -401,6 +401,7 @@ internal static class ShotCapture
             CommitRow = null,
             Library = PreviewArtistLibrary(),
             OnPresent = _ => { },
+            OnSearchSource = _ => { },
             OnReadFileTags = () => { },
             OnUseFileTags = () => { },
             OnClearMetadata = () => { },

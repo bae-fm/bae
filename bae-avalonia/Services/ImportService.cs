@@ -145,6 +145,10 @@ internal sealed class ImportService
         = (_, _) => throw new InvalidOperationException(
             "ImportService stub: StartCandidateSearch not wired");
 
+    public Func<string, BridgeSearchQuery, BridgeMetadataSource, bool> StartSourceCandidateSearch { get; init; }
+        = (_, _, _) => throw new InvalidOperationException(
+            "ImportService stub: StartSourceCandidateSearch not wired");
+
     /// <summary>Re-ask only the providers whose part of the search failed.</summary>
     public Func<string, bool> RetryCandidateSearch { get; init; }
         = _ => throw new InvalidOperationException(
@@ -295,6 +299,9 @@ internal sealed class ImportService
         StartCandidateSearch = (candidateKey, query) =>
             session.WithCurrentHandle(handle =>
                 NativeBae.StartCandidateSearch(handle, candidateKey, query)),
+        StartSourceCandidateSearch = (candidateKey, query, source) =>
+            session.WithCurrentHandle(handle =>
+                handle.StartSourceCandidateSearch(candidateKey, query, source)),
         RetryCandidateSearch = candidateKey =>
             session.WithCurrentHandle(handle =>
                 NativeBae.RetryCandidateSearch(handle, candidateKey)),

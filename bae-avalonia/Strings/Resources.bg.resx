@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Свържете издание от Discogs или MusicBrainz, за да разгледате изображенията му.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>Търсене в {source}</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>Резултати от разпознаването</value>
+  </data>
 </root>

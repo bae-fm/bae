@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>تصاویر دیکھنے کے لیے Discogs یا MusicBrainz کی ریلیز منسلک کریں۔</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>{source} میں تلاش کریں</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>شناخت کے نتائج</value>
+  </data>
 </root>

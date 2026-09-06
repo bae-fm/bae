@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -276,6 +277,81 @@ public sealed class ImportMappingPaneTests
     }
 
     [AvaloniaFact]
+    public void AnUnconfiguredSourceDoesNotClaimToHaveFoundNoMatches()
+    {
+        var search = new BridgeCandidateSearch(
+            new BridgeSearchQuery.General("Artist Name", "Album Title"),
+            new BridgeSourceSearch.NotRequested(),
+            new BridgeSourceSearch.NotConfigured(),
+            Array.Empty<BridgeReleaseGroup>(),
+            new Dictionary<string, BridgeLibraryStatus>(),
+            true, false);
+        var runtime = new BridgeCandidateRuntimeSnapshot(
+            new BridgeIdentifyState.NotFoundAnywhere(),
+            new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
+            null, search);
+        var (pane, _) = Show(Detail(), running: runtime,
+            initialPresentation: ImportMetadataPresentation.FindOnline);
+
+        Assert.DoesNotContain(Loc.Chrome("search.no_matches"), Texts(pane));
+        Assert.Contains(Loc.Chrome("import.search.source_not_configured", "source", "Discogs"), Texts(pane));
+    }
+
+    [AvaloniaFact]
+    public void SearchingTheOtherSourceKeepsTheDraftAndPrefillsTheQuery()
+    {
+        var searches = new List<(string Key, BridgeSearchQuery Query, BridgeMetadataSource Source)>();
+        var applied = new List<BridgeMetadataProvenance>();
+        var detail = Detail();
+        var (pane, app) = Show(detail, sourceSearches: searches, appliedProvenances: applied);
+        var search = Assert.Single(pane.GetLogicalDescendants().OfType<Button>(),
+            button => button.Flyout is MenuFlyout && Equals(button.Content, Loc.Chrome("action.search")));
+        var menu = Assert.IsType<MenuFlyout>(search.Flyout);
+        var discogs = Assert.Single(menu.Items.OfType<MenuItem>(),
+            item => Equals(item.Header, Loc.Chrome("import.search.source", "source", "Discogs")));
+
+        discogs.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal((CandidateKey,
+            (BridgeSearchQuery)new BridgeSearchQuery.General("Artist Name", "Typed Over The Release"),
+            BridgeMetadataSource.Discogs), Assert.Single(searches));
+        Assert.Empty(applied);
+        Assert.Equal(detail.MetadataProvenance, app.ImportStore.Candidate(CandidateKey)?.MetadataProvenance);
+        Assert.Equal("Typed Over The Release", FieldByLabel(pane, Loc.Chrome("search.field.album")).Text);
+    }
+
+    [AvaloniaFact]
+    public void AResultCanSearchAnotherProviderWithoutSelectingThePressing()
+    {
+        var searches = new List<(string Key, BridgeSearchQuery Query, BridgeMetadataSource Source)>();
+        var applied = new List<BridgeMetadataProvenance>();
+        var group = ChoiceGroup("rel-1");
+        var (pane, _) = Show(Detail(),
+            matches: new[] { new ReleaseCandidateChoice(group, group.Pressings[0]) },
+            initialPresentation: ImportMetadataPresentation.FindOnline,
+            sourceSearches: searches, appliedProvenances: applied);
+        var button = Assert.Single(pane.GetLogicalDescendants().OfType<Button>(),
+            button => button.Flyout is MenuFlyout && Equals(button.Content, Loc.Chrome("action.search")));
+        var window = Assert.IsType<Window>(TopLevel.GetTopLevel(pane));
+        var center = button.TranslatePoint(
+            new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(center, MouseButton.Left);
+        window.MouseUp(center, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+        Assert.Empty(applied);
+        var menu = Assert.IsType<MenuFlyout>(button.Flyout);
+        Assert.True(menu.IsOpen);
+        menu.Items.OfType<MenuItem>().Last().RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal((CandidateKey,
+            (BridgeSearchQuery)new BridgeSearchQuery.General("Artist Name", "Album Title"),
+            BridgeMetadataSource.Discogs), Assert.Single(searches));
+        Assert.Empty(applied);
+    }
+
+    [AvaloniaFact]
     public void ApplyingAnExistingReleaseWaitsForItsNewDetailRevision()
     {
         var detailCallbacks = new List<Action<BridgeImportCandidateDetail?>>();
@@ -442,7 +518,8 @@ public sealed class ImportMappingPaneTests
         ulong applicationRevision = 1,
         List<Action<BridgeImportCandidateDetail?>>? detailCallbacks = null,
         List<(string Key, BridgeSearchQuery Query)>? searches = null,
-        List<string>? openedAlbums = null)
+        List<string>? openedAlbums = null,
+        List<(string Key, BridgeSearchQuery Query, BridgeMetadataSource Source)>? sourceSearches = null)
     {
         // Controls may only be built on the headless session's dispatcher
         // thread, which [AvaloniaFact] is what supplies.
@@ -474,6 +551,11 @@ public sealed class ImportMappingPaneTests
             StartCandidateSearch = (key, query) =>
             {
                 searches?.Add((key, query));
+                return true;
+            },
+            StartSourceCandidateSearch = (key, query, source) =>
+            {
+                sourceSearches?.Add((key, query, source));
                 return true;
             },
             RetryCandidateSearch = _ => true,

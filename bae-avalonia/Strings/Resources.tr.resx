@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Görsellerine göz atmak için bir Discogs veya MusicBrainz sürümü bağlayın.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>{source} üzerinde ara</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>Tanımlama sonuçları</value>
+  </data>
 </root>

@@ -610,7 +610,8 @@ struct ImportSearchFlowLibraryStatusTests {
                     )
                 ],
                 libraryStatuses: [:],
-                settled: true
+                settled: true,
+                noMatches: false
             )
         )
     }

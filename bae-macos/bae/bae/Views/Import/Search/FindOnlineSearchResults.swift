@@ -6,7 +6,7 @@ import SwiftUI
 /// unconfigured, or failed.
 ///
 /// The sources answer separately, so what MusicBrainz found renders while
-/// Discogs is still out. Clear drops the run and gives the area back to the
+/// Discogs is still out. Returning to identification drops the run and shows the
 /// identify verdict.
 struct FindOnlineSearchResults: View {
     let search: BridgeCandidateSearch
@@ -19,6 +19,7 @@ struct FindOnlineSearchResults: View {
     let onRetry: () -> Void
     let onOpenSettings: () -> Void
     let onSelect: (Pressing) -> Void
+    let onSourceSearch: (ReleaseGroup, BridgeMetadataSource) -> Void
 
     private var groups: [ReleaseGroup] {
         search.groups.map(ReleaseGroup.init(bridge:))
@@ -38,6 +39,7 @@ struct FindOnlineSearchResults: View {
                 loadingReleaseId: loadingReleaseId,
                 releaseSelectionFailure: releaseSelectionFailure,
                 onSelect: onSelect,
+                onSourceSearch: onSourceSearch,
                 trailing: {
                     emptyLine
                     sourceLines
@@ -58,7 +60,10 @@ struct FindOnlineSearchResults: View {
                 .truncationMode(.middle)
             Spacer(minLength: 8)
             Button(action: onClear) {
-                Label("Clear", systemImage: "xmark")
+                Label(
+                    "Identification results",
+                    systemImage: "arrow.uturn.backward"
+                )
             }
             .buttonStyle(.link)
             .font(.system(size: 12))
@@ -73,7 +78,7 @@ struct FindOnlineSearchResults: View {
     /// while one is still out, what it will say is not yet "nothing".
     @ViewBuilder
     private var emptyLine: some View {
-        if groups.isEmpty, search.settled, search.failures.isEmpty {
+        if search.noMatches {
             Text("No matches \u{2014} try different terms")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
@@ -112,7 +117,7 @@ struct FindOnlineSearchResults: View {
                         Button("Retry", action: onRetry)
                             .buttonStyle(.link)
                     }
-                case .done:
+                case .done, .notRequested:
                     EmptyView()
                 }
             }
@@ -133,14 +138,6 @@ extension BridgeCandidateSearch {
         ]
     }
 
-    /// The sources that did not answer, each with its own reason.
-    var failures: [(source: BridgeMetadataSource, failure: BridgeLookupFailure)]
-    {
-        sourceStates.compactMap { source, state in
-            guard case .failed(let failure) = state else { return nil }
-            return (source, failure)
-        }
-    }
 }
 
 extension BridgeSearchQuery {
@@ -173,6 +170,7 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()
@@ -189,6 +187,7 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()
@@ -205,6 +204,7 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()
@@ -221,6 +221,7 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
+            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()

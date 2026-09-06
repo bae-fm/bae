@@ -21,6 +21,11 @@ struct ImportMetadataSourceSection: View {
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
 
+    @Environment(Importer.self)
+    private var importer
+    @Environment(ImportStore.self)
+    private var importStore
+
     var body: some View {
         Group {
             switch candidate.metadataPresentation {
@@ -42,11 +47,12 @@ struct ImportMetadataSourceSection: View {
     @ViewBuilder
     private var draft: some View {
         if let edit = candidate.edit {
+            let summary = ImportReleaseSummary(
+                candidate: candidate,
+                editValues: edit
+            )
             ImportReleaseHeader(
-                releaseSummary: ImportReleaseSummary(
-                    candidate: candidate,
-                    editValues: edit
-                ),
+                releaseSummary: summary,
                 isReading: isReading,
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
@@ -56,6 +62,22 @@ struct ImportMetadataSourceSection: View {
                 commit: commit,
                 sourceActions: ImportReleaseSourceActions(
                     findOnline: { onPresent(.findOnline) },
+                    searchSource: { source in
+                        ImportSearchFlow.searchRelease(
+                            services: ImportSearchFlow.ImportServices(
+                                importer: importer,
+                                importStore: importStore
+                            ),
+                            key: candidate.key,
+                            artist: summary.artist,
+                            title: edit.albumTitle,
+                            source: source
+                        )
+                        importStore.presentMetadata(
+                            .findOnline,
+                            forKey: candidate.key
+                        )
+                    },
                     useFileTags: { onPresent(.fileTags) },
                     clearMetadata: onClearMetadata
                 ),
@@ -190,17 +212,6 @@ private struct ImportOnlineMetadataBrowser: View {
             }
             .frame(maxWidth: .infinity)
             .formGroupCard()
-            // Identification that narrows to one pressing applies it as the
-            // pick itself, the way choosing that row would. The browser then
-            // has nothing left to offer, so it closes as it does on a pick.
-            .onChange(of: candidate.pickedRelease?.releaseId) { was, now in
-                let applying =
-                    importStore.candidate(forKey: candidateKey)?
-                    .metadataApplicationSession != nil
-                if was == nil, now != nil, !applying {
-                    onBack()
-                }
-            }
         }
     }
 }

@@ -547,7 +547,8 @@
             discogs: .done(count: 1),
             groups: searchGroupsManualBridge,
             libraryStatuses: [:],
-            settled: true
+            settled: true,
+            noMatches: false
         )
 
         /// MusicBrainz has landed; Discogs is still out.
@@ -557,7 +558,8 @@
             discogs: .searching,
             groups: searchGroupsManualBridge,
             libraryStatuses: [:],
-            settled: false
+            settled: false,
+            noMatches: false
         )
 
         /// One provider answered, the other dropped.
@@ -567,7 +569,8 @@
             discogs: .failed(failure: .network),
             groups: [searchGroupsManualBridge[0]],
             libraryStatuses: [:],
-            settled: true
+            settled: true,
+            noMatches: false
         )
 
         /// Both providers answered with nothing.
@@ -577,7 +580,8 @@
             discogs: .done(count: 0),
             groups: [],
             libraryStatuses: [:],
-            settled: true
+            settled: true,
+            noMatches: true
         )
 
         // MARK: - Pane states

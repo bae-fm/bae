@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>יש לקשר מהדורה מ־Discogs או מ־MusicBrainz כדי לעיין בתמונות שלה.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>חיפוש ב-{source}</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>תוצאות הזיהוי</value>
+  </data>
 </root>

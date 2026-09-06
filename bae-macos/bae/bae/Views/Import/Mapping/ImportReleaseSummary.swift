@@ -201,11 +201,18 @@ private struct ImportMetadataProvenanceChips: View {
     @ViewBuilder
     private func chip(label: String, url: URL?) -> some View {
         if let url {
-            Link(destination: url) { capsule(label) }
-                .buttonStyle(.plain)
+            Link(destination: url) {
+                HStack(spacing: 3) {
+                    capsule(label)
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 9))
+                }
+                .foregroundStyle(Theme.accent)
+            }
+            .buttonStyle(.plain)
         }
         else {
-            capsule(label)
+            capsule(label).foregroundStyle(.secondary)
         }
     }
 
@@ -215,7 +222,6 @@ private struct ImportMetadataProvenanceChips: View {
             .padding(.horizontal, 5)
             .padding(.vertical, 1)
             .background(Color.secondary.opacity(0.15), in: Capsule())
-            .foregroundStyle(.secondary)
             .lineLimit(1)
     }
 }

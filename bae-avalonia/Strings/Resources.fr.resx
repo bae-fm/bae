@@ -555,4 +555,10 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Associez une parution Discogs ou MusicBrainz pour parcourir ses images.</value>
   </data>
+  <data name="import.search.source" xml:space="preserve">
+    <value>Rechercher sur {source}</value>
+  </data>
+  <data name="import.search.identification_results" xml:space="preserve">
+    <value>Résultats de l’identification</value>
+  </data>
 </root>
