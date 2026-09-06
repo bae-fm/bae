@@ -21,7 +21,7 @@ use std::future::Future;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use thiserror::Error;
 use tokio::sync::broadcast;
@@ -811,8 +811,8 @@ pub struct LibraryManager {
     diagnostics: Diagnostics,
     runtime_handle: tokio::runtime::Handle,
     event_tx: broadcast::Sender<LibraryEvent>,
-    /// The cloud-sync responsibility: the upload pipeline (outbox in-flight,
-    /// throughput, pause), provider connection, membership, and the coven
+    /// The cloud-sync responsibility: the outbox projection over the live
+    /// upload state, provider connection, membership, and the coven
     /// make-Remote/make-Local primitives.
     sync: SyncController,
     /// The sync banner's state and the stream the front-ends read it from.

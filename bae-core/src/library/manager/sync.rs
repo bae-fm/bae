@@ -122,8 +122,7 @@ impl LibraryManager {
     /// Build, start, and attach a sync manager. Used once at startup for a
     /// returning user with a configured cloud home: coven resolves the at-rest
     /// cipher from the master-key custody itself, keyed off whatever this
-    /// device's keyring already holds. Shares the sync controller's outbox
-    /// in-flight set and event channel with the sync loop's upload observer.
+    /// device's keyring already holds.
     pub async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         self.sync.attach_and_start_sync().await
     }

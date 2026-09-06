@@ -20,15 +20,10 @@ impl LibraryManager {
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Result<Self, coven::DbError> {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let transient_uploads = Arc::new(Mutex::new(HashMap::new()));
-        let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
-        let (sync_paused, _) = tokio::sync::watch::channel(false);
+        let uploads = crate::library::live_uploads::LiveUploads::new();
 
-        let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
-            transient_uploads.clone(),
-            upload_throughput.clone(),
-            sync_paused.clone(),
-        );
+        let (observer, observer_events) =
+            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
         let observer = Arc::new(observer);
         // coven holds only a `Weak` to the observer (via `WeakUploadObserver`);
         // the `LibraryManager` below owns the strong `Arc`. Registering the
@@ -65,9 +60,7 @@ impl LibraryManager {
         let sync = SyncController::new(
             config_handle.clone(),
             database.clone(),
-            transient_uploads,
-            upload_throughput,
-            sync_paused,
+            uploads,
             cloudkit_ops,
             diagnostics.clone(),
         );
@@ -115,23 +108,16 @@ impl LibraryManager {
         remote_images: crate::import::cover_art::RemoteImageCache,
     ) -> Self {
         let (event_tx, _) = broadcast::channel(LIBRARY_EVENT_CHANNEL_CAPACITY);
-        let transient_uploads = Arc::new(Mutex::new(HashMap::new()));
-        let upload_throughput = Arc::new(crate::library::UploadThroughput::new());
-        let (sync_paused, _) = tokio::sync::watch::channel(false);
-        let (observer, observer_events) = crate::sync::upload_observer::ReleaseUploadObserver::new(
-            transient_uploads.clone(),
-            upload_throughput.clone(),
-            sync_paused.clone(),
-        );
+        let uploads = crate::library::live_uploads::LiveUploads::new();
+        let (observer, observer_events) =
+            crate::sync::upload_observer::ReleaseUploadObserver::new(uploads.clone());
 
         let sync_status = SyncStatus::new(database.clone());
 
         let sync = SyncController::new(
             config_handle.clone(),
             database.clone(),
-            transient_uploads,
-            upload_throughput,
-            sync_paused,
+            uploads,
             None,
             diagnostics.clone(),
         );

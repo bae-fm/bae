@@ -2,6 +2,7 @@ pub mod app_services;
 mod browse;
 mod device_pairing;
 pub mod download_snapshot;
+pub(crate) mod live_uploads;
 mod local_lifecycle;
 pub mod manager;
 pub mod outbox_snapshot;

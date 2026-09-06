@@ -1,6 +1,8 @@
 //! The cloud-sync responsibility extracted from [`LibraryManager`]: the upload
-//! pipeline (outbox in-flight + throughput + pause), the connection lifecycle and
-//! provider configuration, and the membership operations.
+//! pipeline's projection and pause command (over the shared
+//! [`LiveUploads`](crate::library::live_uploads::LiveUploads) the observer
+//! writes), the connection lifecycle and provider configuration, and the
+//! membership operations.
 //!
 //! `LibraryManager` holds one `SyncController` and delegates its public sync API
 //! to it. The controller never references the manager back; the resolver-side
@@ -8,23 +10,23 @@
 //! cloud-home change) stays on the manager, which calls the controller for the
 //! sync part and does the re-emit itself.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use tracing::{info, warn};
 
 use crate::config::{CloudProvider, ConfigHandle};
 use crate::db::Database;
 use crate::diagnostics::{Diagnostics, TelemetryEvent};
-use crate::library::{LibraryError, OutboxSnapshot, UploadThroughput};
+use crate::library::live_uploads::LiveUploads;
+use crate::library::{LibraryError, OutboxSnapshot};
 use crate::sync::S3ConfigData;
 #[cfg(any(test, feature = "test-utils"))]
 use coven::ExactCloudHome;
 
-/// Owns the sync/upload state and the cloud-connection lifecycle. Holds clones of
-/// the handles the sync paths need (config, database, and diagnostics) plus the
-/// transient upload-pipeline state. Cloned alongside the
-/// manager — every field is itself a clone-shared handle or `Arc`.
+/// Owns the outbox projection and the cloud-connection lifecycle. Holds clones
+/// of the handles the sync paths need (config, database, and diagnostics) plus
+/// the live upload state. Cloned alongside the manager — every field is itself
+/// a clone-shared handle or `Arc`.
 #[derive(Clone)]
 pub(crate) struct SyncController {
     config_handle: Arc<ConfigHandle>,
@@ -35,23 +37,10 @@ pub(crate) struct SyncController {
     /// overwrite a newer value with an older queue snapshot.
     outbox_projection_revision: Arc<tokio::sync::Mutex<u64>>,
     database: Database,
-    /// Exact blob-bearing rows with preparation or provider work in flight,
-    /// mapped to buffer-cadence progress. Shared with the sync loop's
-    /// `ReleaseUploadObserver` and read by `outbox_snapshot`.
-    transient_uploads: Arc<
-        Mutex<
-            HashMap<
-                crate::library::outbox_snapshot::UploadBlobKey,
-                crate::library::outbox_snapshot::TransientUploadState,
-            >,
-        >,
-    >,
-    /// Rolling-window upload-throughput tracker. The observer records bytes; the
-    /// snapshot builder reads the rate.
-    upload_throughput: Arc<UploadThroughput>,
-    /// User-driven absolute pause state. The observer subscribes to this same
-    /// watch value so coven can suspend and resume active transfer futures.
-    sync_paused: tokio::sync::watch::Sender<bool>,
+    /// In-flight bytes, rate, and pause state of the upload pipeline, shared
+    /// with the sync loop's `ReleaseUploadObserver`, which writes them. This
+    /// side reads them into every outbox snapshot and drives the pause.
+    uploads: LiveUploads,
     cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
     /// Typed telemetry sink, shared with the owning manager. The
     /// provider-connect/disconnect completions emit through it.
@@ -62,16 +51,7 @@ impl SyncController {
     pub(crate) fn new(
         config_handle: Arc<ConfigHandle>,
         database: Database,
-        transient_uploads: Arc<
-            Mutex<
-                HashMap<
-                    crate::library::outbox_snapshot::UploadBlobKey,
-                    crate::library::outbox_snapshot::TransientUploadState,
-                >,
-            >,
-        >,
-        upload_throughput: Arc<UploadThroughput>,
-        sync_paused: tokio::sync::watch::Sender<bool>,
+        uploads: LiveUploads,
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         diagnostics: Diagnostics,
     ) -> Self {
@@ -81,9 +61,7 @@ impl SyncController {
             outbox_values,
             outbox_projection_revision: Arc::new(tokio::sync::Mutex::new(0)),
             database,
-            transient_uploads,
-            upload_throughput,
-            sync_paused,
+            uploads,
             cloudkit_ops,
             diagnostics,
         }
@@ -100,26 +78,15 @@ impl SyncController {
 
     #[cfg(test)]
     pub(crate) fn clear_upload_observation_for_test(&self, file_id: &str) {
-        let key = crate::library::outbox_snapshot::UploadBlobKey::new(
-            crate::sync::RELEASE_FILES_NAMESPACE,
-            file_id,
-        );
-        assert!(
-            self.transient_uploads
-                .lock()
-                .unwrap()
-                .remove(&key)
-                .is_some(),
-            "the test upload observation must exist before it is cleared"
-        );
-        self.upload_throughput.end(&key);
+        self.uploads
+            .clear_release_file_observation_for_test(file_id);
     }
 
     /// Pause or resume the cloud-upload pipeline. New enqueues still land in
     /// the outbox; coven suspends active preparation/provider futures and keeps
     /// their open upload sessions for resume.
     pub(crate) async fn set_sync_paused(&self, paused: bool) {
-        self.sync_paused.send_replace(paused);
+        self.uploads.set_paused(paused);
         if !paused {
             // Kick the loop so the queue starts draining immediately on resume
             // rather than waiting for the next idle tick.
@@ -131,7 +98,7 @@ impl SyncController {
     /// Current paused state of the upload pipeline. The snapshot builder
     /// reads this so the UI can render its paused indicator.
     pub(crate) fn is_sync_paused(&self) -> bool {
-        *self.sync_paused.borrow()
+        self.uploads.is_paused()
     }
 
     /// The stream the outbox pane and upload standing read; each value is the
@@ -178,19 +145,7 @@ impl SyncController {
 
     async fn build_outbox_snapshot(&self) -> Result<OutboxSnapshot, coven::DbError> {
         let queue = self.database.outbox_queue().await?;
-        self.retain_current_transient_uploads(&queue.uploads);
-        Ok(self.build_outbox_snapshot_from_queue(queue))
-    }
-
-    fn build_outbox_snapshot_from_queue(&self, queue: crate::db::DbOutboxQueue) -> OutboxSnapshot {
-        let transient = { self.transient_uploads.lock().unwrap().clone() };
-        let paused = self.is_sync_paused();
-        crate::library::outbox_snapshot::build_outbox_snapshot(
-            queue,
-            &transient,
-            &self.upload_throughput,
-            paused,
-        )
+        Ok(self.uploads.outbox_snapshot(queue))
     }
 
     pub(super) async fn process_upload_observer_event(&self) {
@@ -239,34 +194,6 @@ impl SyncController {
                 },
             }
         }
-    }
-
-    /// Drop callback facts when the durable outbox proves their phase has been
-    /// superseded. `Created` deliberately retains provider progress: coven
-    /// commits that handoff before calling `on_blob_uploaded`, and that callback
-    /// owns validation and removal of the exact final byte report.
-    fn retain_current_transient_uploads(&self, uploads: &[crate::db::DbOutboxUpload]) {
-        let durable: HashMap<_, _> = uploads
-            .iter()
-            .map(|upload| {
-                (
-                    crate::library::outbox_snapshot::UploadBlobKey::from_row(&upload.blob),
-                    upload.phase,
-                )
-            })
-            .collect();
-        self.transient_uploads
-            .lock()
-            .unwrap()
-            .retain(|key, transient| match durable.get(key) {
-                None => false,
-                Some(coven::QueuedUploadPhase::Created) => true,
-                Some(coven::QueuedUploadPhase::Prepared) => !matches!(
-                    transient,
-                    crate::library::outbox_snapshot::TransientUploadState::Preparing { .. }
-                ),
-                Some(coven::QueuedUploadPhase::Pending) => true,
-            });
     }
 
     /// The library's membership: its devices (with this device flagged, each
@@ -401,10 +328,9 @@ impl SyncController {
     /// cipher from the master-key custody itself (an opaque home fails
     /// `SyncError::MasterKeyNotEstablished` if this device's keyring lacks the
     /// key — the caller only reaches this once it knows the key is
-    /// established, or the home is keyless/browsable). Shares this
-    /// controller's outbox in-flight set and event channel with the sync loop's
-    /// upload observer. The sync-status listener may already be running: its
-    /// receiver follows this handle across provider connection.
+    /// established, or the home is keyless/browsable). The sync-status listener
+    /// may already be running: its receiver follows this handle across provider
+    /// connection.
     pub(crate) async fn attach_and_start_sync(&self) -> Result<(), LibraryError> {
         self.connect_provider().await?;
         Ok(())
