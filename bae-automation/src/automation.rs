@@ -16,9 +16,11 @@ impl Automation {
         }
     }
 
-    pub fn watched_folders(&self) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
+    pub async fn watched_folders(&self) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
         Ok(self
-            .current_watched_folders()
+            .services
+            .import_watched_folders()
+            .await?
             .into_iter()
             .map(|folder| AutomationWatchedFolder {
                 path: folder.path,
@@ -32,7 +34,7 @@ impl Automation {
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
         self.services.import_add_watched_folder(path).await?;
-        self.watched_folders()
+        self.watched_folders().await
     }
 
     pub async fn remove_watched_folder(
@@ -40,7 +42,7 @@ impl Automation {
         path: String,
     ) -> Result<Vec<AutomationWatchedFolder>, AutomationError> {
         self.services.import_remove_watched_folder(path).await?;
-        self.watched_folders()
+        self.watched_folders().await
     }
 
     pub async fn scan_watched_folders(
@@ -54,7 +56,9 @@ impl Automation {
             ScanWait::UntilFinished { timeout_ms } => {
                 let mut rx = self.services.import_subscribe_folder_scan_events();
                 let mut pending: std::collections::HashSet<_> = self
-                    .current_watched_folders()
+                    .services
+                    .import_watched_folders()
+                    .await?
                     .into_iter()
                     .map(|folder| folder.path)
                     .collect();
@@ -93,13 +97,9 @@ impl Automation {
             }
         }
         Ok(AutomationScanResult {
-            watched_folders: self.watched_folders()?,
+            watched_folders: self.watched_folders().await?,
             candidates: self.list_candidates().await?,
         })
-    }
-
-    fn current_watched_folders(&self) -> Vec<bae_core::import::WatchedFolder> {
-        self.services.import_watched_folders()
     }
 
     /// Every candidate the import tab holds, in candidate-key order.
@@ -448,7 +448,7 @@ impl Automation {
             }
             AutomationTool::WatchedFoldersList => {
                 expect_no_args(args, tool.name())?;
-                to_list_value("watched_folders", self.watched_folders()?)
+                to_list_value("watched_folders", self.watched_folders().await?)
             }
             AutomationTool::WatchedFolderAdd => {
                 let input: PathInput = from_value(args)?;

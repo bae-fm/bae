@@ -15,6 +15,7 @@ impl AppServices {
     delegate_async!(import, import_add_watched_folder => add_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_async!(import, import_remove_watched_folder => remove_watched_folder(path: String) -> Result<(), crate::import::ImportError>);
     delegate_sync!(import, import_scan_watched_folders => scan_watched_folders() -> Result<(), crate::import::ImportError>);
+    delegate_async!(import, import_watched_folders => watched_folders() -> Result<Vec<crate::import::WatchedFolder>, crate::import::ImportError>);
     #[cfg(any(test, feature = "test-utils"))]
     delegate_sync!(import, import_emit_event_for_test => emit_event_for_test(event: crate::import::ImportEvent) -> ());
     delegate_async!(import, import_get_candidate => get_candidate(key: &str) -> Result<Option<crate::import::ImportCandidateSnapshot>, crate::library::LibraryError>);
