@@ -204,7 +204,7 @@ async fn download_queue_values_report_each_driven_file_progress() {
         let release_id = release_id.clone();
         tokio::spawn(async move {
             manager
-                .drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx)
+                .drive_transfer(&release_id, ReleaseStorageAction::Pin, progress_rx, None)
                 .await
         })
     };

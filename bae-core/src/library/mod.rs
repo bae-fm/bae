@@ -12,6 +12,7 @@ pub mod release_queue;
 pub mod save;
 pub mod search;
 pub mod storage_inspector;
+pub(crate) mod storage_transitions;
 pub(crate) mod sync_controller;
 pub mod upload_throughput;
 pub use app_services::*;

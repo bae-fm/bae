@@ -157,7 +157,7 @@ async fn aborted_transfer_clears_the_streamed_action() {
     let driver = manager.clone();
     let handle = tokio::spawn(async move {
         let result = driver
-            .drive_transfer(REL_ABORT, ReleaseStorageAction::Pin, progress_rx)
+            .drive_transfer(REL_ABORT, ReleaseStorageAction::Pin, progress_rx, None)
             .await;
         panic!("the parked driver must only exit by abort, returned {result:?}");
     });

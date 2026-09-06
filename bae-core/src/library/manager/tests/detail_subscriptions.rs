@@ -35,10 +35,10 @@ async fn album_detail_delivers_while_sync_shaped_load_runs() {
             }
         }));
     }
-    let transfer_values = manager.transfer_values.clone();
+    let transitions = manager.transitions.clone();
     load.push(tokio::spawn(async move {
         loop {
-            transfer_values.send_replace(HashMap::new());
+            transitions.republish();
             tokio::time::sleep(std::time::Duration::from_millis(1)).await;
         }
     }));

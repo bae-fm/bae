@@ -77,7 +77,6 @@ impl LibraryManager {
                 false,
             ),
         );
-        let (transfer_values, _) = tokio::sync::watch::channel(HashMap::new());
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let output_queue = Arc::new(crate::library::OutputQueue::new());
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -113,9 +112,7 @@ impl LibraryManager {
             sync_status_values,
             outbox_values,
             download_values,
-            transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
-            transfer_actions: Arc::new(Mutex::new(HashMap::new())),
-            transfer_values,
+            transitions: crate::library::storage_transitions::StorageTransitions::new(),
             download_queue,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             output_queue,
@@ -169,7 +166,6 @@ impl LibraryManager {
                 false,
             ),
         );
-        let (transfer_values, _) = tokio::sync::watch::channel(HashMap::new());
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
         let output_queue = Arc::new(crate::library::OutputQueue::new());
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -204,9 +200,7 @@ impl LibraryManager {
             sync_status_values,
             outbox_values,
             download_values,
-            transfer_cancels: Arc::new(Mutex::new(HashMap::new())),
-            transfer_actions: Arc::new(Mutex::new(HashMap::new())),
-            transfer_values,
+            transitions: crate::library::storage_transitions::StorageTransitions::new(),
             download_queue,
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             output_queue,
@@ -265,17 +259,13 @@ impl LibraryManager {
     }
 
     pub(crate) fn current_transfer_action(&self, release_id: &str) -> Option<ReleaseStorageAction> {
-        self.transfer_actions
-            .lock()
-            .unwrap()
-            .get(release_id)
-            .copied()
+        self.transitions.current(release_id)
     }
 
     pub fn subscribe_transfer_values(
         &self,
     ) -> tokio::sync::watch::Receiver<HashMap<String, ReleaseStorageAction>> {
-        self.transfer_values.subscribe()
+        self.transitions.subscribe()
     }
 
     /// Connect a real `SyncManager` over an injected cloud home for tests, so the

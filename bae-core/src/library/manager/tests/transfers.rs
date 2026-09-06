@@ -175,11 +175,11 @@ async fn cancel_release_transition_fires_a_registered_transfer_token() {
 
     // A registered make-Local token is fired by the unified cancel.
     let token = crate::library::CancellationToken::new();
-    manager
-        .transfer_cancels
-        .lock()
-        .unwrap()
-        .insert(REL_X.to_string(), token.clone());
+    let _registration = manager.transitions.track(
+        REL_X,
+        ReleaseStorageAction::MakeLocal,
+        Some(token.clone()),
+    );
     manager.cancel_release_transition(REL_X).await.unwrap();
     assert!(token.is_cancelled(), "transfer token fired");
 

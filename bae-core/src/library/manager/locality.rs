@@ -301,9 +301,14 @@ impl LibraryManager {
                 let transfer = TransferService::new(self.clone());
                 let drive_release_id = release_id.clone();
                 let running = transfer.pin_release(release_id, move |progress| async move {
-                    self.drive_transfer(&drive_release_id, ReleaseStorageAction::Pin, progress)
-                        .await
-                        .map(|_| ())
+                    self.drive_transfer(
+                        &drive_release_id,
+                        ReleaseStorageAction::Pin,
+                        progress,
+                        None,
+                    )
+                    .await
+                    .map(|_| ())
                 });
                 Ok((initial_progress, running))
             },
@@ -319,7 +324,7 @@ impl LibraryManager {
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.unpin_release(release_id.to_string());
         let outcome = self
-            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx)
+            .drive_transfer(release_id, ReleaseStorageAction::Unpin, rx, None)
             .await?;
         assert_eq!(outcome, crate::storage::transfer::TransferOutcome::Complete);
         Ok(())
@@ -420,41 +425,47 @@ impl LibraryManager {
         release_id: &str,
         new_path: &str,
     ) -> Result<(), LibraryError> {
-        // Register a cancellation token so `cancel_release_transition` can stop
-        // this transfer; the guard deregisters even if this future is dropped.
+        // The token `cancel_release_transition` fires to stop this transfer
+        // between files; registered with the drive so it is reachable for
+        // exactly as long as the transfer runs.
         let cancel = crate::library::CancellationToken::new();
-        self.transfer_cancels
-            .lock()
-            .unwrap()
-            .insert(release_id.to_string(), cancel.clone());
-        let _dereg = TransferCancelGuard {
-            registry: self.transfer_cancels.clone(),
-            release_id: release_id.to_string(),
-        };
-
         let transfer_service = crate::storage::transfer::TransferService::new(self.clone());
         let rx = transfer_service.make_release_local(
             release_id.to_string(),
             new_path.to_string(),
-            cancel,
+            cancel.clone(),
         );
         let outcome = self
-            .drive_transfer(release_id, ReleaseStorageAction::MakeLocal, rx)
+            .drive_transfer(
+                release_id,
+                ReleaseStorageAction::MakeLocal,
+                rx,
+                Some(cancel),
+            )
             .await?;
         assert_eq!(outcome, crate::storage::transfer::TransferOutcome::Complete);
         Ok(())
     }
 
-    /// Cancel the in-progress transition for a release, whatever it is: a pin
-    /// (download), a remote upload, or a make-Local transfer. The UI calls this from the
-    /// storage row and the queue pane without knowing which is running — a
-    /// release is in at most one transition at a time. A no-op if nothing is in
-    /// progress. Each branch is gated on the transition actually running:
-    /// `cancel_release_upload` on a settled release would delete its blobs, so it
-    /// fires only when uploads are genuinely pending.
+    /// Cancel the in-progress transition for a release, whatever it is. The
+    /// UI calls this from the storage row and the queue pane without knowing
+    /// which is running — a release is in at most one transition at a time.
+    /// A no-op if nothing is in progress.
+    ///
+    /// The transitions this process registered say what they are: a
+    /// make-Local transfer is stopped by its token, which the registry fires;
+    /// a pin is stopped through the download queue, which also holds the pins
+    /// not yet started. An upload lives in coven's outbox, and is cancelled
+    /// only when that store says one is pending — cancelling a settled
+    /// release's upload would delete its blobs.
     pub async fn cancel_release_transition(&self, release_id: &str) -> Result<(), LibraryError> {
-        if self.cancel_transfer(release_id) {
-            return Ok(());
+        match self.transitions.cancel(release_id) {
+            Some(ReleaseStorageAction::MakeLocal) => return Ok(()),
+            Some(ReleaseStorageAction::Pin) => {
+                self.cancel_download(release_id);
+                return Ok(());
+            }
+            Some(ReleaseStorageAction::MakeRemote | ReleaseStorageAction::Unpin) | None => {}
         }
         if self.download_queue.contains(release_id) {
             self.cancel_download(release_id);
@@ -470,55 +481,14 @@ impl LibraryManager {
         Ok(())
     }
 
-    /// Fire the cancellation token for a release's in-progress foreground
-    /// make-Local transfer, if one is registered; returns whether it fired. The
-    /// transfer observes the token between files, deletes its partial copies, and
-    /// leaves the release remote. A missing token is not an error — it means no
-    /// transfer is running, so the caller falls through to the other transition
-    /// kinds. The lookup and fire share one lock, so there's no check-then-act
-    /// race with the deregistering drop guard.
-    fn cancel_transfer(&self, release_id: &str) -> bool {
-        match self.transfer_cancels.lock().unwrap().get(release_id) {
-            Some(token) => {
-                token.cancel();
-                true
-            }
-            None => false,
-        }
-    }
-
     /// Admit every foreground transfer action under one lock. Either every
     /// release becomes active in the value stream or none does.
     pub(super) fn admit_transfer_values(
         &self,
         release_ids: &[String],
         action: ReleaseStorageAction,
-    ) -> Result<TransferValueGuard, LibraryError> {
-        {
-            let mut actions = self.transfer_actions.lock().unwrap();
-            let mut selected = std::collections::HashSet::with_capacity(release_ids.len());
-            for release_id in release_ids {
-                if !selected.insert(release_id) {
-                    return Err(LibraryError::Validation(format!(
-                        "release {release_id} appears more than once in the storage batch"
-                    )));
-                }
-                if actions.contains_key(release_id) {
-                    return Err(LibraryError::Storage(format!(
-                        "release {release_id} already has an active storage transition"
-                    )));
-                }
-            }
-            for release_id in release_ids {
-                actions.insert(release_id.clone(), action);
-            }
-            self.transfer_values.send_replace(actions.clone());
-        }
-        Ok(TransferValueGuard {
-            transfer_actions: self.transfer_actions.clone(),
-            transfer_values: self.transfer_values.clone(),
-            release_ids: release_ids.to_vec(),
-        })
+    ) -> Result<crate::library::storage_transitions::TransitionGuard, LibraryError> {
+        self.transitions.admit(release_ids, action)
     }
 
     /// Drain a transfer's progress channel and publish its active action through
@@ -529,16 +499,13 @@ impl LibraryManager {
         release_id: &str,
         action: ReleaseStorageAction,
         mut rx: tokio::sync::mpsc::UnboundedReceiver<crate::storage::transfer::TransferProgress>,
+        cancel: Option<crate::library::CancellationToken>,
     ) -> Result<crate::storage::transfer::TransferOutcome, LibraryError> {
         use crate::storage::transfer::TransferProgress;
 
-        // The bridge transfer future is abortable. The guard clears the streamed
-        // action whether the channel completes or the future is dropped.
-        let _value_guard = TransferValueGuard {
-            transfer_actions: self.transfer_actions.clone(),
-            transfer_values: self.transfer_values.clone(),
-            release_ids: vec![release_id.to_string()],
-        };
+        // The bridge transfer future is abortable. The guard clears the
+        // registration whether the channel completes or the future is dropped.
+        let _registration = self.transitions.track(release_id, action, cancel);
 
         let outcome = loop {
             let Some(progress) = rx.recv().await else {
@@ -549,9 +516,7 @@ impl LibraryManager {
             };
             match progress {
                 TransferProgress::Started => {
-                    let mut actions = self.transfer_actions.lock().unwrap();
-                    actions.insert(release_id.to_string(), action);
-                    self.transfer_values.send_replace(actions.clone());
+                    self.transitions.started(release_id, action);
                 }
                 TransferProgress::Progress { progress } => {
                     if matches!(action, ReleaseStorageAction::Pin) {

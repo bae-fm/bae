@@ -792,40 +792,6 @@ fn verb(action: ReleaseStorageAction) -> &'static str {
     }
 }
 
-/// Removes the transfer action from the value stream when the transfer future
-/// completes or is dropped.
-struct TransferValueGuard {
-    transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
-    transfer_values: tokio::sync::watch::Sender<HashMap<String, ReleaseStorageAction>>,
-    release_ids: Vec<String>,
-}
-
-impl Drop for TransferValueGuard {
-    fn drop(&mut self) {
-        {
-            let mut actions = self.transfer_actions.lock().unwrap();
-            for release_id in &self.release_ids {
-                actions.remove(release_id);
-            }
-            self.transfer_values.send_replace(actions.clone());
-        }
-    }
-}
-
-/// Removes a release's transfer cancellation token from the registry when the
-/// transfer ends — whether it completes normally or its future is dropped (a
-/// view dismiss), so a dropped transfer never leaves a stale token behind.
-struct TransferCancelGuard {
-    registry: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
-    release_id: String,
-}
-
-impl Drop for TransferCancelGuard {
-    fn drop(&mut self) {
-        self.registry.lock().unwrap().remove(&self.release_id);
-    }
-}
-
 /// Transient operation events emitted by `LibraryManager`.
 #[derive(Clone, Debug)]
 pub enum LibraryEvent {
@@ -859,9 +825,9 @@ pub struct LibraryManager {
     /// transfer observes it between files, deletes the partial copies it wrote,
     /// and leaves the release remote (no orphans). Registered for the transfer's
     /// duration; transient.
-    transfer_cancels: Arc<Mutex<HashMap<String, crate::library::CancellationToken>>>,
-    transfer_actions: Arc<Mutex<HashMap<String, ReleaseStorageAction>>>,
-    transfer_values: tokio::sync::watch::Sender<HashMap<String, ReleaseStorageAction>>,
+    /// Every storage transition in flight, and the stream the storage rows
+    /// read them from.
+    transitions: crate::library::storage_transitions::StorageTransitions,
     /// In-memory queue for "Pin for offline". A single serial worker drains it
     /// one release at a time. Shared across manager clones; transient (empty
     /// after a restart — a release that wasn't fully pinned stays cloud-only).
