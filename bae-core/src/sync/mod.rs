@@ -18,7 +18,7 @@ pub use coven::CloudCipher;
 
 // bae's blob-transition observer: UI bookkeeping for coven's upload drain and
 // make-Remote / make-Local completions (coven owns the lifecycle itself).
-pub mod upload_observer;
+pub(crate) mod upload_observer;
 
 pub mod membership;
 

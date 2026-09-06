@@ -89,7 +89,8 @@ impl Pressing {
         (primary, releases.collect())
     }
 
-    /// [`Self::claims`] as the provenance a pick stores.
+    /// What picking this row claims — the primary release and every other
+    /// source's record of the same pressing — as the provenance a pick stores.
     pub fn pick(&self) -> crate::import::MetadataProvenance {
         let (primary, partners) = self.claims();
         crate::import::MetadataProvenance::ExternalRelease {

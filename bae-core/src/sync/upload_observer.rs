@@ -57,7 +57,7 @@ impl UploadObserverEvents {
 /// snapshot reports the active state and drives the per-file bar.
 /// Database-backed projection work is sent to the sync controller rather than
 /// retaining or exposing its database.
-pub struct ReleaseUploadObserver {
+pub(crate) struct ReleaseUploadObserver {
     uploads: LiveUploads,
     events: mpsc::UnboundedSender<UploadObserverMessage>,
 }

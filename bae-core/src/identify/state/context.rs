@@ -46,7 +46,7 @@ pub struct DiscIdEvidence {
     /// `results` is left empty exactly as it would be for a clean no-match, so
     /// this is what lets a caller lifting a settled state into a stored verdict
     /// tell "nothing was learned" apart from "the lookup ran and found nothing"
-    /// (see [`super::verdict::TerminalVerdict`]).
+    /// (see [`crate::identify::TerminalVerdict`]).
     pub failure: Option<LookupFailure>,
 }
 
