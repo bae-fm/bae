@@ -15,10 +15,10 @@ use super::{
 use crate::import::triage::TriageRuntimeFacts;
 use crate::import::{CandidateRuntimeChange, CandidateRuntimeSnapshot};
 use crate::library::{LibraryPageWindows, OutboxSnapshot};
+use crate::live_query::CancellableLiveQuery;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{broadcast, watch};
-use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportListSubscriptionError {
@@ -28,22 +28,18 @@ pub enum ImportListSubscriptionError {
     Query(#[from] coven::CovenError),
 }
 
-/// The request as it stands, and the handle that reconfigures the query.
-struct Requests {
-    requests: Mutex<Option<coven::LiveQueryRequests<ImportListRequest>>>,
+/// The request as it stands, and the query it reconfigures.
+struct StandingRequest {
     current: Mutex<ImportListRequest>,
-    cancellation: CancellationToken,
+    query: CancellableLiveQuery<ImportListRequest, ImportListProjection>,
 }
 
-impl Requests {
+impl StandingRequest {
     /// Replace part of the request and hand the whole thing to the query.
     fn update(
         &self,
         change: impl FnOnce(&mut ImportListRequest),
     ) -> Result<u64, ImportListSubscriptionError> {
-        if self.cancellation.is_cancelled() {
-            return Err(ImportListSubscriptionError::Cancelled);
-        }
         let next = {
             let mut current = self
                 .current
@@ -52,30 +48,14 @@ impl Requests {
             change(&mut current);
             current.clone()
         };
-        self.requests
-            .lock()
-            .expect("import list request mutex poisoned")
-            .as_ref()
-            .ok_or(ImportListSubscriptionError::Cancelled)?
+        self.query
             .set(next)
-            .map(|revision| revision.get())
             .map_err(|_| ImportListSubscriptionError::Cancelled)
-    }
-
-    fn cancel(&self) {
-        self.cancellation.cancel();
-        self.requests
-            .lock()
-            .expect("import list request mutex poisoned")
-            .take();
     }
 }
 
 pub struct ImportListSubscription {
-    requests: Arc<Requests>,
-    query: tokio::sync::Mutex<
-        Option<coven::ReconfigurableLiveQuery<ImportListRequest, ImportListProjection>>,
-    >,
+    request: Arc<StandingRequest>,
     merges: Mutex<Vec<tokio::task::AbortHandle>>,
 }
 
@@ -94,22 +74,20 @@ impl ImportListSubscription {
         outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
         runtime_handle: &tokio::runtime::Handle,
     ) -> Self {
-        let requests = Arc::new(Requests {
-            requests: Mutex::new(Some(query.requests())),
+        let request = Arc::new(StandingRequest {
             current: Mutex::new(initial),
-            cancellation: CancellationToken::new(),
+            query: CancellableLiveQuery::new(query),
         });
         let merges = vec![
             runtime_handle
-                .spawn(merge_runtime(requests.clone(), changes, reread))
+                .spawn(merge_runtime(request.clone(), changes, reread))
                 .abort_handle(),
             runtime_handle
-                .spawn(merge_outbox(requests.clone(), outbox))
+                .spawn(merge_outbox(request.clone(), outbox))
                 .abort_handle(),
         ];
         Self {
-            requests,
-            query: tokio::sync::Mutex::new(Some(query)),
+            request,
             merges: Mutex::new(merges),
         }
     }
@@ -117,32 +95,25 @@ impl ImportListSubscription {
     /// Show a different tab, filter, order, or set of folded groups. The
     /// windows are kept: the query reruns and the list re-ingests them.
     pub fn set_view(&self, view: ImportListView) -> Result<u64, ImportListSubscriptionError> {
-        self.requests.update(|request| request.view = view)
+        self.request.update(|request| request.view = view)
     }
 
     pub fn set_windows(
         &self,
         windows: LibraryPageWindows,
     ) -> Result<(), ImportListSubscriptionError> {
-        self.requests
+        self.request
             .update(|request| request.windows = windows)
             .map(|_| ())
     }
 
     pub async fn next(&self) -> Result<ImportListSnapshot, ImportListSubscriptionError> {
-        let event = tokio::select! {
-            biased;
-            () = self.requests.cancellation.cancelled() => {
-                return Err(ImportListSubscriptionError::Cancelled);
-            }
-            event = async {
-                let mut query = self.query.lock().await;
-                let query = query
-                    .as_mut()
-                    .ok_or(ImportListSubscriptionError::Cancelled)?;
-                Ok::<_, ImportListSubscriptionError>(query.next().await)
-            } => event?,
-        };
+        let event = self
+            .request
+            .query
+            .next()
+            .await
+            .map_err(|_| ImportListSubscriptionError::Cancelled)?;
         let request_revision = event.revision().get();
         let cause = event.cause();
         // A list read that fails takes the whole import tab with it — no rows,
@@ -168,11 +139,11 @@ impl ImportListSubscription {
 
     pub async fn cancel(&self) {
         self.stop();
-        self.query.lock().await.take();
+        self.request.query.close().await;
     }
 
     fn stop(&self) {
-        self.requests.cancel();
+        self.request.query.cancel();
         for task in self
             .merges
             .lock()
@@ -196,20 +167,20 @@ impl Drop for ImportListSubscription {
 /// reconfigures nothing; a run reaching a phase, an import claimed, and an
 /// import finishing all do.
 async fn merge_runtime(
-    requests: Arc<Requests>,
+    request: Arc<StandingRequest>,
     mut changes: broadcast::Receiver<CandidateRuntimeChange>,
     reread: impl Fn() -> HashMap<String, CandidateRuntimeSnapshot>,
 ) {
     let idle = TriageRuntimeFacts::default();
     loop {
         let change = tokio::select! {
-            () = requests.cancellation.cancelled() => return,
+            () = request.query.cancelled() => return,
             change = changes.recv() => change,
         };
         let moved = match change {
             Ok(CandidateRuntimeChange::Updated { key, runtime }) => {
                 let next = TriageRuntimeFacts::of(&runtime);
-                let mut current = requests
+                let mut current = request
                     .current
                     .lock()
                     .expect("import list request mutex poisoned");
@@ -221,7 +192,7 @@ async fn merge_runtime(
                 }
                 moved
             }
-            Ok(CandidateRuntimeChange::Removed { key }) => requests
+            Ok(CandidateRuntimeChange::Removed { key }) => request
                 .current
                 .lock()
                 .expect("import list request mutex poisoned")
@@ -230,7 +201,7 @@ async fn merge_runtime(
                 .is_some(),
             Ok(CandidateRuntimeChange::Reset { runtimes }) => {
                 let facts = facts_of(&runtimes);
-                let mut current = requests
+                let mut current = request
                     .current
                     .lock()
                     .expect("import list request mutex poisoned");
@@ -244,7 +215,7 @@ async fn merge_runtime(
                      re-reading every candidate's runtime"
                 );
                 let facts = facts_of(&reread());
-                let mut current = requests
+                let mut current = request
                     .current
                     .lock()
                     .expect("import list request mutex poisoned");
@@ -254,7 +225,7 @@ async fn merge_runtime(
             }
             Err(broadcast::error::RecvError::Closed) => return,
         };
-        if moved && requests.update(|_| {}).is_err() {
+        if moved && request.update(|_| {}).is_err() {
             return;
         }
     }
@@ -282,7 +253,7 @@ pub(crate) fn facts_of(
 /// A failed outbox read says nothing about where an upload stands, so the order
 /// keeps what it had rather than reporting everything settled.
 async fn merge_outbox(
-    requests: Arc<Requests>,
+    request: Arc<StandingRequest>,
     mut outbox: watch::Receiver<Option<Result<OutboxSnapshot, String>>>,
 ) {
     loop {
@@ -292,7 +263,7 @@ async fn merge_outbox(
         };
         if let Some(next) = next {
             let moved = {
-                let mut current = requests
+                let mut current = request
                     .current
                     .lock()
                     .expect("import list request mutex poisoned");
@@ -300,12 +271,12 @@ async fn merge_outbox(
                 current.upload_standing = next;
                 moved
             };
-            if moved && requests.update(|_| {}).is_err() {
+            if moved && request.update(|_| {}).is_err() {
                 return;
             }
         }
         let changed = tokio::select! {
-            () = requests.cancellation.cancelled() => return,
+            () = request.query.cancelled() => return,
             changed = outbox.changed() => changed,
         };
         if changed.is_err() {

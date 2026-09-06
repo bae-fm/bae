@@ -1,6 +1,6 @@
+use crate::live_query::CancellableLiveQuery;
 use std::collections::BTreeSet;
 use std::sync::Arc;
-use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LibraryPageWindow {
@@ -40,15 +40,12 @@ pub enum LibraryBrowseSubscriptionError {
 }
 
 pub struct LibraryBrowseSubscription<Projection, Row> {
-    requests: std::sync::Mutex<Option<coven::LiveQueryRequests<LibraryPageWindows>>>,
-    query:
-        tokio::sync::Mutex<Option<coven::ReconfigurableLiveQuery<LibraryPageWindows, Projection>>>,
+    query: CancellableLiveQuery<LibraryPageWindows, Projection>,
     resolve: Arc<
         dyn Fn(Projection, u64, coven::ReconfigurableLiveQueryCause) -> LibraryBrowseSnapshot<Row>
             + Send
             + Sync,
     >,
-    cancellation: CancellationToken,
 }
 
 impl<Projection, Row> LibraryBrowseSubscription<Projection, Row>
@@ -63,12 +60,9 @@ where
             + Sync
             + 'static,
     ) -> Self {
-        let requests = query.requests();
         Self {
-            requests: std::sync::Mutex::new(Some(requests)),
-            query: tokio::sync::Mutex::new(Some(query)),
+            query: CancellableLiveQuery::new(query),
             resolve: Arc::new(resolve),
-            cancellation: CancellationToken::new(),
         }
     }
 
@@ -76,33 +70,18 @@ where
         &self,
         windows: LibraryPageWindows,
     ) -> Result<(), LibraryBrowseSubscriptionError> {
-        if self.cancellation.is_cancelled() {
-            return Err(LibraryBrowseSubscriptionError::Cancelled);
-        }
-        self.requests
-            .lock()
-            .expect("browse request mutex poisoned")
-            .as_ref()
-            .ok_or(LibraryBrowseSubscriptionError::Cancelled)?
+        self.query
             .set(windows)
-            .expect("the browse subscription owns its live query");
-        Ok(())
+            .map(|_| ())
+            .map_err(|_| LibraryBrowseSubscriptionError::Cancelled)
     }
 
     pub async fn next(&self) -> Result<LibraryBrowseSnapshot<Row>, LibraryBrowseSubscriptionError> {
-        let event = tokio::select! {
-            biased;
-            () = self.cancellation.cancelled() => {
-                return Err(LibraryBrowseSubscriptionError::Cancelled);
-            }
-            event = async {
-                let mut query = self.query.lock().await;
-                let query = query
-                    .as_mut()
-                    .ok_or(LibraryBrowseSubscriptionError::Cancelled)?;
-                Ok::<_, LibraryBrowseSubscriptionError>(query.next().await)
-            } => event?,
-        };
+        let event = self
+            .query
+            .next()
+            .await
+            .map_err(|_| LibraryBrowseSubscriptionError::Cancelled)?;
         let revision = event.revision().get();
         let cause = event.cause();
         let projection = event.into_result()?;
@@ -110,21 +89,6 @@ where
     }
 
     pub async fn cancel(&self) {
-        self.cancellation.cancel();
-        self.requests
-            .lock()
-            .expect("browse request mutex poisoned")
-            .take();
-        self.query.lock().await.take();
-    }
-}
-
-impl<Projection, Row> Drop for LibraryBrowseSubscription<Projection, Row> {
-    fn drop(&mut self) {
-        self.cancellation.cancel();
-        self.requests
-            .get_mut()
-            .expect("browse request mutex poisoned")
-            .take();
+        self.query.close().await;
     }
 }

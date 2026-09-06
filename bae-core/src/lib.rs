@@ -20,6 +20,7 @@ pub mod import;
 pub mod keys;
 pub mod library;
 pub mod library_name;
+pub(crate) mod live_query;
 // Only import measures loudness, and the import pipeline is desktop-only —
 // the same predicate that gates `import`'s pipeline modules and `ebur128`
 // itself. Playback derives its gain from the stored measurements with plain
