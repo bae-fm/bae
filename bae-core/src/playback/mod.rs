@@ -11,6 +11,7 @@ pub mod format;
 mod persisted;
 mod preview_player;
 pub mod progress;
+mod published_queue;
 mod queue;
 mod repeat_mode;
 pub mod service;
@@ -36,6 +37,7 @@ pub use progress::{
     MediaControlPlayback, MediaControlPosition, MediaControlValues, PlaybackPosition,
     PlaybackProgress, PlaybackQueueProjection, PlaybackValues, PreviewState, PreviewValues,
 };
+pub use published_queue::PublishedQueue;
 pub use queue::{
     ContextProjection, ContextSnapshot, NextEntry, PlaybackQueue, PreviousAction, QueueEntry,
     QueueEntryId, QueueSnapshot,

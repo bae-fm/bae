@@ -645,14 +645,16 @@ async fn previous_ships_track_started() {
     let (mut service, _progress_rx) = playback_service_over(manager);
 
     // A two-track context playing from t1, so Previous steps back to t0.
-    service.playback_queue.play_release(
-        ContextSource::Release("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string()),
-        vec![
-            "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string(),
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-        ],
-        ContextStart::Index(1),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("c61a9e19-f3ba-4728-842c-c59dbc82e238".to_string()),
+            vec![
+                "08c80007-b56a-4fc9-8df6-af2967fa09b9".to_string(),
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+            ],
+            ContextStart::Index(1),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),

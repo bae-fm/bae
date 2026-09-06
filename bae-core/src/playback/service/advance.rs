@@ -14,13 +14,13 @@ impl PlaybackService {
             .map(|s| ids.contains(s))
             .unwrap_or(false);
 
-        self.playback_queue.remove_by_ids(&ids);
+        self.playback_queue.apply(|queue| queue.remove_by_ids(&ids));
 
         if current_deleted {
             self.stop().await;
 
             // Play on from what's left of the queue, or stay stopped.
-            if let Some(next_id) = self.playback_queue.advance_to_front() {
+            if let Some(next_id) = self.playback_queue.apply(|queue| queue.advance_to_front()) {
                 self.play_track(
                     &next_id,
                     TrackStart::Direct,
@@ -37,8 +37,6 @@ impl PlaybackService {
                 }
             }
         }
-
-        self.emit_queue_update();
     }
 
     pub(super) async fn preload_queue_front(&mut self) {
@@ -267,7 +265,6 @@ impl PlaybackService {
         }
         self.sync_audio_state();
         self.emit_state();
-        self.emit_queue_update();
     }
 
     pub(super) async fn resume_from_side_pause(&mut self) {
@@ -295,9 +292,8 @@ impl PlaybackService {
             self.demote_side_pause_to_manual();
             return;
         }
-        match self.playback_queue.next_entry() {
+        match self.playback_queue.apply(|queue| queue.next_entry()) {
             NextEntry::Play(track_id) => {
-                self.emit_queue_update();
                 self.play_track(
                     &track_id,
                     TrackStart::Natural,
@@ -485,17 +481,20 @@ impl PlaybackService {
         self.persist_playback_state().await;
     }
 
-    /// Advance the queue's current pointer past the finished track to the front,
-    /// and emit the queue update. Used by `Next`, `AutoAdvance` (preloaded path),
-    /// and the gapless boundary handler. The front IS the track being played: the
-    /// preload refreshes whenever the queue mutates, so the front we advance to
-    /// and the track these callers go on to play are the same one.
+    /// Advance the queue's current pointer past the finished track to the front.
+    /// Used by `Next`, `AutoAdvance` (preloaded path), and the gapless boundary
+    /// handler. The front IS the track being played: the preload refreshes
+    /// whenever the queue mutates, so the front we advance to and the track these
+    /// callers go on to play are the same one.
     pub(super) fn advance_to_preloaded(&mut self) {
-        if self.playback_queue.advance_to_front().is_none() {
+        if self
+            .playback_queue
+            .apply(|queue| queue.advance_to_front())
+            .is_none()
+        {
             warn!("advance_to_preloaded: queue had no front to advance to");
             self.telemetry_anomaly(AnomalyKind::PreloadStateMissing);
         }
-        self.emit_queue_update();
     }
 
     /// Advance the queue to the preloaded next track, then start its buffered

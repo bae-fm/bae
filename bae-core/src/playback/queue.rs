@@ -793,8 +793,15 @@ impl PlaybackQueue {
         ctx.upcoming().first().map(|e| e.track_id.as_str())
     }
 
+    /// Set the repeat mode. The projection reports whether anything follows the
+    /// current track, and repeat is half of that answer, so a real change here
+    /// bumps the revision like any other mutation of the projected queue.
     pub fn set_repeat_mode(&mut self, mode: RepeatMode) {
+        if self.repeat == mode {
+            return;
+        }
         self.repeat = mode;
+        self.revision += 1;
     }
 
     pub fn repeat_mode(&self) -> RepeatMode {

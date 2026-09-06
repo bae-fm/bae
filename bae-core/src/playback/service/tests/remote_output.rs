@@ -166,14 +166,16 @@ async fn play_on_reissues_current_track_at_position() {
         ],
     )])
     .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-        vec![
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
-        ],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+            vec![
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
+            ],
+            ContextStart::Index(0),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -219,14 +221,16 @@ async fn remote_finished_advances_queue_and_loads_next() {
         ],
     )])
     .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-        vec![
-            "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
-            "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
-        ],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+            vec![
+                "08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string(),
+                "08c7fe07-b56a-4c63-8df6-ad2967fa0653".to_string(),
+            ],
+            ContextStart::Index(0),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -271,11 +275,13 @@ async fn remote_status_feeds_progress() {
         &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
+            ContextStart::Index(0),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -325,11 +331,13 @@ async fn stop_remote_stops_device_and_returns_to_local() {
         &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
+            ContextStart::Index(0),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -376,11 +384,13 @@ async fn stop_while_remote_stops_device_and_returns_to_local() {
         &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
+            ContextStart::Index(0),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -432,11 +442,13 @@ async fn remote_over_fake() -> (
         &["08c7ff07-b56a-4e16-8df6-ae2967fa0806"],
     )])
     .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
-        vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("e6cdc1f3-3a7b-473e-86aa-fe093cc5e94e".to_string()),
+            vec!["08c7ff07-b56a-4e16-8df6-ae2967fa0806".to_string()],
+            ContextStart::Index(0),
+        )
+    });
     let buffer = create_sparse_buffer(1_024);
     service.slot = active_slot(
         test_prepared_track("08c7ff07-b56a-4e16-8df6-ae2967fa0806", buffer),
@@ -706,11 +718,13 @@ async fn airplay_advance_on_local_end_stays_on_airplay() {
     let (_home, mut service, _progress_rx) =
         seeded_playback_service(&[("af63ef4c-8602-4cd5-82c0-3d334b916305", &[TRACK_A, TRACK_B])])
             .await;
-    service.playback_queue.play_release(
-        ContextSource::Release("af63ef4c-8602-4cd5-82c0-3d334b916305".to_string()),
-        vec![TRACK_A.to_string(), TRACK_B.to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("af63ef4c-8602-4cd5-82c0-3d334b916305".to_string()),
+            vec![TRACK_A.to_string(), TRACK_B.to_string()],
+            ContextStart::Index(0),
+        )
+    });
     service.slot = active_slot(
         test_prepared_track(TRACK_A, create_sparse_buffer(1_024)),
         TrackPhase::Playing,

@@ -191,11 +191,13 @@ async fn read_failure_on_a_buffer_out_of_play_is_ignored() {
 #[tokio::test]
 async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
     let (_home, mut service, mut progress_rx) = test_playback_service().await;
-    service.playback_queue.play_release(
-        ContextSource::Release("release-id".to_string()),
-        vec!["finished-track".to_string(), "incoming-track".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("release-id".to_string()),
+            vec!["finished-track".to_string(), "incoming-track".to_string()],
+            ContextStart::Index(0),
+        )
+    });
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
@@ -252,11 +254,13 @@ async fn seek_drains_pending_gapless_crossing_before_reading_current_track() {
 #[tokio::test]
 async fn seek_after_natural_completion_resumes_audibly() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.play_release(
-        ContextSource::Release("release-id".to_string()),
-        vec!["finished-track".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("release-id".to_string()),
+            vec!["finished-track".to_string()],
+            ContextStart::Index(0),
+        )
+    });
 
     let buffer = create_sparse_buffer(1_024);
     // The track drained: phase is Completed with its bookkeeping retained, and
@@ -290,11 +294,13 @@ async fn seek_after_natural_completion_resumes_audibly() {
 #[tokio::test]
 async fn next_after_natural_completion_resumes_audibly() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.play_release(
-        ContextSource::Release("release-id".to_string()),
-        vec!["finished-track".to_string(), "next-track".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("release-id".to_string()),
+            vec!["finished-track".to_string(), "next-track".to_string()],
+            ContextStart::Index(0),
+        )
+    });
 
     // The current track drained naturally: phase Completed, and the audio
     // callback already flipped the atomic to Stopped.
@@ -340,11 +346,13 @@ async fn next_after_natural_completion_resumes_audibly() {
 #[tokio::test]
 async fn gapless_crossing_evicts_finished_track_file_buffer() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.play_release(
-        ContextSource::Release("release-id".to_string()),
-        vec!["finished-track".to_string(), "incoming-track".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("release-id".to_string()),
+            vec!["finished-track".to_string(), "incoming-track".to_string()],
+            ContextStart::Index(0),
+        )
+    });
 
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
@@ -382,11 +390,13 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
 #[tokio::test]
 async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
     let (_home, mut service, _progress_rx) = test_playback_service().await;
-    service.playback_queue.play_release(
-        ContextSource::Release("release-id".to_string()),
-        vec!["finished-track".to_string(), "incoming-track".to_string()],
-        ContextStart::Index(0),
-    );
+    service.playback_queue.apply(|queue| {
+        queue.play_release(
+            ContextSource::Release("release-id".to_string()),
+            vec!["finished-track".to_string(), "incoming-track".to_string()],
+            ContextStart::Index(0),
+        )
+    });
 
     let shared_buffer = create_sparse_buffer(1_024);
     service

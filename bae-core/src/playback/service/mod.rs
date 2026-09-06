@@ -34,7 +34,7 @@
 use super::RepeatMode;
 use super::{
     repeat_to_str, source_to_str, ContextSource, ContextStart, NextEntry, PersistedPlayback,
-    PlaybackQueue, PreviousAction, QueueEntryId, QueueSnapshot,
+    PreviousAction, PublishedQueue, QueueEntryId, QueueSnapshot,
 };
 use crate::audio_codec::StreamingDecodeError;
 use crate::db::{DbAudioSegmentRole, DbPlaybackContext, DbPlaybackState};
@@ -504,8 +504,9 @@ pub struct PlaybackService {
     command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
     command_rx: tokio_mpsc::UnboundedReceiver<PlaybackCommand>,
     progress_tx: tokio_mpsc::UnboundedSender<PlaybackProgress>,
-    queue_values: tokio::sync::watch::Sender<PlaybackQueueProjection>,
-    playback_queue: PlaybackQueue,
+    /// The queue and the projection stream the UIs read, as one owner: every
+    /// mutation goes through `apply`, which republishes.
+    playback_queue: PublishedQueue,
     current_position_shared: Arc<std::sync::Mutex<Option<std::time::Duration>>>,
     /// Where both players' outputs come from: `audio_output` below was opened
     /// from it at startup, and the preview player opens its own second output

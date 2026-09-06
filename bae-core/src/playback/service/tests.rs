@@ -216,15 +216,12 @@ fn playback_service_over(
     let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
     let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
     let preview = PreviewPlayer::new(progress_tx.clone(), command_tx.clone(), 50);
-    let playback_queue = PlaybackQueue::new(queue_ids);
-    let (queue_values, _) =
-        tokio::sync::watch::channel(PlaybackQueueProjection::from_queue(&playback_queue));
+    let playback_queue = PublishedQueue::new(queue_ids);
     let service = PlaybackService {
         library_manager,
         command_tx,
         command_rx,
         progress_tx,
-        queue_values,
         playback_queue,
         current_position_shared: Arc::new(std::sync::Mutex::new(None)),
         // These tests drive the handlers directly and never start a preview, so

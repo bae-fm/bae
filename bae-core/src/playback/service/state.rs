@@ -250,18 +250,20 @@ impl PlaybackService {
         // -- Commit (infallible): everything below applies validated state. --
 
         let restored_context_track_count = context_tracks.len();
-        self.playback_queue.restore(
-            QueueSnapshot {
-                context,
-                manual,
-                current_track_id,
-                repeat,
-            },
-            context_tracks,
-            // A shuffled lane comes back freshly permuted — the session's shuffled
-            // order was never stored.
-            rand::random(),
-        );
+        self.playback_queue.apply(|queue| {
+            queue.restore(
+                QueueSnapshot {
+                    context,
+                    manual,
+                    current_track_id,
+                    repeat,
+                },
+                context_tracks,
+                // A shuffled lane comes back freshly permuted — the session's
+                // shuffled order was never stored.
+                rand::random(),
+            )
+        });
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RepeatModeChanged { mode: repeat },
@@ -283,8 +285,6 @@ impl PlaybackService {
                 PlaybackProgress::MuteChanged { is_muted: true },
             );
         }
-
-        self.emit_queue_update();
 
         // Start the current track paused at the saved position, if there is one.
         if let Some(track_id) = self

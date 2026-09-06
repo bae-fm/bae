@@ -314,12 +314,13 @@ impl PlaybackService {
             }
         };
         let track_count = context.track_ids.len();
-        self.playback_queue.play_release(
-            ContextSource::Release(context.release_id),
-            context.track_ids,
-            ContextStart::Index(context.index),
-        );
-        self.emit_queue_update();
+        self.playback_queue.apply(|queue| {
+            queue.play_release(
+                ContextSource::Release(context.release_id),
+                context.track_ids,
+                ContextStart::Index(context.index),
+            )
+        });
         self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
         self.play_track(
             &track_id,
@@ -345,10 +346,9 @@ impl PlaybackService {
                 .await;
         } else {
             // Nothing preloaded: let the queue decide what plays next.
-            match self.playback_queue.next_entry() {
+            match self.playback_queue.apply(|queue| queue.next_entry()) {
                 NextEntry::Play(next_track) => {
                     info!("No preloaded track, playing from queue: {}", next_track);
-                    self.emit_queue_update();
                     self.play_track(
                         &next_track,
                         TrackStart::Direct,
@@ -359,7 +359,6 @@ impl PlaybackService {
                 }
                 _ => {
                     info!("No next track available, stopping");
-                    self.emit_queue_update();
                     self.stop().await;
                 }
             }
@@ -383,12 +382,14 @@ impl PlaybackService {
             .unwrap_or(std::time::Duration::ZERO);
         let position_ms = current_position.as_millis() as u64;
 
-        match self.playback_queue.previous_action(position_ms) {
+        match self
+            .playback_queue
+            .apply(|queue| queue.previous_action(position_ms))
+        {
             PreviousAction::PlayPrevious(previous_track_id) => {
                 info!("Going to previous track: {}", previous_track_id);
                 // previous_action already stepped the context cursor back and made
                 // this track current; just play it.
-                self.emit_queue_update();
                 self.play_track(
                     &previous_track_id,
                     TrackStart::Direct,
@@ -455,7 +456,7 @@ impl PlaybackService {
             }
         }
 
-        match self.playback_queue.next_entry() {
+        match self.playback_queue.apply(|queue| queue.next_entry()) {
             NextEntry::RepeatCurrent(next_track) => {
                 info!("Repeat mode: track, replaying {}", next_track);
                 self.play_track(
@@ -468,7 +469,6 @@ impl PlaybackService {
             }
             NextEntry::Play(next_track) => {
                 info!("Playing from queue: {}", next_track);
-                self.emit_queue_update();
                 self.play_track(
                     &next_track,
                     TrackStart::Natural,
@@ -479,7 +479,6 @@ impl PlaybackService {
             }
             NextEntry::Stop => {
                 info!("No next track available, stopping");
-                self.emit_queue_update();
                 self.stop().await;
             }
         }
@@ -696,9 +695,8 @@ impl PlaybackService {
         let (command_tx, command_rx) = tokio_mpsc::unbounded_channel();
         let (progress_tx, progress_rx) = tokio_mpsc::unbounded_channel();
         let progress_handle = PlaybackProgressHandle::new(progress_rx, runtime_handle.clone());
-        let playback_queue = PlaybackQueue::new(queue_ids);
-        let (queue_values, queue_receiver) =
-            tokio::sync::watch::channel(PlaybackQueueProjection::from_queue(&playback_queue));
+        let playback_queue = PublishedQueue::new(queue_ids);
+        let queue_receiver = playback_queue.subscribe();
         let thread_slot = Arc::new(Mutex::new(None));
         let handle = PlaybackHandle::new(
             command_tx.clone(),
@@ -753,7 +751,6 @@ impl PlaybackService {
                     command_tx: command_tx.clone(),
                     command_rx,
                     progress_tx,
-                    queue_values,
                     playback_queue,
                     current_position_shared: Arc::new(std::sync::Mutex::new(None)),
                     audio_device,
@@ -788,12 +785,12 @@ impl PlaybackService {
             return;
         }
 
-        self.playback_queue.set_repeat_mode(mode);
+        self.playback_queue
+            .apply(|queue| queue.set_repeat_mode(mode));
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::RepeatModeChanged { mode },
         );
-        self.emit_queue_update();
         self.persist_playback_state().await;
     }
 
@@ -858,12 +855,9 @@ impl PlaybackService {
                         ContextStart::Index(index)
                     };
                     let track_count = track_ids.len();
-                    let first_track = self.playback_queue.play_release(
-                        ContextSource::Release(release_id),
-                        track_ids,
-                        start,
-                    );
-                    self.emit_queue_update();
+                    let first_track = self.playback_queue.apply(|queue| {
+                        queue.play_release(ContextSource::Release(release_id), track_ids, start)
+                    });
                     self.telemetry_playback_started(PlaybackStartSource::Release, track_count);
                     self.play_track(
                         &first_track,
@@ -884,12 +878,13 @@ impl PlaybackService {
                     }
                     self.stop_preview_for_main_playback();
                     let track_count = track_ids.len();
-                    let first_track = self.playback_queue.play_release(
-                        ContextSource::releases(playable_ids),
-                        track_ids,
-                        ContextStart::Index(0),
-                    );
-                    self.emit_queue_update();
+                    let first_track = self.playback_queue.apply(|queue| {
+                        queue.play_release(
+                            ContextSource::releases(playable_ids),
+                            track_ids,
+                            ContextStart::Index(0),
+                        )
+                    });
                     self.telemetry_playback_started(PlaybackStartSource::Releases, track_count);
                     self.play_track(
                         &first_track,
@@ -916,14 +911,15 @@ impl PlaybackService {
                     // A fresh seed, so the order is reproducible and `Context`
                     // repeat can re-derive it.
                     let track_count = track_ids.len();
-                    let first_track = self.playback_queue.play_release(
-                        ContextSource::Library,
-                        track_ids,
-                        ContextStart::Shuffled {
-                            seed: rand::random(),
-                        },
-                    );
-                    self.emit_queue_update();
+                    let first_track = self.playback_queue.apply(|queue| {
+                        queue.play_release(
+                            ContextSource::Library,
+                            track_ids,
+                            ContextStart::Shuffled {
+                                seed: rand::random(),
+                            },
+                        )
+                    });
                     self.telemetry_playback_started(
                         PlaybackStartSource::LibraryShuffled,
                         track_count,
@@ -1028,13 +1024,14 @@ impl PlaybackService {
                 }
                 PlaybackCommand::AddToQueue(track_ids) => {
                     let count = track_ids.len() as u32;
-                    self.playback_queue.add_to_queue(track_ids);
+                    self.playback_queue
+                        .apply(|queue| queue.add_to_queue(track_ids));
                     self.emit_queue_items_added(count);
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::AddNext(track_ids) => {
                     let count = track_ids.len() as u32;
-                    self.playback_queue.add_next(track_ids);
+                    self.playback_queue.apply(|queue| queue.add_next(track_ids));
                     self.emit_queue_items_added(count);
                     self.on_queue_mutated().await;
                 }
@@ -1042,7 +1039,8 @@ impl PlaybackService {
                     match self.library_manager.get_track_ids(&release_id).await {
                         Ok(track_ids) if !track_ids.is_empty() => {
                             let count = track_ids.len() as u32;
-                            self.playback_queue.add_to_queue(track_ids);
+                            self.playback_queue
+                                .apply(|queue| queue.add_to_queue(track_ids));
                             self.emit_queue_items_added(count);
                             self.on_queue_mutated().await;
                         }
@@ -1057,7 +1055,8 @@ impl PlaybackService {
                     match self.library_manager.get_track_ids(&release_id).await {
                         Ok(track_ids) if !track_ids.is_empty() => {
                             let count = track_ids.len() as u32;
-                            self.playback_queue.add_next(track_ids);
+                            self.playback_queue
+                                .apply(|queue| queue.add_next(track_ids));
                             self.emit_queue_items_added(count);
                             self.on_queue_mutated().await;
                         }
@@ -1070,19 +1069,21 @@ impl PlaybackService {
                 }
                 PlaybackCommand::InsertInQueue(track_ids, index) => {
                     let count = track_ids.len() as u32;
-                    self.playback_queue.insert_at(index, track_ids);
+                    self.playback_queue
+                        .apply(|queue| queue.insert_at(index, track_ids));
                     self.emit_queue_items_added(count);
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::RemoveFromQueue(entry_id) => {
-                    if let Some(removed) = self.playback_queue.remove(&entry_id) {
+                    if let Some(removed) =
+                        self.playback_queue.apply(|queue| queue.remove(&entry_id))
+                    {
                         if self
                             .current_track_id()
                             .map(|id| id == removed.track_id)
                             .unwrap_or(false)
                         {
                             self.stop().await;
-                            self.emit_queue_update();
                         } else {
                             self.on_queue_mutated().await;
                         }
@@ -1093,17 +1094,21 @@ impl PlaybackService {
                     }
                 }
                 PlaybackCommand::ReorderQueue { entry_id, before } => {
-                    if !self.playback_queue.reorder(&entry_id, before.as_ref()) {
+                    if !self
+                        .playback_queue
+                        .apply(|queue| queue.reorder(&entry_id, before.as_ref()))
+                    {
                         self.telemetry_anomaly(AnomalyKind::QueueEntryUnknown);
                     }
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ClearUpNext => {
-                    self.playback_queue.clear_up_next();
+                    self.playback_queue.apply(|queue| queue.clear_up_next());
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ClearPlayingFrom => {
-                    self.playback_queue.clear_playing_from();
+                    self.playback_queue
+                        .apply(|queue| queue.clear_playing_from());
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::SetRepeatMode(mode) => {
@@ -1115,20 +1120,22 @@ impl PlaybackService {
                     // on. Shuffling changes what plays next, so the preload and
                     // the staged side-pause reconcile like any queue mutation.
                     let seed: u64 = rand::random();
-                    self.playback_queue.set_shuffle(on, seed);
+                    self.playback_queue
+                        .apply(|queue| queue.set_shuffle(on, seed));
                     self.on_queue_mutated().await;
                 }
                 PlaybackCommand::ReevaluateSidePauseStaging => {
                     self.reevaluate_side_pause_staging().await;
                 }
                 PlaybackCommand::SkipTo(entry_id) => {
-                    if let Some(entry) = self.playback_queue.skip_to(&entry_id) {
+                    if let Some(entry) =
+                        self.playback_queue.apply(|queue| queue.skip_to(&entry_id))
+                    {
                         info!(
                             "SkipTo: jumping to queue entry {}, track {}",
                             entry.id.0, entry.track_id
                         );
 
-                        self.emit_queue_update();
                         self.play_track(
                             &entry.track_id,
                             TrackStart::Direct,
@@ -1163,7 +1170,7 @@ impl PlaybackService {
                 }
                 #[cfg(any(test, feature = "test-utils"))]
                 PlaybackCommand::GetQueueProjection(reply) => {
-                    let _ = reply.send(self.queue_projection());
+                    let _ = reply.send(self.playback_queue.projection());
                 }
                 PlaybackCommand::Shutdown(reply) => {
                     self.persist_playback_state().await;
