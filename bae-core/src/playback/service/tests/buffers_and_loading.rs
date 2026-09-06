@@ -14,14 +14,14 @@ async fn retiring_preloaded_next_stops_decoder_but_keeps_buffer_alive() {
     assert!(service.retire_preloaded_track());
 
     assert!(service.preloaded_next.is_none());
-    let prepared = service
-        .retired_tracks
-        .first()
-        .expect("the prepared track is retained until buffer release");
-    assert_eq!(prepared.track_info.track_id, "next-track");
+    assert_eq!(
+        service.file_buffers.retired_track_ids(),
+        ["next-track"],
+        "the prepared track is retained until buffer release"
+    );
     assert!(cancel_token.load(std::sync::atomic::Ordering::Acquire));
     // The buffer stays alive: whether it survives is the caller's release
-    // decision (release_buffers / stop), not the discard's.
+    // decision (`FileBuffers::release` / stop), not the discard's.
     assert!(!buffer.is_cancelled());
 }
 
@@ -52,7 +52,7 @@ async fn retiring_preloaded_next_removes_staged_source() {
     assert!(service.retire_preloaded_track());
 
     assert!(service.preloaded_next.is_none());
-    assert_eq!(service.retired_tracks.len(), 1);
+    assert_eq!(service.file_buffers.retired_track_ids(), ["next-track"]);
     assert!(!gapless.lock().unwrap().has_next());
     assert!(!buffer.is_cancelled());
 }
@@ -83,8 +83,8 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
     let current_buffer = create_sparse_buffer(1_024);
     let preload_buffer = create_sparse_buffer(1_024);
     service
-        .shared_file_buffers
-        .insert("preload-file".to_string(), preload_buffer.clone());
+        .file_buffers
+        .cache_for_test("preload-file", preload_buffer.clone());
     service.slot = active_slot(
         test_prepared_track_with_file("current-track", "current-file", current_buffer),
         TrackPhase::Playing,
@@ -126,7 +126,7 @@ async fn read_failure_on_the_preloaded_next_discards_it_and_keeps_playing() {
         "the preload whose bytes are gone is discarded"
     );
     assert!(
-        !service.shared_file_buffers.contains_key("preload-file"),
+        !service.file_buffers.holds("preload-file"),
         "its cancelled buffer leaves the shared cache rather than being reused dead"
     );
 }
@@ -357,11 +357,11 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
     let finished_buffer = create_sparse_buffer(1_024);
     let incoming_buffer = create_sparse_buffer(1_024);
     service
-        .shared_file_buffers
-        .insert("finished-file".to_string(), finished_buffer.clone());
+        .file_buffers
+        .cache_for_test("finished-file", finished_buffer.clone());
     service
-        .shared_file_buffers
-        .insert("incoming-file".to_string(), incoming_buffer.clone());
+        .file_buffers
+        .cache_for_test("incoming-file", incoming_buffer.clone());
     service.slot = active_slot(
         test_prepared_track_with_file("finished-track", "finished-file", finished_buffer.clone()),
         TrackPhase::Playing,
@@ -382,8 +382,8 @@ async fn gapless_crossing_evicts_finished_track_file_buffer() {
         })
         .await;
 
-    assert!(!service.shared_file_buffers.contains_key("finished-file"));
-    assert!(service.shared_file_buffers.contains_key("incoming-file"));
+    assert!(!service.file_buffers.holds("finished-file"));
+    assert!(service.file_buffers.holds("incoming-file"));
     assert!(finished_buffer.is_cancelled());
 }
 
@@ -400,8 +400,8 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
 
     let shared_buffer = create_sparse_buffer(1_024);
     service
-        .shared_file_buffers
-        .insert("shared-file".to_string(), shared_buffer.clone());
+        .file_buffers
+        .cache_for_test("shared-file", shared_buffer.clone());
     service.slot = active_slot(
         test_prepared_track_with_file("finished-track", "shared-file", shared_buffer.clone()),
         TrackPhase::Playing,
@@ -426,7 +426,7 @@ async fn gapless_crossing_keeps_file_buffer_used_by_incoming_track() {
         })
         .await;
 
-    assert!(service.shared_file_buffers.contains_key("shared-file"));
+    assert!(service.file_buffers.holds("shared-file"));
     assert!(!shared_buffer.is_cancelled());
 }
 

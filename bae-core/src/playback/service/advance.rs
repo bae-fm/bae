@@ -53,9 +53,8 @@ impl PlaybackService {
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
-            &mut self.shared_file_buffers,
-            self.command_tx.clone(),
-            self.fetch_arbiter.clone(),
+            &mut self.file_buffers,
+            &self.command_tx,
         )
         .await;
         let prepared = match prepared {
@@ -362,15 +361,10 @@ impl PlaybackService {
         // Release the preload's buffers; files the current track still plays
         // stay cached and alive.
         let retained_file_ids = match &self.slot {
-            PlaybackSlot::Active(cur) => cur
-                .prepared
-                .file_ids()
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
+            PlaybackSlot::Active(cur) => cur.prepared.file_ids(),
             _ => HashSet::new(),
         };
-        self.release_retired_tracks(retained_file_ids);
+        self.file_buffers.release_retired(&retained_file_ids);
     }
 
     /// Whether a preloaded next-track source is available.
@@ -452,8 +446,8 @@ impl PlaybackService {
         };
         // Release the previous track's buffers (files shared with the new one
         // stay cached and alive).
-        cur.prepared
-            .release_buffers(&next_prepared.file_ids(), &mut self.shared_file_buffers);
+        self.file_buffers
+            .release(&cur.prepared, &next_prepared.file_ids());
         cur.prepared = next_prepared;
         // Swap in the crossed-into decoder. The finishing track's already exited
         // (that is what fired the crossing), so dropping its handle detaches
@@ -633,13 +627,7 @@ impl PlaybackService {
         // share stay cached and alive. The incoming decoder's own token
         // (`cancel_token`) is untouched by that teardown.
         self.retire_current_track();
-        self.release_retired_tracks(
-            next_prepared
-                .file_ids()
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
-        );
+        self.file_buffers.release_retired(&next_prepared.file_ids());
 
         *self.current_position_shared.lock().unwrap() = Some(std::time::Duration::ZERO);
 

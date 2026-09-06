@@ -658,10 +658,7 @@ impl PlaybackService {
         if let Some(out) = self.output.take() {
             out.source.lock().unwrap().cancel();
         }
-        for buffer in self.shared_file_buffers.values() {
-            buffer.cancel();
-        }
-        self.shared_file_buffers.clear();
+        self.file_buffers.cancel_all();
         *self.current_position_shared.lock().unwrap() = None;
         self.reset_starvation_episode();
     }

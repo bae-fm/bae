@@ -1,14 +1,11 @@
 use super::*;
 
 impl PlaybackService {
-    /// Designate the current track's buffer as the foreground for fetch
-    /// priority, so its reader fetches immediately and a next-track preload's
-    /// reader yields to it. Called wherever a track becomes the current one.
+    /// Hand the current track's reader fetch priority over a preload's. Called
+    /// wherever a track becomes the current one.
     pub(super) fn mark_current_foreground(&self) {
         if let PlaybackSlot::Active(cur) = &self.slot {
-            if let Some(segment) = cur.prepared.segments.first() {
-                self.fetch_arbiter.set_foreground(segment.buffer.id());
-            }
+            self.file_buffers.mark_foreground(&cur.prepared);
         }
     }
 
@@ -43,7 +40,7 @@ impl PlaybackService {
         } = preloaded;
         self.discard_preloaded_source(source);
         discard_preloaded_decoder(&prepared, &cancel_token);
-        self.retired_tracks.push(prepared);
+        self.file_buffers.retire(prepared);
         true
     }
 
@@ -55,26 +52,16 @@ impl PlaybackService {
                 .decoder
                 .cancel_token
                 .store(true, std::sync::atomic::Ordering::Release);
-            self.retired_tracks.push(current.prepared);
+            self.file_buffers.retire(current.prepared);
             true
         } else {
             false
         }
     }
 
-    pub(super) fn release_retired_tracks(&mut self, retained_file_ids: HashSet<String>) {
-        let retained_file_ids = retained_file_ids
-            .iter()
-            .map(String::as_str)
-            .collect::<HashSet<_>>();
-        for prepared in self.retired_tracks.drain(..) {
-            prepared.release_buffers(&retained_file_ids, &mut self.shared_file_buffers);
-        }
-    }
-
     pub(super) fn discard_current_track(&mut self) {
         self.retire_current_track();
-        self.release_retired_tracks(HashSet::new());
+        self.file_buffers.release_retired(&HashSet::new());
     }
 
     pub(super) async fn start_decoder_and_install(
@@ -764,9 +751,7 @@ impl PlaybackService {
                     is_muted: false,
                     pre_mute_volume: 1.0,
                     position_update_interval_ms,
-                    shared_file_buffers: HashMap::new(),
-                    retired_tracks: Vec::new(),
-                    fetch_arbiter: FetchArbiter::new(),
+                    file_buffers: FileBuffers::new(),
                     starvation_episode: None,
                     last_position_persist: None,
                     first_audio_pending: None,

@@ -22,14 +22,11 @@
 //! 4. `Seeked` is emitted; the phase stays Loading until the ready-watcher's
 //!    `TrackReady` resolves it to the preserved Playing/Paused.
 //!
-//! ## File-buffer ownership
+//! ## File buffers
 //!
-//! `shared_file_buffers` (one sparse byte buffer per release file, shared by
-//! every track that plays from that file) is the buffers' single owner. A buffer
-//! is cancelled — stopping its on-demand fill task for good — exactly when it
-//! leaves the cache: `release_buffers` evicts the files a departing track no
-//! longer shares with the retained one, and `stop` cancels the whole cache. So a
-//! cached buffer is always live, and prepare reuses it as-is.
+//! The byte buffers tracks stream their audio from are owned by `FileBuffers`
+//! (`file_buffers.rs`), which also holds the tracks awaiting buffer release and
+//! the fetch-priority arbiter shared into every reader.
 
 use super::RepeatMode;
 use super::{
@@ -70,6 +67,7 @@ use tracing::{debug, error, info, trace, warn};
 
 mod advance;
 mod api;
+mod file_buffers;
 mod output;
 mod pipeline;
 mod preview;
@@ -91,6 +89,7 @@ pub use api::{
     PlaybackTrackInfo, PlaybackTrackSide, SIDE_PAUSE_CASSETTE_MESSAGE_KEY, SIDE_PAUSE_TITLE_KEY,
     SIDE_PAUSE_VINYL_MESSAGE_KEY,
 };
+use file_buffers::{prepare_track_for_playback, FileBuffers};
 use renderer::{RemoteConnect, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
@@ -242,27 +241,6 @@ impl PlaybackPreparedTrack {
             .iter()
             .map(|segment| segment.file_id.as_str())
             .collect()
-    }
-
-    /// Release this track's file buffers as it leaves the pipeline. A file the
-    /// retained track(s) still play stays cached and alive — its readers are
-    /// woken so this track's cancelled decoder observes its token instead of
-    /// staying parked on a read. The rest leave the shared cache and are
-    /// cancelled, which stops their fill task and unblocks anything reading
-    /// them.
-    fn release_buffers(
-        &self,
-        retained_file_ids: &HashSet<&str>,
-        shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
-    ) {
-        for segment in &self.segments {
-            if retained_file_ids.contains(segment.file_id.as_str()) {
-                segment.buffer.wake_readers();
-            } else {
-                segment.buffer.cancel();
-                shared_file_buffers.remove(&segment.file_id);
-            }
-        }
     }
 }
 
@@ -416,81 +394,6 @@ fn ensure_resolved_audio_format(
     Ok(())
 }
 
-/// The playback shape of a fill-error handler: a failed byte fill reports itself
-/// to the command loop, naming the buffer it failed on. The loop is the only
-/// place that knows whether that buffer feeds the current track or a preloaded
-/// next, which is what decides whether the failure halts playback. (The fill
-/// itself cancels the buffer right after, unblocking the decoder.)
-fn playback_fill_error_handler(
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    buffer_id: u64,
-) -> crate::playback::data_source::FillErrorHandler {
-    Box::new(move |error| {
-        dispatch_command(
-            &command_tx,
-            PlaybackCommand::ReadFailed { buffer_id, error },
-        );
-    })
-}
-
-async fn prepare_track_for_playback(
-    library_manager: &LibraryManager,
-    track_id: &str,
-    shared_file_buffers: &mut HashMap<String, SharedSparseBuffer>,
-    command_tx: tokio_mpsc::UnboundedSender<PlaybackCommand>,
-    fetch_arbiter: Arc<FetchArbiter>,
-) -> Result<PlaybackPreparedTrack, PlaybackError> {
-    let (resolved, track_info) = library_manager
-        .resolve_track_audio_and_info(track_id)
-        .await
-        .map_err(PlaybackError::database)?;
-    ensure_resolved_audio_format(track_id, &resolved)?;
-
-    let mut prepared_segments = Vec::with_capacity(resolved.segments.len());
-    for segment in &resolved.segments {
-        // A cached buffer is live by construction: buffers are cancelled only
-        // when they leave the cache (release_buffers / stop), so its fill task
-        // is still serving demand.
-        let cached = shared_file_buffers.get(&segment.file_id).cloned();
-        let buffer = if let Some(buf) = cached {
-            info!("Reusing cached file buffer");
-            buf
-        } else {
-            let buffer = create_sparse_buffer(segment.file_size);
-            let reader = create_audio_reader(
-                library_manager,
-                &segment.file_id,
-                fetch_arbiter.clone(),
-                segment.span.start_byte,
-                resolved.content_type == crate::util::content_type::ContentType::Ape,
-            );
-            reader.start_reading(
-                buffer.clone(),
-                playback_fill_error_handler(command_tx.clone(), buffer.id()),
-            );
-            shared_file_buffers.insert(segment.file_id.clone(), buffer.clone());
-            buffer
-        };
-        prepared_segments.push(PreparedAudioSegment {
-            role: segment.role.clone(),
-            file_id: segment.file_id.clone(),
-            buffer,
-            span: segment.span,
-        });
-    }
-
-    // Read the replay-gain mode once, here, and pass it down — rather than a
-    // config lookup buried inside `finalize_playback_track`.
-    let replay_gain_mode = library_manager.get_config().replay_gain_mode;
-
-    Ok(finalize_playback_track(
-        resolved,
-        track_info,
-        prepared_segments,
-        replay_gain_mode,
-    ))
-}
-
 struct OutputStream {
     _stream: Box<dyn AudioStream>,
     source: Arc<Mutex<source::PlaybackSource>>,
@@ -545,16 +448,9 @@ pub struct PlaybackService {
     main_was_playing_before_preview: bool,
     /// How often (ms) the audio callback sends position updates to the UI.
     position_update_interval_ms: u32,
-    /// Cached full-file buffers keyed by release file id.
-    shared_file_buffers: HashMap<String, SharedSparseBuffer>,
-    /// Tracks removed from the live slot whose buffers remain available until
-    /// the successor is prepared and reveals which files it reuses.
-    retired_tracks: Vec<PlaybackPreparedTrack>,
-    /// Prioritizes byte fetches across tracks: the current track's reader fetches
-    /// immediately, a next-track preload's reader yields to it. Shared into every
-    /// reader; the current track is designated foreground via
-    /// `mark_current_foreground` whenever it becomes current.
-    fetch_arbiter: Arc<FetchArbiter>,
+    /// The byte buffers tracks stream their audio from, the tracks whose buffers
+    /// are awaiting release, and the fetch priority between them.
+    file_buffers: FileBuffers,
     /// The in-progress starvation-watchdog episode, if the current track is
     /// mid-starvation with no decode progress yet observed. `None` whenever
     /// the track is flowing normally — see `reset_starvation_episode`.

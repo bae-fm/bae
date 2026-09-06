@@ -84,9 +84,8 @@ impl PlaybackService {
         let prepared = prepare_track_for_playback(
             &self.library_manager,
             track_id,
-            &mut self.shared_file_buffers,
-            self.command_tx.clone(),
-            self.fetch_arbiter.clone(),
+            &mut self.file_buffers,
+            &self.command_tx,
         )
         .await;
         let prepared = match prepared {
@@ -109,8 +108,7 @@ impl PlaybackService {
 
         // The incoming track's files are known now: release the outgoing current
         // and preload buffers, keeping any file the new track also plays.
-        let retained_file_ids = prepared.file_ids().into_iter().map(str::to_owned).collect();
-        self.release_retired_tracks(retained_file_ids);
+        self.file_buffers.release_retired(&prepared.file_ids());
 
         // Second Loading emission: carries the target track's metadata so the bar
         // switches from the prior track to the target while audio still downloads.
