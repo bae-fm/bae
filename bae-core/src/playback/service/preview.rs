@@ -1,17 +1,18 @@
 use super::*;
+use crate::playback::preview_player::AfterPreview;
 
-/// Preview coordination. The preview mechanics live in `PreviewPlayer`; the
-/// service owns the one piece of cross-player state — pausing the main player
-/// while a preview runs and resuming it after — so these handlers wrap the
-/// `PreviewPlayer` calls with that coordination.
+/// Preview coordination. The preview mechanics live in `PreviewPlayer` — which
+/// also records whether starting a preview paused the main player — and the
+/// service owns the main player, so these handlers do the pausing and the resume
+/// the preview asks for when it ends.
 impl PlaybackService {
     /// Pause main player for preview. Called after a preview successfully starts
     /// so that a failed preview start doesn't leave the main player paused.
-    pub(super) fn pause_main_for_preview(&mut self) {
+    fn pause_main_for_preview(&mut self) {
         // Pause the main player only if it is actually playing (a load still
         // filling counts as playing intent). A paused/stopped main player is left
-        // alone, and the resume marker stays clear so preview stop doesn't
-        // spuriously resume it.
+        // alone, and the preview is told nothing, so its end doesn't spuriously
+        // resume it.
         let paused = match &mut self.slot {
             PlaybackSlot::Active(cur) if cur.phase.intent() == PlayIntent::Playing => {
                 cur.phase = TrackPhase::Paused(PausePhase::Manual);
@@ -20,18 +21,14 @@ impl PlaybackService {
             _ => false,
         };
         if paused {
-            self.main_was_playing_before_preview = true;
+            self.preview.main_player_paused();
             self.sync_audio_state();
             self.emit_state();
         }
     }
 
-    /// Resume main player if it was paused for preview.
-    pub(super) fn maybe_resume_main_player(&mut self) {
-        if !self.main_was_playing_before_preview {
-            return;
-        }
-        self.main_was_playing_before_preview = false;
+    /// Resume the main player the ended preview had paused.
+    fn resume_main_player(&mut self) {
         let resumed = match &mut self.slot {
             PlaybackSlot::Active(cur) => {
                 cur.phase = TrackPhase::Playing;
@@ -45,11 +42,10 @@ impl PlaybackService {
         }
     }
 
-    /// Stop preview because main playback is taking over, without resuming main
-    /// from the preview pause marker.
+    /// Stop preview because main playback is taking over. Main starts itself, so
+    /// the resume the preview hands back is dropped rather than acted on.
     pub(super) fn stop_preview_for_main_playback(&mut self) {
-        self.main_was_playing_before_preview = false;
-        self.preview.stop();
+        let _ = self.preview.stop();
     }
 
     /// Preview a local source window. The same target toggles off (and resumes
@@ -78,15 +74,15 @@ impl PlaybackService {
 
     /// Stop any active preview and resume the main player if it was paused for it.
     pub(super) fn preview_stop(&mut self) {
-        self.preview.stop();
-        self.maybe_resume_main_player();
+        if self.preview.stop() == AfterPreview::ResumeMain {
+            self.resume_main_player();
+        }
     }
 
     /// Natural preview completion: stop the preview and resume the main player.
     pub(super) fn preview_completed(&mut self) {
         info!("Preview finished");
-        self.preview.stop();
-        self.maybe_resume_main_player();
+        self.preview_stop();
     }
 
     /// Toggle pause/resume on the active preview.

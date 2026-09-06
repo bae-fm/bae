@@ -268,7 +268,8 @@ impl PlaybackService {
             .unwrap_or(Duration::ZERO);
         // Carry the current play/pause intent to the device.
         let target = self.current_play_target();
-        let volume = self.effective_volume();
+        // Seed the device with what the user hears, so it matches (0 while muted).
+        let volume = self.volume.audible_level(self.audio_output.as_ref());
 
         // Stop the local pipeline (decoder, cpal stream, byte buffers); the
         // queue and its cursor are untouched.
@@ -537,16 +538,6 @@ impl PlaybackService {
         self.stop().await;
     }
 
-    /// The current (effective) output volume — 0 while muted, so the device is
-    /// seeded to match what the user hears.
-    fn effective_volume(&self) -> f32 {
-        if self.is_muted {
-            0.0
-        } else {
-            self.audio_output.get_volume()
-        }
-    }
-
     /// Switch to AirPlay: keep decoding locally but swap the output sink so the
     /// decoded PCM is pushed to the receiver instead of the DAC. The queue, the
     /// slot, the decoder, and the advance path are unchanged — only where the
@@ -565,7 +556,8 @@ impl PlaybackService {
             .unwrap()
             .unwrap_or(Duration::ZERO);
         let target = self.current_play_target();
-        let volume = self.effective_volume();
+        // Seed the device with what the user hears, so it matches (0 while muted).
+        let volume = self.volume.audible_level(self.audio_output.as_ref());
 
         // Tear the current local pipeline down; `play_track` rebuilds it below,
         // this time feeding the AirPlay sink.

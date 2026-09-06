@@ -269,7 +269,11 @@ impl PlaybackService {
             PlaybackProgress::RepeatModeChanged { mode: repeat },
         );
 
-        self.audio_output.set_volume(parsed.volume);
+        // The saved level is what the UI shows even when the session was muted —
+        // that is the level unmuting puts back — so `VolumeChanged` carries it
+        // either way, and the mute is announced on top.
+        self.volume
+            .restore(parsed.volume, parsed.is_muted, self.audio_output.as_ref());
         emit_progress(
             &self.progress_tx,
             PlaybackProgress::VolumeChanged {
@@ -277,9 +281,6 @@ impl PlaybackService {
             },
         );
         if parsed.is_muted {
-            self.is_muted = true;
-            self.pre_mute_volume = parsed.volume;
-            self.audio_output.set_volume(0.0);
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::MuteChanged { is_muted: true },
@@ -420,12 +421,8 @@ impl PlaybackService {
             repeat: repeat_to_str(snap.repeat),
             current_track_id: snap.current_track_id,
             position_ms,
-            volume: if self.is_muted {
-                self.pre_mute_volume
-            } else {
-                self.audio_output.get_volume()
-            },
-            is_muted: self.is_muted,
+            volume: self.volume.level(self.audio_output.as_ref()),
+            is_muted: self.volume.is_muted(),
         };
         if let Err(e) = self.library_manager.save_playback_state(&row).await {
             warn!(
@@ -440,10 +437,9 @@ impl PlaybackService {
     /// too so it stays in step and survives the handoff back to local. Unmutes on
     /// a non-zero level, and always emits `VolumeChanged`.
     pub(super) fn set_volume(&mut self, volume: f32) {
-        self.audio_output.set_volume(volume);
+        let lifted_mute = self.volume.set(volume, self.audio_output.as_ref());
         self.renderer.set_remote_volume(volume);
-        if volume > 0.0 && self.is_muted {
-            self.is_muted = false;
+        if lifted_mute {
             emit_progress(
                 &self.progress_tx,
                 PlaybackProgress::MuteChanged { is_muted: false },

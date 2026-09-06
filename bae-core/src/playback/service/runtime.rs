@@ -746,10 +746,8 @@ impl PlaybackService {
                     slot: PlaybackSlot::Stopped,
                     load_generation_counter: 0,
                     preloaded_next: None,
+                    volume: OutputVolume::new(),
                     preview,
-                    main_was_playing_before_preview: false,
-                    is_muted: false,
-                    pre_mute_volume: 1.0,
                     position_update_interval_ms,
                     file_buffers: FileBuffers::new(),
                     starvation_episode: None,
@@ -974,36 +972,20 @@ impl PlaybackService {
                     self.set_volume(volume);
                 }
                 PlaybackCommand::SetMuted(muted) => {
-                    if muted == self.is_muted {
-                        // Already there: nothing changes, nothing emits.
-                    } else if muted {
-                        self.pre_mute_volume = self.audio_output.get_volume();
-                        self.is_muted = true;
-                        self.audio_output.set_volume(0.0);
-                        // Receiver mute is flaky across devices, so muting maps
-                        // to receiver volume 0; the pre-mute level is remembered
-                        // above and restored on unmute.
-                        self.renderer.set_remote_volume(0.0);
+                    // Already in that state means nothing changes and nothing
+                    // emits. Otherwise the new audible level comes back — zero on
+                    // mute, the level from before the mute on unmute. Receiver
+                    // mute is flaky across devices, so the remote device follows
+                    // that level rather than a mute command of its own.
+                    if let Some(level) = self.volume.set_muted(muted, self.audio_output.as_ref()) {
+                        self.renderer.set_remote_volume(level);
                         emit_progress(
                             &self.progress_tx,
-                            PlaybackProgress::VolumeChanged { volume: 0.0 },
+                            PlaybackProgress::VolumeChanged { volume: level },
                         );
                         emit_progress(
                             &self.progress_tx,
-                            PlaybackProgress::MuteChanged { is_muted: true },
-                        );
-                    } else {
-                        self.is_muted = false;
-                        let vol = self.pre_mute_volume;
-                        self.audio_output.set_volume(vol);
-                        self.renderer.set_remote_volume(vol);
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::VolumeChanged { volume: vol },
-                        );
-                        emit_progress(
-                            &self.progress_tx,
-                            PlaybackProgress::MuteChanged { is_muted: false },
+                            PlaybackProgress::MuteChanged { is_muted: muted },
                         );
                     }
                 }

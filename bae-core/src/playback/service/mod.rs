@@ -77,6 +77,7 @@ mod seek;
 mod slot;
 mod starvation;
 mod state;
+mod volume;
 
 use crate::playback::stream_pipeline::{
     cancel_and_join_decoder, log_stream_diagnostic, report_dropped_audio_events, spawn_decoder,
@@ -93,6 +94,7 @@ use file_buffers::{prepare_track_for_playback, FileBuffers};
 use renderer::{RemoteConnect, Renderer};
 use slot::{LoadGeneration, PausePhase, PlayIntent, PlayTarget, PlaybackSlot, TrackPhase};
 use starvation::StarvationEpisode;
+use volume::OutputVolume;
 
 #[cfg(test)]
 mod tests;
@@ -436,16 +438,15 @@ pub struct PlaybackService {
     /// Preloaded next track state, either staged into the current gapless source
     /// or held for a stream rebuild.
     preloaded_next: Option<PreloadedNext>,
-    /// Mute is core state, so no UI has to keep its own.
-    is_muted: bool,
-    pre_mute_volume: f32,
+    /// The output level and mute for `audio_output`, as one owner: mute is core
+    /// state so no UI has to keep its own, and unmute restores the level the
+    /// user last set.
+    volume: OutputVolume,
     /// The preview player — a self-contained second player for auditioning a
     /// local file. The service only coordinates pause/resume of the main player
-    /// around it; the preview's own state lives entirely in `PreviewPlayer`.
+    /// around it; the preview's own state, including whether it paused the main
+    /// player, lives entirely in `PreviewPlayer`.
     preview: PreviewPlayer,
-    /// The main player was playing when the preview started, so it resumes when
-    /// the preview stops.
-    main_was_playing_before_preview: bool,
     /// How often (ms) the audio callback sends position updates to the UI.
     position_update_interval_ms: u32,
     /// The byte buffers tracks stream their audio from, the tracks whose buffers
