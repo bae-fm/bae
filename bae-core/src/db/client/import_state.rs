@@ -768,6 +768,10 @@ impl Database {
             // set now, so the row edits addressed them by identities that no
             // longer mean the same thing.
             delete_signals(sql, &content_hash)?;
+            // The draft has one track per slot row, so it moves with the slots:
+            // a folder that gained rows gained blank tracks. The mapping rows
+            // hang off the track rows, so the draft goes in first.
+            pane_rows::replace_draft(sql, &content_hash, &mapping_preparation.edit)?;
             pane_rows::replace_track_mappings(
                 sql,
                 &content_hash,

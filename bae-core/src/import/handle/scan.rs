@@ -627,10 +627,14 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("file decision produced no settled candidate for {candidate_key}"),
             })?;
-        let proposed_mappings = crate::import::pane::automatic_mappings_for_draft(
+        // The draft is redrawn over the reshaped slots, not only re-paired
+        // with them: a slot the draft had no track for — a sheet bound over
+        // what was one loose file — becomes a blank track, so every mapping
+        // written below names a track the stored draft has.
+        let redrawn = crate::import::pane::redraw_draft_for_files(
             settled_files,
             &crate::import::probe::SourceDurations::default(),
-            preparation.metadata_draft.clone(),
+            preparation.metadata_draft,
             &preparation.track_mappings,
             preparation.metadata_provenance.as_ref(),
         )?;
@@ -640,12 +644,12 @@ impl ImportServiceHandle {
         .into_iter()
         .collect();
         let track_mappings = crate::import::edits::reconcile_track_mapping_decisions(
-            proposed_mappings,
+            redrawn.track_mappings,
             &preparation.track_mappings,
             &available_files,
         );
         let active = crate::import::edits::apply_track_mappings_to_draft(
-            preparation.metadata_draft,
+            redrawn.edit.clone(),
             &track_mappings,
         )?;
         let (source_discogs_artist_ids, artist_images) = self
@@ -658,6 +662,7 @@ impl ImportServiceHandle {
             )
             .await?;
         let mapping_preparation = crate::import::CandidateMappingPreparation {
+            edit: redrawn.edit,
             track_mappings,
             source_discogs_artist_ids,
             artist_images,

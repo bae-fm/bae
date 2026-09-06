@@ -167,21 +167,20 @@ pub(crate) fn draft_pane(
 /// Recalculate automatic file bindings for the current draft against a changed
 /// candidate file shape. Stored mappings supply source membership only; their
 /// user decisions are carried onto this result by the caller.
-pub(crate) fn automatic_mappings_for_draft(
+pub(crate) fn redraw_draft_for_files(
     files: &CategorizedFiles,
     durations: &SourceDurations,
     draft: RawReleaseEdit,
     stored_mappings: &[crate::import::edits::CandidateTrackMappingEdit],
     provenance: Option<&crate::import::MetadataProvenance>,
-) -> Result<Vec<crate::import::CandidateTrackMappingEdit>, ImportError> {
+) -> Result<CandidateSourceDraft, ImportError> {
     let table = draft_table(files, durations, &draft, stored_mappings, provenance)?;
     Ok(candidate_draft_from_source(PanePick {
         release: None,
         edit: draft,
         mapping: table,
         source_discogs_artist_ids: std::collections::BTreeSet::new(),
-    })
-    .track_mappings)
+    }))
 }
 
 fn draft_table(

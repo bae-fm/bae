@@ -10,6 +10,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .unwrap()
         .expect("the scanned candidate is prepared");
     let mapping_preparation = crate::import::CandidateMappingPreparation {
+        edit: stale.metadata_draft.clone(),
         track_mappings: stale.track_mappings.clone(),
         source_discogs_artist_ids: stale.source_discogs_artist_ids.clone(),
         artist_images: stale.assets.artist_images.clone(),
@@ -160,6 +161,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
             &edits,
             &[(pane_candidate_path(), settled)],
             &crate::import::CandidateMappingPreparation {
+                edit: stale.metadata_draft.clone(),
                 track_mappings: stale.track_mappings.clone(),
                 source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 artist_images: stale.assets.artist_images,

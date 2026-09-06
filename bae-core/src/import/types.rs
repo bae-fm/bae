@@ -241,9 +241,18 @@ pub struct CandidateMetadataDraft {
 
 /// The portion of a prepared candidate that changes when file roles or sheet
 /// bindings reshape its physical track slots.
+///
+/// The draft is part of it: a draft has one track per slot row, so a folder
+/// that gained slots — a sheet bound over a one-track image — gains a blank
+/// track for each, and every mapping row below names a track the draft has.
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct CandidateMappingPreparation {
+    /// The draft redrawn over the reshaped slots: the tracks it had, in
+    /// position and with their edits, plus a blank row for every slot the
+    /// folder now has past them.
+    pub edit: RawReleaseEdit,
+    /// Complete physical bindings for `edit`, one row per track.
     pub track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
     pub artist_images: Vec<PreparedArtistImage>,
