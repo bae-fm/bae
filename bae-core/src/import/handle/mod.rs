@@ -7,11 +7,10 @@ use crate::import::worker_thread::WorkerThread;
 use crate::library::manager::discogs_validation_from_result as validation_from_validate_result;
 use crate::library::LibraryManager;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tokio::sync::{broadcast, mpsc};
 use tracing::{debug, info, warn};
 
-mod candidate_searches;
 mod combinations;
 mod edits;
 mod import;
@@ -76,13 +75,6 @@ pub enum ImportEvent {
         /// [`ImportEvent::IdentifyStateChanged`]'s.
         priority: crate::util::rate_limiter::CallPriority,
     },
-    /// One candidate's typed search moved: submitted, a source landed, or it
-    /// was cleared. Carries the whole value, so the recorder writes it
-    /// wholesale; `None` clears the run.
-    CandidateSearchChanged {
-        candidate_key: String,
-        search: Option<crate::import::candidate_search::CandidateSearch>,
-    },
     /// How much of the import queue the background sweep has answered. Both
     /// counts are the sweep's own: `total` is how many candidates it is
     /// responsible for, which is a fact about the queue rather than something a
@@ -142,10 +134,6 @@ pub struct ImportServiceHandle {
     folder_state_commit: Arc<tokio::sync::Mutex<()>>,
     watcher: WorkerThread<WatcherCommand>,
     runtime_handle: tokio::runtime::Handle,
-    /// Every candidate's typed search in flight — the value each source's
-    /// landing folds into, under this lock. The runtime's copy is filled from
-    /// what is published here and lags it, so nothing folds into that one.
-    candidate_searches: Arc<Mutex<candidate_searches::RunningCandidateSearches>>,
 }
 
 #[derive(Debug, Clone)]
@@ -268,9 +256,6 @@ impl ImportServiceHandle {
             folder_state_commit,
             watcher,
             runtime_handle,
-            candidate_searches: Arc::new(Mutex::new(
-                candidate_searches::RunningCandidateSearches::default(),
-            )),
         };
         handle.start_runtime_recorder();
         handle
@@ -284,20 +269,10 @@ impl ImportServiceHandle {
         let mut events = self.event_tx.subscribe();
         let runtime = self.runtime.clone();
         let library_manager = self.library_manager.clone();
-        let candidate_searches = self.candidate_searches.clone();
         self.runtime_handle.spawn(async move {
             loop {
                 match events.recv().await {
-                    Ok(event) => {
-                        // A candidate that is gone, or whose files changed
-                        // shape, has no search: the runtime drops the value and
-                        // this stops the lookups that would otherwise land and
-                        // put it back.
-                        if let Some(key) = search_invalidating_key(&event) {
-                            candidate_searches.lock().unwrap().clear(&key);
-                        }
-                        runtime.record_event(&event);
-                    }
+                    Ok(event) => runtime.record_event(&event),
                     Err(broadcast::error::RecvError::Lagged(count)) => {
                         warn!("candidate runtime recorder dropped {count} import events");
                         library_manager.record_telemetry(
@@ -725,24 +700,6 @@ impl ImportServiceHandle {
             return Ok(None);
         }
         Ok(Some(candidate))
-    }
-}
-
-/// The candidate whose search an event invalidates: it is gone, it failed
-/// validation, or its files were re-decided, so the answers to a query typed
-/// against the old shape are answers about something else.
-fn search_invalidating_key(event: &ImportEvent) -> Option<String> {
-    match event {
-        ImportEvent::Scan(ScanEvent::CandidateRemoved { candidate_key }) => {
-            Some(candidate_key.clone())
-        }
-        ImportEvent::Scan(ScanEvent::InvalidCandidate(candidate)) => {
-            Some(candidate.path.to_string_lossy().into_owned())
-        }
-        ImportEvent::Scan(ScanEvent::CandidateBindingChanged { candidate }) => {
-            Some(candidate.path.to_string_lossy().into_owned())
-        }
-        _ => None,
     }
 }
 

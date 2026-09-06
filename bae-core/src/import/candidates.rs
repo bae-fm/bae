@@ -108,7 +108,9 @@ pub struct CandidateRuntimeSnapshot {
     /// It lives here rather than in the pane because its sources land one at a
     /// time and the pane is rebuilt from stored state: a value the pane owned
     /// would be lost on every redraw, and lost outright if the person looked
-    /// at another candidate while a provider was still answering.
+    /// at another candidate while a provider was still answering. The runtime
+    /// holds the one each landing folds into and derives this from it, so what
+    /// a surface draws cannot disagree with what a landing reads back.
     pub search: Option<super::candidate_search::CandidateSearch>,
 }
 

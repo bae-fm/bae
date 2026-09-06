@@ -21,7 +21,7 @@ impl ImportServiceHandle {
 
     /// Submit a candidate's typed search. Fire-and-forget: the run lands on
     /// the candidate's runtime one source at a time, and every landing reaches
-    /// a surface as `ImportEvent::CandidateSearchChanged`.
+    /// a surface as a `CandidateRuntimeChange` for that key.
     ///
     /// A search already running for this key is superseded — one search per
     /// candidate at a time, because the pane shows one result area.
@@ -29,12 +29,7 @@ impl ImportServiceHandle {
         let search =
             CandidateSearch::started(query.clone(), self.library_manager.discogs_is_usable());
         let sources = search.searching_sources();
-        let run = self
-            .candidate_searches
-            .lock()
-            .unwrap()
-            .start(&candidate_key, search.clone());
-        self.publish_candidate_search(candidate_key.clone(), Some(search));
+        let run = self.runtime.start_search(&candidate_key, search);
         for source in sources {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
@@ -43,22 +38,10 @@ impl ImportServiceHandle {
     /// Re-ask only the sources that failed, keeping what the others found. A
     /// no-op when the candidate has no search, or none of its sources failed.
     pub fn retry_candidate_search(&self, candidate_key: String) {
-        let (search, sources, run) = {
-            let mut searches = self.candidate_searches.lock().unwrap();
-            let Some(mut search) = searches.current(&candidate_key).cloned() else {
-                debug!("retry_candidate_search: {candidate_key} has no search to retry");
-                return;
-            };
-            search.restart_failed();
-            let sources = search.searching_sources();
-            if sources.is_empty() {
-                return;
-            }
-            let run = searches.start(&candidate_key, search.clone());
-            (search, sources, run)
+        let Some((query, sources, run)) = self.runtime.retry_search(&candidate_key) else {
+            debug!("retry_candidate_search: {candidate_key} has no source to re-ask");
+            return;
         };
-        let query = search.query.clone();
-        self.publish_candidate_search(candidate_key.clone(), Some(search));
         for source in sources {
             self.spawn_source_search(candidate_key.clone(), query.clone(), source, run);
         }
@@ -67,31 +50,12 @@ impl ImportServiceHandle {
     /// Drop a candidate's search: its lookups stop mattering and the result
     /// area goes back to the identify verdict.
     pub fn clear_candidate_search(&self, candidate_key: String) {
-        self.candidate_searches
-            .lock()
-            .unwrap()
-            .clear(&candidate_key);
-        self.publish_candidate_search(candidate_key, None);
-    }
-
-    fn publish_candidate_search(&self, candidate_key: String, search: Option<CandidateSearch>) {
-        send_event(
-            &self.event_tx,
-            ImportEvent::CandidateSearchChanged {
-                candidate_key,
-                search,
-            },
-        );
+        self.runtime.clear_search(&candidate_key);
     }
 
     /// Run one source's part of a search and land it on the candidate's
-    /// current run.
-    ///
-    /// The landing folds into the search the driver holds, under its lock, and
-    /// only while `run` is still the key's run. Superseding or clearing a run
-    /// happens under the same lock, so a run this one has replaced cannot
-    /// write over it — and the other source's landing, which folded into the
-    /// same held value, is still there.
+    /// current run. The runtime holds the value the landing folds into and
+    /// publishes what it leaves behind, so a superseded run writes nothing.
     fn spawn_source_search(
         &self,
         candidate_key: String,
@@ -100,13 +64,12 @@ impl ImportServiceHandle {
         run: u64,
     ) {
         let library_manager = self.library_manager.clone();
-        let searches = self.candidate_searches.clone();
-        let event_tx = self.event_tx.clone();
+        let runtime = self.runtime.clone();
         self.runtime_handle.spawn(async move {
             let found =
                 search_source(&library_manager, source, &query, CallPriority::Interactive).await;
             // Superseded already: skip the library check nothing will read.
-            if !searches.lock().unwrap().is_current(&candidate_key, run) {
+            if !runtime.search_run_is_current(&candidate_key, run) {
                 return;
             }
             let outcome = match found {
@@ -118,23 +81,12 @@ impl ImportServiceHandle {
                 Err(failure) => Err(failure),
             };
 
-            let landed = searches
-                .lock()
-                .unwrap()
-                .land(&candidate_key, run, source, outcome);
-            match landed {
-                Some(search) => send_event(
-                    &event_tx,
-                    ImportEvent::CandidateSearchChanged {
-                        candidate_key,
-                        search: Some(search),
-                    },
-                ),
-                None => debug!(
+            if !runtime.land_search(&candidate_key, run, source, outcome) {
+                debug!(
                     "{}'s {} search landed on no run; it was cleared or superseded",
                     candidate_key,
                     source.as_str()
-                ),
+                );
             }
         });
     }

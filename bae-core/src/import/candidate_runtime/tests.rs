@@ -1,6 +1,8 @@
 use super::*;
+use crate::db::LibraryStatus;
+use crate::import::candidate_search::{CandidateSearch, SourceSearch};
 use crate::import::folder_scanner::{CategorizedFiles, InvalidCandidate, InvalidReason};
-use crate::import::types::{ImportPhase, ImportProgress, PrepareStep};
+use crate::import::types::{ImportPhase, ImportProgress, MetadataSource, PrepareStep};
 use crate::util::rate_limiter::CallPriority;
 use std::path::PathBuf;
 
@@ -594,4 +596,205 @@ fn discarding_an_unstorable_answer_leaves_nothing_in_flight() {
     runtime.discard_identification(key);
 
     assert!(runtime.get(key).is_none());
+}
+
+fn search_query() -> crate::import::search::SearchQuery {
+    crate::import::search::SearchQuery::General {
+        artist: "Artist Name".to_string(),
+        album: "Album Title".to_string(),
+    }
+}
+
+fn search_result(
+    source: MetadataSource,
+    release_id: &str,
+) -> (crate::import::search::MetadataResult, LibraryStatus) {
+    (
+        crate::import::search::MetadataResult {
+            source,
+            release_id: release_id.to_string(),
+            title: "Album Title".to_string(),
+            artist: Some("Artist Name".to_string()),
+            year: Some(1992),
+            format: None,
+            label: None,
+            catalog_number: None,
+            country: None,
+            barcode: None,
+            cover_art: None,
+            source_group_id: None,
+            source_tracks: None,
+        },
+        LibraryStatus {
+            release_id: release_id.to_string(),
+            release_in_library: false,
+            album_in_library: false,
+            album_title: None,
+            album_id: None,
+        },
+    )
+}
+
+fn published_search(
+    changes: &mut broadcast::Receiver<CandidateRuntimeChange>,
+) -> Vec<Option<CandidateSearch>> {
+    drain(changes)
+        .into_iter()
+        .map(|change| match change {
+            CandidateRuntimeChange::Updated { runtime, .. } => runtime.search,
+            CandidateRuntimeChange::Removed { .. } => None,
+            CandidateRuntimeChange::Reset { .. } => panic!("a search never resets the queue"),
+        })
+        .collect()
+}
+
+/// Both sources land on the same run, one after the other, and neither
+/// landing loses the other's answer — nor does what is published lag what the
+/// next landing folds into.
+#[test]
+fn two_landings_on_one_run_both_stand() {
+    let runtime = CandidateRuntime::default();
+    let mut changes = runtime.subscribe();
+    let key = "/watch/a/rel1";
+    let run = runtime.start_search(key, CandidateSearch::started(search_query(), true));
+
+    assert!(runtime.land_search(
+        key,
+        run,
+        MetadataSource::MusicBrainz,
+        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+    ));
+    assert!(runtime.land_search(
+        key,
+        run,
+        MetadataSource::Discogs,
+        Ok(vec![search_result(MetadataSource::Discogs, "dg-1")]),
+    ));
+
+    let landed = runtime
+        .get(key)
+        .and_then(|runtime| runtime.search)
+        .expect("the search is what is in flight for the key");
+    assert!(matches!(landed.musicbrainz, SourceSearch::Done { .. }));
+    assert!(matches!(landed.discogs, SourceSearch::Done { .. }));
+    assert_eq!(landed.library_statuses.len(), 2);
+    assert_eq!(
+        published_search(&mut changes).last().cloned().flatten(),
+        Some(landed),
+        "the last change published carries what the map holds"
+    );
+}
+
+/// A superseded run's landing goes nowhere, publishes nothing, and leaves the
+/// new run untouched.
+#[test]
+fn a_superseded_run_cannot_land() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    let first = runtime.start_search(key, CandidateSearch::started(search_query(), true));
+    let second = runtime.start_search(key, CandidateSearch::started(search_query(), true));
+    assert!(!runtime.search_run_is_current(key, first));
+    assert!(runtime.search_run_is_current(key, second));
+
+    let mut changes = runtime.subscribe();
+    assert!(!runtime.land_search(
+        key,
+        first,
+        MetadataSource::MusicBrainz,
+        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+    ));
+    assert!(published_search(&mut changes).is_empty());
+    assert!(matches!(
+        runtime
+            .get(key)
+            .and_then(|runtime| runtime.search)
+            .expect("the second run stands")
+            .musicbrainz,
+        SourceSearch::Searching
+    ));
+}
+
+/// A cleared search is gone from the key, and the run it was on cannot be
+/// started again by a landing that was still out.
+#[test]
+fn a_cleared_search_cannot_land() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    let run = runtime.start_search(key, CandidateSearch::started(search_query(), true));
+
+    runtime.clear_search(key);
+    assert!(runtime.get(key).is_none(), "nothing else was running");
+    assert!(!runtime.search_run_is_current(key, run));
+    assert!(!runtime.land_search(
+        key,
+        run,
+        MetadataSource::MusicBrainz,
+        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+    ));
+    assert!(runtime.get(key).is_none());
+}
+
+/// Retry re-asks only the failed source, on a new run, keeping what the other
+/// found. A search with nothing to re-ask changes nothing.
+#[test]
+fn a_retry_re_asks_only_the_failed_sources_on_a_new_run() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    let run = runtime.start_search(key, CandidateSearch::started(search_query(), true));
+    assert!(runtime.land_search(
+        key,
+        run,
+        MetadataSource::MusicBrainz,
+        Ok(vec![search_result(MetadataSource::MusicBrainz, "mb-1")]),
+    ));
+    assert!(runtime.land_search(
+        key,
+        run,
+        MetadataSource::Discogs,
+        Err(crate::signals::LookupFailure::Network),
+    ));
+
+    let (query, sources, retried) = runtime.retry_search(key).expect("Discogs failed");
+    assert_eq!(query, search_query());
+    assert_eq!(sources, vec![MetadataSource::Discogs]);
+    assert!(runtime.search_run_is_current(key, retried));
+    assert!(!runtime.search_run_is_current(key, run));
+    let search = runtime
+        .get(key)
+        .and_then(|runtime| runtime.search)
+        .expect("the retried search is in flight");
+    assert!(matches!(search.musicbrainz, SourceSearch::Done { .. }));
+    assert_eq!(search.discogs, SourceSearch::Searching);
+
+    assert!(runtime.land_search(
+        key,
+        retried,
+        MetadataSource::Discogs,
+        Ok(vec![search_result(MetadataSource::Discogs, "dg-1")]),
+    ));
+    assert!(
+        runtime.retry_search(key).is_none(),
+        "a settled search has no source to re-ask"
+    );
+    assert!(
+        runtime.retry_search("/watch/a/rel2").is_none(),
+        "a key with no search has none either"
+    );
+}
+
+/// The search is what is in flight for the key, so a rebound sheet — a
+/// different disc — takes it with the rest of the key's runtime.
+#[test]
+fn rebinding_a_sheet_drops_the_key_s_search() {
+    let runtime = CandidateRuntime::default();
+    let key = "/watch/a/rel1";
+    runtime.record_event(&scanned(folder_candidate(key, "/watch/a")));
+    let run = runtime.start_search(key, CandidateSearch::started(search_query(), true));
+
+    runtime.record_event(&ImportEvent::Scan(ScanEvent::CandidateBindingChanged {
+        candidate: folder_candidate(key, "/watch/a"),
+    }));
+
+    assert!(runtime.get(key).is_none());
+    assert!(!runtime.search_run_is_current(key, run));
 }
