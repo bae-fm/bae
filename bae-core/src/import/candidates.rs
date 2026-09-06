@@ -17,6 +17,41 @@ use super::folder_scanner::{
 };
 use super::types::ImportStep;
 
+/// Where a stored candidate stands in the queue, read once from the three
+/// places that each hold one fact about it: the skip table, the library's
+/// releases, and the runtime's import claims. Every gate that decides what
+/// may be done to a candidate reads this rather than composing the three
+/// on its own.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CandidateStanding {
+    /// The person set it aside.
+    pub skipped: bool,
+    /// Its files are already a release in the library.
+    pub imported: bool,
+    /// An import has claimed it and is running.
+    pub claimed: bool,
+}
+
+impl CandidateStanding {
+    /// Whether identification may still answer for it: not set aside, not
+    /// already in the library, not being imported.
+    pub fn answerable(&self) -> bool {
+        !self.skipped && !self.imported && !self.claimed
+    }
+
+    /// Whether its preparation may still be changed. A skipped candidate may
+    /// be: skipping sets it aside, it does not freeze it.
+    pub fn editable(&self) -> Result<(), super::ImportError> {
+        if self.claimed {
+            return Err(super::ImportError::CandidateImportInProgress);
+        }
+        if self.imported {
+            return Err(super::ImportError::CandidateAlreadyImported);
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct WatchedFolderScanStatus {
     pub watched_folder_path: String,

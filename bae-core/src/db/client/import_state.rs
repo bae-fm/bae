@@ -126,29 +126,6 @@ impl Database {
             .collect())
     }
 
-    /// Whether the candidate at `relative_candidate_path` under the root is
-    /// one the person skipped.
-    pub async fn is_import_candidate_skipped(
-        &self,
-        watched_folder_path: &str,
-        relative_candidate_path: &str,
-    ) -> Result<bool, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let relative_candidate_path = relative_candidate_path.to_string();
-        self.read(move |sql| {
-            Ok(sql
-                .query_row(
-                    "SELECT 1 FROM skipped_import_candidates \
-                     WHERE watched_folder_path = ? AND relative_candidate_path = ?",
-                    params![watched_folder_path, relative_candidate_path],
-                    |_| Ok(()),
-                )
-                .optional()?
-                .is_some())
-        })
-        .await
-    }
-
     /// Every skipped candidate under one root, by relative path — what a scan
     /// pass reads once so each candidate it writes is stamped without a
     /// query of its own. A stored path is normalized by construction, so one

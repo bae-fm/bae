@@ -171,14 +171,13 @@ impl LibraryManager {
     }
 
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub async fn is_import_candidate_skipped(
+    pub(crate) async fn is_release_candidate_skipped(
         &self,
-        watched_folder_path: &str,
-        relative_candidate_path: &str,
+        candidate: &crate::import::release_candidate::ReleaseCandidate,
     ) -> Result<bool, LibraryError> {
         Ok(self
             .database
-            .is_import_candidate_skipped(watched_folder_path, relative_candidate_path)
+            .is_release_candidate_skipped(candidate)
             .await?)
     }
 

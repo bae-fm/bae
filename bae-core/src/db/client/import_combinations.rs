@@ -139,6 +139,16 @@ impl Database {
         }).await
     }
 
+    /// Whether the person set this candidate aside — a folder's row in the
+    /// skip table, or a combination's own flag.
+    pub(crate) async fn is_release_candidate_skipped(
+        &self,
+        candidate: &ReleaseCandidate,
+    ) -> Result<bool, DbError> {
+        let candidate = candidate.clone();
+        self.read(move |sql| skipped_on(&sql, &candidate)).await
+    }
+
     pub(crate) async fn load_release_candidate(
         &self,
         key: &str,

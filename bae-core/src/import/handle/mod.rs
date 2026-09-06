@@ -564,25 +564,18 @@ impl ImportServiceHandle {
             Some(crate::import::folder_scanner::ScanItem::Decided { .. }) | None => None,
         };
         if let Some((candidate, actionable)) = candidate {
-            let relative = crate::import::watched_folder::candidate_relative_path(
-                &candidate.watched_folder_path,
-                &candidate.path,
-            )
-            .map_err(|error| crate::library::LibraryError::Internal(error.to_string()))?;
-            let skipped = self
-                .library_manager
-                .is_import_candidate_skipped(&candidate.watched_folder_path, &relative)
-                .await?;
-            let is_added = self
-                .library_manager
-                .is_content_hash_imported(&candidate.files.content_hash())
+            let standing = self
+                .candidate_standing(
+                    key,
+                    &crate::import::release_candidate::ReleaseCandidate::Folder(candidate.clone()),
+                )
                 .await?;
             return Ok(Some(ImportCandidateSnapshot::Folder {
                 candidate,
                 runtime: self.runtime.get(key),
                 actionable,
-                skipped,
-                is_added,
+                skipped: standing.skipped,
+                is_added: standing.imported,
             }));
         }
         Ok(self
@@ -607,21 +600,34 @@ impl ImportServiceHandle {
                 detail: format!("{key} is not an actionable folder candidate"),
             }
         })?;
-        if self
-            .runtime
-            .get(key)
-            .is_some_and(|runtime| runtime.import.is_some())
-        {
-            return Err(crate::import::ImportError::CandidateImportInProgress);
-        }
-        if self
-            .library_manager
-            .is_content_hash_imported(&candidate.files().content_hash())
-            .await?
-        {
-            return Err(crate::import::ImportError::CandidateAlreadyImported);
-        }
+        self.candidate_standing(key, &candidate).await?.editable()?;
         Ok(candidate)
+    }
+
+    /// Where the stored candidate at `key` stands: set aside, already in the
+    /// library, or claimed by a running import. Read from the tables and the
+    /// runtime right now rather than through the list — a caller asks this
+    /// straight after the event that changed the answer, and the list's query
+    /// lands after the commit it reflects.
+    pub(crate) async fn candidate_standing(
+        &self,
+        key: &str,
+        candidate: &crate::import::release_candidate::ReleaseCandidate,
+    ) -> Result<crate::import::CandidateStanding, crate::library::LibraryError> {
+        Ok(crate::import::CandidateStanding {
+            skipped: self
+                .library_manager
+                .is_release_candidate_skipped(candidate)
+                .await?,
+            imported: self
+                .library_manager
+                .is_content_hash_imported(&candidate.files().content_hash())
+                .await?,
+            claimed: self
+                .runtime
+                .get(key)
+                .is_some_and(|runtime| runtime.import.is_some()),
+        })
     }
 
     /// Recheck the exact candidate revision an edit was prepared from while
@@ -721,11 +727,7 @@ impl ImportServiceHandle {
     }
 
     /// The candidate at `key` as an identification can still answer it: a
-    /// stored, actionable folder that is not skipped, not already in the
-    /// library, and not claimed by an import. Read from the tables and the
-    /// runtime right now rather than through the list — the caller asks this
-    /// straight after the event that changed the answer, and the list's query
-    /// lands after the commit it reflects.
+    /// stored, actionable candidate whose standing is answerable.
     pub(crate) async fn answerable_candidate(
         &self,
         key: &str,
@@ -736,26 +738,7 @@ impl ImportServiceHandle {
         let Some(candidate) = self.get_release_candidate(key).await? else {
             return Ok(None);
         };
-        let skipped = self
-            .library_manager
-            .load_import_candidate(key)
-            .await?
-            .ok_or_else(|| {
-                crate::library::LibraryError::Internal(format!(
-                    "{key} disappeared during identification"
-                ))
-            })?
-            .skipped;
-        if skipped
-            || self
-                .library_manager
-                .is_content_hash_imported(&candidate.files().content_hash())
-                .await?
-            || self
-                .runtime
-                .get(key)
-                .is_some_and(|runtime| runtime.import.is_some())
-        {
+        if !self.candidate_standing(key, &candidate).await?.answerable() {
             return Ok(None);
         }
         Ok(Some(candidate))

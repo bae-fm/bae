@@ -134,8 +134,8 @@ pub use candidate_runtime::{CandidateRuntime, CandidateRuntimeChange};
 pub use candidate_search::{CandidateSearch, SourceSearch};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use candidates::{
-    CandidateIdentifyRuntime, CandidateRuntimeSnapshot, FolderScanStatus, ImportCandidateSnapshot,
-    ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
+    CandidateIdentifyRuntime, CandidateRuntimeSnapshot, CandidateStanding, FolderScanStatus,
+    ImportCandidateSnapshot, ImportInFlight, ImportedRelease, WatchedFolderScanStatus,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
