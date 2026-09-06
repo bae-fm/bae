@@ -70,14 +70,21 @@ struct ImportCandidateListRowBounds: Equatable {
     let bounds: CGRect
 }
 
-private struct ImportCandidateListRowBoundsKey: PreferenceKey {
-    static let defaultValue: [ImportCandidateListRowBounds] = []
+struct ImportCandidateListGeometry: Equatable {
+    var rows: [ImportCandidateListRowBounds] = []
+    var viewport: CGRect?
+}
+
+struct ImportCandidateListGeometryKey: PreferenceKey {
+    static let defaultValue = ImportCandidateListGeometry()
 
     static func reduce(
-        value: inout [ImportCandidateListRowBounds],
-        nextValue: () -> [ImportCandidateListRowBounds]
+        value: inout ImportCandidateListGeometry,
+        nextValue: () -> ImportCandidateListGeometry
     ) {
-        value.append(contentsOf: nextValue())
+        let next = nextValue()
+        value.rows.append(contentsOf: next.rows)
+        if let viewport = next.viewport { value.viewport = viewport }
     }
 }
 
@@ -91,6 +98,7 @@ struct ImportCandidateListViewport {
 
     private mutating func observe(
         _ rows: [ImportCandidateListRowBounds],
+        viewport: CGRect,
         contentRevision: UInt64
     ) {
         if appliedContentRevision == nil {
@@ -99,7 +107,10 @@ struct ImportCandidateListViewport {
         guard appliedContentRevision == contentRevision else { return }
         anchorKey =
             rows
-            .filter { $0.bounds.maxY > 0 }
+            .filter {
+                $0.bounds.maxY > viewport.minY
+                    && $0.bounds.minY < viewport.maxY
+            }
             .min { $0.bounds.minY < $1.bounds.minY }?
             .stableKey
     }
@@ -115,13 +126,14 @@ struct ImportCandidateListViewport {
 
     mutating func update(
         rows: [ImportCandidateListRowBounds],
+        viewport: CGRect,
         contentRevision: UInt64,
         revealInProgress: Bool,
         positionOf: (String) -> Int?
     ) -> Int? {
         if revealInProgress {
             accept(contentRevision: contentRevision)
-            observe(rows, contentRevision: contentRevision)
+            observe(rows, viewport: viewport, contentRevision: contentRevision)
             return nil
         }
         if let restore = contentChanged(
@@ -130,7 +142,7 @@ struct ImportCandidateListViewport {
         ) {
             return restore
         }
-        observe(rows, contentRevision: contentRevision)
+        observe(rows, viewport: viewport, contentRevision: contentRevision)
         return nil
     }
 }
@@ -143,8 +155,6 @@ private final class ImportCandidateRevealOperation {
         task?.cancel()
     }
 }
-
-private let importCandidateListCoordinateSpace = "import-candidate-list"
 
 // MARK: - ImportCandidateListContent
 
@@ -465,21 +475,7 @@ extension ImportCandidateListContent {
                     .id(index)
                     .background {
                         if let stableKey {
-                            GeometryReader { geometry in
-                                Color.clear.preference(
-                                    key: ImportCandidateListRowBoundsKey.self,
-                                    value: [
-                                        ImportCandidateListRowBounds(
-                                            stableKey: stableKey,
-                                            bounds: geometry.frame(
-                                                in: .named(
-                                                    importCandidateListCoordinateSpace
-                                                )
-                                            )
-                                        )
-                                    ]
-                                )
-                            }
+                            rowGeometry(stableKey: stableKey)
                         }
                     }
                     .task(
@@ -496,10 +492,21 @@ extension ImportCandidateListContent {
             \.defaultMinListRowHeight,
             ImportListHierarchyLayout.groupBoundaryAir
         )
-        .coordinateSpace(name: importCandidateListCoordinateSpace)
-        .onPreferenceChange(ImportCandidateListRowBoundsKey.self) { rows in
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: ImportCandidateListGeometryKey.self,
+                    value: ImportCandidateListGeometry(
+                        viewport: geometry.frame(in: .global)
+                    )
+                )
+            }
+        }
+        .onPreferenceChange(ImportCandidateListGeometryKey.self) { geometry in
+            guard let bounds = geometry.viewport else { return }
             if let target = viewport.update(
-                rows: rows,
+                rows: geometry.rows,
+                viewport: bounds,
                 contentRevision: list.contentRevision,
                 revealInProgress: revealOperation != nil,
                 positionOf: { list.position(of: $0) }
@@ -509,6 +516,20 @@ extension ImportCandidateListContent {
         }
         .scrollContentBackground(.hidden)
         .background(Theme.surface)
+    }
+
+    private func rowGeometry(stableKey: String) -> some View {
+        GeometryReader { geometry in
+            Color.clear.preference(
+                key: ImportCandidateListGeometryKey.self,
+                value: ImportCandidateListGeometry(rows: [
+                    ImportCandidateListRowBounds(
+                        stableKey: stableKey,
+                        bounds: geometry.frame(in: .global)
+                    )
+                ])
+            )
+        }
     }
 
     @ViewBuilder

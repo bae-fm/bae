@@ -725,6 +725,10 @@ private final class MutableImportListPageSubscription: PageSubscription,
 
 @MainActor
 final class ImportCandidateViewportTests: XCTestCase {
+    private final class GeometryObservation {
+        var value = ImportCandidateListGeometry()
+    }
+
     func testLivePageDeliveryKeepsTheVisibleCandidateAnchored() async throws {
         let initial = (0..<80).map(candidateItem)
         let source = MutableImportListPageSource(items: initial)
@@ -738,9 +742,11 @@ final class ImportCandidateViewportTests: XCTestCase {
         )
         slot.startLoad()
         await viewportSettle { slot.list?.idAt(30) != nil }
-        let list = try XCTUnwrap(slot.list)
-
+        let geometry = GeometryObservation()
         let root = candidateList(store: store, uiStore: uiStore, slot: slot)
+            .onPreferenceChange(ImportCandidateListGeometryKey.self) {
+                geometry.value = $0
+            }
         let hosting = NSHostingView(rootView: root)
         let window = makeWindow(hosting: hosting)
         defer {
@@ -759,7 +765,12 @@ final class ImportCandidateViewportTests: XCTestCase {
         )
         scrollView.reflectScrolledClipView(scrollView.contentView)
         drainViewportLayout()
-        let anchor = try XCTUnwrap(list.idAt(topRow(in: table)))
+        let anchorKey = "candidate:\(viewportCandidateKey(anchorIndex))"
+        let anchor = try XCTUnwrap(
+            geometry.value.rows.first { $0.stableKey == anchorKey }
+        )
+        let viewport = try XCTUnwrap(geometry.value.viewport)
+        XCTAssertEqual(anchor.bounds.minY, viewport.minY, accuracy: 1)
 
         uiStore.setFolderCandidateSelection([viewportCandidateKey(35)])
         let changed = (0..<80)
@@ -769,7 +780,46 @@ final class ImportCandidateViewportTests: XCTestCase {
         await source.replaceItems(changed)
         drainViewportLayout()
 
-        XCTAssertEqual(list.idAt(topRow(in: table)), anchor)
+        let retained = try XCTUnwrap(
+            geometry.value.rows.first { $0.stableKey == anchorKey }
+        )
+        XCTAssertEqual(retained.bounds.minY, anchor.bounds.minY, accuracy: 1)
+    }
+
+    func testRowsBehindTheHeaderCannotBecomeTheRetainedAnchor() {
+        var state = ImportCandidateListViewport()
+        let rows = (28...31)
+            .map { index in
+                ImportCandidateListRowBounds(
+                    stableKey: viewportCandidateKey(index),
+                    bounds: CGRect(
+                        x: 0,
+                        y: (index - 28) * 62 - 40,
+                        width: 460,
+                        height: 62
+                    )
+                )
+            }
+        let bounds = CGRect(x: 0, y: 84, width: 460, height: 516)
+        XCTAssertNil(
+            state.update(
+                rows: rows,
+                viewport: bounds,
+                contentRevision: 1,
+                revealInProgress: false,
+                positionOf: { _ in nil }
+            )
+        )
+        XCTAssertEqual(
+            state.update(
+                rows: rows,
+                viewport: bounds,
+                contentRevision: 2,
+                revealInProgress: false,
+                positionOf: { $0 == self.viewportCandidateKey(30) ? 30 : nil }
+            ),
+            30
+        )
     }
 
     func testExplicitRevealOwnsItsScrollThenEstablishesTheRetainedAnchor() {
@@ -784,6 +834,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                         bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
                     )
                 ],
+                viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
                 contentRevision: 1,
                 revealInProgress: false,
                 positionOf: { _ in nil }
@@ -797,6 +848,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                         bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
                     )
                 ],
+                viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
                 contentRevision: 2,
                 revealInProgress: true,
                 positionOf: { _ in nil }
@@ -810,6 +862,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                         bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
                     )
                 ],
+                viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
                 contentRevision: 2,
                 revealInProgress: true,
                 positionOf: { _ in nil }
@@ -824,6 +877,7 @@ final class ImportCandidateViewportTests: XCTestCase {
                         bounds: CGRect(x: 0, y: 0, width: 400, height: 58)
                     )
                 ],
+                viewport: CGRect(x: 0, y: 0, width: 400, height: 600),
                 contentRevision: 3,
                 revealInProgress: false,
                 positionOf: { $0 == targetKey ? targetIndex : nil }
@@ -913,26 +967,6 @@ final class ImportCandidateViewportTests: XCTestCase {
 
     private func viewportCandidateKey(_ index: Int) -> String {
         "/library/release-\(index)"
-    }
-
-    /// The list position of the topmost visible entry. Table rows are not
-    /// list positions: the list interleaves group-boundary spacer rows, so
-    /// the mapping skips a spacer at the top edge and discounts the spacers
-    /// above. Spacers are the only rows as short as the boundary air.
-    private func topRow(in table: NSTableView) -> Int {
-        let y = table.enclosingScrollView?.contentView.bounds.minY ?? 0
-        var row = table.row(at: NSPoint(x: 0, y: y + 1))
-        while isSpacerRow(row, in: table) {
-            row += 1
-        }
-        let spacersAbove = (0..<row)
-            .count { isSpacerRow($0, in: table) }
-        return row - spacersAbove
-    }
-
-    private func isSpacerRow(_ row: Int, in table: NSTableView) -> Bool {
-        table.rect(ofRow: row).height
-            <= ImportListHierarchyLayout.groupBoundaryAir
     }
 
     private func descendants(of view: NSView) -> [NSView] {
