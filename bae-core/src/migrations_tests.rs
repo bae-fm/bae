@@ -18,6 +18,8 @@ mod migration_sixteen;
 mod migration_ten;
 #[path = "migrations_tests/migration_twelve.rs"]
 mod migration_twelve;
+#[path = "migrations_tests/migration_twenty.rs"]
+mod migration_twenty;
 
 fn config(store_id: &str) -> coven::Config {
     coven::Config::with_defaults(
@@ -123,6 +125,12 @@ fn version_fourteen() -> Vec<coven::Migration> {
 fn version_eighteen() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(18);
+    migrations
+}
+
+fn version_nineteen() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(19);
     migrations
 }
 

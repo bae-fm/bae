@@ -16,10 +16,9 @@ pub(crate) struct DbCandidateFileTagSnapshot {
 }
 
 /// What a caller supplies to record one candidate's identify verdict via
-/// [`crate::import::CandidatePreparations::store_verdict`]. Normal outcomes use
-/// `import_candidate_state`'s identify columns and failed outcomes use the
-/// attached identify-failure row. Their timestamp is stamped by the write path
-/// from the injected clock, the same convention as
+/// [`crate::import::CandidatePreparations::store_verdict`]. Every outcome,
+/// failed included, becomes one `import_candidate_verdict` row. Their timestamp
+/// is stamped by the write path from the injected clock, the same convention as
 /// `created_at` in `db/client/identity.rs`/`release.rs`: a timestamp that
 /// records "when this write happened" is the DB layer's to assign, not data a
 /// caller hands in — carrying it here would let a caller lie about it, and
@@ -58,8 +57,8 @@ pub struct NewImportCandidateVerdict {
 }
 
 /// What identification concluded about one candidate. Present as a whole or
-/// absent as a whole: normal identify columns, match rows, and the failed
-/// verdict row are replaced or cleared in one transaction.
+/// absent as a whole: it is one verdict row with the match rows hanging off
+/// it, written or cleared in one transaction.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbCandidateIdentifyResult {
     pub verdict: crate::identify::TerminalVerdict,
@@ -67,9 +66,10 @@ pub struct DbCandidateIdentifyResult {
     pub identified_at: DateTime<Utc>,
 }
 
-/// One loaded `import_candidate_state` row, as
-/// [`crate::db::Database::load_import_candidate_states`] returns it. Mirrors
-/// the table: one key, and the two independent things derived under it.
+/// One loaded candidate, as
+/// [`crate::db::Database::load_import_candidate_states`] returns it: the
+/// `import_candidate_state` row with the verdict, signals, provenance, and
+/// file decisions that hang off it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DbImportCandidateState {
     pub content_hash: String,

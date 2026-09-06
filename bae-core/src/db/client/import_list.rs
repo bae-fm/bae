@@ -13,7 +13,7 @@
 mod window;
 
 use super::identity::check_releases_in_library_on;
-use super::import_state::{load_matches_on, load_provenance_partners_on, metadata_provenance_of};
+use super::import_state::{load_matches_on, load_provenance_on};
 use super::*;
 use crate::identify::{LeadMatch, VerdictKind, VerdictSummary};
 use crate::import::folder_scanner::InvalidReason;
@@ -75,12 +75,12 @@ impl CandidateListSource {
     }
 }
 
-/// One `import_candidate_state` row, as the list reads it: the revision it
-/// describes, what identification concluded, and what was decided.
+/// One candidate, as the list reads it: the revision it describes, what
+/// identification concluded, and what was decided.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CandidateStateListRow {
     pub edit_revision: u64,
-    /// `None` when the identify columns are clear.
+    /// `None` when nothing has identified this candidate.
     pub verdict: Option<VerdictSummary>,
     pub probed_total_duration_ms: u64,
     pub metadata_provenance: Option<MetadataProvenance>,
@@ -388,101 +388,61 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
     // verdict named is what the Ready rule asks, and two sources' records of
     // one pressing pair by fields no `COUNT(*)` can see.
     let mut matches = load_matches_on(sql, None)?;
-    let mut identify_failures: HashMap<String, (u32, u64)> = HashMap::new();
-    for (content_hash, track_count, probed) in sql.query(
-        "SELECT content_hash, track_count, probed_total_duration_ms \
-         FROM import_candidate_identify_failure",
-        [],
-        |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, i64>(2)?,
-            ))
-        },
-    )? {
-        identify_failures.insert(
-            content_hash,
-            (
-                to_u32(track_count, "a failed verdict's track count")?,
-                to_u64(probed, "a failed verdict's probed total")?,
-            ),
-        );
-    }
-
-    let mut partners = load_provenance_partners_on(sql, None)?;
-    let mut states = HashMap::new();
+    let mut verdicts: HashMap<String, (VerdictSummary, u64)> = HashMap::new();
     for row in sql.query(
-        "SELECT content_hash, edit_revision, verdict_kind, verdict_track_count, \
-                probed_total_duration_ms, provenance_kind, provenance_source, provenance_release_id \
-         FROM import_candidate_state",
+        "SELECT content_hash, kind, track_count, probed_total_duration_ms \
+         FROM import_candidate_verdict",
         [],
         |row| {
             Ok((
                 row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, Option<String>>(2)?,
-                row.get::<_, Option<i64>>(3)?,
-                row.get::<_, Option<i64>>(4)?,
-                (
-                    row.get::<_, Option<String>>(5)?,
-                    row.get::<_, Option<String>>(6)?,
-                    row.get::<_, Option<String>>(7)?,
-                ),
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<i64>>(2)?,
+                row.get::<_, i64>(3)?,
             ))
         },
     )? {
-        let (content_hash, edit_revision, verdict_kind, track_count, probed, provenance_columns) =
-            row;
-        let (provenance_kind, provenance_source, provenance_release_id) = provenance_columns;
-        let metadata_provenance = metadata_provenance_of(
-            provenance_kind,
-            provenance_source,
-            provenance_release_id,
-            partners.remove(&content_hash).unwrap_or_default(),
-        );
+        let (content_hash, kind, track_count, probed) = row;
         // Read the lead off the first row, then spend the rest on the count:
         // both come from the one read of this candidate's matches.
         let found = matches.remove(&content_hash).unwrap_or_default();
         let lead = found
             .first()
             .map(|(result, provenance)| LeadMatch::of(result, Some(provenance)));
-        let pressings = crate::import::release_group::pressing_count(
+        let pressing_count = crate::import::release_group::pressing_count(
             found.into_iter().map(|(result, _)| result).collect(),
         ) as u32;
-        let normal_verdict = verdict_kind
-            .map(|kind| -> Result<VerdictSummary, DbError> {
-                Ok(VerdictSummary {
-                    kind: match kind.as_str() {
-                        "found" => VerdictKind::Found,
-                        "not_found" => VerdictKind::NotFound,
-                        "manual_only" => VerdictKind::ManualOnly,
-                        other => return Err(unreadable("verdict_kind", other)),
-                    },
-                    track_count: track_count
-                        .map(|count| to_u32(count, "a verdict's track count"))
-                        .transpose()?,
-                    pressing_count: pressings,
-                    lead,
-                })
-            })
-            .transpose()?;
-        let failed = identify_failures.remove(&content_hash);
-        if normal_verdict.is_some() && failed.is_some() {
-            return Err(DbError::Message(format!(
-                "candidate {content_hash} stores both a verdict and an identify failure"
-            )));
-        }
-        let failed_probed = failed.as_ref().map(|(_, probed)| *probed);
-        let verdict = normal_verdict.or_else(|| {
-            failed.map(|(track_count, _)| VerdictSummary {
-                kind: VerdictKind::Failed,
-                track_count: Some(track_count),
-                pressing_count: 0,
-                lead: None,
-            })
-        });
-        let metadata_provenance = metadata_provenance?;
+        let summary = VerdictSummary {
+            kind: match kind.as_str() {
+                "found" => VerdictKind::Found,
+                "not_found" => VerdictKind::NotFound,
+                "manual_only" => VerdictKind::ManualOnly,
+                "failed" => VerdictKind::Failed,
+                other => return Err(unreadable("verdict kind", other)),
+            },
+            track_count: track_count
+                .map(|count| to_u32(count, "a verdict's track count"))
+                .transpose()?,
+            pressing_count,
+            lead,
+        };
+        verdicts.insert(
+            content_hash,
+            (summary, to_u64(probed, "a verdict's probed total")?),
+        );
+    }
+
+    let mut provenances = load_provenance_on(sql, None)?;
+    let mut states = HashMap::new();
+    for (content_hash, edit_revision) in sql.query(
+        "SELECT content_hash, edit_revision FROM import_candidate_state",
+        [],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?)),
+    )? {
+        let verdict = verdicts.remove(&content_hash);
+        let metadata_provenance = provenances
+            .remove(&content_hash)
+            .map(|(provenance, _)| provenance);
         let metadata_draft = drafts.remove(&content_hash).ok_or_else(|| {
             DbError::Message(format!(
                 "candidate {content_hash} has no editable metadata draft"
@@ -497,12 +457,8 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
             content_hash,
             CandidateStateListRow {
                 edit_revision: to_u64(edit_revision, "a candidate's edit revision")?,
-                verdict,
-                probed_total_duration_ms: probed
-                    .map(|probed| to_u64(probed, "a candidate's probed total"))
-                    .transpose()?
-                    .or(failed_probed)
-                    .unwrap_or_default(),
+                probed_total_duration_ms: verdict.as_ref().map_or(0, |(_, probed)| *probed),
+                verdict: verdict.map(|(summary, _)| summary),
                 metadata_provenance,
                 metadata_draft_valid,
                 metadata_summary,

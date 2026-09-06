@@ -1,14 +1,16 @@
 //! One candidate's whole stored state, loaded and saved as a unit.
 //!
-//! Every row group under a content hash — the state row, its matches and
-//! failure, its signals, its draft and cover and prepared assets, its file
-//! decisions — is read into one [`CandidatePreparation`] and written back
-//! from one, in one transaction guarded by the revisions the caller loaded.
-//! The rules about what a candidate may hold live on the value, not here.
+//! Every row group under a content hash — the candidate row, its verdict with
+//! the matches beneath it, its signals, its draft with its provenance, cover,
+//! and prepared assets, its file decisions — is read into one
+//! [`CandidatePreparation`] and written back from one, in one transaction
+//! guarded by the revisions the caller loaded. The rules about what a
+//! candidate may hold live on the value, not here.
 
 use super::*;
 use crate::import::folder_scanner::{CategorizedFiles, FolderCandidate};
-use crate::import::preparation::{CandidatePreparation, MetadataAuthor};
+use crate::import::preparation::CandidatePreparation;
+use crate::import::MetadataAuthor;
 
 /// The revisions a save was prepared against, and — for a write that must
 /// not land on a folder the scan has since re-read — where the scan lists it.
@@ -49,23 +51,6 @@ pub(crate) enum CandidateSaved {
     Superseded,
 }
 
-fn author_column(author: MetadataAuthor) -> Option<&'static str> {
-    match author {
-        MetadataAuthor::Nobody => None,
-        MetadataAuthor::Identification => Some(MetadataProvenanceAuthor::Identification.as_str()),
-        MetadataAuthor::User => Some(MetadataProvenanceAuthor::User.as_str()),
-    }
-}
-
-fn author_of(stored: Option<String>) -> Result<MetadataAuthor, DbError> {
-    Ok(match stored.as_deref() {
-        None => MetadataAuthor::Nobody,
-        Some("identification") => MetadataAuthor::Identification,
-        Some("user") => MetadataAuthor::User,
-        Some(other) => return Err(verdict_rows::unreadable("provenance_author", other)),
-    })
-}
-
 pub(super) fn load_preparation_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -73,11 +58,9 @@ pub(super) fn load_preparation_on(
     let Some(state) = load_states_on(sql, Some(content_hash))?.remove(content_hash) else {
         return Ok(None);
     };
-    let author = author_of(sql.query_row(
-        "SELECT provenance_author FROM import_candidate_state WHERE content_hash = ?",
-        [content_hash],
-        |row| row.get::<_, Option<String>>(0),
-    )?)?;
+    let author = load_provenance_on(sql, Some(content_hash))?
+        .remove(content_hash)
+        .map_or(MetadataAuthor::Nobody, |(_, author)| author);
     let rows = load_pane_rows_on(sql, content_hash)?;
     let source_discogs_artist_ids =
         prepared_asset_rows::load_source_artist_ids_on(sql, content_hash)?;
@@ -145,49 +128,14 @@ pub(super) fn save_preparation_on(
         ));
     }
 
-    let columns = prep
-        .identification
-        .as_ref()
-        .map(|identification| verdict_columns(&identification.verdict));
-    let stored_kind = columns.as_ref().and_then(|columns| columns.kind);
-    let probed = prep
-        .identification
-        .as_ref()
-        .map(|identification| {
-            to_i64(
-                identification.probed_total_duration_ms,
-                "candidate probed total",
-            )
-        })
-        .transpose()?;
-    let identified_at = prep
-        .identification
-        .as_ref()
-        .map(|identification| identification.identified_at.to_rfc3339());
-    let seed = prep.metadata.provenance.as_ref().map(seed_columns);
     let changed = sql.execute(
         "UPDATE import_candidate_state SET \
              folder_path = :folder_path, \
-             verdict_kind = :kind, verdict_track_count = :track_count, \
-             verdict_matched_barcode = :matched_barcode, \
-             probed_total_duration_ms = :probed, identified_at = :identified_at, \
-             provenance_kind = :provenance_kind, provenance_source = :provenance_source, \
-             provenance_release_id = :provenance_release_id, \
-             provenance_author = :provenance_author, \
              edit_revision = :next_edit, metadata_revision = :next_metadata \
          WHERE content_hash = :content_hash \
            AND edit_revision = :expected_edit AND metadata_revision = :expected_metadata",
         named_params! {
             ":folder_path": prep.folder_path,
-            ":kind": stored_kind,
-            ":track_count": columns.as_ref().and_then(|columns| columns.track_count),
-            ":matched_barcode": columns.as_ref().and_then(|columns| columns.matched_barcode),
-            ":probed": stored_kind.and(probed),
-            ":identified_at": stored_kind.and(identified_at.as_deref()),
-            ":provenance_kind": seed.as_ref().map(|seed| seed.kind),
-            ":provenance_source": seed.as_ref().and_then(|seed| seed.source),
-            ":provenance_release_id": seed.as_ref().and_then(|seed| seed.release_id),
-            ":provenance_author": author_column(prep.author),
             ":next_edit": next_edit,
             ":next_metadata": next_metadata,
             ":content_hash": content_hash,
@@ -212,26 +160,25 @@ pub(super) fn save_preparation_on(
         return Ok(CandidateSaved::Superseded);
     }
 
-    delete_matches(sql, content_hash)?;
-    delete_identify_failure(sql, content_hash)?;
+    // The matches hang off the verdict row, so this clears them too.
+    delete_verdict(sql, content_hash)?;
     if let Some(identification) = &prep.identification {
-        insert_matches(sql, content_hash, &identification.verdict)?;
-        insert_identify_failure(
-            sql,
-            content_hash,
-            &identification.verdict,
-            probed.expect("a stored verdict carries its probed total"),
-            identified_at
-                .as_deref()
-                .expect("a stored verdict carries its timestamp"),
-        )?;
+        insert_verdict(sql, content_hash, identification)?;
     }
     delete_signals(sql, content_hash)?;
     if let Some(signals) = &prep.signals {
         insert_signals(sql, content_hash, signals)?;
     }
-    replace_provenance_partners(sql, content_hash, prep.metadata.provenance.as_ref())?;
+    // Replacing the draft row cascades the provenance and its partners away;
+    // `validate` has already refused a provenance without an author or an
+    // author without one, so the pair below is present or absent together.
     pane_rows::replace_draft(sql, content_hash, &prep.metadata.draft)?;
+    if let (Some(provenance), Some(author)) = (
+        prep.metadata.provenance.as_ref(),
+        author_column(prep.author),
+    ) {
+        insert_provenance(sql, content_hash, provenance, author)?;
+    }
     pane_rows::delete_cover(sql, content_hash)?;
     if let Some(cover) = &prep.metadata.cover {
         super::candidate_state_rows::save_cover(sql, content_hash, cover)?;

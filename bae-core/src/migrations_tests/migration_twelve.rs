@@ -69,7 +69,7 @@ async fn records_a_blank_match_barcode_and_drops_stale_identify_failures() {
             assert_eq!(release_id, "rel-123");
             assert_eq!(barcode, None, "no stored match knows its barcode yet");
             let failures: i64 = sql.query_row(
-                "SELECT COUNT(*) FROM import_candidate_identify_failure",
+                "SELECT COUNT(*) FROM import_candidate_verdict WHERE kind = 'failed'",
                 [],
                 |row| row.get(0),
             )?;

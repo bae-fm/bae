@@ -147,9 +147,9 @@ impl LeadMatch {
 /// As much of a stored verdict as the queue's list reads: which shape it is,
 /// how many pressings it named, and the lead match's own columns.
 ///
-/// The list reads these off `import_candidate_state` and the candidate's match
-/// rows rather than rebuilding a [`TerminalVerdict`] — the pane, which shows
-/// the failures and the matched barcode too, still reads the whole verdict.
+/// The list reads these off the candidate's verdict row and its match rows
+/// rather than rebuilding a [`TerminalVerdict`] — the pane, which shows the
+/// failures and the matched barcode too, still reads the whole verdict.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VerdictSummary {
     pub kind: VerdictKind,

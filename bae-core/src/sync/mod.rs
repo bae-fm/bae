@@ -350,9 +350,9 @@ mod tests {
         assert_eq!(ancestors, BTreeSet::from(["albums", "artists", "works"]));
     }
 
-    /// `import_candidate_state` holds per-device identify verdicts and retry
-    /// state; syncing it would leak one device's retry bookkeeping to every
-    /// other device on the account. A dedicated assertion, not just reliance on
+    /// `import_candidate_state` keys per-device import triage state; syncing it
+    /// would leak one device's retry bookkeeping to every other device on the
+    /// account. A dedicated assertion, not just reliance on
     /// `synced_tables_equal_the_lww_clock_set`: that test only catches the two
     /// sides *disagreeing* — it stays green if someone gives this table an
     /// `_updated_at` column and registers it in `synced_tables()` together,
@@ -403,7 +403,9 @@ mod tests {
             "scan_cue_index",
             "scan_candidate_resolved_boundary",
             "import_candidate_state",
+            "import_candidate_verdict",
             "import_candidate_match",
+            "import_candidate_draft_provenance",
             "import_candidate_file_edit",
             "import_candidate_signals",
             "import_candidate_signal_value",

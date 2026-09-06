@@ -1,7 +1,7 @@
 //! The identify pipeline's terminal outcome — what
-//! [`crate::db::DbImportCandidateState`] persists, as the identify columns of
-//! `import_candidate_state` and the `import_candidate_match` rows that hang
-//! off them.
+//! [`crate::db::DbImportCandidateState`] persists, as one
+//! `import_candidate_verdict` row and the `import_candidate_match` rows that
+//! hang off it.
 //!
 //! [`IdentifyState`] is the reducer's own working shape: it carries a full
 //! [`SignalsContext`] (raw signal inputs, the user's exclusions) through every

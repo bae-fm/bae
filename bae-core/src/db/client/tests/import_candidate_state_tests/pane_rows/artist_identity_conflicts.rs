@@ -158,8 +158,9 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             [&seed_pending_hash],
         )?;
         sql.execute(
-            "INSERT INTO import_candidate_edit (content_hash, album_title, year, format, label, \
-                 catalog_number, country, barcode) VALUES (?, 'Album Title', '', '', '', '', '', '')",
+            "INSERT INTO import_candidate_edit (content_hash, album_title, album_year, year, \
+                 format, label, catalog_number, country, barcode) \
+             VALUES (?, 'Album Title', '', '', '', '', '', '', '')",
             [&seed_pending_hash],
         )?;
         sql.execute(

@@ -19,7 +19,7 @@ use std::collections::HashSet;
 /// came back from that signal's lookup.
 ///
 /// `Serialize`/`Deserialize`: carried on `identify::TerminalVerdict::Found`,
-/// which `import_candidate_state` persists.
+/// which `import_candidate_match` persists.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ResultProvenance {
     pub by_disc_id: bool,

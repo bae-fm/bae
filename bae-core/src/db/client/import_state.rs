@@ -20,9 +20,7 @@ pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pa
 pub(crate) use preparation_rows::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
-pub(super) use rows::{
-    load_matches_on, load_provenance_partners_on, load_states_on, metadata_provenance_of,
-};
+pub(super) use rows::{load_matches_on, load_provenance_on, load_states_on};
 use session_rows::load_session_on;
 use signal_rows::{delete_signals, insert_signals};
 
@@ -30,15 +28,9 @@ use crate::import::folder_scanner::{
     CandidateFileEdits, FolderReleaseDecision, FolderReleaseDecisionAuthor,
     FolderReleaseDecisionKey, FolderReleaseDecisions, StoredCandidateEdits,
 };
-use rows::{
-    load_candidate_file_edits_on, replace_provenance_partners, seed_columns,
-    MetadataProvenanceAuthor,
-};
+use rows::{author_column, insert_provenance, load_candidate_file_edits_on};
 use std::collections::HashSet;
-use verdict_rows::{
-    delete_identify_failure, delete_matches, insert_identify_failure, insert_matches,
-    verdict_columns,
-};
+use verdict_rows::{delete_verdict, insert_verdict};
 
 pub(super) fn require_current_candidate(
     sql: &SqlContext<'_, '_>,

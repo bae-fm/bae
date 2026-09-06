@@ -2,9 +2,11 @@
 //! artist assignments, the cover — as one candidate's save writes them and
 //! the pane's read draws them.
 //!
-//! Every row group hangs off `import_candidate_state` by content hash. The
-//! writers here replace a whole group; which groups a candidate save
-//! replaces, and under what checks, is `preparation_rows`'s to say.
+//! Every row group hangs off the candidate by content hash, and the draft's
+//! own provenance and tracks hang off `import_candidate_edit`, so replacing
+//! the draft row takes them with it. The writers here replace a whole group;
+//! which groups a candidate save replaces, and under what checks, is
+//! `preparation_rows`'s to say.
 
 mod writes;
 
@@ -31,6 +33,9 @@ pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Resu
     Ok(())
 }
 
+/// Replace the draft row and everything hanging off it: its tracks and their
+/// artist assignments, and the provenance with the partner releases the same
+/// pick claimed. The caller writes the new provenance after this returns.
 pub(super) fn replace_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
