@@ -4,6 +4,7 @@ mod edit_rows;
 mod failure_rows;
 mod metadata_rows;
 mod pane_rows;
+mod preparation_rows;
 mod prepared_asset_rows;
 mod rows;
 mod session_rows;
@@ -15,9 +16,9 @@ use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, Store
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
 pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
-#[cfg(any(test, feature = "test-utils"))]
-use prepared_asset_rows::invalidate_prepared_assets;
-use prepared_asset_rows::replace_prepared_assets;
+pub(crate) use preparation_rows::{
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
+};
 pub(super) use rows::{
     load_matches_on, load_provenance_partners_on, load_states_on, metadata_provenance_of,
 };
@@ -38,7 +39,7 @@ use verdict_rows::{
     verdict_columns,
 };
 
-fn require_current_candidate(
+pub(super) fn require_current_candidate(
     sql: &SqlContext<'_, '_>,
     watched_folder_path: &str,
     candidate_path: &str,
@@ -67,55 +68,6 @@ fn require_current_candidate(
     }
     u64::try_from(generation)
         .map_err(|_| DbError::Message("candidate scan generation is negative".into()))
-}
-
-fn replace_candidate_metadata_on(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    folder_path: &str,
-    expected_revision: u64,
-    metadata: &crate::import::CandidateMetadataDraft,
-) -> Result<u64, DbError> {
-    pane_rows::require_metadata_revision(sql, content_hash, expected_revision)?;
-    let columns = metadata.provenance.as_ref().map(seed_columns);
-    let revision = sql
-        .query_row(
-            "UPDATE import_candidate_state SET folder_path = ?, \
-             provenance_kind = ?, provenance_source = ?, provenance_release_id = ?, \
-             provenance_author = ?, metadata_revision = metadata_revision + 1 \
-         WHERE content_hash = ? RETURNING metadata_revision",
-            params![
-                folder_path,
-                columns.as_ref().map(|columns| columns.kind),
-                columns.as_ref().and_then(|columns| columns.source),
-                columns.as_ref().and_then(|columns| columns.release_id),
-                metadata
-                    .provenance
-                    .as_ref()
-                    .map(|_| MetadataProvenanceAuthor::User.as_str()),
-                content_hash,
-            ],
-            |row| row.get::<_, i64>(0),
-        )
-        .optional()?
-        .ok_or_else(|| {
-            DbError::Message("metadata replacement has no candidate state row".to_string())
-        })?;
-    replace_provenance_partners(sql, content_hash, metadata.provenance.as_ref())?;
-    pane_rows::replace_draft(sql, content_hash, &metadata.draft)?;
-    pane_rows::delete_cover(sql, content_hash)?;
-    if let Some(cover) = &metadata.cover {
-        super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
-    }
-    replace_prepared_assets(
-        sql,
-        content_hash,
-        metadata.cover.as_ref(),
-        &metadata.source_discogs_artist_ids,
-        &metadata.assets,
-    )?;
-    u64::try_from(revision)
-        .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))
 }
 
 /// The next scan generation. One upsert rather than a read of a seeded row
@@ -466,160 +418,60 @@ impl Database {
     /// injected clock, not taken from `verdict` — see
     /// [`NewImportCandidateVerdict`]'s doc.
     ///
-    /// The row's other half — the user's file decisions — is left untouched.
-    /// Discovery creates the candidate row; a verdict updates that row because
-    /// it must not recreate a candidate removed while identification ran.
+    /// The candidate's file decisions are left as they are. Discovery creates
+    /// the candidate row; a verdict lands on that row, so it cannot recreate
+    /// a candidate removed while identification ran.
+    ///
+    /// A pick identification made belongs to the verdict that made it, so
+    /// this write replaces it — with the new verdict's own conclusion, or
+    /// with nothing when it concluded none. A pick a person made is theirs
+    /// and is left exactly as it is: a run whose signals turn up nothing says
+    /// nothing about a release they chose.
+    ///
+    /// `false` when the row has moved past the file decisions or the draft
+    /// this verdict was derived from, or when it names a candidate no row
+    /// holds: either way there is nothing to write.
     pub async fn save_import_candidate_verdict(
         &self,
         verdict: &NewImportCandidateVerdict,
     ) -> Result<bool, DbError> {
-        let verdict = verdict.clone();
-        let expected = i64::try_from(verdict.expected_edit_revision).map_err(|_| {
-            DbError::Message(format!(
-                "candidate edit revision {} exceeds SQLite's integer range",
-                verdict.expected_edit_revision
-            ))
-        })?;
-        let expected_metadata =
-            i64::try_from(verdict.expected_metadata_revision).map_err(|_| {
-                DbError::Message(format!(
-                    "candidate metadata revision {} exceeds SQLite's integer range",
-                    verdict.expected_metadata_revision
-                ))
-            })?;
-        let next_metadata_revision = verdict
-            .expected_metadata_revision
-            .checked_add(1)
-            .ok_or_else(|| DbError::Message("candidate metadata revision exhausted".into()))?;
-        let next_metadata = i64::try_from(next_metadata_revision).map_err(|_| {
-            DbError::Message(format!(
-                "candidate metadata revision {next_metadata_revision} exceeds SQLite's integer range"
-            ))
-        })?;
-        // The column is the sum of the duration rows this same write lays
-        // down, derived here so the two can never disagree.
-        let probed = i64::try_from(verdict.signals.probed_total_duration_ms()).map_err(|_| {
-            DbError::Message("a probed total exceeds SQLite's integer range".to_string())
-        })?;
-        let now = self.inner.clock.now().to_rfc3339();
-        // Whether the write applies is a question about the stored revision,
-        // so it is asked on the read connection. A verdict derived from file
-        // decisions the row has since moved past writes nothing, and must not
-        // open a write to say so.
-        let current: Option<(i64, i64)> = {
-            let content_hash = verdict.content_hash.clone();
-            self.read(move |sql| {
-                Ok(sql
-                    .query_row(
-                        "SELECT edit_revision, metadata_revision FROM import_candidate_state WHERE content_hash = ?",
-                        [&content_hash],
-                        |row| Ok((row.get(0)?, row.get(1)?)),
-                    )
-                    .optional()?)
-            })
+        let Some(mut prep) = self
+            .load_candidate_preparation(&verdict.content_hash)
             .await?
+        else {
+            return Ok(false);
         };
-        match current {
-            Some((current_edit, current_metadata))
-                if current_edit == expected && current_metadata == expected_metadata => {}
-            // The row has moved past the file decisions this verdict was
-            // derived from, or it names a revision no row ever had. Either way
-            // there is nothing to write.
-            Some(_) | None => return Ok(false),
+        if prep.file_edits.revision != verdict.expected_edit_revision
+            || prep.metadata_revision != verdict.expected_metadata_revision
+        {
+            return Ok(false);
         }
-        self.call(move |sql| {
-            let columns = verdict_columns(&verdict.verdict);
-            let stored_probed = columns.kind.map(|_| probed);
-            let stored_identified_at = columns.kind.map(|_| now.as_str());
-            let pick = verdict.metadata.provenance.as_ref().map(seed_columns);
-            let preserve_user_metadata = stored_pick_author(sql, &verdict.content_hash)?
-                == Some(MetadataProvenanceAuthor::User);
-            // A pick identification made belongs to the verdict that made it,
-            // so this write replaces it — with the new verdict's own
-            // conclusion, or with nothing when it concluded none. A pick a
-            // person made is theirs and is left exactly as it is: a run whose
-            // signals turn up nothing says nothing about a release they chose.
-            // The revision predicate closes the interval between the read and
-            // this write: a decision landing there leaves this writing nothing
-            // instead of overwriting it.
-            let wrote = sql.execute(
-                "UPDATE import_candidate_state SET \
-                         folder_path = :folder_path, \
-                         verdict_kind = :kind, verdict_track_count = :track_count, \
-                         verdict_matched_barcode = :matched_barcode, \
-                         probed_total_duration_ms = :probed, identified_at = :now, \
-                         provenance_kind = CASE WHEN provenance_author = 'user' \
-                             THEN provenance_kind ELSE :provenance_kind END, \
-                         provenance_source = CASE WHEN provenance_author = 'user' \
-                             THEN provenance_source ELSE :provenance_source END, \
-                         provenance_release_id = CASE WHEN provenance_author = 'user' \
-                             THEN provenance_release_id ELSE :provenance_release_id END, \
-                         provenance_author = CASE \
-                             WHEN provenance_author = 'user' THEN 'user' \
-                             WHEN :provenance_kind IS NULL THEN NULL \
-                             ELSE 'identification' END, \
-                         metadata_revision = CASE WHEN :preserve_user_metadata \
-                             THEN metadata_revision ELSE :next_metadata END \
-                     WHERE content_hash = :content_hash AND edit_revision = :expected \
-                     AND metadata_revision = :expected_metadata",
-                named_params! {
-                    ":folder_path": verdict.folder_path,
-                    ":kind": columns.kind,
-                    ":track_count": columns.track_count,
-                    ":matched_barcode": columns.matched_barcode,
-                    ":probed": stored_probed,
-                    ":now": stored_identified_at,
-                    ":provenance_kind": pick.as_ref().map(|pick| pick.kind),
-                    ":provenance_source": pick.as_ref().and_then(|pick| pick.source),
-                    ":provenance_release_id": pick.as_ref().and_then(|pick| pick.release_id),
-                    ":content_hash": verdict.content_hash,
-                    ":expected": expected,
-                    ":expected_metadata": expected_metadata,
-                    ":next_metadata": next_metadata,
-                    ":preserve_user_metadata": preserve_user_metadata,
-                },
-            )? == 1;
-            if wrote {
-                // The result lists belong to the verdict that named them: the
-                // superseded ones go in the same transaction that replaces it.
-                delete_matches(sql, &verdict.content_hash)?;
-                insert_matches(sql, &verdict.content_hash, &verdict.verdict)?;
-                delete_identify_failure(sql, &verdict.content_hash)?;
-                insert_identify_failure(
-                    sql,
-                    &verdict.content_hash,
-                    &verdict.verdict,
-                    probed,
-                    &now,
-                )?;
-                if !preserve_user_metadata {
-                    // The partner rows belong to the provenance the columns
-                    // above just took, so they are replaced under exactly the
-                    // condition the columns were.
-                    replace_provenance_partners(
-                        sql,
-                        &verdict.content_hash,
-                        verdict.metadata.provenance.as_ref(),
-                    )?;
-                    pane_rows::replace_draft(sql, &verdict.content_hash, &verdict.metadata.draft)?;
-                    pane_rows::delete_cover(sql, &verdict.content_hash)?;
-                    if let Some(cover) = &verdict.metadata.cover {
-                        super::candidate_state_rows::save_cover(sql, &verdict.content_hash, cover)?;
-                    }
-                    replace_prepared_assets(
-                        sql,
-                        &verdict.content_hash,
-                        verdict.metadata.cover.as_ref(),
-                        &verdict.metadata.source_discogs_artist_ids,
-                        &verdict.metadata.assets,
-                    )?;
-                }
-                delete_signals(sql, &verdict.content_hash)?;
-                insert_signals(sql, &verdict.content_hash, &verdict.signals)?;
-            }
-            Ok(wrote)
-        })
-        .await
+        let expected = CandidateSaveExpectation {
+            edit_revision: prep.file_edits.revision,
+            metadata_revision: prep.metadata_revision,
+            scanned: None,
+        };
+        prep.folder_path = verdict.folder_path.clone();
+        prep.identification = Some(DbCandidateIdentifyResult {
+            verdict: verdict.verdict.clone(),
+            probed_total_duration_ms: verdict.signals.probed_total_duration_ms(),
+            identified_at: self.now(),
+        });
+        prep.signals = Some(verdict.signals.clone());
+        if prep.author != crate::import::MetadataAuthor::User {
+            prep.author = match verdict.metadata.provenance {
+                Some(_) => crate::import::MetadataAuthor::Identification,
+                None => crate::import::MetadataAuthor::Nobody,
+            };
+            prep.metadata = verdict.metadata.clone();
+            prep.assets_prepared = true;
+            prep.metadata_revision += 1;
+        }
+        Ok(matches!(
+            self.save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+                .await?,
+            CandidateSaved::Landed(_)
+        ))
     }
 
     /// Record one candidate's user-set file decisions, **and clear whatever
@@ -634,7 +486,7 @@ impl Database {
     ///
     /// A pick identification concluded from that verdict goes with it, for the
     /// same reason. A pick a person made stays: their choice names a release,
-    /// not a shape, and the mapping re-derives against the reshaped folder.
+    /// not a shape, and the draft re-derives against the reshaped folder.
     ///
     /// The content hash covers files, never role decisions, so this addresses
     /// the same row the verdict lived in rather than orphaning it — and the
@@ -650,137 +502,89 @@ impl Database {
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
         mapping_preparation: &crate::import::CandidateMappingPreparation,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), DbError> {
-        let content_hash = content_hash.to_string();
-        let folder_path = folder_path.to_string();
-        let edits = edits.clone();
-        let settled_candidates = settled_candidates.to_vec();
-        let mapping_preparation = mapping_preparation.clone();
         let next_revision = expected_revision.checked_add(1).ok_or_else(|| {
             DbError::Message("candidate edit revision exhausted the u64 range".to_string())
         })?;
-        let expected_revision_i64 = i64::try_from(expected_revision).map_err(|_| {
-            DbError::Message(format!(
-                "candidate edit revision {expected_revision} exceeds SQLite's integer range"
-            ))
-        })?;
-        let next_revision_i64 = i64::try_from(next_revision).map_err(|_| {
-            DbError::Message(format!(
-                "candidate edit revision {next_revision} exceeds SQLite's integer range"
-            ))
-        })?;
-        self.call(move |sql| {
-            let settled_by_key: HashMap<_, _> = settled_candidates.iter().cloned().collect();
-            if settled_by_key.len() != settled_candidates.len() {
-                return Err(DbError::Message(
-                    "candidate file decision received duplicate scan entry keys".to_string(),
-                ));
-            }
-            let current: Option<(i64, i64, Option<String>)> = sql
-                .query_row(
-                    "SELECT edit_revision, metadata_revision, provenance_author \
-                     FROM import_candidate_state WHERE content_hash = ?",
-                    [&content_hash],
-                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
-                )
-                .optional()?;
-            let current_revision = current
-                .as_ref()
-                .map(|(value, _, _)| {
-                    u64::try_from(*value).map_err(|_| {
-                        DbError::Message(format!(
-                            "candidate row {content_hash} has negative edit_revision"
-                        ))
-                    })
-                })
-                .transpose()?;
-            if current_revision != Some(expected_revision) {
-                return Err(DbError::Message(format!(
+        let mut prep = self
+            .load_candidate_preparation(content_hash)
+            .await?
+            .ok_or_else(|| {
+                DbError::Message(format!(
                     "candidate file decisions changed at revision {expected_revision}"
-                )));
-            }
-            let current_metadata_revision = current
-                .as_ref()
-                .map(|(_, value, _)| {
-                    u64::try_from(*value).map_err(|_| {
-                        DbError::Message(format!(
-                            "candidate row {content_hash} has negative metadata_revision"
-                        ))
-                    })
-                })
-                .transpose()?;
-            if current_metadata_revision != Some(expected_metadata_revision) {
-                return Err(DbError::Message(format!(
-                    "candidate metadata changed from revision {expected_metadata_revision}"
-                )));
-            }
-            let preserve_source_artists = current
-                .as_ref()
-                .and_then(|(_, _, author)| author.as_deref())
-                == Some(MetadataProvenanceAuthor::User.as_str());
-            let changed = sql.execute(
-                "UPDATE import_candidate_state SET \
-                         folder_path = ?, \
-                         verdict_kind = NULL, verdict_track_count = NULL, \
-                         verdict_matched_barcode = NULL, \
-                         probed_total_duration_ms = NULL, identified_at = NULL, \
-                         provenance_kind = CASE WHEN provenance_author = 'user' \
-                             THEN provenance_kind ELSE NULL END, \
-                         provenance_source = CASE WHEN provenance_author = 'user' \
-                             THEN provenance_source ELSE NULL END, \
-                         provenance_release_id = CASE WHEN provenance_author = 'user' \
-                             THEN provenance_release_id ELSE NULL END, \
-                         provenance_author = CASE \
-                             WHEN provenance_author = 'user' THEN 'user' \
-                             ELSE NULL END, \
-                         edit_revision = ? \
-                     WHERE content_hash = ? AND edit_revision = ?",
-                params![
-                    folder_path,
-                    next_revision_i64,
-                    content_hash,
-                    expected_revision_i64,
-                ],
-            )?;
-            if changed != 1 {
-                return Err(DbError::Message(format!(
-                    "candidate file decision write changed {changed} rows; expected exactly one"
-                )));
-            }
-            // Same condition the provenance columns above were cleared under
-            // (`provenance_author` is not `user`): identification's pick went
-            // with the verdict, so the partners it carried go too. A pick a
-            // person made keeps both.
-            if !preserve_source_artists {
-                replace_provenance_partners(sql, &content_hash, None)?;
-            }
-            delete_matches(sql, &content_hash)?;
-            delete_identify_failure(sql, &content_hash)?;
-            // The disc ID is recomputed because the candidate's shape changed,
-            // which takes the signals with it. The table's rows are a different
-            // set now, so the row edits addressed them by identities that no
-            // longer mean the same thing.
-            delete_signals(sql, &content_hash)?;
-            // The draft has one track per slot row, so it moves with the slots:
-            // a folder that gained rows gained blank tracks.
-            pane_rows::replace_draft(sql, &content_hash, &mapping_preparation.draft)?;
-            prepared_asset_rows::replace_artist_assets_after_file_edit(
-                sql,
-                &content_hash,
-                preserve_source_artists.then_some(&mapping_preparation.source_discogs_artist_ids),
-                &mapping_preparation.artist_images,
-            )?;
-            delete_file_edits(sql, &content_hash)?;
-            insert_file_edits(sql, &content_hash, &edits)?;
-            let updated_candidates = settle_scanned_candidates(
-                sql,
-                &content_hash,
-                expected_revision_i64,
-                next_revision_i64,
-                &settled_by_key,
-            )?;
-            Ok((next_revision, updated_candidates))
-        })
-        .await
+                ))
+            })?;
+        if prep.file_edits.revision != expected_revision {
+            return Err(DbError::Message(format!(
+                "candidate file decisions changed at revision {expected_revision}"
+            )));
+        }
+        if prep.metadata_revision != expected_metadata_revision {
+            return Err(DbError::Message(format!(
+                "candidate metadata changed from revision {expected_metadata_revision}"
+            )));
+        }
+        if !prep.assets_prepared {
+            return Err(DbError::Message(format!(
+                "candidate {content_hash} has no complete prepared asset set"
+            )));
+        }
+        let expected = CandidateSaveExpectation {
+            edit_revision: expected_revision,
+            metadata_revision: expected_metadata_revision,
+            scanned: None,
+        };
+        prep.folder_path = folder_path.to_string();
+        prep.file_edits = edits.clone();
+        prep.file_edits.revision = next_revision;
+        // The verdict described a shape that is gone, and so did the pick
+        // identification made from it and the signals it read. A person's
+        // pick names a release, not a shape, and stays.
+        prep.identification = None;
+        prep.signals = None;
+        let keep_pick = prep.author == crate::import::MetadataAuthor::User;
+        if !keep_pick {
+            prep.metadata.provenance = None;
+            prep.author = crate::import::MetadataAuthor::Nobody;
+        }
+        prep.metadata.draft = mapping_preparation.draft.clone();
+        prep.metadata.source_discogs_artist_ids = if keep_pick {
+            mapping_preparation.source_discogs_artist_ids.clone()
+        } else {
+            Default::default()
+        };
+        // The prepared answers were made for the draft before it was redrawn;
+        // every artist the redrawn draft needs must be among them, and the
+        // ones it no longer needs go.
+        let required = prep.required_discogs_artist_ids();
+        let by_id: HashMap<_, _> = mapping_preparation
+            .artist_images
+            .iter()
+            .map(|asset| (asset.discogs_artist_id(), asset))
+            .collect();
+        if let Some(missing) = required.iter().find(|id| !by_id.contains_key(id.as_str())) {
+            return Err(DbError::Message(format!(
+                "candidate file edit has no prepared image answer for Discogs artist {missing}"
+            )));
+        }
+        prep.metadata.assets.artist_images = mapping_preparation
+            .artist_images
+            .iter()
+            .filter(|asset| required.contains(asset.discogs_artist_id()))
+            .cloned()
+            .collect();
+        let extras = CandidateSaveExtras {
+            file_tag_snapshot: None,
+            reshaped_files: Some(settled_candidates.to_vec()),
+        };
+        match self
+            .save_candidate_preparation(prep, expected, extras)
+            .await?
+        {
+            CandidateSaved::Landed(candidates) => Ok((next_revision, candidates)),
+            CandidateSaved::Superseded => Err(DbError::Message(format!(
+                "candidate file decisions changed at revision {expected_revision}"
+            ))),
+        }
     }
 
     /// Every candidate's user-set file decisions, keyed by `content_hash` — the
@@ -839,33 +643,6 @@ impl Database {
     }
 }
 
-fn stored_pick_author(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-) -> Result<Option<MetadataProvenanceAuthor>, DbError> {
-    let author = sql
-        .query_row(
-            "SELECT provenance_author FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get::<_, Option<String>>(0),
-        )
-        .optional()?
-        .flatten();
-    let Some(author) = author else {
-        return Ok(None);
-    };
-    let author = match author.as_str() {
-        "user" => MetadataProvenanceAuthor::User,
-        "identification" => MetadataProvenanceAuthor::Identification,
-        other => {
-            return Err(DbError::Message(format!(
-                "import candidate column provenance_author holds {other:?}"
-            )))
-        }
-    };
-    Ok(Some(author))
-}
-
 /// Rewrite the file rows of every scanned candidate at `content_hash` and
 /// `expected_revision` to the shape the caller settled, and hand the settled
 /// candidates back.
@@ -874,7 +651,7 @@ fn stored_pick_author(
 /// settled files from the same read, so a candidate it did not settle is a
 /// scan that moved under it, and writing half the set would leave two rows of
 /// one release disagreeing about what its files are.
-fn settle_scanned_candidates(
+pub(super) fn settle_scanned_candidates(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     expected_revision: i64,

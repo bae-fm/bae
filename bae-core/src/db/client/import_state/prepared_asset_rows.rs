@@ -19,42 +19,6 @@ fn validate_remote_cover(
     }
 }
 
-pub(super) fn replace_prepared_assets(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    cover: Option<&CoverSelection>,
-    source_discogs_artist_ids: &BTreeSet<String>,
-    assets: &CandidatePreparedAssets,
-) -> Result<(), DbError> {
-    validate_remote_cover(cover, assets.remote_cover.as_ref())?;
-    replace_source_artist_rows(sql, content_hash, source_discogs_artist_ids)?;
-    let expected = required_discogs_artist_ids_for_write(sql, content_hash)?;
-    let actual: BTreeSet<_> = assets
-        .artist_images
-        .iter()
-        .map(|asset| asset.discogs_artist_id().to_string())
-        .collect();
-    if actual.len() != assets.artist_images.len() {
-        return Err(DbError::Message(
-            "candidate artist assets contain a duplicate Discogs artist ID".into(),
-        ));
-    }
-    if actual != expected {
-        return Err(DbError::Message(format!(
-            "candidate artist assets do not match the draft's Discogs artist IDs: expected {expected:?}, got {actual:?}"
-        )));
-    }
-
-    replace_remote_cover_asset(sql, content_hash, cover, assets.remote_cover.as_ref())?;
-    replace_artist_asset_rows(sql, content_hash, &assets.artist_images)?;
-    sql.execute(
-        "INSERT INTO import_candidate_asset_preparation (content_hash) VALUES (?) \
-         ON CONFLICT (content_hash) DO NOTHING",
-        [content_hash],
-    )?;
-    Ok(())
-}
-
 fn replace_source_artist_rows(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
@@ -136,20 +100,6 @@ const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
        AND assignment.assignment_kind = 'new' \
        AND assignment.discogs_artist_id IS NOT NULL";
 
-fn required_discogs_artist_ids_for_write(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-) -> Result<BTreeSet<String>, DbError> {
-    Ok(sql
-        .query(
-            REQUIRED_DISCOGS_ARTIST_IDS_SQL,
-            params![content_hash, content_hash, content_hash],
-            |row| row.get(0),
-        )?
-        .into_iter()
-        .collect())
-}
-
 fn required_discogs_artist_ids_for_read(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -162,88 +112,6 @@ fn required_discogs_artist_ids_for_read(
         )?
         .into_iter()
         .collect())
-}
-
-pub(super) fn replace_artist_assets_for_stored_draft(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    source_discogs_artist_ids: &BTreeSet<String>,
-    assets: &[PreparedArtistImage],
-) -> Result<(), DbError> {
-    let prepared = sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_asset_preparation WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if !prepared {
-        return Err(missing_preparation_marker(content_hash));
-    }
-    replace_source_artist_rows(sql, content_hash, source_discogs_artist_ids)?;
-    let expected = required_discogs_artist_ids_for_write(sql, content_hash)?;
-    let actual: BTreeSet<_> = assets
-        .iter()
-        .map(|asset| asset.discogs_artist_id().to_string())
-        .collect();
-    if actual.len() != assets.len() {
-        return Err(DbError::Message(
-            "candidate artist assets contain a duplicate Discogs artist ID".into(),
-        ));
-    }
-    if actual != expected {
-        return Err(DbError::Message(format!(
-            "candidate artist assets do not match the stored draft's Discogs artist IDs: expected {expected:?}, got {actual:?}"
-        )));
-    }
-    replace_artist_asset_rows(sql, content_hash, assets)
-}
-
-pub(super) fn replace_artist_assets_after_file_edit(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    source_discogs_artist_ids: Option<&BTreeSet<String>>,
-    assets: &[PreparedArtistImage],
-) -> Result<(), DbError> {
-    let prepared = sql
-        .query_row(
-            "SELECT 1 FROM import_candidate_asset_preparation WHERE content_hash = ?",
-            [content_hash],
-            |_| Ok(()),
-        )
-        .optional()?
-        .is_some();
-    if !prepared {
-        return Err(missing_preparation_marker(content_hash));
-    }
-    let empty = BTreeSet::new();
-    replace_source_artist_rows(
-        sql,
-        content_hash,
-        source_discogs_artist_ids.unwrap_or(&empty),
-    )?;
-    let expected = required_discogs_artist_ids_for_write(sql, content_hash)?;
-    let by_id: std::collections::HashMap<_, _> = assets
-        .iter()
-        .map(|asset| (asset.discogs_artist_id(), asset))
-        .collect();
-    if by_id.len() != assets.len() {
-        return Err(DbError::Message(
-            "candidate artist assets contain a duplicate Discogs artist ID".into(),
-        ));
-    }
-    if let Some(missing) = expected.iter().find(|id| !by_id.contains_key(id.as_str())) {
-        return Err(DbError::Message(format!(
-            "candidate file edit has no prepared image answer for Discogs artist {missing}"
-        )));
-    }
-    let retained = assets
-        .iter()
-        .filter(|asset| expected.contains(asset.discogs_artist_id()))
-        .cloned()
-        .collect::<Vec<_>>();
-    replace_artist_asset_rows(sql, content_hash, &retained)
 }
 
 fn require_preparation_marker(sql: &SqlReadContext<'_>, content_hash: &str) -> Result<(), DbError> {
@@ -267,39 +135,6 @@ fn missing_preparation_marker(content_hash: &str) -> DbError {
     ))
 }
 
-pub(super) fn replace_remote_cover_asset(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    cover: Option<&CoverSelection>,
-    image: Option<&crate::import::cover_art::RemoteImage>,
-) -> Result<(), DbError> {
-    validate_remote_cover(cover, image)?;
-    sql.execute(
-        "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    if let Some(image) = image {
-        sql.execute(
-            "INSERT INTO import_candidate_remote_cover_asset \
-                 (content_hash, content_type, bytes) VALUES (?, ?, ?)",
-            params![content_hash, image.content_type.as_str(), image.bytes],
-        )?;
-    }
-    Ok(())
-}
-
-#[cfg(any(test, feature = "test-utils"))]
-pub(super) fn invalidate_prepared_assets(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_asset_preparation WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    Ok(())
-}
-
 pub(super) fn load_source_artist_ids_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
@@ -315,12 +150,88 @@ pub(super) fn load_source_artist_ids_on(
         .collect())
 }
 
+/// The rows under the hash as stored, and whether the preparation marker
+/// says they are a complete answer set. No validation: the value they load
+/// into carries its own.
+pub(super) fn load_asset_rows_on(
+    sql: &SqlReadContext<'_>,
+    content_hash: &str,
+) -> Result<(CandidatePreparedAssets, bool), DbError> {
+    let prepared = sql
+        .query_row(
+            "SELECT 1 FROM import_candidate_asset_preparation WHERE content_hash = ?",
+            [content_hash],
+            |_| Ok(()),
+        )
+        .optional()?
+        .is_some();
+    Ok((load_asset_rows_unmarked(sql, content_hash)?, prepared))
+}
+
+/// Replace every asset row group under the hash from the value: the source
+/// artists, the remote cover bytes, the artist image answers, and the marker
+/// that says the set is complete.
+pub(super) fn replace_asset_rows(
+    sql: &SqlContext<'_, '_>,
+    content_hash: &str,
+    source_discogs_artist_ids: &BTreeSet<String>,
+    assets: &CandidatePreparedAssets,
+    prepared: bool,
+) -> Result<(), DbError> {
+    replace_source_artist_rows(sql, content_hash, source_discogs_artist_ids)?;
+    sql.execute(
+        "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
+        [content_hash],
+    )?;
+    if let Some(image) = &assets.remote_cover {
+        sql.execute(
+            "INSERT INTO import_candidate_remote_cover_asset \
+                 (content_hash, content_type, bytes) VALUES (?, ?, ?)",
+            params![content_hash, image.content_type.as_str(), image.bytes],
+        )?;
+    }
+    replace_artist_asset_rows(sql, content_hash, &assets.artist_images)?;
+    if prepared {
+        sql.execute(
+            "INSERT INTO import_candidate_asset_preparation (content_hash) VALUES (?) \
+             ON CONFLICT (content_hash) DO NOTHING",
+            [content_hash],
+        )?;
+    } else {
+        sql.execute(
+            "DELETE FROM import_candidate_asset_preparation WHERE content_hash = ?",
+            [content_hash],
+        )?;
+    }
+    Ok(())
+}
+
 pub(super) fn load_prepared_assets_on(
     sql: &SqlReadContext<'_>,
     content_hash: &str,
     cover: Option<&CoverSelection>,
 ) -> Result<CandidatePreparedAssets, DbError> {
     require_preparation_marker(sql, content_hash)?;
+    let assets = load_asset_rows_unmarked(sql, content_hash)?;
+    validate_remote_cover(cover, assets.remote_cover.as_ref())?;
+    let expected = required_discogs_artist_ids_for_read(sql, content_hash)?;
+    let actual: BTreeSet<_> = assets
+        .artist_images
+        .iter()
+        .map(|asset| asset.discogs_artist_id().to_string())
+        .collect();
+    if actual.len() != assets.artist_images.len() || actual != expected {
+        return Err(DbError::Message(format!(
+            "candidate {content_hash} has an incomplete prepared artist asset set: expected {expected:?}, got {actual:?}"
+        )));
+    }
+    Ok(assets)
+}
+
+fn load_asset_rows_unmarked(
+    sql: &SqlReadContext<'_>,
+    content_hash: &str,
+) -> Result<CandidatePreparedAssets, DbError> {
     let remote_cover = sql
         .query_row(
             "SELECT content_type, bytes FROM import_candidate_remote_cover_asset \
@@ -375,21 +286,8 @@ pub(super) fn load_prepared_assets_on(
         };
         artist_images.push(asset);
     }
-    let assets = CandidatePreparedAssets {
+    Ok(CandidatePreparedAssets {
         remote_cover,
         artist_images,
-    };
-    validate_remote_cover(cover, assets.remote_cover.as_ref())?;
-    let expected = required_discogs_artist_ids_for_read(sql, content_hash)?;
-    let actual: BTreeSet<_> = assets
-        .artist_images
-        .iter()
-        .map(|asset| asset.discogs_artist_id().to_string())
-        .collect();
-    if actual.len() != assets.artist_images.len() || actual != expected {
-        return Err(DbError::Message(format!(
-            "candidate {content_hash} has an incomplete prepared artist asset set: expected {expected:?}, got {actual:?}"
-        )));
-    }
-    Ok(assets)
+    })
 }

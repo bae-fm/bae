@@ -1,4 +1,10 @@
+//! Applying a metadata source to a candidate: a pick, a File Tags reading,
+//! or a blank draft. Each replaces the draft, its provenance, its cover, and
+//! the prepared answers as one unit, and leaves the file decisions alone.
+
 use super::*;
+use crate::import::preparation::CandidatePreparation;
+use crate::import::MetadataAuthor;
 
 impl Database {
     /// Replace the candidate's draft and its provenance as one transaction,
@@ -13,22 +19,15 @@ impl Database {
         draft: &crate::import::RawReleaseEdit,
         provenance: Option<&crate::import::MetadataProvenance>,
     ) -> Result<u64, DbError> {
-        let state = self
-            .load_import_candidate_state(content_hash)
+        let prep = self
+            .load_candidate_preparation(content_hash)
             .await?
             .ok_or_else(|| {
                 DbError::Message("metadata replacement has no candidate state row".into())
             })?;
-        let expected_file_edit_revision = state.file_edits.revision;
-        let expected_revision = state.metadata_revision;
-        let current = self
-            .load_import_candidate_pane_rows(content_hash)
-            .await?
-            .draft;
         let mut draft = crate::import::pane::candidate_draft_from_edit(draft.clone()).draft;
-        draft.tracks = crate::import::preserve_track_decisions(draft.tracks, &current.tracks);
-        let content_hash = content_hash.to_string();
-        let folder_path = folder_path.to_string();
+        draft.tracks =
+            crate::import::preserve_track_decisions(draft.tracks, &prep.metadata.draft.tracks);
         let metadata = crate::import::CandidateMetadataDraft {
             draft,
             source_discogs_artist_ids: Default::default(),
@@ -36,17 +35,8 @@ impl Database {
             cover: None,
             assets: crate::import::CandidatePreparedAssets::default(),
         };
-        self.call(move |sql| {
-            pane_rows::require_file_edit_revision(sql, &content_hash, expected_file_edit_revision)?;
-            replace_candidate_metadata_on(
-                sql,
-                &content_hash,
-                &folder_path,
-                expected_revision,
-                &metadata,
-            )
-        })
-        .await
+        self.apply_metadata(prep, None, folder_path, metadata, None)
+            .await
     }
 
     pub async fn replace_candidate_metadata_prepared(
@@ -58,28 +48,15 @@ impl Database {
         expected_revision: u64,
         metadata: &crate::import::CandidateMetadataDraft,
     ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let content_hash = content_hash.to_string();
-        let folder_path = folder_path.to_string();
-        let metadata = metadata.clone();
-        self.call(move |sql| {
-            require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &folder_path,
-                &content_hash,
-                expected_file_edit_revision,
-            )?;
-            pane_rows::require_file_edit_revision(sql, &content_hash, expected_file_edit_revision)?;
-            replace_candidate_metadata_on(
-                sql,
-                &content_hash,
-                &folder_path,
-                expected_revision,
-                &metadata,
-            )
-        })
-        .await
+        let prep = self
+            .loaded_at(content_hash, expected_file_edit_revision, expected_revision)
+            .await?;
+        let scanned = ScannedCandidateKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            candidate_path: folder_path.to_string(),
+        };
+        self.apply_metadata(prep, Some(scanned), folder_path, metadata.clone(), None)
+            .await
     }
 
     /// Store the exact File Tags reading and replace the candidate metadata it
@@ -97,63 +74,96 @@ impl Database {
         draft: &crate::import::CandidateDraft,
         cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
-        let snapshot = snapshot.clone();
-        let draft = draft.clone();
-        let cover = cover.cloned();
-        self.call(move |sql| {
-            pane_rows::require_metadata_revision(sql, &content_hash, expected_metadata_revision)?;
-            let current_generation = require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &content_hash,
+        let prep = self
+            .loaded_at(
+                content_hash,
                 expected_file_edit_revision,
-            )?;
-            if snapshot.file_edit_revision != expected_file_edit_revision
-                || snapshot.scan_generation != current_generation
-            {
-                return Err(DbError::Message(format!(
-                    "candidate {candidate_path} changed before its file tags were stored"
-                )));
-            }
-            super::folder_scans::write::replace_candidate_file_tag_snapshot(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &snapshot,
-            )?;
-            let revision = sql.query_row(
-                "UPDATE import_candidate_state SET folder_path = ?, \
-                     provenance_kind = 'file_tags', provenance_source = NULL, \
-                     provenance_release_id = NULL, provenance_author = 'user', \
-                     metadata_revision = metadata_revision + 1 \
-                 WHERE content_hash = ? RETURNING metadata_revision",
-                params![candidate_path, content_hash],
-                |row| row.get::<_, i64>(0),
-            )?;
-            replace_provenance_partners(
-                sql,
-                &content_hash,
-                Some(&crate::import::MetadataProvenance::FileTags),
-            )?;
-            pane_rows::replace_draft(sql, &content_hash, &draft)?;
-            pane_rows::delete_cover(sql, &content_hash)?;
-            if let Some(cover) = &cover {
-                super::candidate_state_rows::save_cover(sql, &content_hash, cover)?;
-            }
-            replace_prepared_assets(
-                sql,
-                &content_hash,
-                cover.as_ref(),
-                &Default::default(),
-                &crate::import::CandidatePreparedAssets::default(),
-            )?;
-            u64::try_from(revision)
-                .map_err(|_| DbError::Message("candidate metadata revision is negative".into()))
-        })
+                expected_metadata_revision,
+            )
+            .await?;
+        let scanned = ScannedCandidateKey {
+            watched_folder_path: watched_folder_path.to_string(),
+            candidate_path: candidate_path.to_string(),
+        };
+        let metadata = crate::import::CandidateMetadataDraft {
+            draft: draft.clone(),
+            source_discogs_artist_ids: Default::default(),
+            provenance: Some(crate::import::MetadataProvenance::FileTags),
+            cover: cover.cloned(),
+            assets: crate::import::CandidatePreparedAssets::default(),
+        };
+        self.apply_metadata(
+            prep,
+            Some(scanned),
+            candidate_path,
+            metadata,
+            Some(snapshot.clone()),
+        )
         .await
+    }
+
+    /// The candidate at exactly the revisions a source projection was
+    /// prepared against, or the refusal naming which one moved.
+    async fn loaded_at(
+        &self,
+        content_hash: &str,
+        expected_file_edit_revision: u64,
+        expected_metadata_revision: u64,
+    ) -> Result<CandidatePreparation, DbError> {
+        let prep = self
+            .load_candidate_preparation(content_hash)
+            .await?
+            .ok_or_else(|| DbError::Message("candidate metadata row is missing".into()))?;
+        if prep.file_edits.revision != expected_file_edit_revision {
+            return Err(DbError::Message(format!(
+                "candidate changed before its metadata was stored: its files moved past \
+                 revision {expected_file_edit_revision}"
+            )));
+        }
+        if prep.metadata_revision != expected_metadata_revision {
+            return Err(DbError::Message(format!(
+                "candidate metadata changed from revision {expected_metadata_revision}"
+            )));
+        }
+        Ok(prep)
+    }
+
+    /// A source's projection becomes the candidate's metadata: the person
+    /// applied it, so they are its author, and its answers are complete.
+    async fn apply_metadata(
+        &self,
+        mut prep: CandidatePreparation,
+        scanned: Option<ScannedCandidateKey>,
+        folder_path: &str,
+        metadata: crate::import::CandidateMetadataDraft,
+        file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
+    ) -> Result<u64, DbError> {
+        let expected = CandidateSaveExpectation {
+            edit_revision: prep.file_edits.revision,
+            metadata_revision: prep.metadata_revision,
+            scanned,
+        };
+        prep.folder_path = folder_path.to_string();
+        prep.author = match metadata.provenance {
+            Some(_) => MetadataAuthor::User,
+            None => MetadataAuthor::Nobody,
+        };
+        prep.metadata = metadata;
+        prep.assets_prepared = true;
+        prep.metadata_revision += 1;
+        let revision = prep.metadata_revision;
+        let extras = CandidateSaveExtras {
+            file_tag_snapshot,
+            reshaped_files: None,
+        };
+        match self
+            .save_candidate_preparation(prep, expected, extras)
+            .await?
+        {
+            CandidateSaved::Landed(_) => Ok(revision),
+            CandidateSaved::Superseded => Err(DbError::Message(
+                "candidate changed before its metadata was stored".into(),
+            )),
+        }
     }
 }

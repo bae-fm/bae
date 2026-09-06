@@ -1,21 +1,19 @@
-//! What the pane's own controls write, and the read that draws it: the cover,
-//! the album fields, the track rows, the failure an import left behind, and
-//! the failure the last import left behind.
+//! The draft's rows — the album fields, the tracks with their decisions, the
+//! artist assignments, the cover — as one candidate's save writes them and
+//! the pane's read draws them.
 //!
-//! Each write is one row, or one column of one row, and each is addressed by
-//! the candidate's content hash. They hang off `import_candidate_state`, so a
-//! write with no state row under it is refused rather than absorbed: the edit
-//! form is drawn only under a pick, and a pick writes that row.
+//! Every row group hangs off `import_candidate_state` by content hash. The
+//! writers here replace a whole group; which groups a candidate save
+//! replaces, and under what checks, is `preparation_rows`'s to say.
 
 mod writes;
 
 use super::verdict_rows::unreadable;
 use super::*;
-use crate::db::client::candidate_state_rows::{require_state_row, save_cover, COVER_COLUMNS};
+use crate::db::client::candidate_state_rows::COVER_COLUMNS;
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack,
-    CandidateTrackEdit, CoverSelection, ExistingArtist, NewArtistSeed, RawPressingEdit,
-    RawTrackEdit, TrackArtistAssignments, TrackEditState, TrackFileAuthor,
+    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, CoverSelection, ExistingArtist,
+    NewArtistSeed, RawPressingEdit, RawTrackEdit, TrackArtistAssignments, TrackFileAuthor,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
@@ -25,103 +23,12 @@ const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
      artist_assignment_kind, side, track_number, named_by_source, dropped, file_author, \
      file_kind, file_id, sheet_id, slice_index";
 
-fn advance_metadata_revision(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<u64, DbError> {
-    let revision = sql
-        .query_row(
-            "UPDATE import_candidate_state \
-             SET metadata_revision = metadata_revision + 1 \
-             WHERE content_hash = ? RETURNING metadata_revision",
-            [content_hash],
-            |row| row.get::<_, i64>(0),
-        )
-        .optional()?
-        .ok_or_else(|| {
-            DbError::Message(format!(
-                "metadata revision write for {content_hash} has no candidate state row"
-            ))
-        })?;
-    u64::try_from(revision)
-        .map_err(|_| DbError::Message("candidate metadata revision is negative".to_string()))
-}
-
-pub(super) fn require_metadata_revision(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    expected: u64,
-) -> Result<(), DbError> {
-    let stored: i64 = sql
-        .query_row(
-            "SELECT metadata_revision FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )
-        .optional()?
-        .ok_or_else(|| DbError::Message("candidate metadata row is missing".into()))?;
-    if u64::try_from(stored).ok() != Some(expected) {
-        return Err(DbError::Message(format!(
-            "candidate metadata changed from revision {expected}"
-        )));
-    }
-    Ok(())
-}
-
-pub(super) fn require_file_edit_revision(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    expected: u64,
-) -> Result<(), DbError> {
-    let stored: i64 = sql
-        .query_row(
-            "SELECT edit_revision FROM import_candidate_state WHERE content_hash = ?",
-            [content_hash],
-            |row| row.get(0),
-        )
-        .optional()?
-        .ok_or_else(|| DbError::Message("candidate file-edit row is missing".into()))?;
-    if u64::try_from(stored).ok() != Some(expected) {
-        return Err(DbError::Message(format!(
-            "candidate files changed from revision {expected}"
-        )));
-    }
-    Ok(())
-}
-
 pub(super) fn delete_cover(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_cover WHERE content_hash = ?",
         [content_hash],
     )?;
     Ok(())
-}
-
-pub(super) fn save_edit_field(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    field: CandidateEditField,
-    value: &str,
-) -> Result<(), DbError> {
-    require_state_row(sql, content_hash, "metadata edit")?;
-    let column = field.column();
-    let changed = sql.execute(
-        &format!("UPDATE import_candidate_edit SET {column} = ? WHERE content_hash = ?"),
-        params![value, content_hash],
-    )?;
-    if changed != 1 {
-        return Err(DbError::Message(format!(
-            "metadata draft field write changed {changed} rows; expected exactly one"
-        )));
-    }
-    Ok(())
-}
-
-fn save_edit_field_and_advance(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    field: CandidateEditField,
-    value: &str,
-) -> Result<u64, DbError> {
-    save_edit_field(sql, content_hash, field, value)?;
-    advance_metadata_revision(sql, content_hash)
 }
 
 pub(super) fn replace_draft(
@@ -202,115 +109,6 @@ fn file_author_column(author: TrackFileAuthor) -> &'static str {
         TrackFileAuthor::Automatic => "automatic",
         TrackFileAuthor::User => "user",
     }
-}
-
-pub(super) fn save_track_edit(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    edit: &CandidateTrackEdit,
-) -> Result<(), DbError> {
-    require_state_row(sql, content_hash, "track edit")?;
-    if let TrackEditState::Edited(track) = &edit.state {
-        let changed = sql.execute(
-            "UPDATE import_candidate_track SET title = ?, artist_assignment_kind = ?, \
-                 side = ?, track_number = ? WHERE content_hash = ? AND track_id = ?",
-            params![
-                track.title,
-                assignment_kind_column(&track.artist_assignments),
-                track.side,
-                track.track_number,
-                content_hash,
-                edit.track_id,
-            ],
-        )?;
-        if changed != 1 {
-            return Err(DbError::Message(format!(
-                "track draft edit changed {changed} rows for {}; expected exactly one",
-                edit.track_id
-            )));
-        }
-        sql.execute(
-            "DELETE FROM import_candidate_track_artist_assignment \
-             WHERE content_hash = ? AND track_id = ?",
-            params![content_hash, edit.track_id],
-        )?;
-        if let TrackArtistAssignments::Explicit(assignments) = &track.artist_assignments {
-            insert_track_artist_assignments(sql, content_hash, &edit.track_id, assignments)?;
-        }
-    }
-    update_track_decision(sql, content_hash, edit)
-}
-
-fn replace_track_artist_assignments(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    track_ids: &[String],
-    assignments: &TrackArtistAssignments,
-) -> Result<(), DbError> {
-    require_state_row(sql, content_hash, "track artist fill")?;
-    let (assignment_kind, explicit) = match assignments {
-        TrackArtistAssignments::AlbumArtists => ("album_artists", None),
-        TrackArtistAssignments::Explicit(assignments) => ("explicit", Some(assignments.as_slice())),
-    };
-    for track_id in track_ids {
-        let changed = sql.execute(
-            "UPDATE import_candidate_track SET artist_assignment_kind = ? \
-             WHERE content_hash = ? AND track_id = ?",
-            params![assignment_kind, content_hash, track_id],
-        )?;
-        if changed != 1 {
-            return Err(DbError::Message(format!(
-                "track artist fill changed {changed} rows for {track_id}; expected exactly one"
-            )));
-        }
-        sql.execute(
-            "DELETE FROM import_candidate_track_artist_assignment \
-             WHERE content_hash = ? AND track_id = ?",
-            params![content_hash, track_id],
-        )?;
-        if let Some(explicit) = explicit {
-            insert_track_artist_assignments(sql, content_hash, track_id, explicit)?;
-        }
-    }
-    Ok(())
-}
-
-fn update_track_decision(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    edit: &CandidateTrackEdit,
-) -> Result<(), DbError> {
-    let dropped = matches!(&edit.state, TrackEditState::Dropped);
-    let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(edit.file());
-    let changed = sql.execute(
-        "UPDATE import_candidate_track SET dropped = ?, \
-             file_author = CASE \
-                 WHEN file_kind IS ? AND file_id IS ? AND sheet_id IS ? AND slice_index IS ? \
-                 THEN file_author ELSE 'user' END, \
-             file_kind = ?, \
-             file_id = ?, sheet_id = ?, slice_index = ? \
-         WHERE content_hash = ? AND track_id = ?",
-        params![
-            dropped,
-            file_kind,
-            file_id,
-            sheet_id,
-            slice_index,
-            file_kind,
-            file_id,
-            sheet_id,
-            slice_index,
-            content_hash,
-            edit.track_id,
-        ],
-    )?;
-    if changed != 1 {
-        return Err(DbError::Message(format!(
-            "track decision edit changed {changed} rows for {}; expected exactly one",
-            edit.track_id
-        )));
-    }
-    Ok(())
 }
 
 fn mapping_file_columns(

@@ -30,18 +30,23 @@ pub enum CandidateEditField {
 }
 
 impl CandidateEditField {
-    /// The column this field is stored in.
-    pub(crate) fn column(self) -> &'static str {
-        match self {
-            Self::AlbumTitle => "album_title",
-            Self::AlbumYear => "album_year",
-            Self::PressingYear => "year",
-            Self::Format => "format",
-            Self::Label => "label",
-            Self::CatalogNumber => "catalog_number",
-            Self::Country => "country",
-            Self::Barcode => "barcode",
-        }
+    /// Put `value` in this field of `draft`.
+    pub(crate) fn set<Track>(
+        self,
+        draft: &mut crate::import::RawReleaseEditOf<Track>,
+        value: &str,
+    ) {
+        let slot = match self {
+            Self::AlbumTitle => &mut draft.album_title,
+            Self::AlbumYear => &mut draft.album_year,
+            Self::PressingYear => &mut draft.pressing.year,
+            Self::Format => &mut draft.pressing.format,
+            Self::Label => &mut draft.pressing.label,
+            Self::CatalogNumber => &mut draft.pressing.catalog_number,
+            Self::Country => &mut draft.pressing.country,
+            Self::Barcode => &mut draft.pressing.barcode,
+        };
+        *slot = value.to_string();
     }
 }
 

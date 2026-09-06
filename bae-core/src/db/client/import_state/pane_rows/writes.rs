@@ -1,4 +1,10 @@
+//! The pane's own writes: the cover, the album fields, and the track rows.
+//! Each loads the candidate, changes the one thing the control changed, and
+//! saves it whole under the next metadata revision.
+
 use super::*;
+use crate::import::preparation::CandidatePreparation;
+use crate::import::CandidateDraft;
 
 impl Database {
     pub async fn load_import_candidate_preparation(
@@ -80,15 +86,16 @@ impl Database {
         content_hash: &str,
         cover: &crate::import::CoverSelection,
     ) -> Result<u64, DbError> {
-        let content_hash = content_hash.to_string();
         let cover = cover.clone();
-        self.call(move |sql| {
-            save_cover(sql, &content_hash, &cover)?;
-            sql.execute(
-                "DELETE FROM import_candidate_remote_cover_asset WHERE content_hash = ?",
-                [&content_hash],
-            )?;
-            advance_metadata_revision(sql, &content_hash)
+        self.edit_candidate(None, content_hash, None, None, move |prep| {
+            // Chosen without its bytes, a remote cover leaves the candidate
+            // unprepared until a source is applied again.
+            if matches!(cover, crate::import::CoverSelection::Remote(_, _)) {
+                prep.assets_prepared = false;
+            }
+            prep.metadata.cover = Some(cover);
+            prep.metadata.assets.remote_cover = None;
+            Ok(())
         })
         .await
     }
@@ -103,29 +110,19 @@ impl Database {
         cover: &crate::import::CoverSelection,
         remote_image: Option<&crate::import::cover_art::RemoteImage>,
     ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
         let cover = cover.clone();
         let remote_image = remote_image.cloned();
-        self.call(move |sql| {
-            super::require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &content_hash,
-                expected_file_edit_revision,
-            )?;
-            require_metadata_revision(sql, &content_hash, expected_revision)?;
-            save_cover(sql, &content_hash, &cover)?;
-            super::prepared_asset_rows::replace_remote_cover_asset(
-                sql,
-                &content_hash,
-                Some(&cover),
-                remote_image.as_ref(),
-            )?;
-            advance_metadata_revision(sql, &content_hash)
-        })
+        self.edit_candidate(
+            Some(scanned_key(watched_folder_path, candidate_path)),
+            content_hash,
+            Some(expected_file_edit_revision),
+            Some(expected_revision),
+            move |prep| {
+                prep.metadata.cover = Some(cover);
+                prep.metadata.assets.remote_cover = remote_image;
+                Ok(())
+            },
+        )
         .await
     }
 
@@ -137,10 +134,12 @@ impl Database {
         field: crate::import::CandidateEditField,
         value: &str,
     ) -> Result<u64, DbError> {
-        let content_hash = content_hash.to_string();
         let value = value.to_string();
-        self.call(move |sql| save_edit_field_and_advance(sql, &content_hash, field, &value))
-            .await
+        self.edit_candidate(None, content_hash, None, None, move |prep| {
+            field.set(&mut prep.metadata.draft, &value);
+            Ok(())
+        })
+        .await
     }
 
     pub async fn save_import_candidate_edit_field_prepared(
@@ -152,20 +151,17 @@ impl Database {
         field: crate::import::CandidateEditField,
         value: &str,
     ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
         let value = value.to_string();
-        self.call(move |sql| {
-            super::require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &content_hash,
-                expected_file_edit_revision,
-            )?;
-            save_edit_field_and_advance(sql, &content_hash, field, &value)
-        })
+        self.edit_candidate(
+            Some(scanned_key(watched_folder_path, candidate_path)),
+            content_hash,
+            Some(expected_file_edit_revision),
+            None,
+            move |prep| {
+                field.set(&mut prep.metadata.draft, &value);
+                Ok(())
+            },
+        )
         .await
     }
 
@@ -183,17 +179,11 @@ impl Database {
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
-        let content_hash = content_hash.to_string();
         let assignments = assignments.to_vec();
-        self.call(move |sql| {
-            require_state_row(sql, &content_hash, "album artist edit")?;
-            sql.execute(
-                "DELETE FROM import_candidate_album_artist_assignment WHERE content_hash = ?",
-                [&content_hash],
-            )?;
-            insert_album_artist_assignments(sql, &content_hash, &assignments)?;
-            invalidate_prepared_assets(sql, &content_hash)?;
-            advance_metadata_revision(sql, &content_hash)
+        self.edit_candidate(None, content_hash, None, None, move |prep| {
+            prep.metadata.draft.album_artist_assignments = assignments;
+            prep.assets_prepared = false;
+            Ok(())
         })
         .await
     }
@@ -214,35 +204,22 @@ impl Database {
                 "a candidate album artist override cannot be empty".into(),
             ));
         }
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
         let assignments = assignments.to_vec();
         let source_discogs_artist_ids = source_discogs_artist_ids.clone();
         let assets = assets.to_vec();
-        self.call(move |sql| {
-            super::require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &content_hash,
-                expected_file_edit_revision,
-            )?;
-            require_file_edit_revision(sql, &content_hash, expected_file_edit_revision)?;
-            require_metadata_revision(sql, &content_hash, expected_revision)?;
-            sql.execute(
-                "DELETE FROM import_candidate_album_artist_assignment WHERE content_hash = ?",
-                [&content_hash],
-            )?;
-            insert_album_artist_assignments(sql, &content_hash, &assignments)?;
-            super::prepared_asset_rows::replace_artist_assets_for_stored_draft(
-                sql,
-                &content_hash,
-                &source_discogs_artist_ids,
-                &assets,
-            )?;
-            advance_metadata_revision(sql, &content_hash)
-        })
+        self.edit_candidate(
+            Some(scanned_key(watched_folder_path, candidate_path)),
+            content_hash,
+            Some(expected_file_edit_revision),
+            Some(expected_revision),
+            move |prep| {
+                require_prepared(prep)?;
+                prep.metadata.draft.album_artist_assignments = assignments;
+                prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
+                prep.metadata.assets.artist_images = assets;
+                Ok(())
+            },
+        )
         .await
     }
 
@@ -253,12 +230,11 @@ impl Database {
         content_hash: &str,
         edit: &crate::import::CandidateTrackEdit,
     ) -> Result<u64, DbError> {
-        let content_hash = content_hash.to_string();
         let edit = edit.clone();
-        self.call(move |sql| {
-            save_track_edit(sql, &content_hash, &edit)?;
-            invalidate_prepared_assets(sql, &content_hash)?;
-            advance_metadata_revision(sql, &content_hash)
+        self.edit_candidate(None, content_hash, None, None, move |prep| {
+            apply_track_edit(&mut prep.metadata.draft, &edit)?;
+            prep.assets_prepared = false;
+            Ok(())
         })
         .await
     }
@@ -278,33 +254,24 @@ impl Database {
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
     ) -> Result<u64, DbError> {
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
         let edits = edits.to_vec();
         let source_discogs_artist_ids = source_discogs_artist_ids.clone();
         let assets = assets.to_vec();
-        self.call(move |sql| {
-            super::require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &content_hash,
-                expected_file_edit_revision,
-            )?;
-            require_file_edit_revision(sql, &content_hash, expected_file_edit_revision)?;
-            require_metadata_revision(sql, &content_hash, expected_revision)?;
-            for edit in &edits {
-                save_track_edit(sql, &content_hash, edit)?;
-            }
-            super::prepared_asset_rows::replace_artist_assets_for_stored_draft(
-                sql,
-                &content_hash,
-                &source_discogs_artist_ids,
-                &assets,
-            )?;
-            advance_metadata_revision(sql, &content_hash)
-        })
+        self.edit_candidate(
+            Some(scanned_key(watched_folder_path, candidate_path)),
+            content_hash,
+            Some(expected_file_edit_revision),
+            Some(expected_revision),
+            move |prep| {
+                require_prepared(prep)?;
+                for edit in &edits {
+                    apply_track_edit(&mut prep.metadata.draft, edit)?;
+                }
+                prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
+                prep.metadata.assets.artist_images = assets;
+                Ok(())
+            },
+        )
         .await
     }
 
@@ -321,13 +288,12 @@ impl Database {
                 "a track artist fill must name at least one track".into(),
             ));
         }
-        let content_hash = content_hash.to_string();
         let track_ids = track_ids.to_vec();
         let assignments = assignments.clone();
-        self.call(move |sql| {
-            replace_track_artist_assignments(sql, &content_hash, &track_ids, &assignments)?;
-            invalidate_prepared_assets(sql, &content_hash)?;
-            advance_metadata_revision(sql, &content_hash)
+        self.edit_candidate(None, content_hash, None, None, move |prep| {
+            fill_track_artists(&mut prep.metadata.draft, &track_ids, &assignments)?;
+            prep.assets_prepared = false;
+            Ok(())
         })
         .await
     }
@@ -349,32 +315,154 @@ impl Database {
                 "a track artist fill must name at least one track".into(),
             ));
         }
-        let watched_folder_path = watched_folder_path.to_string();
-        let candidate_path = candidate_path.to_string();
-        let content_hash = content_hash.to_string();
         let track_ids = track_ids.to_vec();
         let assignments = assignments.clone();
         let source_discogs_artist_ids = source_discogs_artist_ids.clone();
         let assets = assets.to_vec();
-        self.call(move |sql| {
-            super::require_current_candidate(
-                sql,
-                &watched_folder_path,
-                &candidate_path,
-                &content_hash,
-                expected_file_edit_revision,
-            )?;
-            require_file_edit_revision(sql, &content_hash, expected_file_edit_revision)?;
-            require_metadata_revision(sql, &content_hash, expected_revision)?;
-            replace_track_artist_assignments(sql, &content_hash, &track_ids, &assignments)?;
-            super::prepared_asset_rows::replace_artist_assets_for_stored_draft(
-                sql,
-                &content_hash,
-                &source_discogs_artist_ids,
-                &assets,
-            )?;
-            advance_metadata_revision(sql, &content_hash)
-        })
+        self.edit_candidate(
+            Some(scanned_key(watched_folder_path, candidate_path)),
+            content_hash,
+            Some(expected_file_edit_revision),
+            Some(expected_revision),
+            move |prep| {
+                require_prepared(prep)?;
+                fill_track_artists(&mut prep.metadata.draft, &track_ids, &assignments)?;
+                prep.metadata.source_discogs_artist_ids = source_discogs_artist_ids;
+                prep.metadata.assets.artist_images = assets;
+                Ok(())
+            },
+        )
         .await
     }
+
+    /// Load one candidate, change its metadata, and save it whole under the
+    /// next metadata revision.
+    ///
+    /// `scanned` names where the scan must still list the candidate at the
+    /// expected file revision; the revision expectations are checked against
+    /// the loaded value, and the save re-checks them in its transaction. An
+    /// expectation left `None` is the loaded value itself.
+    async fn edit_candidate(
+        &self,
+        scanned: Option<ScannedCandidateKey>,
+        content_hash: &str,
+        expected_file_edit_revision: Option<u64>,
+        expected_metadata_revision: Option<u64>,
+        change: impl FnOnce(&mut CandidatePreparation) -> Result<(), DbError>,
+    ) -> Result<u64, DbError> {
+        let mut prep = self
+            .load_candidate_preparation(content_hash)
+            .await?
+            .ok_or_else(|| {
+                DbError::Message(format!(
+                    "the metadata edit for {content_hash} has no candidate state row"
+                ))
+            })?;
+        if let Some(expected) = expected_file_edit_revision {
+            if prep.file_edits.revision != expected {
+                return Err(DbError::Message(format!(
+                    "candidate changed before its edit was stored: its files moved past \
+                     revision {expected}"
+                )));
+            }
+        }
+        if let Some(expected) = expected_metadata_revision {
+            if prep.metadata_revision != expected {
+                return Err(DbError::Message(format!(
+                    "candidate metadata changed from revision {expected}"
+                )));
+            }
+        }
+        let expected = CandidateSaveExpectation {
+            edit_revision: prep.file_edits.revision,
+            metadata_revision: prep.metadata_revision,
+            scanned,
+        };
+        change(&mut prep)?;
+        prep.metadata_revision += 1;
+        let revision = prep.metadata_revision;
+        match self
+            .save_candidate_preparation(prep, expected, CandidateSaveExtras::default())
+            .await?
+        {
+            CandidateSaved::Landed(_) => Ok(revision),
+            CandidateSaved::Superseded => Err(DbError::Message(format!(
+                "candidate {content_hash} changed while its edit was being stored"
+            ))),
+        }
+    }
+}
+
+fn scanned_key(watched_folder_path: &str, candidate_path: &str) -> ScannedCandidateKey {
+    ScannedCandidateKey {
+        watched_folder_path: watched_folder_path.to_string(),
+        candidate_path: candidate_path.to_string(),
+    }
+}
+
+/// A pane edit on a candidate whose answers were never prepared has nothing
+/// to keep in step with; the source has to be applied again first.
+fn require_prepared(prep: &CandidatePreparation) -> Result<(), DbError> {
+    if prep.assets_prepared {
+        Ok(())
+    } else {
+        Err(DbError::Message(format!(
+            "candidate {} has no complete prepared asset set",
+            prep.content_hash
+        )))
+    }
+}
+
+/// One row as the person left it, or dropped. A row edited back into the
+/// import is undropped by the edit. A file that changed hands is the
+/// person's choice from here on; one left alone keeps whoever chose it.
+fn apply_track_edit(
+    draft: &mut CandidateDraft,
+    edit: &crate::import::CandidateTrackEdit,
+) -> Result<(), DbError> {
+    let track = draft
+        .tracks
+        .iter_mut()
+        .find(|track| track.edit.id == edit.track_id)
+        .ok_or_else(|| {
+            DbError::Message(format!(
+                "track decision edit names {}, which is not a row of this draft",
+                edit.track_id
+            ))
+        })?;
+    let previous_file = track.edit.file.clone();
+    match &edit.state {
+        crate::import::TrackEditState::Dropped => {
+            track.dropped = true;
+            track.edit.file = None;
+        }
+        crate::import::TrackEditState::Edited(row) => {
+            track.dropped = false;
+            track.edit = row.clone();
+        }
+    }
+    if track.edit.file != previous_file {
+        track.file_author = crate::import::TrackFileAuthor::User;
+    }
+    Ok(())
+}
+
+fn fill_track_artists(
+    draft: &mut CandidateDraft,
+    track_ids: &[String],
+    assignments: &TrackArtistAssignments,
+) -> Result<(), DbError> {
+    for track_id in track_ids {
+        let track = draft
+            .tracks
+            .iter_mut()
+            .find(|track| &track.edit.id == track_id)
+            .ok_or_else(|| {
+                DbError::Message(format!(
+                    "track artist fill names {track_id}, which is not a row of this draft"
+                ))
+            })?;
+        track.edit.artist_assignments = assignments.clone();
+    }
+    Ok(())
 }
