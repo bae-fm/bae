@@ -817,13 +817,6 @@ pub struct LibraryManager {
     sync: SyncController,
     /// The sync banner's state and the stream the front-ends read it from.
     sync_status: SyncStatus,
-    outbox_values:
-        tokio::sync::watch::Sender<Option<Result<crate::library::OutboxSnapshot, String>>>,
-    /// Cancellation tokens for in-progress foreground make-Local transfers,
-    /// keyed by release id. `cancel_release_transition` fires the token; the
-    /// transfer observes it between files, deletes the partial copies it wrote,
-    /// and leaves the release remote (no orphans). Registered for the transfer's
-    /// duration; transient.
     /// Every storage transition in flight, and the stream the storage rows
     /// read them from.
     transitions: crate::library::storage_transitions::StorageTransitions,

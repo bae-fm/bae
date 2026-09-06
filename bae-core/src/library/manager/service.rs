@@ -61,13 +61,9 @@ impl LibraryManager {
             })?;
         let database = Database::from_handle(handle.clone(), clock.clone(), ids.clone());
         let sync_status = SyncStatus::new(database.clone());
-        let (outbox_values, _) = tokio::sync::watch::channel(None);
-        let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
 
         let sync = SyncController::new(
             config_handle.clone(),
-            outbox_values.clone(),
-            outbox_projection_revision,
             database.clone(),
             transient_uploads,
             upload_throughput,
@@ -89,7 +85,6 @@ impl LibraryManager {
             event_tx,
             sync,
             sync_status,
-            outbox_values,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
             downloads: crate::library::Downloads::new(
                 crate::library::download_snapshot::build_download_snapshot,
@@ -130,13 +125,9 @@ impl LibraryManager {
         );
 
         let sync_status = SyncStatus::new(database.clone());
-        let (outbox_values, _) = tokio::sync::watch::channel(None);
-        let outbox_projection_revision = Arc::new(tokio::sync::Mutex::new(0));
 
         let sync = SyncController::new(
             config_handle.clone(),
-            outbox_values.clone(),
-            outbox_projection_revision,
             database.clone(),
             transient_uploads,
             upload_throughput,
@@ -157,7 +148,6 @@ impl LibraryManager {
             event_tx,
             sync,
             sync_status,
-            outbox_values,
             transitions: crate::library::storage_transitions::StorageTransitions::new(),
             downloads: crate::library::Downloads::new(
                 crate::library::download_snapshot::build_download_snapshot,
@@ -497,7 +487,7 @@ impl LibraryManager {
     pub fn subscribe_outbox_values(
         &self,
     ) -> tokio::sync::watch::Receiver<Option<Result<crate::library::OutboxSnapshot, String>>> {
-        self.outbox_values.subscribe()
+        self.sync.subscribe_outbox_values()
     }
 
     /// The current download-queue snapshot — per-release state and a

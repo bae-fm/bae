@@ -59,11 +59,8 @@ pub(crate) struct SyncController {
 }
 
 impl SyncController {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         config_handle: Arc<ConfigHandle>,
-        outbox_values: tokio::sync::watch::Sender<Option<Result<OutboxSnapshot, String>>>,
-        outbox_projection_revision: Arc<tokio::sync::Mutex<u64>>,
         database: Database,
         transient_uploads: Arc<
             Mutex<
@@ -78,10 +75,11 @@ impl SyncController {
         cloudkit_ops: Option<Arc<dyn coven::CloudKitOps>>,
         diagnostics: Diagnostics,
     ) -> Self {
+        let (outbox_values, _) = tokio::sync::watch::channel(None);
         Self {
             config_handle,
             outbox_values,
-            outbox_projection_revision,
+            outbox_projection_revision: Arc::new(tokio::sync::Mutex::new(0)),
             database,
             transient_uploads,
             upload_throughput,
@@ -134,6 +132,14 @@ impl SyncController {
     /// reads this so the UI can render its paused indicator.
     pub(crate) fn is_sync_paused(&self) -> bool {
         *self.sync_paused.borrow()
+    }
+
+    /// The stream the outbox pane and upload standing read; each value is the
+    /// latest snapshot or the failure that kept one from being built.
+    pub(crate) fn subscribe_outbox_values(
+        &self,
+    ) -> tokio::sync::watch::Receiver<Option<Result<OutboxSnapshot, String>>> {
+        self.outbox_values.subscribe()
     }
 
     /// Build and publish the current outbox snapshot. Called by durable outbox
