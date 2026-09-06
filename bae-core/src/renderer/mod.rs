@@ -20,6 +20,7 @@ pub mod channel;
 pub mod device;
 pub mod discovery;
 pub mod format;
+pub(crate) mod published_devices;
 pub mod session;
 
 use std::sync::Arc;

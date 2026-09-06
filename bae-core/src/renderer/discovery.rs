@@ -12,10 +12,10 @@
 //!   AirPlay receivers and no UPnP ones (UPnP is found by SSDP, which is the
 //!   same multicast bae may not send).
 //!
-//! Both publish the same merged [`RendererDevice`] list over
-//! [`tokio::sync::watch`] channels and are started and stopped with the picker's
-//! visibility. The mapping from an advertised service to a device — TXT record
-//! parsing and all — is the same code on both paths ([`crate::cast::discovery`],
+//! Both publish the same merged [`RendererDevice`] list through a
+//! `PublishedDevices` and are started and stopped with the picker's visibility.
+//! The mapping from an advertised service to a device — TXT record parsing and
+//! all — is the same code on both paths ([`crate::cast::discovery`],
 //! [`crate::airplay::discovery`]); only who reads the network differs.
 
 use std::collections::HashMap;
@@ -27,6 +27,7 @@ use crate::airplay::discovery::AirPlayDevice;
 use crate::airplay::AirPlayDiscovery;
 use crate::cast::CastDiscovery;
 use crate::dlna::DlnaDiscovery;
+use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::RendererDevice;
 
 /// A DNS-SD service type a renderer advertises itself on. Names which mapping a
@@ -123,8 +124,7 @@ enum ReportedEntry {
 /// The devices a host browser has reported. Holds no socket of its own: the host
 /// finds the services and pushes each one in.
 pub struct ReportedDiscovery {
-    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
-    devices_rx: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
+    devices: PublishedDevices,
     /// What the host has reported this browse, keyed by service type and
     /// instance name — the identity it reports a loss by. `None` while not
     /// browsing, so a report outside a browse accumulates nothing.
@@ -133,10 +133,8 @@ pub struct ReportedDiscovery {
 
 impl ReportedDiscovery {
     pub fn new() -> Self {
-        let (devices_tx, devices_rx) = tokio::sync::watch::channel(Vec::new());
         Self {
-            devices_tx,
-            devices_rx,
+            devices: PublishedDevices::new(),
             reported: None,
         }
     }
@@ -179,10 +177,9 @@ impl ReportedDiscovery {
     }
 
     fn publish(&self) {
-        let devices = snapshot(self.reported.as_ref().expect("published while browsing"));
-        if self.devices_tx.send(devices).is_err() {
-            debug!("reported discovery: no watchers for the device list");
-        }
+        self.devices.publish(snapshot(
+            self.reported.as_ref().expect("published while browsing"),
+        ));
     }
 }
 
@@ -305,7 +302,7 @@ impl RendererDiscovery {
                 builtin.dlna.subscribe(),
                 builtin.airplay.subscribe(),
             ],
-            Self::Reported(reported) => vec![reported.devices_rx.clone()],
+            Self::Reported(reported) => vec![reported.devices.subscribe()],
         }
     }
 
@@ -321,10 +318,8 @@ impl RendererDiscovery {
                 if reported.reported.is_some() {
                     return;
                 }
-                // Start from nothing, so a stale list from a previous browse
-                // isn't shown before the host's first report.
                 reported.reported = Some(HashMap::new());
-                reported.devices_tx.send_replace(Vec::new());
+                reported.devices.clear();
             }
         }
     }
@@ -352,7 +347,7 @@ impl RendererDiscovery {
                 sort_for_picker(&mut devices);
                 devices
             }
-            Self::Reported(reported) => reported.devices_rx.borrow().clone(),
+            Self::Reported(reported) => reported.devices.current(),
         }
     }
 

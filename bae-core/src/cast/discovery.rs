@@ -1,9 +1,9 @@
 //! mDNS discovery of Cast devices on the local network.
 //!
 //! [`CastDiscovery`] browses `_googlecast._tcp.local.` and keeps a live list of
-//! reachable devices, published over a [`tokio::sync::watch`] channel. Browsing
-//! is not always-on: the caller (the device-picker UI) starts it when the
-//! picker opens and stops it when it closes.
+//! reachable devices in a `PublishedDevices`. Browsing is not always-on: the
+//! caller (the device-picker UI) starts it when the picker opens and stops it
+//! when it closes.
 
 use std::collections::HashMap;
 use std::net::IpAddr;
@@ -13,15 +13,15 @@ use mdns_sd::{ResolvedService, ServiceDaemon, ServiceEvent};
 use tracing::{debug, warn};
 
 use crate::renderer::discovery::RendererServiceType;
+use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
-/// Browses for Cast devices and publishes the current list over a watch channel,
-/// as [`RendererDevice`]s so the picker shows one merged list. Start and stop
+/// Browses for Cast devices and publishes the current list as
+/// [`RendererDevice`]s so the picker shows one merged list. Start and stop
 /// with the picker's visibility; a stopped discovery holds no mDNS daemon and no
 /// browse thread.
 pub struct CastDiscovery {
-    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
-    devices_rx: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
+    devices: PublishedDevices,
     /// The running browse: the mDNS daemon and the thread draining its events.
     /// `None` while stopped.
     running: Option<Running>,
@@ -34,10 +34,8 @@ struct Running {
 
 impl CastDiscovery {
     pub fn new() -> Self {
-        let (devices_tx, devices_rx) = tokio::sync::watch::channel(Vec::new());
         Self {
-            devices_tx,
-            devices_rx,
+            devices: PublishedDevices::new(),
             running: None,
         }
     }
@@ -45,12 +43,12 @@ impl CastDiscovery {
     /// Subscribe to the live device list. The current snapshot is available
     /// immediately on the returned receiver.
     pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.devices_rx.clone()
+        self.devices.subscribe()
     }
 
     /// The current device list snapshot.
     pub fn devices(&self) -> Vec<RendererDevice> {
-        self.devices_rx.borrow().clone()
+        self.devices.current()
     }
 
     /// Whether an mDNS daemon and browse thread are live right now. For tests
@@ -61,8 +59,7 @@ impl CastDiscovery {
     }
 
     /// Begin browsing. Idempotent: a second call while already browsing is a
-    /// no-op. Publishes list updates over the watch channel as devices come and
-    /// go.
+    /// no-op. Publishes list updates as devices come and go.
     pub fn start(&mut self) {
         if self.running.is_some() {
             return;
@@ -87,18 +84,14 @@ impl CastDiscovery {
                 return;
             }
         };
-        // Reset to an empty list at the start of a fresh browse so a stale
-        // snapshot from a previous session isn't shown before the first event.
-        // `send_replace` writes the value with no Result to swallow (a watch
-        // sender is only "closed" when every receiver drops, but this holds one).
-        self.devices_tx.send_replace(Vec::new());
-        let devices_tx = self.devices_tx.clone();
-        let reader = std::thread::spawn(move || run_browse(events, devices_tx));
+        self.devices.clear();
+        let devices = self.devices.clone();
+        let reader = std::thread::spawn(move || run_browse(events, devices));
         self.running = Some(Running { daemon, reader });
     }
 
     /// Stop browsing and release the mDNS daemon. The last published device list
-    /// is kept on the watch channel.
+    /// is kept.
     pub fn stop(&mut self) {
         let Some(running) = self.running.take() else {
             return;
@@ -129,10 +122,7 @@ impl Drop for CastDiscovery {
 /// Drain the mDNS event channel, maintaining the device list keyed by service
 /// fullname, and publish a de-duplicated snapshot on every change. Returns when
 /// the channel closes (the daemon shut down).
-fn run_browse(
-    events: mdns_sd::Receiver<ServiceEvent>,
-    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
-) {
+fn run_browse(events: mdns_sd::Receiver<ServiceEvent>, devices: PublishedDevices) {
     // Keyed by service fullname (what `ServiceRemoved` carries), so a device can
     // be dropped when it leaves.
     let mut by_fullname: HashMap<String, RendererDevice> = HashMap::new();
@@ -160,11 +150,7 @@ fn run_browse(
             // ignored until it's handled above.
             _ => continue,
         }
-        if devices_tx.send(snapshot(&by_fullname)).is_err() {
-            // Every receiver dropped; no one is watching. Keep draining so the
-            // daemon's channel doesn't back up until shutdown closes it.
-            debug!("cast discovery: no watchers for the device list");
-        }
+        devices.publish(snapshot(&by_fullname));
     }
 }
 

@@ -1,11 +1,11 @@
 //! SSDP discovery of UPnP MediaRenderers on the local network.
 //!
-//! [`DlnaDiscovery`] mirrors the Cast discovery's shape — a live device list
-//! published over a [`tokio::sync::watch`] channel, browsing only while the
-//! picker is open. The mechanics differ: instead of an mDNS daemon, a search
-//! thread sends SSDP `M-SEARCH` datagrams for `MediaRenderer:1`, then fetches and
-//! parses each responder's device-description XML to learn its friendly name and
-//! the AVTransport / RenderingControl control URLs the SOAP layer drives.
+//! [`DlnaDiscovery`] mirrors the Cast discovery's shape — a live device list in a
+//! `PublishedDevices`, browsing only while the picker is open. The mechanics
+//! differ: instead of an mDNS daemon, a search thread sends SSDP `M-SEARCH`
+//! datagrams for `MediaRenderer:1`, then fetches and parses each responder's
+//! device-description XML to learn its friendly name and the AVTransport /
+//! RenderingControl control URLs the SOAP layer drives.
 
 use std::collections::{HashMap, HashSet};
 use std::net::{Ipv4Addr, UdpSocket};
@@ -16,6 +16,7 @@ use std::time::{Duration, Instant};
 
 use tracing::{debug, warn};
 
+use crate::renderer::published_devices::PublishedDevices;
 use crate::renderer::{RendererConnection, RendererDevice};
 
 /// The SSDP multicast endpoint every `M-SEARCH` is sent to.
@@ -35,8 +36,7 @@ const DESCRIPTION_TIMEOUT: Duration = Duration::from_secs(5);
 /// the picker's visibility; a stopped discovery holds no socket and no search
 /// thread.
 pub struct DlnaDiscovery {
-    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
-    devices_rx: tokio::sync::watch::Receiver<Vec<RendererDevice>>,
+    devices: PublishedDevices,
     /// The running search: its stop flag and the thread draining responses.
     /// `None` while stopped.
     running: Option<Running>,
@@ -49,10 +49,8 @@ struct Running {
 
 impl DlnaDiscovery {
     pub fn new() -> Self {
-        let (devices_tx, devices_rx) = tokio::sync::watch::channel(Vec::new());
         Self {
-            devices_tx,
-            devices_rx,
+            devices: PublishedDevices::new(),
             running: None,
         }
     }
@@ -60,12 +58,12 @@ impl DlnaDiscovery {
     /// Subscribe to the live device list. The current snapshot is available
     /// immediately on the returned receiver.
     pub fn subscribe(&self) -> tokio::sync::watch::Receiver<Vec<RendererDevice>> {
-        self.devices_rx.clone()
+        self.devices.subscribe()
     }
 
     /// The current device list snapshot.
     pub fn devices(&self) -> Vec<RendererDevice> {
-        self.devices_rx.borrow().clone()
+        self.devices.current()
     }
 
     /// Whether an SSDP socket and search thread are live right now. For tests
@@ -88,18 +86,16 @@ impl DlnaDiscovery {
                 return;
             }
         };
-        // Reset to an empty list at the start of a fresh search so a stale
-        // snapshot from a previous session isn't shown before the first answer.
-        self.devices_tx.send_replace(Vec::new());
-        let devices_tx = self.devices_tx.clone();
+        self.devices.clear();
+        let devices = self.devices.clone();
         let stop = Arc::new(AtomicBool::new(false));
         let reader_stop = stop.clone();
-        let reader = std::thread::spawn(move || run_search(socket, reader_stop, devices_tx));
+        let reader = std::thread::spawn(move || run_search(socket, reader_stop, devices));
         self.running = Some(Running { stop, reader });
     }
 
     /// Stop searching and release the socket. The last published device list is
-    /// kept on the watch channel.
+    /// kept.
     pub fn stop(&mut self) {
         let Some(running) = self.running.take() else {
             return;
@@ -150,11 +146,7 @@ fn msearch_datagram() -> String {
 /// fetching and parsing each new responder's description into a device. Re-sends
 /// the search every [`RESEARCH_INTERVAL`] and publishes a snapshot whenever the
 /// set changes. Returns when the stop flag is set.
-fn run_search(
-    socket: UdpSocket,
-    stop: Arc<AtomicBool>,
-    devices_tx: tokio::sync::watch::Sender<Vec<RendererDevice>>,
-) {
+fn run_search(socket: UdpSocket, stop: Arc<AtomicBool>, devices: PublishedDevices) {
     let client = match reqwest::blocking::Client::builder()
         .timeout(DESCRIPTION_TIMEOUT)
         .build()
@@ -210,9 +202,7 @@ fn run_search(
         match fetch_device(&client, &location) {
             Some(device) => {
                 by_id.insert(device.id.clone(), device);
-                if devices_tx.send(snapshot(&by_id)).is_err() {
-                    debug!("dlna discovery: no watchers for the device list");
-                }
+                devices.publish(snapshot(&by_id));
             }
             None => debug!("dlna discovery: {location} is not a usable renderer"),
         }
