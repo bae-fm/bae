@@ -320,6 +320,17 @@ impl LibraryManager {
     }
 
     #[cfg(test)]
+    pub(crate) async fn local_blob_cleanup_intent_count_for_test(
+        &self,
+        namespace: &str,
+        blob_id: &str,
+    ) -> Result<i64, coven::DbError> {
+        self.database
+            .local_blob_cleanup_intent_count_for_test(namespace, blob_id)
+            .await
+    }
+
+    #[cfg(test)]
     pub(crate) async fn observe_blob_preparation_started_for_test(&self, file_id: &str) {
         let blob = self
             .database

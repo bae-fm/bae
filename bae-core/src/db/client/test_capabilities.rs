@@ -1,6 +1,17 @@
 use super::*;
 
 impl Database {
+    pub async fn local_blob_cleanup_intent_count_for_test(
+        &self,
+        namespace: &str,
+        blob_id: &str,
+    ) -> Result<i64, coven::DbError> {
+        self.inner
+            .handle
+            .cleanup_intent_count_for_test(namespace, blob_id)
+            .await
+    }
+
     pub async fn queued_upload_count_for_test(&self) -> Result<usize, DbError> {
         Ok(self.inner.handle.queued_uploads().await?.len())
     }

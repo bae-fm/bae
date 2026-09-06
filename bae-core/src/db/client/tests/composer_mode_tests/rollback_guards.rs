@@ -54,12 +54,12 @@ async fn failed_import_rollback_refuses_a_deletion_plan_that_changed_before_writ
 }
 
 /// A failed remote import's cover and artist-image blobs live only in coven's
-/// on-device store, since the release never went remote. The rollback declares
-/// each blob its row deletions orphan in the same coven write: the release cover
-/// and each deleted artist's image are reclaimed, while an image whose artist is
-/// still referenced survives.
+/// on-device store, since the release never went remote. The rollback deletes
+/// the release and unreferenced artist rows atomically. Their earlier inserts
+/// remain replay inputs until baseline adoption, so coven retains the exact
+/// bytes those inputs need even after the live rows are gone.
 #[tokio::test]
-async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically() {
+async fn fail_import_and_delete_release_retains_replay_owned_image_blobs() {
     let tmp = tempfile::TempDir::new().unwrap();
     let path = tmp.path().join("test.db");
     let db = Database::new_test(
@@ -234,21 +234,51 @@ async fn fail_import_and_delete_release_reclaims_orphaned_image_blobs_atomically
 
     db.fail_import_and_delete_release(RELEASE_A).await.unwrap();
 
-    // The rollback declares the blobs its row deletions orphan, so coven
-    // reclaims their bytes in the same write. A bare row DELETE would leave
-    // these files behind forever — coven's local-blob cleanup is intent-driven
-    // and only ever acts on a declared deletion.
+    // The deleted rows remain in coven's local replay journal until a baseline
+    // consumes the matching insert/delete history. Their blob leases keep the
+    // exact input bytes available across restart and replay; baseline adoption
+    // releases those leases and lets coven complete the recorded cleanup.
     assert!(
-        !cover_blob.exists(),
-        "the failed release's cover blob is reclaimed"
+        cover_blob.exists(),
+        "the failed release's replay input retains its cover blob"
     );
     assert!(
-        !exclusive_blob.exists(),
-        "the swept artist's image blob is reclaimed"
+        exclusive_blob.exists(),
+        "the swept artist's replay input retains its image blob"
     );
     assert!(
         shared_blob.exists(),
         "the surviving artist still has its image blob"
+    );
+    assert_eq!(
+        db.local_blob_cleanup_intent_count_for_test(
+            crate::sync::COVERS_NAMESPACE,
+            &format!("{RELEASE_A}-blob"),
+        )
+        .await
+        .unwrap(),
+        1,
+        "the failed release records eventual cover cleanup"
+    );
+    assert_eq!(
+        db.local_blob_cleanup_intent_count_for_test(
+            crate::sync::ARTIST_IMAGES_NAMESPACE,
+            &format!("{ARTIST_EXCLUSIVE}-blob"),
+        )
+        .await
+        .unwrap(),
+        1,
+        "the swept artist records eventual image cleanup"
+    );
+    assert_eq!(
+        db.local_blob_cleanup_intent_count_for_test(
+            crate::sync::ARTIST_IMAGES_NAMESPACE,
+            &format!("{ARTIST_SHARED}-blob"),
+        )
+        .await
+        .unwrap(),
+        0,
+        "the surviving artist records no image cleanup"
     );
 
     // The shared artist and its image row survive; the exclusive one is gone.

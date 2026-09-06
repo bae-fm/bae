@@ -566,9 +566,10 @@ async fn change_cover_stores_a_resized_jpeg_thumbnail() {
 
 /// A cover can be changed again and again. coven's `(namespace, blob id)` names one
 /// immutable byte-string — a blob's bytes are never rewritten under a live id — so
-/// each change mints a NEW `blob_id`, repoints the `covers` row at it, and deletes
-/// the blob it replaced. The row's hash and size describe the newly stored bytes,
-/// and the old blob's cloud object is queued for deletion.
+/// each change mints a NEW `blob_id`, repoints the `covers` row at it, and records
+/// deletion of the blob it replaced. The row's hash and size describe the newly
+/// stored bytes, and retained replay inputs own the old bytes until baseline
+/// adoption.
 #[tokio::test]
 async fn change_cover_twice_replaces_the_cover_blob() {
     let (manager, _temp_dir) = setup_test_manager().await;
@@ -660,16 +661,25 @@ async fn change_cover_twice_replaces_the_cover_blob() {
         "the two source images must produce different thumbnails for this test to mean anything"
     );
 
-    // The row now points at the new blob, so the old one has no row reference to
-    // address it by; what must hold is that its bytes are gone from this device —
-    // the replace declared its deletion, so coven reclaimed them. This release is
-    // Local, so there is no cloud object behind the old blob and nothing to
-    // tombstone; the Remote case is `delete_release_removes_its_cover_image`.
+    // The row now points at the new blob. The old insert and replacement remain
+    // local replay inputs until baseline adoption, so coven keeps the old bytes
+    // under their replay lease while the live row exposes only the new blob.
     assert!(
-        !manager
+        manager
             .local_blob_exists_for_test(crate::sync::COVERS_NAMESPACE, &first.blob_id)
             .expect("a valid blob path"),
-        "the replaced cover blob's bytes must be reclaimed"
+        "the replaced cover blob's replay input must remain readable"
+    );
+    assert_eq!(
+        manager
+            .local_blob_cleanup_intent_count_for_test(
+                crate::sync::COVERS_NAMESPACE,
+                &first.blob_id,
+            )
+            .await
+            .unwrap(),
+        1,
+        "the replaced cover records eventual blob cleanup"
     );
 }
 
