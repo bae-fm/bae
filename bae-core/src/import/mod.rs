@@ -85,6 +85,8 @@ pub mod track_slots;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod triage;
 mod types;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+mod worker_thread;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use crate::db::{

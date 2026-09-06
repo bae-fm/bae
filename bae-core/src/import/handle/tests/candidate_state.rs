@@ -182,7 +182,7 @@ async fn removing_a_root_queued_behind_a_decision_does_not_deadlock() {
 
     let (decision_completion, decision_result) = tokio::sync::oneshot::channel();
     handle
-        .watcher_tx
+        .watcher
         .send(WatcherCommand::SetFolderReleaseDecision {
             target: (key, FolderReleaseDecision::CombineAsOneRelease),
             completion: decision_completion,

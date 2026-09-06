@@ -574,7 +574,7 @@ impl ImportServiceHandle {
     ) -> Result<(), crate::import::ImportError> {
         let candidate_key = command.candidate_key.clone();
         if self
-            .requests_tx
+            .worker
             .send(crate::import::service::ImportWorkerMessage::Import {
                 command,
                 expectation,

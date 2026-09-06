@@ -22,7 +22,7 @@ impl ImportServiceHandle {
         command: WatcherCommand,
         on_closed: &str,
     ) -> Result<(), crate::import::ImportError> {
-        self.watcher_tx
+        self.watcher
             .send(command)
             .map_err(|_| crate::import::ImportError::Internal {
                 detail: on_closed.to_string(),

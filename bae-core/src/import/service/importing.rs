@@ -1,4 +1,5 @@
 use super::*;
+use crate::import::worker_thread::WorkerThread;
 
 impl ImportService {
     /// Start the import service worker: one task that drains the import queue
@@ -11,8 +12,6 @@ impl ImportService {
         clock: coven::ClockRef,
         ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
-        let (commands_tx, commands_rx) = mpsc::unbounded_channel();
-        let (watcher_tx, watcher_rx) = mpsc::unbounded_channel();
         let (fs_tx, fs_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
         let (event_tx, _) = broadcast::channel(1024);
         let event_tx_for_worker = event_tx.clone();
@@ -24,57 +23,65 @@ impl ImportService {
         // debouncer, only the `fs_rx` end of its event channel.
         let folder_watcher = Arc::new(FolderWatcher::new(fs_tx));
 
-        let watcher_thread = ImportService::start_watcher(
-            watcher_rx,
-            fs_rx,
-            event_tx.clone(),
-            library_manager_for_handle.clone(),
-            preparations.clone(),
-            clock.clone(),
-            ids.clone(),
-            folder_state_commit.clone(),
-            folder_watcher.clone(),
-        );
+        let watcher_library_manager = library_manager_for_handle.clone();
+        let watcher_preparations = preparations.clone();
+        let watcher_clock = clock.clone();
+        let watcher_ids = ids.clone();
+        let watcher_folder_state_commit = folder_state_commit.clone();
+        let watcher_event_tx = event_tx.clone();
+        let watcher = WorkerThread::spawn("folder scan coordinator", move |watcher_rx| {
+            ImportService::start_watcher(
+                watcher_rx,
+                fs_rx,
+                watcher_event_tx,
+                watcher_library_manager,
+                watcher_preparations,
+                watcher_clock,
+                watcher_ids,
+                watcher_folder_state_commit,
+                folder_watcher,
+            )
+        });
 
         let clock_for_handle = clock.clone();
         let ids_for_handle = ids.clone();
         let preparations_for_handle = preparations.clone();
-        let worker_thread = std::thread::spawn(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .expect("Failed to create import runtime");
-            rt.block_on(async move {
-                let mut service = ImportService {
-                    commands_rx,
-                    event_tx: event_tx_for_worker,
-                    library_manager,
-                    clock,
-                    ids,
-                };
+        let worker = WorkerThread::spawn("import worker thread", move |commands_rx| {
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create import runtime");
+                rt.block_on(async move {
+                    let mut service = ImportService {
+                        commands_rx,
+                        event_tx: event_tx_for_worker,
+                        library_manager,
+                        clock,
+                        ids,
+                    };
 
-                while let Some(message) = service.commands_rx.recv().await {
-                    match message {
-                        ImportWorkerMessage::Import {
-                            command,
-                            expectation,
-                        } => service.do_import(command, expectation).await,
-                        ImportWorkerMessage::Shutdown => break,
+                    while let Some(message) = service.commands_rx.recv().await {
+                        match message {
+                            ImportWorkerMessage::Import {
+                                command,
+                                expectation,
+                            } => service.do_import(command, expectation).await,
+                            ImportWorkerMessage::Shutdown => break,
+                        }
                     }
-                }
-            });
+                });
+            })
         });
 
         Ok(ImportServiceHandle::new(
-            commands_tx,
-            worker_thread,
-            watcher_thread,
+            worker,
+            watcher,
             library_manager_for_handle,
             preparations_for_handle,
             clock_for_handle,
             ids_for_handle,
             runtime_handle,
-            watcher_tx,
             event_tx,
             runtime,
             folder_state_commit,
