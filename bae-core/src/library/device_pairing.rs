@@ -121,27 +121,139 @@ impl PairingApprovalState {
     }
 }
 
-/// One owner-side pairing attempt. The request shown to the user stays inside
-/// this object and is the only request approval can admit.
+/// The admission of one reviewed request: the request itself, how far its
+/// approval has gotten, the signal that stops an approval already running, and
+/// the wake for whoever waits on that. Approving and cancelling race for the
+/// same decision, so both go through here.
+struct PairingApproval {
+    reviewed_request: Mutex<Option<coven::DevicePairingRequest>>,
+    state: StateMutex<PairingApprovalState>,
+    state_changed: Notify,
+    cancel_approval: tokio::sync::watch::Sender<bool>,
+}
+
+impl PairingApproval {
+    fn new() -> Self {
+        let (cancel_approval, _) = tokio::sync::watch::channel(false);
+        Self {
+            reviewed_request: Mutex::new(None),
+            state: StateMutex::new(PairingApprovalState::Waiting),
+            state_changed: Notify::new(),
+            cancel_approval,
+        }
+    }
+
+    fn state(&self) -> std::sync::MutexGuard<'_, PairingApprovalState> {
+        self.state
+            .lock()
+            .expect("device pairing approval state mutex poisoned")
+    }
+
+    /// Record the request the user is being shown. It is the only request
+    /// `approve` can admit.
+    async fn review(&self, request: coven::DevicePairingRequest) {
+        *self.reviewed_request.lock().await = Some(request);
+    }
+
+    async fn approve(
+        &self,
+        database: &Database,
+        host: &coven::DevicePairingHost,
+        on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
+    ) -> Result<coven::DeviceJoinDriveOutcome, LibraryError> {
+        let request = self.reviewed_request.lock().await.clone().ok_or_else(|| {
+            LibraryError::Validation("no pairing device was reviewed".to_string())
+        })?;
+        self.state().begin().map_err(|error| match error {
+            ApprovalStartError::AlreadyApproving => {
+                LibraryError::Validation("device pairing approval is already running".to_string())
+            }
+            ApprovalStartError::Closed => {
+                LibraryError::from(coven::ApproveDevicePairingError::Cancelled)
+            }
+        })?;
+        let result = database
+            .approve_device_pairing(
+                host,
+                &request,
+                on_progress,
+                self.cancel_approval.subscribe(),
+            )
+            .await;
+        {
+            let mut state = self.state();
+            if result.is_ok() || matches!(result, Err(coven::ApproveDevicePairingError::Cancelled))
+            {
+                state.finish();
+            } else {
+                state.approval_failed();
+            }
+        }
+        self.state_changed.notify_waiters();
+        result
+            .inspect_err(|error| {
+                tracing::error!(?error, "device pairing approval failed");
+            })
+            .map_err(LibraryError::from)
+    }
+
+    async fn cancel(
+        &self,
+        database: &Database,
+        host: &coven::DevicePairingHost,
+    ) -> Result<(), LibraryError> {
+        let mut signalled_approval = false;
+        loop {
+            // Registered before the state is read, so a change between the two
+            // still wakes this wait.
+            let state_changed = self.state_changed.notified();
+            let owner = {
+                let mut state = self.state();
+                if signalled_approval && *state == PairingApprovalState::CancellingViaApproval {
+                    CancellationOwner::Wait
+                } else {
+                    state.cancel()
+                }
+            };
+            match owner {
+                CancellationOwner::Session => {
+                    let result = database.cancel_device_pairing(host).await;
+                    {
+                        let mut state = self.state();
+                        if result.is_ok() {
+                            state.finish();
+                        } else {
+                            state.cancellation_failed();
+                        }
+                    }
+                    self.state_changed.notify_waiters();
+                    return result.map_err(LibraryError::from);
+                }
+                CancellationOwner::Approval => {
+                    self.cancel_approval.send_replace(true);
+                    signalled_approval = true;
+                }
+                CancellationOwner::Wait => state_changed.await,
+                CancellationOwner::None => return Ok(()),
+            }
+        }
+    }
+}
+
+/// One owner-side pairing attempt: the host that carries it and the admission
+/// of the one request that host delivered.
 pub struct DevicePairingSession {
     database: Database,
     host: coven::DevicePairingHost,
-    reviewed_request: Mutex<Option<coven::DevicePairingRequest>>,
-    approval_cancel: tokio::sync::watch::Sender<bool>,
-    approval_state: StateMutex<PairingApprovalState>,
-    approval_state_changed: Notify,
+    approval: PairingApproval,
 }
 
 impl DevicePairingSession {
     pub(crate) fn new(database: Database, host: coven::DevicePairingHost) -> Self {
-        let (approval_cancel, _) = tokio::sync::watch::channel(false);
         Self {
             database,
             host,
-            reviewed_request: Mutex::new(None),
-            approval_cancel,
-            approval_state: StateMutex::new(PairingApprovalState::Waiting),
-            approval_state_changed: Notify::new(),
+            approval: PairingApproval::new(),
         }
     }
 
@@ -155,7 +267,7 @@ impl DevicePairingSession {
             fingerprint: pubkey_fingerprint(request.public_key()),
             email: request.provider_account_email().map(str::to_string),
         };
-        *self.reviewed_request.lock().await = Some(request);
+        self.approval.review(request).await;
         Ok(device)
     }
 
@@ -163,47 +275,11 @@ impl DevicePairingSession {
         &self,
         on_progress: &(dyn Fn(coven::AdmittingDeviceJoinProgress) + Send + Sync),
     ) -> Result<(), LibraryError> {
-        let request = self.reviewed_request.lock().await.clone().ok_or_else(|| {
-            LibraryError::Validation("no pairing device was reviewed".to_string())
-        })?;
-        self.approval_state
-            .lock()
-            .expect("device pairing approval state mutex poisoned")
-            .begin()
-            .map_err(|error| match error {
-                ApprovalStartError::AlreadyApproving => LibraryError::Validation(
-                    "device pairing approval is already running".to_string(),
-                ),
-                ApprovalStartError::Closed => {
-                    LibraryError::from(coven::ApproveDevicePairingError::Cancelled)
-                }
-            })?;
-        let result = self
-            .database
-            .approve_device_pairing(
-                &self.host,
-                &request,
-                on_progress,
-                self.approval_cancel.subscribe(),
-            )
-            .await;
+        match self
+            .approval
+            .approve(&self.database, &self.host, on_progress)
+            .await?
         {
-            let mut state = self
-                .approval_state
-                .lock()
-                .expect("device pairing approval state mutex poisoned");
-            if result.is_ok() || matches!(result, Err(coven::ApproveDevicePairingError::Cancelled))
-            {
-                state.finish();
-            } else {
-                state.approval_failed();
-            }
-        }
-        self.approval_state_changed.notify_waiters();
-        let outcome = result.inspect_err(|error| {
-            tracing::error!(?error, "device pairing approval failed");
-        })?;
-        match outcome {
             coven::DeviceJoinDriveOutcome::Activated(_) => Ok(()),
             coven::DeviceJoinDriveOutcome::Abandoned(abandonment) => {
                 tracing::error!(?abandonment, "device join abandoned by the joining device");
@@ -213,43 +289,7 @@ impl DevicePairingSession {
     }
 
     pub async fn cancel(&self) -> Result<(), LibraryError> {
-        let mut signalled_approval = false;
-        loop {
-            let state_changed = self.approval_state_changed.notified();
-            let owner = {
-                let mut state = self
-                    .approval_state
-                    .lock()
-                    .expect("device pairing approval state mutex poisoned");
-                if signalled_approval && *state == PairingApprovalState::CancellingViaApproval {
-                    CancellationOwner::Wait
-                } else {
-                    state.cancel()
-                }
-            };
-            match owner {
-                CancellationOwner::Session => {
-                    let result = self.database.cancel_device_pairing(&self.host).await;
-                    let mut state = self
-                        .approval_state
-                        .lock()
-                        .expect("device pairing approval state mutex poisoned");
-                    if result.is_ok() {
-                        state.finish();
-                    } else {
-                        state.cancellation_failed();
-                    }
-                    self.approval_state_changed.notify_waiters();
-                    return result.map_err(LibraryError::from);
-                }
-                CancellationOwner::Approval => {
-                    self.approval_cancel.send_replace(true);
-                    signalled_approval = true;
-                }
-                CancellationOwner::Wait => state_changed.await,
-                CancellationOwner::None => return Ok(()),
-            }
-        }
+        self.approval.cancel(&self.database, &self.host).await
     }
 }
 
