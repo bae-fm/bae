@@ -627,7 +627,11 @@ async fn a_cancelled_candidate_writes_no_row() {
             &fixture.context(),
             &cancelled,
             "/x",
-            "hash-x",
+            crate::import::CandidateAsRead {
+                content_hash: "hash-x".to_string(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
             "/x",
             &verdict,
             crate::signals::Signals {
@@ -639,8 +643,6 @@ async fn a_cancelled_candidate_writes_no_row() {
                 },
                 durations: crate::import::probe::SourceDurations::default(),
             },
-            0,
-            0,
             blank_metadata_for_dir(&dir),
         )
         .await,

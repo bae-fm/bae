@@ -133,12 +133,14 @@ async fn a_verdict_is_refused_for_a_claimed_candidate() {
     fixture.scan(1).await;
     let key = dir.to_string_lossy().into_owned();
     let row = || NewImportCandidateVerdict {
-        content_hash: fixture.content_hash(&dir),
+        candidate: crate::import::CandidateAsRead {
+            content_hash: fixture.content_hash(&dir),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         folder_path: key.clone(),
         verdict: multi_match_verdict(&["mb-claimed-1"], "rg-claimed-1"),
         signals: settled_signals(fixture.probed_durations(&dir)),
-        expected_edit_revision: 0,
-        expected_metadata_revision: 0,
         metadata: blank_metadata_for_dir(&dir),
     };
 
@@ -180,12 +182,14 @@ async fn explicit_lookup_for_an_answered_candidate_starts_nothing() {
         .save_candidate_verdict_if_current(
             &dir.to_string_lossy(),
             &NewImportCandidateVerdict {
-                content_hash: fixture.content_hash(&dir),
+                candidate: crate::import::CandidateAsRead {
+                    content_hash: fixture.content_hash(&dir),
+                    file_edit_revision: 0,
+                    metadata_revision: 0,
+                },
                 folder_path: dir.to_string_lossy().into_owned(),
                 verdict,
                 signals: settled_signals(fixture.probed_durations(&dir)),
-                expected_edit_revision: 0,
-                expected_metadata_revision: 0,
                 metadata: blank_metadata_for_dir(&dir),
             },
         )

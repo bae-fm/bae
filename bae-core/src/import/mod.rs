@@ -176,7 +176,7 @@ pub use mapping::{
     SheetBound, SheetGroup, TrackMapping, TracklistSource,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use preparation::{CandidatePreparation, MetadataAuthor};
+pub use preparation::{CandidateAsRead, CandidatePreparation, MetadataAuthor};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use preparations::CandidatePreparations;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

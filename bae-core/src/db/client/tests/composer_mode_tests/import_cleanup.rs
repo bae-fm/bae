@@ -100,9 +100,11 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
                     scope: crate::import::folder_scanner::ReleaseFileScope::Direct,
                 },
                 expectation: crate::import::service::ImportExpectation {
-                    content_hash,
-                    edit_revision: 0,
-                    metadata_revision: 0,
+                    candidate: crate::import::CandidateAsRead {
+                        content_hash,
+                        file_edit_revision: 0,
+                        metadata_revision: 0,
+                    },
                     file_tag_snapshot: None,
                 },
             },

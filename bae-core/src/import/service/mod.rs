@@ -99,25 +99,11 @@ pub(crate) enum ImportWorkerMessage {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ImportExpectation {
-    pub(crate) content_hash: String,
-    pub(crate) edit_revision: u64,
-    pub(crate) metadata_revision: u64,
+    pub(crate) candidate: crate::import::CandidateAsRead,
     pub(crate) file_tag_snapshot: Option<crate::import::file_tag_snapshot::FileTagSnapshot>,
 }
 
 impl ImportExpectation {
-    pub(crate) fn content_hash(&self) -> &str {
-        &self.content_hash
-    }
-
-    pub(crate) fn edit_revision(&self) -> u64 {
-        self.edit_revision
-    }
-
-    pub(crate) fn metadata_revision(&self) -> u64 {
-        self.metadata_revision
-    }
-
     /// Whether `current` is still the candidate this import was prepared
     /// from. The library write asks this inside its own transaction, so
     /// nothing can move the candidate between the answer and the commit.
@@ -134,14 +120,19 @@ impl ImportExpectation {
         };
         if !current.actionable
             || current.source != *source
-            || current.content_hash != self.content_hash
-            || current.file_edit_revision != self.edit_revision
+            || current.content_hash != self.candidate.content_hash
+            || current.file_edit_revision != self.candidate.file_edit_revision
         {
             return Err(format!(
                 "{candidate_key} changed before its import committed"
             ));
         }
-        if current.prepared_revisions != Some((self.edit_revision, self.metadata_revision)) {
+        if current.prepared_revisions
+            != Some((
+                self.candidate.file_edit_revision,
+                self.candidate.metadata_revision,
+            ))
+        {
             return Err(format!(
                 "{candidate_key}'s prepared metadata changed before its import committed"
             ));

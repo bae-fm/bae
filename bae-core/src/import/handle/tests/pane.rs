@@ -573,9 +573,11 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
     let error = handle.preparations.apply_file_tags(
             &root,
             &key,
-            &hash,
-            stale.file_edit_revision,
-            stale.metadata_revision,
+            &crate::import::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: stale.file_edit_revision,
+                metadata_revision: stale.metadata_revision,
+            },
             &snapshot,
             &stale.draft,
             stale.cover.as_ref(),

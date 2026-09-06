@@ -14,7 +14,7 @@ use crate::db::{
     DbCandidateIdentifyResult, NewImportCandidateVerdict, ScannedCandidateKey,
 };
 use crate::import::folder_scanner::CandidateFileEdits;
-use crate::import::preparation::CandidatePreparation;
+use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::MetadataAuthor;
 use crate::library::LibraryError;
 use std::collections::HashMap;
@@ -32,8 +32,8 @@ impl CandidatePreparations {
         Self { database }
     }
 
-    /// Record one candidate's terminal identify verdict, keyed by
-    /// `content_hash`. Never synced. `identified_at` is stamped here from the
+    /// Record one candidate's terminal identify verdict, keyed by the
+    /// candidate's content hash. Never synced. `identified_at` is stamped here from the
     /// injected clock, not taken from `verdict` — see
     /// [`NewImportCandidateVerdict`]'s doc.
     ///
@@ -56,14 +56,12 @@ impl CandidatePreparations {
     ) -> Result<bool, LibraryError> {
         let Some(mut prep) = self
             .database
-            .load_candidate_preparation(&verdict.content_hash)
+            .load_candidate_preparation(&verdict.candidate.content_hash)
             .await?
         else {
             return Ok(false);
         };
-        if prep.file_edits.revision != verdict.expected_edit_revision
-            || prep.metadata_revision != verdict.expected_metadata_revision
-        {
+        if !verdict.candidate.is_current(&prep) {
             return Ok(false);
         }
         let expected = CandidateSaveExpectation {
@@ -115,46 +113,34 @@ impl CandidatePreparations {
     /// to the settled shape in the same transaction.
     pub(crate) async fn store_file_decisions(
         &self,
-        content_hash: &str,
+        read: &CandidateAsRead,
         folder_path: &str,
-        expected_revision: u64,
-        expected_metadata_revision: u64,
         edits: &CandidateFileEdits,
         settled_candidates: &[(String, crate::import::folder_scanner::CategorizedFiles)],
         mapping_preparation: &crate::import::CandidateMappingPreparation,
     ) -> Result<(u64, Vec<crate::import::folder_scanner::FolderCandidate>), LibraryError> {
-        let next_revision = expected_revision.checked_add(1).ok_or_else(|| {
+        let next_revision = read.file_edit_revision.checked_add(1).ok_or_else(|| {
             crate::library::LibraryError::Import(
                 "candidate edit revision exhausted the u64 range".to_string(),
             )
         })?;
         let mut prep = self
             .database
-            .load_candidate_preparation(content_hash)
+            .load_candidate_preparation(&read.content_hash)
             .await?
             .ok_or_else(|| {
-                crate::library::LibraryError::Import(format!(
-                    "candidate file decisions changed at revision {expected_revision}"
-                ))
+                CandidateAsRead::files_moved(read.file_edit_revision, CandidateWrite::FileDecisions)
             })?;
-        if prep.file_edits.revision != expected_revision {
-            return Err(crate::library::LibraryError::Import(format!(
-                "candidate file decisions changed at revision {expected_revision}"
-            )));
-        }
-        if prep.metadata_revision != expected_metadata_revision {
-            return Err(crate::library::LibraryError::Import(format!(
-                "candidate metadata changed from revision {expected_metadata_revision}"
-            )));
-        }
+        read.verify(&prep, CandidateWrite::FileDecisions)?;
         if !prep.assets_prepared {
             return Err(crate::library::LibraryError::Import(format!(
-                "candidate {content_hash} has no complete prepared asset set"
+                "candidate {} has no complete prepared asset set",
+                read.content_hash
             )));
         }
         let expected = CandidateSaveExpectation {
-            edit_revision: expected_revision,
-            metadata_revision: expected_metadata_revision,
+            edit_revision: read.file_edit_revision,
+            metadata_revision: read.metadata_revision,
             scanned: None,
         };
         prep.folder_path = folder_path.to_string();
@@ -206,9 +192,10 @@ impl CandidatePreparations {
             .await?
         {
             CandidateSaved::Landed(candidates) => Ok((next_revision, candidates)),
-            CandidateSaved::Superseded => Err(crate::library::LibraryError::Import(format!(
-                "candidate file decisions changed at revision {expected_revision}"
-            ))),
+            CandidateSaved::Superseded => Err(CandidateAsRead::files_moved(
+                read.file_edit_revision,
+                CandidateWrite::FileDecisions,
+            )),
         }
     }
 
@@ -250,15 +237,11 @@ impl CandidatePreparations {
     pub async fn apply_source(
         &self,
         watched_folder_path: &str,
-        content_hash: &str,
+        read: &CandidateAsRead,
         folder_path: &str,
-        expected_file_edit_revision: u64,
-        expected_revision: u64,
         metadata: &crate::import::CandidateMetadataDraft,
     ) -> Result<u64, LibraryError> {
-        let prep = self
-            .loaded_at(content_hash, expected_file_edit_revision, expected_revision)
-            .await?;
+        let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: folder_path.to_string(),
@@ -275,20 +258,12 @@ impl CandidatePreparations {
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
-        content_hash: &str,
-        expected_file_edit_revision: u64,
-        expected_metadata_revision: u64,
+        read: &CandidateAsRead,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
         draft: &crate::import::CandidateDraft,
         cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, LibraryError> {
-        let prep = self
-            .loaded_at(
-                content_hash,
-                expected_file_edit_revision,
-                expected_metadata_revision,
-            )
-            .await?;
+        let prep = self.loaded_at(read).await?;
         let scanned = ScannedCandidateKey {
             watched_folder_path: watched_folder_path.to_string(),
             candidate_path: candidate_path.to_string(),
@@ -314,28 +289,16 @@ impl CandidatePreparations {
     /// prepared against, or the refusal naming which one moved.
     async fn loaded_at(
         &self,
-        content_hash: &str,
-        expected_file_edit_revision: u64,
-        expected_metadata_revision: u64,
+        read: &CandidateAsRead,
     ) -> Result<CandidatePreparation, LibraryError> {
         let prep = self
             .database
-            .load_candidate_preparation(content_hash)
+            .load_candidate_preparation(&read.content_hash)
             .await?
             .ok_or_else(|| {
                 crate::library::LibraryError::Import("candidate metadata row is missing".into())
             })?;
-        if prep.file_edits.revision != expected_file_edit_revision {
-            return Err(crate::library::LibraryError::Import(format!(
-                "candidate changed before its metadata was stored: its files moved past \
-                 revision {expected_file_edit_revision}"
-            )));
-        }
-        if prep.metadata_revision != expected_metadata_revision {
-            return Err(crate::library::LibraryError::Import(format!(
-                "candidate metadata changed from revision {expected_metadata_revision}"
-            )));
-        }
+        read.verify(&prep, CandidateWrite::Metadata)?;
         Ok(prep)
     }
 

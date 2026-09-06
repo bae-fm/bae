@@ -191,9 +191,11 @@ async fn selected_local_cover_path_must_match_discovered_file() {
     preparations.set_prepared_cover(
             &watched_folder_path,
             &folder.to_string_lossy(),
-            &expected_content_hash,
-            0,
-            metadata_revision,
+            &crate::import::CandidateAsRead {
+                content_hash: expected_content_hash.clone(),
+                file_edit_revision: 0,
+                metadata_revision,
+            },
             &CoverSelection::Local("cover.bmp".to_string()),
             None,
         )
@@ -211,9 +213,11 @@ async fn selected_local_cover_path_must_match_discovered_file() {
                 scope: crate::import::folder_scanner::ReleaseFileScope::Recursive,
             },
             super::ImportExpectation {
-                content_hash: expected_content_hash,
-                edit_revision: 0,
-                metadata_revision: metadata_revision + 1,
+                candidate: crate::import::CandidateAsRead {
+                    content_hash: expected_content_hash,
+                    file_edit_revision: 0,
+                    metadata_revision: metadata_revision + 1,
+                },
                 file_tag_snapshot: None,
             },
             StorageMode::Local,

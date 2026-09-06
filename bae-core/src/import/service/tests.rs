@@ -90,10 +90,12 @@ async fn prepare_named_candidate(
     preparations
         .apply_source(
             watched_folder_path,
-            content_hash,
+            &crate::import::CandidateAsRead {
+                content_hash: content_hash.to_string(),
+                file_edit_revision: preparation.file_edit_revision,
+                metadata_revision: preparation.metadata_revision,
+            },
             candidate_path,
-            preparation.file_edit_revision,
-            preparation.metadata_revision,
             &crate::import::CandidateMetadataDraft {
                 draft,
                 source_discogs_artist_ids: preparation.source_discogs_artist_ids,

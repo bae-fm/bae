@@ -146,12 +146,14 @@ pub(super) async fn finish_candidate(
         context,
         token,
         &candidate.key(),
-        &candidate.files().content_hash(),
+        crate::import::CandidateAsRead {
+            content_hash: candidate.files().content_hash(),
+            file_edit_revision: candidate.file_edit_revision(),
+            metadata_revision: entry.expected_metadata_revision,
+        },
         &candidate.key(),
         &verdict,
         signals.clone(),
-        candidate.file_edit_revision(),
-        entry.expected_metadata_revision,
         metadata,
     )
     .await
@@ -188,24 +190,20 @@ pub(super) async fn save(
     context: &SweepContext,
     token: &CancellationToken,
     candidate_key: &str,
-    content_hash: &str,
+    candidate: crate::import::CandidateAsRead,
     folder_path: &str,
     verdict: &TerminalVerdict,
     signals: crate::signals::Signals,
-    expected_edit_revision: u64,
-    expected_metadata_revision: u64,
     metadata: crate::import::CandidateMetadataDraft,
 ) -> FinishCandidateOutcome {
     if token.is_cancelled() {
         return FinishCandidateOutcome::Superseded;
     }
     let row = NewImportCandidateVerdict {
-        content_hash: content_hash.to_string(),
+        candidate,
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals,
-        expected_edit_revision,
-        expected_metadata_revision,
         metadata,
     };
     let wrote = match context
@@ -223,7 +221,7 @@ pub(super) async fn save(
     if !wrote {
         debug!(
             "sweep: discarded stale verdict for {} at file-edit revision {} and metadata revision {}",
-            row.folder_path, expected_edit_revision, expected_metadata_revision
+            row.folder_path, row.candidate.file_edit_revision, row.candidate.metadata_revision
         );
         return FinishCandidateOutcome::Superseded;
     }
@@ -499,12 +497,14 @@ pub(super) async fn record_explicit_lookup_verdict(
                     context,
                     token,
                     &candidate_key,
-                    &entry.candidate.files().content_hash(),
+                    crate::import::CandidateAsRead {
+                        content_hash: entry.candidate.files().content_hash(),
+                        file_edit_revision: entry.candidate.file_edit_revision(),
+                        metadata_revision: entry.expected_metadata_revision,
+                    },
                     &entry.candidate.key(),
                     &verdict,
                     signals.clone(),
-                    entry.candidate.file_edit_revision(),
-                    entry.expected_metadata_revision,
                     metadata,
                 )
                 .await

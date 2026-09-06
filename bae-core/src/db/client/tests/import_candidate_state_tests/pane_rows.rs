@@ -62,12 +62,14 @@ fn signals_with(durations: SourceDurations) -> Signals {
 /// Store a verdict for `hash` carrying `signals`, and say whether it landed.
 async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-        content_hash: hash.to_string(),
+        candidate: crate::import::CandidateAsRead {
+            content_hash: hash.to_string(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         folder_path: pane_candidate_path(),
         verdict: sample_verdict(),
         signals,
-        expected_edit_revision: 0,
-        expected_metadata_revision: 0,
         metadata: crate::import::CandidateMetadataDraft {
             draft: crate::import::pane::blank_candidate_draft(&pane_candidate()),
             source_discogs_artist_ids: Default::default(),
@@ -391,12 +393,14 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
         let error = crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
-                content_hash: hash.clone(),
+                candidate: crate::import::CandidateAsRead {
+                    content_hash: hash.clone(),
+                    file_edit_revision: 0,
+                    metadata_revision: 0,
+                },
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
                 signals: scanning,
-                expected_edit_revision: 0,
-                expected_metadata_revision: 0,
                 metadata: crate::import::CandidateMetadataDraft {
                     draft: crate::import::pane::blank_candidate_draft(&pane_candidate()),
                     source_discogs_artist_ids: Default::default(),
@@ -549,9 +553,11 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &hash,
-        0,
-        0,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         &cover,
         Some(&image),
     )
@@ -579,9 +585,11 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &hash,
-        0,
-        0,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         &cover,
         None,
     )
@@ -618,9 +626,11 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &hash,
-        0,
-        0,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         &current_cover,
         Some(&current_image),
     )
@@ -638,9 +648,11 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
     crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
-        &hash,
-        0,
-        0,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         &stale_cover,
         Some(&stale_image),
     )
@@ -674,10 +686,12 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     };
     let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
-            &hash,
+            &crate::import::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
             &pane_candidate_path(),
-            0,
-            0,
             &crate::import::CandidateMetadataDraft {
                 draft: draft.clone(),
                 source_discogs_artist_ids: Default::default(),
@@ -705,10 +719,12 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     };
     let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
-            &hash,
+            &crate::import::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: 0,
+                metadata_revision: revision,
+            },
             &pane_candidate_path(),
-            0,
-            revision,
             &crate::import::CandidateMetadataDraft {
                 draft,
                 source_discogs_artist_ids: Default::default(),
@@ -745,9 +761,11 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     crate::import::CandidatePreparations::new(db.clone()).set_album_artists_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
-        &hash,
-        0,
-        revision,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision: revision,
+        },
         &[third_assignment],
         &std::collections::BTreeSet::new(),
         std::slice::from_ref(&third),
@@ -775,10 +793,12 @@ async fn preparation_round_trips_source_only_artist_answers() {
 
     crate::import::CandidatePreparations::new(db.clone()).apply_source(
         &host_root("/music"),
-        &hash,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         &pane_candidate_path(),
-        0,
-        0,
         &crate::import::CandidateMetadataDraft {
             draft: candidate_draft("Release Title", "Artist Name"),
             source_discogs_artist_ids: source_ids.clone(),
@@ -804,9 +824,11 @@ async fn preparation_round_trips_source_only_artist_answers() {
     crate::import::CandidatePreparations::new(db.clone()).set_album_artists_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
-        &hash,
-        preparation.file_edit_revision,
-        preparation.metadata_revision,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: preparation.file_edit_revision,
+            metadata_revision: preparation.metadata_revision,
+        },
         &preparation.draft.album_artist_assignments,
         &std::collections::BTreeSet::new(),
         &[],

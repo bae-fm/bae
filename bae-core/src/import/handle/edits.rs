@@ -10,9 +10,7 @@ use super::*;
 struct PreparedArtistEdit {
     watched_folder_path: String,
     candidate_path: String,
-    content_hash: String,
-    file_edit_revision: u64,
-    metadata_revision: u64,
+    candidate: crate::import::CandidateAsRead,
     source_discogs_artist_ids: std::collections::BTreeSet<String>,
     assets: Vec<crate::import::PreparedArtistImage>,
 }
@@ -54,9 +52,11 @@ impl ImportServiceHandle {
             .set_prepared_cover(
                 candidate.watched_folder_path(),
                 &candidate.key(),
-                &hash,
-                candidate.file_edit_revision(),
-                revision,
+                &crate::import::CandidateAsRead {
+                    content_hash: hash,
+                    file_edit_revision: candidate.file_edit_revision(),
+                    metadata_revision: revision,
+                },
                 &cover,
                 remote_image.as_ref(),
             )
@@ -110,17 +110,15 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock().await;
         self.editable_candidate_revision_for_commit(
             candidate_key,
-            &prepared.content_hash,
-            prepared.file_edit_revision,
+            &prepared.candidate.content_hash,
+            prepared.candidate.file_edit_revision,
         )
         .await?;
         self.preparations
             .set_album_artists_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
-                &prepared.content_hash,
-                prepared.file_edit_revision,
-                prepared.metadata_revision,
+                &prepared.candidate,
                 &assignments,
                 &prepared.source_discogs_artist_ids,
                 &prepared.assets,
@@ -176,17 +174,15 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock().await;
         self.editable_candidate_revision_for_commit(
             candidate_key,
-            &prepared.content_hash,
-            prepared.file_edit_revision,
+            &prepared.candidate.content_hash,
+            prepared.candidate.file_edit_revision,
         )
         .await?;
         self.preparations
             .set_track_edits_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
-                &prepared.content_hash,
-                prepared.file_edit_revision,
-                prepared.metadata_revision,
+                &prepared.candidate,
                 &edits,
                 &prepared.source_discogs_artist_ids,
                 &prepared.assets,
@@ -217,17 +213,15 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock().await;
         self.editable_candidate_revision_for_commit(
             candidate_key,
-            &prepared.content_hash,
-            prepared.file_edit_revision,
+            &prepared.candidate.content_hash,
+            prepared.candidate.file_edit_revision,
         )
         .await?;
         self.preparations
             .set_track_artists_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
-                &prepared.content_hash,
-                prepared.file_edit_revision,
-                prepared.metadata_revision,
+                &prepared.candidate,
                 &track_ids,
                 &assignments,
                 &prepared.source_discogs_artist_ids,
@@ -253,17 +247,15 @@ impl ImportServiceHandle {
         let _commit = self.folder_state_commit.lock().await;
         self.editable_candidate_revision_for_commit(
             candidate_key,
-            &prepared.content_hash,
-            prepared.file_edit_revision,
+            &prepared.candidate.content_hash,
+            prepared.candidate.file_edit_revision,
         )
         .await?;
         self.preparations
             .set_track_edits_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
-                &prepared.content_hash,
-                prepared.file_edit_revision,
-                prepared.metadata_revision,
+                &prepared.candidate,
                 &[crate::import::CandidateTrackEdit::dropped(track_id)],
                 &prepared.source_discogs_artist_ids,
                 &prepared.assets,
@@ -320,9 +312,11 @@ impl ImportServiceHandle {
         Ok(PreparedArtistEdit {
             watched_folder_path: candidate.watched_folder_path().to_string(),
             candidate_path: candidate.key().into_owned(),
-            content_hash: hash,
-            file_edit_revision: preparation.file_edit_revision,
-            metadata_revision: preparation.metadata_revision,
+            candidate: crate::import::CandidateAsRead {
+                content_hash: hash,
+                file_edit_revision: preparation.file_edit_revision,
+                metadata_revision: preparation.metadata_revision,
+            },
             source_discogs_artist_ids,
             assets,
         })

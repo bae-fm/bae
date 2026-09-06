@@ -242,10 +242,12 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
     };
     handle.preparations.apply_source(
             &tmp.path().join("watched").to_string_lossy(),
-            &hash,
+            &crate::import::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: preparation.file_edit_revision,
+                metadata_revision: preparation.metadata_revision,
+            },
             &key,
-            preparation.file_edit_revision,
-            preparation.metadata_revision,
             &crate::import::CandidateMetadataDraft {
                 draft,
                 source_discogs_artist_ids: Default::default(),

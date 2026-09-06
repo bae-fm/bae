@@ -4,13 +4,97 @@
 //! The database loads and saves this whole. A writer loads it, changes what
 //! its operation changes, and saves it back against the revisions it loaded,
 //! so no two writers ever disagree about which rows belong together and no
-//! rule about the candidate has to be stated in SQL.
+//! rule about the candidate has to be stated in SQL. `CandidateAsRead` is
+//! what a writer names those revisions with, and it owns every refusal for a
+//! candidate that moved between the read and the write.
 
 use crate::db::DbCandidateIdentifyResult;
 use crate::import::folder_scanner::CandidateFileEdits;
 use crate::import::{CandidateMetadataDraft, CoverSelection};
+use crate::library::LibraryError;
 use crate::signals::Signals;
 use std::collections::BTreeSet;
+
+/// One candidate as a caller last read it: which candidate it is, and the two
+/// revisions it stood at.
+///
+/// Every write composed against what its caller read carries this, and is
+/// refused when either revision has moved. The two are never one number:
+/// `file_edit_revision` is the folder's file shape, which the scan rows carry
+/// and the list and pane queries join on, while `metadata_revision` counts
+/// writes to the draft.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CandidateAsRead {
+    /// `CategorizedFiles::content_hash` — which candidate this is, and the row
+    /// every write against it addresses. Adding, removing, or resizing a file
+    /// changes this, which orphans the old row rather than updating it.
+    pub content_hash: String,
+    /// The file-decision revision the caller read.
+    pub file_edit_revision: u64,
+    /// The metadata revision the caller read.
+    pub metadata_revision: u64,
+}
+
+/// What a write was about to store, named in the refusal when the candidate
+/// moved out from under it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum CandidateWrite {
+    /// A source's projection replacing the candidate's metadata.
+    Metadata,
+    /// One pane control's edit to the draft.
+    PaneEdit,
+    /// The person's file decisions, which advance the file revision.
+    FileDecisions,
+}
+
+impl CandidateAsRead {
+    /// Whether the candidate stored under this content hash still stands at
+    /// both revisions this read.
+    pub(crate) fn is_current(&self, prep: &CandidatePreparation) -> bool {
+        prep.file_edits.revision == self.file_edit_revision
+            && prep.metadata_revision == self.metadata_revision
+    }
+
+    /// `Ok` while the stored candidate still stands at both revisions this
+    /// read, otherwise the refusal naming which one moved.
+    pub(crate) fn verify(
+        &self,
+        prep: &CandidatePreparation,
+        write: CandidateWrite,
+    ) -> Result<(), LibraryError> {
+        if prep.file_edits.revision != self.file_edit_revision {
+            return Err(Self::files_moved(self.file_edit_revision, write));
+        }
+        if prep.metadata_revision != self.metadata_revision {
+            return Err(Self::metadata_moved(self.metadata_revision));
+        }
+        Ok(())
+    }
+
+    /// The refusal for a candidate whose file decisions moved past `expected`.
+    pub(crate) fn files_moved(expected: u64, write: CandidateWrite) -> LibraryError {
+        LibraryError::Import(match write {
+            CandidateWrite::Metadata => format!(
+                "candidate changed before its metadata was stored: its files moved past \
+                 revision {expected}"
+            ),
+            CandidateWrite::PaneEdit => format!(
+                "candidate changed before its edit was stored: its files moved past \
+                 revision {expected}"
+            ),
+            CandidateWrite::FileDecisions => {
+                format!("candidate file decisions changed at revision {expected}")
+            }
+        })
+    }
+
+    /// The refusal for a candidate whose metadata moved past `expected`.
+    pub(crate) fn metadata_moved(expected: u64) -> LibraryError {
+        LibraryError::Import(format!(
+            "candidate metadata changed from revision {expected}"
+        ))
+    }
+}
 
 /// Who last wrote the candidate's metadata.
 ///

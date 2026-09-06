@@ -6,7 +6,7 @@ use super::CandidatePreparations;
 use crate::db::{
     CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
-use crate::import::preparation::CandidatePreparation;
+use crate::import::preparation::{CandidateAsRead, CandidatePreparation, CandidateWrite};
 use crate::import::{CandidateDraft, TrackArtistAssignments};
 use crate::library::LibraryError;
 
@@ -36,9 +36,7 @@ impl CandidatePreparations {
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
-        content_hash: &str,
-        expected_file_edit_revision: u64,
-        expected_revision: u64,
+        read: &CandidateAsRead,
         cover: &crate::import::CoverSelection,
         remote_image: Option<&crate::import::cover_art::RemoteImage>,
     ) -> Result<u64, LibraryError> {
@@ -46,9 +44,9 @@ impl CandidatePreparations {
         let remote_image = remote_image.cloned();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
-            content_hash,
-            Some(expected_file_edit_revision),
-            Some(expected_revision),
+            &read.content_hash,
+            Some(read.file_edit_revision),
+            Some(read.metadata_revision),
             move |prep| {
                 prep.metadata.cover = Some(cover);
                 prep.metadata.assets.remote_cover = remote_image;
@@ -74,6 +72,11 @@ impl CandidatePreparations {
         .await
     }
 
+    /// A typed album field, which stands on its own: it carries no prepared
+    /// answers and does not read the rest of the draft, so it pins the file
+    /// shape it was typed over and nothing else. That is why it takes the
+    /// hash and the file revision rather than a whole
+    /// [`CandidateAsRead`] — its caller never reads a metadata revision.
     pub async fn set_field_prepared(
         &self,
         watched_folder_path: &str,
@@ -124,9 +127,7 @@ impl CandidatePreparations {
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
-        content_hash: &str,
-        expected_file_edit_revision: u64,
-        expected_revision: u64,
+        read: &CandidateAsRead,
         assignments: &[crate::import::ArtistAssignment],
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
@@ -141,9 +142,9 @@ impl CandidatePreparations {
         let assets = assets.to_vec();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
-            content_hash,
-            Some(expected_file_edit_revision),
-            Some(expected_revision),
+            &read.content_hash,
+            Some(read.file_edit_revision),
+            Some(read.metadata_revision),
             move |prep| {
                 require_prepared(prep)?;
                 prep.metadata.draft.album_artist_assignments = assignments;
@@ -179,9 +180,7 @@ impl CandidatePreparations {
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
-        content_hash: &str,
-        expected_file_edit_revision: u64,
-        expected_revision: u64,
+        read: &CandidateAsRead,
         edits: &[crate::import::CandidateTrackEdit],
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
         assets: &[crate::import::PreparedArtistImage],
@@ -191,9 +190,9 @@ impl CandidatePreparations {
         let assets = assets.to_vec();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
-            content_hash,
-            Some(expected_file_edit_revision),
-            Some(expected_revision),
+            &read.content_hash,
+            Some(read.file_edit_revision),
+            Some(read.metadata_revision),
             move |prep| {
                 require_prepared(prep)?;
                 for edit in &edits {
@@ -234,9 +233,7 @@ impl CandidatePreparations {
         &self,
         watched_folder_path: &str,
         candidate_path: &str,
-        content_hash: &str,
-        expected_file_edit_revision: u64,
-        expected_revision: u64,
+        read: &CandidateAsRead,
         track_ids: &[String],
         assignments: &TrackArtistAssignments,
         source_discogs_artist_ids: &std::collections::BTreeSet<String>,
@@ -253,9 +250,9 @@ impl CandidatePreparations {
         let assets = assets.to_vec();
         self.edit_candidate(
             Some(scanned_key(watched_folder_path, candidate_path)),
-            content_hash,
-            Some(expected_file_edit_revision),
-            Some(expected_revision),
+            &read.content_hash,
+            Some(read.file_edit_revision),
+            Some(read.metadata_revision),
             move |prep| {
                 require_prepared(prep)?;
                 fill_track_artists(&mut prep.metadata.draft, &track_ids, &assignments)?;
@@ -273,7 +270,9 @@ impl CandidatePreparations {
     /// `scanned` names where the scan must still list the candidate at the
     /// expected file revision; the revision expectations are checked against
     /// the loaded value, and the save re-checks them in its transaction. An
-    /// expectation left `None` is the loaded value itself.
+    /// expectation left `None` is the loaded value itself: a typed field is
+    /// independent of the draft it is typed over, so it pins the file shape
+    /// alone, and the test-only writers pin neither.
     async fn edit_candidate(
         &self,
         scanned: Option<ScannedCandidateKey>,
@@ -293,17 +292,15 @@ impl CandidatePreparations {
             })?;
         if let Some(expected) = expected_file_edit_revision {
             if prep.file_edits.revision != expected {
-                return Err(LibraryError::Import(format!(
-                    "candidate changed before its edit was stored: its files moved past \
-                     revision {expected}"
-                )));
+                return Err(CandidateAsRead::files_moved(
+                    expected,
+                    CandidateWrite::PaneEdit,
+                ));
             }
         }
         if let Some(expected) = expected_metadata_revision {
             if prep.metadata_revision != expected {
-                return Err(LibraryError::Import(format!(
-                    "candidate metadata changed from revision {expected}"
-                )));
+                return Err(CandidateAsRead::metadata_moved(expected));
             }
         }
         let expected = CandidateSaveExpectation {

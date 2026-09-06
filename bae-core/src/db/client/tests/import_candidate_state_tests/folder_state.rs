@@ -659,10 +659,12 @@ async fn a_disc_assignment_survives_a_relaunch() {
     let hash = scanned.content_hash();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &hash,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision,
+        },
         &folder.path().to_string_lossy(),
-        0,
-        metadata_revision,
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],
         &mapping_preparation,

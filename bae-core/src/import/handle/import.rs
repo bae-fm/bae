@@ -253,9 +253,11 @@ impl ImportServiceHandle {
         };
         let import_id = self.library_manager.new_id();
         let expectation = crate::import::service::ImportExpectation {
-            content_hash: content_hash.clone(),
-            edit_revision: candidate.file_edit_revision(),
-            metadata_revision: preparation.metadata_revision,
+            candidate: crate::import::CandidateAsRead {
+                content_hash: content_hash.clone(),
+                file_edit_revision: candidate.file_edit_revision(),
+                metadata_revision: preparation.metadata_revision,
+            },
             file_tag_snapshot,
         };
         let command = ImportCommand {
@@ -273,7 +275,7 @@ impl ImportServiceHandle {
         };
 
         self.library_manager
-            .clear_import_candidate_failure(expectation.content_hash())
+            .clear_import_candidate_failure(&expectation.candidate.content_hash)
             .await?;
         self.runtime.claim_for_import(candidate_key);
         drop(commit);
@@ -474,16 +476,19 @@ impl ImportServiceHandle {
             self.preparations
                 .apply_source(
                     &candidate.watched_folder_path,
-                    &content_hash,
+                    &crate::import::CandidateAsRead {
+                        content_hash: content_hash.clone(),
+                        file_edit_revision: candidate.file_edit_revision,
+                        metadata_revision: self
+                            .library_manager
+                            .load_import_candidate_state(&content_hash)
+                            .await?
+                            .ok_or_else(|| crate::import::ImportError::Internal {
+                                detail: "test import has no candidate state".into(),
+                            })?
+                            .metadata_revision,
+                    },
                     &command.candidate_key,
-                    candidate.file_edit_revision,
-                    self.library_manager
-                        .load_import_candidate_state(&content_hash)
-                        .await?
-                        .ok_or_else(|| crate::import::ImportError::Internal {
-                            detail: "test import has no candidate state".into(),
-                        })?
-                        .metadata_revision,
                     &crate::import::CandidateMetadataDraft {
                         draft: source_draft.draft,
                         source_discogs_artist_ids: Default::default(),
@@ -529,9 +534,11 @@ impl ImportServiceHandle {
             None
         };
         let expectation = crate::import::service::ImportExpectation {
-            content_hash,
-            edit_revision: candidate.file_edit_revision,
-            metadata_revision,
+            candidate: crate::import::CandidateAsRead {
+                content_hash,
+                file_edit_revision: candidate.file_edit_revision,
+                metadata_revision,
+            },
             file_tag_snapshot,
         };
         self.send_command_with_expectation(command, expectation)
@@ -559,7 +566,7 @@ impl ImportServiceHandle {
         // Whatever the last attempt left is about to be answered by this one,
         // so the pane stops offering Retry the moment the work is queued.
         self.library_manager
-            .clear_import_candidate_failure(expectation.content_hash())
+            .clear_import_candidate_failure(&expectation.candidate.content_hash)
             .await?;
         self.runtime.claim_for_import(&candidate_key);
         drop(commit);

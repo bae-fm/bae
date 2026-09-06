@@ -132,7 +132,11 @@ fn verdict(release_id: &str) -> TerminalVerdict {
 async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &str) {
     assert!(crate::import::CandidatePreparations::new(db.clone())
         .store_verdict(&NewImportCandidateVerdict {
-            content_hash: candidate.files.content_hash(),
+            candidate: crate::import::CandidateAsRead {
+                content_hash: candidate.files.content_hash(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id),
             signals: crate::signals::Signals {
@@ -144,8 +148,6 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
                 },
                 durations: crate::import::probe::SourceDurations::totalling(1_000),
             },
-            expected_edit_revision: 0,
-            expected_metadata_revision: 0,
             metadata: {
                 let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
                 crate::import::CandidateMetadataDraft {
@@ -759,9 +761,11 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
         .apply_file_tags(
             root,
             &candidate.path.to_string_lossy(),
-            &hash,
-            0,
-            0,
+            &crate::import::CandidateAsRead {
+                content_hash: hash.clone(),
+                file_edit_revision: 0,
+                metadata_revision: 0,
+            },
             &snapshot,
             &draft,
             Some(&crate::import::CoverSelection::Embedded(

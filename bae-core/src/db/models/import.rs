@@ -29,10 +29,11 @@ pub(crate) struct DbCandidateFileTagSnapshot {
 /// verdict write leaves them alone.
 #[derive(Debug, Clone)]
 pub struct NewImportCandidateVerdict {
-    /// `CategorizedFiles::content_hash` — the row's identity. Adding,
-    /// removing, or resizing a file changes this, which orphans the old row
-    /// rather than updating it.
-    pub content_hash: String,
+    /// The candidate identification read before its run: the row this verdict
+    /// addresses, the file shape it was derived from, and the metadata
+    /// revision it began from. The write refuses a result whose candidate
+    /// moved past either revision while the run was in flight.
+    pub candidate: crate::import::CandidateAsRead,
     /// Where the candidate was last seen on disk. Not identity — the hash is —
     /// so a moved folder keeps reading the same row under its unchanged hash.
     pub folder_path: String,
@@ -43,16 +44,11 @@ pub struct NewImportCandidateVerdict {
     /// instead of extracting them again, and the `probed_total_duration_ms`
     /// column is summed from the durations by the write itself.
     pub signals: crate::signals::Signals,
-    /// File-decision revision used to derive this verdict.
-    pub expected_edit_revision: u64,
-    /// Metadata revision identification began from. The write refuses a result
-    /// when the editable draft changed while the run was in flight.
-    pub expected_metadata_revision: u64,
     /// The editable metadata state this verdict concludes. A single match
     /// carries the projected release draft and its provenance; every other
     /// verdict carries the blank candidate draft. It replaces an earlier
     /// identification result as one unit, while a person's newer choice or
-    /// edit wins through `expected_metadata_revision`.
+    /// edit wins through `candidate`'s metadata revision.
     pub metadata: crate::import::CandidateMetadataDraft,
 }
 

@@ -352,9 +352,11 @@ impl ImportServiceHandle {
                     .apply_file_tags(
                         snapshot_candidate.watched_folder_path(),
                         &candidate_key,
-                        &content_hash,
-                        current.file_edit_revision,
-                        expected_metadata_revision,
+                        &crate::import::CandidateAsRead {
+                            content_hash: content_hash.clone(),
+                            file_edit_revision: current.file_edit_revision,
+                            metadata_revision: expected_metadata_revision,
+                        },
                         &snapshot,
                         &draft,
                         cover.as_ref(),
@@ -406,10 +408,12 @@ impl ImportServiceHandle {
                     .preparations
                     .apply_source(
                         candidate.watched_folder_path(),
-                        &content_hash,
+                        &crate::import::CandidateAsRead {
+                            content_hash: content_hash.clone(),
+                            file_edit_revision: candidate.file_edit_revision(),
+                            metadata_revision: expected_metadata_revision,
+                        },
                         &candidate_key,
-                        candidate.file_edit_revision(),
-                        expected_metadata_revision,
                         &metadata,
                     )
                     .await?);
@@ -450,10 +454,12 @@ impl ImportServiceHandle {
             .preparations
             .apply_source(
                 candidate.watched_folder_path(),
-                &content_hash,
+                &crate::import::CandidateAsRead {
+                    content_hash: content_hash.clone(),
+                    file_edit_revision: candidate.file_edit_revision(),
+                    metadata_revision: current.metadata_revision,
+                },
                 &candidate_key,
-                candidate.file_edit_revision(),
-                current.metadata_revision,
                 &crate::import::CandidateMetadataDraft {
                     draft,
                     source_discogs_artist_ids: Default::default(),
@@ -659,10 +665,12 @@ impl ImportServiceHandle {
         let (_next_revision, candidates) = self
             .preparations
             .store_file_decisions(
-                &content_hash,
+                &crate::import::CandidateAsRead {
+                    content_hash: content_hash.clone(),
+                    file_edit_revision: expected_revision,
+                    metadata_revision: preparation.metadata_revision,
+                },
                 candidate_key,
-                expected_revision,
-                preparation.metadata_revision,
                 &edits,
                 &settled,
                 &mapping_preparation,

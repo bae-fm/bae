@@ -91,8 +91,8 @@ impl ImportService {
     pub(super) async fn do_import(&self, command: ImportCommand, expectation: ImportExpectation) {
         let import_id = command.import_id.clone();
         let candidate_key = command.candidate_key.clone();
-        let content_hash = expectation.content_hash().to_string();
-        let edit_revision = expectation.edit_revision();
+        let content_hash = expectation.candidate.content_hash.clone();
+        let edit_revision = expectation.candidate.file_edit_revision;
         let result = self
             .prepare_and_run_folder_import(
                 import_id.clone(),
@@ -169,8 +169,8 @@ impl ImportService {
         pin: bool,
     ) -> Result<(), crate::import::ImportError> {
         let library_manager = &self.library_manager;
-        let expected_content_hash = expectation.content_hash().to_string();
-        let expected_edit_revision = expectation.edit_revision();
+        let expected_content_hash = expectation.candidate.content_hash.clone();
+        let expected_edit_revision = expectation.candidate.file_edit_revision;
 
         let import_start = std::time::Instant::now();
         send_event(
@@ -229,7 +229,7 @@ impl ImportService {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
         if preparation.file_edit_revision != expected_edit_revision
-            || preparation.metadata_revision != expectation.metadata_revision()
+            || preparation.metadata_revision != expectation.candidate.metadata_revision
         {
             return Err(crate::import::ImportError::Internal {
                 detail: format!(

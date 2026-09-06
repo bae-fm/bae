@@ -80,9 +80,11 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
                 scope: crate::import::ReleaseFileScope::Recursive,
             },
             super::ImportExpectation {
-                content_hash: expected_content_hash,
-                edit_revision: 0,
-                metadata_revision,
+                candidate: crate::import::CandidateAsRead {
+                    content_hash: expected_content_hash,
+                    file_edit_revision: 0,
+                    metadata_revision,
+                },
                 file_tag_snapshot: None,
             },
             StorageMode::Local,

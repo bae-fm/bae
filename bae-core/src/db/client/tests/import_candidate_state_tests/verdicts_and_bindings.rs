@@ -98,12 +98,14 @@ fn new_candidate_row(
     probed_total_duration_ms: u64,
 ) -> NewImportCandidateVerdict {
     NewImportCandidateVerdict {
-        content_hash: content_hash.to_string(),
+        candidate: crate::import::CandidateAsRead {
+            content_hash: content_hash.to_string(),
+            file_edit_revision: 0,
+            metadata_revision: 0,
+        },
         folder_path: folder_path.to_string(),
         verdict: verdict.clone(),
         signals: sample_signals(probed_total_duration_ms),
-        expected_edit_revision: 0,
-        expected_metadata_revision: 0,
         metadata: crate::import::CandidateMetadataDraft {
             draft: candidate_draft("", ""),
             source_discogs_artist_ids: Default::default(),
@@ -269,7 +271,7 @@ async fn a_re_run_that_settles_elsewhere_drops_the_pick_its_own_earlier_verdict_
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
 
     let mut re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
-    re_run.expected_metadata_revision = 1;
+    re_run.candidate.metadata_revision = 1;
     assert_eq!(re_run.metadata.provenance, None, "nothing was found to pick");
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
@@ -305,7 +307,7 @@ async fn a_re_run_that_finds_nothing_leaves_a_person_s_pick_alone() {
         .unwrap();
 
     let mut re_run = new_candidate_row(&hash, "/music/Album", &found_nothing(), 2_700_000);
-    re_run.expected_metadata_revision = 2;
+    re_run.candidate.metadata_revision = 2;
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&re_run).await.unwrap();
 
     let loaded = db.load_import_candidate_states().await.unwrap();
@@ -332,7 +334,7 @@ async fn a_re_run_that_settles_elsewhere_replaces_the_pick_it_made() {
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&first).await.unwrap();
 
     let mut second = new_candidate_row(&hash, "/music/Album", &sample_verdict(), 2_700_000);
-    second.expected_metadata_revision = 1;
+    second.candidate.metadata_revision = 1;
     second.metadata.provenance = Some(release_pick("mb-rel-second"));
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&second).await.unwrap();
 
@@ -364,10 +366,12 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
     crate::import::CandidatePreparations::new(db.clone()).store_verdict(&settled).await.unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &hash,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision,
+        },
         "/music/Album",
-        0,
-        metadata_revision,
         &edits,
         &[("/music/Album".to_string(), candidate.clone())],
         &mapping_preparation,
@@ -392,10 +396,12 @@ async fn a_file_decision_clears_identification_s_pick_and_keeps_a_person_s() {
         .unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &hash,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 1,
+            metadata_revision,
+        },
         "/music/Album",
-        1,
-        metadata_revision,
         &edits,
         &[("/music/Album".to_string(), candidate.clone())],
         &mapping_preparation,
@@ -577,10 +583,12 @@ async fn a_cleared_binding_survives_a_relaunch() {
     let hash = scanned.content_hash();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &hash,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision,
+        },
         &folder.path().to_string_lossy(),
-        0,
-        metadata_revision,
         &candidate_edits,
         &[(folder.path().to_string_lossy().into_owned(), settled)],
         &mapping_preparation,
@@ -692,10 +700,12 @@ async fn changing_a_binding_keeps_the_hash_and_clears_the_verdict() {
     let folder_path = folder.path().to_string_lossy().into_owned();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
     crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
-        &hash,
+        &crate::import::CandidateAsRead {
+            content_hash: hash.clone(),
+            file_edit_revision: 0,
+            metadata_revision,
+        },
         &folder_path,
-        0,
-        metadata_revision,
         &CandidateFileEdits {
             sheet_bindings: edits,
             ..Default::default()

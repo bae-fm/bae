@@ -774,7 +774,11 @@ impl Fixture {
             .save_candidate_verdict_if_current(
                 &dir.to_string_lossy(),
                 &NewImportCandidateVerdict {
-                    content_hash: self.content_hash(dir),
+                    candidate: crate::import::CandidateAsRead {
+                        content_hash: self.content_hash(dir),
+                        file_edit_revision: 0,
+                        metadata_revision: 0,
+                    },
                     folder_path: dir.to_string_lossy().into_owned(),
                     verdict,
                     // A computed disc ID that names the log it came from, so
@@ -790,8 +794,6 @@ impl Fixture {
                             probed_total_ms,
                         ))
                     },
-                    expected_edit_revision: 0,
-                    expected_metadata_revision: 0,
                     metadata: crate::import::CandidateMetadataDraft {
                         draft,
                         source_discogs_artist_ids: Default::default(),

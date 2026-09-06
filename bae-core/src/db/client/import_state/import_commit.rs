@@ -44,7 +44,7 @@ fn load_committing_candidate(
         .query_row(
             "SELECT edit_revision, metadata_revision FROM import_candidate_state \
              WHERE content_hash = ?",
-            [expectation.content_hash()],
+            [expectation.candidate.content_hash.as_str()],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()?;

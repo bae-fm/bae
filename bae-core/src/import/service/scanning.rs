@@ -49,9 +49,11 @@ impl ImportService {
             .apply_file_tags(
                 &candidate.watched_folder_path,
                 &candidate.path.to_string_lossy(),
-                &content_hash,
-                file_edit_revision,
-                state.metadata_revision,
+                &crate::import::CandidateAsRead {
+                    content_hash,
+                    file_edit_revision,
+                    metadata_revision: state.metadata_revision,
+                },
                 &snapshot,
                 &source_draft.draft,
                 cover.as_ref(),

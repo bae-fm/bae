@@ -651,8 +651,8 @@ impl ImportServiceHandle {
         let Some(candidate) = self.answerable_candidate(candidate_key).await? else {
             return Ok(false);
         };
-        if candidate.files().content_hash() != row.content_hash
-            || candidate.file_edit_revision() != row.expected_edit_revision
+        if candidate.files().content_hash() != row.candidate.content_hash
+            || candidate.file_edit_revision() != row.candidate.file_edit_revision
         {
             return Ok(false);
         }
