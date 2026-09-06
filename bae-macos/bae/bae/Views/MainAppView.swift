@@ -102,8 +102,7 @@ struct MainAppView: View {
             if let preview = importStore.previewState.active {
                 PreviewOverlay(
                     path: preview.target.path,
-                    isPlaying: preview.isPlaying,
-                    durationMs: preview.durationMs
+                    isPlaying: preview.isPlaying
                 )
             }
 

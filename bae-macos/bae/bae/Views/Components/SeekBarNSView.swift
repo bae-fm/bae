@@ -7,9 +7,9 @@ import BaeKit
 /// display rate and would thrash the view tree (~15-20% CPU in NSHostingView
 /// constraint recalculation when this went through SwiftUI).
 ///
-/// Wrapped by `PlaybackProgressRepresentable` (now-playing bar) and
-/// `PreviewProgressRepresentable` (import-tab preview player).
-class SeekBarNSView: NSView {
+/// `SeekBarRepresentable` supplies complete timeline updates for library
+/// playback and import audition.
+final class SeekBarNSView: NSView {
     private let elapsedField: NSTextField
     private let slider: SeekSlider
     private let durationField: NSTextField
@@ -29,8 +29,8 @@ class SeekBarNSView: NSView {
     /// back on this view, which is what re-renders it.
     var onToggleRemainingTime: (() -> Void)?
 
-    /// The user's choice, from the config. The view never stores it — a copy
-    /// here is how it stopped following the user between devices.
+    /// The rendered preference follows config updates; clicks write through
+    /// `onToggleRemainingTime` rather than changing this value locally.
     var showRemainingTime = false {
         didSet {
             if showRemainingTime != oldValue {
@@ -39,16 +39,12 @@ class SeekBarNSView: NSView {
         }
     }
 
-    private var positionMs: Int64 = 0
-    private var durationMs: UInt64?
+    private var position: PlaybackPositionEvent = .reset
     /// Set while the user drags the slider: the dropped position, shown until
     /// the drag ends. Nil means the leading label follows playback.
     private var draggingPositionMs: Int64?
 
-    /// `fixedSliderWidth` pins the slider's width; nil lets the stack size it
-    /// to the space its container offers (the now-playing bar's center column,
-    /// the import preview player's row).
-    init(showsRemainingTimeToggle: Bool, fixedSliderWidth: CGFloat?) {
+    init(showsRemainingTimeToggle: Bool) {
         self.showsRemainingTimeToggle = showsRemainingTimeToggle
 
         let font = NSFont.monospacedDigitSystemFont(
@@ -97,7 +93,7 @@ class SeekBarNSView: NSView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
-        var constraints = [
+        NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: trailingAnchor),
             stack.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -105,13 +101,7 @@ class SeekBarNSView: NSView {
                 equalToConstant: showsRemainingTimeToggle ? 48 : 40
             ),
             durationField.widthAnchor.constraint(equalToConstant: 40),
-        ]
-        if let fixedSliderWidth {
-            constraints.append(
-                slider.widthAnchor.constraint(equalToConstant: fixedSliderWidth)
-            )
-        }
-        NSLayoutConstraint.activate(constraints)
+        ])
     }
 
     @available(*, unavailable)
@@ -121,33 +111,18 @@ class SeekBarNSView: NSView {
 
     // MARK: - Direct position updates (called from a Combine subscription)
 
-    func setPosition(progress: Double, positionMs: Int64) {
-        self.positionMs = positionMs
-
-        if !slider.isDragging {
+    /// Position, duration, and progress always belong to the same update.
+    func apply(_ position: PlaybackPositionEvent) {
+        self.position = position
+        switch position {
+        case .position(let progress, _, _):
+            guard !slider.isDragging else { return }
             slider.doubleValue = progress
-            updateLabels()
+        case .reset:
+            slider.doubleValue = 0
+            draggingPositionMs = nil
         }
-    }
-
-    func setDuration(durationMs: UInt64) {
-        self.durationMs = durationMs
         updateLabels()
-    }
-
-    func clearDuration() {
-        durationMs = nil
-        updateLabels()
-    }
-
-    /// Clears everything: slider to 0, both labels empty, duration dropped.
-    func reset() {
-        slider.doubleValue = 0
-        positionMs = 0
-        durationMs = nil
-        draggingPositionMs = nil
-        elapsedField.stringValue = ""
-        durationField.stringValue = ""
     }
 
     // MARK: - Internal
@@ -157,7 +132,8 @@ class SeekBarNSView: NSView {
     /// user drags, the leading label reads the dropped position instead of the
     /// playing one.
     private func updateLabels() {
-        guard let durationMs else {
+        guard case .position(_, let positionMs, let durationMs) = position
+        else {
             elapsedField.stringValue = ""
             durationField.stringValue = ""
             return
@@ -173,7 +149,10 @@ class SeekBarNSView: NSView {
 
     @objc
     private func sliderValueChanged(_: SeekSlider) {
-        guard slider.isDragging, let durationMs, durationMs > 0 else {
+        guard slider.isDragging,
+            case .position(_, _, let durationMs) = position,
+            durationMs > 0
+        else {
             return
         }
         draggingPositionMs = Int64(slider.positionMs(forDuration: durationMs))

@@ -232,7 +232,7 @@ final class AppService: BaeKit.AppService, @unchecked Sendable {
     }
 
     private var previewProgressPublisher:
-        AnyPublisher<PreviewProgressEvent, Never>
+        AnyPublisher<PlaybackPositionEvent, Never>
     {
         importStore.previewProgressSubject.eraseToAnyPublisher()
     }

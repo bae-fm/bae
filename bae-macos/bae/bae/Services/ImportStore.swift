@@ -112,7 +112,7 @@ class ImportStore {
     /// header hides rather than opening on a bar frozen at zero.
     var queueIdentifyProgress: (identified: UInt32, total: UInt32)?
 
-    var previewState: PreviewState = .idle
+    var previewState: BridgePreviewState = .idle
 
     /// Preview audio progress (the import-tab preview player).
     /// High-frequency — published as a Combine signal so only the
@@ -122,7 +122,7 @@ class ImportStore {
     /// bar until the next tick.
     @ObservationIgnored
     let previewProgressSubject = CurrentValueSubject<
-        PreviewProgressEvent, Never
+        PlaybackPositionEvent, Never
     >(.reset)
 
     /// What every candidate has in flight — a run's identify state, a running

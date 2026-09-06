@@ -29,27 +29,18 @@ final class DesktopEventHandler {
     }
 
     func apply(_ values: BridgePreviewValues) {
+        importStore.previewState = values.state
+        let position: PlaybackPositionEvent
         switch values.state {
-        case .playing(let target, let durationMs):
-            importStore.previewState = .playing(
-                target: target,
-                durationMs: durationMs
-            )
-        case .paused(let target, let durationMs):
-            importStore.previewState = .paused(
-                target: target,
+        case .playing(_, let durationMs), .paused(_, let durationMs):
+            position = .position(
+                progress: values.progress,
+                positionMs: Int64(values.positionMs),
                 durationMs: durationMs
             )
         case .idle:
-            importStore.previewState = .idle
+            position = .reset
         }
-        importStore.previewProgressSubject.send(
-            values.state == .idle
-                ? .reset
-                : .position(
-                    progress: values.progress,
-                    positionMs: values.positionMs
-                )
-        )
+        importStore.previewProgressSubject.send(position)
     }
 }

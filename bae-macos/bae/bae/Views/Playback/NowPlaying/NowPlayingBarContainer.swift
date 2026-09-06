@@ -32,7 +32,6 @@ struct NowPlayingBarContainer: View {
             cover: cover,
             isPlaying: np.isPlaying,
             isLoading: np.loadingTrackId != nil,
-            durationMs: track?.durationMs,
             showRemainingTime: configStore.config.showRemainingTime,
             volume: playbackStore.volume,
             isMuted: playbackStore.isMuted,
@@ -102,6 +101,17 @@ struct NowPlayingBarContainer: View {
             .environment(Playback.stub())
             .environment(Queue.stub())
             .environment(store)
+            .environment(
+                \.playbackPositionPublisher,
+                Just(
+                    PlaybackPositionEvent.position(
+                        progress: 0.25,
+                        positionMs: 55_500,
+                        durationMs: 222_000
+                    )
+                )
+                .eraseToAnyPublisher()
+            )
             .environment(UiStore())
             .environment(PreviewData.configStore())
             .environment(ImageStore.stub())

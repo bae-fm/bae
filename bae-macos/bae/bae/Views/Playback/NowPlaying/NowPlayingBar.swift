@@ -12,7 +12,6 @@ struct NowPlayingBar: View {
     let cover: ImageContent?
     let isPlaying: Bool
     let isLoading: Bool
-    let durationMs: UInt64?
     /// The user's elapsed-vs-remaining choice, from the config.
     let showRemainingTime: Bool
     let volume: Float
@@ -208,9 +207,8 @@ struct NowPlayingBar: View {
     }
 
     private var progressBar: some View {
-        PlaybackProgressRepresentable(
+        PlaybackProgressView(
             showRemainingTime: showRemainingTime,
-            durationMs: durationMs,
             onSeek: onSeek,
             onToggleRemainingTime: onToggleRemainingTime,
         )
@@ -336,9 +334,7 @@ extension NowPlayingBar {
 #if DEBUG
     // MARK: - Previews
 
-    /// Preview host that provides the state bindings NowPlayingBar needs.
-    /// The playback position publisher defaults to `Empty()` — the NSView
-    /// renders the duration clock from the static `durationMs` prop.
+    /// Preview host that supplies track metadata and a complete timeline.
     private struct NowPlayingBarPreview: View {
         let trackTitle: String?
         let artistNames: String?
@@ -361,7 +357,6 @@ extension NowPlayingBar {
                 cover: nil,
                 isPlaying: isPlaying,
                 isLoading: isLoading,
-                durationMs: 222_000,
                 showRemainingTime: false,
                 volume: volume,
                 isMuted: isMuted,
@@ -382,6 +377,19 @@ extension NowPlayingBar {
                 onNavigateToAlbum: {},
                 queueAddPublisher: Empty().eraseToAnyPublisher(),
                 castControl: AnyView(EmptyView()),
+            )
+            .environment(
+                \.playbackPositionPublisher,
+                Just(
+                    trackTitle == nil
+                        ? PlaybackPositionEvent.reset
+                        : .position(
+                            progress: 0.25,
+                            positionMs: 55_500,
+                            durationMs: 222_000
+                        )
+                )
+                .eraseToAnyPublisher()
             )
             .frame(width: 1100)
         }

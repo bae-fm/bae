@@ -1,4 +1,5 @@
 import BaeKit
+import Combine
 import SwiftUI
 
 struct PreviewOverlay: View {
@@ -6,7 +7,6 @@ struct PreviewOverlay: View {
     var previewAudio
     let path: String
     let isPlaying: Bool
-    let durationMs: UInt64
 
     var body: some View {
         ModalOverlay(
@@ -41,8 +41,7 @@ struct PreviewOverlay: View {
                             .font(.body)
                         }
                         .buttonStyle(.plain)
-                        PreviewProgressRepresentable(
-                            durationMs: durationMs,
+                        PreviewProgressView(
                             onSeek: { previewAudio.previewSeekByRatio($0) },
                         )
                         .frame(height: 20)
@@ -63,10 +62,20 @@ struct PreviewOverlay: View {
         PreviewOverlay(
             path: "/Music/Downloads/Album Title/01 Track Title.flac",
             isPlaying: true,
-            durationMs: 210_000,
         )
         .frame(width: 600, height: 400)
         .environment(PreviewAudio.stub())
+        .environment(
+            \.previewProgressPublisher,
+            Just(
+                PlaybackPositionEvent.position(
+                    progress: 0.25,
+                    positionMs: 52_500,
+                    durationMs: 210_000
+                )
+            )
+            .eraseToAnyPublisher()
+        )
         .windowBackground()
     }
 #endif
