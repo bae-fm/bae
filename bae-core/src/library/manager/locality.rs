@@ -343,14 +343,19 @@ impl LibraryManager {
         let mut last_revision = None;
         let mut failures = Vec::new();
         for release_id in release_ids {
+            // This release's transfer, from its precondition check to whichever
+            // terminal state it reaches. coven's outbox reports its progress, so
+            // there is no channel to announce a start on.
+            let transfer = crate::storage::transfer::ReleaseTransfer::new(
+                self.clone(),
+                release_id.clone(),
+                ReleaseStorageAction::MakeRemote,
+            );
             let admission = async {
-                let file_count = crate::storage::transfer::validate_transfer_preconditions(
-                    release_id,
-                    ReleaseStorageAction::MakeRemote,
-                    self,
-                )
-                .await
-                .map_err(|error| LibraryError::Storage(error.to_string()))?;
+                let file_count = transfer
+                    .start()
+                    .await
+                    .map_err(|error| LibraryError::Storage(error.to_string()))?;
                 let _value_guard = self.admit_transfer_values(
                     std::slice::from_ref(release_id),
                     ReleaseStorageAction::MakeRemote,
@@ -362,22 +367,12 @@ impl LibraryManager {
 
             match admission {
                 Ok((revision, file_count)) => {
-                    crate::storage::transfer::record_transfer_completed(
-                        self,
-                        release_id,
-                        ReleaseStorageAction::MakeRemote,
-                        file_count,
-                    );
+                    transfer.complete(file_count);
                     admitted_release_ids.push(release_id.clone());
                     last_revision = Some(revision);
                 }
                 Err(error) => {
-                    crate::storage::transfer::record_transfer_failed(
-                        self,
-                        release_id,
-                        ReleaseStorageAction::MakeRemote,
-                        &error,
-                    );
+                    transfer.fail(&error);
                     failures.push((release_id.clone(), error));
                 }
             }

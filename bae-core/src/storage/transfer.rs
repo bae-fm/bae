@@ -104,13 +104,17 @@ impl TransferService {
         Drive: FnOnce(mpsc::UnboundedReceiver<TransferProgress>) -> DriveFuture,
         DriveFuture: Future<Output = Result<DriveOutput, LibraryError>>,
     {
+        let library_manager = self.library_manager.clone();
+        let pinned_release_id = release_id.clone();
         let (progress, task) = spawn_transfer(
-            self.library_manager.clone(),
-            release_id,
-            ReleaseStorageAction::Pin,
-            |release_id, library_manager, tx| async move {
+            ReleaseTransfer::new(
+                self.library_manager.clone(),
+                release_id,
+                ReleaseStorageAction::Pin,
+            ),
+            move |tx| async move {
                 library_manager
-                    .pin_release_blobs_with_progress(&release_id, |progress| {
+                    .pin_release_blobs_with_progress(&pinned_release_id, |progress| {
                         send_progress(&tx, TransferProgress::Progress { progress });
                     })
                     .await?;
@@ -134,12 +138,18 @@ impl TransferService {
     /// Unpin a release: move its blobs from `storage/pinned/` to the evictable
     /// `storage/cache/`. Returns a receiver for progress updates.
     pub fn unpin_release(&self, release_id: String) -> mpsc::UnboundedReceiver<TransferProgress> {
+        let library_manager = self.library_manager.clone();
+        let unpinned_release_id = release_id.clone();
         let (rx, _) = spawn_transfer(
-            self.library_manager.clone(),
-            release_id,
-            ReleaseStorageAction::Unpin,
-            |release_id, library_manager, _tx| async move {
-                library_manager.unpin_release_blobs(&release_id).await?;
+            ReleaseTransfer::new(
+                self.library_manager.clone(),
+                release_id,
+                ReleaseStorageAction::Unpin,
+            ),
+            move |_tx| async move {
+                library_manager
+                    .unpin_release_blobs(&unpinned_release_id)
+                    .await?;
                 Ok(TransferOutcome::Complete)
             },
         );
@@ -155,11 +165,15 @@ impl TransferService {
         new_path: String,
         cancel: crate::library::CancellationToken,
     ) -> mpsc::UnboundedReceiver<TransferProgress> {
+        let library_manager = self.library_manager.clone();
+        let localized_release_id = release_id.clone();
         let (rx, _) = spawn_transfer(
-            self.library_manager.clone(),
-            release_id,
-            ReleaseStorageAction::MakeLocal,
-            move |release_id, library_manager, _tx| async move {
+            ReleaseTransfer::new(
+                self.library_manager.clone(),
+                release_id,
+                ReleaseStorageAction::MakeLocal,
+            ),
+            move |_tx| async move {
                 tokio::fs::create_dir_all(std::path::Path::new(&new_path)).await?;
 
                 // coven materializes each blob durability-first, flips the gate false,
@@ -167,7 +181,7 @@ impl TransferService {
                 // atomic commit; a cancel before the commit is rolled back and surfaced
                 // as Ok.
                 library_manager
-                    .coven_make_local(&release_id, &new_path, &cancel)
+                    .coven_make_local(&localized_release_id, &new_path, &cancel)
                     .await?;
                 Ok(TransferOutcome::Complete)
             },
@@ -176,35 +190,140 @@ impl TransferService {
     }
 }
 
-fn spawn_transfer<Run, Fut>(
+/// One release transfer in flight: which release, what is being done to it, and
+/// the library it is guarded and recorded against.
+///
+/// Whoever runs a transfer holds one of these from the precondition check
+/// through to the terminal record, so a completion or a failure can only ever
+/// name the transfer that was started. Sits beside
+/// [`crate::library::storage_transitions::StorageTransitions`], which tracks
+/// which release is in a transition at all and how to cancel it; this owns what
+/// one transfer checks, logs, and reports.
+///
+/// A pin, unpin, or make-Local is handed to [`spawn_transfer`], which drives it
+/// on its own task and reports on a progress channel. A make-Remote has no
+/// channel of its own — coven's outbox reports it — so its caller drives it and
+/// calls [`Self::start`], [`Self::complete`], and [`Self::fail`] directly.
+pub(crate) struct ReleaseTransfer {
     library_manager: LibraryManager,
     release_id: String,
     action: ReleaseStorageAction,
+}
+
+impl ReleaseTransfer {
+    pub(crate) fn new(
+        library_manager: LibraryManager,
+        release_id: String,
+        action: ReleaseStorageAction,
+    ) -> Self {
+        Self {
+            library_manager,
+            release_id,
+            action,
+        }
+    }
+
+    /// Guard the transfer's preconditions; returns the release's file count so
+    /// the completion can report it.
+    pub(crate) async fn start(&self) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
+        let release = self
+            .library_manager
+            .get_release_by_id(&self.release_id)
+            .await?
+            .ok_or("Release not found")?;
+        if release.remote != action_expects_remote(self.action) {
+            return Err(wrong_state_error(self.action).into());
+        }
+        if matches!(self.action, ReleaseStorageAction::MakeRemote)
+            && !self.library_manager.has_cloud_home()
+        {
+            return Err("Cannot make a release remote without a cloud home".into());
+        }
+
+        let files = self
+            .library_manager
+            .get_files_for_release(&self.release_id)
+            .await?;
+        if files.is_empty() {
+            return Err("Release has no files".into());
+        }
+
+        Ok(files.len() as u32)
+    }
+
+    pub(crate) fn complete(&self, file_count: u32) {
+        info!(
+            action = ?self.action,
+            release_id = %self.release_id,
+            "release transfer complete"
+        );
+        self.library_manager
+            .record_telemetry(TelemetryEvent::StorageTransferCompleted {
+                action: self.action,
+                release_id: LocalId(self.release_id.clone()),
+                file_count,
+            });
+    }
+
+    pub(crate) fn fail(&self, failure: &dyn std::fmt::Display) {
+        error!(
+            action = ?self.action,
+            release_id = %self.release_id,
+            failure = %failure,
+            "release transfer failed"
+        );
+        self.library_manager
+            .record_telemetry(TelemetryEvent::StorageTransferFailed {
+                action: self.action,
+                release_id: LocalId(self.release_id.clone()),
+            });
+    }
+}
+
+/// Drive one release transfer on its own task: guard its preconditions, announce
+/// its start, run `run`, and record whichever terminal state it reaches. Returns
+/// the progress channel to drain and the task, so a caller that needs to join or
+/// abort the transfer can.
+fn spawn_transfer<Run, Fut>(
+    transfer: ReleaseTransfer,
     run: Run,
 ) -> (
     mpsc::UnboundedReceiver<TransferProgress>,
     tokio::task::JoinHandle<()>,
 )
 where
-    Run: FnOnce(String, LibraryManager, ProgressTx) -> Fut + Send + 'static,
+    Run: FnOnce(ProgressTx) -> Fut + Send + 'static,
     Fut: Future<Output = TransferResult> + Send + 'static,
 {
     let (tx, rx) = mpsc::unbounded_channel();
     let task = tokio::spawn(async move {
-        let result = run_transfer(
-            release_id.clone(),
-            action,
-            library_manager.clone(),
-            tx.clone(),
-            run,
-        )
+        let result = async {
+            let file_count = transfer.start().await?;
+            send_progress(&tx, TransferProgress::Started);
+            info!(
+                action = ?transfer.action,
+                release_id = %transfer.release_id,
+                file_count,
+                "release transfer started"
+            );
+            let outcome = run(tx.clone()).await?;
+            transfer.complete(file_count);
+            send_progress(
+                &tx,
+                TransferProgress::Complete {
+                    release_id: transfer.release_id.clone(),
+                    outcome,
+                },
+            );
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(())
+        }
         .await;
         if let Err(e) = result {
-            record_transfer_failed(&library_manager, &release_id, action, &e);
+            transfer.fail(&e);
             send_progress(
                 &tx,
                 TransferProgress::Failed {
-                    release_id,
+                    release_id: transfer.release_id.clone(),
                     error: e.to_string(),
                 },
             );
@@ -212,108 +331,6 @@ where
     });
 
     (rx, task)
-}
-
-async fn run_transfer<Fut>(
-    release_id: String,
-    action: ReleaseStorageAction,
-    library_manager: LibraryManager,
-    tx: ProgressTx,
-    run: impl FnOnce(String, LibraryManager, ProgressTx) -> Fut,
-) -> TransferResult
-where
-    Fut: Future<Output = TransferResult> + Send,
-{
-    let file_count = start_transfer(&release_id, action, &library_manager, &tx).await?;
-    let outcome = run(release_id.clone(), library_manager.clone(), tx.clone()).await?;
-    record_transfer_completed(&library_manager, &release_id, action, file_count);
-    send_progress(
-        &tx,
-        TransferProgress::Complete {
-            release_id,
-            outcome,
-        },
-    );
-    Ok(outcome)
-}
-
-/// Guard the transfer's preconditions and announce its start; returns the
-/// release's file count so the completion event can report it.
-async fn start_transfer(
-    release_id: &str,
-    action: ReleaseStorageAction,
-    library_manager: &LibraryManager,
-    tx: &ProgressTx,
-) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-    let file_count = validate_transfer_preconditions(release_id, action, library_manager).await?;
-    send_progress(tx, TransferProgress::Started);
-    info!(
-        action = ?action,
-        release_id = %release_id,
-        file_count,
-        "release transfer started"
-    );
-    Ok(file_count)
-}
-
-pub(crate) async fn validate_transfer_preconditions(
-    release_id: &str,
-    action: ReleaseStorageAction,
-    library_manager: &LibraryManager,
-) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-    let release = library_manager
-        .get_release_by_id(release_id)
-        .await?
-        .ok_or("Release not found")?;
-    if release.remote != action_expects_remote(action) {
-        return Err(wrong_state_error(action).into());
-    }
-    if matches!(action, ReleaseStorageAction::MakeRemote) && !library_manager.has_cloud_home() {
-        return Err("Cannot make a release remote without a cloud home".into());
-    }
-
-    let files = library_manager.get_files_for_release(release_id).await?;
-    if files.is_empty() {
-        return Err("Release has no files".into());
-    }
-
-    Ok(files.len() as u32)
-}
-
-pub(crate) fn record_transfer_completed(
-    library_manager: &LibraryManager,
-    release_id: &str,
-    action: ReleaseStorageAction,
-    file_count: u32,
-) {
-    info!(
-        action = ?action,
-        release_id,
-        "release transfer complete"
-    );
-    library_manager.record_telemetry(TelemetryEvent::StorageTransferCompleted {
-        action,
-        release_id: LocalId(release_id.to_string()),
-        file_count,
-    });
-}
-
-pub(crate) fn record_transfer_failed(
-    library_manager: &LibraryManager,
-    release_id: &str,
-    action: ReleaseStorageAction,
-    failure: &dyn std::fmt::Display,
-) {
-    error!(
-        action = ?action,
-        release_id,
-        failure = %failure,
-        "release transfer failed"
-    );
-    library_manager.record_telemetry(TelemetryEvent::StorageTransferFailed {
-        action,
-        release_id: LocalId(release_id.to_string()),
-    });
 }
 
 fn action_expects_remote(action: ReleaseStorageAction) -> bool {
@@ -429,7 +446,7 @@ mod tests {
         let (manager, diagnostics, transport, _home) = manager_with_recording_transport().await;
         let transfer = TransferService::new(manager);
 
-        // No such release, so `start_transfer` errors before any blob work.
+        // No such release, so `ReleaseTransfer::start` errors before any blob work.
         let running =
             transfer.pin_release("missing-release".to_string(), |mut progress| async move {
                 while progress.recv().await.is_some() {}
