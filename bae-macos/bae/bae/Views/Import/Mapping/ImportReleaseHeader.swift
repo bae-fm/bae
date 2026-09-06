@@ -18,7 +18,6 @@ struct ImportCommitControls {
 
 struct ImportReleaseSourceActions {
     let findOnline: () -> Void
-    let searchSource: (BridgeMetadataSource) -> Void
     let useFileTags: () -> Void
     let clearMetadata: () -> Void
 }
@@ -120,7 +119,6 @@ struct ImportReleaseHeader: View {
                     sourceActions.findOnline()
                 }
                 .buttonStyle(.bordered)
-                ImportSourceSearchMenu(onSearch: sourceActions.searchSource)
                 Button("Use file metadata") {
                     sourceActions.useFileTags()
                 }
@@ -290,7 +288,6 @@ struct ImportReleaseHeader: View {
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
                 findOnline: {},
-                searchSource: { _ in },
                 useFileTags: {},
                 clearMetadata: {}
             ),

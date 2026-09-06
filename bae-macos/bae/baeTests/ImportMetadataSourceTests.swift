@@ -598,7 +598,6 @@ final class ImportMetadataCardLayoutTests: XCTestCase {
             commit: nil,
             sourceActions: ImportReleaseSourceActions(
                 findOnline: { recorder.findOnlineCount += 1 },
-                searchSource: { _ in },
                 useFileTags: { recorder.fileTagsCount += 1 },
                 clearMetadata: { recorder.clearCount += 1 }
             ),

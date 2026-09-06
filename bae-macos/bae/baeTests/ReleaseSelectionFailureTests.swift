@@ -105,7 +105,6 @@ struct ReleaseSelectionFailureTests {
                 loadingReleaseId: nil,
                 releaseSelectionFailure: state.releaseSelectionFailure,
                 onSelect: { selected = $0 },
-                onSourceSearch: { _, _ in },
                 trailing: { EmptyView() }
             )
             .importPreviewEnvironment()

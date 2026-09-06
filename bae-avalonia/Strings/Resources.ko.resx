@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Discogs 또는 MusicBrainz 릴리스를 연결하면 아트워크를 볼 수 있습니다.</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>{source}에서 검색</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>식별 결과</value>
   </data>

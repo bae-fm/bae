@@ -18,27 +18,6 @@ enum ImportSearchFlow {
         importer.startCandidateSearch(key, searchQuery(from: form))
     }
 
-    @MainActor
-    static func searchRelease(
-        services: ImportServices,
-        key: String,
-        artist: String?,
-        title: String,
-        source: BridgeMetadataSource
-    ) {
-        let form = CandidateSearchState(
-            searchArtist: artist ?? "",
-            searchAlbum: title
-        )
-        services.importStore.commitSearchForm(form, forKey: key)
-        services.importStore.clearPaneError(forKey: key)
-        services.importer.startSourceCandidateSearch(
-            key,
-            searchQuery(from: form),
-            source: source
-        )
-    }
-
     /// The bridge query for the active tab: the general (artist/album),
     /// catalog-number, or barcode field set.
     @MainActor

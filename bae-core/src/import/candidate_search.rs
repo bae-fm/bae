@@ -1,6 +1,6 @@
 //! What one candidate's typed search has turned up so far.
 //!
-//! A person's search asks the chosen providers, and the providers
+//! A person's search asks every configured provider, and the providers
 //! answer at their own pace. So the run is not one awaited call with one
 //! answer: it is a value each source lands its own part of, and the pane draws
 //! whatever has landed. MusicBrainz answering first shows its groups while
@@ -20,8 +20,6 @@ use crate::signals::LookupFailure;
 /// One provider's part of a candidate's manual search.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SourceSearch {
-    /// The search targets another provider.
-    NotRequested,
     /// Discogs without a usable key: it was never asked, and saying so is not
     /// the same as saying it found nothing.
     NotConfigured,
@@ -35,10 +33,9 @@ pub enum SourceSearch {
 impl SourceSearch {
     fn is_settled(&self) -> bool {
         match self {
-            SourceSearch::NotRequested
-            | SourceSearch::NotConfigured
-            | SourceSearch::Done { .. }
-            | SourceSearch::Failed(_) => true,
+            SourceSearch::NotConfigured | SourceSearch::Done { .. } | SourceSearch::Failed(_) => {
+                true
+            }
             SourceSearch::Searching => false,
         }
     }
@@ -46,10 +43,7 @@ impl SourceSearch {
     fn results(&self) -> &[(MetadataResult, LibraryStatus)] {
         match self {
             SourceSearch::Done { results } => results,
-            SourceSearch::NotRequested
-            | SourceSearch::NotConfigured
-            | SourceSearch::Searching
-            | SourceSearch::Failed(_) => &[],
+            SourceSearch::NotConfigured | SourceSearch::Searching | SourceSearch::Failed(_) => &[],
         }
     }
 }
@@ -85,20 +79,6 @@ impl CandidateSearch {
             groups: Vec::new(),
             library_statuses: Vec::new(),
         }
-    }
-
-    /// Search one provider while leaving the other unrequested.
-    pub fn for_source(
-        query: SearchQuery,
-        source: MetadataSource,
-        discogs_configured: bool,
-    ) -> Self {
-        let mut search = Self::started(query, discogs_configured);
-        match source {
-            MetadataSource::MusicBrainz => search.discogs = SourceSearch::NotRequested,
-            MetadataSource::Discogs => search.musicbrainz = SourceSearch::NotRequested,
-        }
-        search
     }
 
     /// Land one source's answer and re-derive the result area from every
@@ -242,30 +222,8 @@ mod tests {
     }
 
     #[test]
-    fn a_source_search_only_asks_the_requested_provider() {
-        for source in [MetadataSource::MusicBrainz, MetadataSource::Discogs] {
-            let mut search = CandidateSearch::for_source(query(), source, true);
-            assert_eq!(search.searching_sources(), vec![source]);
-            assert!(!search.is_settled());
-            search.record(source, answer(source, "release-1", "group-1"));
-            assert!(search.is_settled());
-            assert_eq!(search.groups.len(), 1);
-        }
-    }
-
-    #[test]
-    fn an_unconfigured_requested_provider_is_not_replaced_by_another_source() {
-        let search = CandidateSearch::for_source(query(), MetadataSource::Discogs, false);
-        assert_eq!(search.musicbrainz, SourceSearch::NotRequested);
-        assert_eq!(search.discogs, SourceSearch::NotConfigured);
-        assert!(!search.has_no_matches());
-        assert!(search.searching_sources().is_empty());
-        assert!(search.is_settled());
-    }
-
-    #[test]
     fn no_matches_requires_a_completed_successful_lookup() {
-        let mut search = CandidateSearch::for_source(query(), MetadataSource::MusicBrainz, true);
+        let mut search = CandidateSearch::started(query(), false);
         assert!(!search.has_no_matches());
         search.record(MetadataSource::MusicBrainz, Err(LookupFailure::Network));
         assert!(!search.has_no_matches());

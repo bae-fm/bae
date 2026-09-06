@@ -283,7 +283,6 @@ extension ShotScene {
                 onRetry: {},
                 onOpenSettings: {},
                 onSelect: { _ in },
-                onSourceSearch: { _, _ in }
             )
             .importPreviewEnvironment()
         )

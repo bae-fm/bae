@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>ছবি দেখতে Discogs বা MusicBrainz-এর একটি রিলিজ সংযুক্ত করুন।</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>{source}-এ খুঁজুন</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>শনাক্তকরণের ফলাফল</value>
   </data>

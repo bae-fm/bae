@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Propojte vydání z Discogs nebo MusicBrainz a prohlédněte si jeho obrázky.</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>Hledat v {source}</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Výsledky rozpoznání</value>
   </data>

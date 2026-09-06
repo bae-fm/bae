@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Liên kết bản phát hành trên Discogs hoặc MusicBrainz để xem hình ảnh.</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>Tìm trên {source}</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Kết quả nhận dạng</value>
   </data>

@@ -28,23 +28,6 @@ impl ImportServiceHandle {
     pub fn start_candidate_search(&self, candidate_key: String, query: SearchQuery) {
         let search =
             CandidateSearch::started(query.clone(), self.library_manager.discogs_is_usable());
-        self.run_candidate_search(candidate_key, search);
-    }
-
-    /// Search a specific provider without changing the candidate's selected metadata.
-    pub fn start_source_candidate_search(
-        &self,
-        candidate_key: String,
-        query: SearchQuery,
-        source: MetadataSource,
-    ) {
-        let search =
-            CandidateSearch::for_source(query, source, self.library_manager.discogs_is_usable());
-        self.run_candidate_search(candidate_key, search);
-    }
-
-    fn run_candidate_search(&self, candidate_key: String, search: CandidateSearch) {
-        let query = search.query.clone();
         let sources = search.searching_sources();
         let run = self
             .candidate_searches

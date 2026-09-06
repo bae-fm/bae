@@ -32,7 +32,6 @@ public sealed class ImportMetadataSourceSectionTests
                 var coverTop = cover.TranslatePoint(default, section)!.Value.Y;
                 foreach (var label in new[] {
                     Loc.Chrome("import.metadata.find_online_ellipsis"),
-                    Loc.Chrome("action.search"),
                     Loc.Core("ui.import.metadata.file_tags") + "…" })
                 {
                     var button = ButtonNamed(section, label);
@@ -256,7 +255,6 @@ public sealed class ImportMetadataSourceSectionTests
             CommitRow = null,
             Library = new LibraryService(),
             OnPresent = onPresent ?? (_ => { }),
-            OnSearchSource = _ => { },
             OnReadFileTags = () => { },
             OnUseFileTags = onUseFileTags ?? (() => { }),
             OnClearMetadata = onClearMetadata ?? (() => { }),

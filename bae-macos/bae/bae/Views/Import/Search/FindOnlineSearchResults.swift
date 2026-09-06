@@ -19,7 +19,6 @@ struct FindOnlineSearchResults: View {
     let onRetry: () -> Void
     let onOpenSettings: () -> Void
     let onSelect: (Pressing) -> Void
-    let onSourceSearch: (ReleaseGroup, BridgeMetadataSource) -> Void
 
     private var groups: [ReleaseGroup] {
         search.groups.map(ReleaseGroup.init(bridge:))
@@ -39,7 +38,6 @@ struct FindOnlineSearchResults: View {
                 loadingReleaseId: loadingReleaseId,
                 releaseSelectionFailure: releaseSelectionFailure,
                 onSelect: onSelect,
-                onSourceSearch: onSourceSearch,
                 trailing: {
                     emptyLine
                     sourceLines
@@ -117,7 +115,7 @@ struct FindOnlineSearchResults: View {
                         Button("Retry", action: onRetry)
                             .buttonStyle(.link)
                     }
-                case .done, .notRequested:
+                case .done:
                     EmptyView()
                 }
             }
@@ -170,7 +168,6 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
-            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()
@@ -187,7 +184,6 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
-            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()
@@ -204,7 +200,6 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
-            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()
@@ -221,7 +216,6 @@ extension BridgeSearchQuery {
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
-            onSourceSearch: { _, _ in },
         )
         .frame(width: 660, height: 460)
         .importPreviewEnvironment()

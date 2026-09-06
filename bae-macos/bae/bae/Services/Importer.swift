@@ -66,8 +66,6 @@ private struct ImportOperations: Sendable {
     let autoIdentifyRelease: @Sendable (String, String) -> Void
     let cancelAutoIdentify: @Sendable (String) -> Void
     let startCandidateSearch: @Sendable (String, BridgeSearchQuery) -> Void
-    let startSourceCandidateSearch:
-        @Sendable (String, BridgeSearchQuery, BridgeMetadataSource) -> Void
     let retryCandidateSearch: @Sendable (String) -> Void
     let clearCandidateSearch: @Sendable (String) -> Void
     let subscribeReleaseLibraryStatus:
@@ -196,13 +194,6 @@ extension ImportOperations {
             },
             startCandidateSearch: {
                 handle.startCandidateSearch(candidateKey: $0, query: $1)
-            },
-            startSourceCandidateSearch: {
-                handle.startSourceCandidateSearch(
-                    candidateKey: $0,
-                    query: $1,
-                    source: $2
-                )
             },
             retryCandidateSearch: {
                 handle.retryCandidateSearch(candidateKey: $0)
@@ -391,10 +382,6 @@ final class Importer: Sendable, Observable {
         startCandidateSearch:
             @escaping @Sendable (String, BridgeSearchQuery) -> Void = { _, _ in
             },
-        startSourceCandidateSearch:
-            @escaping @Sendable (
-                String, BridgeSearchQuery, BridgeMetadataSource
-            ) -> Void = { _, _, _ in },
         retryCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
         clearCandidateSearch: @escaping @Sendable (String) -> Void = { _ in },
         subscribeReleaseLibraryStatus:
@@ -489,7 +476,6 @@ final class Importer: Sendable, Observable {
             autoIdentifyRelease: autoIdentifyRelease,
             cancelAutoIdentify: cancelAutoIdentify,
             startCandidateSearch: startCandidateSearch,
-            startSourceCandidateSearch: startSourceCandidateSearch,
             retryCandidateSearch: retryCandidateSearch,
             clearCandidateSearch: clearCandidateSearch,
             subscribeReleaseLibraryStatus: subscribeReleaseLibraryStatus,
@@ -641,14 +627,6 @@ extension Importer {
         _ query: BridgeSearchQuery
     ) {
         operations.startCandidateSearch(candidateKey, query)
-    }
-
-    func startSourceCandidateSearch(
-        _ candidateKey: String,
-        _ query: BridgeSearchQuery,
-        source: BridgeMetadataSource
-    ) {
-        operations.startSourceCandidateSearch(candidateKey, query, source)
     }
 
     /// Re-ask only the providers whose part of the search failed.

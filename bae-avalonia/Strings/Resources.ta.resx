@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>அதன் படங்களைப் பார்க்க Discogs அல்லது MusicBrainz வெளியீட்டை இணைக்கவும்.</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>{source} இல் தேடு</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>அடையாளம் காணல் முடிவுகள்</value>
   </data>

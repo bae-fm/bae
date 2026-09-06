@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>चित्र देखने के लिए Discogs या MusicBrainz की रिलीज़ लिंक करें।</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>{source} में खोजें</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>पहचान के परिणाम</value>
   </data>

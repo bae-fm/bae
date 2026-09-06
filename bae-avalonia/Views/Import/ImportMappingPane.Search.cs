@@ -152,20 +152,6 @@ internal sealed partial class ImportMappingPane
         return column;
     }
 
-    private void SearchSource(string? artist, string title, BridgeMetadataSource source)
-    {
-        if (_key is not { } key)
-        {
-            return;
-        }
-        _manualSearchType = ManualSearchType.General;
-        _searchArtist = artist ?? string.Empty;
-        _searchAlbum = title;
-        _app.Import.StartSourceCandidateSearch(key, ManualSearchQuery(), source);
-        _import.PresentMetadata(key, ImportMetadataPresentation.FindOnline);
-        Render();
-    }
-
     private Control SourceFailureRow(
         BridgeMetadataSource source,
         BridgeLookupFailure failure)
@@ -343,7 +329,7 @@ internal sealed partial class ImportMappingPane
     {
         var row = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"),
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
             ColumnSpacing = 8,
             Margin = new Thickness(4, 6),
         };
@@ -358,9 +344,6 @@ internal sealed partial class ImportMappingPane
         };
         Grid.SetColumn(progress, 1);
         row.Children.Add(progress);
-        var search = ImportSourceSearchMenu.Build(source => SearchSource(choice.Artist, choice.Title, source));
-        Grid.SetColumn(search, 2);
-        row.Children.Add(search);
         return row;
     }
 }

@@ -77,15 +77,6 @@ extension ImportSearchFlow {
                 services.importer.retryFailedIdentifyForCandidate(key)
             },
             onSelect: onSelect,
-            onSourceSearch: { group, source in
-                searchRelease(
-                    services: services,
-                    key: key,
-                    artist: group.artist,
-                    title: group.title,
-                    source: source
-                )
-            },
         )
         // Every release the pane is offering is watched for library membership
         // while it is open: each provider lands its own part, so the set they

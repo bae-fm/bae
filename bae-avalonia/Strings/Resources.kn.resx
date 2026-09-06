@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>ಅದರ ಚಿತ್ರಗಳನ್ನು ವೀಕ್ಷಿಸಲು Discogs ಅಥವಾ MusicBrainz ಬಿಡುಗಡೆಯನ್ನು ಲಿಂಕ್ ಮಾಡಿ.</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>{source} ನಲ್ಲಿ ಹುಡುಕಿ</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>ಗುರುತಿಸುವಿಕೆಯ ಫಲಿತಾಂಶಗಳು</value>
   </data>

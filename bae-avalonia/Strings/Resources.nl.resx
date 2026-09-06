@@ -555,9 +555,6 @@
   <data name="cover.unlinked" xml:space="preserve">
     <value>Koppel een uitgave van Discogs of MusicBrainz om de afbeeldingen te bekijken.</value>
   </data>
-  <data name="import.search.source" xml:space="preserve">
-    <value>Zoeken op {source}</value>
-  </data>
   <data name="import.search.identification_results" xml:space="preserve">
     <value>Identificatieresultaten</value>
   </data>

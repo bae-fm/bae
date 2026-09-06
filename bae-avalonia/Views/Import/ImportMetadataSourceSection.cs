@@ -37,7 +37,6 @@ internal sealed class ImportMetadataSourceSection
     internal required Control? CommitRow { get; init; }
     internal required LibraryService Library { get; init; }
     internal required Action<ImportMetadataPresentation> OnPresent { get; init; }
-    internal required Action<BridgeMetadataSource> OnSearchSource { get; init; }
     internal required Action OnReadFileTags { get; init; }
     internal required Action OnUseFileTags { get; init; }
     internal required Action OnClearMetadata { get; init; }
@@ -121,9 +120,6 @@ internal sealed class ImportMetadataSourceSection
         actions.Children.Add(ActionButton(
             Loc.Chrome("import.metadata.find_online_ellipsis"),
             () => OnPresent(ImportMetadataPresentation.FindOnline)));
-        var search = ImportSourceSearchMenu.Build(OnSearchSource);
-        search.IsEnabled = !IsReading;
-        actions.Children.Add(search);
         actions.Children.Add(ActionButton(
             Loc.Core("ui.import.metadata.file_tags") + "…",
             () => OnPresent(ImportMetadataPresentation.FileTags)));

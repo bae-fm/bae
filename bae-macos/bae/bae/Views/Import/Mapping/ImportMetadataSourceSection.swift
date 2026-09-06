@@ -21,11 +21,6 @@ struct ImportMetadataSourceSection: View {
     let onEditCover: () -> Void
     let onSelectCover: (BridgeCoverSelection) -> Void
 
-    @Environment(Importer.self)
-    private var importer
-    @Environment(ImportStore.self)
-    private var importStore
-
     var body: some View {
         Group {
             switch candidate.metadataPresentation {
@@ -47,12 +42,11 @@ struct ImportMetadataSourceSection: View {
     @ViewBuilder
     private var draft: some View {
         if let edit = candidate.edit {
-            let summary = ImportReleaseSummary(
-                candidate: candidate,
-                editValues: edit
-            )
             ImportReleaseHeader(
-                releaseSummary: summary,
+                releaseSummary: ImportReleaseSummary(
+                    candidate: candidate,
+                    editValues: edit
+                ),
                 isReading: isReading,
                 coverContent: coverContent,
                 hasCoverOptions: hasCoverOptions,
@@ -62,22 +56,6 @@ struct ImportMetadataSourceSection: View {
                 commit: commit,
                 sourceActions: ImportReleaseSourceActions(
                     findOnline: { onPresent(.findOnline) },
-                    searchSource: { source in
-                        ImportSearchFlow.searchRelease(
-                            services: ImportSearchFlow.ImportServices(
-                                importer: importer,
-                                importStore: importStore
-                            ),
-                            key: candidate.key,
-                            artist: summary.artist,
-                            title: edit.albumTitle,
-                            source: source
-                        )
-                        importStore.presentMetadata(
-                            .findOnline,
-                            forKey: candidate.key
-                        )
-                    },
                     useFileTags: { onPresent(.fileTags) },
                     clearMetadata: onClearMetadata
                 ),

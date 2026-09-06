@@ -108,7 +108,6 @@ pub struct BridgePressing {
 /// through the search's `groups`, so a source reports only how many it found.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSourceSearch {
-    NotRequested,
     /// Discogs without a usable key: it was never asked.
     NotConfigured,
     Searching,
@@ -125,7 +124,6 @@ impl BridgeSourceSearch {
     fn from_core(search: bae_core::import::SourceSearch) -> Self {
         use bae_core::import::SourceSearch;
         match search {
-            SourceSearch::NotRequested => Self::NotRequested,
             SourceSearch::NotConfigured => Self::NotConfigured,
             SourceSearch::Searching => Self::Searching,
             SourceSearch::Done { results } => Self::Done {
