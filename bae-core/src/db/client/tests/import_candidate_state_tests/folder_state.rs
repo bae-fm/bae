@@ -291,7 +291,7 @@ async fn removing_watched_root_cascades_all_local_folder_state() {
     db.save_folder_scan_item(root, generation, &candidate)
         .await
         .unwrap();
-    db.save_import_candidate_edit_field(
+    crate::import::CandidatePreparations::new(db.clone()).set_field(
         &content_hash,
         crate::import::CandidateEditField::AlbumTitle,
         "Edited Album Title",
@@ -637,7 +637,7 @@ async fn a_disc_assignment_survives_a_relaunch() {
         .unwrap();
     let hash = scanned.content_hash();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
-    db.save_import_candidate_file_edits(
+    crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
         &hash,
         &folder.path().to_string_lossy(),
         0,

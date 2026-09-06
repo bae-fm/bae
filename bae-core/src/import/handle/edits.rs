@@ -50,8 +50,8 @@ impl ImportServiceHandle {
             candidate.file_edit_revision(),
         )
         .await?;
-        self.library_manager
-            .save_import_candidate_prepared_cover(
+        self.preparations
+            .set_prepared_cover(
                 candidate.watched_folder_path(),
                 &candidate.key(),
                 &hash,
@@ -80,8 +80,8 @@ impl ImportServiceHandle {
             candidate.file_edit_revision(),
         )
         .await?;
-        self.library_manager
-            .save_import_candidate_edit_field_prepared(
+        self.preparations
+            .set_field_prepared(
                 candidate.watched_folder_path(),
                 &candidate.key(),
                 &hash,
@@ -114,8 +114,8 @@ impl ImportServiceHandle {
             prepared.file_edit_revision,
         )
         .await?;
-        self.library_manager
-            .replace_import_candidate_album_artists_prepared(
+        self.preparations
+            .set_album_artists_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
                 &prepared.content_hash,
@@ -180,8 +180,8 @@ impl ImportServiceHandle {
             prepared.file_edit_revision,
         )
         .await?;
-        self.library_manager
-            .save_import_candidate_track_edits_prepared(
+        self.preparations
+            .set_track_edits_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
                 &prepared.content_hash,
@@ -221,8 +221,8 @@ impl ImportServiceHandle {
             prepared.file_edit_revision,
         )
         .await?;
-        self.library_manager
-            .replace_import_candidate_track_artists_prepared(
+        self.preparations
+            .set_track_artists_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
                 &prepared.content_hash,
@@ -257,8 +257,8 @@ impl ImportServiceHandle {
             prepared.file_edit_revision,
         )
         .await?;
-        self.library_manager
-            .save_import_candidate_track_edits_prepared(
+        self.preparations
+            .set_track_edits_prepared(
                 &prepared.watched_folder_path,
                 &prepared.candidate_path,
                 &prepared.content_hash,

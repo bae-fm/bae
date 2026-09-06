@@ -206,9 +206,7 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         )
         .await
         .unwrap();
-    manager
-        .database
-        .replace_import_candidate_album_artists(
+    manager.preparations.set_album_artists(
             &candidate_hash,
             &[crate::import::ArtistAssignment::existing(
                 artist.clone().into(),
@@ -216,9 +214,7 @@ async fn failed_import_rollback_preserves_an_artist_selected_by_candidate_edits(
         )
         .await
         .unwrap();
-    manager
-        .database
-        .save_import_candidate_track_edit(
+    manager.preparations.set_track_edit(
             &candidate_hash,
             &crate::import::CandidateTrackEdit::edited(crate::import::RawTrackEdit {
                 id: candidate_track_id,

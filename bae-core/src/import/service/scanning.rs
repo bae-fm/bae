@@ -5,6 +5,7 @@ impl ImportService {
         candidate: &crate::import::folder_scanner::FolderCandidate,
         generation: u64,
         library_manager: &LibraryManager,
+        preparations: &crate::import::CandidatePreparations,
         clock: &coven::ClockRef,
         ids: &coven::IdRef,
     ) -> Result<u64, crate::import::ImportError> {
@@ -44,8 +45,8 @@ impl ImportService {
         )?;
         let source_draft = crate::import::pane::candidate_draft_from_source(pane);
         let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
-        Ok(library_manager
-            .replace_candidate_file_tags_metadata(
+        Ok(preparations
+            .apply_file_tags(
                 &candidate.watched_folder_path,
                 &candidate.path.to_string_lossy(),
                 &content_hash,
@@ -113,6 +114,7 @@ impl ImportService {
         generation: u64,
         item: &ScanItem,
         library_manager: &LibraryManager,
+        preparations: &crate::import::CandidatePreparations,
         clock: &coven::ClockRef,
         ids: &coven::IdRef,
         folder_state_commit: &Arc<tokio::sync::Mutex<()>>,
@@ -168,6 +170,7 @@ impl ImportService {
                         candidate,
                         generation,
                         library_manager,
+                        preparations,
                         clock,
                         ids,
                     )
@@ -224,6 +227,7 @@ impl ImportService {
         root: &Path,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
+        preparations: &crate::import::CandidatePreparations,
         clock: &coven::ClockRef,
         ids: &coven::IdRef,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
@@ -254,6 +258,7 @@ impl ImportService {
             generation,
             event_tx,
             library_manager,
+            preparations,
             clock,
             ids,
             folder_registry,
@@ -333,6 +338,7 @@ impl ImportService {
         generation: u64,
         event_tx: &broadcast::Sender<crate::import::handle::ImportEvent>,
         library_manager: &LibraryManager,
+        preparations: &crate::import::CandidatePreparations,
         clock: &coven::ClockRef,
         ids: &coven::IdRef,
         folder_registry: &Arc<Mutex<ImportFolderRegistry>>,
@@ -456,6 +462,7 @@ impl ImportService {
                         generation,
                         &persisted_item,
                         library_manager,
+                        preparations,
                         clock,
                         ids,
                         folder_state_commit,
@@ -523,6 +530,7 @@ impl ImportService {
                         generation,
                         &persisted_item,
                         library_manager,
+                        preparations,
                         clock,
                         ids,
                         folder_state_commit,

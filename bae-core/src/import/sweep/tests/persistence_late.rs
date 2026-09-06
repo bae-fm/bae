@@ -34,9 +34,7 @@ async fn a_late_candidate_with_a_stored_verdict_joins_the_pass_answered() {
     let pass = tokio::spawn(async move { run_pass_for_test(&context, &token).await });
     wait_for_request(&fixture.provider, "/discid/", 1).await;
     assert!(
-        fixture
-            .manager
-            .save_import_candidate_verdict(&NewImportCandidateVerdict {
+        fixture.preparations.store_verdict(&NewImportCandidateVerdict {
                 content_hash: fixture.content_hash(&late),
                 folder_path: late.to_string_lossy().into_owned(),
                 verdict: TerminalVerdict::NotFoundAnywhere,

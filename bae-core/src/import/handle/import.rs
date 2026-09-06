@@ -471,8 +471,8 @@ impl ImportServiceHandle {
                 .library_manager
                 .prepare_discogs_artist_images(source_draft.mapped_new_discogs_artist_ids.clone())
                 .await?;
-            self.library_manager
-                .replace_candidate_metadata_prepared(
+            self.preparations
+                .apply_source(
                     &candidate.watched_folder_path,
                     &content_hash,
                     &command.candidate_key,

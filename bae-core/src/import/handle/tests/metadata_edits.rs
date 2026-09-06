@@ -240,9 +240,7 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
             bytes: vec![1, 2, 3, 4],
         },
     };
-    handle
-        .library_manager
-        .replace_candidate_metadata_prepared(
+    handle.preparations.apply_source(
             &tmp.path().join("watched").to_string_lossy(),
             &hash,
             &key,
@@ -437,9 +435,7 @@ async fn discogs_artist_image_is_prepared_with_the_candidate_and_materialized_by
 #[tokio::test(flavor = "multi_thread")]
 async fn import_admission_refuses_an_incomplete_candidate_revision() {
     let (handle, _tmp, key, hash) = pane_fixture().await;
-    handle
-        .library_manager
-        .replace_import_candidate_album_artists(
+    handle.preparations.set_album_artists(
             &hash,
             &[crate::import::ArtistAssignment::new("Changed Artist")],
         )

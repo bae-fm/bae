@@ -7,6 +7,7 @@ impl ImportService {
     pub(crate) async fn start(
         runtime_handle: tokio::runtime::Handle,
         library_manager: LibraryManager,
+        preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdRef,
     ) -> Result<ImportServiceHandle, crate::import::ImportError> {
@@ -34,6 +35,7 @@ impl ImportService {
             fs_rx,
             event_tx.clone(),
             library_manager_for_handle.clone(),
+            preparations.clone(),
             clock.clone(),
             ids.clone(),
             folder_registry.clone(),
@@ -43,6 +45,7 @@ impl ImportService {
 
         let clock_for_handle = clock.clone();
         let ids_for_handle = ids.clone();
+        let preparations_for_handle = preparations.clone();
         let worker_thread = std::thread::spawn(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -74,6 +77,7 @@ impl ImportService {
             worker_thread,
             watcher_thread,
             library_manager_for_handle,
+            preparations_for_handle,
             clock_for_handle,
             ids_for_handle,
             runtime_handle,

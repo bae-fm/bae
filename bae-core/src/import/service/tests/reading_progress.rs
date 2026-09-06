@@ -1,6 +1,10 @@
 #[tokio::test]
 async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
-    let (mut service, tmp) = setup_import_service().await;
+    let TestService {
+        mut service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     let (event_tx, _) = tokio::sync::broadcast::channel(1024);
     service.event_tx = event_tx;
     let folder = tmp.path().join("reading-progress-candidate");
@@ -58,6 +62,7 @@ async fn reading_progress_advances_while_coven_prepares_a_dominant_file() {
         .unwrap();
     let metadata_revision = prepare_named_candidate(
         &service,
+        &preparations,
         &expected_content_hash,
         &candidate_key,
         &folder.to_string_lossy(),

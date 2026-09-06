@@ -353,8 +353,8 @@ impl ImportServiceHandle {
                 )
                 .await?;
                 return Ok(self
-                    .library_manager
-                    .replace_candidate_file_tags_metadata(
+                    .preparations
+                    .apply_file_tags(
                         snapshot_candidate.watched_folder_path(),
                         &candidate_key,
                         &content_hash,
@@ -408,8 +408,8 @@ impl ImportServiceHandle {
                 )
                 .await?;
                 return Ok(self
-                    .library_manager
-                    .replace_candidate_metadata_prepared(
+                    .preparations
+                    .apply_source(
                         candidate.watched_folder_path(),
                         &content_hash,
                         &candidate_key,
@@ -452,8 +452,8 @@ impl ImportServiceHandle {
         )
         .await?;
         Ok(self
-            .library_manager
-            .replace_candidate_metadata_prepared(
+            .preparations
+            .apply_source(
                 candidate.watched_folder_path(),
                 &content_hash,
                 &candidate_key,
@@ -662,8 +662,8 @@ impl ImportServiceHandle {
         // invalidates move together, so nothing can observe a folder whose
         // stored answer describes the shape it just stopped having.
         let (_next_revision, candidates) = self
-            .library_manager
-            .save_import_candidate_file_edits(
+            .preparations
+            .store_file_decisions(
                 &content_hash,
                 candidate_key,
                 expected_revision,

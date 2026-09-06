@@ -83,7 +83,7 @@ async fn finalize_refuses_metadata_that_changed_after_queue_admission() {
     .unwrap()
     .expect("the current scan accepts the candidate");
 
-    db.save_import_candidate_edit_field(
+    crate::import::CandidatePreparations::new(db.clone()).set_field(
         &content_hash,
         crate::import::CandidateEditField::PressingYear,
         "2026",

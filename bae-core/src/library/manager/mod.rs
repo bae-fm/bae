@@ -887,6 +887,9 @@ pub struct LibraryManager {
     /// Session cache of provider image responses, keyed by URL. Candidate
     /// preparation and library images own their bytes independently.
     remote_images: crate::import::cover_art::RemoteImageCache,
+    /// The one writer of import candidates' stored state.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    preparations: crate::import::CandidatePreparations,
 }
 
 pub fn generate_mcp_token() -> String {

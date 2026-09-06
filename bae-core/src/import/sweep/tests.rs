@@ -377,6 +377,8 @@ impl ArtworkAnalyzer for SlowAnalyzer {
 
 struct Fixture {
     manager: LibraryManager,
+    /// The writer the handle uses, for tests that write a candidate directly.
+    preparations: crate::import::CandidatePreparations,
     import: ImportServiceHandle,
     identify: IdentifyServiceHandle,
     extraction: ExtractionServiceHandle,
@@ -411,6 +413,7 @@ impl Fixture {
         )
         .await
         .unwrap();
+        let preparations = crate::import::CandidatePreparations::new(database.clone());
         let library_dir = coven::StoreDir::new(temp.path());
         let library_id = format!("sweep-{name}-{}", uuid::Uuid::new_v4());
         let config = Config::with_defaults(
@@ -476,6 +479,7 @@ impl Fixture {
         );
         Fixture {
             manager,
+            preparations,
             import,
             identify,
             extraction,

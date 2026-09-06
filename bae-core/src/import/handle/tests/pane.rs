@@ -570,9 +570,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
         .unwrap();
     let root = tmp.path().join("watched").to_string_lossy().into_owned();
 
-    let error = handle
-        .library_manager
-        .replace_candidate_file_tags_metadata(
+    let error = handle.preparations.apply_file_tags(
             &root,
             &key,
             &hash,

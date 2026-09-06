@@ -98,6 +98,8 @@ impl LibraryManager {
         );
 
         let manager = LibraryManager {
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            preparations: crate::import::CandidatePreparations::new(database.clone()),
             database,
             config_handle,
             remote_images,
@@ -187,6 +189,8 @@ impl LibraryManager {
             diagnostics.clone(),
         );
         let manager = LibraryManager {
+            #[cfg(not(any(target_os = "ios", target_os = "android")))]
+            preparations: crate::import::CandidatePreparations::new(database.clone()),
             database,
             config_handle,
             remote_images,

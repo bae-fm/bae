@@ -16,7 +16,7 @@ pub(crate) struct DbCandidateFileTagSnapshot {
 }
 
 /// What a caller supplies to record one candidate's identify verdict via
-/// [`crate::db::Database::save_import_candidate_verdict`]. Normal outcomes use
+/// [`crate::import::CandidatePreparations::store_verdict`]. Normal outcomes use
 /// `import_candidate_state`'s identify columns and failed outcomes use the
 /// attached identify-failure row. Their timestamp is stamped by the write path
 /// from the injected clock, the same convention as

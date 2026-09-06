@@ -16,7 +16,16 @@ fn root_path(posix: &str) -> PathBuf {
     PathBuf::from(host_root(posix))
 }
 
-async fn setup_import_service() -> (ImportService, TempDir) {
+/// A worker built for a test, with the writer its scans hand file-tag
+/// readings to — the one the production service is started with, built here
+/// over the same database the worker's manager writes through.
+struct TestService {
+    service: ImportService,
+    preparations: crate::import::CandidatePreparations,
+    temp: TempDir,
+}
+
+async fn setup_import_service() -> TestService {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
     let database = Database::new_test(
@@ -35,6 +44,7 @@ async fn setup_import_service() -> (ImportService, TempDir) {
         "Test Library".to_string(),
     );
     crate::config::install_test_keyring();
+    let preparations = crate::import::CandidatePreparations::new(database.clone());
     let manager = LibraryManager::new(
         database,
         Arc::new(ConfigHandle::new(config)),
@@ -46,20 +56,22 @@ async fn setup_import_service() -> (ImportService, TempDir) {
     );
     let (_commands_tx, commands_rx) = tokio::sync::mpsc::unbounded_channel();
     let (event_tx, _) = tokio::sync::broadcast::channel(16);
-    (
-        ImportService {
+    TestService {
+        service: ImportService {
             commands_rx,
             event_tx,
             library_manager: manager,
             clock: Arc::new(coven::SystemClock),
             ids: Arc::new(coven::UuidProvider),
         },
-        temp_dir,
-    )
+        preparations,
+        temp: temp_dir,
+    }
 }
 
 async fn prepare_named_candidate(
     service: &ImportService,
+    preparations: &crate::import::CandidatePreparations,
     content_hash: &str,
     watched_folder_path: &str,
     candidate_path: &str,
@@ -74,9 +86,8 @@ async fn prepare_named_candidate(
     let mut draft = preparation.draft;
     draft.album_title = album_title.to_string();
     draft.album_artist_assignments = vec![crate::import::ArtistAssignment::new("Artist Name")];
-    service
-        .library_manager
-        .replace_candidate_metadata_prepared(
+    preparations
+        .apply_source(
             watched_folder_path,
             content_hash,
             candidate_path,
@@ -247,7 +258,7 @@ impl CoordinatorHarness {
     /// spelling, the same one [`root_path`] gives the tests that address them.
     async fn with_roots(roots: &[&str]) -> Self {
         let roots: Vec<String> = roots.iter().map(|root| host_root(root)).collect();
-        let (service, temp) = setup_import_service().await;
+        let TestService { service, temp, .. } = setup_import_service().await;
         for root in &roots {
             service
                 .library_manager

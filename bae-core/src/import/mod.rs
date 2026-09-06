@@ -66,6 +66,8 @@ pub mod payloads;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod preparation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub mod preparations;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod probe;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub mod release_candidate;
@@ -137,11 +139,6 @@ pub use candidates::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
-#[cfg(all(
-    not(any(target_os = "ios", target_os = "android")),
-    any(test, feature = "test-utils")
-))]
-pub(crate) use edits::preserve_track_decisions;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use edits::{
     apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
@@ -180,6 +177,8 @@ pub use mapping::{
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use preparation::{CandidatePreparation, MetadataAuthor};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub use preparations::CandidatePreparations;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use search::{SearchQuery, SourceFailure, SourceLookup};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]

@@ -57,10 +57,14 @@ mod import_content_hash;
 mod import_list;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod import_state;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use import_list::{
     CandidateListSource, CandidateStateListRow, ImportQueueRows, ScanCandidateKind,
     ScanCandidateListRow,
+};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use import_state::{
+    CandidateSaveExpectation, CandidateSaveExtras, CandidateSaved, ScannedCandidateKey,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod payloads;

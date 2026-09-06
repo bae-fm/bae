@@ -14,7 +14,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         source_discogs_artist_ids: stale.source_discogs_artist_ids.clone(),
         artist_images: stale.assets.artist_images.clone(),
     };
-    db.save_import_candidate_file_edits(
+    crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
         &hash,
         &pane_candidate_path(),
         stale.file_edit_revision,
@@ -26,8 +26,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
     .await
     .unwrap();
 
-    let error = db
-        .replace_candidate_metadata_prepared(
+    let error = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
             &hash,
             &pane_candidate_path(),
@@ -70,8 +69,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
         .await
         .unwrap();
 
-    let error = db
-        .replace_candidate_metadata_prepared(
+    let error = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &root,
             &hash,
             &pane_candidate_path(),
@@ -109,8 +107,7 @@ async fn cover_write_refuses_a_candidate_key_that_now_names_other_files() {
         .await
         .unwrap();
 
-    let error = db
-        .save_import_candidate_prepared_cover(
+    let error = crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
             &root,
             &pane_candidate_path(),
             &hash,
@@ -139,7 +136,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .await
         .unwrap()
         .expect("the candidate is prepared");
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
 
@@ -149,8 +146,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
         .set("CDImage.flac".to_string(), FileRoleChoice::NotATrack);
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
-    let error = db
-        .save_import_candidate_file_edits(
+    let error = crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
             &hash,
             &pane_candidate_path(),
             stale.file_edit_revision,
@@ -196,7 +192,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
         },
     }];
 
-    db.replace_candidate_metadata_prepared(
+    crate::import::CandidatePreparations::new(db.clone()).apply_source(
         &host_root("/music"),
         &hash,
         &pane_candidate_path(),
@@ -244,13 +240,13 @@ async fn a_pane_edit_without_a_candidate_row_is_refused() {
     let hash = pane_candidate().content_hash();
 
     for error in [
-        db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+        crate::import::CandidatePreparations::new(db.clone()).set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
             .await
             .expect_err("a cover with nothing picked"),
-        db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
+        crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::PressingYear, "1991")
             .await
             .expect_err("a field with nothing picked"),
-        db.save_import_candidate_track_edit(
+        crate::import::CandidatePreparations::new(db.clone()).set_track_edit(
             &hash,
             &edited_row("import-track-0", "Track Title", None),
         )
@@ -270,7 +266,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let seed = metadata_draft("Seeded Title", "Artist Name");
-    db.replace_candidate_metadata(
+    crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
         &hash,
         &pane_candidate_path(),
         &seed,
@@ -279,13 +275,13 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
     .await
     .unwrap();
 
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::AlbumYear, "1987")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::AlbumYear, "1987")
         .await
         .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::AlbumTitle, "Album Title")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::AlbumTitle, "Album Title")
         .await
         .unwrap();
 
@@ -318,7 +314,7 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
             },
         },
     ];
-    db.replace_import_candidate_album_artists(&hash, &assignments)
+    crate::import::CandidatePreparations::new(db.clone()).set_album_artists(&hash, &assignments)
         .await
         .unwrap();
 
@@ -333,7 +329,7 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
         track_number: Some(1),
         file: None,
     });
-    db.save_import_candidate_track_edit(&hash, &explicit_empty)
+    crate::import::CandidatePreparations::new(db.clone()).set_track_edit(&hash, &explicit_empty)
         .await
         .unwrap();
     assert_eq!(
@@ -353,8 +349,7 @@ async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
 
-    let error = db
-        .replace_import_candidate_album_artists(
+    let error = crate::import::CandidatePreparations::new(db.clone()).set_album_artists(
             &hash,
             &[ArtistAssignment::existing(ExistingArtist {
                 artist_id: bae_test_support::test_uuid("missing-artist"),
@@ -378,7 +373,7 @@ async fn an_existing_artist_assignment_to_a_missing_row_is_rejected() {
 async fn a_track_row_round_trips_metadata_and_mapping() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    db.replace_candidate_metadata(
+    crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
         &hash,
         &pane_candidate_path(),
         &metadata_draft("Album", "Artist"),
@@ -395,7 +390,7 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
             index: 4,
         }),
     );
-    db.save_import_candidate_track_edit(&hash, &edit)
+    crate::import::CandidatePreparations::new(db.clone()).set_track_edit(&hash, &edit)
         .await
         .unwrap();
 
@@ -418,7 +413,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         slice_unit(0, 200_000),
     ]);
     assert!(store_verdict(&db, &hash, signals_with(durations)).await);
-    db.replace_candidate_metadata(
+    crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
         &hash,
         &pane_candidate_path(),
         &metadata_draft("Album", "Artist"),
@@ -426,10 +421,10 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
-    db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+    crate::import::CandidatePreparations::new(db.clone()).set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     let preparation = db
@@ -437,7 +432,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
         .await
         .unwrap()
         .expect("the candidate has a stored preparation");
-    db.save_import_candidate_track_edits_prepared(
+    crate::import::CandidatePreparations::new(db.clone()).set_track_edits_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
@@ -456,7 +451,7 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
     let mut settled = files;
     settled.apply_candidate_file_edits(&edits).unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
-    db.save_import_candidate_file_edits(
+    crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
         &hash,
         &pane_candidate_path(),
         0,
@@ -495,7 +490,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let (db, _tmp) = empty_db().await;
     let (files, hash) = stored_pane_candidate(&db).await;
     let old_draft = metadata_draft("Old album", "Replacement Artist");
-    db.replace_candidate_metadata(
+    crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
         &hash,
         &pane_candidate_path(),
         &old_draft,
@@ -510,7 +505,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     let mut settled = files;
     settled.apply_candidate_file_edits(&file_edits).unwrap();
     let (metadata_revision, mapping_preparation) = current_mapping_preparation(&db, &hash).await;
-    db.save_import_candidate_file_edits(
+    crate::import::CandidatePreparations::new(db.clone()).store_file_decisions(
         &hash,
         &pane_candidate_path(),
         0,
@@ -521,7 +516,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+    crate::import::CandidatePreparations::new(db.clone()).set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
         .await
         .unwrap();
     let mapping = edited_row(
@@ -531,13 +526,12 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
             file_id: "01 Track.flac".to_string(),
         }),
     );
-    db.save_import_candidate_track_edit(&hash, &mapping)
+    crate::import::CandidatePreparations::new(db.clone()).set_track_edit(&hash, &mapping)
         .await
         .unwrap();
 
     let new_draft = metadata_draft("New album", "New Artist");
-    let applied_revision = db
-        .replace_candidate_metadata(
+    let applied_revision = crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
             &hash,
             &pane_candidate_path(),
             &new_draft,
@@ -568,7 +562,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         file_edits.file_roles
     );
 
-    db.save_import_candidate_cover(
+    crate::import::CandidatePreparations::new(db.clone()).set_cover(
         &hash,
         &CoverSelection::Remote(
             "https://example.invalid/cover".to_string(),
@@ -578,8 +572,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     .await
     .unwrap();
     let blank = crate::import::pane::blank_candidate_draft(&pane_candidate()).release_edit();
-    let cleared_revision = db
-        .replace_candidate_metadata(
+    let cleared_revision = crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
             &hash,
             &pane_candidate_path(),
             &blank,
@@ -600,7 +593,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
     let (_, hash) = stored_pane_candidate(&db).await;
 
     assert_eq!(
-        db.replace_candidate_metadata(
+        crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
             &hash,
             &pane_candidate_path(),
             &metadata_draft("Album", "Artist"),
@@ -611,25 +604,25 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
         1
     );
     assert_eq!(
-        db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
+        crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::PressingYear, "1991")
             .await
             .unwrap(),
         2
     );
     assert_eq!(
-        db.save_import_candidate_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
+        crate::import::CandidatePreparations::new(db.clone()).set_cover(&hash, &CoverSelection::Local("cover.jpg".to_string()))
             .await
             .unwrap(),
         3
     );
     assert_eq!(
-        db.replace_import_candidate_album_artists(&hash, &[new_artist("Different Artist")],)
+        crate::import::CandidatePreparations::new(db.clone()).set_album_artists(&hash, &[new_artist("Different Artist")],)
             .await
             .unwrap(),
         4
     );
     assert_eq!(
-        db.save_import_candidate_track_edit(
+        crate::import::CandidatePreparations::new(db.clone()).set_track_edit(
             &hash,
             &edited_row("candidate-track-0", "Changed title", None),
         )
@@ -645,7 +638,7 @@ async fn metadata_revision_advances_for_every_draft_and_cover_mutation() {
 async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    db.replace_candidate_metadata(
+    crate::import::CandidatePreparations::new(db.clone()).replace_metadata(
         &hash,
         &pane_candidate_path(),
         &metadata_draft("Album", "Artist"),
@@ -653,12 +646,11 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
     )
     .await
     .unwrap();
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::PressingYear, "1991")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::PressingYear, "1991")
         .await
         .unwrap();
 
-    assert!(db
-        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+    assert!(crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.clone(),
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
@@ -701,8 +693,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
     let first_pick = release_pick("rel-first");
-    assert!(db
-        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+    assert!(crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.clone(),
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),
@@ -719,12 +710,11 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         })
         .await
         .unwrap());
-    db.save_import_candidate_edit_field(&hash, CandidateEditField::AlbumTitle, "Person's title")
+    crate::import::CandidatePreparations::new(db.clone()).set_field(&hash, CandidateEditField::AlbumTitle, "Person's title")
         .await
         .unwrap();
 
-    assert!(!db
-        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+    assert!(!crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
             content_hash: hash.clone(),
             folder_path: pane_candidate_path(),
             verdict: sample_verdict(),

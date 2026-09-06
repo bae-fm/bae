@@ -130,8 +130,8 @@ fn verdict(release_id: &str) -> TerminalVerdict {
 }
 
 async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &str) {
-    assert!(db
-        .save_import_candidate_verdict(&NewImportCandidateVerdict {
+    assert!(crate::import::CandidatePreparations::new(db.clone())
+        .store_verdict(&NewImportCandidateVerdict {
             content_hash: candidate.files.content_hash(),
             folder_path: candidate.path.to_string_lossy().into_owned(),
             verdict: verdict(release_id),
@@ -263,18 +263,19 @@ async fn a_picked_row_leads_with_the_archived_document() {
         .unwrap()
         .draft
         .release_edit();
-    db.replace_candidate_metadata(
-        &candidate.files.content_hash(),
-        &candidate.path.to_string_lossy(),
-        &draft,
-        Some(&MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: "mb-picked".to_string(),
-            partners: vec![],
-        }),
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &candidate.files.content_hash(),
+            &candidate.path.to_string_lossy(),
+            &draft,
+            Some(&MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-picked".to_string(),
+                partners: vec![],
+            }),
+        )
+        .await
+        .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -304,18 +305,19 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
         .unwrap()
         .draft
         .release_edit();
-    db.replace_candidate_metadata(
-        &candidate.files.content_hash(),
-        &candidate.path.to_string_lossy(),
-        &draft,
-        Some(&MetadataProvenance::ExternalRelease {
-            source: MetadataSource::MusicBrainz,
-            release_id: "mb-never-fetched".to_string(),
-            partners: vec![],
-        }),
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &candidate.files.content_hash(),
+            &candidate.path.to_string_lossy(),
+            &draft,
+            Some(&MetadataProvenance::ExternalRelease {
+                source: MetadataSource::MusicBrainz,
+                release_id: "mb-never-fetched".to_string(),
+                partners: vec![],
+            }),
+        )
+        .await
+        .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -514,26 +516,29 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     save_verdict(&db, &candidate, "mb-verdict").await;
     let hash = candidate.files.content_hash();
 
-    db.save_import_candidate_cover(
-        &hash,
-        &crate::import::CoverSelection::Local("cover.jpg".to_string()),
-    )
-    .await
-    .unwrap();
-    db.save_import_candidate_edit_field(
-        &hash,
-        crate::import::CandidateEditField::AlbumTitle,
-        "Edited Album",
-    )
-    .await
-    .unwrap();
-    db.save_import_candidate_edit_field(
-        &hash,
-        crate::import::CandidateEditField::PressingYear,
-        "1991",
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_cover(
+            &hash,
+            &crate::import::CoverSelection::Local("cover.jpg".to_string()),
+        )
+        .await
+        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &hash,
+            crate::import::CandidateEditField::AlbumTitle,
+            "Edited Album",
+        )
+        .await
+        .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_field(
+            &hash,
+            crate::import::CandidateEditField::PressingYear,
+            "1991",
+        )
+        .await
+        .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)
@@ -552,12 +557,13 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     );
 
     let content_hash = candidate.files.content_hash();
-    db.save_import_candidate_cover(
-        &content_hash,
-        &crate::import::CoverSelection::Local("folder.jpg".to_string()),
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_cover(
+            &content_hash,
+            &crate::import::CoverSelection::Local("folder.jpg".to_string()),
+        )
+        .await
+        .unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     db.save_folder_scan_item_with_initial_source(
         root,
@@ -582,14 +588,15 @@ async fn the_list_projects_the_applied_draft_and_cover() {
         "a rescan must retain the explicit cover"
     );
 
-    db.replace_candidate_metadata(
-        &content_hash,
-        &candidate.path.to_string_lossy(),
-        &crate::import::pane::blank_candidate_draft(&candidate.files).release_edit(),
-        None,
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .replace_metadata(
+            &content_hash,
+            &candidate.path.to_string_lossy(),
+            &crate::import::pane::blank_candidate_draft(&candidate.files).release_edit(),
+            None,
+        )
+        .await
+        .unwrap();
     let generation = db.begin_folder_scan(root).await.unwrap();
     db.save_folder_scan_item_with_initial_source(
         root,
@@ -748,20 +755,21 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
             data: bytes.clone(),
         }),
     };
-    db.replace_candidate_file_tags_metadata(
-        root,
-        &candidate.path.to_string_lossy(),
-        &hash,
-        0,
-        0,
-        &snapshot,
-        &draft,
-        Some(&crate::import::CoverSelection::Embedded(
-            "01.flac".to_string(),
-        )),
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .apply_file_tags(
+            root,
+            &candidate.path.to_string_lossy(),
+            &hash,
+            0,
+            0,
+            &snapshot,
+            &draft,
+            Some(&crate::import::CoverSelection::Embedded(
+                "01.flac".to_string(),
+            )),
+        )
+        .await
+        .unwrap();
 
     let projection = db
         .load_import_list(request(TriageTab::Pending).await)

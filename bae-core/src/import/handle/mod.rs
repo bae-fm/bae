@@ -132,6 +132,9 @@ pub struct ImportServiceHandle {
     /// handle clones; `take`n by whichever runs the join.
     worker_thread: Arc<Mutex<Option<std::thread::JoinHandle<()>>>>,
     library_manager: LibraryManager,
+    /// The one writer of candidates' stored state. The handle resolves keys,
+    /// holds the commit lock, and prepares provider answers; the write is its.
+    preparations: crate::import::CandidatePreparations,
     clock: coven::ClockRef,
     ids: coven::IdRef,
     /// Unified event channel — all import service events go here.
@@ -248,6 +251,7 @@ impl ImportServiceHandle {
         worker_thread: std::thread::JoinHandle<()>,
         watcher_thread: std::thread::JoinHandle<()>,
         library_manager: LibraryManager,
+        preparations: crate::import::CandidatePreparations,
         clock: coven::ClockRef,
         ids: coven::IdRef,
         runtime_handle: tokio::runtime::Handle,
@@ -261,6 +265,7 @@ impl ImportServiceHandle {
             requests_tx,
             worker_thread: Arc::new(Mutex::new(Some(worker_thread))),
             library_manager,
+            preparations,
             clock,
             ids,
             event_tx,
@@ -685,9 +690,7 @@ impl ImportServiceHandle {
         {
             return Ok(false);
         }
-        self.library_manager
-            .save_import_candidate_verdict(row)
-            .await
+        self.preparations.store_verdict(row).await
     }
 
     /// The candidate at `key` as the queue sweep is responsible for it: an

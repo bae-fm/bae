@@ -61,7 +61,7 @@ fn signals_with(durations: SourceDurations) -> Signals {
 
 /// Store a verdict for `hash` carrying `signals`, and say whether it landed.
 async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
-    db.save_import_candidate_verdict(&NewImportCandidateVerdict {
+    crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
         content_hash: hash.to_string(),
         folder_path: pane_candidate_path(),
         verdict: sample_verdict(),
@@ -390,8 +390,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
         let candidate = pane_candidate();
         let hash = store_candidate_state(&db, &candidate, &pane_candidate_path()).await;
 
-        let error = db
-            .save_import_candidate_verdict(&NewImportCandidateVerdict {
+        let error = crate::import::CandidatePreparations::new(db.clone()).store_verdict(&NewImportCandidateVerdict {
                 content_hash: hash.clone(),
                 folder_path: pane_candidate_path(),
                 verdict: sample_verdict(),
@@ -522,7 +521,7 @@ async fn a_cover_choice_round_trips_in_both_shapes() {
         let (db, _tmp) = empty_db().await;
         let (_, hash) = stored_pane_candidate(&db).await;
 
-        db.save_import_candidate_cover(&hash, &cover).await.unwrap();
+        crate::import::CandidatePreparations::new(db.clone()).set_cover(&hash, &cover).await.unwrap();
 
         assert_eq!(
             db.load_import_candidate_pane_rows(&hash)
@@ -547,7 +546,7 @@ async fn a_remote_cover_round_trips_the_exact_prepared_bytes() {
         content_type: crate::util::content_type::ContentType::Jpeg,
     };
 
-    db.save_import_candidate_prepared_cover(
+    crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
@@ -577,7 +576,7 @@ async fn a_remote_cover_without_exact_bytes_writes_nothing() {
         MetadataSource::Discogs,
     );
 
-    db.save_import_candidate_prepared_cover(
+    crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
@@ -616,7 +615,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         bytes: vec![1, 2, 3],
         content_type: crate::util::content_type::ContentType::Jpeg,
     };
-    db.save_import_candidate_prepared_cover(
+    crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
@@ -636,7 +635,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
         bytes: vec![4, 5, 6],
         content_type: crate::util::content_type::ContentType::Png,
     };
-    db.save_import_candidate_prepared_cover(
+    crate::import::CandidatePreparations::new(db.clone()).set_prepared_cover(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
@@ -673,8 +672,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             discogs_artist_id: Some("101".to_string()),
         },
     };
-    let revision = db
-        .replace_candidate_metadata_prepared(
+    let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
             &hash,
             &pane_candidate_path(),
@@ -705,8 +703,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     let second = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "202".to_string(),
     };
-    let revision = db
-        .replace_candidate_metadata_prepared(
+    let revision = crate::import::CandidatePreparations::new(db.clone()).apply_source(
             &host_root("/music"),
             &hash,
             &pane_candidate_path(),
@@ -745,7 +742,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     let third = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "303".to_string(),
     };
-    db.replace_import_candidate_album_artists_prepared(
+    crate::import::CandidatePreparations::new(db.clone()).set_album_artists_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,
@@ -776,7 +773,7 @@ async fn preparation_round_trips_source_only_artist_answers() {
         discogs_artist_id: "role-artist".to_string(),
     };
 
-    db.replace_candidate_metadata_prepared(
+    crate::import::CandidatePreparations::new(db.clone()).apply_source(
         &host_root("/music"),
         &hash,
         &pane_candidate_path(),
@@ -804,7 +801,7 @@ async fn preparation_round_trips_source_only_artist_answers() {
     assert_eq!(preparation.source_discogs_artist_ids, source_ids);
     assert_eq!(preparation.assets.artist_images, vec![answer]);
 
-    db.replace_import_candidate_album_artists_prepared(
+    crate::import::CandidatePreparations::new(db.clone()).set_album_artists_prepared(
         &host_root("/music"),
         &pane_candidate_path(),
         &hash,

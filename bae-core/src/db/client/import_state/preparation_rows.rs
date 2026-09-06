@@ -291,7 +291,7 @@ impl Database {
     }
 
     /// The instant a write stamps on what it stores.
-    pub(super) fn now(&self) -> DateTime<Utc> {
+    pub(crate) fn now(&self) -> DateTime<Utc> {
         self.inner.clock.now()
     }
 }

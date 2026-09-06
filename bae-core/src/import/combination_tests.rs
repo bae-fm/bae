@@ -515,12 +515,13 @@ async fn blocked_combination_keeps_embedded_artwork_readable_for_separation() {
         .replace_candidate_file_tag_snapshot(&root, key, &snapshot)
         .await
         .unwrap());
-    db.save_import_candidate_cover(
-        &files.content_hash(),
-        &crate::import::CoverSelection::Embedded(cover_id),
-    )
-    .await
-    .unwrap();
+    crate::import::CandidatePreparations::new(db.clone())
+        .set_cover(
+            &files.content_hash(),
+            &crate::import::CoverSelection::Embedded(cover_id),
+        )
+        .await
+        .unwrap();
     assert!(db
         .load_import_candidate(key)
         .await

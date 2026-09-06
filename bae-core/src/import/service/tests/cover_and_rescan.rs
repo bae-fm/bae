@@ -42,7 +42,11 @@ fn watcher_error_without_a_mapped_path_rescans_every_root() {
 
 #[tokio::test]
 async fn explicit_bmp_cover_is_selected() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        temp: tmp,
+        ..
+    } = setup_import_service().await;
     let bmp = tmp.path().join("cover.bmp");
     let jpg = tmp.path().join("front.jpg");
     std::fs::write(&bmp, b"bmp bytes").unwrap();
@@ -74,7 +78,11 @@ async fn explicit_bmp_cover_is_selected() {
 
 #[tokio::test]
 async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        temp: tmp,
+        ..
+    } = setup_import_service().await;
     let fallback = tmp.path().join("front.jpg");
     std::fs::write(&fallback, b"jpg bytes").unwrap();
     let discovered = vec![ScannedFile::new(
@@ -96,7 +104,11 @@ async fn explicit_local_cover_missing_from_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
-    let (service, _tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        temp: _tmp,
+        ..
+    } = setup_import_service().await;
 
     let err = service
         .pick_folder_cover(&[], Some("cover.bmp"))
@@ -110,7 +122,11 @@ async fn explicit_local_cover_with_no_discovered_images_is_an_error() {
 
 #[tokio::test]
 async fn selected_local_cover_path_must_match_discovered_file() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     let folder = tmp.path().join("release");
     std::fs::create_dir(&folder).unwrap();
     write_test_jpeg(&folder.join("front.jpg"));
@@ -165,15 +181,14 @@ async fn selected_local_cover_path_must_match_discovered_file() {
         .unwrap();
     let metadata_revision = prepare_named_candidate(
         &service,
+        &preparations,
         &expected_content_hash,
         &watched_folder_path,
         &folder.to_string_lossy(),
         "Candidate",
     )
     .await;
-    service
-        .library_manager
-        .save_import_candidate_prepared_cover(
+    preparations.set_prepared_cover(
             &watched_folder_path,
             &folder.to_string_lossy(),
             &expected_content_hash,
@@ -223,7 +238,11 @@ async fn selected_local_cover_path_must_match_discovered_file() {
 async fn unreadable_selected_cover_is_an_error() {
     use std::os::unix::fs::PermissionsExt;
 
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        temp: tmp,
+        ..
+    } = setup_import_service().await;
     let cover = tmp.path().join("cover.jpg");
     std::fs::write(&cover, b"jpg bytes").unwrap();
     std::fs::set_permissions(&cover, std::fs::Permissions::from_mode(0o000)).unwrap();
@@ -246,6 +265,7 @@ async fn unreadable_selected_cover_is_an_error() {
 
 async fn rescan_seeded_root(
     service: &ImportService,
+    preparations: &crate::import::CandidatePreparations,
     root: &Path,
 ) -> (
     tokio::sync::broadcast::Receiver<crate::import::handle::ImportEvent>,
@@ -294,6 +314,7 @@ async fn rescan_seeded_root(
         root,
         &event_tx,
         &service.library_manager,
+        preparations,
         &service.clock,
         &service.ids,
         &folder_registry,
@@ -320,9 +341,13 @@ async fn stored_invalid_candidates(service: &ImportService, root: &Path) -> usiz
 
 #[tokio::test]
 async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     let root = tmp.path().join("missing-root");
-    let (mut events, result) = rescan_seeded_root(&service, &root).await;
+    let (mut events, result) = rescan_seeded_root(&service, &preparations, &root).await;
     assert!(result.is_err());
 
     let failed = loop {
@@ -353,10 +378,14 @@ async fn rescan_missing_root_fails_and_preserves_previous_candidates() {
 
 #[tokio::test]
 async fn rescan_non_directory_root_keeps_previous_candidates() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     let root = tmp.path().join("not-a-directory");
     std::fs::write(&root, b"not a directory").unwrap();
-    let (mut events, result) = rescan_seeded_root(&service, &root).await;
+    let (mut events, result) = rescan_seeded_root(&service, &preparations, &root).await;
     assert!(result.is_err(), "a non-directory root must fail its scan");
 
     loop {
@@ -444,7 +473,11 @@ fn resolve_file_content_type_uses_scan_facts_for_new_audio_formats() {
 /// did not change.
 #[tokio::test]
 async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     let root = tmp.path().join("watched");
     for album in ["Artist - One", "Artist - Two"] {
         let album = root.join(album);
@@ -475,6 +508,7 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
             &root,
             &event_tx,
             &service.library_manager,
+            &preparations,
             &service.clock,
             &service.ids,
             &folder_registry,
@@ -500,7 +534,11 @@ async fn a_second_pass_over_an_unchanged_folder_announces_nothing() {
 
 #[tokio::test]
 async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_announcement() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     service
         .library_manager
         .set_default_import_metadata_source(crate::config::DefaultImportMetadataSource::FileTags)
@@ -526,6 +564,7 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
         &root,
         &event_tx,
         &service.library_manager,
+        &preparations,
         &service.clock,
         &service.ids,
         &folder_registry,
@@ -574,7 +613,11 @@ async fn file_tags_default_reads_and_applies_the_discovered_candidate_before_ann
 async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags(
     source: crate::config::DefaultImportMetadataSource,
 ) {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     service
         .library_manager
         .set_default_import_metadata_source(source)
@@ -602,6 +645,7 @@ async fn assert_default_source_discovers_a_local_cover_without_reading_file_tags
         &root,
         &event_tx,
         &service.library_manager,
+        &preparations,
         &service.clock,
         &service.ids,
         &folder_registry,
@@ -663,7 +707,11 @@ async fn find_online_default_discovers_a_local_cover_before_a_release_is_selecte
 /// would happen anyway.
 #[tokio::test]
 async fn a_pass_records_the_directories_it_read() {
-    let (service, tmp) = setup_import_service().await;
+    let TestService {
+        service,
+        preparations,
+        temp: tmp,
+    } = setup_import_service().await;
     let root = tmp.path().join("watched");
     let album = root.join("Artist - Album");
     std::fs::create_dir_all(album.join("Artwork")).unwrap();
@@ -688,6 +736,7 @@ async fn a_pass_records_the_directories_it_read() {
         &root,
         &event_tx,
         &service.library_manager,
+        &preparations,
         &service.clock,
         &service.ids,
         &folder_registry,
