@@ -8,7 +8,9 @@
 use crate::import::mapping::{
     mapping_with_track, mapping_without_track, MappingTable, MappingTrackSection,
 };
-use crate::import::types::{ArtistAssignment, AudioFile, RawReleaseEdit, RawTrackEdit};
+use crate::import::types::{
+    ArtistAssignment, AudioFile, CandidateTrack, RawReleaseEdit, RawTrackEdit, TrackFileAuthor,
+};
 use chrono::{DateTime, Utc};
 
 /// One album-level field of the metadata form.
@@ -107,43 +109,6 @@ pub enum TrackEditState {
     Edited(RawTrackEdit),
 }
 
-/// A track row's source membership and physical decision, stored
-/// independently from its editable metadata so replacing or clearing metadata
-/// cannot change what the source named or delete the pairing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateTrackMappingEdit {
-    pub track_id: String,
-    /// Whether the source's tracklist contains this track — false exactly for
-    /// a row that exists only because audio was found for it.
-    pub named_by_source: bool,
-    pub dropped: bool,
-    pub file: CandidateTrackFileBinding,
-}
-
-/// Whether a track's current file came from automatic alignment or from the
-/// mapping control. Automatic bindings are recalculated when the candidate's
-/// file shape changes; user bindings survive while their source unit exists.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CandidateTrackFileBinding {
-    Automatic(Option<AudioFile>),
-    User(Option<AudioFile>),
-}
-
-impl CandidateTrackFileBinding {
-    pub fn audio(&self) -> Option<&AudioFile> {
-        match self {
-            Self::Automatic(file) | Self::User(file) => file.as_ref(),
-        }
-    }
-
-    fn user_audio(&self) -> Option<&Option<AudioFile>> {
-        match self {
-            Self::Automatic(_) => None,
-            Self::User(file) => Some(file),
-        }
-    }
-}
-
 impl CandidateTrackEdit {
     pub fn dropped(track_id: impl Into<String>) -> Self {
         Self {
@@ -201,13 +166,15 @@ pub fn apply_track_edits(table: MappingTable, edits: &[CandidateTrackEdit]) -> M
     })
 }
 
-pub(crate) fn apply_track_mapping_edits(
+/// Lay the stored rows' decisions over a freshly projected table: a dropped
+/// row leaves it, and every other row takes the file its stored row names.
+pub(crate) fn apply_track_decisions(
     table: MappingTable,
-    edits: &[CandidateTrackMappingEdit],
+    tracks: &[CandidateTrack],
 ) -> MappingTable {
-    edits.iter().fold(table, |table, edit| {
-        if edit.dropped {
-            return mapping_without_track(table, &edit.track_id);
+    tracks.iter().fold(table, |table, stored| {
+        if stored.dropped {
+            return mapping_without_track(table, &stored.edit.id);
         }
         let track = table
             .track_sections
@@ -215,7 +182,7 @@ pub(crate) fn apply_track_mapping_edits(
             .flat_map(MappingTrackSection::mappings)
             .find_map(|mapping| match &mapping.becomes {
                 crate::import::mapping::MappingBecomes::Track { track, .. }
-                    if track.id == edit.track_id =>
+                    if track.id == stored.edit.id =>
                 {
                     Some(track.clone())
                 }
@@ -223,7 +190,7 @@ pub(crate) fn apply_track_mapping_edits(
             });
         match track {
             Some(mut track) => {
-                track.file.clone_from(&edit.file.audio().cloned());
+                track.file.clone_from(&stored.edit.file);
                 mapping_with_track(table, track)
             }
             None => table,
@@ -234,87 +201,49 @@ pub(crate) fn apply_track_mapping_edits(
 /// Carry user-owned file bindings and dropped rows onto a newly projected
 /// metadata source. Automatic bindings and source membership come from the
 /// new projection.
-pub(crate) fn preserve_track_mapping_decisions(
-    proposed: Vec<CandidateTrackMappingEdit>,
-    current: &[CandidateTrackMappingEdit],
-) -> Vec<CandidateTrackMappingEdit> {
-    carry_track_mapping_decisions(proposed, current, |_| true)
+pub(crate) fn preserve_track_decisions(
+    proposed: Vec<CandidateTrack>,
+    current: &[CandidateTrack],
+) -> Vec<CandidateTrack> {
+    carry_track_decisions(proposed, current, |_| true)
 }
 
 /// Carry decisions onto a new candidate file shape. A user binding survives
 /// only while the audio unit it names still exists; automatic bindings are the
 /// new projection's answer.
-pub(crate) fn reconcile_track_mapping_decisions(
-    proposed: Vec<CandidateTrackMappingEdit>,
-    current: &[CandidateTrackMappingEdit],
+pub(crate) fn reconcile_track_decisions(
+    proposed: Vec<CandidateTrack>,
+    current: &[CandidateTrack],
     available: &std::collections::HashSet<AudioFile>,
-) -> Vec<CandidateTrackMappingEdit> {
-    carry_track_mapping_decisions(proposed, current, |file| {
+) -> Vec<CandidateTrack> {
+    carry_track_decisions(proposed, current, |file| {
         file.as_ref().is_none_or(|file| available.contains(file))
     })
 }
 
-fn carry_track_mapping_decisions(
-    mut proposed: Vec<CandidateTrackMappingEdit>,
-    current: &[CandidateTrackMappingEdit],
+fn carry_track_decisions(
+    mut proposed: Vec<CandidateTrack>,
+    current: &[CandidateTrack],
     keep_user_file: impl Fn(&Option<AudioFile>) -> bool,
-) -> Vec<CandidateTrackMappingEdit> {
+) -> Vec<CandidateTrack> {
     let current: std::collections::HashMap<_, _> = current
         .iter()
-        .map(|mapping| (mapping.track_id.as_str(), mapping))
+        .map(|track| (track.edit.id.as_str(), track))
         .collect();
-    for mapping in &mut proposed {
-        let Some(existing) = current.get(mapping.track_id.as_str()) else {
+    for track in &mut proposed {
+        let Some(existing) = current.get(track.edit.id.as_str()) else {
             continue;
         };
-        mapping.dropped = existing.dropped;
-        if let Some(file) = existing
-            .file
-            .user_audio()
-            .filter(|file| keep_user_file(file))
-        {
-            mapping.file = CandidateTrackFileBinding::User(file.clone());
+        if let Some(file) = existing.user_file().filter(|file| keep_user_file(file)) {
+            track.edit.file.clone_from(file);
+            track.file_author = TrackFileAuthor::User;
+        }
+        // A row out of the import plays nothing: the drop takes the file
+        // with it, as the row edit that dropped it did.
+        if existing.dropped {
+            track.dropped = true;
+            track.edit.file = None;
         }
     }
     proposed
-}
-
-/// Apply the candidate's complete stored physical mappings to its editable
-/// draft. Every draft track has exactly one mapping row; anything else is an
-/// incomplete candidate revision and import refuses it.
-pub(crate) fn apply_track_mappings_to_draft(
-    mut draft: RawReleaseEdit,
-    mappings: &[CandidateTrackMappingEdit],
-) -> Result<RawReleaseEdit, crate::import::ImportError> {
-    let mut by_track: std::collections::HashMap<_, _> = mappings
-        .iter()
-        .map(|mapping| (mapping.track_id.as_str(), mapping))
-        .collect();
-    if by_track.len() != mappings.len() {
-        return Err(crate::import::ImportError::Internal {
-            detail: "candidate track mappings contain a duplicate track ID".into(),
-        });
-    }
-    let mut tracks = Vec::with_capacity(draft.tracks.len());
-    for mut track in draft.tracks {
-        let mapping = by_track.remove(track.id.as_str()).ok_or_else(|| {
-            crate::import::ImportError::Internal {
-                detail: format!(
-                    "candidate track {} has no stored physical mapping",
-                    track.id
-                ),
-            }
-        })?;
-        if !mapping.dropped {
-            track.file.clone_from(&mapping.file.audio().cloned());
-            tracks.push(track);
-        }
-    }
-    if let Some(extra) = by_track.keys().next() {
-        return Err(crate::import::ImportError::Internal {
-            detail: format!("candidate physical mapping {extra} has no metadata track"),
-        });
-    }
-    draft.tracks = tracks;
-    Ok(draft)
 }

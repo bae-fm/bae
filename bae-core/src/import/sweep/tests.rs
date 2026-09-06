@@ -725,10 +725,9 @@ impl Fixture {
             .await
             .expect("the candidate state is readable")
             .expect("the scanned candidate is sweepable");
-        let source_draft = candidate.blank_source();
-        let mut edit = source_draft.edit;
-        edit.album_title = "Album".to_string();
-        edit.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
+        let mut draft = candidate.blank_source().draft;
+        draft.album_title = "Album".to_string();
+        draft.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
             seed: crate::import::NewArtistSeed {
                 name: "Artist".to_string(),
                 sort_name: None,
@@ -736,8 +735,8 @@ impl Fixture {
                 discogs_artist_id: None,
             },
         }];
-        for (index, track) in edit.tracks.iter_mut().enumerate() {
-            track.title = format!("Track {}", index + 1);
+        for (index, track) in draft.tracks.iter_mut().enumerate() {
+            track.edit.title = format!("Track {}", index + 1);
         }
         let verdict = TerminalVerdict::Found {
             matches: vec![MetadataResult {
@@ -790,8 +789,7 @@ impl Fixture {
                     expected_edit_revision: 0,
                     expected_metadata_revision: 0,
                     metadata: crate::import::CandidateMetadataDraft {
-                        edit,
-                        track_mappings: source_draft.track_mappings,
+                        draft,
                         source_discogs_artist_ids: Default::default(),
                         provenance: Some(crate::import::MetadataProvenance::ExternalRelease {
                             source: crate::import::MetadataSource::MusicBrainz,

@@ -13,18 +13,17 @@ use super::verdict_rows::unreadable;
 use super::*;
 use crate::db::client::candidate_state_rows::{require_state_row, save_cover, COVER_COLUMNS};
 use crate::import::{
-    ArtistAssignment, AudioFile, CandidateEditField, CandidateTrackEdit, CandidateTrackFileBinding,
-    CandidateTrackMappingEdit, CoverSelection, ExistingArtist, NewArtistSeed, RawPressingEdit,
-    RawReleaseEdit, RawTrackEdit, TrackArtistAssignments, TrackEditState,
+    ArtistAssignment, AudioFile, CandidateDraft, CandidateEditField, CandidateTrack,
+    CandidateTrackEdit, CoverSelection, ExistingArtist, NewArtistSeed, RawPressingEdit,
+    RawTrackEdit, TrackArtistAssignments, TrackEditState, TrackFileAuthor,
 };
 
 const EDIT_COLUMNS: &str = "content_hash, album_title, album_year, year, format, \
      label, catalog_number, country, barcode";
 
-const TRACK_EDIT_COLUMNS: &str = "content_hash, track_id, position, title, \
-     artist_assignment_kind, side, track_number";
-const TRACK_MAPPING_COLUMNS: &str =
-    "content_hash, track_id, named_by_source, dropped, file_author, file_kind, file_id, sheet_id, slice_index";
+const TRACK_COLUMNS: &str = "content_hash, track_id, position, title, \
+     artist_assignment_kind, side, track_number, named_by_source, dropped, file_author, \
+     file_kind, file_id, sheet_id, slice_index";
 
 fn advance_metadata_revision(sql: &SqlContext<'_, '_>, content_hash: &str) -> Result<u64, DbError> {
     let revision = sql
@@ -128,7 +127,7 @@ fn save_edit_field_and_advance(
 pub(super) fn replace_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    draft: &RawReleaseEdit,
+    draft: &CandidateDraft,
 ) -> Result<(), DbError> {
     sql.execute(
         "DELETE FROM import_candidate_edit WHERE content_hash = ?",
@@ -140,7 +139,7 @@ pub(super) fn replace_draft(
 pub(crate) fn insert_draft(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
-    draft: &RawReleaseEdit,
+    draft: &CandidateDraft,
 ) -> Result<(), DbError> {
     sql.execute(
         "INSERT INTO import_candidate_edit \
@@ -160,44 +159,49 @@ pub(crate) fn insert_draft(
     )?;
     insert_album_artist_assignments(sql, content_hash, &draft.album_artist_assignments)?;
     for (position, track) in draft.tracks.iter().enumerate() {
-        let assignment_kind = match &track.artist_assignments {
-            TrackArtistAssignments::AlbumArtists => "album_artists",
-            TrackArtistAssignments::Explicit(_) => "explicit",
-        };
+        let (file_kind, file_id, sheet_id, slice_index) =
+            mapping_file_columns(track.edit.file.as_ref());
         sql.execute(
-            "INSERT INTO import_candidate_track_edit \
-                 (content_hash, track_id, position, title, artist_assignment_kind, side, track_number) \
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            &format!(
+                "INSERT INTO import_candidate_track ({TRACK_COLUMNS}) \
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            ),
             params![
                 content_hash,
-                track.id,
+                track.edit.id,
                 position as i64,
-                track.title,
-                assignment_kind,
-                track.side,
-                track.track_number,
+                track.edit.title,
+                assignment_kind_column(&track.edit.artist_assignments),
+                track.edit.side,
+                track.edit.track_number,
+                track.named_by_source,
+                track.dropped,
+                file_author_column(track.file_author),
+                file_kind,
+                file_id,
+                sheet_id,
+                slice_index,
             ],
         )?;
-        if let TrackArtistAssignments::Explicit(assignments) = &track.artist_assignments {
-            insert_track_artist_assignments(sql, content_hash, &track.id, assignments)?;
+        if let TrackArtistAssignments::Explicit(assignments) = &track.edit.artist_assignments {
+            insert_track_artist_assignments(sql, content_hash, &track.edit.id, assignments)?;
         }
     }
     Ok(())
 }
 
-pub(crate) fn replace_track_mappings(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    mappings: &[CandidateTrackMappingEdit],
-) -> Result<(), DbError> {
-    sql.execute(
-        "DELETE FROM import_candidate_track_mapping WHERE content_hash = ?",
-        [content_hash],
-    )?;
-    for mapping in mappings {
-        save_track_mapping(sql, content_hash, mapping)?;
+fn assignment_kind_column(assignments: &TrackArtistAssignments) -> &'static str {
+    match assignments {
+        TrackArtistAssignments::AlbumArtists => "album_artists",
+        TrackArtistAssignments::Explicit(_) => "explicit",
     }
-    Ok(())
+}
+
+fn file_author_column(author: TrackFileAuthor) -> &'static str {
+    match author {
+        TrackFileAuthor::Automatic => "automatic",
+        TrackFileAuthor::User => "user",
+    }
 }
 
 pub(super) fn save_track_edit(
@@ -207,16 +211,12 @@ pub(super) fn save_track_edit(
 ) -> Result<(), DbError> {
     require_state_row(sql, content_hash, "track edit")?;
     if let TrackEditState::Edited(track) = &edit.state {
-        let assignment_kind = match &track.artist_assignments {
-            TrackArtistAssignments::AlbumArtists => "album_artists",
-            TrackArtistAssignments::Explicit(_) => "explicit",
-        };
         let changed = sql.execute(
-            "UPDATE import_candidate_track_edit SET title = ?, artist_assignment_kind = ?, \
+            "UPDATE import_candidate_track SET title = ?, artist_assignment_kind = ?, \
                  side = ?, track_number = ? WHERE content_hash = ? AND track_id = ?",
             params![
                 track.title,
-                assignment_kind,
+                assignment_kind_column(&track.artist_assignments),
                 track.side,
                 track.track_number,
                 content_hash,
@@ -238,7 +238,7 @@ pub(super) fn save_track_edit(
             insert_track_artist_assignments(sql, content_hash, &edit.track_id, assignments)?;
         }
     }
-    update_track_mapping_decision(sql, content_hash, edit)
+    update_track_decision(sql, content_hash, edit)
 }
 
 fn replace_track_artist_assignments(
@@ -254,7 +254,7 @@ fn replace_track_artist_assignments(
     };
     for track_id in track_ids {
         let changed = sql.execute(
-            "UPDATE import_candidate_track_edit SET artist_assignment_kind = ? \
+            "UPDATE import_candidate_track SET artist_assignment_kind = ? \
              WHERE content_hash = ? AND track_id = ?",
             params![assignment_kind, content_hash, track_id],
         )?;
@@ -275,41 +275,7 @@ fn replace_track_artist_assignments(
     Ok(())
 }
 
-fn save_track_mapping(
-    sql: &SqlContext<'_, '_>,
-    content_hash: &str,
-    mapping: &CandidateTrackMappingEdit,
-) -> Result<(), DbError> {
-    let file_author = match &mapping.file {
-        CandidateTrackFileBinding::Automatic(_) => "automatic",
-        CandidateTrackFileBinding::User(_) => "user",
-    };
-    let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(mapping.file.audio());
-    sql.execute(
-        &format!(
-            "INSERT INTO import_candidate_track_mapping ({TRACK_MAPPING_COLUMNS}) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (content_hash, track_id) DO UPDATE SET \
-                 named_by_source = excluded.named_by_source, dropped = excluded.dropped, \
-                 file_author = excluded.file_author, file_kind = excluded.file_kind, \
-                 file_id = excluded.file_id, sheet_id = excluded.sheet_id, \
-                 slice_index = excluded.slice_index"
-        ),
-        params![
-            content_hash,
-            mapping.track_id,
-            mapping.named_by_source,
-            mapping.dropped,
-            file_author,
-            file_kind,
-            file_id,
-            sheet_id,
-            slice_index,
-        ],
-    )?;
-    Ok(())
-}
-
-fn update_track_mapping_decision(
+fn update_track_decision(
     sql: &SqlContext<'_, '_>,
     content_hash: &str,
     edit: &CandidateTrackEdit,
@@ -317,7 +283,7 @@ fn update_track_mapping_decision(
     let dropped = matches!(&edit.state, TrackEditState::Dropped);
     let (file_kind, file_id, sheet_id, slice_index) = mapping_file_columns(edit.file());
     let changed = sql.execute(
-        "UPDATE import_candidate_track_mapping SET dropped = ?, \
+        "UPDATE import_candidate_track SET dropped = ?, \
              file_author = CASE \
                  WHEN file_kind IS ? AND file_id IS ? AND sheet_id IS ? AND slice_index IS ? \
                  THEN file_author ELSE 'user' END, \
@@ -340,7 +306,7 @@ fn update_track_mapping_decision(
     )?;
     if changed != 1 {
         return Err(DbError::Message(format!(
-            "track mapping edit changed {changed} rows for {}; expected exactly one",
+            "track decision edit changed {changed} rows for {}; expected exactly one",
             edit.track_id
         )));
     }
@@ -383,10 +349,7 @@ pub(crate) fn load_pane_rows_on(
         })?;
     Ok(DbCandidatePaneRows {
         cover: load_covers_on(sql, Some(content_hash))?.remove(content_hash),
-        metadata_draft,
-        track_mappings: load_track_mappings_on(sql, Some(content_hash))?
-            .remove(content_hash)
-            .unwrap_or_default(),
+        draft: metadata_draft,
         failure: load_failure_on(sql, content_hash)?,
         session: load_session_on(sql, content_hash)?,
     })
@@ -437,51 +400,90 @@ pub(crate) fn load_covers_on(
     Ok(out)
 }
 
-/// Every candidate's complete editable metadata draft, or the one `only` names.
+/// Every candidate's complete stored draft, or the one `only` names.
 pub(crate) fn load_drafts_on(
     sql: &SqlReadContext<'_>,
     only: Option<&str>,
-) -> Result<HashMap<String, RawReleaseEdit>, DbError> {
+) -> Result<HashMap<String, CandidateDraft>, DbError> {
     let album_assignments = load_album_artist_assignments_on(sql, only)?;
     let track_assignments = load_track_artist_assignments_on(sql, only)?;
     let track_rows = sql.query(
         &format!(
-            "SELECT {TRACK_EDIT_COLUMNS} FROM import_candidate_track_edit \
+            "SELECT {TRACK_COLUMNS} FROM import_candidate_track \
              WHERE :only IS NULL OR content_hash = :only \
              ORDER BY content_hash, position"
         ),
         named_params! { ":only": only },
         |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("track_id")?,
-                row.get::<_, String>("title")?,
-                row.get::<_, String>("artist_assignment_kind")?,
-                row.get::<_, i32>("side")?,
-                row.get::<_, Option<i32>>("track_number")?,
-            ))
+            Ok(StoredTrackRow {
+                content_hash: row.get("content_hash")?,
+                track_id: row.get("track_id")?,
+                title: row.get("title")?,
+                assignment_kind: row.get("artist_assignment_kind")?,
+                side: row.get("side")?,
+                track_number: row.get("track_number")?,
+                named_by_source: row.get::<_, i64>("named_by_source")? == 1,
+                dropped: row.get::<_, i64>("dropped")? == 1,
+                file_author: row.get("file_author")?,
+                file_kind: row.get("file_kind")?,
+                file_id: row.get("file_id")?,
+                sheet_id: row.get("sheet_id")?,
+                slice_index: row.get("slice_index")?,
+            })
         },
     )?;
-    let mut tracks: HashMap<String, Vec<RawTrackEdit>> = HashMap::new();
-    for (content_hash, track_id, title, assignment_kind, side, track_number) in track_rows {
-        let artist_assignments = match assignment_kind.as_str() {
+    let mut tracks: HashMap<String, Vec<CandidateTrack>> = HashMap::new();
+    for row in track_rows {
+        let artist_assignments = match row.assignment_kind.as_str() {
             "album_artists" => TrackArtistAssignments::AlbumArtists,
             "explicit" => TrackArtistAssignments::Explicit(
                 track_assignments
-                    .get(&(content_hash.clone(), track_id.clone()))
+                    .get(&(row.content_hash.clone(), row.track_id.clone()))
                     .cloned()
                     .unwrap_or_default(),
             ),
             other => return Err(unreadable("artist assignment kind", other)),
         };
-        tracks.entry(content_hash).or_default().push(RawTrackEdit {
-            id: track_id,
-            title,
-            artist_assignments,
-            side,
-            track_number,
-            file: None,
-        });
+        let missing = |what: &str| {
+            DbError::Message(format!(
+                "the track stored for {} states no {what}",
+                row.track_id
+            ))
+        };
+        let file = match row.file_kind.as_deref() {
+            None => None,
+            Some("standalone") => Some(AudioFile::Standalone {
+                file_id: row.file_id.clone().ok_or_else(|| missing("file"))?,
+            }),
+            Some("sheet_slice") => Some(AudioFile::SheetSlice {
+                file_id: row.file_id.clone().ok_or_else(|| missing("file"))?,
+                sheet_id: row.sheet_id.clone().ok_or_else(|| missing("sheet"))?,
+                index: u32::try_from(row.slice_index.ok_or_else(|| missing("slice"))?)
+                    .map_err(|_| missing("a readable slice"))?,
+            }),
+            Some(other) => return Err(unreadable("file_kind", other)),
+        };
+        let file_author = match row.file_author.as_str() {
+            "automatic" => TrackFileAuthor::Automatic,
+            "user" => TrackFileAuthor::User,
+            other => return Err(unreadable("file_author", other)),
+        };
+        tracks
+            .entry(row.content_hash)
+            .or_default()
+            .push(CandidateTrack {
+                edit: RawTrackEdit {
+                    id: row.track_id,
+                    title: row.title,
+                    artist_assignments,
+                    side: row.side,
+                    track_number: row.track_number,
+                    file,
+                },
+                named_by_source: row.named_by_source,
+                dropped: row.dropped,
+                file_author,
+            });
     }
     let rows = sql.query(
         &format!(
@@ -518,7 +520,7 @@ pub(crate) fn load_drafts_on(
     {
         out.insert(
             content_hash.clone(),
-            RawReleaseEdit {
+            CandidateDraft {
                 album_title,
                 album_artist_assignments: album_assignments
                     .get(&content_hash)
@@ -540,77 +542,21 @@ pub(crate) fn load_drafts_on(
     Ok(out)
 }
 
-/// Every candidate's physical track decisions, or the one `only` names.
-fn load_track_mappings_on(
-    sql: &SqlReadContext<'_>,
-    only: Option<&str>,
-) -> Result<HashMap<String, Vec<CandidateTrackMappingEdit>>, DbError> {
-    let rows = sql.query(
-        &format!(
-            "SELECT {TRACK_MAPPING_COLUMNS} FROM import_candidate_track_mapping \
-             WHERE :only IS NULL OR content_hash = :only \
-             ORDER BY content_hash, track_id"
-        ),
-        named_params! { ":only": only },
-        |row| {
-            Ok((
-                row.get::<_, String>("content_hash")?,
-                row.get::<_, String>("track_id")?,
-                row.get::<_, i64>("named_by_source")?,
-                row.get::<_, i64>("dropped")?,
-                row.get::<_, String>("file_author")?,
-                row.get::<_, Option<String>>("file_kind")?,
-                row.get::<_, Option<String>>("file_id")?,
-                row.get::<_, Option<String>>("sheet_id")?,
-                row.get::<_, Option<i64>>("slice_index")?,
-            ))
-        },
-    )?;
-    let mut out: HashMap<String, Vec<CandidateTrackMappingEdit>> = HashMap::new();
-    for (
-        content_hash,
-        track_id,
-        named_by_source,
-        dropped,
-        file_author,
-        file_kind,
-        file_id,
-        sheet_id,
-        slice_index,
-    ) in rows
-    {
-        let missing = |what: &str| {
-            DbError::Message(format!(
-                "the track mapping stored for {track_id} states no {what}"
-            ))
-        };
-        let file = match file_kind.as_deref() {
-            None => None,
-            Some("standalone") => Some(AudioFile::Standalone {
-                file_id: file_id.ok_or_else(|| missing("file"))?,
-            }),
-            Some("sheet_slice") => Some(AudioFile::SheetSlice {
-                file_id: file_id.ok_or_else(|| missing("file"))?,
-                sheet_id: sheet_id.ok_or_else(|| missing("sheet"))?,
-                index: u32::try_from(slice_index.ok_or_else(|| missing("slice"))?)
-                    .map_err(|_| missing("a readable slice"))?,
-            }),
-            Some(other) => return Err(unreadable("file_kind", other)),
-        };
-        out.entry(content_hash)
-            .or_default()
-            .push(CandidateTrackMappingEdit {
-                track_id,
-                named_by_source: named_by_source == 1,
-                dropped: dropped == 1,
-                file: match file_author.as_str() {
-                    "automatic" => CandidateTrackFileBinding::Automatic(file),
-                    "user" => CandidateTrackFileBinding::User(file),
-                    other => return Err(unreadable("file_author", other)),
-                },
-            });
-    }
-    Ok(out)
+/// One `import_candidate_track` row as SQLite hands it over.
+struct StoredTrackRow {
+    content_hash: String,
+    track_id: String,
+    title: String,
+    assignment_kind: String,
+    side: i32,
+    track_number: Option<i32>,
+    named_by_source: bool,
+    dropped: bool,
+    file_author: String,
+    file_kind: Option<String>,
+    file_id: Option<String>,
+    sheet_id: Option<String>,
+    slice_index: Option<i64>,
 }
 
 struct AssignmentColumns<'a> {

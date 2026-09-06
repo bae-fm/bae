@@ -27,17 +27,13 @@ async fn metadata_for_settled_lead(
     settled_lead: SettledLead,
 ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
     match settled_lead {
-        SettledLead::NoExternalRelease => {
-            let source_draft = candidate.blank_source();
-            Ok(crate::import::CandidateMetadataDraft {
-                edit: source_draft.edit,
-                track_mappings: source_draft.track_mappings,
-                source_discogs_artist_ids: Default::default(),
-                provenance: None,
-                cover: None,
-                assets: crate::import::CandidatePreparedAssets::default(),
-            })
-        }
+        SettledLead::NoExternalRelease => Ok(crate::import::CandidateMetadataDraft {
+            draft: candidate.blank_source().draft,
+            source_discogs_artist_ids: Default::default(),
+            provenance: None,
+            cover: None,
+            assets: crate::import::CandidatePreparedAssets::default(),
+        }),
         SettledLead::ExternalRelease {
             provenance,
             payloads,
@@ -84,10 +80,8 @@ async fn metadata_or_failed_verdict(
                 )],
                 track_count,
             };
-            let source_draft = candidate.blank_source();
             crate::import::CandidateMetadataDraft {
-                edit: source_draft.edit,
-                track_mappings: source_draft.track_mappings,
+                draft: candidate.blank_source().draft,
                 source_discogs_artist_ids: Default::default(),
                 provenance: None,
                 cover: None,
@@ -178,9 +172,9 @@ async fn preserve_current_mapping_decisions(
                 candidate.key()
             ))
         })?;
-    metadata.track_mappings = crate::import::edits::preserve_track_mapping_decisions(
-        std::mem::take(&mut metadata.track_mappings),
-        &current.track_mappings,
+    metadata.draft.tracks = crate::import::edits::preserve_track_decisions(
+        std::mem::take(&mut metadata.draft.tracks),
+        &current.draft.tracks,
     );
     Ok(())
 }

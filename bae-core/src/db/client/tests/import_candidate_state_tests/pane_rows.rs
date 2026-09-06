@@ -69,9 +69,7 @@ async fn store_verdict(db: &Database, hash: &str, signals: Signals) -> bool {
         expected_edit_revision: 0,
         expected_metadata_revision: 0,
         metadata: crate::import::CandidateMetadataDraft {
-            edit: crate::import::pane::blank_candidate_draft(&pane_candidate()),
-            track_mappings: crate::import::pane::blank_candidate_source(&pane_candidate())
-                .track_mappings,
+            draft: crate::import::pane::blank_candidate_draft(&pane_candidate()),
             source_discogs_artist_ids: Default::default(),
             provenance: None,
             cover: None,
@@ -170,6 +168,12 @@ async fn store_candidate_state(
         .unwrap()
         .expect("the current scan accepts the candidate");
     hash
+}
+
+/// `metadata_draft` as a candidate stores it: one automatically bound row,
+/// named by its source, in the import.
+fn candidate_draft(title: &str, artist: &str) -> crate::import::CandidateDraft {
+    crate::import::pane::candidate_draft_from_edit(metadata_draft(title, artist)).draft
 }
 
 fn metadata_draft(title: &str, artist: &str) -> RawReleaseEdit {
@@ -395,8 +399,7 @@ async fn a_scanning_signal_is_refused_and_writes_nothing() {
                 expected_edit_revision: 0,
                 expected_metadata_revision: 0,
                 metadata: crate::import::CandidateMetadataDraft {
-                    edit: crate::import::pane::blank_candidate_draft(&pane_candidate()),
-                    track_mappings: Default::default(),
+                    draft: crate::import::pane::blank_candidate_draft(&pane_candidate()),
                     source_discogs_artist_ids: Default::default(),
                     provenance: None,
                     cover: None,
@@ -445,7 +448,8 @@ async fn a_failure_on_a_discovered_candidate_is_replaced_then_cleared() {
         .load_import_candidate_pane_rows(&hash)
         .await
         .unwrap()
-        .metadata_draft
+        .draft
+        .release_edit()
         .is_blank());
 
     db.save_import_candidate_failure(
@@ -657,7 +661,7 @@ async fn a_stale_remote_cover_write_leaves_the_current_selection_and_bytes() {
 async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
     let (db, _tmp) = empty_db().await;
     let (_, hash) = stored_pane_candidate(&db).await;
-    let mut draft = metadata_draft("Release Title", "Artist Name");
+    let mut draft = candidate_draft("Release Title", "Artist Name");
     let first = crate::import::PreparedArtistImage::Nothing {
         discogs_artist_id: "101".to_string(),
     };
@@ -677,8 +681,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             0,
             0,
             &crate::import::CandidateMetadataDraft {
-                edit: draft.clone(),
-                track_mappings: Default::default(),
+                draft: draft.clone(),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("release-1")),
                 cover: None,
@@ -710,8 +713,7 @@ async fn metadata_replacement_replaces_the_complete_artist_asset_set() {
             0,
             revision,
             &crate::import::CandidateMetadataDraft {
-                edit: draft,
-                track_mappings: Default::default(),
+                draft,
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("release-2")),
                 cover: None,
@@ -781,8 +783,7 @@ async fn preparation_round_trips_source_only_artist_answers() {
         0,
         0,
         &crate::import::CandidateMetadataDraft {
-            edit: metadata_draft("Release Title", "Artist Name"),
-            track_mappings: Default::default(),
+            draft: candidate_draft("Release Title", "Artist Name"),
             source_discogs_artist_ids: source_ids.clone(),
             provenance: Some(release_pick("release-with-role")),
             cover: None,
@@ -809,7 +810,7 @@ async fn preparation_round_trips_source_only_artist_answers() {
         &hash,
         preparation.file_edit_revision,
         preparation.metadata_revision,
-        &preparation.metadata_draft.album_artist_assignments,
+        &preparation.draft.album_artist_assignments,
         &std::collections::BTreeSet::new(),
         &[],
     )

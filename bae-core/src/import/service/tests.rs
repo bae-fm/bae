@@ -71,9 +71,9 @@ async fn prepare_named_candidate(
         .await
         .unwrap()
         .expect("the scanned candidate has its initial preparation");
-    let mut edit = preparation.metadata_draft;
-    edit.album_title = album_title.to_string();
-    edit.album_artist_assignments = vec![crate::import::ArtistAssignment::new("Artist Name")];
+    let mut draft = preparation.draft;
+    draft.album_title = album_title.to_string();
+    draft.album_artist_assignments = vec![crate::import::ArtistAssignment::new("Artist Name")];
     service
         .library_manager
         .replace_candidate_metadata_prepared(
@@ -83,8 +83,7 @@ async fn prepare_named_candidate(
             preparation.file_edit_revision,
             preparation.metadata_revision,
             &crate::import::CandidateMetadataDraft {
-                edit,
-                track_mappings: preparation.track_mappings,
+                draft,
                 source_discogs_artist_ids: preparation.source_discogs_artist_ids,
                 provenance: preparation.metadata_provenance,
                 cover: preparation.cover,

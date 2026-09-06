@@ -149,8 +149,7 @@ async fn save_verdict(db: &Database, candidate: &FolderCandidate, release_id: &s
             metadata: {
                 let source_draft = crate::import::pane::blank_candidate_source(&candidate.files);
                 crate::import::CandidateMetadataDraft {
-                    edit: source_draft.edit,
-                    track_mappings: source_draft.track_mappings,
+                    draft: source_draft.draft,
                     source_discogs_artist_ids: Default::default(),
                     provenance: None,
                     cover: None,
@@ -262,7 +261,8 @@ async fn a_picked_row_leads_with_the_archived_document() {
         .load_import_candidate_pane_rows(&candidate.files.content_hash())
         .await
         .unwrap()
-        .metadata_draft;
+        .draft
+        .release_edit();
     db.replace_candidate_metadata(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
@@ -302,7 +302,8 @@ async fn a_pick_with_no_documents_leads_with_nothing() {
         .load_import_candidate_pane_rows(&candidate.files.content_hash())
         .await
         .unwrap()
-        .metadata_draft;
+        .draft
+        .release_edit();
     db.replace_candidate_metadata(
         &candidate.files.content_hash(),
         &candidate.path.to_string_lossy(),
@@ -584,7 +585,7 @@ async fn the_list_projects_the_applied_draft_and_cover() {
     db.replace_candidate_metadata(
         &content_hash,
         &candidate.path.to_string_lossy(),
-        &crate::import::pane::blank_candidate_draft(&candidate.files),
+        &crate::import::pane::blank_candidate_draft(&candidate.files).release_edit(),
         None,
     )
     .await
@@ -718,8 +719,11 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
     )
     .await;
     let hash = candidate.files.content_hash();
-    let pane_rows = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    let draft = pane_rows.metadata_draft;
+    let draft = db
+        .load_import_candidate_pane_rows(&hash)
+        .await
+        .unwrap()
+        .draft;
     let bytes = vec![1, 2, 3, 4];
     let snapshot = crate::import::file_tag_snapshot::FileTagSnapshot {
         scan_generation: 1,
@@ -752,7 +756,6 @@ async fn the_list_projects_the_persisted_embedded_file_tags_cover() {
         0,
         &snapshot,
         &draft,
-        &pane_rows.track_mappings,
         Some(&crate::import::CoverSelection::Embedded(
             "01.flac".to_string(),
         )),

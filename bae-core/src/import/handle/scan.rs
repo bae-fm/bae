@@ -272,8 +272,7 @@ impl ImportServiceHandle {
         fallback_cover: Option<&crate::import::CoverSelection>,
     ) -> Result<crate::import::CandidateMetadataDraft, crate::import::ImportError> {
         let source_draft = self.external_candidate_draft(payloads, files, durations)?;
-        let edit = source_draft.edit;
-        let track_mappings = source_draft.track_mappings;
+        let draft = source_draft.draft;
         let source_discogs_artist_ids = source_draft.source_discogs_artist_ids;
         let required_artist_ids = source_discogs_artist_ids
             .union(&source_draft.mapped_new_discogs_artist_ids)
@@ -297,8 +296,7 @@ impl ImportServiceHandle {
             None => (local_or_embedded_cover(fallback_cover), None),
         };
         Ok(crate::import::CandidateMetadataDraft {
-            edit,
-            track_mappings,
+            draft,
             source_discogs_artist_ids,
             provenance: Some(provenance),
             cover,
@@ -341,10 +339,10 @@ impl ImportServiceHandle {
                     self.clock.as_ref(),
                     self.ids.as_ref(),
                 )?;
-                let source_draft = crate::import::pane::candidate_draft_from_source(pane);
-                let track_mappings = crate::import::edits::preserve_track_mapping_decisions(
-                    source_draft.track_mappings,
-                    &current.track_mappings,
+                let mut draft = crate::import::pane::candidate_draft_from_source(pane).draft;
+                draft.tracks = crate::import::edits::preserve_track_decisions(
+                    draft.tracks,
+                    &current.draft.tracks,
                 );
                 let cover = crate::import::file_tag_snapshot::embedded_cover_selection(&snapshot);
                 let _commit = self.folder_state_commit.lock().await;
@@ -363,8 +361,7 @@ impl ImportServiceHandle {
                         current.file_edit_revision,
                         expected_metadata_revision,
                         &snapshot,
-                        &source_draft.edit,
-                        &track_mappings,
+                        &draft,
                         cover.as_ref(),
                     )
                     .await?);
@@ -399,9 +396,9 @@ impl ImportServiceHandle {
                         current.cover.as_ref(),
                     )
                     .await?;
-                metadata.track_mappings = crate::import::edits::preserve_track_mapping_decisions(
-                    metadata.track_mappings,
-                    &current.track_mappings,
+                metadata.draft.tracks = crate::import::edits::preserve_track_decisions(
+                    metadata.draft.tracks,
+                    &current.draft.tracks,
                 );
                 let _commit = self.folder_state_commit.lock().await;
                 self.editable_candidate_revision_for_commit(
@@ -444,11 +441,9 @@ impl ImportServiceHandle {
             .ok_or_else(|| crate::import::ImportError::Internal {
                 detail: format!("{candidate_key} has no stored import preparation"),
             })?;
-        let source_draft = candidate.blank_source();
-        let track_mappings = crate::import::edits::preserve_track_mapping_decisions(
-            source_draft.track_mappings,
-            &current.track_mappings,
-        );
+        let mut draft = candidate.blank_source().draft;
+        draft.tracks =
+            crate::import::edits::preserve_track_decisions(draft.tracks, &current.draft.tracks);
         let _commit = self.folder_state_commit.lock().await;
         self.editable_candidate_revision_for_commit(
             &candidate_key,
@@ -465,8 +460,7 @@ impl ImportServiceHandle {
                 candidate.file_edit_revision(),
                 current.metadata_revision,
                 &crate::import::CandidateMetadataDraft {
-                    edit: source_draft.edit,
-                    track_mappings,
+                    draft,
                     source_discogs_artist_ids: Default::default(),
                     provenance: None,
                     cover: None,
@@ -631,27 +625,24 @@ impl ImportServiceHandle {
         // with them: a slot the draft had no track for — a sheet bound over
         // what was one loose file — becomes a blank track, so every mapping
         // written below names a track the stored draft has.
-        let redrawn = crate::import::pane::redraw_draft_for_files(
+        let mut draft = crate::import::pane::redraw_draft_for_files(
             settled_files,
             &crate::import::probe::SourceDurations::default(),
-            preparation.metadata_draft,
-            &preparation.track_mappings,
+            &preparation.draft,
             preparation.metadata_provenance.as_ref(),
-        )?;
+        )
+        .draft;
         let available_files = crate::import::track_slots::units_of(
             &crate::import::track_slots::audio_layout(settled_files),
         )
         .into_iter()
         .collect();
-        let track_mappings = crate::import::edits::reconcile_track_mapping_decisions(
-            redrawn.track_mappings,
-            &preparation.track_mappings,
+        draft.tracks = crate::import::edits::reconcile_track_decisions(
+            draft.tracks,
+            &preparation.draft.tracks,
             &available_files,
         );
-        let active = crate::import::edits::apply_track_mappings_to_draft(
-            redrawn.edit.clone(),
-            &track_mappings,
-        )?;
+        let active = draft.release_edit();
         let (source_discogs_artist_ids, artist_images) = self
             .prepared_artist_images_for_active(
                 candidate_key,
@@ -662,8 +653,7 @@ impl ImportServiceHandle {
             )
             .await?;
         let mapping_preparation = crate::import::CandidateMappingPreparation {
-            edit: redrawn.edit,
-            track_mappings,
+            draft,
             source_discogs_artist_ids,
             artist_images,
         };

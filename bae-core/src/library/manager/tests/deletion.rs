@@ -84,11 +84,12 @@ async fn create_candidate_draft(manager: &LibraryManager) -> (String, String) {
         .load_import_candidate_pane_rows(&content_hash)
         .await
         .unwrap()
-        .metadata_draft
+        .draft
         .tracks
         .into_iter()
         .next()
         .expect("the audio file creates one draft track")
+        .edit
         .id;
     (content_hash, track_id)
 }

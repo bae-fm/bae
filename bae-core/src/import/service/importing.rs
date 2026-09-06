@@ -236,13 +236,7 @@ impl ImportService {
         }
         let metadata_provenance = preparation.metadata_provenance;
         let selected_cover = preparation.cover;
-        let user_edit = Some(
-            crate::import::edits::apply_track_mappings_to_draft(
-                preparation.metadata_draft,
-                &preparation.track_mappings,
-            )?
-            .shape()?,
-        );
+        let user_edit = Some(preparation.draft.release_edit().shape()?);
         let prepared_assets = preparation.assets;
 
         let file_tag_snapshot = expectation.file_tag_snapshot.as_ref();

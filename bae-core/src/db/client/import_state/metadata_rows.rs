@@ -1,9 +1,10 @@
 use super::*;
 
 impl Database {
-    /// Replace the candidate's editable metadata and its provenance as one
-    /// transaction. File decisions and physical track mappings live in other
-    /// tables and are deliberately untouched.
+    /// Replace the candidate's draft and its provenance as one transaction,
+    /// carrying the stored rows' file decisions onto the new tracks. File
+    /// decisions about the folder itself live in other tables and are
+    /// deliberately untouched.
     #[cfg(any(test, feature = "test-utils"))]
     pub async fn replace_candidate_metadata(
         &self,
@@ -20,15 +21,16 @@ impl Database {
             })?;
         let expected_file_edit_revision = state.file_edits.revision;
         let expected_revision = state.metadata_revision;
-        let track_mappings = self
+        let current = self
             .load_import_candidate_pane_rows(content_hash)
             .await?
-            .track_mappings;
+            .draft;
+        let mut draft = crate::import::pane::candidate_draft_from_edit(draft.clone()).draft;
+        draft.tracks = crate::import::preserve_track_decisions(draft.tracks, &current.tracks);
         let content_hash = content_hash.to_string();
         let folder_path = folder_path.to_string();
         let metadata = crate::import::CandidateMetadataDraft {
-            edit: draft.clone(),
-            track_mappings,
+            draft,
             source_discogs_artist_ids: Default::default(),
             provenance: provenance.cloned(),
             cover: None,
@@ -92,8 +94,7 @@ impl Database {
         expected_file_edit_revision: u64,
         expected_metadata_revision: u64,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
-        draft: &crate::import::RawReleaseEdit,
-        track_mappings: &[crate::import::CandidateTrackMappingEdit],
+        draft: &crate::import::CandidateDraft,
         cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, DbError> {
         let watched_folder_path = watched_folder_path.to_string();
@@ -101,7 +102,6 @@ impl Database {
         let content_hash = content_hash.to_string();
         let snapshot = snapshot.clone();
         let draft = draft.clone();
-        let track_mappings = track_mappings.to_vec();
         let cover = cover.cloned();
         self.call(move |sql| {
             pane_rows::require_metadata_revision(sql, &content_hash, expected_metadata_revision)?;
@@ -140,7 +140,6 @@ impl Database {
                 Some(&crate::import::MetadataProvenance::FileTags),
             )?;
             pane_rows::replace_draft(sql, &content_hash, &draft)?;
-            pane_rows::replace_track_mappings(sql, &content_hash, &track_mappings)?;
             pane_rows::delete_cover(sql, &content_hash)?;
             if let Some(cover) = &cover {
                 super::candidate_state_rows::save_cover(sql, &content_hash, cover)?;

@@ -98,6 +98,11 @@ pub fn all() -> Vec<coven::Migration> {
             "candidate_combinations",
             include_str!("../migrations/018_candidate_combinations.sql"),
         ),
+        coven::Migration::sql(
+            19,
+            "import_candidate_track",
+            include_str!("../migrations/019_import_candidate_track.sql"),
+        ),
     ]
 }
 

@@ -52,8 +52,7 @@ impl ImportService {
                 file_edit_revision,
                 state.metadata_revision,
                 &snapshot,
-                &source_draft.edit,
-                &source_draft.track_mappings,
+                &source_draft.draft,
                 cover.as_ref(),
             )
             .await?)

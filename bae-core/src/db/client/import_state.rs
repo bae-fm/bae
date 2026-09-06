@@ -14,9 +14,7 @@ mod watched_folder_removal;
 use super::folder_scans::{delete_entry, load_scan_item_on, stored_entries, StoredEntry};
 use edit_rows::{delete_file_edits, insert_file_edits};
 use failure_rows::load_failure_on;
-pub(super) use pane_rows::{
-    insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on, replace_track_mappings,
-};
+pub(super) use pane_rows::{insert_draft, load_covers_on, load_drafts_on, load_pane_rows_on};
 #[cfg(any(test, feature = "test-utils"))]
 use prepared_asset_rows::invalidate_prepared_assets;
 use prepared_asset_rows::replace_prepared_assets;
@@ -104,8 +102,7 @@ fn replace_candidate_metadata_on(
             DbError::Message("metadata replacement has no candidate state row".to_string())
         })?;
     replace_provenance_partners(sql, content_hash, metadata.provenance.as_ref())?;
-    pane_rows::replace_draft(sql, content_hash, &metadata.edit)?;
-    pane_rows::replace_track_mappings(sql, content_hash, &metadata.track_mappings)?;
+    pane_rows::replace_draft(sql, content_hash, &metadata.draft)?;
     pane_rows::delete_cover(sql, content_hash)?;
     if let Some(cover) = &metadata.cover {
         super::candidate_state_rows::save_cover(sql, content_hash, cover)?;
@@ -604,12 +601,7 @@ impl Database {
                         &verdict.content_hash,
                         verdict.metadata.provenance.as_ref(),
                     )?;
-                    pane_rows::replace_draft(sql, &verdict.content_hash, &verdict.metadata.edit)?;
-                    pane_rows::replace_track_mappings(
-                        sql,
-                        &verdict.content_hash,
-                        &verdict.metadata.track_mappings,
-                    )?;
+                    pane_rows::replace_draft(sql, &verdict.content_hash, &verdict.metadata.draft)?;
                     pane_rows::delete_cover(sql, &verdict.content_hash)?;
                     if let Some(cover) = &verdict.metadata.cover {
                         super::candidate_state_rows::save_cover(sql, &verdict.content_hash, cover)?;
@@ -769,14 +761,8 @@ impl Database {
             // longer mean the same thing.
             delete_signals(sql, &content_hash)?;
             // The draft has one track per slot row, so it moves with the slots:
-            // a folder that gained rows gained blank tracks. The mapping rows
-            // hang off the track rows, so the draft goes in first.
-            pane_rows::replace_draft(sql, &content_hash, &mapping_preparation.edit)?;
-            pane_rows::replace_track_mappings(
-                sql,
-                &content_hash,
-                &mapping_preparation.track_mappings,
-            )?;
+            // a folder that gained rows gained blank tracks.
+            pane_rows::replace_draft(sql, &content_hash, &mapping_preparation.draft)?;
             prepared_asset_rows::replace_artist_assets_after_file_edit(
                 sql,
                 &content_hash,

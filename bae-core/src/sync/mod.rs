@@ -410,7 +410,7 @@ mod tests {
             "import_candidate_failure",
             "import_candidate_cover",
             "import_candidate_edit",
-            "import_candidate_track_edit",
+            "import_candidate_track",
         ] {
             assert!(
                 !registered.contains(table),

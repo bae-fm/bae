@@ -262,12 +262,7 @@ pub(crate) fn ensure_candidate_state(
         .optional()?
         .is_some();
     if !has_draft {
-        super::super::import_state::insert_draft(sql, &content_hash, &source_draft.edit)?;
-        super::super::import_state::replace_track_mappings(
-            sql,
-            &content_hash,
-            &source_draft.track_mappings,
-        )?;
+        super::super::import_state::insert_draft(sql, &content_hash, &source_draft.draft)?;
     }
     if created {
         sql.execute(

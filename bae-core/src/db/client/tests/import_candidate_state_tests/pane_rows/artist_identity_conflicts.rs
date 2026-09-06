@@ -163,8 +163,9 @@ async fn resolving_an_artist_identity_conflict_merges_library_links_and_clears_t
             [&seed_pending_hash],
         )?;
         sql.execute(
-            "INSERT INTO import_candidate_track_edit (content_hash, track_id, position, title, \
-                 artist_assignment_kind, side) VALUES (?, 'draft-track', 0, 'Track Title', 'explicit', 1)",
+            "INSERT INTO import_candidate_track (content_hash, track_id, position, title, \
+                 artist_assignment_kind, side, named_by_source, dropped, file_author) \
+             VALUES (?, 'draft-track', 0, 'Track Title', 'explicit', 1, 1, 0, 'automatic')",
             [&seed_pending_hash],
         )?;
         for (position, artist_id) in [&seed_discogs_id, &seed_musicbrainz_id]

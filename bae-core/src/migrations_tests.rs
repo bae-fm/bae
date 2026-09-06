@@ -8,6 +8,8 @@ use std::sync::Arc;
 mod migration_fifteen;
 #[path = "migrations_tests/migration_fourteen.rs"]
 mod migration_fourteen;
+#[path = "migrations_tests/migration_nineteen.rs"]
+mod migration_nineteen;
 #[path = "migrations_tests/migration_seventeen.rs"]
 mod migration_seventeen;
 #[path = "migrations_tests/migration_sixteen.rs"]
@@ -115,6 +117,12 @@ fn version_thirteen() -> Vec<coven::Migration> {
 fn version_fourteen() -> Vec<coven::Migration> {
     let mut migrations = all();
     migrations.truncate(14);
+    migrations
+}
+
+fn version_eighteen() -> Vec<coven::Migration> {
+    let mut migrations = all();
+    migrations.truncate(18);
     migrations
 }
 

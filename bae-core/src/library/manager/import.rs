@@ -520,8 +520,7 @@ impl LibraryManager {
         expected_file_edit_revision: u64,
         expected_metadata_revision: u64,
         snapshot: &crate::import::file_tag_snapshot::FileTagSnapshot,
-        draft: &crate::import::RawReleaseEdit,
-        track_mappings: &[crate::import::CandidateTrackMappingEdit],
+        draft: &crate::import::CandidateDraft,
         cover: Option<&crate::import::CoverSelection>,
     ) -> Result<u64, LibraryError> {
         Ok(self
@@ -534,7 +533,6 @@ impl LibraryManager {
                 expected_metadata_revision,
                 snapshot,
                 draft,
-                track_mappings,
                 cover,
             )
             .await?)

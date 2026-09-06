@@ -579,8 +579,7 @@ async fn file_tags_cannot_restore_mappings_read_before_a_file_decision() {
             stale.file_edit_revision,
             stale.metadata_revision,
             &snapshot,
-            &stale.metadata_draft,
-            &stale.track_mappings,
+            &stale.draft,
             stale.cover.as_ref(),
         )
         .await
@@ -617,11 +616,7 @@ async fn file_role_changes_leave_complete_physical_mappings_for_the_settled_shap
         .await
         .unwrap()
         .expect("the candidate remains prepared");
-    let active = crate::import::edits::apply_track_mappings_to_draft(
-        preparation.metadata_draft,
-        &preparation.track_mappings,
-    )
-    .expect("the settled candidate has one mapping per track");
+    let active = preparation.draft.release_edit();
     assert!(active.tracks.iter().all(|track| track.file.is_some()));
 
     shut_down(handle).await;

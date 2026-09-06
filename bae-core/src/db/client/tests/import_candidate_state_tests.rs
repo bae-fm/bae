@@ -10,8 +10,7 @@ async fn current_mapping_preparation(
     (
         preparation.metadata_revision,
         crate::import::CandidateMappingPreparation {
-            edit: preparation.metadata_draft,
-            track_mappings: preparation.track_mappings,
+            draft: preparation.draft,
             source_discogs_artist_ids: preparation.source_discogs_artist_ids,
             artist_images: preparation.assets.artist_images,
         },

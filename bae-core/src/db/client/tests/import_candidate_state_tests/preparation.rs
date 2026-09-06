@@ -10,8 +10,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
         .unwrap()
         .expect("the scanned candidate is prepared");
     let mapping_preparation = crate::import::CandidateMappingPreparation {
-        edit: stale.metadata_draft.clone(),
-        track_mappings: stale.track_mappings.clone(),
+        draft: stale.draft.clone(),
         source_discogs_artist_ids: stale.source_discogs_artist_ids.clone(),
         artist_images: stale.assets.artist_images.clone(),
     };
@@ -35,8 +34,7 @@ async fn stale_file_revision_cannot_replace_prepared_metadata() {
             stale.file_edit_revision,
             stale.metadata_revision,
             &crate::import::CandidateMetadataDraft {
-                edit: stale.metadata_draft,
-                track_mappings: stale.track_mappings,
+                draft: stale.draft,
                 source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 provenance: stale.metadata_provenance,
                 cover: stale.cover,
@@ -80,8 +78,7 @@ async fn metadata_replacement_refuses_a_candidate_key_that_now_names_other_files
             stale.file_edit_revision,
             stale.metadata_revision,
             &crate::import::CandidateMetadataDraft {
-                edit: stale.metadata_draft,
-                track_mappings: stale.track_mappings,
+                draft: stale.draft,
                 source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 provenance: stale.metadata_provenance,
                 cover: stale.cover,
@@ -161,8 +158,7 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
             &edits,
             &[(pane_candidate_path(), settled)],
             &crate::import::CandidateMappingPreparation {
-                edit: stale.metadata_draft.clone(),
-                track_mappings: stale.track_mappings.clone(),
+                draft: stale.draft.clone(),
                 source_discogs_artist_ids: stale.source_discogs_artist_ids,
                 artist_images: stale.assets.artist_images,
             },
@@ -179,8 +175,8 @@ async fn stale_metadata_revision_cannot_replace_prepared_file_mappings() {
     assert_eq!(state.file_edits, CandidateFileEdits::default());
     assert!(state.identify.is_some(), "the rejected write keeps its verdict");
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(pane.metadata_draft.pressing.year, "1991");
-    assert_eq!(pane.track_mappings, stale.track_mappings);
+    assert_eq!(pane.draft.pressing.year, "1991");
+    assert_eq!(pane.draft.tracks, stale.draft.tracks);
 }
 
 #[tokio::test]
@@ -189,7 +185,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
     let (_, hash) = stored_pane_candidate(&db).await;
     let artist = existing_artist();
     db.insert_artist(&artist).await.unwrap();
-    let mut draft = metadata_draft("Release Title", "Artist Name");
+    let mut draft = candidate_draft("Release Title", "Artist Name");
     draft.album_artist_assignments = vec![ArtistAssignment::Existing {
         artist: ExistingArtist {
             artist_id: artist.id,
@@ -207,8 +203,7 @@ async fn an_existing_library_artist_needs_no_candidate_image_answer() {
         0,
         0,
         &crate::import::CandidateMetadataDraft {
-            edit: draft,
-            track_mappings: Default::default(),
+            draft,
             source_discogs_artist_ids: Default::default(),
             provenance: None,
             cover: None,
@@ -294,11 +289,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
         .await
         .unwrap();
 
-    let stored = db
-        .load_import_candidate_pane_rows(&hash)
-        .await
-        .unwrap()
-        .metadata_draft;
+    let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap().draft;
     assert_eq!(stored.album_title, "Album Title");
     assert_eq!(stored.album_year, "1987");
     assert_eq!(stored.pressing.year, "1991");
@@ -306,7 +297,7 @@ async fn draft_field_writes_keep_album_and_pressing_years_distinct() {
         stored.album_artist_assignments,
         seed.album_artist_assignments
     );
-    assert_eq!(stored.tracks, seed.tracks);
+    assert_eq!(stored.edit_rows().tracks, seed.tracks);
 }
 
 #[tokio::test]
@@ -332,7 +323,7 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
         .unwrap();
 
     let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(stored.metadata_draft.album_artist_assignments, assignments);
+    assert_eq!(stored.draft.album_artist_assignments, assignments);
 
     let explicit_empty = CandidateTrackEdit::edited(RawTrackEdit {
         id: "candidate-track-0".to_string(),
@@ -349,8 +340,9 @@ async fn existing_artist_assignments_resolve_the_canonical_artist_row() {
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
-            .metadata_draft
+            .draft
             .tracks[0]
+            .edit
             .artist_assignments,
         TrackArtistAssignments::Explicit(Vec::new())
     );
@@ -408,12 +400,9 @@ async fn a_track_row_round_trips_metadata_and_mapping() {
         .unwrap();
 
     let stored = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(stored.metadata_draft.tracks[0].title, "Edited title");
-    assert_eq!(stored.track_mappings.len(), 1);
-    assert_eq!(
-        stored.track_mappings[0].file.audio().cloned(),
-        edit.file().cloned()
-    );
+    assert_eq!(stored.draft.tracks.len(), 1);
+    assert_eq!(stored.draft.tracks[0].edit.title, "Edited title");
+    assert_eq!(stored.draft.tracks[0].edit.file, edit.file().cloned());
 }
 
 /// A file decision reshapes the folder, so the slice measurements, the
@@ -488,13 +477,10 @@ async fn a_file_decision_clears_what_the_reshaped_folder_invalidates() {
 
     let pane = db.load_import_candidate_pane_rows(&hash).await.unwrap();
     assert_eq!(
-        pane.track_mappings, mapping_preparation.track_mappings,
-        "the prepared replacement mappings land atomically"
+        pane.draft, mapping_preparation.draft,
+        "the prepared replacement draft lands atomically"
     );
-    assert_eq!(
-        pane.metadata_draft.pressing.year, "1991",
-        "the draft survives"
-    );
+    assert_eq!(pane.draft.pressing.year, "1991", "the draft survives");
     assert_eq!(
         pane.cover,
         Some(CoverSelection::Local("cover.jpg".to_string())),
@@ -560,10 +546,12 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .await
         .unwrap();
     let applied = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert_eq!(applied.metadata_draft, new_draft);
+    let mut expected = new_draft;
+    expected.tracks[0].file = mapping.file().cloned();
     assert_eq!(
-        applied.track_mappings[0].file.audio().cloned(),
-        mapping.file().cloned()
+        applied.draft.edit_rows(),
+        expected,
+        "the new draft lands and the person's file choice survives it"
     );
     assert_eq!(applied_revision, 4);
     assert_eq!(
@@ -589,7 +577,7 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
     )
     .await
     .unwrap();
-    let blank = crate::import::pane::blank_candidate_draft(&pane_candidate());
+    let blank = crate::import::pane::blank_candidate_draft(&pane_candidate()).release_edit();
     let cleared_revision = db
         .replace_candidate_metadata(
             &hash,
@@ -600,11 +588,8 @@ async fn metadata_apply_and_clear_preserve_every_physical_decision() {
         .await
         .unwrap();
     let cleared = db.load_import_candidate_pane_rows(&hash).await.unwrap();
-    assert!(cleared.metadata_draft.is_blank());
-    assert_eq!(
-        cleared.track_mappings[0].file.audio().cloned(),
-        mapping.file().cloned()
-    );
+    assert!(cleared.draft.release_edit().is_blank());
+    assert_eq!(cleared.draft.tracks[0].edit.file, mapping.file().cloned());
     assert_eq!(cleared_revision, 6);
     assert_eq!(cleared.cover, None, "clearing removes a remote cover");
 }
@@ -681,8 +666,7 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
             expected_edit_revision: 0,
             expected_metadata_revision: 2,
             metadata: crate::import::CandidateMetadataDraft {
-                edit: metadata_draft("Different album", "Different Artist"),
-                track_mappings: Default::default(),
+                draft: candidate_draft("Different album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-1")),
                 cover: None,
@@ -702,7 +686,7 @@ async fn a_verdict_leaves_a_person_s_pick_and_their_edits_alone() {
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
-            .metadata_draft
+            .draft
             .pressing
             .year,
         "1991"
@@ -726,8 +710,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
             expected_edit_revision: 0,
             expected_metadata_revision: 0,
             metadata: crate::import::CandidateMetadataDraft {
-                edit: metadata_draft("First album", "Artist"),
-                track_mappings: Default::default(),
+                draft: candidate_draft("First album", "Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(first_pick.clone()),
                 cover: None,
@@ -749,8 +732,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
             expected_edit_revision: 0,
             expected_metadata_revision: 1,
             metadata: crate::import::CandidateMetadataDraft {
-                edit: metadata_draft("Second album", "Different Artist"),
-                track_mappings: Default::default(),
+                draft: candidate_draft("Second album", "Different Artist"),
                 source_discogs_artist_ids: Default::default(),
                 provenance: Some(release_pick("rel-second")),
                 cover: None,
@@ -771,7 +753,7 @@ async fn a_stale_verdict_cannot_overwrite_a_newer_metadata_edit() {
         db.load_import_candidate_pane_rows(&hash)
             .await
             .unwrap()
-            .metadata_draft
+            .draft
             .album_title,
         "Person's title"
     );

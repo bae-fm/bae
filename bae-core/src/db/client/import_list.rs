@@ -488,11 +488,10 @@ fn state_rows(sql: &SqlReadContext<'_>) -> Result<HashMap<String, CandidateState
                 "candidate {content_hash} has no editable metadata draft"
             ))
         })?;
-        let metadata_draft_valid = metadata_draft.clone().shape().is_ok();
-        let metadata_summary = crate::import::TriageMetadataSummary::of(
-            &metadata_draft,
-            metadata_provenance.clone(),
-        );
+        let release_edit = metadata_draft.release_edit();
+        let metadata_draft_valid = release_edit.shape().is_ok();
+        let metadata_summary =
+            crate::import::TriageMetadataSummary::of(&release_edit, metadata_provenance.clone());
         let selected_cover = covers.remove(&content_hash);
         states.insert(
             content_hash,

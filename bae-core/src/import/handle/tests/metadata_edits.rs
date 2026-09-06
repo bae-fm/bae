@@ -43,7 +43,7 @@ async fn a_typed_field_lands_in_the_next_form_empty_included() {
         .await
         .unwrap();
     assert_eq!(
-        stored.metadata_draft.album_title,
+        stored.draft.album_title,
         String::new(),
         "a cleared field is a value the person set, not an absent edit"
     );
@@ -199,16 +199,17 @@ async fn a_metadata_only_track_edit_does_not_freeze_automatic_file_alignment() {
         .unwrap()
         .expect("the reshaped candidate remains prepared");
     assert_eq!(
-        preparation.track_mappings[0].file.audio(),
-        Some(&crate::import::AudioFile::Standalone {
+        preparation.draft.tracks[0].edit.file,
+        Some(crate::import::AudioFile::Standalone {
             file_id: "02 Track.flac".to_string(),
         })
     );
-    assert_eq!(preparation.track_mappings[1].file.audio(), None);
-    assert!(preparation.track_mappings.iter().all(|mapping| matches!(
-        mapping.file,
-        crate::import::CandidateTrackFileBinding::Automatic(_)
-    )));
+    assert_eq!(preparation.draft.tracks[1].edit.file, None);
+    assert!(preparation
+        .draft
+        .tracks
+        .iter()
+        .all(|track| track.file_author == crate::import::TrackFileAuthor::Automatic));
 
     shut_down(handle).await;
 }
@@ -222,8 +223,8 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
         .await
         .unwrap()
         .expect("the picked candidate has prepared metadata");
-    let mut edit = preparation.metadata_draft;
-    edit.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
+    let mut draft = preparation.draft;
+    draft.album_artist_assignments = vec![crate::import::ArtistAssignment::New {
         seed: crate::import::NewArtistSeed {
             name: "Artist Name".to_string(),
             sort_name: None,
@@ -248,8 +249,7 @@ async fn a_track_edit_that_keeps_artist_ids_keeps_the_prepared_artist_image() {
             preparation.file_edit_revision,
             preparation.metadata_revision,
             &crate::import::CandidateMetadataDraft {
-                edit,
-                track_mappings: preparation.track_mappings,
+                draft,
                 source_discogs_artist_ids: Default::default(),
                 provenance: preparation.metadata_provenance,
                 cover: preparation.cover,
@@ -831,14 +831,8 @@ async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
         .await
         .unwrap()
         .expect("the reapplied source remains prepared");
-    assert_eq!(
-        reapplied.track_mappings[0].file.audio().cloned(),
-        second_file
-    );
-    assert_eq!(
-        reapplied.track_mappings[1].file.audio().cloned(),
-        first_file
-    );
+    assert_eq!(reapplied.draft.tracks[0].edit.file, second_file);
+    assert_eq!(reapplied.draft.tracks[1].edit.file, first_file);
 
     handle.clear_candidate_metadata(key).await.unwrap();
     let cleared = handle
@@ -847,8 +841,8 @@ async fn metadata_source_changes_preserve_explicit_track_file_mappings() {
         .await
         .unwrap()
         .expect("the cleared source remains prepared");
-    assert_eq!(cleared.track_mappings[0].file.audio().cloned(), second_file);
-    assert_eq!(cleared.track_mappings[1].file.audio().cloned(), first_file);
+    assert_eq!(cleared.draft.tracks[0].edit.file, second_file);
+    assert_eq!(cleared.draft.tracks[1].edit.file, first_file);
     shut_down(handle).await;
 }
 
@@ -878,17 +872,14 @@ async fn a_file_decision_after_a_drop_preserves_every_mapping_identity() {
         .await
         .unwrap()
         .expect("the reshaped candidate remains prepared");
-    let active = crate::import::edits::apply_track_mappings_to_draft(
-        preparation.metadata_draft,
-        &preparation.track_mappings,
-    )
-    .expect("the draft and physical mappings retain the same identities");
+    let active = preparation.draft.release_edit();
     assert_eq!(active.tracks.len(), 1);
     assert_eq!(active.tracks[0].id, kept_id);
     assert!(preparation
-        .track_mappings
+        .draft
+        .tracks
         .iter()
-        .any(|mapping| mapping.track_id == dropped_id && mapping.dropped));
+        .any(|track| track.edit.id == dropped_id && track.dropped));
     shut_down(handle).await;
 }
 

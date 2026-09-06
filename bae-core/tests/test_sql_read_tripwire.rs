@@ -105,7 +105,7 @@ async fn pure_reads_use_the_read_connection() {
             expected_edit_revision: 7,
             expected_metadata_revision: 7,
             metadata: bae_core::import::CandidateMetadataDraft {
-                edit: bae_core::import::RawReleaseEdit {
+                draft: bae_core::import::CandidateDraft {
                     album_title: "Unwritten candidate".to_string(),
                     album_artist_assignments: Vec::new(),
                     album_year: String::new(),
@@ -119,7 +119,6 @@ async fn pure_reads_use_the_read_connection() {
                     },
                     tracks: Vec::new(),
                 },
-                track_mappings: Vec::new(),
                 source_discogs_artist_ids: Default::default(),
                 provenance: None,
                 cover: None,

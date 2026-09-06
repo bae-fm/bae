@@ -209,7 +209,7 @@ impl Database {
                 VALUES (?, ?, ?, 'valid', ?, ?, ?, 0, 'none', 'combination', ?)",
                 params![root, key, generation, name, name, combination.files.content_hash(), created_at])?;
             let mut draft = crate::import::pane::blank_source_for_tracks(combination.tracks);
-            draft.edit.album_title = name;
+            draft.draft.album_title = name;
             folder_scans::write::ensure_candidate_state(sql, &key, root, &combination.files, &draft)?;
             folder_scans::insert_candidate_files(sql, root, &key, &combination.files)?;
             Ok(())

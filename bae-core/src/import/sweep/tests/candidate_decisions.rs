@@ -143,6 +143,5 @@ async fn a_cleared_sheet_can_be_bound_again() {
         .await
         .unwrap()
         .expect("the rebound candidate is prepared");
-    assert_eq!(preparation.metadata_draft.tracks.len(), 5);
-    assert_eq!(preparation.track_mappings.len(), 5);
+    assert_eq!(preparation.draft.tracks.len(), 5);
 }

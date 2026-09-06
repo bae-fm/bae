@@ -306,10 +306,7 @@ impl ImportServiceHandle {
                 detail: format!("{candidate_key} changed before its edit was prepared"),
             });
         }
-        let mut active = crate::import::edits::apply_track_mappings_to_draft(
-            preparation.metadata_draft,
-            &preparation.track_mappings,
-        )?;
+        let mut active = preparation.draft.release_edit();
         decide(&mut active);
         let (source_discogs_artist_ids, assets) = self
             .prepared_artist_images_for_active(

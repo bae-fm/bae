@@ -453,15 +453,8 @@ fn pane_of(
         }
         Some(MetadataProvenance::FileTags) | None => None,
     };
-    let pick = crate::import::pane::draft_pane(
-        release,
-        candidate.files(),
-        durations,
-        rows.metadata_draft.clone(),
-        &rows.track_mappings,
-        picked,
-    )
-    .map_err(|error| DbError::Message(error.to_string()))?;
+    let pick =
+        crate::import::pane::draft_pane(release, candidate.files(), durations, &rows.draft, picked);
     Ok(PaneValue {
         release: pick.release,
         edit: pick.edit,

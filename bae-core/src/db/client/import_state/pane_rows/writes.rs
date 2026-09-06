@@ -25,9 +25,8 @@ impl Database {
                 metadata_revision: state.metadata_revision,
                 metadata_provenance: state.metadata_provenance,
                 cover: rows.cover,
-                metadata_draft: rows.metadata_draft,
+                draft: rows.draft,
                 source_discogs_artist_ids,
-                track_mappings: rows.track_mappings,
                 assets,
             }))
         })

@@ -105,8 +105,7 @@ fn new_candidate_row(
         expected_edit_revision: 0,
         expected_metadata_revision: 0,
         metadata: crate::import::CandidateMetadataDraft {
-            edit: metadata_draft("", ""),
-            track_mappings: Default::default(),
+            draft: candidate_draft("", ""),
             source_discogs_artist_ids: Default::default(),
             provenance: None,
             cover: None,

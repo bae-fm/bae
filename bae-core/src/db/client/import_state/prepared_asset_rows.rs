@@ -127,11 +127,11 @@ const REQUIRED_DISCOGS_ARTIST_IDS_SQL: &str =
      UNION \
      SELECT assignment.discogs_artist_id \
      FROM import_candidate_track_artist_assignment assignment \
-     JOIN import_candidate_track_mapping mapping \
-       ON mapping.content_hash = assignment.content_hash \
-      AND mapping.track_id = assignment.track_id \
-      AND mapping.dropped = 0 \
-      AND mapping.file_kind IS NOT NULL \
+     JOIN import_candidate_track track \
+       ON track.content_hash = assignment.content_hash \
+      AND track.track_id = assignment.track_id \
+      AND track.dropped = 0 \
+      AND track.file_kind IS NOT NULL \
      WHERE assignment.content_hash = ? \
        AND assignment.assignment_kind = 'new' \
        AND assignment.discogs_artist_id IS NOT NULL";

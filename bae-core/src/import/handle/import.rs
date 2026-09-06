@@ -485,8 +485,7 @@ impl ImportServiceHandle {
                         })?
                         .metadata_revision,
                     &crate::import::CandidateMetadataDraft {
-                        edit: source_draft.edit,
-                        track_mappings: source_draft.track_mappings,
+                        draft: source_draft.draft,
                         source_discogs_artist_ids: Default::default(),
                         provenance: command.metadata_provenance.clone(),
                         cover: rows.cover,

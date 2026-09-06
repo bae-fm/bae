@@ -107,10 +107,9 @@ pub struct DbCandidatePaneRows {
     /// The cover the user chose. `None` leaves the picked release's default
     /// cover standing.
     pub cover: Option<crate::import::CoverSelection>,
-    /// The candidate's one stored editable metadata draft.
-    pub metadata_draft: crate::import::RawReleaseEdit,
-    /// Physical track decisions, independent of metadata replacement.
-    pub(crate) track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
+    /// The candidate's one stored draft: album fields and one row per audio
+    /// slot, each carrying its physical decision.
+    pub draft: crate::import::CandidateDraft,
     /// Where the pane was when the person last left this candidate. `None`
     /// before the pane has been touched.
     pub session: Option<crate::import::CandidateSession>,
@@ -127,9 +126,8 @@ pub struct DbCandidateImportPreparation {
     pub metadata_revision: u64,
     pub metadata_provenance: Option<crate::import::MetadataProvenance>,
     pub cover: Option<crate::import::CoverSelection>,
-    pub metadata_draft: crate::import::RawReleaseEdit,
+    pub draft: crate::import::CandidateDraft,
     pub source_discogs_artist_ids: std::collections::BTreeSet<String>,
-    pub(crate) track_mappings: Vec<crate::import::CandidateTrackMappingEdit>,
     pub assets: crate::import::CandidatePreparedAssets,
 }
 

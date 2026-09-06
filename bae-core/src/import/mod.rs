@@ -136,12 +136,12 @@ pub use candidates::{
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use cover_art::{CoverChoice, CoverImageSource};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
+pub(crate) use edits::preserve_track_decisions;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use edits::{
     apply_track_edits, CandidateEditField, CandidateEditOverlay, CandidateTrackEdit, ImportFailure,
     TrackEditState,
 };
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use edits::{CandidateTrackFileBinding, CandidateTrackMappingEdit};
 pub(crate) use error::artist_source_ids_are_compatible;
 pub use error::ArtistIdentityConflict;
 pub use error::ImportError;
@@ -195,9 +195,10 @@ pub(crate) use types::CandidateMappingPreparation;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::ImportCommand;
 pub use types::{
-    ArtistAssignment, AudioFile, EditValidationError, ExistingArtist, MetadataProvenance,
-    MetadataSource, NewArtistSeed, PressingEdit, RawPressingEdit, RawReleaseEdit, RawTrackEdit,
-    ReleaseEditSeed, ReleaseIdentity, ReleaseUserEdit, TrackArtistAssignments, TrackUserEdit,
+    ArtistAssignment, AudioFile, CandidateDraft, CandidateTrack, EditValidationError,
+    ExistingArtist, MetadataProvenance, MetadataSource, NewArtistSeed, PressingEdit,
+    RawPressingEdit, RawReleaseEdit, RawReleaseEditOf, RawTrackEdit, ReleaseEditSeed,
+    ReleaseIdentity, ReleaseUserEdit, TrackArtistAssignments, TrackFileAuthor, TrackUserEdit,
 };
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use types::{

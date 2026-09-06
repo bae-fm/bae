@@ -74,10 +74,8 @@ fn blank_metadata_for_dir(dir: &Path) -> crate::import::CandidateMetadataDraft {
         &crate::import::folder_scanner::StoredCandidateEdits::none(),
     )
     .expect("the candidate folder is readable");
-    let source_draft = crate::import::pane::blank_candidate_source(&files);
     crate::import::CandidateMetadataDraft {
-        edit: source_draft.edit,
-        track_mappings: source_draft.track_mappings,
+        draft: crate::import::pane::blank_candidate_source(&files).draft,
         source_discogs_artist_ids: Default::default(),
         provenance: None,
         cover: None,
