@@ -20,13 +20,16 @@
             return store
         }
 
-        /// A preview ConfigStore with the given library-width and casting
-        /// settings — the previews that vary them build their own; everything
-        /// else creates the default through `configStore()` above.
+        /// A preview ConfigStore with the given library-width, casting, and
+        /// Discogs settings — the previews that vary them build their own;
+        /// everything else creates the default through `configStore()` above.
+        /// A configured Discogs key is the ordinary library, so the token
+        /// stands validated unless a preview asks for the other case.
         @MainActor
         static func makeConfigStore(
             libraryFullWidth: Bool,
-            castEnabled: Bool = false
+            castEnabled: Bool = false,
+            discogsUsable: Bool = true
         ) -> ConfigStore {
             ConfigStore(
                 config: Config(
@@ -52,8 +55,9 @@
                             username: "",
                             bindAddress: "127.0.0.1"
                         ),
-                        discogsTokenStatus: .notConfigured,
-                        discogsUsable: false,
+                        discogsTokenStatus: discogsUsable
+                            ? .valid : .notConfigured,
+                        discogsUsable: discogsUsable,
                         sync: nil
                     )
                 )

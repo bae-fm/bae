@@ -14,7 +14,8 @@ final class FindOnlinePaneTests: XCTestCase {
     func testAPaneWithNothingToOfferHasNoResultsScroller() async {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = FindOnlineRendering.host(
-            ImportSearchPane.preview(state: PreviewData.searchStateIdle),
+            ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+                .importPreviewEnvironment(),
             size: size
         )
 
@@ -26,6 +27,80 @@ final class FindOnlinePaneTests: XCTestCase {
                 .contains { $0 is NSScrollView }
         )
         withExtendedLifetime(window) {}
+    }
+}
+
+/// The pane's standing notice that Discogs was never asked.
+///
+/// Asserted in pixels: the bar sits above both section headers, so what it
+/// changes is the whole pane. A pane with the bar put away must look exactly
+/// like one whose Discogs key is configured — that equality is what says the
+/// bar is the only thing dismissal takes away.
+@MainActor
+@Suite("The Discogs-not-configured bar")
+struct FindOnlineDiscogsBarTests {
+    private static let size = NSSize(width: 900, height: 620)
+
+    /// AUTOMATIC open, with nothing looked up yet.
+    @Test("it stands over the automatic section until it is put away")
+    func overTheAutomaticSection() async throws {
+        try await assertBarIsTheDifference(state: PreviewData.searchStateIdle)
+    }
+
+    /// SEARCH open. The per-source lines no longer say anything about a
+    /// source that was never asked, so this bar is all there is to say it.
+    @Test("and over the search section, which no longer says it per source")
+    func overTheSearchSection() async throws {
+        try await assertBarIsTheDifference(
+            state: PreviewData.searchStateSearchEmpty
+        )
+    }
+
+    private func assertBarIsTheDifference(
+        state: ImportSearchState
+    ) async throws {
+        let showing = try await pixels(
+            state: state,
+            discogsUsable: false,
+            dismissed: false
+        )
+        let dismissed = try await pixels(
+            state: state,
+            discogsUsable: false,
+            dismissed: true
+        )
+        let configured = try await pixels(
+            state: state,
+            discogsUsable: true,
+            dismissed: false
+        )
+
+        #expect(showing != dismissed)
+        #expect(showing != configured)
+        #expect(dismissed == configured)
+    }
+
+    private func pixels(
+        state: ImportSearchState,
+        discogsUsable: Bool,
+        dismissed: Bool
+    ) async throws -> Data {
+        let uiStore = UiStore()
+        if dismissed {
+            uiStore.dismissDiscogsNotice()
+        }
+        return try await FindOnlineRendering.pixels(
+            ImportSearchPane.preview(state: state)
+                .environment(uiStore)
+                .environment(
+                    PreviewData.makeConfigStore(
+                        libraryFullWidth: false,
+                        discogsUsable: discogsUsable
+                    )
+                )
+                .importPreviewEnvironment(),
+            size: Self.size
+        )
     }
 }
 

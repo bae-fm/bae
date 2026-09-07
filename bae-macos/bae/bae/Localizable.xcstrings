@@ -60474,7 +60474,7 @@
       }
     },
     "Open Settings" : {
-      "comment" : "Find online: button opening settings from the Discogs-not-configured line",
+      "comment" : "Find online: button on the Discogs-not-configured bar, opening Settings on the Discogs page",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -107095,7 +107095,7 @@
       }
     },
     "%@ not configured" : {
-      "comment" : "Find online search section: line for a source with no API key; %@ is the source name",
+      "comment" : "Find online: title of the bar saying a metadata source has no API key; %@ is the source name",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
@@ -112997,6 +112997,388 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "將此目錄編號移出查詢"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "comment" : "Find online: accessibility label for the button that puts the Discogs-not-configured bar away",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تجاهل"
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отхвърляне"
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "খারিজ করুন"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zavřít"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausblenden"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dismiss"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorer"
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "બંધ કરો"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סגור"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "खारिज करें"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odbaci"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignora"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "閉じる"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ಮುಚ್ಚಿ"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "닫기"
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "അടയ്ക്കുക"
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "बंद करा"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sluiten"
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਬੰਦ ਕਰੋ"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zamknij"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dispensar"
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "மூடு"
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "మూసివేయి"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ปิด"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kapat"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрити"
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "بند کریں"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Đóng"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "关闭"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "關閉"
+          }
+        }
+      }
+    },
+    "Only %@ is searched. Add a %@ token to look up its releases too." : {
+      "comment" : "Find online: the Discogs-not-configured bar's explanation; %1$@ is the source that is searched, %2$@ the one that is not",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يتم البحث في %1$@ فقط. أضف رمز %2$@ للبحث في إصداراته أيضًا."
+          }
+        },
+        "bg" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Търси се само в %1$@. Добавете токен за %2$@, за да се търсят и неговите издания."
+          }
+        },
+        "bn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "শুধু %1$@-এ খোঁজা হয়। এর রিলিজগুলোও খুঁজতে %2$@ টোকেন যোগ করুন।"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prohledává se jen %1$@. Přidejte token %2$@, aby se hledalo i mezi jeho vydáními."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wird nur %1$@ durchsucht. Füge ein %2$@-Token hinzu, um auch dessen Veröffentlichungen zu finden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Only %1$@ is searched. Add a %2$@ token to look up its releases too."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solo se busca en %1$@. Añade un token de %2$@ para buscar también sus ediciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seul %1$@ est interrogé. Ajoutez un jeton %2$@ pour rechercher aussi ses éditions."
+          }
+        },
+        "gu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ફક્ત %1$@ માં શોધ થાય છે. તેની રિલીઝ પણ શોધવા માટે %2$@ ટોકન ઉમેરો."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החיפוש מתבצע ב-%1$@ בלבד. הוסף אסימון %2$@ כדי לחפש גם בגרסאות שלו."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "केवल %1$@ में खोजा जाता है। उसके रिलीज़ भी खोजने के लिए %2$@ टोकन जोड़ें।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pretražuje se samo %1$@. Dodajte token %2$@ da se pretraže i njegova izdanja."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Viene cercato solo %1$@. Aggiungi un token %2$@ per cercare anche le sue edizioni."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ のみを検索します。%2$@ のリリースも検索するにはトークンを追加してください。"
+          }
+        },
+        "kn" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ಮಾತ್ರ ಹುಡುಕಲಾಗುತ್ತದೆ. ಅದರ ಬಿಡುಗಡೆಗಳನ್ನೂ ಹುಡುಕಲು %2$@ ಟೋಕನ್ ಸೇರಿಸಿ."
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@만 검색합니다. %2$@의 릴리스도 검색하려면 토큰을 추가하세요."
+          }
+        },
+        "ml" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ മാത്രമേ തിരയുന്നുള്ളൂ. അതിന്റെ റിലീസുകളും തിരയാൻ %2$@ ടോക്കൺ ചേർക്കുക."
+          }
+        },
+        "mr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "फक्त %1$@ मध्ये शोधले जाते. त्याच्या आवृत्त्याही शोधण्यासाठी %2$@ टोकन जोडा."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Er wordt alleen in %1$@ gezocht. Voeg een %2$@-token toe om ook daar uitgaven op te zoeken."
+          }
+        },
+        "pa" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ਸਿਰਫ਼ %1$@ ਵਿੱਚ ਖੋਜ ਹੁੰਦੀ ਹੈ। ਇਸ ਦੀਆਂ ਰਿਲੀਜ਼ਾਂ ਵੀ ਲੱਭਣ ਲਈ %2$@ ਟੋਕਨ ਸ਼ਾਮਲ ਕਰੋ।"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Przeszukiwany jest tylko %1$@. Dodaj token %2$@, aby przeszukiwać także jego wydania."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apenas o %1$@ é consultado. Adicione um token do %2$@ para buscar também as edições dele."
+          }
+        },
+        "ta" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ மட்டுமே தேடப்படுகிறது. அதன் வெளியீடுகளையும் தேட %2$@ டோக்கனைச் சேர்க்கவும்."
+          }
+        },
+        "te" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ మాత్రమే శోధించబడుతుంది. దాని విడుదలలను కూడా వెతకడానికి %2$@ టోకెన్‌ను జోడించండి."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ค้นหาเฉพาะใน %1$@ เท่านั้น เพิ่มโทเคน %2$@ เพื่อค้นหารุ่นวางจำหน่ายของบริการนั้นด้วย"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yalnızca %1$@ aranır. Sürümlerini de aramak için bir %2$@ belirteci ekleyin."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пошук виконується лише в %1$@. Додайте токен %2$@, щоб шукати й серед його видань."
+          }
+        },
+        "ur" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "صرف %1$@ میں تلاش کیا جاتا ہے۔ اس کے ریلیز بھی تلاش کرنے کے لیے %2$@ ٹوکن شامل کریں۔"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chỉ tìm trong %1$@. Thêm token %2$@ để tìm cả các bản phát hành của dịch vụ đó."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅搜索 %1$@。添加 %2$@ 令牌即可一并搜索其发行版本。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "僅搜尋 %1$@。新增 %2$@ 權杖即可一併搜尋其發行版本。"
           }
         }
       }

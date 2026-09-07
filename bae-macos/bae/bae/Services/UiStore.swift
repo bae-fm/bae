@@ -136,6 +136,14 @@ class UiStore: @unchecked Sendable {
     var onFolderCandidateSelectionChanged: ((Set<String>) -> Void)?
     private(set) var refreshingWatchedFolders: Set<String> = []
 
+    // ── Find online notices ─────────────────────────────────────────────
+
+    /// Whether the Discogs-not-configured bar has been put away. What it
+    /// states is about the app, not any one candidate, so putting it away in
+    /// one candidate's pane holds for every pane. Never persisted: a new
+    /// launch says it again.
+    private(set) var discogsNoticeDismissed = false
+
     // ── Overlays ────────────────────────────────────────────────────────
 
     var lightbox: Cursor<LightboxItem>?
@@ -380,5 +388,11 @@ class UiStore: @unchecked Sendable {
 
     func setImportFolderPickerPresented(_ presented: Bool) {
         isImportFolderPickerPresented = presented
+    }
+
+    // MARK: - Find online notice methods
+
+    func dismissDiscogsNotice() {
+        discogsNoticeDismissed = true
     }
 }

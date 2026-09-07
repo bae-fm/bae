@@ -2,8 +2,7 @@ import BaeKit
 import SwiftUI
 
 /// What a typed search turned up, under its form: the album cards each
-/// source has landed so far, and a line per source still looking,
-/// unconfigured, or failed.
+/// source has landed so far, and a line per source still looking or failed.
 ///
 /// The sources answer separately, so what MusicBrainz found renders while
 /// Discogs is still out — its spinner and name close the list until it lands.
@@ -15,7 +14,6 @@ struct FindOnlineSearchResults: View {
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
     let onRetry: () -> Void
-    let onOpenSettings: () -> Void
     let onSelect: (Pressing) -> Void
 
     private var groups: [ReleaseGroup] {
@@ -53,8 +51,9 @@ struct FindOnlineSearchResults: View {
     }
 
     /// One line per source that has nothing to contribute yet: still looking,
-    /// never asked, or failed with its way to ask again. Each carries the
-    /// same glyph its cell in the ledger would.
+    /// or failed with its way to ask again. Each carries the same glyph its
+    /// cell in the ledger would. A source that was never asked is not one of
+    /// these — the pane's own bar says that once, above both sections.
     private var sourceLines: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(search.sourceStates, id: \.source) { source, state in
@@ -69,12 +68,6 @@ struct FindOnlineSearchResults: View {
                         Text(name)
                             .foregroundStyle(.tertiary)
                     }
-                case .notConfigured:
-                    HStack(spacing: 6) {
-                        Text("\(name) not configured")
-                        Button("Open Settings", action: onOpenSettings)
-                            .buttonStyle(.link)
-                    }
                 case .failed(let failure):
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle")
@@ -85,7 +78,10 @@ struct FindOnlineSearchResults: View {
                         Button("Retry", action: onRetry)
                             .buttonStyle(.link)
                     }
-                case .done:
+                // A source that answered, and one that was never asked,
+                // both close the list with nothing: the bar above the
+                // sections is what says a source was never asked.
+                case .done, .notConfigured:
                     EmptyView()
                 }
             }
@@ -120,7 +116,6 @@ extension BridgeCandidateSearch {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onRetry: {},
-            onOpenSettings: {},
             onSelect: { _ in },
         )
         .frame(width: 660, height: 460)
@@ -135,7 +130,6 @@ extension BridgeCandidateSearch {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onRetry: {},
-            onOpenSettings: {},
             onSelect: { _ in },
         )
         .frame(width: 660, height: 460)
@@ -150,7 +144,6 @@ extension BridgeCandidateSearch {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onRetry: {},
-            onOpenSettings: {},
             onSelect: { _ in },
         )
         .frame(width: 660, height: 460)
@@ -165,7 +158,6 @@ extension BridgeCandidateSearch {
             selectedReleaseId: nil,
             loadingReleaseId: nil,
             onRetry: {},
-            onOpenSettings: {},
             onSelect: { _ in },
         )
         .frame(width: 660, height: 460)

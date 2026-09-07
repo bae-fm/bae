@@ -23,6 +23,7 @@ struct ImportSearchPane: View {
     let onSearch: (CandidateSearchState) -> Void
     /// Re-ask only the providers whose part of the search failed.
     let onRetrySearch: () -> Void
+    /// Open Settings on the Discogs page — what the not-configured bar offers.
     let onOpenSettings: () -> Void
     /// Take a catalog number in or out of the run. Core re-derives the state
     /// the import projection delivers from what is chosen.
@@ -34,6 +35,14 @@ struct ImportSearchPane: View {
     let onRetryFailed: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
+
+    /// Whether Discogs can be asked at all is core's answer, carried on the
+    /// config the app observes: adding a token in Settings takes the notice
+    /// away while the pane is open.
+    @Environment(ConfigStore.self)
+    private var configStore
+    @Environment(UiStore.self)
+    private var uiStore
 
     /// Which section is open. AUTOMATIC to begin with — a candidate that
     /// already has a search submitted opens on SEARCH, where its results are.
@@ -53,6 +62,7 @@ struct ImportSearchPane: View {
         VStack(spacing: 0) {
             FindOnlineHeader(onBack: onBack)
             Divider()
+            discogsBar
             errorLine
             FindOnlineSectionHeader(
                 section: .automatic,
@@ -90,6 +100,19 @@ struct ImportSearchPane: View {
             if state.search != nil {
                 openSection = .search
             }
+        }
+    }
+
+    /// Above both sections, because neither of them asked Discogs. Gone for
+    /// the rest of the session once put away, in every candidate's pane.
+    @ViewBuilder
+    private var discogsBar: some View {
+        if !configStore.config.discogsUsable, !uiStore.discogsNoticeDismissed {
+            FindOnlineDiscogsBar(
+                onOpenSettings: onOpenSettings,
+                onDismiss: { uiStore.dismissDiscogsNotice() }
+            )
+            Divider()
         }
     }
 
@@ -266,7 +289,6 @@ struct ImportSearchPane: View {
                     loadingReleaseId: state.loadingReleaseId,
                     releaseSelectionFailure: state.releaseSelectionFailure,
                     onRetry: onRetrySearch,
-                    onOpenSettings: onOpenSettings,
                     onSelect: onSelect,
                 )
             }
@@ -380,6 +402,22 @@ struct ImportSearchPane: View {
             state: PreviewData.searchStateManual,
             searchArtist: "Artist Name",
             searchAlbum: "Album Title One",
+        )
+        .frame(width: 900, height: 620)
+        .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — Discogs not configured") {
+        ImportSearchPane.preview(
+            state: PreviewData.searchStateManual,
+            searchArtist: "Artist Name",
+            searchAlbum: "Album Title One",
+        )
+        .environment(
+            PreviewData.makeConfigStore(
+                libraryFullWidth: false,
+                discogsUsable: false
+            )
         )
         .frame(width: 900, height: 620)
         .importPreviewEnvironment()

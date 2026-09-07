@@ -279,9 +279,7 @@ extension ShotScene {
                 libraryStatuses: [:],
                 selectedReleaseId: nil,
                 loadingReleaseId: nil,
-                onClear: {},
                 onRetry: {},
-                onOpenSettings: {},
                 onSelect: { _ in },
             )
             .importPreviewEnvironment()
