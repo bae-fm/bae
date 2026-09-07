@@ -1,12 +1,17 @@
 //! The Subsonic endpoint handlers, grouped by concern, plus the shared
 //! request/response glue.
 
+use std::collections::HashMap;
+use std::future::Future;
+
+use axum::extract::{Query, State};
 use axum::handler::Handler;
 use axum::routing::get;
 use axum::Router;
 
-use crate::envelope::{error_response, ok_response, Element, Format};
+use crate::envelope::{error_response, ok_response, Element};
 use crate::error::SubError;
+use crate::params::Params;
 use crate::AppState;
 
 pub(crate) mod browse;
@@ -31,15 +36,39 @@ pub(crate) fn mount() -> Router<AppState> {
     router = dual(router, "getSong", lists::get_song);
     router = dual(router, "search3", lists::search3);
     // media
-    router = dual(router, "stream", media::stream);
-    router = dual(router, "getCoverArt", media::get_cover_art);
+    router = dual_raw(router, "stream", media::stream);
+    router = dual_raw(router, "getCoverArt", media::get_cover_art);
     router = dual(router, "scrobble", media::scrobble);
     router
 }
 
-/// Register `handler` at both `/<name>` and `/<name>.view`. Function-item
-/// handlers are `Copy`, so the same handler mounts at both paths.
-fn dual<H, T>(router: Router<AppState>, name: &str, handler: H) -> Router<AppState>
+/// Register `endpoint` at both `/<name>` and `/<name>.view`, wrapped in the
+/// request/response shell every envelope endpoint shares: read the query
+/// parameters, resolve the response format, and render the outcome as an
+/// envelope — so an endpoint is only its own `(state, params) -> payload`.
+fn dual<F, Fut>(router: Router<AppState>, name: &str, endpoint: F) -> Router<AppState>
+where
+    F: Fn(AppState, Params) -> Fut + Copy + Send + Sync + 'static,
+    Fut: Future<Output = Result<Option<Element>, SubError>> + Send + 'static,
+{
+    dual_raw(
+        router,
+        name,
+        move |State(state): State<AppState>, Query(query): Query<HashMap<String, String>>| async move {
+            let params = Params(query);
+            let format = params.format();
+            match endpoint(state, params).await {
+                Ok(payload) => ok_response(&format, payload),
+                Err(error) => error_response(&format, &error),
+            }
+        },
+    )
+}
+
+/// Register an endpoint that builds its own response — one serving media rather
+/// than an envelope. Function-item and non-capturing handlers are `Copy`, so the
+/// same handler mounts at both paths.
+fn dual_raw<H, T>(router: Router<AppState>, name: &str, handler: H) -> Router<AppState>
 where
     H: Handler<T, AppState> + Copy,
     T: 'static,
@@ -47,17 +76,4 @@ where
     router
         .route(&format!("/{name}"), get(handler))
         .route(&format!("/{name}.view"), get(handler))
-}
-
-/// Render an endpoint's outcome as a Subsonic envelope in `format`: the payload
-/// element on success (or an empty ok envelope when there is none), the error
-/// envelope on failure.
-pub(crate) fn respond(
-    format: &Format,
-    result: Result<Option<Element>, SubError>,
-) -> axum::response::Response {
-    match result {
-        Ok(payload) => ok_response(format, payload),
-        Err(error) => error_response(format, &error),
-    }
 }

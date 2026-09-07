@@ -2,13 +2,9 @@
 //! songs. All tag-based (`*ID3`) — bae has no folder tree.
 
 use std::collections::BTreeMap;
-use std::collections::HashMap;
 
-use axum::extract::{Query, State};
-use axum::response::Response;
 use bae_core::db::{ArtistSortCriterion, ArtistSortField, SortDirection};
 
-use crate::endpoints::respond;
 use crate::envelope::Element;
 use crate::error::SubError;
 use crate::id::SubId;
@@ -20,22 +16,14 @@ use crate::params::Params;
 use crate::AppState;
 
 /// `getArtists` — every artist, grouped into `<index>` buckets by first letter.
-pub(crate) async fn get_artists(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), artist_index(&state, "artists").await)
+pub(crate) async fn get_artists(state: AppState, _: Params) -> Result<Option<Element>, SubError> {
+    artist_index(&state, "artists").await
 }
 
 /// `getIndexes` — the same artist index as `getArtists`, under the legacy
 /// `<indexes>` payload name with a `lastModified`.
-pub(crate) async fn get_indexes(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), artist_index(&state, "indexes").await)
+pub(crate) async fn get_indexes(state: AppState, _: Params) -> Result<Option<Element>, SubError> {
+    artist_index(&state, "indexes").await
 }
 
 async fn artist_index(
@@ -97,14 +85,9 @@ fn index_letter(name: &str) -> String {
 
 /// `getArtist` — one artist plus their albums (each a release).
 pub(crate) async fn get_artist(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), get_artist_inner(&state, &params).await)
-}
-
-async fn get_artist_inner(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
+    state: AppState,
+    params: Params,
+) -> Result<Option<Element>, SubError> {
     let services = &state.services;
     let artist_id = SubId::parse(params.require("id")?)?
         .expect_artist()?
@@ -140,14 +123,9 @@ async fn get_artist_inner(state: &AppState, params: &Params) -> Result<Option<El
 
 /// `getAlbum` — one album (release) with its songs.
 pub(crate) async fn get_album(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), get_album_inner(&state, &params).await)
-}
-
-async fn get_album_inner(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
+    state: AppState,
+    params: Params,
+) -> Result<Option<Element>, SubError> {
     let services = &state.services;
     let release_id = SubId::parse(params.require("id")?)?
         .expect_album()?

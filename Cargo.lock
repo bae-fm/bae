@@ -1039,7 +1039,6 @@ dependencies = [
  "rmcp",
  "serde_json",
  "tokio",
- "tokio-util",
  "tracing",
 ]
 
@@ -1060,7 +1059,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-stream",
- "tokio-util",
  "tower",
  "tracing",
 ]

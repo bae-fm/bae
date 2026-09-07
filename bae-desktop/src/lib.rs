@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use bae_core::config::{ConfigError, McpConfig, SubsonicConfig};
 use bae_core::library::AppServices;
+use bae_core::server::{ServerError, ServerStatus};
 use bae_mcp::{Automation, McpServerController};
 pub use bae_mcp::{McpServerError, McpServerStatus};
 use bae_subsonic::SubsonicServerController;
@@ -16,13 +17,15 @@ pub struct DesktopServices {
     subsonic_controller: SubsonicServerController,
 }
 
+/// A rejected service-config change: either the config itself (validation, or
+/// the write to disk) or the running server refusing to come up on it.
 #[derive(Debug)]
-pub enum DesktopMcpConfigError {
+pub enum DesktopConfigError<E> {
     Config(ConfigError),
-    Server(McpServerError),
+    Server(E),
 }
 
-impl std::fmt::Display for DesktopMcpConfigError {
+impl<E: ServerError> std::fmt::Display for DesktopConfigError<E> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Config(error) => write!(f, "{error}"),
@@ -31,24 +34,7 @@ impl std::fmt::Display for DesktopMcpConfigError {
     }
 }
 
-impl std::error::Error for DesktopMcpConfigError {}
-
-#[derive(Debug)]
-pub enum DesktopSubsonicConfigError {
-    Config(ConfigError),
-    Server(SubsonicServerError),
-}
-
-impl std::fmt::Display for DesktopSubsonicConfigError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Config(error) => write!(f, "{error}"),
-            Self::Server(error) => write!(f, "{}", error.detail()),
-        }
-    }
-}
-
-impl std::error::Error for DesktopSubsonicConfigError {}
+impl<E: ServerError + std::fmt::Debug> std::error::Error for DesktopConfigError<E> {}
 
 impl DesktopServices {
     pub async fn start(services: AppServices, runtime: Handle) -> Self {
@@ -109,30 +95,19 @@ impl DesktopServices {
         self.mcp_controller.status().await
     }
 
-    pub async fn set_mcp_config(&self, config: McpConfig) -> Result<(), DesktopMcpConfigError> {
-        config.validate().map_err(DesktopMcpConfigError::Config)?;
-        let previous = self.services.get_config().prefs.mcp;
-        let status = self.mcp_controller.apply_config(config).await;
-        if let McpServerStatus::Error { error } = status {
-            self.mcp_controller.apply_config(previous).await;
-            return Err(DesktopMcpConfigError::Server(error));
-        }
-
-        match self.services.set_mcp_config(config) {
-            Ok(()) => Ok(()),
-            Err(error) => {
-                if let McpServerStatus::Error {
-                    error: rollback_error,
-                } = self.mcp_controller.apply_config(previous).await
-                {
-                    tracing::warn!(
-                        "MCP runtime rollback failed after config save error: {}",
-                        rollback_error.detail()
-                    );
-                }
-                Err(DesktopMcpConfigError::Config(error))
-            }
-        }
+    pub async fn set_mcp_config(
+        &self,
+        config: McpConfig,
+    ) -> Result<(), DesktopConfigError<McpServerError>> {
+        config.validate().map_err(DesktopConfigError::Config)?;
+        apply_service_config(
+            "MCP",
+            config,
+            self.services.get_config().prefs.mcp,
+            |config| self.mcp_controller.apply_config(config),
+            |config| self.services.set_mcp_config(config),
+        )
+        .await
     }
 
     pub async fn shutdown_mcp(&self) {
@@ -143,13 +118,19 @@ impl DesktopServices {
         self.subsonic_controller.status().await
     }
 
-    /// Apply a new Subsonic server config: validate, apply to the running server
-    /// with rollback if it errors, then persist. Mirrors [`Self::set_mcp_config`].
     pub async fn set_subsonic_config(
         &self,
         config: SubsonicConfig,
-    ) -> Result<(), DesktopSubsonicConfigError> {
-        apply_subsonic_config(&self.subsonic_controller, &self.services, config).await
+    ) -> Result<(), DesktopConfigError<SubsonicServerError>> {
+        config.validate().map_err(DesktopConfigError::Config)?;
+        apply_service_config(
+            "Subsonic",
+            config,
+            self.services.get_config().prefs.subsonic,
+            |config| self.subsonic_controller.apply_config(config),
+            |config| self.services.set_subsonic_config(config),
+        )
+        .await
     }
 
     /// Store a new Subsonic server password in the keyring, then restart the
@@ -159,15 +140,15 @@ impl DesktopServices {
     pub async fn set_subsonic_password(
         &self,
         password: &str,
-    ) -> Result<(), DesktopSubsonicConfigError> {
+    ) -> Result<(), DesktopConfigError<SubsonicServerError>> {
         self.services
             .set_subsonic_password(password.to_string())
-            .map_err(|e| DesktopSubsonicConfigError::Config(ConfigError::Config(e.to_string())))?;
+            .map_err(|e| DesktopConfigError::Config(ConfigError::Config(e.to_string())))?;
         let config = self.services.get_config().prefs.subsonic;
         if let SubsonicServerStatus::Error { error } =
             self.subsonic_controller.restart(config).await
         {
-            return Err(DesktopSubsonicConfigError::Server(error));
+            return Err(DesktopConfigError::Server(error));
         }
         Ok(())
     }
@@ -177,37 +158,41 @@ impl DesktopServices {
     }
 }
 
-/// Validate, runtime-apply (with rollback on error), then persist a Subsonic
-/// config. Extracted from the [`DesktopServices`] method so the rollback contract is
-/// testable against a bare controller + manager, without a full app bootstrap.
-async fn apply_subsonic_config(
-    controller: &SubsonicServerController,
-    services: &AppServices,
-    config: SubsonicConfig,
-) -> Result<(), DesktopSubsonicConfigError> {
-    config
-        .validate()
-        .map_err(DesktopSubsonicConfigError::Config)?;
-    let previous = services.get_config().prefs.subsonic;
-    let status = controller.apply_config(config.clone()).await;
-    if let SubsonicServerStatus::Error { error } = status {
-        controller.apply_config(previous).await;
-        return Err(DesktopSubsonicConfigError::Server(error));
+/// Apply an already-validated service config to the running server, then
+/// persist it. A server that refuses the new config, or a failed write, leaves
+/// both the server and the stored config on `previous` — no half-applied
+/// change. A free function so the rollback contract is testable against a bare
+/// controller + manager, without a full app bootstrap.
+async fn apply_service_config<C, E, F>(
+    label: &str,
+    config: C,
+    previous: C,
+    apply: impl Fn(C) -> F,
+    persist: impl FnOnce(C) -> Result<(), ConfigError>,
+) -> Result<(), DesktopConfigError<E>>
+where
+    C: Clone,
+    E: ServerError,
+    F: std::future::Future<Output = ServerStatus<E>>,
+{
+    if let ServerStatus::Error { error } = apply(config.clone()).await {
+        apply(previous).await;
+        return Err(DesktopConfigError::Server(error));
     }
 
-    match services.set_subsonic_config(config) {
+    match persist(config) {
         Ok(()) => Ok(()),
         Err(error) => {
-            if let SubsonicServerStatus::Error {
+            if let ServerStatus::Error {
                 error: rollback_error,
-            } = controller.apply_config(previous).await
+            } = apply(previous).await
             {
                 tracing::warn!(
-                    "Subsonic runtime rollback failed after config save error: {}",
+                    "{label} runtime rollback failed after config save error: {}",
                     rollback_error.detail()
                 );
             }
-            Err(DesktopSubsonicConfigError::Config(error))
+            Err(DesktopConfigError::Config(error))
         }
     }
 }
@@ -295,19 +280,21 @@ mod tests {
         let port = occupied.local_addr().unwrap().port();
 
         let before = services.get_config().prefs.subsonic;
-        let result = runtime.block_on(apply_subsonic_config(
-            &controller,
-            &services,
+        let result = runtime.block_on(apply_service_config(
+            "Subsonic",
             SubsonicConfig {
                 enabled: true,
                 port,
                 username: "listener".to_string(),
                 bind_address: "127.0.0.1".to_string(),
             },
+            before.clone(),
+            |config| controller.apply_config(config),
+            |config| services.set_subsonic_config(config),
         ));
 
         assert!(
-            matches!(result, Err(DesktopSubsonicConfigError::Server(_))),
+            matches!(result, Err(DesktopConfigError::Server(_))),
             "a failed bind must surface as a server error, got {result:?}"
         );
         assert_eq!(

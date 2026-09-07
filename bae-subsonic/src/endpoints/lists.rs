@@ -1,14 +1,9 @@
 //! List and search endpoints: album lists, one song, and combined search.
 
-use std::collections::HashMap;
-
-use axum::extract::{Query, State};
-use axum::response::Response;
 use bae_core::db::{DbAlbum, DbRelease};
 use bae_core::library::{AppServices, LibrarySearchQuery};
 use tracing::debug;
 
-use crate::endpoints::respond;
 use crate::envelope::Element;
 use crate::error::SubError;
 use crate::id::SubId;
@@ -21,20 +16,15 @@ use crate::AppState;
 
 /// `getAlbumList2` — a list of albums (releases) under a `type` ordering.
 pub(crate) async fn get_album_list2(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), album_list2(&state, &params).await)
-}
-
-async fn album_list2(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
+    state: AppState,
+    params: Params,
+) -> Result<Option<Element>, SubError> {
     let services = &state.services;
     let list_type = params.require("type")?;
     let size = params.int_or("size", 10)?.max(0) as usize;
     let offset = params.int_or("offset", 0)?.max(0) as usize;
 
-    let ordered = ordered_release_ids(services, params, list_type).await?;
+    let ordered = ordered_release_ids(services, &params, list_type).await?;
     let page = ordered.into_iter().skip(offset).take(size);
 
     let mut payload = Element::new("albumList2");
@@ -146,15 +136,7 @@ fn shuffle<T>(items: &mut [T]) {
 }
 
 /// `getSong` — one song by id.
-pub(crate) async fn get_song(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), get_song_inner(&state, &params).await)
-}
-
-async fn get_song_inner(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
+pub(crate) async fn get_song(state: AppState, params: Params) -> Result<Option<Element>, SubError> {
     let services = &state.services;
     let track_id = SubId::parse(params.require("id")?)?
         .expect_track()?
@@ -208,16 +190,6 @@ async fn get_song_inner(state: &AppState, params: &Params) -> Result<Option<Elem
     Ok(Some(child.to_element()))
 }
 
-/// `search3` — combined artist/album/song search. An empty query returns the
-/// whole library (clients page through it), each kind capped by its count/offset.
-pub(crate) async fn search3(
-    State(state): State<AppState>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Response {
-    let params = Params(params);
-    respond(&params.format(), search3_inner(&state, &params).await)
-}
-
 struct Window {
     offset: usize,
     count: usize,
@@ -232,12 +204,14 @@ impl Window {
     }
 }
 
-async fn search3_inner(state: &AppState, params: &Params) -> Result<Option<Element>, SubError> {
+/// `search3` — combined artist/album/song search. An empty query returns the
+/// whole library (clients page through it), each kind capped by its count/offset.
+pub(crate) async fn search3(state: AppState, params: Params) -> Result<Option<Element>, SubError> {
     let services = &state.services;
     let query = params.get("query").unwrap_or("");
-    let artists = Window::read(params, "artistCount", "artistOffset")?;
-    let albums = Window::read(params, "albumCount", "albumOffset")?;
-    let songs = Window::read(params, "songCount", "songOffset")?;
+    let artists = Window::read(&params, "artistCount", "artistOffset")?;
+    let albums = Window::read(&params, "albumCount", "albumOffset")?;
+    let songs = Window::read(&params, "songCount", "songOffset")?;
 
     let mut payload = Element::new("searchResult3");
 

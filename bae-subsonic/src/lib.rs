@@ -5,12 +5,12 @@
 //! native client to. The scope is the browse+play core; everything else
 //! (playlists, star/rating, jukebox, podcasts, downloads, …) is out of scope.
 //!
-//! The desktop apps drive the server through [`SubsonicServerController`], which
-//! owns its lifecycle the way `bae-mcp`'s `McpServerController` does — it binds
-//! the listener and runs `axum::serve` on the [`router`] itself, so it can
-//! report a bind failure before it reports the server running. [`router`] stays
-//! public as the seam the integration tests drive. Nothing in `bae-core`
-//! depends on this crate.
+//! The desktop apps drive the server through [`SubsonicServerController`],
+//! which runs its lifecycle on the shared `bae_core::server::ServerController`
+//! (as `bae-mcp` does) — it binds the listener and runs `axum::serve` on the
+//! [`router`] itself, so it can report a bind failure before it reports the
+//! server running. [`router`] stays public as the seam the integration tests
+//! drive. Nothing in `bae-core` depends on this crate.
 //!
 //! Implemented from the Subsonic API doc (subsonic.org) and the OpenSubsonic
 //! spec (opensubsonic.netlify.app) only.

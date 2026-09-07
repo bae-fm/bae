@@ -1,6 +1,8 @@
-//! Owns the Subsonic server's lifecycle, mirroring `bae-mcp`'s
-//! `McpServerController`: it starts, stops, and restarts the server as the
-//! configuration changes, and reports the current status.
+//! Wires the Subsonic server onto [`bae_core::server::ServerController`], which
+//! runs the shared lifecycle: start, stop, and restart as the configuration
+//! changes, and report the current status. What is Subsonic's own is here — the
+//! bind/credential preflight, the error vocabulary, and the identity a config
+//! change is compared against.
 //!
 //! The runtime credential the server checks is assembled here from two sources:
 //! the `username` carried in [`SubsonicConfig`] and the password read from the
@@ -14,21 +16,13 @@ use std::sync::Arc;
 
 use bae_core::config::{SubsonicConfig, SubsonicCredential};
 use bae_core::library::AppServices;
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
-use tracing::warn;
+use bae_core::server::{ServerController, ServerError, ServerStatus};
 
 /// Reads the Subsonic password from the keyring. `Ok(None)` means no password is
 /// stored (an unconfigured server); `Err` is a real keyring failure.
 type SubsonicPasswordProvider = dyn Fn() -> Result<Option<String>, String> + Send + Sync;
 
-#[derive(Debug, Clone)]
-pub enum SubsonicServerStatus {
-    Disabled,
-    Running { url: String },
-    Error { error: SubsonicServerError },
-}
+pub type SubsonicServerStatus = ServerStatus<SubsonicServerError>;
 
 #[derive(Debug, Clone)]
 pub enum SubsonicServerError {
@@ -38,8 +32,8 @@ pub enum SubsonicServerError {
     ServerFailed { detail: String },
 }
 
-impl SubsonicServerError {
-    pub fn detail(&self) -> &str {
+impl ServerError for SubsonicServerError {
+    fn detail(&self) -> &str {
         match self {
             Self::InvalidConfig { detail }
             | Self::CredentialUnavailable { detail }
@@ -49,42 +43,22 @@ impl SubsonicServerError {
     }
 }
 
+/// The address and port a running server is bound to, and the username it
+/// authenticates against. A config that changes any of these must restart the
+/// server, so all three form the identity `apply_config` compares against the
+/// running server.
+#[derive(Clone, PartialEq)]
+struct Binding {
+    bind_address: String,
+    port: u16,
+    username: String,
+}
+
 #[derive(Clone)]
 pub struct SubsonicServerController {
     services: AppServices,
     password_provider: Arc<SubsonicPasswordProvider>,
-    inner: Arc<Mutex<SubsonicServerControllerState>>,
-}
-
-enum SubsonicServerControllerState {
-    Disabled,
-    Running {
-        /// The address and port the running server is bound to, and the username
-        /// it authenticates against. A config that changes any of these must
-        /// restart the server, so all three form the identity `apply_config`
-        /// compares against the running server.
-        bind_address: String,
-        port: u16,
-        username: String,
-        url: String,
-        cancellation: CancellationToken,
-        task: JoinHandle<()>,
-    },
-    Error {
-        error: SubsonicServerError,
-    },
-}
-
-impl SubsonicServerControllerState {
-    fn status(&self) -> SubsonicServerStatus {
-        match self {
-            Self::Disabled => SubsonicServerStatus::Disabled,
-            Self::Running { url, .. } => SubsonicServerStatus::Running { url: url.clone() },
-            Self::Error { error } => SubsonicServerStatus::Error {
-                error: error.clone(),
-            },
-        }
-    }
+    server: ServerController<Binding, SubsonicServerError>,
 }
 
 impl SubsonicServerController {
@@ -92,7 +66,7 @@ impl SubsonicServerController {
         Self {
             services,
             password_provider,
-            inner: Arc::new(Mutex::new(SubsonicServerControllerState::Disabled)),
+            server: ServerController::new("Subsonic"),
         }
     }
 
@@ -103,37 +77,24 @@ impl SubsonicServerController {
     /// through [`Self::restart`].
     pub async fn apply_config(&self, config: SubsonicConfig) -> SubsonicServerStatus {
         if !config.enabled {
-            self.shutdown().await;
-            return SubsonicServerStatus::Disabled;
+            return self.server.disable().await;
         }
         if let Err(error) = config.validate() {
             return self
+                .server
                 .record_error(SubsonicServerError::InvalidConfig {
                     detail: error.to_string(),
                 })
                 .await;
         }
 
-        {
-            let state = self.inner.lock().await;
-            if let SubsonicServerControllerState::Running {
-                bind_address,
-                port,
-                username,
-                ..
-            } = &*state
-            {
-                if *bind_address == config.bind_address
-                    && *port == config.port
-                    && *username == config.username
-                {
-                    return state.status();
-                }
-            }
-        }
-
-        self.shutdown().await;
-        self.start(config.bind_address, config.port, config.username)
+        let binding = Binding {
+            bind_address: config.bind_address,
+            port: config.port,
+            username: config.username,
+        };
+        self.server
+            .apply(binding, |binding| self.start(binding))
             .await
     }
 
@@ -142,44 +103,24 @@ impl SubsonicServerController {
     /// no change and skip. A no-op restart of a disabled config just reports
     /// `Disabled`.
     pub async fn restart(&self, config: SubsonicConfig) -> SubsonicServerStatus {
-        self.shutdown().await;
+        self.server.shutdown().await;
         self.apply_config(config).await
     }
 
     pub async fn status(&self) -> SubsonicServerStatus {
-        self.inner.lock().await.status()
+        self.server.status().await
     }
 
     pub async fn shutdown(&self) {
-        let task = {
-            let mut state = self.inner.lock().await;
-            match std::mem::replace(&mut *state, SubsonicServerControllerState::Disabled) {
-                SubsonicServerControllerState::Running {
-                    cancellation, task, ..
-                } => {
-                    cancellation.cancel();
-                    Some(task)
-                }
-                _ => None,
-            }
-        };
-        if let Some(task) = task {
-            if let Err(error) = task.await {
-                warn!("Subsonic server task join failed: {error}");
-            }
-        }
+        self.server.shutdown().await;
     }
 
-    async fn start(
-        &self,
-        bind_address: String,
-        port: u16,
-        username: String,
-    ) -> SubsonicServerStatus {
+    async fn start(&self, binding: Binding) -> SubsonicServerStatus {
         let password = match self.password_provider.as_ref()() {
             Ok(password) => password.unwrap_or_default(),
             Err(detail) => {
                 return self
+                    .server
                     .record_error(SubsonicServerError::CredentialUnavailable { detail })
                     .await;
             }
@@ -189,8 +130,9 @@ impl SubsonicServerController {
         // authenticate no client, so it is an error rather than a server bound to
         // reject every request. The request-time guard in `auth.rs` is a separate
         // layer that keeps `serve` correct in isolation.
-        if username.is_empty() || password.is_empty() {
+        if binding.username.is_empty() || password.is_empty() {
             return self
+                .server
                 .record_error(SubsonicServerError::InvalidConfig {
                     detail: "Subsonic server enabled but no username/password is configured"
                         .to_string(),
@@ -198,83 +140,53 @@ impl SubsonicServerController {
                 .await;
         }
         let credential = SubsonicCredential {
-            username: username.clone(),
+            username: binding.username.clone(),
             password,
         };
 
         // `validate` already guaranteed the address parses; surface a parse
         // failure as a config error rather than unwrapping.
-        let ip = match bind_address.parse::<std::net::IpAddr>() {
+        let ip = match binding.bind_address.parse::<std::net::IpAddr>() {
             Ok(ip) => ip,
             Err(e) => {
                 return self
+                    .server
                     .record_error(SubsonicServerError::InvalidConfig {
-                        detail: format!("invalid bind address {bind_address:?}: {e}"),
+                        detail: format!("invalid bind address {:?}: {e}", binding.bind_address),
                     })
                     .await;
             }
         };
-        let addr = SocketAddr::new(ip, port);
+        let addr = SocketAddr::new(ip, binding.port);
         let listener = match tokio::net::TcpListener::bind(addr).await {
             Ok(listener) => listener,
             Err(e) => {
                 return self
+                    .server
                     .record_error(SubsonicServerError::BindFailed {
-                        detail: format!("failed to bind {bind_address}:{port}: {e}"),
+                        detail: format!(
+                            "failed to bind {}:{}: {e}",
+                            binding.bind_address, binding.port
+                        ),
                     })
                     .await;
             }
         };
 
-        let cancellation = CancellationToken::new();
-        let server_cancellation = cancellation.clone();
-        let task_state = self.inner.clone();
+        let url = format!("http://{}:{}/rest", binding.bind_address, binding.port);
         let router = crate::router(self.services.clone(), credential);
-        let task = tokio::spawn(async move {
-            if let Err(e) = axum::serve(listener, router)
-                .with_graceful_shutdown(async move {
-                    server_cancellation.cancelled_owned().await;
-                })
-                .await
-            {
-                let error = SubsonicServerError::ServerFailed {
-                    detail: format!("Subsonic server stopped with error: {e}"),
-                };
-                warn!("{}", error.detail());
-                let mut state = task_state.lock().await;
-                if let SubsonicServerControllerState::Running {
-                    port: running_port, ..
-                } = &*state
-                {
-                    if *running_port == port {
-                        *state = SubsonicServerControllerState::Error { error };
-                    }
-                }
-            }
-        });
-
-        let url = format!("http://{bind_address}:{port}/rest");
-        let status = SubsonicServerStatus::Running { url: url.clone() };
-        let mut state = self.inner.lock().await;
-        *state = SubsonicServerControllerState::Running {
-            bind_address,
-            port,
-            username,
-            url,
-            cancellation,
-            task,
-        };
-        status
-    }
-
-    async fn record_error(&self, error: SubsonicServerError) -> SubsonicServerStatus {
-        self.shutdown().await;
-        let status = SubsonicServerStatus::Error {
-            error: error.clone(),
-        };
-        let mut state = self.inner.lock().await;
-        *state = SubsonicServerControllerState::Error { error };
-        status
+        self.server
+            .start(
+                binding,
+                url,
+                |detail| SubsonicServerError::ServerFailed { detail },
+                |cancellation| {
+                    let shutdown = cancellation.clone();
+                    axum::serve(listener, router)
+                        .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
+                },
+            )
+            .await
     }
 }
 

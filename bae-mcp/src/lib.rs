@@ -9,6 +9,7 @@ use axum::response::{IntoResponse, Response};
 pub use bae_automation::Automation;
 
 use bae_automation::{AutomationError, AutomationTool};
+use bae_core::server::{ServerController, ServerError, ServerStatus};
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, ListToolsResult, PaginatedRequestParams,
     ServerCapabilities, ServerInfo, Tool,
@@ -22,18 +23,11 @@ use serde_json::Value;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use tokio_util::sync::CancellationToken;
 use tracing::warn;
 
 type McpTokenProvider = dyn Fn() -> Result<String, String> + Send + Sync;
-#[derive(Debug, Clone)]
-pub enum McpServerStatus {
-    Disabled,
-    Running { url: String },
-    Error { error: McpServerError },
-}
+
+pub type McpServerStatus = ServerStatus<McpServerError>;
 
 #[derive(Debug, Clone)]
 pub enum McpServerError {
@@ -43,8 +37,8 @@ pub enum McpServerError {
     ServerFailed { detail: String },
 }
 
-impl McpServerError {
-    pub fn detail(&self) -> &str {
+impl ServerError for McpServerError {
+    fn detail(&self) -> &str {
         match self {
             Self::InvalidConfig { detail }
             | Self::TokenUnavailable { detail }
@@ -58,32 +52,7 @@ impl McpServerError {
 pub struct McpServerController {
     automation: Automation,
     token_provider: Arc<McpTokenProvider>,
-    inner: Arc<Mutex<McpServerControllerState>>,
-}
-
-enum McpServerControllerState {
-    Disabled,
-    Running {
-        port: u16,
-        url: String,
-        cancellation: CancellationToken,
-        task: JoinHandle<()>,
-    },
-    Error {
-        error: McpServerError,
-    },
-}
-
-impl McpServerControllerState {
-    fn status(&self) -> McpServerStatus {
-        match self {
-            Self::Disabled => McpServerStatus::Disabled,
-            Self::Running { url, .. } => McpServerStatus::Running { url: url.clone() },
-            Self::Error { error } => McpServerStatus::Error {
-                error: error.clone(),
-            },
-        }
-    }
+    server: ServerController<u16, McpServerError>,
 }
 
 impl McpServerController {
@@ -91,63 +60,39 @@ impl McpServerController {
         Self {
             automation,
             token_provider,
-            inner: Arc::new(Mutex::new(McpServerControllerState::Disabled)),
+            server: ServerController::new("MCP"),
         }
     }
 
     pub async fn apply_config(&self, config: bae_core::config::McpConfig) -> McpServerStatus {
         if !config.enabled {
-            self.shutdown().await;
-            return McpServerStatus::Disabled;
+            return self.server.disable().await;
         }
         if let Err(error) = config.validate() {
             return self
+                .server
                 .record_error(McpServerError::InvalidConfig {
                     detail: error.to_string(),
                 })
                 .await;
         }
-
-        {
-            let state = self.inner.lock().await;
-            if let McpServerControllerState::Running { port, .. } = &*state {
-                if *port == config.port {
-                    return state.status();
-                }
-            }
-        }
-
-        self.shutdown().await;
-        self.start(config.port).await
+        self.server
+            .apply(config.port, |port| self.start(port))
+            .await
     }
 
     pub async fn status(&self) -> McpServerStatus {
-        self.inner.lock().await.status()
+        self.server.status().await
     }
 
     pub async fn shutdown(&self) {
-        let task = {
-            let mut state = self.inner.lock().await;
-            match std::mem::replace(&mut *state, McpServerControllerState::Disabled) {
-                McpServerControllerState::Running {
-                    cancellation, task, ..
-                } => {
-                    cancellation.cancel();
-                    Some(task)
-                }
-                _ => None,
-            }
-        };
-        if let Some(task) = task {
-            if let Err(error) = task.await {
-                warn!("MCP server task join failed: {error}");
-            }
-        }
+        self.server.shutdown().await;
     }
 
     async fn start(&self, port: u16) -> McpServerStatus {
         if let Err(e) = self.token_provider.as_ref()() {
             return self
+                .server
                 .record_error(McpServerError::TokenUnavailable { detail: e })
                 .await;
         }
@@ -157,6 +102,7 @@ impl McpServerController {
             Ok(listener) => listener,
             Err(e) => {
                 return self
+                    .server
                     .record_error(McpServerError::BindFailed {
                         detail: format!("failed to bind 127.0.0.1:{port}: {e}"),
                     })
@@ -164,68 +110,31 @@ impl McpServerController {
             }
         };
 
-        let cancellation = CancellationToken::new();
-        let service_cancellation = cancellation.child_token();
-        let server_cancellation = cancellation.clone();
-        let task_state = self.inner.clone();
         let automation = self.automation.clone();
         let token_provider = self.token_provider.clone();
-        let service: StreamableHttpService<BaeMcpServer, LocalSessionManager> =
-            StreamableHttpService::new(
-                move || Ok(BaeMcpServer::new(automation.clone())),
-                Default::default(),
-                StreamableHttpServerConfig::default()
-                    .with_sse_keep_alive(None)
-                    .with_cancellation_token(service_cancellation),
-            );
-        let router = axum::Router::new().nest_service("/mcp", service).layer(
-            middleware::from_fn_with_state(AuthState { token_provider }, bearer_auth),
-        );
-        let task = tokio::spawn(async move {
-            if let Err(e) = axum::serve(listener, router)
-                .with_graceful_shutdown(async move {
-                    server_cancellation.cancelled_owned().await;
-                })
-                .await
-            {
-                let error = McpServerError::ServerFailed {
-                    detail: format!("MCP server stopped with error: {e}"),
-                };
-                warn!("{}", error.detail());
-                let mut state = task_state.lock().await;
-                if let McpServerControllerState::Running {
-                    port: running_port, ..
-                } = &*state
-                {
-                    if *running_port == port {
-                        *state = McpServerControllerState::Error { error };
-                    }
-                }
-            }
-        });
-
-        let url = format!("http://127.0.0.1:{port}/mcp");
-        let status = McpServerStatus::Running { url: url.clone() };
-        let mut state = self.inner.lock().await;
-        *state = McpServerControllerState::Running {
-            port,
-            url,
-            cancellation,
-            task,
-        };
-        status
-    }
-
-    async fn record_error(&self, error: McpServerError) -> McpServerStatus {
-        self.shutdown().await;
-        let status = McpServerStatus::Error { error };
-        let mut state = self.inner.lock().await;
-        if let McpServerStatus::Error { error } = &status {
-            *state = McpServerControllerState::Error {
-                error: error.clone(),
-            };
-        }
-        status
+        self.server
+            .start(
+                port,
+                format!("http://127.0.0.1:{port}/mcp"),
+                |detail| McpServerError::ServerFailed { detail },
+                |cancellation| {
+                    let service: StreamableHttpService<BaeMcpServer, LocalSessionManager> =
+                        StreamableHttpService::new(
+                            move || Ok(BaeMcpServer::new(automation.clone())),
+                            Default::default(),
+                            StreamableHttpServerConfig::default()
+                                .with_sse_keep_alive(None)
+                                .with_cancellation_token(cancellation.child_token()),
+                        );
+                    let router = axum::Router::new().nest_service("/mcp", service).layer(
+                        middleware::from_fn_with_state(AuthState { token_provider }, bearer_auth),
+                    );
+                    let shutdown = cancellation.clone();
+                    axum::serve(listener, router)
+                        .with_graceful_shutdown(async move { shutdown.cancelled_owned().await })
+                },
+            )
+            .await
     }
 }
 

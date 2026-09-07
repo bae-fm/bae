@@ -20,7 +20,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tracing::{debug, warn};
 
-use crate::endpoints::respond;
+use crate::envelope::Element;
 use crate::error::SubError;
 use crate::id::SubId;
 use crate::library_map::lib_err;
@@ -428,11 +428,8 @@ async fn cover_release_id(services: &AppServices, raw_id: &str) -> Result<String
 
 /// `scrobble` — accepted and ignored. bae keeps no play counts, so there is
 /// nothing to record; returning ok keeps clients that scrobble on play happy.
-pub(crate) async fn scrobble(Query(params): Query<HashMap<String, String>>) -> Response {
-    let params = Params(params);
-    if let Err(error) = params.require("id") {
-        return crate::envelope::error_response(&params.format(), &error);
-    }
+pub(crate) async fn scrobble(_: AppState, params: Params) -> Result<Option<Element>, SubError> {
+    params.require("id")?;
     debug!("scrobble accepted and ignored (no play-count store)");
-    respond(&params.format(), Ok(None))
+    Ok(None)
 }

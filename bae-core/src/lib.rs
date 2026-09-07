@@ -38,6 +38,7 @@ pub mod renderer;
 pub mod retry;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 mod serde_helpers;
+pub mod server;
 // The extraction machinery (OCR, disc-ID compute) is desktop-only and gated
 // submodule-by-submodule inside `signals`. The module itself stays on every
 // target for the pure `LookupFailure` type, which the shared metadata-search path
