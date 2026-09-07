@@ -716,6 +716,7 @@ pub(super) fn resolve_cover_cloud_path<C: QueryOne>(
 /// The `cloud_path` for an artist image on a browsable home:
 /// `{artist_id}/artist.{ext}` (relative to the `artist_images` namespace). Keyed
 /// by the artist id alone, so it needs no DB lookup.
+#[cfg(any(test, not(any(target_os = "ios", target_os = "android"))))]
 pub(super) fn resolve_artist_cloud_path(
     artist_id: &str,
     blob_id: &str,

@@ -116,6 +116,7 @@ pub(super) fn image_table(image_type: &LibraryImageType) -> &'static str {
     }
 }
 
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub(super) fn artist_image_cloud_path_for_storage(
     storage: crate::config::HomeStorage,
     artist_id: &str,

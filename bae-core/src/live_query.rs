@@ -67,6 +67,7 @@ where
 impl<Request, Projection> CancellableLiveQuery<Request, Projection> {
     /// Resolves once the subscription is cancelled, for a task that keeps the
     /// request current and should stop when it can no longer be delivered.
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     pub(crate) async fn cancelled(&self) {
         self.cancellation.cancelled().await;
     }
