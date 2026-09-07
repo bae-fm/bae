@@ -13,14 +13,56 @@
 //! honest one. The extraction service calls it from `spawn_blocking` to keep the
 //! async runtime off the FFI thread.
 
+use super::ImageRegion;
 use std::path::Path;
 
+/// One barcode the detector found, and where on the image it found it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DetectedBarcode {
+    pub payload: String,
+    /// Where the code sits on the image. `None` from a detector that reports
+    /// payloads alone.
+    pub region: Option<ImageRegion>,
+}
+
+/// One visual line the recognizer read, and where on the image it read it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecognizedLine {
+    pub text: String,
+    /// Where the line sits on the image. `None` from a recognizer that reports
+    /// text alone.
+    pub region: Option<ImageRegion>,
+}
+
 /// What one pass over an image surfaces, from a single decode.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArtworkAnalysis {
-    pub barcodes: Vec<String>,
+    pub barcodes: Vec<DetectedBarcode>,
     /// One per visual line, in whatever order the recognizer emits them.
-    pub text_lines: Vec<String>,
+    pub text_lines: Vec<RecognizedLine>,
+}
+
+impl ArtworkAnalysis {
+    /// An image nothing was read off: a decode that failed, or one with
+    /// nothing on it.
+    pub fn empty() -> Self {
+        Self {
+            barcodes: Vec::new(),
+            text_lines: Vec::new(),
+        }
+    }
+
+    /// An analysis of text alone, each line without a place on the image —
+    /// what a recognizer that reports no positions produces.
+    pub fn of_text(lines: Vec<String>) -> Self {
+        Self {
+            barcodes: Vec::new(),
+            text_lines: lines
+                .into_iter()
+                .map(|text| RecognizedLine { text, region: None })
+                .collect(),
+        }
+    }
 }
 
 pub trait ArtworkAnalyzer: Send + Sync {

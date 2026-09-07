@@ -22,7 +22,7 @@ struct ShownIdentifyStateTests {
     @Test("a live run outranks the stored verdict's resumed state")
     func liveRunWins() {
         let shown = shownIdentifyState(
-            resumed: .notFoundAnywhere,
+            resumed: .notFoundAnywhere(run: nil),
             runtime: runtime(
                 .triangulating(
                     run: PreviewData.identifyRunStarting,
@@ -46,8 +46,10 @@ struct ShownIdentifyStateTests {
     @Test("nothing running leaves the resumed state")
     func nothingRunning() {
         #expect(
-            shownIdentifyState(resumed: .notFoundAnywhere, runtime: nil)
-                == .notFoundAnywhere
+            shownIdentifyState(
+                resumed: .notFoundAnywhere(run: nil),
+                runtime: nil
+            ) == .notFoundAnywhere(run: nil)
         )
     }
 
@@ -55,9 +57,9 @@ struct ShownIdentifyStateTests {
     func idleRunDefersToTheVerdict() {
         #expect(
             shownIdentifyState(
-                resumed: .notFoundAnywhere,
+                resumed: .notFoundAnywhere(run: nil),
                 runtime: runtime(.idle)
-            ) == .notFoundAnywhere
+            ) == .notFoundAnywhere(run: nil)
         )
     }
 }

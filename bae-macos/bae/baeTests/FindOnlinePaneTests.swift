@@ -9,8 +9,8 @@ import XCTest
 
 @MainActor
 final class FindOnlinePaneTests: XCTestCase {
-    /// Nothing to list means nothing to scroll: the docked form is the whole
-    /// of what a folder nobody has looked up yet offers.
+    /// Nothing to list means nothing to scroll: a folder nobody has looked
+    /// up yet offers the Identify button and the collapsed search alone.
     func testAPaneWithNothingToOfferHasNoResultsScroller() async {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = FindOnlineRendering.host(
@@ -87,11 +87,11 @@ struct FindOnlinePressingPickTests {
 }
 
 @MainActor
-@Suite("The empty zone's way into the form")
+@Suite("The way into the form")
 struct FindOnlineFormFocusTests {
-    /// "Search instead" is a request, not a flag: the cursor goes to the
-    /// form's first field on every new one, so it works after the automatic
-    /// hand-over already happened and the person has clicked elsewhere.
+    /// "Search manually" is a request, not a flag: the cursor goes to the
+    /// form's first field on every new one, so it works after the person has
+    /// clicked elsewhere.
     @Test("each new focus request moves the cursor into the first field")
     func eachRequestMovesTheCursor() async throws {
         let size = NSSize(width: 660, height: 60)
@@ -136,166 +136,79 @@ struct FindOnlineFormFocusTests {
 }
 
 @MainActor
-@Suite("Find online verdict")
-struct FindOnlineVerdictTests {
-    @Test("a folder nobody looked up offers to identify it")
-    func idleOffersIdentify() {
-        let verdict = FindOnlineVerdict(
-            state: .idle,
-            toolbar: BridgeSignalsToolbar(signals: [])
-        )
-
-        #expect(verdict.lines == [String(localized: "Not identified")])
-        #expect(verdict.action == .identify)
-        #expect(!verdict.isWorking)
-    }
-
-    @Test("a run under way says so and offers nothing")
-    func triangulatingWorks() {
-        let verdict = FindOnlineVerdict(
-            state: .triangulating(
-                run: PreviewData.identifyRunStarting,
-                groups: [],
-                libraryStatuses: [:],
-                provenance: [:]
-            ),
-            toolbar: PreviewData.toolbarBothRunning
-        )
-
-        #expect(verdict.isWorking)
-        #expect(verdict.action == .none)
-    }
-
-    @Test("a verdict names the signals that matched, and only those")
-    func foundNamesTheMatchedSignals() {
-        let verdict = FindOnlineVerdict(
-            state: PreviewData.searchStateFoundExact.identifyState,
-            toolbar: PreviewData.toolbarBothMatched
-        )
-
-        #expect(verdict.action == .adjust)
-        let line = try? #require(verdict.lines.first)
-        #expect(line?.contains(String(localized: "Disc ID")) == true)
-        #expect(line?.contains(String(localized: "barcode")) == true)
-    }
-
-    @Test("an excluded signal is not part of what identified the folder")
-    func foundSkipsExcludedSignals() {
-        let verdict = FindOnlineVerdict(
-            state: PreviewData.searchStateFoundExact.identifyState,
-            toolbar: PreviewData.toolbarBarcodeExcluded
-        )
-
-        let line = try? #require(verdict.lines.first)
-        #expect(line?.contains(String(localized: "Disc ID")) == true)
-        #expect(line?.contains(String(localized: "barcode")) == false)
-    }
-
-    @Test("a verdict stood back up from the store names no signals")
-    func resumedVerdictNamesNoSignals() {
-        let verdict = FindOnlineVerdict(
-            state: PreviewData.searchStateFoundExact.identifyState,
-            toolbar: BridgeSignalsToolbar(signals: [])
-        )
-
-        #expect(verdict.lines == [String(localized: "Identified")])
-        #expect(verdict.action == .adjust)
-    }
-
-    @Test("nothing found names the signals that ran")
-    func notFoundNamesTheSignalsThatRan() {
-        let verdict = FindOnlineVerdict(
-            state: .notFoundAnywhere,
-            toolbar: PreviewData.toolbarNothingMatched
-        )
-
-        let line = try? #require(verdict.lines.first)
-        #expect(line?.contains(String(localized: "Disc ID")) == true)
-        #expect(line?.contains(String(localized: "barcode")) == true)
-        #expect(verdict.action == .adjust)
-    }
-
-    @Test("a folder with no signals has nothing to adjust")
-    func manualOnlyOffersNothing() {
-        let verdict = FindOnlineVerdict(
-            state: .manualOnly(trackCount: 9),
-            toolbar: PreviewData.toolbarSkippedNoSignals
-        )
-
+@Suite("Find online section glyphs")
+struct FindOnlineSectionGlyphTests {
+    @Test("identification's glyph follows its state")
+    func identificationGlyph() {
+        #expect(FindOnlineSectionGlyph(identifyState: .idle) == .none)
         #expect(
-            verdict.lines == [String(localized: "No signals in this folder")]
-        )
-        #expect(verdict.action == .none)
-    }
-
-    @Test("a failure names each step, its source and a brief reason")
-    func failureNamesEachStep() {
-        let verdict = FindOnlineVerdict(
-            state: .failed(
-                failures: [
-                    .discId(failure: .network),
-                    .barcode(source: .discogs, failure: .timeout),
-                ],
-                groups: [],
-                libraryStatuses: [:],
-                provenance: [:]
-            ),
-            toolbar: BridgeSignalsToolbar(signals: [])
-        )
-
-        #expect(verdict.isFailure)
-        #expect(verdict.action == .retry)
-        #expect(verdict.lines.count == 2)
-        // The disc-ID endpoint is MusicBrainz's alone, so its failure names
-        // the source the same way a barcode lookup names its provider.
-        #expect(
-            verdict.lines[0]
-                .contains(bridgeMetadataSourceName(source: .musicBrainz))
+            FindOnlineSectionGlyph(
+                identifyState: PreviewData.searchStateTriangulating
+                    .identifyState
+            ) == .working
         )
         #expect(
-            verdict.lines[0]
-                .contains(SignalBadgeStyle.sentenceLabel(for: .discId))
+            FindOnlineSectionGlyph(
+                identifyState: PreviewData.searchStateFoundExact.identifyState
+            ) == .matched
         )
         #expect(
-            verdict.lines[0].contains(BridgeLookupFailure.network.briefLine)
+            FindOnlineSectionGlyph(
+                identifyState: PreviewData.searchStateNotFound.identifyState
+            ) == .empty
         )
         #expect(
-            verdict.lines[1]
-                .contains(bridgeMetadataSourceName(source: .discogs))
+            FindOnlineSectionGlyph(
+                identifyState: PreviewData.searchStateNoSignals.identifyState
+            ) == .nothing
         )
         #expect(
-            verdict.lines[1]
-                .contains(SignalBadgeStyle.sentenceLabel(for: .barcode))
+            FindOnlineSectionGlyph(
+                identifyState: PreviewData.searchStateSourceFailure
+                    .identifyState
+            ) == .failed
+        )
+    }
+
+    @Test("the search's glyph follows its status, and is nothing before one")
+    func searchGlyph() {
+        #expect(FindOnlineSectionGlyph(search: nil) == .none)
+        #expect(
+            FindOnlineSectionGlyph(search: PreviewData.searchRunInFlight)
+                == .working
         )
         #expect(
-            verdict.lines[1].contains(BridgeLookupFailure.timeout.briefLine)
+            FindOnlineSectionGlyph(search: PreviewData.manualSearchRun)
+                == .matched
         )
-        #expect(verdict.help.contains(BridgeLookupFailure.timeout.badgeLine))
+        #expect(
+            FindOnlineSectionGlyph(search: PreviewData.searchRunEmpty) == .empty
+        )
+        #expect(
+            FindOnlineSectionGlyph(search: PreviewData.searchRunSourceFailed)
+                == .failed
+        )
+    }
+
+    /// A collapsed section with nothing to show dims, so the open one beside
+    /// it reads as the place to look.
+    @Test("only the empty glyphs read as vacant")
+    func vacancy() {
+        #expect(FindOnlineSectionGlyph.empty.isVacant)
+        #expect(FindOnlineSectionGlyph.nothing.isVacant)
+        #expect(!FindOnlineSectionGlyph.matched.isVacant)
+        #expect(!FindOnlineSectionGlyph.working.isVacant)
+        #expect(!FindOnlineSectionGlyph.failed.isVacant)
+        #expect(!FindOnlineSectionGlyph.none.isVacant)
     }
 }
 
 @MainActor
 @Suite("Find online result area")
 struct FindOnlineResultAreaTests {
-    @Test("a submitted search owns the area whatever identification said")
-    func aSearchOwnsTheArea() {
-        let found = PreviewData.searchStateFoundExact.identifyState
-        #expect(
-            FindOnlineResultArea(identifyState: found, hasSearch: true)
-                == .searchRun
-        )
-        #expect(
-            FindOnlineResultArea(identifyState: .idle, hasSearch: true)
-                == .searchRun
-        )
-    }
-
     @Test("each identify state picks its own area")
     func eachStatePicksItsArea() {
-        #expect(
-            FindOnlineResultArea(identifyState: .idle, hasSearch: false)
-                == .notStarted
-        )
+        #expect(FindOnlineResultArea(identifyState: .idle) == .notStarted)
         #expect(
             FindOnlineResultArea(
                 identifyState: .triangulating(
@@ -303,27 +216,34 @@ struct FindOnlineResultAreaTests {
                     groups: [],
                     libraryStatuses: [:],
                     provenance: [:]
-                ),
-                hasSearch: false
+                )
             ) == .identifying
         )
         #expect(
             FindOnlineResultArea(
-                identifyState: PreviewData.searchStateFoundExact.identifyState,
-                hasSearch: false
+                identifyState: PreviewData.searchStateFoundExact.identifyState
             ) == .groups
         )
         #expect(
-            FindOnlineResultArea(
-                identifyState: .notFoundAnywhere,
-                hasSearch: false
-            ) == .nothingFound
+            FindOnlineResultArea(identifyState: .notFoundAnywhere(run: nil))
+                == .nothingFound
         )
         #expect(
             FindOnlineResultArea(
-                identifyState: .manualOnly(trackCount: 9),
-                hasSearch: false
+                identifyState: .manualOnly(trackCount: 9, run: nil)
             ) == .noSignals
+        )
+    }
+
+    /// A folder with nothing to look up on its own but catalog numbers to
+    /// offer shows the ledger's tiles rather than the no-signals line.
+    @Test("catalog numbers to activate are an area of their own")
+    func catalogNumbersToActivate() {
+        #expect(
+            FindOnlineResultArea(
+                identifyState: PreviewData.searchStateAwaitingCatalog
+                    .identifyState
+            ) == .awaitingCatalog
         )
     }
 
@@ -334,52 +254,68 @@ struct FindOnlineResultAreaTests {
         #expect(
             FindOnlineResultArea(
                 identifyState:
-                    PreviewData.searchStateSourceFailure.identifyState,
-                hasSearch: false
+                    PreviewData.searchStateSourceFailure.identifyState
             ) == .groups
         )
         #expect(
             FindOnlineResultArea(
                 identifyState:
-                    PreviewData.searchStateAllSourcesFailed.identifyState,
-                hasSearch: false
+                    PreviewData.searchStateAllSourcesFailed.identifyState
             ) == .failureLines
         )
     }
 }
 
 @MainActor
-@Suite("The steps a run shows")
-struct IdentifyRunStepsViewTests {
-    /// The rows draw themselves — glyphs, values, counts — rather than
-    /// handing anything to an AppKit control. Assert each shape of run puts
-    /// something on screen, and that different runs draw differently.
+@Suite("What the pane finalizes")
+struct FindOnlineFinalizingTests {
+    /// A sole match core is picking on its own is the row that holds the
+    /// spinner; several matches wait on a person and none does.
+    @Test("a sole match selects itself while core finalizes")
+    func aSoleMatchSelectsItself() {
+        #expect(
+            PreviewData.searchStateFinalizing.finalizingPressing?.lead.releaseId
+                == "rel-456"
+        )
+        #expect(PreviewData.searchStateFoundExact.finalizingPressing == nil)
+    }
+}
+
+@MainActor
+@Suite("The ledger a run shows")
+struct IdentifyLedgerViewTests {
+    /// The rows draw themselves — chips, values, cells — rather than handing
+    /// anything to an AppKit control. Assert each shape of run puts something
+    /// on screen, and that different runs draw differently.
     @Test("every shape of run draws")
     func everyShapeOfRunDraws() async throws {
-        let size = NSSize(width: 660, height: 240)
+        let size = NSSize(width: 660, height: 260)
         func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
             try await FindOnlineRendering.pixels(
-                IdentifyRunStepsView(
+                IdentifyLedgerView(
                     run: run,
-                    catalogOptions: [],
-                    onToggleSignal: { _ in },
+                    filePaths: [:],
+                    onToggleCatalog: { _ in },
                     onRetryFailed: {},
-                ),
+                )
+                .importPreviewEnvironment(),
                 size: size
             )
         }
         let starting = try await pixels(PreviewData.identifyRunStarting)
         let inFlight = try await pixels(PreviewData.identifyRunInFlight)
         let failed = try await pixels(PreviewData.identifyRunProviderFailed)
+        let empty = try await pixels(PreviewData.identifyRunNothingFound)
 
         #expect(starting != inFlight)
         #expect(inFlight != failed)
+        #expect(failed != empty)
     }
 
-    /// A run in flight lists what has landed under its steps, so the area
-    /// scrolls; a run that has landed nothing yet has nothing to scroll.
-    @Test("the matches landed so far list under the steps")
-    func landedMatchesListUnderTheSteps() async {
+    /// A run in flight lists what has landed under its ledger, so the area
+    /// scrolls.
+    @Test("the matches landed so far list under the ledger")
+    func landedMatchesListUnderTheLedger() async {
         let size = NSSize(width: 900, height: 600)
         let (window, host) = FindOnlineRendering.host(
             ImportSearchPane.preview(
@@ -396,67 +332,29 @@ struct IdentifyRunStepsViewTests {
         )
         withExtendedLifetime(window) {}
     }
-}
 
-@MainActor
-@Suite("Adjusting a candidate's signals")
-struct SignalAdjustPopoverTests {
-    /// Clicking the disc ID or the barcode takes it in or out of the run. The
-    /// catalog is not a toggle: it is chosen by value, so it sends its own.
-    @Test("a signal row's click is the toggle for that signal")
-    func aRowSendsItsOwnToggle() {
-        func signal(_ kind: BridgeSignalKind) -> BridgeToolbarSignal {
-            BridgeToolbarSignal(
-                kind: kind,
-                value: "value",
-                origin: .artwork,
-                state: .found(count: 1),
-                excluded: false,
-                options: []
+    /// A catalog number is drawn where it stands: as a row of the table once
+    /// activated, as a tile below it while not. The same number in the two
+    /// places draws differently.
+    @Test("an activated catalog number moves from the tiles to the table")
+    func anActivatedNumberMovesToTheTable() async throws {
+        let size = NSSize(width: 660, height: 260)
+        func pixels(_ run: BridgeIdentifyRun) async throws -> Data {
+            try await FindOnlineRendering.pixels(
+                IdentifyLedgerView(
+                    run: run,
+                    filePaths: [:],
+                    onToggleCatalog: { _ in },
+                    onRetryFailed: {},
+                )
+                .importPreviewEnvironment(),
+                size: size
             )
         }
+        let active = try await pixels(PreviewData.identifyRunProviderFailed)
+        let waiting = try await pixels(PreviewData.identifyRunCatalogWaiting)
 
-        #expect(BridgeSignalToggle(signal: signal(.discId)) == .disc)
-        #expect(BridgeSignalToggle(signal: signal(.barcode)) == .barcode)
-        #expect(BridgeSignalToggle(signal: signal(.catalog)) == nil)
-    }
-
-    /// Every row draws itself — an AppKit checkbox renders its label as the
-    /// button's title, which would leave the value and the count off the row
-    /// entirely. Assert the rows put something on screen.
-    @Test("the signal rows draw")
-    func theSignalRowsDraw() async throws {
-        let drawn = try await FindOnlineRendering.pixels(
-            SignalAdjustPopover(
-                toolbar: PreviewData.toolbarBothMatched,
-                onToggle: { _ in },
-                onRerun: {},
-            )
-        )
-        let runAgainOnly = try await FindOnlineRendering.pixels(
-            SignalAdjustPopover(
-                toolbar: BridgeSignalsToolbar(signals: []),
-                onToggle: { _ in },
-                onRerun: {},
-            )
-        )
-
-        #expect(drawn != runAgainOnly)
-    }
-
-    /// The catalog's numbers are rows of their own, each with its value and
-    /// where it was read off.
-    @Test("the catalog's numbers draw")
-    func theCatalogNumbersDraw() async throws {
-        let options = PreviewData.toolbarCatalogChoices.signals[1].options
-        let drawn = try await FindOnlineRendering.pixels(
-            CatalogOptionsList(options: options, onChoose: { _ in })
-        )
-        let none = try await FindOnlineRendering.pixels(
-            CatalogOptionsList(options: [], onChoose: { _ in })
-        )
-
-        #expect(drawn != none)
+        #expect(active != waiting)
     }
 }
 

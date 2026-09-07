@@ -38,9 +38,11 @@ pub enum SignalState {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalOption {
     pub value: String,
+    /// Where the value was first seen; a value seen in several places names
+    /// the first.
     pub origin: SignalOrigin,
-    /// Whether this is the one the identify run is using. At most one option of
-    /// a signal is chosen.
+    /// Whether the identify run looks this one up. Several options of a signal
+    /// can be chosen, each looked up on its own.
     pub chosen: bool,
 }
 
@@ -50,9 +52,10 @@ pub struct SignalOption {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ToolbarSignal {
     pub kind: SignalKind,
-    /// The disc-ID hash, the barcode digits, the chosen catalog number. `None`
-    /// when the signal has nothing to show — no disc layout, no codes found, no
-    /// catalog number chosen.
+    /// The disc-ID hash, the barcode digits, the first chosen catalog number
+    /// (every chosen one is marked in `options`). `None` when the signal has
+    /// nothing to show — no disc layout, no codes found, no catalog number
+    /// chosen.
     pub value: Option<String>,
     pub origin: SignalOrigin,
     pub state: SignalState,

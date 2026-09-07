@@ -42,15 +42,16 @@ pub use ready::{
 };
 pub use service::{IdentifyRunId, IdentifyServiceHandle};
 pub use state::{
-    BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyEvent,
-    IdentifyState, LookupOutcome, LookupResults, LookupState, ProviderBarcodeLookup,
+    BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
+    IdentifyEvent, IdentifyState, LookupOutcome, LookupResults, LookupState, ProviderBarcodeLookup,
     ProviderLookup, SignalToggle,
 };
 pub use toolbar::{SignalKind, SignalOption, SignalState, ToolbarSignal};
 pub use verdict::{IdentifyFailure, TerminalVerdict};
 pub use view::{
-    ArtworkStepView, BarcodeLookupView, BarcodeStepView, CatalogStepView, DiscIdStepView,
-    IdentifyRunView, IdentifyStateView, LookupView, ProviderBarcodeLookupView, ProviderLookupView,
+    BarcodeStepView, CatalogCandidateView, CatalogStepView, DiscIdFile, DiscIdFileKind,
+    DiscIdStepView, IdentifyRunView, IdentifyStateView, LookupView, ProviderCell, SignalValueRow,
+    ValueSource,
 };
 
 use crate::db::{LibraryCheck, LibraryStatus};

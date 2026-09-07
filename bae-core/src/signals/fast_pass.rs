@@ -58,21 +58,22 @@ impl FastPass {
 }
 
 /// CUE `CATALOG` payloads (the disc's UPC/EAN) from the folder's parsed sheets,
-/// bound and unbound, deduped. These are barcode-lookup inputs, not
+/// bound and unbound — one sighting per sheet that states a code, so a code
+/// two sheets state points at both. These are barcode-lookup inputs, not
 /// catalog-number filter values. A sheet whose field was never filled in holds
 /// a run of one digit, which is not a code (see
 /// [`is_placeholder_code`](super::is_placeholder_code)).
 fn cue_barcodes(categorized: &CategorizedFiles) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
     for sheet in categorized.track_sheets() {
         if let Some(value) = &sheet.sheet.catalog {
             let value = value.trim();
-            if !value.is_empty()
-                && !super::is_placeholder_code(value)
-                && seen.insert(value.to_string())
-            {
-                out.push(SourcedValue::new(value.to_string(), SignalOrigin::CueSheet));
+            if !value.is_empty() && !super::is_placeholder_code(value) {
+                out.push(SourcedValue::in_file(
+                    value.to_string(),
+                    SignalOrigin::CueSheet,
+                    sheet.file.relative_path.clone(),
+                ));
             }
         }
     }
@@ -107,10 +108,8 @@ pub(super) fn gather_non_ocr_sources(
                 continue;
             }
             if let Some(stripped) = strip_path_component(raw) {
-                pass.lines.push(SourcedLine {
-                    source: Source::PathComponent,
-                    text: stripped,
-                });
+                pass.lines
+                    .push(SourcedLine::new(Source::PathComponent, stripped));
             }
             for bracket in extract_folder_brackets(raw) {
                 pass.bracket_catalogs.push(bracket);
@@ -133,12 +132,15 @@ pub(super) fn gather_non_ocr_sources(
     pass.cue_barcodes = cue_barcodes(categorized);
 
     // Image + document filenames only; `enumerate_filename_inputs` explains why.
-    for p in enumerate_filename_inputs(categorized) {
-        for part in parse_filename_stem(&p) {
-            pass.lines.push(SourcedLine {
-                source: Source::FilenameGeneric(p.clone()),
-                text: part,
-            });
+    for file in enumerate_filename_inputs(categorized) {
+        for part in parse_filename_stem(&file.path) {
+            pass.lines.push(SourcedLine::new(
+                Source::FilenameGeneric {
+                    path: file.path.clone(),
+                    file_id: file.file_id.clone(),
+                },
+                part,
+            ));
         }
     }
 
@@ -146,23 +148,23 @@ pub(super) fn gather_non_ocr_sources(
     // No re-read, no second parser.
     for sheet in categorized.track_sheets() {
         for name in cue_sheet_names(sheet.sheet) {
-            pass.lines.push(SourcedLine {
-                source: Source::CueField,
-                text: name,
-            });
+            pass.lines.push(SourcedLine::new(Source::CueField, name));
         }
     }
 
     // Text files feed the pool one line at a time, like OCR output.
     for doc in text_file_paths(categorized) {
-        if let Some(text) = read_capped_text(&doc) {
+        if let Some(text) = read_capped_text(&doc.path) {
             for line in text.lines() {
                 let trimmed = line.trim();
                 if !trimmed.is_empty() {
-                    pass.lines.push(SourcedLine {
-                        source: Source::TextFile(doc.clone()),
-                        text: trimmed.to_string(),
-                    });
+                    pass.lines.push(SourcedLine::new(
+                        Source::TextFile {
+                            path: doc.path.clone(),
+                            file_id: doc.file_id.clone(),
+                        },
+                        trimmed.to_string(),
+                    ));
                 }
             }
         }
@@ -179,6 +181,13 @@ pub(super) fn gather_non_ocr_sources(
     Ok(pass)
 }
 
+/// One of the folder's files as a text source: where it is on disk, and the
+/// candidate-relative id a value read off it points back at.
+struct SourceFile {
+    path: PathBuf,
+    file_id: String,
+}
+
 /// The filenames the classifier should see: artwork and documents.
 ///
 /// Audio filenames are excluded — their stems are almost always track titles,
@@ -187,11 +196,14 @@ pub(super) fn gather_non_ocr_sources(
 /// are already harvested as `CueField` lines, so the stem (`Album.cue` →
 /// `Album`) would only duplicate path-component signal at lower weight. Ignored
 /// files carry no release signal at all.
-fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<PathBuf> {
+fn enumerate_filename_inputs(categorized: &CategorizedFiles) -> Vec<SourceFile> {
     categorized
         .artwork()
         .chain(categorized.documents())
-        .map(|f| f.path.clone())
+        .map(|f| SourceFile {
+            path: f.path.clone(),
+            file_id: f.relative_path.clone(),
+        })
         .collect()
 }
 
@@ -219,11 +231,14 @@ fn cue_sheet_names(sheet: &crate::cue_flac::CueSheet) -> Vec<String> {
 
 /// `.txt` documents only. `.log` is rip-technical data with no artist/album
 /// content; `.cue` is harvested through its parsed sheet.
-fn text_file_paths(categorized: &CategorizedFiles) -> Vec<PathBuf> {
+fn text_file_paths(categorized: &CategorizedFiles) -> Vec<SourceFile> {
     categorized
         .documents()
         .filter(|f| has_ext(&f.path, "txt"))
-        .map(|f| f.path.clone())
+        .map(|f| SourceFile {
+            path: f.path.clone(),
+            file_id: f.relative_path.clone(),
+        })
         .collect()
 }
 
@@ -324,7 +339,10 @@ mod tests {
             ],
         };
 
-        let inputs = enumerate_filename_inputs(&categorized);
+        let inputs: Vec<PathBuf> = enumerate_filename_inputs(&categorized)
+            .into_iter()
+            .map(|file| file.path)
+            .collect();
         assert!(
             !inputs.iter().any(|p| p == &cue.path),
             "CUE names come from the parsed sheet, not the filename pool; got {inputs:?}",

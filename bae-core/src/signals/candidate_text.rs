@@ -21,7 +21,7 @@
 //!   trailing bracketed tails from a path segment.
 //! * `parse_filename_stem` — file stem, minus extension and leading track number.
 
-use crate::signals::{SignalOrigin, SourcedValue};
+use crate::signals::{ImageRegion, SignalOrigin, SourcedValue};
 use regex::Regex;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -40,15 +40,25 @@ use unicode_normalization::UnicodeNormalization;
 ///
 /// Inner separators are preserved verbatim: MusicBrainz indexes `WPCR-80001` and
 /// `WPCR 80001` as distinct tokens, so both forms survive when both appear. ZIP
-/// false positives are rejected. Dedupes by first-seen order.
+/// false positives are rejected.
+///
+/// One sighting per place a number was read: the same number on the back
+/// cover and in the folder name is two sightings, in first-seen order, and a
+/// number read twice off one file is one. A surface listing the numbers folds
+/// a number's sightings together and shows each place beside it.
 pub(crate) fn catalog_numbers_sourced(lines: &[SourcedLine]) -> Vec<SourcedValue> {
     let mut out: Vec<SourcedValue> = Vec::new();
-    let mut seen: HashSet<String> = HashSet::new();
+    let mut seen: HashSet<(String, SignalOrigin, Option<String>)> = HashSet::new();
     for line in lines {
         let origin = SignalOrigin::from_text_source(&line.source);
+        let file_id = line.source.file_id();
         for s in find_catalogs_in_line(&line.text) {
-            if seen.insert(s.clone()) {
-                out.push(SourcedValue::new(s, origin));
+            if seen.insert((s.clone(), origin, file_id.clone())) {
+                let sighting = match &file_id {
+                    Some(file_id) => SourcedValue::in_file(s, origin, file_id.clone()),
+                    None => SourcedValue::new(s, origin),
+                };
+                out.push(sighting.at(line.region));
             }
         }
     }
@@ -336,13 +346,41 @@ pub(crate) fn parse_filename_stem(path: &Path) -> Vec<String> {
 /// Where a `SourcedLine` came from — the clustering pipeline scores members by
 /// this. Folder brackets have no variant: they bypass this pipeline entirely,
 /// riding `Pool::bracket_catalogs` straight to the catalog output.
+///
+/// A file source carries the file twice: `path` is where it is on this disk,
+/// which is what tells one image's lines from another's; `file_id` is the
+/// candidate-relative path every other surface addresses the file by, which
+/// is what a value read off it points back at. `None` for a file that is not
+/// one of a scanned folder's — a library release's stored cover.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Source {
-    Artwork(PathBuf),
+    Artwork {
+        path: PathBuf,
+        file_id: Option<String>,
+    },
     PathComponent,
-    FilenameGeneric(PathBuf),
+    FilenameGeneric {
+        path: PathBuf,
+        file_id: String,
+    },
     CueField,
-    TextFile(PathBuf),
+    TextFile {
+        path: PathBuf,
+        file_id: String,
+    },
+}
+
+impl Source {
+    /// The candidate-relative id of the file this source is, where it is one.
+    pub(crate) fn file_id(&self) -> Option<String> {
+        match self {
+            Source::Artwork { file_id, .. } => file_id.clone(),
+            Source::FilenameGeneric { file_id, .. } | Source::TextFile { file_id, .. } => {
+                Some(file_id.clone())
+            }
+            Source::PathComponent | Source::CueField => None,
+        }
+    }
 }
 
 /// A candidate line tagged with its provenance. `text` stays verbatim for
@@ -351,6 +389,20 @@ pub enum Source {
 pub(crate) struct SourcedLine {
     pub source: Source,
     pub text: String,
+    /// Where on its image the line was read, for an artwork line whose
+    /// recognizer reports positions. `None` for every other source.
+    pub region: Option<ImageRegion>,
+}
+
+impl SourcedLine {
+    /// A line from a source that has no place on an image to name.
+    pub(crate) fn new(source: Source, text: String) -> Self {
+        Self {
+            source,
+            text,
+            region: None,
+        }
+    }
 }
 
 /// Minimum normalized length before a line is eligible for clustering.
@@ -423,9 +475,9 @@ pub(crate) fn source_weight(source: &Source) -> usize {
     match source {
         Source::CueField => 5,
         Source::PathComponent => 3,
-        Source::FilenameGeneric(_) => 1,
-        Source::Artwork(_) => 1,
-        Source::TextFile(_) => 1,
+        Source::FilenameGeneric { .. } => 1,
+        Source::Artwork { .. } => 1,
+        Source::TextFile { .. } => 1,
     }
 }
 

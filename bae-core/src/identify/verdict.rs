@@ -543,10 +543,13 @@ mod tests {
     #[test]
     fn chosen_catalog_failure_derives_to_failed() {
         let mut context = mk_context(7);
-        context.catalog.chosen = Some("CAT-7".to_string());
-        context.catalog.failures = vec![SourceFailure {
-            source: MetadataSource::MusicBrainz,
-            failure: crate::signals::LookupFailure::Network,
+        context.catalog.chosen = vec![crate::identify::state::ChosenCatalog {
+            value: "CAT-7".to_string(),
+            results: Vec::new(),
+            failures: vec![SourceFailure {
+                source: MetadataSource::MusicBrainz,
+                failure: crate::signals::LookupFailure::Network,
+            }],
         }];
         let state = crate::identify::state::re_derive_for_tests(context);
         assert!(matches!(state, IdentifyState::Failed { .. }));

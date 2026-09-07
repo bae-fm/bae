@@ -29,17 +29,59 @@ impl SignalOrigin {
     /// [`SourcedValue::origin_path`].
     pub fn from_text_source(source: &Source) -> Self {
         match source {
-            Source::Artwork(_) => SignalOrigin::Artwork,
+            Source::Artwork { .. } => SignalOrigin::Artwork,
             Source::PathComponent => SignalOrigin::FolderName,
-            Source::FilenameGeneric(_) => SignalOrigin::Filename,
+            Source::FilenameGeneric { .. } => SignalOrigin::Filename,
             Source::CueField => SignalOrigin::CueSheet,
-            Source::TextFile(_) => SignalOrigin::TextFile,
+            Source::TextFile { .. } => SignalOrigin::TextFile,
         }
+    }
+}
+
+/// Where on an image a value was read: the box the detector drew around the
+/// barcode or the line of text, as fractions of the image's width and height
+/// with the origin at the top-left corner. A surface crops the image to it to
+/// show the printed value itself rather than the whole scan.
+///
+/// Built only through [`ImageRegion::new`], which admits only finite fractions
+/// inside the image, so two regions compare exactly.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ImageRegion {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Eq for ImageRegion {}
+
+impl ImageRegion {
+    /// A region inside the image, or `None` for one a detector reported
+    /// outside it or as no number at all — a crop of that would show nothing.
+    pub fn new(x: f32, y: f32, width: f32, height: f32) -> Option<Self> {
+        let unit = 0.0..=1.0;
+        let inside = [x, y, width, height]
+            .iter()
+            .all(|value| value.is_finite() && unit.contains(value));
+        if !inside || width <= 0.0 || height <= 0.0 || x + width > 1.0 || y + height > 1.0 {
+            return None;
+        }
+        Some(Self {
+            x,
+            y,
+            width,
+            height,
+        })
     }
 }
 
 /// A catalog number or barcode paired with where it was harvested from, so a badge
 /// can show its `value` and explain its `origin`.
+///
+/// One sighting: the same value read off two images is two of these, each
+/// naming its own file and region. A surface that lists values folds the
+/// sightings of one value together; a surface that puts chips on files reads
+/// them one by one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourcedValue {
     pub value: String,
@@ -55,6 +97,10 @@ pub struct SourcedValue {
     /// Relative, never absolute: these rows sync, and a path from one device's
     /// disk means nothing on another's.
     pub origin_path: Option<String>,
+    /// Where on the image the value was read, for an origin that is an image
+    /// and a detector that reports where it looked. `None` for every other
+    /// origin, and for a detector that reports payloads alone.
+    pub region: Option<ImageRegion>,
 }
 
 impl SourcedValue {
@@ -64,6 +110,7 @@ impl SourcedValue {
             value,
             origin,
             origin_path: None,
+            region: None,
         }
     }
 
@@ -74,6 +121,13 @@ impl SourcedValue {
             value,
             origin,
             origin_path: Some(file_id),
+            region: None,
         }
+    }
+
+    /// The same sighting, with where on its image it was read.
+    pub fn at(mut self, region: Option<ImageRegion>) -> Self {
+        self.region = region;
+        self
     }
 }

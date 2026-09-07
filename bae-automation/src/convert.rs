@@ -476,16 +476,23 @@ mirror_enum! {
     variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
 }
 
-impl AutomationSourcedValue {
-    /// Not a copy: core's `origin_path` points at the file the value was read
-    /// off, which the automation shape does not carry.
+mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    pub(crate) fn from_core(value: bae_core::signals::SourcedValue) -> Self {
-        Self {
-            value: value.value,
-            origin: AutomationSignalOrigin::from_core(value.origin),
-        }
-    }
+    AutomationImageRegion = bae_core::signals::ImageRegion,
+    from_core: pub(crate) fn,
+    fields: { x, y, width, height },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSourcedValue = bae_core::signals::SourcedValue,
+    from_core: pub(crate) fn,
+    fields: {
+        value,
+        origin: (AutomationSignalOrigin),
+        origin_path,
+        region: (opt AutomationImageRegion),
+    },
 }
 
 mirror_enum! {

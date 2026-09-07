@@ -8,15 +8,62 @@
 use super::*;
 
 /// Mirrors bae-core's `identify::LookupView` — how one provider's lookup of
-/// one value is going. Mid-flight result payloads reduce to a count; the full
-/// match set surfaces only in a terminal state.
+/// one value is going, one cell of the run's ledger.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationLookupState {
+    /// Not asked yet: the provider's walk has not reached this code.
+    Queued,
+    /// Never asked: the provider's walk ended at an earlier code.
+    NotAsked,
     LookingUp,
-    Found { count: u32 },
+    Found {
+        count: u32,
+        groups: Vec<AutomationReleaseGroup>,
+    },
     NoMatch,
-    Failed { failure: AutomationLookupFailure },
+    Failed {
+        failure: AutomationLookupFailure,
+    },
+}
+
+/// Mirrors bae-core's `identify::ValueSource` — one place a value was read.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationValueSource {
+    pub origin: AutomationSignalOrigin,
+    pub file: Option<String>,
+    pub region: Option<AutomationImageRegion>,
+}
+
+/// Mirrors bae-core's `identify::ProviderCell`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationProviderCell {
+    pub source: AutomationMetadataSource,
+    pub lookup: AutomationLookupState,
+}
+
+/// Mirrors bae-core's `identify::SignalValueRow` — one value extraction
+/// found, where it was found, and every provider's lookup of it.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationSignalValueRow {
+    pub value: String,
+    pub sources: Vec<AutomationValueSource>,
+    pub cells: Vec<AutomationProviderCell>,
+}
+
+/// Mirrors bae-core's `identify::DiscIdFileKind`.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AutomationDiscIdFileKind {
+    Log,
+    Cue,
+}
+
+/// Mirrors bae-core's `identify::DiscIdFile`.
+#[derive(Debug, Clone, Serialize)]
+pub struct AutomationDiscIdFile {
+    pub kind: AutomationDiscIdFileKind,
+    pub file: String,
 }
 
 /// Mirrors bae-core's `identify::DiscIdStepView`.
@@ -30,82 +77,32 @@ pub enum AutomationDiscIdStep {
     },
     Read {
         disc_id: String,
-        source_file: Option<String>,
+        source: Option<AutomationDiscIdFile>,
         lookup: AutomationLookupState,
     },
-}
-
-/// Mirrors bae-core's `identify::ArtworkStepView`.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationArtworkStep {
-    Absent,
-    Reading {
-        current: Option<String>,
-        position: u32,
-        total: u32,
-        barcodes: u32,
-        catalogs: u32,
-    },
-    Read {
-        images: u32,
-        barcodes: u32,
-        catalogs: u32,
-    },
-    Failed {
-        failure: AutomationLookupFailure,
-        read: u32,
-        total: u32,
-    },
-}
-
-/// Mirrors bae-core's `identify::BarcodeLookupView`.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case", tag = "kind")]
-pub enum AutomationBarcodeLookupState {
-    Trying {
-        barcode: String,
-        position: u32,
-        total: u32,
-    },
-    Matched {
-        barcode: Option<String>,
-        count: u32,
-    },
-    Exhausted,
-    Failed {
-        failure: AutomationLookupFailure,
-    },
-}
-
-/// Mirrors bae-core's `identify::ProviderBarcodeLookupView`.
-#[derive(Debug, Clone, Serialize)]
-pub struct AutomationProviderBarcodeLookup {
-    pub source: AutomationMetadataSource,
-    pub state: AutomationBarcodeLookupState,
 }
 
 /// Mirrors bae-core's `identify::BarcodeStepView`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationBarcodeStep {
-    AwaitingArtwork,
     Absent,
     NoCodes,
     ScanFailed {
         failure: AutomationLookupFailure,
     },
-    Lookups {
-        codes: Vec<String>,
-        providers: Vec<AutomationProviderBarcodeLookup>,
+    Rows {
+        scanning: bool,
+        rows: Vec<AutomationSignalValueRow>,
     },
 }
 
-/// Mirrors bae-core's `identify::ProviderLookupView`.
+/// Mirrors bae-core's `identify::CatalogCandidateView` — a number offered
+/// but not looked up.
 #[derive(Debug, Clone, Serialize)]
-pub struct AutomationProviderLookup {
-    pub source: AutomationMetadataSource,
-    pub state: AutomationLookupState,
+pub struct AutomationCatalogCandidate {
+    pub value: String,
+    pub sources: Vec<AutomationValueSource>,
 }
 
 /// Mirrors bae-core's `identify::CatalogStepView`.
@@ -113,22 +110,19 @@ pub struct AutomationProviderLookup {
 #[serde(rename_all = "snake_case", tag = "kind")]
 pub enum AutomationCatalogStep {
     NoneFound,
-    Unchosen {
-        available: u32,
-    },
-    Chosen {
-        value: String,
-        lookups: Vec<AutomationProviderLookup>,
+    Numbers {
+        scanning: bool,
+        rows: Vec<AutomationSignalValueRow>,
+        candidates: Vec<AutomationCatalogCandidate>,
     },
 }
 
-/// Mirrors bae-core's `identify::IdentifyRunView` — a run in flight as the
-/// steps it is taking, each provider's part of each reported on its own.
+/// Mirrors bae-core's `identify::IdentifyRunView` — the run as its ledger,
+/// each provider's part of each signal reported on its own.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationIdentifyRun {
     pub providers: Vec<AutomationMetadataSource>,
     pub disc_id: AutomationDiscIdStep,
-    pub artwork: AutomationArtworkStep,
     pub barcode: AutomationBarcodeStep,
     pub catalog: AutomationCatalogStep,
 }
@@ -181,21 +175,29 @@ pub enum AutomationIdentifyState {
         library_statuses: Vec<AutomationLibraryStatus>,
         provenance: Vec<AutomationResultProvenance>,
     },
+    /// A settled state carries the run it settled as; none when extraction
+    /// handed the run nothing to lay out, or the verdict was stood back up
+    /// from the store.
     Found {
+        run: Option<AutomationIdentifyRun>,
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,
         track_count: u32,
         provenance: Vec<AutomationResultProvenance>,
     },
-    NotFoundAnywhere,
+    NotFoundAnywhere {
+        run: Option<AutomationIdentifyRun>,
+    },
     ManualOnly {
         track_count: u32,
+        run: Option<AutomationIdentifyRun>,
     },
     /// A lookup failed, with whatever the surviving evidence still found: one
     /// provider failing leaves the other's matches standing. Empty groups mean
     /// nothing answered, or that the failure was resumed from its stored
     /// verdict.
     Failed {
+        run: Option<AutomationIdentifyRun>,
         failures: Vec<AutomationIdentifyFailure>,
         groups: Vec<AutomationReleaseGroup>,
         library_statuses: Vec<AutomationLibraryStatus>,

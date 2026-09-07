@@ -467,28 +467,40 @@ async fn stream_extraction(
                 return;
             }
 
-            // Accumulate barcodes (deduped by value) and text lines.
-            for value in analysis.barcodes {
+            // Accumulate barcodes — one sighting per image a code was read
+            // off, a code read twice off one image once — and text lines.
+            for barcode in analysis.barcodes {
                 // A run of one digit is printed on nothing; OCR reads them off
                 // borders and shadows, and looking one up can only miss.
-                if crate::signals::is_placeholder_code(&value) {
+                if crate::signals::is_placeholder_code(&barcode.payload) {
                     continue;
                 }
-                if !gathered.barcodes.iter().any(|b| b.value == value) {
+                let seen_here = gathered
+                    .barcodes
+                    .iter()
+                    .any(|b| b.value == barcode.payload && &b.origin_path == file_id);
+                if !seen_here {
                     // The image it was read off, so a surface can put the
                     // barcode on that image rather than beside the release.
-                    gathered.barcodes.push(match file_id {
-                        Some(file_id) => {
-                            SourcedValue::in_file(value, SignalOrigin::Artwork, file_id.clone())
-                        }
-                        None => SourcedValue::new(value, SignalOrigin::Artwork),
-                    });
+                    let sighting = match file_id {
+                        Some(file_id) => SourcedValue::in_file(
+                            barcode.payload,
+                            SignalOrigin::Artwork,
+                            file_id.clone(),
+                        ),
+                        None => SourcedValue::new(barcode.payload, SignalOrigin::Artwork),
+                    };
+                    gathered.barcodes.push(sighting.at(barcode.region));
                 }
             }
-            for text in analysis.text_lines {
+            for line in analysis.text_lines {
                 gathered.pool.push(SourcedLine {
-                    source: Source::Artwork(path.clone()),
-                    text,
+                    source: Source::Artwork {
+                        path: path.clone(),
+                        file_id: file_id.clone(),
+                    },
+                    text: line.text,
+                    region: line.region,
                 });
             }
 

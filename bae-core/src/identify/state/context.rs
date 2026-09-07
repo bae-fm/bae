@@ -114,13 +114,36 @@ impl DiscIdEvidence {
     }
 }
 
+/// Where one provider's walk through the codes ended. Recorded when the pipe
+/// settles, so a settled run can be laid out code by code — which code each
+/// provider matched, or that it tried every one, or which it failed on — and
+/// a pipe stood back up from the evidence is the one that settled.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RecordedWalk {
+    pub source: MetadataSource,
+    pub end: WalkEnd,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WalkEnd {
+    /// The walk stopped at `code`, which matched.
+    Matched { code: String },
+    /// Every code tried, none matched.
+    Exhausted,
+    /// The walk stopped at `code`, which the provider could not answer. The
+    /// reason is the provider's entry in `BarcodeEvidence::failures`.
+    Failed { code: String },
+}
+
 /// The candidate's barcodes and what asking about them produced. Every
 /// configured provider walks the codes on its own, so failures are per
 /// provider — and reading the codes off the artwork can itself fail, before any
 /// provider is asked.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct BarcodeEvidence {
-    /// The barcode code payloads with their origins.
+    /// Every sighting of a barcode in the candidate's files, with its origin.
+    /// One code read off two images is two entries; the walks ask each code
+    /// once.
     pub codes: Vec<SourcedValue>,
     /// Whether there was a barcode source at all. Empty `codes` is ambiguous on
     /// its own — artwork scanned that held no barcode, and nothing to scan,
@@ -142,6 +165,9 @@ pub struct BarcodeEvidence {
     pub scan_failure: Option<LookupFailure>,
     /// Which barcode produced `results`. `None` until matched.
     pub matched: Option<String>,
+    /// Where each provider's walk ended, once the pipe settled. Empty while
+    /// nothing has settled, and for evidence stood up from a stored verdict.
+    pub walks: Vec<RecordedWalk>,
 }
 
 impl BarcodeEvidence {
@@ -166,7 +192,8 @@ impl BarcodeEvidence {
         self.results = progress.results();
         self.failures = progress.failures();
         self.scan_failure = progress.scan_failure().cloned();
-        self.matched = progress.matched_barcode(self.matched.as_deref());
+        self.matched = progress.matched_barcode();
+        self.walks = progress.walks();
     }
 
     /// Drop what the last lookup left, for a re-run that replaces it. The scan
@@ -176,6 +203,12 @@ impl BarcodeEvidence {
         self.results.clear();
         self.failures.clear();
         self.matched = None;
+        self.walks.clear();
+    }
+
+    /// The codes the walks ask, each once, in the order they were first seen.
+    pub fn code_values(&self) -> Vec<String> {
+        unique_values(&self.codes)
     }
 
     /// `results` as the current selection sees them: nothing when the user
@@ -207,73 +240,145 @@ impl BarcodeEvidence {
     }
 }
 
+/// One catalog number the run looks up, and what asking every provider about
+/// it produced.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ChosenCatalog {
+    pub value: String,
+    /// The number's lookup results, once settled.
+    pub results: Vec<(MetadataResult, LibraryStatus)>,
+    /// The providers that did not answer about it.
+    pub failures: Vec<SourceFailure>,
+}
+
+impl ChosenCatalog {
+    fn new(value: String) -> Self {
+        Self {
+            value,
+            results: Vec::new(),
+            failures: Vec::new(),
+        }
+    }
+}
+
 /// The catalog numbers extracted from the candidate and what asking about the
-/// chosen one produced. There is no checkbox: choosing a number is what turns
-/// the signal on, and choosing it again turns it back off.
+/// chosen ones produced. There is no checkbox: choosing a number is what turns
+/// it on, and choosing it again turns it back off. Several can be on at once,
+/// each with its own lookup, because one number can name thirty releases and
+/// the next one none — which of them is the disc's is the person's to see.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct CatalogEvidence {
-    /// Every catalog number extracted from the candidate, with its origin —
-    /// what the catalog badge's list offers.
+    /// Every sighting of a catalog number in the candidate's files, with its
+    /// origin. One number read off two images is two entries.
     pub numbers: Vec<SourcedValue>,
-    /// Which of `numbers` the run is using. `None` — the resting state — keeps
-    /// the catalog out of the combine entirely.
-    pub chosen: Option<String>,
-    /// The chosen number's lookup results, once settled.
-    pub results: Vec<(MetadataResult, LibraryStatus)>,
-    /// The providers that did not answer.
-    pub failures: Vec<SourceFailure>,
+    /// The numbers the run looks up, in the order they were chosen. Empty — the
+    /// resting state — keeps the catalog out of the combine entirely.
+    pub chosen: Vec<ChosenCatalog>,
 }
 
 impl CatalogEvidence {
     /// Take the extracted numbers from a new snapshot. A chosen number the new
-    /// snapshot no longer offers is dropped along with its lookup; the choice
+    /// snapshot no longer offers is dropped along with its lookup; a choice
     /// has to be one of the values on the list.
     fn refresh_input(&mut self, numbers: &[SourcedValue]) {
         self.numbers = numbers.to_vec();
-        if let Some(chosen) = &self.chosen {
-            if !self.numbers.iter().any(|c| &c.value == chosen) {
-                self.chosen = None;
-                self.clear_lookup();
-            }
+        self.chosen
+            .retain(|chosen| self.numbers.iter().any(|c| c.value == chosen.value));
+    }
+
+    /// Record what the settled pipe found, number by number.
+    fn record(&mut self, progress: &CatalogProgress) {
+        for chosen in &mut self.chosen {
+            chosen.results = progress.results_for(&chosen.value);
+            chosen.failures = progress.failures_for(&chosen.value);
         }
     }
 
-    /// Record what the settled pipe found.
-    fn record(&mut self, progress: &CatalogProgress) {
-        self.results = progress.results();
-        self.failures = progress.failures();
+    /// Clear what the last catalog lookups left, for a re-run that replaces
+    /// them. What is chosen stays chosen.
+    pub(super) fn clear_lookup(&mut self) {
+        for chosen in &mut self.chosen {
+            chosen.results.clear();
+            chosen.failures.clear();
+        }
     }
 
-    /// Clear what the last catalog lookup left, for a choice that replaces it.
-    pub(super) fn clear_lookup(&mut self) {
-        self.results.clear();
-        self.failures.clear();
+    /// Whether the run looks `value` up.
+    pub fn is_chosen(&self, value: &str) -> bool {
+        self.chosen.iter().any(|chosen| chosen.value == value)
+    }
+
+    /// Add `value` to the numbers the run looks up. Its lookup has not run.
+    pub(super) fn choose(&mut self, value: String) {
+        self.chosen.push(ChosenCatalog::new(value));
+    }
+
+    /// Take `value` out of the numbers the run looks up, dropping whatever
+    /// its lookup found.
+    pub(super) fn unchoose(&mut self, value: &str) {
+        self.chosen.retain(|chosen| chosen.value != value);
+    }
+
+    /// The values the run looks up, each once, in the order they were chosen.
+    pub fn chosen_values(&self) -> Vec<String> {
+        self.chosen
+            .iter()
+            .map(|chosen| chosen.value.clone())
+            .collect()
+    }
+
+    /// The numbers offered, each once, in the order they were first seen —
+    /// a number's sightings fold into one tile.
+    pub fn number_values(&self) -> Vec<String> {
+        unique_values(&self.numbers)
     }
 
     /// `results` as the current selection sees them. Nothing chosen means
     /// nothing ran, so the catalog takes no part. Takes the results rather than
-    /// reading `self.results` so a lookup still in flight can be combined under
-    /// the same rule.
+    /// reading the recorded ones so a lookup still in flight can be combined
+    /// under the same rule.
     pub(crate) fn active<T>(&self, results: Vec<T>) -> Vec<T> {
-        if self.chosen.is_none() {
+        if self.chosen.is_empty() {
             Vec::new()
         } else {
             results
         }
     }
 
-    /// The results combine sees. Nothing chosen means nothing ran, so they are
-    /// empty and the catalog takes no part.
+    /// The results combine sees: every chosen number's, in chosen order.
+    /// Nothing chosen means nothing ran, so they are empty and the catalog
+    /// takes no part.
     pub(super) fn active_results(&self) -> Vec<(MetadataResult, LibraryStatus)> {
-        self.active(self.results.clone())
+        self.chosen
+            .iter()
+            .flat_map(|chosen| chosen.results.iter().cloned())
+            .collect()
     }
 
-    /// Failures belonging to evidence the current selection still uses.
+    /// Failures belonging to evidence the current selection still uses: every
+    /// chosen number's.
     fn active_failures(&self, into: &mut Vec<IdentifyFailure>) {
-        if self.chosen.is_some() {
-            into.extend(self.failures.iter().cloned().map(IdentifyFailure::Catalog));
+        for chosen in &self.chosen {
+            into.extend(
+                chosen
+                    .failures
+                    .iter()
+                    .cloned()
+                    .map(IdentifyFailure::Catalog),
+            );
         }
     }
+}
+
+/// Each value among `sightings` once, in the order it was first seen.
+fn unique_values(sightings: &[SourcedValue]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for sighting in sightings {
+        if !out.contains(&sighting.value) {
+            out.push(sighting.value.clone());
+        }
+    }
+    out
 }
 
 /// Everything a settled state needs to re-derive its outcome when the user toggles
@@ -341,5 +446,17 @@ impl SignalsContext {
         self.barcode.active_failures(&mut failures);
         self.catalog.active_failures(&mut failures);
         failures
+    }
+
+    /// Whether extraction handed this run anything at all: a disc ID it read
+    /// or failed to read, a barcode source, a catalog number. A context with
+    /// none was stood up from a stored verdict, or belongs to a folder that
+    /// carries nothing to look up — either way there is no run to lay out.
+    pub fn has_inputs(&self) -> bool {
+        !matches!(self.disc.signal, DiscIdSignal::Absent { .. })
+            || self.barcode.had_source
+            || !self.barcode.codes.is_empty()
+            || self.barcode.scan_failure.is_some()
+            || !self.catalog.numbers.is_empty()
     }
 }

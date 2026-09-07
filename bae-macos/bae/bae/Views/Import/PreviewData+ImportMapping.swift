@@ -628,6 +628,7 @@
             var candidate = unidentifiedMappingCandidate
             candidate.session.presentation = .findOnline
             candidate.resumedIdentifyState = .found(
+                run: identifyRunFound,
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,

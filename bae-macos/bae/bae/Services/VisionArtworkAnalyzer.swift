@@ -11,6 +11,9 @@ private let logger = Logger.bae("VisionArtworkAnalyzer")
 /// against it in a single `perform`. Synchronous — `perform` blocks until the
 /// completion handlers fire.
 ///
+/// Every payload and line crosses with the box Vision drew around it, so a
+/// surface can show the printed value itself rather than the whole scan.
+///
 /// Rust calls this from `tokio::task::spawn_blocking`, so a slow Vision
 /// pass won't park the async runtime and never touches Swift's cooperative
 /// pool. No caching layer here: the extraction service makes one call per
@@ -21,26 +24,35 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }
 
-        var payloads: [String] = []
+        var barcodes: [BridgeDetectedBarcode] = []
         let barcodeRequest = VNDetectBarcodesRequest { request, _ in
             let observations =
                 (request.results as? [VNBarcodeObservation]) ?? []
-            payloads = observations.compactMap(\.payloadStringValue)
+            barcodes = Self.detectedBarcodes(observations)
         }
         // CDs/LPs use EAN-13 almost universally; UPC-A is EAN-13 with a
         // leading "0". Keep UPC-E for the rare short form. QR/code128 don't
         // appear on music retail packaging and just add noise.
         barcodeRequest.symbologies = [.ean8, .ean13, .upce]
 
-        var textLines: [String] = []
+        var textLines: [BridgeRecognizedLine] = []
         let textRequest = VNRecognizeTextRequest { request, _ in
             let observations =
                 (request.results as? [VNRecognizedTextObservation]) ?? []
-            textLines =
-                observations
-                .compactMap { $0.topCandidates(1).first?.string }
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                .filter { $0.count >= 3 && $0.count <= 80 }
+            textLines = observations.compactMap { observation in
+                guard let text = observation.topCandidates(1).first?.string
+                else { return nil }
+                let trimmed = text.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+                guard trimmed.count >= 3, trimmed.count <= 80 else {
+                    return nil
+                }
+                return BridgeRecognizedLine(
+                    text: trimmed,
+                    region: Self.region(of: observation.boundingBox)
+                )
+            }
         }
         textRequest.recognitionLevel = .accurate
         textRequest.automaticallyDetectsLanguage = true
@@ -63,9 +75,37 @@ final class VisionArtworkAnalyzer: ArtworkAnalyzerCallback {
             return BridgeArtworkAnalysis(barcodes: [], textLines: [])
         }
 
-        return BridgeArtworkAnalysis(
-            barcodes: Array(Set(payloads)).sorted(),
-            textLines: textLines
+        return BridgeArtworkAnalysis(barcodes: barcodes, textLines: textLines)
+    }
+
+    /// Each payload once, at the box it was first seen in, in payload order
+    /// so two passes over one image read the same.
+    private static func detectedBarcodes(
+        _ observations: [VNBarcodeObservation]
+    ) -> [BridgeDetectedBarcode] {
+        var seen: Set<String> = []
+        return
+            observations
+            .compactMap { observation -> BridgeDetectedBarcode? in
+                guard let payload = observation.payloadStringValue,
+                    seen.insert(payload).inserted
+                else { return nil }
+                return BridgeDetectedBarcode(
+                    payload: payload,
+                    region: region(of: observation.boundingBox)
+                )
+            }
+            .sorted { $0.payload < $1.payload }
+    }
+
+    /// Vision's box, whose origin is the image's bottom-left corner, as core
+    /// takes it: fractions of the image from its top-left corner.
+    private static func region(of box: CGRect) -> BridgeImageRegion {
+        BridgeImageRegion(
+            x: Float(box.minX),
+            y: Float(1 - box.maxY),
+            width: Float(box.width),
+            height: Float(box.height)
         )
     }
 

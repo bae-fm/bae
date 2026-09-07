@@ -190,11 +190,51 @@ mirror_enum! {
     BridgeLookupState = bae_core::identify::LookupView,
     from_core: fn,
     variants: {
+        Queued,
+        NotAsked,
         LookingUp,
-        Found { count },
+        Found { count, groups: (each BridgeReleaseGroup) },
         NoMatch,
         Failed { failure: (BridgeLookupFailure) },
     },
+}
+
+mirror_struct! {
+    BridgeValueSource = bae_core::identify::ValueSource,
+    from_core: fn,
+    fields: {
+        origin: (BridgeSignalOrigin),
+        file,
+        region: (opt BridgeImageRegion),
+    },
+}
+
+mirror_struct! {
+    BridgeProviderCell = bae_core::identify::ProviderCell,
+    from_core: fn,
+    fields: { source: (BridgeMetadataSource), lookup: (BridgeLookupState) },
+}
+
+mirror_struct! {
+    BridgeSignalValueRow = bae_core::identify::SignalValueRow,
+    from_core: fn,
+    fields: {
+        value,
+        sources: (each BridgeValueSource),
+        cells: (each BridgeProviderCell),
+    },
+}
+
+mirror_enum! {
+    BridgeDiscIdFileKind = bae_core::identify::DiscIdFileKind,
+    from_core: fn,
+    variants: { Log, Cue },
+}
+
+mirror_struct! {
+    BridgeDiscIdFile = bae_core::identify::DiscIdFile,
+    from_core: fn,
+    fields: { kind: (BridgeDiscIdFileKind), file },
 }
 
 mirror_enum! {
@@ -204,85 +244,29 @@ mirror_enum! {
         Reading,
         Absent,
         ReadFailed { failure: (BridgeLookupFailure) },
-        Read { disc_id, source_file, lookup: (BridgeLookupState) },
+        Read {
+            disc_id,
+            source: (opt BridgeDiscIdFile),
+            lookup: (BridgeLookupState),
+        },
     },
-}
-
-/// Not a `mirror_enum`: `Failed` renames core's `read` to `images_read`, which
-/// is what a surface says the number is.
-impl BridgeArtworkStep {
-    fn from_core(v: bae_core::identify::ArtworkStepView) -> Self {
-        use bae_core::identify::ArtworkStepView;
-        match v {
-            ArtworkStepView::Absent => BridgeArtworkStep::Absent,
-            ArtworkStepView::Reading {
-                current,
-                position,
-                total,
-                barcodes,
-                catalogs,
-            } => BridgeArtworkStep::Reading {
-                current,
-                position,
-                total,
-                barcodes,
-                catalogs,
-            },
-            ArtworkStepView::Read {
-                images,
-                barcodes,
-                catalogs,
-            } => BridgeArtworkStep::Read {
-                images,
-                barcodes,
-                catalogs,
-            },
-            ArtworkStepView::Failed {
-                failure,
-                read,
-                total,
-            } => BridgeArtworkStep::Failed {
-                failure: BridgeLookupFailure::from_core(failure),
-                images_read: read,
-                total,
-            },
-        }
-    }
-}
-
-mirror_enum! {
-    BridgeBarcodeLookupState = bae_core::identify::BarcodeLookupView,
-    from_core: fn,
-    variants: {
-        Trying { barcode, position, total },
-        Matched { barcode, count },
-        Exhausted,
-        Failed { failure: (BridgeLookupFailure) },
-    },
-}
-
-mirror_struct! {
-    BridgeProviderBarcodeLookup = bae_core::identify::ProviderBarcodeLookupView,
-    from_core: fn,
-    fields: { source: (BridgeMetadataSource), state: (BridgeBarcodeLookupState) },
 }
 
 mirror_enum! {
     BridgeBarcodeStep = bae_core::identify::BarcodeStepView,
     from_core: fn,
     variants: {
-        AwaitingArtwork,
         Absent,
         NoCodes,
         ScanFailed { failure: (BridgeLookupFailure) },
-        Lookups { codes, providers: (each BridgeProviderBarcodeLookup) },
+        Rows { scanning, rows: (each BridgeSignalValueRow) },
     },
 }
 
 mirror_struct! {
-    BridgeProviderLookup = bae_core::identify::ProviderLookupView,
+    BridgeCatalogCandidate = bae_core::identify::CatalogCandidateView,
     from_core: fn,
-    fields: { source: (BridgeMetadataSource), state: (BridgeLookupState) },
+    fields: { value, sources: (each BridgeValueSource) },
 }
 
 mirror_enum! {
@@ -290,8 +274,11 @@ mirror_enum! {
     from_core: fn,
     variants: {
         NoneFound,
-        Unchosen { available },
-        Chosen { value, lookups: (each BridgeProviderLookup) },
+        Numbers {
+            scanning,
+            rows: (each BridgeSignalValueRow),
+            candidates: (each BridgeCatalogCandidate),
+        },
     },
 }
 
@@ -301,7 +288,6 @@ mirror_struct! {
     fields: {
         providers: (each BridgeMetadataSource),
         disc_id: (BridgeDiscIdStep),
-        artwork: (BridgeArtworkStep),
         barcode: (BridgeBarcodeStep),
         catalog: (BridgeCatalogStep),
     },
@@ -444,11 +430,13 @@ impl BridgeIdentifyState {
                     .collect(),
             },
             IdentifyStateView::Found {
+                run,
                 groups,
                 library_statuses,
                 track_count,
                 provenance,
             } => BridgeIdentifyState::Found {
+                run: run.map(BridgeIdentifyRun::from_core),
                 groups: groups
                     .into_iter()
                     .map(BridgeReleaseGroup::from_core)
@@ -460,16 +448,21 @@ impl BridgeIdentifyState {
                     .map(|(release_id, p)| (release_id, BridgeResultProvenance::from_core(p)))
                     .collect(),
             },
-            IdentifyStateView::NotFoundAnywhere => BridgeIdentifyState::NotFoundAnywhere,
-            IdentifyStateView::ManualOnly { track_count } => {
-                BridgeIdentifyState::ManualOnly { track_count }
-            }
+            IdentifyStateView::NotFoundAnywhere { run } => BridgeIdentifyState::NotFoundAnywhere {
+                run: run.map(BridgeIdentifyRun::from_core),
+            },
+            IdentifyStateView::ManualOnly { track_count, run } => BridgeIdentifyState::ManualOnly {
+                track_count,
+                run: run.map(BridgeIdentifyRun::from_core),
+            },
             IdentifyStateView::Failed {
+                run,
                 failures,
                 groups,
                 library_statuses,
                 provenance,
             } => BridgeIdentifyState::Failed {
+                run: run.map(BridgeIdentifyRun::from_core),
                 failures: failures.into_iter().map(identify_failure).collect(),
                 groups: groups
                     .into_iter()
@@ -535,22 +528,6 @@ mod tests {
     use bae_core::import::MetadataSource;
     use bae_core::signals::{DiscIdSignal, LookupFailure, SignalOrigin, SourcedValue};
 
-    #[test]
-    fn failed_artwork_preserves_the_number_of_images_read() {
-        assert_eq!(
-            BridgeArtworkStep::from_core(bae_core::identify::ArtworkStepView::Failed {
-                failure: LookupFailure::ArtworkAnalysis,
-                read: 2,
-                total: 5,
-            }),
-            BridgeArtworkStep::Failed {
-                failure: BridgeLookupFailure::ArtworkAnalysis,
-                images_read: 2,
-                total: 5,
-            }
-        );
-    }
-
     fn in_flight(barcode: BarcodeProgress) -> IdentifyState {
         IdentifyState::Triangulating {
             discid: DiscidProgress::Skipped { track_count: 9 },
@@ -564,9 +541,10 @@ mod tests {
                     ..Default::default()
                 },
                 barcode: BarcodeEvidence {
-                    codes: vec![SourcedValue::new(
+                    codes: vec![SourcedValue::in_file(
                         "0123456789012".to_string(),
                         SignalOrigin::Artwork,
+                        "back.jpg".to_string(),
                     )],
                     had_source: true,
                     ..Default::default()
@@ -584,11 +562,11 @@ mod tests {
         }
     }
 
-    /// A provider that failed its barcode walk crosses with its name on it
-    /// and beside the provider still walking, so a surface can say which one
-    /// to retry while the other keeps going.
+    /// A code crosses as one row: where it was read, and one cell per
+    /// provider — the one still looking beside the one that failed, so a
+    /// surface can say which to retry while the other keeps going.
     #[test]
-    fn a_failed_provider_crosses_beside_the_one_still_looking() {
+    fn a_code_crosses_as_a_row_with_one_cell_per_provider() {
         let step = barcode_step(in_flight(BarcodeProgress::Lookups {
             codes: vec!["0123456789012".to_string()],
             providers: vec![
@@ -602,35 +580,38 @@ mod tests {
                         failure: LookupFailure::Diagnostic {
                             detail: "provider lookup failed".to_string(),
                         },
+                        index: 0,
                     },
                 },
             ],
         }));
-        let BridgeBarcodeStep::Lookups { codes, providers } = step else {
-            panic!("a walk in flight crosses as lookups, got {step:?}");
+        let BridgeBarcodeStep::Rows { scanning, rows } = step else {
+            panic!("a walk in flight crosses as rows, got {step:?}");
         };
-        assert_eq!(codes, vec!["0123456789012".to_string()]);
+        assert!(!scanning);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].value, "0123456789012");
         assert_eq!(
-            providers,
-            vec![
-                BridgeProviderBarcodeLookup {
-                    source: BridgeMetadataSource::MusicBrainz,
-                    state: BridgeBarcodeLookupState::Trying {
-                        barcode: "0123456789012".to_string(),
-                        position: 1,
-                        total: 1,
-                    },
-                },
-                BridgeProviderBarcodeLookup {
-                    source: BridgeMetadataSource::Discogs,
-                    state: BridgeBarcodeLookupState::Failed {
-                        failure: BridgeLookupFailure::Diagnostic {
-                            detail: "provider lookup failed".to_string(),
-                        },
-                    },
-                },
-            ]
+            rows[0].sources,
+            vec![BridgeValueSource {
+                origin: BridgeSignalOrigin::Artwork,
+                file: Some("back.jpg".to_string()),
+                region: None,
+            }]
         );
+        assert_eq!(rows[0].cells.len(), 2);
+        assert_eq!(rows[0].cells[0].source, BridgeMetadataSource::MusicBrainz);
+        assert!(matches!(
+            rows[0].cells[0].lookup,
+            BridgeLookupState::LookingUp
+        ));
+        assert_eq!(rows[0].cells[1].source, BridgeMetadataSource::Discogs);
+        assert!(matches!(
+            &rows[0].cells[1].lookup,
+            BridgeLookupState::Failed {
+                failure: BridgeLookupFailure::Diagnostic { detail }
+            } if detail == "provider lookup failed"
+        ));
     }
 
     /// Reading the candidate's barcodes failing is not a provider's failure,

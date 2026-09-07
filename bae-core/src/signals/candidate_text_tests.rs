@@ -6,10 +6,7 @@ use super::*;
 fn cats(lines: &[String]) -> Vec<String> {
     let sourced: Vec<SourcedLine> = lines
         .iter()
-        .map(|t| SourcedLine {
-            source: Source::CueField,
-            text: t.clone(),
-        })
+        .map(|t| SourcedLine::new(Source::CueField, t.clone()))
         .collect();
     catalog_numbers_sourced(&sourced)
         .into_iter()
@@ -104,14 +101,16 @@ fn catalogs_two_internal_separators_rejected() {
 fn sourced_catalogs_attribute_origin_per_line() {
     // Folder brackets bypass this path, so a path component and an artwork
     // line stand in. Each survivor carries its source's `SignalOrigin`.
+    let region = ImageRegion::new(0.1, 0.8, 0.3, 0.05);
     let lines = vec![
+        SourcedLine::new(Source::PathComponent, "WPCR-80001".to_string()),
         SourcedLine {
-            source: Source::PathComponent,
-            text: "WPCR-80001".to_string(),
-        },
-        SourcedLine {
-            source: Source::Artwork(PathBuf::from("/cover.jpg")),
+            source: Source::Artwork {
+                path: PathBuf::from("/cover.jpg"),
+                file_id: Some("cover.jpg".to_string()),
+            },
             text: "COCQ 84487".to_string(),
+            region,
         },
     ];
     let out = catalog_numbers_sourced(&lines);
@@ -119,8 +118,39 @@ fn sourced_catalogs_attribute_origin_per_line() {
         out,
         vec![
             SourcedValue::new("WPCR-80001".to_string(), SignalOrigin::FolderName),
-            SourcedValue::new("COCQ 84487".to_string(), SignalOrigin::Artwork),
+            SourcedValue::in_file(
+                "COCQ 84487".to_string(),
+                SignalOrigin::Artwork,
+                "cover.jpg".to_string()
+            )
+            .at(region),
         ],
+    );
+}
+
+/// One number read off two files is two sightings, each pointing at its own
+/// file; read twice off one file, it is one.
+#[test]
+fn sourced_catalogs_keep_one_sighting_per_file() {
+    let on = |file: &str, text: &str| SourcedLine {
+        source: Source::Artwork {
+            path: PathBuf::from(format!("/{file}")),
+            file_id: Some(file.to_string()),
+        },
+        text: text.to_string(),
+        region: None,
+    };
+    let lines = vec![
+        on("back.jpg", "WPCR-80001"),
+        on("back.jpg", "Cat. WPCR-80001"),
+        on("inlay.jpg", "WPCR-80001"),
+    ];
+    assert_eq!(
+        catalog_numbers_sourced(&lines)
+            .iter()
+            .map(|c| c.origin_path.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("back.jpg"), Some("inlay.jpg")]
     );
 }
 
@@ -451,24 +481,21 @@ fn normalize_strips_leading_trailing_nonalnum() {
 // MARK: - cluster_lines
 
 fn artwork_line(path: &str, text: &str) -> SourcedLine {
-    SourcedLine {
-        source: Source::Artwork(PathBuf::from(path)),
-        text: text.to_string(),
-    }
+    SourcedLine::new(
+        Source::Artwork {
+            path: PathBuf::from(path),
+            file_id: None,
+        },
+        text.to_string(),
+    )
 }
 
 fn path_line(text: &str) -> SourcedLine {
-    SourcedLine {
-        source: Source::PathComponent,
-        text: text.to_string(),
-    }
+    SourcedLine::new(Source::PathComponent, text.to_string())
 }
 
 fn cue_line(text: &str) -> SourcedLine {
-    SourcedLine {
-        source: Source::CueField,
-        text: text.to_string(),
-    }
+    SourcedLine::new(Source::CueField, text.to_string())
 }
 
 fn cluster_lines(lines: Vec<SourcedLine>) -> Vec<Cluster> {

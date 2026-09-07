@@ -1,9 +1,10 @@
 import BaeKit
 import SwiftUI
 
-/// The typed-search form, docked under the result area on every state: which
-/// kind of query (General / Catalog # / Barcode), its fields with autocomplete
-/// seeded from the folder's scanned text, and Search.
+/// The typed-search form, at the top of the SEARCH section: which kind of
+/// query (General / Catalog # / Barcode), its fields with autocomplete seeded
+/// from the folder's scanned text, and Search. What it turns up renders
+/// beneath it.
 ///
 /// Every configured provider answers, so the form offers no source selection —
 /// a provider that was never asked says so on its own line in the run above.
@@ -21,8 +22,8 @@ struct ImportSearchFormView: View {
     let signals: Signals?
     /// A request for the form's first field to take the keyboard — Artist,
     /// the catalog number, or the barcode, whichever the search-by picker
-    /// shows. The pane sends one when the result area has nothing to pick
-    /// from and when "Search instead" is chosen; each request is a new value.
+    /// shows. The pane sends one when Search manually is chosen; each
+    /// request is a new value.
     let focusRequest: Int
     /// Search with the form as it stands.
     let onSearch: (CandidateSearchState) -> Void
@@ -116,7 +117,6 @@ struct ImportSearchFormView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                FindOnlineCapsLabel("Manual")
                 Picker(
                     "Search by",
                     selection: Binding(
@@ -152,7 +152,8 @@ struct ImportSearchFormView: View {
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.top, 2)
+        .padding(.bottom, 10)
         .animation(nil, value: activeTab)
         .onChange(of: form, initial: true) { _, stored in
             if !isEditing {

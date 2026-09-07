@@ -94,24 +94,21 @@ mod tests {
     // MARK: - Pool::classify end-to-end (one-shot on a fresh pool)
 
     fn cue_line(text: &str) -> SourcedLine {
-        SourcedLine {
-            source: Source::CueField,
-            text: text.to_string(),
-        }
+        SourcedLine::new(Source::CueField, text.to_string())
     }
 
     fn path_line(text: &str) -> SourcedLine {
-        SourcedLine {
-            source: Source::PathComponent,
-            text: text.to_string(),
-        }
+        SourcedLine::new(Source::PathComponent, text.to_string())
     }
 
     fn artwork_line(path: &str, text: &str) -> SourcedLine {
-        SourcedLine {
-            source: Source::Artwork(PathBuf::from(path)),
-            text: text.to_string(),
-        }
+        SourcedLine::new(
+            Source::Artwork {
+                path: PathBuf::from(path),
+                file_id: None,
+            },
+            text.to_string(),
+        )
     }
 
     /// Push lines + brackets into a fresh pool and classify once, catalogs

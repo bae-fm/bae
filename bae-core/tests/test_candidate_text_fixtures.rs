@@ -114,10 +114,7 @@ impl ArtworkAnalyzer for FixtureAnalyzer {
             .get(path)
             .cloned()
             .unwrap_or_default();
-        ArtworkAnalysis {
-            barcodes: Vec::new(),
-            text_lines,
-        }
+        ArtworkAnalysis::of_text(text_lines)
     }
 }
 

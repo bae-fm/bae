@@ -173,11 +173,26 @@ pub enum AutomationSignalOrigin {
     TextFile,
 }
 
-/// Mirrors bae-core's `signals::SourcedValue`.
+/// Mirrors bae-core's `signals::ImageRegion`: where on its image a value was
+/// read, as fractions of the image's size with the origin at the top-left.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct AutomationImageRegion {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+/// Mirrors bae-core's `signals::SourcedValue` — one sighting of a value.
 #[derive(Debug, Clone, Serialize)]
 pub struct AutomationSourcedValue {
     pub value: String,
     pub origin: AutomationSignalOrigin,
+    /// The candidate-relative path of the file the value was read off, where
+    /// the origin is a file.
+    pub origin_path: Option<String>,
+    /// Where on that image it was read, where the detector said.
+    pub region: Option<AutomationImageRegion>,
 }
 
 /// Mirrors bae-core's `signals::DiscIdSignal`.

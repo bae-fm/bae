@@ -19,7 +19,7 @@ use crate::identify::ready::{classify, NeedsYou, QueueClassification};
 use crate::import::search::{MetadataResult, SourceTracks};
 use crate::import::{FolderCandidate, ImportCandidateSnapshot};
 use crate::library::LibraryManager;
-use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer};
+use crate::signals::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode};
 use crate::signals::{BarcodeSignal, DiscIdSignal, Signals, TextSignal};
 use serial_test::serial;
 use std::collections::BTreeMap;
@@ -323,7 +323,10 @@ struct BarcodeAnalyzer {
 impl ArtworkAnalyzer for BarcodeAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         ArtworkAnalysis {
-            barcodes: vec![self.barcode.clone()],
+            barcodes: vec![DetectedBarcode {
+                payload: self.barcode.clone(),
+                region: None,
+            }],
             text_lines: Vec::new(),
         }
     }
@@ -347,10 +350,7 @@ struct CountingAnalyzer {
 impl ArtworkAnalyzer for CountingAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         self.calls.fetch_add(1, Ordering::Relaxed);
-        ArtworkAnalysis {
-            barcodes: Vec::new(),
-            text_lines: Vec::new(),
-        }
+        ArtworkAnalysis::empty()
     }
 }
 
@@ -358,20 +358,14 @@ impl ArtworkAnalyzer for GatedAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         self.started.wait();
         self.release.wait();
-        ArtworkAnalysis {
-            barcodes: Vec::new(),
-            text_lines: Vec::new(),
-        }
+        ArtworkAnalysis::empty()
     }
 }
 
 impl ArtworkAnalyzer for SlowAnalyzer {
     fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
         std::thread::sleep(self.delay);
-        ArtworkAnalysis {
-            barcodes: Vec::new(),
-            text_lines: Vec::new(),
-        }
+        ArtworkAnalysis::empty()
     }
 }
 

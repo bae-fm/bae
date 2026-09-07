@@ -1,13 +1,12 @@
 import BaeKit
 import SwiftUI
 
-/// The result area while a typed search stands: what was asked, the album
-/// cards each source has landed so far, and a line per source still looking,
+/// What a typed search turned up, under its form: the album cards each
+/// source has landed so far, and a line per source still looking,
 /// unconfigured, or failed.
 ///
 /// The sources answer separately, so what MusicBrainz found renders while
-/// Discogs is still out. Returning to identification drops the run and shows the
-/// identify verdict.
+/// Discogs is still out — its spinner and name close the list until it lands.
 struct FindOnlineSearchResults: View {
     let search: BridgeCandidateSearch
     let isImporting: Bool
@@ -15,7 +14,6 @@ struct FindOnlineSearchResults: View {
     let selectedReleaseId: String?
     let loadingReleaseId: String?
     var releaseSelectionFailure: ReleaseSelectionFailure?
-    let onClear: () -> Void
     let onRetry: () -> Void
     let onOpenSettings: () -> Void
     let onSelect: (Pressing) -> Void
@@ -25,68 +23,38 @@ struct FindOnlineSearchResults: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            queryLine
-            // The sources' own lines close the list from inside it: a source
-            // still answering belongs under what the others found, not
-            // hovering over the form while the results scroll past it.
-            ReleaseGroupListView(
-                groups: groups,
-                isImporting: isImporting,
-                libraryStatuses: libraryStatuses,
-                selectedReleaseId: selectedReleaseId,
-                loadingReleaseId: loadingReleaseId,
-                releaseSelectionFailure: releaseSelectionFailure,
-                onSelect: onSelect,
-                trailing: {
-                    emptyLine
-                    sourceLines
-                },
-            )
-        }
+        // The sources' own lines close the list from inside it: a source
+        // still answering belongs under what the others found, not hovering
+        // under the form while the results scroll past it.
+        ReleaseGroupListView(
+            groups: groups,
+            isImporting: isImporting,
+            libraryStatuses: libraryStatuses,
+            selectedReleaseId: selectedReleaseId,
+            loadingReleaseId: loadingReleaseId,
+            releaseSelectionFailure: releaseSelectionFailure,
+            onSelect: onSelect,
+            trailing: {
+                emptyLine
+                sourceLines
+            },
+        )
     }
-
-    // MARK: - What was asked
-
-    private var queryLine: some View {
-        HStack(spacing: 8) {
-            FindOnlineCapsLabel("Results for")
-            Text(search.query.summary)
-                .font(.system(size: 11.5))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: 8)
-            Button(action: onClear) {
-                Label(
-                    "Identification results",
-                    systemImage: "arrow.uturn.backward"
-                )
-            }
-            .buttonStyle(.link)
-            .font(.system(size: 12))
-        }
-        .padding(.horizontal, 14)
-        .padding(.top, 10)
-    }
-
-    // MARK: - What came back
 
     /// Every source has answered and none of them knew anything. Only then:
     /// while one is still out, what it will say is not yet "nothing".
     @ViewBuilder
     private var emptyLine: some View {
-        if search.noMatches {
+        if search.status == .noMatches {
             Text("No matches \u{2014} try different terms")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
         }
     }
 
-    // MARK: - What each source is doing
-
     /// One line per source that has nothing to contribute yet: still looking,
-    /// never asked, or failed with its way to ask again.
+    /// never asked, or failed with its way to ask again. Each carries the
+    /// same glyph its cell in the ledger would.
     private var sourceLines: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(search.sourceStates, id: \.source) { source, state in
@@ -96,8 +64,10 @@ struct FindOnlineSearchResults: View {
                     HStack(spacing: 6) {
                         ProgressView()
                             .controlSize(.small)
-                            .scaleEffect(0.7)
-                        Text("Searching \(name)\u{2026}")
+                            .scaleEffect(0.6)
+                            .frame(width: 11, height: 11)
+                        Text(name)
+                            .foregroundStyle(.tertiary)
                     }
                 case .notConfigured:
                     HStack(spacing: 6) {
@@ -109,8 +79,8 @@ struct FindOnlineSearchResults: View {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundStyle(.orange)
-                        Text("\(name) search: \(failure.briefLine)")
-                            .foregroundStyle(.orange)
+                        Text(name)
+                            .foregroundStyle(.tertiary)
                             .help(failure.badgeLine)
                         Button("Retry", action: onRetry)
                             .buttonStyle(.link)
@@ -120,8 +90,9 @@ struct FindOnlineSearchResults: View {
                 }
             }
         }
-        .font(.system(size: 12))
+        .font(.system(size: 11))
         .foregroundStyle(.secondary)
+        .padding(.leading, 28)
     }
 }
 
@@ -138,22 +109,6 @@ extension BridgeCandidateSearch {
 
 }
 
-extension BridgeSearchQuery {
-    /// What the run asked, as one line under "Results for".
-    var summary: String {
-        switch self {
-        case .general(let artist, let album):
-            [artist, album]
-                .filter { !$0.isEmpty }
-                .joined(separator: " \u{00b7} ")
-        case .catalogNumber(let catalogNumber):
-            catalogNumber
-        case .barcode(let barcode):
-            barcode
-        }
-    }
-}
-
 #if DEBUG
     // MARK: - Previews
 
@@ -164,7 +119,6 @@ extension BridgeSearchQuery {
             libraryStatuses: [:],
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            onClear: {},
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
@@ -180,7 +134,6 @@ extension BridgeSearchQuery {
             libraryStatuses: [:],
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            onClear: {},
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
@@ -196,7 +149,6 @@ extension BridgeSearchQuery {
             libraryStatuses: [:],
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            onClear: {},
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },
@@ -212,7 +164,6 @@ extension BridgeSearchQuery {
             libraryStatuses: [:],
             selectedReleaseId: nil,
             loadingReleaseId: nil,
-            onClear: {},
             onRetry: {},
             onOpenSettings: {},
             onSelect: { _ in },

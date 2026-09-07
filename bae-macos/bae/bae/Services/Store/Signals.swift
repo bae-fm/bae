@@ -5,12 +5,12 @@ import Foundation
 /// `bae_core::signals::Signals` (via `BridgeSignals`). Carried per-candidate;
 /// `nil` until the first extraction snapshot arrives. The search form feeds
 /// these into the autocomplete fields. The disc-ID and barcode signals reach
-/// the UI through the interactive toolbar (`BridgeSignalsToolbar`), not here, so
-/// only the `text` pools are mirrored.
+/// the UI through the run's ledger (`BridgeIdentifyRun`), not here, so only
+/// the `text` pools are mirrored.
 
 /// The classified-text signal. Mirrors `bae_core::signals::TextSignal`. Only
-/// the catalog / free-text *values* feed the autocomplete here; catalog
-/// origins reach the UI through the toolbar badges.
+/// the catalog / free-text *values* feed the autocomplete here; where each
+/// catalog number was read reaches the UI through the ledger's tiles.
 enum TextSignal: Equatable {
     case scanning(catalogs: [String], freeText: [String])
     case settled(catalogs: [String], freeText: [String])

@@ -270,14 +270,14 @@ struct ImportStoreCandidateDetailTests {
                 folderPath: "/w1/a",
                 watchedFolderPath: "/w1",
                 name: "A",
-                resumedIdentifyState: .notFoundAnywhere
+                resumedIdentifyState: .notFoundAnywhere(run: nil)
             )
         )
 
         let read = try #require(store.selectedCandidates["/w1/a"])
         #expect(read.displayName == "A")
         // With no run live the resumed state is what the pane shows.
-        #expect(read.resumedIdentifyState == .notFoundAnywhere)
+        #expect(read.resumedIdentifyState == .notFoundAnywhere(run: nil))
         #expect(read.row?.candidateKey == "/w1/a")
         #expect(read.row?.importStatus == nil)
     }

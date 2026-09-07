@@ -201,7 +201,7 @@ struct ImportMappingPaneTests {
             runtime: nil
         )
 
-        browsing.resumedIdentifyState = .manualOnly(trackCount: 11)
+        browsing.resumedIdentifyState = .manualOnly(trackCount: 11, run: nil)
         let before = try await captureMappingPane(
             candidate: browsing,
             runtime: nil
@@ -227,7 +227,7 @@ struct ImportMappingPaneTests {
         )
         let settledWithoutConflict = try await captureMappingPane(
             candidate: settled,
-            runtime: runtime(.manualOnly(trackCount: 11))
+            runtime: runtime(.manualOnly(trackCount: 11, run: nil))
         )
         #expect(settledConflict.elementsEqual(settledWithoutConflict))
     }

@@ -55,7 +55,7 @@ enum ImportEvidence {
         evidence.map(hoverText).joined(separator: "\n")
     }
 
-    /// The same glyph and wording the signals toolbar uses for the signal.
+    /// The same glyph and wording the Find online ledger uses for the signal.
     static func kind(_ signal: BridgeEvidenceSignal) -> BridgeSignalKind {
         switch signal {
         case .barcode: .barcode

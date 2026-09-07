@@ -462,7 +462,7 @@ fn each_provider_walks_the_codes_on_its_own() {
     assert!(effects.is_empty());
     assert!(matches!(
         walk_of(&state, DG),
-        BarcodeLookupState::Matched { code: Some(code), .. } if code == "A"
+        BarcodeLookupState::Matched { code, .. } if code == "A"
     ));
     assert!(matches!(
         walk_of(&state, MB),
@@ -672,11 +672,11 @@ fn retry_re_asks_only_the_failed_provider() {
     let (state, effects) = step(state, IdentifyEvent::RetryFailed);
     assert_eq!(effects, vec![lookup_barcode(DG, "A")]);
     assert!(matches!(state, IdentifyState::Triangulating { .. }));
-    // MusicBrainz's answer stood back up from the context: kept, with the
-    // code it matched no longer known.
+    // MusicBrainz's answer stood back up from the context: kept, at the code
+    // it matched.
     assert!(matches!(
         walk_of(&state, MB),
-        BarcodeLookupState::Matched { code: None, results } if results.len() == 1
+        BarcodeLookupState::Matched { code, results } if code == "B" && results.len() == 1
     ));
     assert!(matches!(
         walk_of(&state, DG),

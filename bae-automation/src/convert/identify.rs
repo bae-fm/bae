@@ -22,11 +22,56 @@ mirror_enum! {
     AutomationLookupState = bae_core::identify::LookupView,
     from_core: pub(crate) fn,
     variants: {
+        Queued,
+        NotAsked,
         LookingUp,
-        Found { count },
+        Found { count, groups: (each AutomationReleaseGroup) },
         NoMatch,
         Failed { failure: (AutomationLookupFailure) },
     },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationValueSource = bae_core::identify::ValueSource,
+    from_core: pub(crate) fn,
+    fields: {
+        origin: (AutomationSignalOrigin),
+        file,
+        region: (opt AutomationImageRegion),
+    },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationProviderCell = bae_core::identify::ProviderCell,
+    from_core: pub(crate) fn,
+    fields: { source: (into), lookup: (AutomationLookupState) },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationSignalValueRow = bae_core::identify::SignalValueRow,
+    from_core: pub(crate) fn,
+    fields: {
+        value,
+        sources: (each AutomationValueSource),
+        cells: (each AutomationProviderCell),
+    },
+}
+
+mirror_enum! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationDiscIdFileKind = bae_core::identify::DiscIdFileKind,
+    from_core: pub(crate) fn,
+    variants: { Log, Cue },
+}
+
+mirror_struct! {
+    #[cfg(not(any(target_os = "ios", target_os = "android")))]
+    AutomationDiscIdFile = bae_core::identify::DiscIdFile,
+    from_core: pub(crate) fn,
+    fields: { kind: (AutomationDiscIdFileKind), file },
 }
 
 mirror_enum! {
@@ -39,7 +84,7 @@ mirror_enum! {
         ReadFailed { failure: (AutomationLookupFailure) },
         Read {
             disc_id,
-            source_file,
+            source: (opt AutomationDiscIdFile),
             lookup: (AutomationLookupState),
         },
     },
@@ -47,66 +92,21 @@ mirror_enum! {
 
 mirror_enum! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationArtworkStep = bae_core::identify::ArtworkStepView,
-    from_core: pub(crate) fn,
-    variants: {
-        Absent,
-        Reading {
-            current,
-            position,
-            total,
-            barcodes,
-            catalogs,
-        },
-        Read { images, barcodes, catalogs },
-        Failed {
-            failure: (AutomationLookupFailure),
-            read,
-            total,
-        },
-    },
-}
-
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationBarcodeLookupState = bae_core::identify::BarcodeLookupView,
-    from_core: pub(crate) fn,
-    variants: {
-        Trying { barcode, position, total },
-        Matched { barcode, count },
-        Exhausted,
-        Failed { failure: (AutomationLookupFailure) },
-    },
-}
-
-mirror_struct! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationProviderBarcodeLookup = bae_core::identify::ProviderBarcodeLookupView,
-    from_core: pub(crate) fn,
-    fields: { source: (into), state: (AutomationBarcodeLookupState) },
-}
-
-mirror_enum! {
-    #[cfg(not(any(target_os = "ios", target_os = "android")))]
     AutomationBarcodeStep = bae_core::identify::BarcodeStepView,
     from_core: pub(crate) fn,
     variants: {
-        AwaitingArtwork,
         Absent,
         NoCodes,
         ScanFailed { failure: (AutomationLookupFailure) },
-        Lookups {
-            codes,
-            providers: (each AutomationProviderBarcodeLookup),
-        },
+        Rows { scanning, rows: (each AutomationSignalValueRow) },
     },
 }
 
 mirror_struct! {
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
-    AutomationProviderLookup = bae_core::identify::ProviderLookupView,
+    AutomationCatalogCandidate = bae_core::identify::CatalogCandidateView,
     from_core: pub(crate) fn,
-    fields: { source: (into), state: (AutomationLookupState) },
+    fields: { value, sources: (each AutomationValueSource) },
 }
 
 mirror_enum! {
@@ -115,8 +115,11 @@ mirror_enum! {
     from_core: pub(crate) fn,
     variants: {
         NoneFound,
-        Unchosen { available },
-        Chosen { value, lookups: (each AutomationProviderLookup) },
+        Numbers {
+            scanning,
+            rows: (each AutomationSignalValueRow),
+            candidates: (each AutomationCatalogCandidate),
+        },
     },
 }
 
@@ -127,7 +130,6 @@ mirror_struct! {
     fields: {
         providers: (each into),
         disc_id: (AutomationDiscIdStep),
-        artwork: (AutomationArtworkStep),
         barcode: (AutomationBarcodeStep),
         catalog: (AutomationCatalogStep),
     },
@@ -214,11 +216,13 @@ pub(crate) fn automation_identify_state(
             provenance: automation_provenance(provenance),
         },
         IdentifyStateView::Found {
+            run,
             groups,
             library_statuses,
             track_count,
             provenance,
         } => AutomationIdentifyState::Found {
+            run: run.map(AutomationIdentifyRun::from_core),
             groups: groups
                 .into_iter()
                 .map(AutomationReleaseGroup::from_core)
@@ -230,16 +234,21 @@ pub(crate) fn automation_identify_state(
             track_count,
             provenance: automation_provenance(provenance),
         },
-        IdentifyStateView::NotFoundAnywhere => AutomationIdentifyState::NotFoundAnywhere,
-        IdentifyStateView::ManualOnly { track_count } => {
-            AutomationIdentifyState::ManualOnly { track_count }
-        }
+        IdentifyStateView::NotFoundAnywhere { run } => AutomationIdentifyState::NotFoundAnywhere {
+            run: run.map(AutomationIdentifyRun::from_core),
+        },
+        IdentifyStateView::ManualOnly { track_count, run } => AutomationIdentifyState::ManualOnly {
+            track_count,
+            run: run.map(AutomationIdentifyRun::from_core),
+        },
         IdentifyStateView::Failed {
+            run,
             failures,
             groups,
             library_statuses,
             provenance,
         } => AutomationIdentifyState::Failed {
+            run: run.map(AutomationIdentifyRun::from_core),
             failures: failures
                 .into_iter()
                 .map(AutomationIdentifyFailure::from_core)

@@ -14,7 +14,8 @@
 use super::verdict_rows::unreadable;
 use super::*;
 use crate::signals::{
-    BarcodeSignal, DiscIdSignal, LookupFailure, SignalOrigin, Signals, SourcedValue, TextSignal,
+    BarcodeSignal, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin, Signals, SourcedValue,
+    TextSignal,
 };
 
 const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_source_file, \
@@ -23,7 +24,8 @@ const SIGNALS_COLUMNS: &str = "content_hash, disc_id_state, disc_id, disc_id_sou
      barcode_state, barcode_failure, barcode_failure_status, barcode_failure_detail, \
      text_state, text_failure, text_failure_status, text_failure_detail";
 
-const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin, origin_path";
+const SIGNAL_VALUE_COLUMNS: &str = "content_hash, list, position, value, origin, origin_path, \
+     region_x, region_y, region_width, region_height";
 
 /// One failure as its three columns.
 struct FailureColumns {
@@ -209,6 +211,7 @@ pub(super) fn insert_signals(
                     value.value.clone(),
                     Some(origin_str(value.origin)),
                     value.origin_path.clone(),
+                    value.region,
                 )
             })
             .collect::<Vec<_>>()
@@ -219,15 +222,35 @@ pub(super) fn insert_signals(
         free_text(&signals.text)
             .iter()
             .enumerate()
-            .map(|(position, value)| ("free_text", position as i64, value.clone(), None, None)),
+            .map(|(position, value)| {
+                (
+                    "free_text",
+                    position as i64,
+                    value.clone(),
+                    None,
+                    None,
+                    None,
+                )
+            }),
     );
-    for (list, position, value, origin, origin_path) in values {
+    for (list, position, value, origin, origin_path, region) in values {
         sql.execute(
             &format!(
                 "INSERT INTO import_candidate_signal_value ({SIGNAL_VALUE_COLUMNS}) \
-                 VALUES (?, ?, ?, ?, ?, ?)"
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             ),
-            params![content_hash, list, position, value, origin, origin_path],
+            params![
+                content_hash,
+                list,
+                position,
+                value,
+                origin,
+                origin_path,
+                region.map(|r| f64::from(r.x)),
+                region.map(|r| f64::from(r.y)),
+                region.map(|r| f64::from(r.width)),
+                region.map(|r| f64::from(r.height)),
+            ],
         )?;
     }
     Ok(())
@@ -260,19 +283,25 @@ pub(super) fn load_signals_on(
                 row.get::<_, String>("value")?,
                 row.get::<_, Option<String>>("origin")?,
                 row.get::<_, Option<String>>("origin_path")?,
+                [
+                    row.get::<_, Option<f64>>("region_x")?,
+                    row.get::<_, Option<f64>>("region_y")?,
+                    row.get::<_, Option<f64>>("region_width")?,
+                    row.get::<_, Option<f64>>("region_height")?,
+                ],
             ))
         },
     )?;
     let mut lists: HashMap<String, SignalValues> = HashMap::new();
-    for (content_hash, list, value, origin, origin_path) in values {
+    for (content_hash, list, value, origin, origin_path, region) in values {
         let entry = lists.entry(content_hash).or_default();
         match list.as_str() {
             "barcode" => entry
                 .barcodes
-                .push(sourced_value(value, origin, origin_path)?),
+                .push(sourced_value(value, origin, origin_path, region)?),
             "catalog" => entry
                 .catalogs
-                .push(sourced_value(value, origin, origin_path)?),
+                .push(sourced_value(value, origin, origin_path, region)?),
             "free_text" => entry.free_text.push(value),
             other => return Err(unreadable("list", other)),
         }
@@ -403,12 +432,36 @@ fn sourced_value(
     value: String,
     origin: Option<String>,
     origin_path: Option<String>,
+    region: [Option<f64>; 4],
 ) -> Result<SourcedValue, DbError> {
     let origin = origin
         .ok_or_else(|| DbError::Message(format!("the stored value {value:?} states no origin")))?;
     let origin = origin_of(&origin)?;
+    let region = stored_region(&value, region)?;
     Ok(match origin_path {
         Some(file_id) => SourcedValue::in_file(value, origin, file_id),
         None => SourcedValue::new(value, origin),
-    })
+    }
+    .at(region))
+}
+
+/// The region a row stores, as the four columns it stores it in: all present
+/// and inside the image, or all absent. Anything else is a row nothing here
+/// wrote.
+fn stored_region(value: &str, columns: [Option<f64>; 4]) -> Result<Option<ImageRegion>, DbError> {
+    match columns {
+        [None, None, None, None] => Ok(None),
+        [Some(x), Some(y), Some(width), Some(height)] => {
+            ImageRegion::new(x as f32, y as f32, width as f32, height as f32)
+                .map(Some)
+                .ok_or_else(|| {
+                    DbError::Message(format!(
+                        "the stored value {value:?} states a region outside its image"
+                    ))
+                })
+        }
+        _ => Err(DbError::Message(format!(
+            "the stored value {value:?} states a partial region"
+        ))),
+    }
 }

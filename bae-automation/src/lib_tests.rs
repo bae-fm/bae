@@ -405,11 +405,11 @@ mod identify_mirrors {
         assert_eq!(json["track_count"], 9);
     }
 
-    /// A run in flight crosses as its steps, each provider's barcode walk on
-    /// its own: MusicBrainz still trying a code while Discogs has already
-    /// matched it.
+    /// A run in flight crosses as its ledger: one row per code, each with one
+    /// cell per provider — MusicBrainz still trying the second code while
+    /// Discogs has already matched the first.
     #[test]
-    fn triangulating_lists_each_provider_s_barcode_walk() {
+    fn triangulating_lists_each_code_with_one_cell_per_provider() {
         let state = IdentifyState::Triangulating {
             discid: DiscidProgress::LookingUp,
             barcode: BarcodeProgress::Lookups {
@@ -422,7 +422,7 @@ mod identify_mirrors {
                     ProviderBarcodeLookup {
                         source: MetadataSource::Discogs,
                         state: BarcodeLookupState::Matched {
-                            code: Some("0123456789012".to_string()),
+                            code: "0123456789012".to_string(),
                             results: vec![(
                                 metadata_result("rel-dg", "group-1"),
                                 LibraryStatus::absent("rel-dg"),
@@ -442,6 +442,22 @@ mod identify_mirrors {
                     },
                     ..Default::default()
                 },
+                barcode: bae_core::identify::state::BarcodeEvidence {
+                    codes: vec![
+                        SourcedValue::in_file(
+                            "0123456789012".to_string(),
+                            SignalOrigin::Artwork,
+                            "back.jpg".to_string(),
+                        ),
+                        SourcedValue::in_file(
+                            "9999999999999".to_string(),
+                            SignalOrigin::Artwork,
+                            "inlay.jpg".to_string(),
+                        ),
+                    ],
+                    had_source: true,
+                    ..Default::default()
+                },
                 ..empty_context()
             },
         };
@@ -455,21 +471,27 @@ mod identify_mirrors {
         );
         assert_eq!(run["disc_id"]["kind"], "read");
         assert_eq!(run["disc_id"]["disc_id"], "disc-hash");
-        assert_eq!(run["disc_id"]["source_file"], "rip.log");
+        assert_eq!(run["disc_id"]["source"]["kind"], "log");
+        assert_eq!(run["disc_id"]["source"]["file"], "rip.log");
         assert_eq!(run["disc_id"]["lookup"]["kind"], "looking_up");
-        assert_eq!(run["artwork"]["kind"], "absent");
-        assert_eq!(run["barcode"]["kind"], "lookups");
-        let providers = run["barcode"]["providers"].as_array().unwrap();
-        assert_eq!(providers[0]["source"], "music_brainz");
-        assert_eq!(providers[0]["state"]["kind"], "trying");
-        assert_eq!(providers[0]["state"]["barcode"], "9999999999999");
-        assert_eq!(providers[0]["state"]["position"], 2);
-        assert_eq!(providers[0]["state"]["total"], 2);
-        assert_eq!(providers[1]["source"], "discogs");
-        assert_eq!(providers[1]["state"]["kind"], "matched");
-        assert_eq!(providers[1]["state"]["barcode"], "0123456789012");
-        assert_eq!(providers[1]["state"]["count"], 1);
-        assert!(providers[1]["state"].get("results").is_none());
+        assert_eq!(run["barcode"]["kind"], "rows");
+        assert_eq!(run["barcode"]["scanning"], false);
+        let rows = run["barcode"]["rows"].as_array().unwrap();
+        assert_eq!(rows[0]["value"], "0123456789012");
+        assert_eq!(rows[0]["sources"][0]["origin"], "artwork");
+        assert_eq!(rows[0]["sources"][0]["file"], "back.jpg");
+        assert_eq!(rows[0]["cells"][0]["source"], "music_brainz");
+        assert_eq!(rows[0]["cells"][0]["lookup"]["kind"], "no_match");
+        assert_eq!(rows[0]["cells"][1]["source"], "discogs");
+        assert_eq!(rows[0]["cells"][1]["lookup"]["kind"], "found");
+        assert_eq!(rows[0]["cells"][1]["lookup"]["count"], 1);
+        assert_eq!(
+            rows[0]["cells"][1]["lookup"]["groups"][0]["pressings"][0]["releases"][0]["release_id"],
+            "rel-dg"
+        );
+        assert_eq!(rows[1]["value"], "9999999999999");
+        assert_eq!(rows[1]["cells"][0]["lookup"]["kind"], "looking_up");
+        assert_eq!(rows[1]["cells"][1]["lookup"]["kind"], "not_asked");
         assert_eq!(run["catalog"]["kind"], "none_found");
         // Discogs's match is already on the list while MusicBrainz is out.
         let groups = json["groups"].as_array().unwrap();

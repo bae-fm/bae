@@ -216,7 +216,7 @@ internal sealed class ReleaseActionDialogs
                     var failed = SearchFailureLine(search);
                     status.Text = failed ?? Loc.Chrome("search.no_matches");
                     status.IsVisible = failed is not null
-                        || (found.Count == 0 && search.Settled);
+                        || (found.Count == 0 && search.Status != BridgeSearchStatus.Searching);
                     searchButton.IsEnabled = true;
                     return;
                 }

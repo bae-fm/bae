@@ -153,7 +153,7 @@ public sealed class ImportMappingPaneTests
     public void AutomaticMethodShowsSignalBadgesAndRunAgain()
     {
         var runtime = new BridgeCandidateRuntimeSnapshot(
-            new BridgeIdentifyState.NotFoundAnywhere(),
+            new BridgeIdentifyState.NotFoundAnywhere(null),
             new BridgeSignalsToolbar(new[]
             {
                 new BridgeToolbarSignal(
@@ -284,9 +284,9 @@ public sealed class ImportMappingPaneTests
             new BridgeSourceSearch.NotConfigured(),
             Array.Empty<BridgeReleaseGroup>(),
             new Dictionary<string, BridgeLibraryStatus>(),
-            true, false);
+            BridgeSearchStatus.Failed);
         var runtime = new BridgeCandidateRuntimeSnapshot(
-            new BridgeIdentifyState.NotFoundAnywhere(),
+            new BridgeIdentifyState.NotFoundAnywhere(null),
             new BridgeSignalsToolbar(Array.Empty<BridgeToolbarSignal>()),
             null, search);
         var (pane, _) = Show(Detail(), running: runtime,
@@ -307,6 +307,7 @@ public sealed class ImportMappingPaneTests
         var group = ChoiceGroup("rel-1");
         var runtime = new BridgeCandidateRuntimeSnapshot(
             new BridgeIdentifyState.Found(
+                null,
                 new[] { group },
                 new Dictionary<string, BridgeLibraryStatus>(),
                 1,

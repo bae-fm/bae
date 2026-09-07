@@ -127,6 +127,36 @@ impl BridgeSourceSearch {
     }
 }
 
+/// Where a candidate's typed search stands as a whole — the one glyph a
+/// surface heads it with. Mirrors `bae_core::import::SearchStatus`; crossed
+/// rather than folded per surface, so "still searching" means one thing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeSearchStatus {
+    /// A source is still looking.
+    Searching,
+    /// Every source landed, none failed, and at least one named a release.
+    Found,
+    /// Every source landed, none failed, and a source that answered named no
+    /// release.
+    NoMatches,
+    /// Every source landed and at least one failed, whatever the others
+    /// found.
+    Failed,
+}
+
+#[cfg(feature = "desktop")]
+impl BridgeSearchStatus {
+    fn from_core(status: bae_core::import::SearchStatus) -> Self {
+        use bae_core::import::SearchStatus;
+        match status {
+            SearchStatus::Searching => Self::Searching,
+            SearchStatus::Found => Self::Found,
+            SearchStatus::NoMatches => Self::NoMatches,
+            SearchStatus::Failed => Self::Failed,
+        }
+    }
+}
+
 /// A candidate's typed search as its sources land. Mirrors
 /// `bae_core::import::CandidateSearch`.
 #[derive(Debug, Clone, uniffi::Record)]
@@ -139,18 +169,14 @@ pub struct BridgeCandidateSearch {
     pub groups: Vec<BridgeReleaseGroup>,
     /// Library status per result, keyed by release id.
     pub library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,
-    /// Whether every source has landed — nothing is still looking. Crossed
-    /// rather than folded per surface, so "still searching" means one thing.
-    pub settled: bool,
-    /// At least one provider answered successfully and none found a release.
-    pub no_matches: bool,
+    /// Where the search stands as a whole.
+    pub status: BridgeSearchStatus,
 }
 
 #[cfg(feature = "desktop")]
 impl BridgeCandidateSearch {
     pub(crate) fn from_core(search: bae_core::import::CandidateSearch) -> Self {
-        let settled = search.is_settled();
-        let no_matches = search.has_no_matches();
+        let status = BridgeSearchStatus::from_core(search.status());
         let bae_core::import::CandidateSearch {
             query,
             musicbrainz,
@@ -159,8 +185,7 @@ impl BridgeCandidateSearch {
             library_statuses,
         } = search;
         Self {
-            settled,
-            no_matches,
+            status,
             query: BridgeSearchQuery::from_core(query),
             musicbrainz: BridgeSourceSearch::from_core(musicbrainz),
             discogs: BridgeSourceSearch::from_core(discogs),

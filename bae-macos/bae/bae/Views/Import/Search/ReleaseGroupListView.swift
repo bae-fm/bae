@@ -27,24 +27,53 @@ struct ReleaseGroupListView<Trailing: View>: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 14) {
-                ForEach(groups) { group in
-                    ReleaseGroupSection(
-                        group: group,
-                        isImporting: isImporting,
-                        libraryStatuses: libraryStatuses,
-                        provenance: provenance,
-                        selectedReleaseId: selectedReleaseId,
-                        loadingReleaseId: loadingReleaseId,
-                        releaseSelectionFailure: releaseSelectionFailure,
-                        onSelect: onSelect,
-                    )
-                }
-                trailing()
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            ReleaseGroupListContent(
+                groups: groups,
+                isImporting: isImporting,
+                libraryStatuses: libraryStatuses,
+                provenance: provenance,
+                selectedReleaseId: selectedReleaseId,
+                loadingReleaseId: loadingReleaseId,
+                releaseSelectionFailure: releaseSelectionFailure,
+                onSelect: onSelect,
+                trailing: trailing,
+            )
         }
+    }
+}
+
+/// The list itself, for a scroll that holds more than the list — the ledger
+/// above it in the AUTOMATIC section.
+struct ReleaseGroupListContent<Trailing: View>: View {
+    let groups: [ReleaseGroup]
+    let isImporting: Bool
+    let libraryStatuses: [String: BridgeLibraryStatus]
+    var provenance: [String: BridgeResultProvenance] = [:]
+    let selectedReleaseId: String?
+    let loadingReleaseId: String?
+    var releaseSelectionFailure: ReleaseSelectionFailure?
+    let onSelect: (Pressing) -> Void
+    @ViewBuilder
+    let trailing: () -> Trailing
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: 14) {
+            ForEach(groups) { group in
+                ReleaseGroupSection(
+                    group: group,
+                    isImporting: isImporting,
+                    libraryStatuses: libraryStatuses,
+                    provenance: provenance,
+                    selectedReleaseId: selectedReleaseId,
+                    loadingReleaseId: loadingReleaseId,
+                    releaseSelectionFailure: releaseSelectionFailure,
+                    onSelect: onSelect,
+                )
+            }
+            trailing()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

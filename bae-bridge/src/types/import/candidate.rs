@@ -326,10 +326,11 @@ mirror_struct! {
     },
 }
 
-/// A signal the user acted on in the toolbar. The disc ID and the barcode are
-/// checked until toggled off; the catalog is off until one of the extracted
-/// numbers is chosen, and choosing another replaces it — so its variant names
-/// the value. Mirrors `bae_core::identify::SignalToggle`.
+/// A signal the user acted on. The disc ID and the barcode are checked until
+/// toggled off; the catalog is off until one of the extracted numbers is
+/// chosen. Choosing a number adds its lookup beside the other chosen numbers'
+/// and choosing a chosen one takes it back out — so its variant names the
+/// value. Mirrors `bae_core::identify::SignalToggle`.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
 pub enum BridgeSignalToggle {
     Disc,
@@ -360,13 +361,13 @@ pub enum BridgeSignalOrigin {
 mirror_enum! {
     #[cfg(feature = "desktop")]
     BridgeSignalOrigin = bae_core::signals::SignalOrigin,
-    from_core: fn,
+    from_core: pub(crate) fn,
     variants: { DiscToc, CueSheet, Artwork, FolderName, Filename, TextFile },
 }
 
 /// A signal value paired with its origin — a catalog candidate or a barcode
 /// code. Mirrors `bae_core::signals::SourcedValue`.
-#[derive(Debug, Clone, uniffi::Record)]
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
 pub struct BridgeSourcedValue {
     pub value: String,
     pub origin: BridgeSignalOrigin,
@@ -374,13 +375,28 @@ pub struct BridgeSourcedValue {
     /// a gallery tile and a file row are keyed by, so a surface can put the
     /// value on the file it came from. `None` where the origin names no file.
     pub origin_path: Option<String>,
+    /// Where on that image the value was read, for an origin that is an image
+    /// and a detector that reports where it looked. `None` otherwise.
+    pub region: Option<BridgeImageRegion>,
 }
 
 mirror_struct! {
     #[cfg(feature = "desktop")]
     BridgeSourcedValue = bae_core::signals::SourcedValue,
     from_core: pub(crate) fn,
-    fields: { value, origin: (BridgeSignalOrigin), origin_path },
+    fields: {
+        value,
+        origin: (BridgeSignalOrigin),
+        origin_path,
+        region: (opt BridgeImageRegion),
+    },
+}
+
+mirror_struct! {
+    #[cfg(feature = "desktop")]
+    BridgeImageRegion = bae_core::signals::ImageRegion,
+    from_core: pub(crate) fn,
+    fields: { x, y, width, height },
 }
 
 /// Which kind of signal a toolbar badge represents. Mirrors
@@ -571,20 +587,78 @@ impl BridgeSignalsToolbar {
     }
 }
 
-/// How one provider's lookup of one value is going. Mirrors
-/// `bae_core::identify::LookupView`: a run in flight reports counts, and the
-/// matches themselves surface from the terminal state.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+/// How one provider's lookup of one value is going — one cell of the run's
+/// ledger. Mirrors `bae_core::identify::LookupView`.
+#[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeLookupState {
+    /// Not asked yet: the provider's walk through the codes has not reached
+    /// this one.
+    Queued,
+    /// Never asked: the provider's walk ended at an earlier code.
+    NotAsked,
     LookingUp,
-    Found { count: u32 },
+    /// The lookup named releases: how many pressings, and the album cards
+    /// they fold into, so a surface can show what the count stands for.
+    Found {
+        count: u32,
+        groups: Vec<BridgeReleaseGroup>,
+    },
     NoMatch,
-    Failed { failure: BridgeLookupFailure },
+    Failed {
+        failure: BridgeLookupFailure,
+    },
+}
+
+/// One place a value was read. Mirrors `bae_core::identify::ValueSource`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeValueSource {
+    pub origin: BridgeSignalOrigin,
+    /// The candidate-relative path of the file, where the origin is a file.
+    pub file: Option<String>,
+    /// Where on that image the value was read, where the detector said.
+    pub region: Option<BridgeImageRegion>,
+}
+
+/// One provider's cell of a value's row. Mirrors
+/// `bae_core::identify::ProviderCell`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeProviderCell {
+    pub source: BridgeMetadataSource,
+    pub lookup: BridgeLookupState,
+}
+
+/// One value extraction found, as a row of the ledger: where it was found
+/// and every provider's lookup of it. Mirrors
+/// `bae_core::identify::SignalValueRow`.
+#[derive(Debug, Clone, uniffi::Record)]
+pub struct BridgeSignalValueRow {
+    pub value: String,
+    /// Every place the value was read, in the order it was read there.
+    pub sources: Vec<BridgeValueSource>,
+    /// One per provider in the run, in the run's provider order.
+    pub cells: Vec<BridgeProviderCell>,
+}
+
+/// Which kind of artifact a disc ID was read off. Mirrors
+/// `bae_core::identify::DiscIdFileKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum BridgeDiscIdFileKind {
+    Log,
+    Cue,
+}
+
+/// The file a disc ID was read off. Mirrors `bae_core::identify::DiscIdFile`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct BridgeDiscIdFile {
+    pub kind: BridgeDiscIdFileKind,
+    /// The candidate-relative path.
+    pub file: String,
 }
 
 /// The disc-ID step of a run: read off a LOG or CUE, then looked up on
-/// MusicBrainz. Mirrors `bae_core::identify::DiscIdStepView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+/// MusicBrainz — the one provider with a disc-ID endpoint, so one lookup and
+/// no cells. Mirrors `bae_core::identify::DiscIdStepView`.
+#[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeDiscIdStep {
     /// Extraction has not reported yet.
     Reading,
@@ -594,128 +668,65 @@ pub enum BridgeDiscIdStep {
     ReadFailed { failure: BridgeLookupFailure },
     Read {
         disc_id: String,
-        /// The candidate-relative path of the file it came from. `None` for
-        /// a release re-identified from its stored tracks.
-        source_file: Option<String>,
+        /// The file it came from. `None` for a release re-identified from
+        /// its stored tracks.
+        source: Option<BridgeDiscIdFile>,
         lookup: BridgeLookupState,
     },
 }
 
-/// The artwork step of a run: the images read one at a time for barcodes and
-/// text. Mirrors `bae_core::identify::ArtworkStepView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeArtworkStep {
-    /// Nothing to read: no images, or no analyzer on this platform.
-    Absent,
-    /// Reading `current`, the `position`th of `total`, with what the images
-    /// read so far have turned up.
-    Reading {
-        /// The image's candidate-relative path — the id its file row is
-        /// keyed by; `None` for a library release's stored cover.
-        current: Option<String>,
-        position: u32,
-        total: u32,
-        barcodes: u32,
-        catalogs: u32,
-    },
-    /// Every image read.
-    Read {
-        images: u32,
-        barcodes: u32,
-        catalogs: u32,
-    },
-    /// Reading stopped at a failure, `images_read` images in.
-    Failed {
-        failure: BridgeLookupFailure,
-        // Distinct from the Read variant: C# records inherit variant names.
-        images_read: u32,
-        total: u32,
-    },
-}
-
-/// One provider's walk through the candidate's barcodes. Mirrors
-/// `bae_core::identify::BarcodeLookupView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
-pub enum BridgeBarcodeLookupState {
-    /// Asking about `barcode`, the `position`th of `total`.
-    Trying {
-        barcode: String,
-        position: u32,
-        total: u32,
-    },
-    /// A code matched. `None` when the provider's answer was stood back up
-    /// from a settled run, which keeps what it found but not which code
-    /// found it.
-    Matched {
-        barcode: Option<String>,
-        count: u32,
-    },
-    /// Every code tried, none matched.
-    Exhausted,
-    Failed {
-        failure: BridgeLookupFailure,
-    },
-}
-
-/// One provider and its barcode walk. Mirrors
-/// `bae_core::identify::ProviderBarcodeLookupView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeProviderBarcodeLookup {
-    pub source: BridgeMetadataSource,
-    pub state: BridgeBarcodeLookupState,
-}
-
-/// The barcode step of a run: read off the artwork, then every provider
-/// tries the codes in order on its own. Mirrors
+/// The barcode step of a run: read off the artwork and the CUE sheets, then
+/// every provider tries the codes in order on its own. Mirrors
 /// `bae_core::identify::BarcodeStepView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeBarcodeStep {
-    /// The artwork is still being read; the lookups start once it has been.
-    AwaitingArtwork,
     /// No barcode source at all.
     Absent,
     /// There was a source and it held no code.
     NoCodes,
     /// Reading the candidate's barcodes failed, so no provider was asked.
     ScanFailed { failure: BridgeLookupFailure },
-    Lookups {
-        codes: Vec<String>,
-        providers: Vec<BridgeProviderBarcodeLookup>,
+    /// One row per code. While `scanning`, the artwork is still being read
+    /// and more rows may come.
+    Rows {
+        scanning: bool,
+        rows: Vec<BridgeSignalValueRow>,
     },
 }
 
-/// One provider's part of the chosen catalog number's lookup. Mirrors
-/// `bae_core::identify::ProviderLookupView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
-pub struct BridgeProviderLookup {
-    pub source: BridgeMetadataSource,
-    pub state: BridgeLookupState,
+/// One catalog number extraction found and the run is not looking up: a
+/// tile to activate. Mirrors `bae_core::identify::CatalogCandidateView`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeCatalogCandidate {
+    pub value: String,
+    pub sources: Vec<BridgeValueSource>,
 }
 
-/// The catalog step of a run: looked up only once the user picks one of the
-/// numbers extraction found. Mirrors `bae_core::identify::CatalogStepView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+/// The catalog step of a run: the run looks up only the numbers the person
+/// picks out of the ones extraction found, each on its own. Mirrors
+/// `bae_core::identify::CatalogStepView`.
+#[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeCatalogStep {
-    /// Extraction found no catalog number to offer.
+    /// Extraction found no catalog number to offer, and is not still looking.
     NoneFound,
-    /// Numbers were found and none is chosen yet: the step waits on a pick.
-    Unchosen { available: u32 },
-    Chosen {
-        value: String,
-        lookups: Vec<BridgeProviderLookup>,
+    Numbers {
+        /// Whether the artwork is still being read, so more may come.
+        scanning: bool,
+        /// The chosen numbers, in the order they were chosen.
+        rows: Vec<BridgeSignalValueRow>,
+        /// The numbers not chosen, in the order they were first seen.
+        candidates: Vec<BridgeCatalogCandidate>,
     },
 }
 
-/// A run in flight, as the steps it is taking — one per signal, each with
-/// what extraction produced for it and every provider's lookup of it, so a
-/// surface lists the run row by row and each row settles on its own. Mirrors
+/// A run as its ledger: the three signals, each with what extraction produced
+/// for it and every provider's lookup of it. Mirrors
 /// `bae_core::identify::IdentifyRunView`.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+#[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeIdentifyRun {
-    /// The providers the run asks, in the order their rows are listed.
+    /// The providers the run asks, in the order their cells are listed.
     pub providers: Vec<BridgeMetadataSource>,
     pub disc_id: BridgeDiscIdStep,
-    pub artwork: BridgeArtworkStep,
     pub barcode: BridgeBarcodeStep,
     pub catalog: BridgeCatalogStep,
 }
@@ -798,13 +809,18 @@ pub struct BridgeResultProvenance {
 /// Current identify-pipeline state for one candidate. One variant per state;
 /// the UI reducer switches on the variant to render the right banner and
 /// update the candidate.
+///
+/// A settled state carries the run it settled as, so the ledger stays up
+/// beside the matches. It carries none when extraction handed the run nothing
+/// to lay out — a folder with no disc ID, no barcode source and no catalog
+/// number, or a verdict stood back up from the store.
 #[derive(Debug, Clone, uniffi::Enum)]
 pub enum BridgeIdentifyState {
     Idle,
-    /// Lookups in flight, laid out as the steps the run is taking, with the
-    /// matches the answered lookups have combined to so far — shaped exactly
-    /// as `Found`'s, so a surface lists them the same way. The pipeline
-    /// transitions to a terminal state once every step settles.
+    /// Lookups in flight, laid out as the run's ledger, with the matches the
+    /// answered lookups have combined to so far — shaped exactly as `Found`'s,
+    /// so a surface lists them the same way. The pipeline transitions to a
+    /// terminal state once every step settles.
     Triangulating {
         run: BridgeIdentifyRun,
         groups: Vec<BridgeReleaseGroup>,
@@ -812,6 +828,7 @@ pub enum BridgeIdentifyState {
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
     },
     Found {
+        run: Option<BridgeIdentifyRun>,
         /// The matches as group cards, in match order — the UI renders one card
         /// per group with its pressings beneath. Usually one; signals that
         /// named different releases give several.
@@ -825,12 +842,16 @@ pub enum BridgeIdentifyState {
         /// badges, and which signal produced each match.
         provenance: std::collections::HashMap<String, BridgeResultProvenance>,
     },
-    NotFoundAnywhere,
+    NotFoundAnywhere {
+        run: Option<BridgeIdentifyRun>,
+    },
     /// Nothing to look up — no disc-ID artifact and no barcode source. The UI
     /// offers manual search. Distinct from `NotFoundAnywhere` (signals ran,
-    /// matched nothing).
+    /// matched nothing). The run is there when extraction found catalog
+    /// numbers the person can still activate.
     ManualOnly {
         track_count: u32,
+        run: Option<BridgeIdentifyRun>,
     },
     /// At least one automatic provider lookup failed. The stored failure waits
     /// for an explicit re-run rather than being retried by the queue sweep.
@@ -840,6 +861,7 @@ pub enum BridgeIdentifyState {
     /// with the failures named beside them. `groups` is empty when nothing
     /// answered, and for a failure resumed from its stored verdict.
     Failed {
+        run: Option<BridgeIdentifyRun>,
         failures: Vec<BridgeIdentifyFailure>,
         groups: Vec<BridgeReleaseGroup>,
         library_statuses: std::collections::HashMap<String, BridgeLibraryStatus>,

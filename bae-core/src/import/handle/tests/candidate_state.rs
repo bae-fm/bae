@@ -14,10 +14,7 @@ async fn removing_a_watched_folder_cancels_in_flight_extraction() {
         fn analyze(&self, _path: &Path) -> ArtworkAnalysis {
             self.calls.fetch_add(1, Ordering::SeqCst);
             std::thread::sleep(self.delay);
-            ArtworkAnalysis {
-                barcodes: Vec::new(),
-                text_lines: vec!["Line".to_string()],
-            }
+            ArtworkAnalysis::of_text(vec!["Line".to_string()])
         }
     }
 

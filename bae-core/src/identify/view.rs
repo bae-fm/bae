@@ -8,38 +8,93 @@
 //!
 //! No surface wants that shape, and every surface wants the same *other* shape:
 //! the matches folded into their release-group cards, each result paired with its
-//! library status, provenance keyed by release id, a run in flight laid out as
-//! the steps it is taking with each provider's part of each, and the context's
-//! raw inputs — the user's exclusions — left behind. Those are domain
-//! decisions, so they are made here, once, and a field that must not cross is
-//! simply absent from the type.
+//! library status, provenance keyed by release id, the run laid out as a ledger —
+//! one row per value extraction found, with where it was found beside it and
+//! one cell per provider asked about it — and the context's raw inputs left
+//! behind. Those are domain decisions, so they are made here, once, and a field
+//! that must not cross is simply absent from the type.
 //!
 //! The transports (`bae-bridge`'s uniffi records, `bae-automation`'s JSON) mirror
 //! this view into their own wire types field by field and decide nothing.
 
 use super::combine::{combine_results, CombineOutcome, ResultProvenance};
 use super::state::{
-    BarcodeLookupState, BarcodeProgress, CatalogProgress, DiscidProgress, IdentifyState,
-    LookupState, SignalsContext,
+    BarcodeLookupState, BarcodeProgress, CatalogLookup, CatalogProgress, DiscidProgress,
+    IdentifyState, LookupResults, LookupState, SignalsContext,
 };
 use crate::db::LibraryStatus;
-use crate::import::release_group::ReleaseGroup;
+use crate::import::release_group::{group_results, ReleaseGroup};
+use crate::import::search::MetadataResult;
 use crate::import::MetadataSource;
-use crate::signals::{ArtworkScan, DiscIdSignal, LookupFailure, SignalOrigin};
+use crate::signals::{ArtworkScan, DiscIdSignal, ImageRegion, LookupFailure, SignalOrigin};
 
-/// How one provider's lookup of one value is going. The results themselves are
-/// not here: mid-flight, a surface shows only how many came back — the set
-/// itself surfaces from the terminal state.
+/// How one provider's lookup of one value is going — one cell of the ledger.
 #[derive(Debug, Clone, PartialEq)]
 pub enum LookupView {
+    /// Not asked yet: the provider's walk through the codes has not reached
+    /// this one.
+    Queued,
+    /// Never asked: the provider's walk ended at an earlier code, matched or
+    /// failed, so this one was not needed.
+    NotAsked,
     LookingUp,
-    Found { count: u32 },
+    /// The lookup named releases: how many pressings, and the album cards
+    /// they fold into, so a surface can show what the count stands for.
+    Found {
+        count: u32,
+        groups: Vec<ReleaseGroup>,
+    },
     NoMatch,
-    Failed { failure: LookupFailure },
+    Failed {
+        failure: LookupFailure,
+    },
+}
+
+/// One place a value was read: the origin, the file where the origin is one,
+/// and where on that image where the detector said.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ValueSource {
+    pub origin: SignalOrigin,
+    /// The candidate-relative path of the file, where the origin is a file.
+    pub file: Option<String>,
+    pub region: Option<ImageRegion>,
+}
+
+/// One provider's cell of a value's row.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProviderCell {
+    pub source: MetadataSource,
+    pub lookup: LookupView,
+}
+
+/// One value extraction found, as a row of the ledger: where it was found,
+/// and every provider's lookup of it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SignalValueRow {
+    pub value: String,
+    /// Every place the value was read, in the order it was read there.
+    pub sources: Vec<ValueSource>,
+    /// One per provider in the run, in the run's provider order.
+    pub cells: Vec<ProviderCell>,
+}
+
+/// Which kind of artifact a disc ID was read off.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiscIdFileKind {
+    Log,
+    Cue,
+}
+
+/// The file a disc ID was read off.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiscIdFile {
+    pub kind: DiscIdFileKind,
+    /// The candidate-relative path.
+    pub file: String,
 }
 
 /// The disc ID: read off a LOG or CUE, then looked up on MusicBrainz — the one
-/// provider with a disc-ID endpoint, so this step has one lookup and no list.
+/// provider with a disc-ID endpoint, so this step has one lookup and no cells.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DiscIdStepView {
     /// Extraction has not reported yet.
@@ -50,137 +105,85 @@ pub enum DiscIdStepView {
     ReadFailed { failure: LookupFailure },
     Read {
         disc_id: String,
-        /// The candidate-relative path of the file it came from. `None` for a
-        /// release re-identified from its stored tracks.
-        source_file: Option<String>,
+        /// The file it came from. `None` for a release re-identified from its
+        /// stored tracks.
+        source: Option<DiscIdFile>,
         lookup: LookupView,
     },
 }
 
-/// The artwork: read one image at a time for barcodes and text. A source,
-/// not a signal, so it has no lookups of its own — what it turns up feeds the
-/// barcode and catalog steps.
-#[derive(Debug, Clone, PartialEq)]
-pub enum ArtworkStepView {
-    /// Nothing to read: no images, or no analyzer on this platform.
-    Absent,
-    /// Reading `current`, the `position`th of `total`, with what the images
-    /// read so far have turned up.
-    Reading {
-        /// The image's candidate-relative path; `None` for a library
-        /// release's stored cover.
-        current: Option<String>,
-        position: u32,
-        total: u32,
-        barcodes: u32,
-        catalogs: u32,
-    },
-    /// Every image read.
-    Read {
-        images: u32,
-        barcodes: u32,
-        catalogs: u32,
-    },
-    /// Reading stopped at a failure, `read` images in.
-    Failed {
-        failure: LookupFailure,
-        read: u32,
-        total: u32,
-    },
-}
-
-/// One provider's walk through the candidate's barcodes.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ProviderBarcodeLookupView {
-    pub source: MetadataSource,
-    pub state: BarcodeLookupView,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum BarcodeLookupView {
-    /// Asking about `barcode`, the `position`th of `total`.
-    Trying {
-        barcode: String,
-        position: u32,
-        total: u32,
-    },
-    /// A code matched. `None` when the provider's answer was stood back up
-    /// from a settled run, which keeps what it found but not which code
-    /// found it.
-    Matched {
-        barcode: Option<String>,
-        count: u32,
-    },
-    /// Every code tried, none matched.
-    Exhausted,
-    Failed {
-        failure: LookupFailure,
-    },
-}
-
-/// The barcode: read off the artwork (or a CUE `CATALOG` field), then every
-/// provider tries the codes in order on its own.
+/// The barcode: read off the artwork and the CUE sheets, then every provider
+/// tries the codes in order on its own.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BarcodeStepView {
-    /// The artwork is still being read; the lookups start once it has been.
-    AwaitingArtwork,
     /// No barcode source at all.
     Absent,
     /// There was a source and it held no code.
     NoCodes,
     /// Reading the candidate's barcodes failed, so no provider was asked.
     ScanFailed { failure: LookupFailure },
-    Lookups {
-        codes: Vec<String>,
-        providers: Vec<ProviderBarcodeLookupView>,
+    /// One row per code, each with every provider's lookup of it. While the
+    /// artwork is still being read, `scanning` says more rows may come and
+    /// every cell is queued: the walks start once the codes have settled.
+    Rows {
+        scanning: bool,
+        rows: Vec<SignalValueRow>,
     },
 }
 
-/// One provider's part of the chosen catalog number's lookup.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ProviderLookupView {
-    pub source: MetadataSource,
-    pub state: LookupView,
+/// One catalog number extraction found and the run is not looking up: a
+/// tile, offered for the person to activate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogCandidateView {
+    pub value: String,
+    pub sources: Vec<ValueSource>,
 }
 
-/// The catalog number: the run looks one up only once the user picks it out
-/// of the numbers extraction turned up.
+/// The catalog number: the run looks up only the numbers the person picks
+/// out of the ones extraction turned up, each on its own.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CatalogStepView {
-    /// Extraction found no catalog number to offer.
+    /// Extraction found no catalog number to offer, and is not still looking.
     NoneFound,
-    /// Numbers were found and none is chosen yet: the step waits on a pick.
-    Unchosen { available: u32 },
-    Chosen {
-        value: String,
-        lookups: Vec<ProviderLookupView>,
+    Numbers {
+        /// Whether the artwork is still being read, so more numbers may come.
+        scanning: bool,
+        /// The chosen numbers, in the order they were chosen, each with every
+        /// provider's lookup of it.
+        rows: Vec<SignalValueRow>,
+        /// The numbers not chosen, in the order they were first seen.
+        candidates: Vec<CatalogCandidateView>,
     },
 }
 
-/// A run in flight, as the steps it is taking. One entry per signal, each
-/// carrying what extraction produced for it and every provider's lookup of it,
-/// so a surface lists the run row by row and each row settles on its own.
+/// The run as a ledger: the three signals, each carrying what extraction
+/// produced for it and every provider's lookup of it, so a surface lists the
+/// run row by row and each cell settles on its own.
 #[derive(Debug, Clone, PartialEq)]
 pub struct IdentifyRunView {
-    /// The providers the run asks, in the order their rows are listed.
-    /// Named up front so a surface can show a step's provider rows before
-    /// that step's lookups have started.
+    /// The providers the run asks, in the order their cells are listed. Named
+    /// up front so a surface can draw the columns before any row exists.
     pub providers: Vec<MetadataSource>,
     pub disc_id: DiscIdStepView,
-    pub artwork: ArtworkStepView,
     pub barcode: BarcodeStepView,
     pub catalog: CatalogStepView,
 }
 
 /// One candidate's identify state as a surface renders it.
+///
+/// A settled state carries the run it settled as, so the ledger stays up
+/// beside the matches. It carries none when extraction handed the run nothing
+/// to lay out: a folder with no disc ID, no barcode source and no catalog
+/// number, or a verdict stood back up from the store, whose signal inputs were
+/// never stored.
 #[derive(Debug, Clone)]
 pub enum IdentifyStateView {
     Idle,
 
-    /// Lookups in flight, laid out as the steps the run is taking, with the
-    /// matches every answered lookup has combined to so far — the same
-    /// combine the settle runs, so what a person sees mid-run is what the
-    /// verdict lands on, and a row that has landed does not jump at settle.
+    /// Lookups in flight, laid out as the ledger, with the matches every
+    /// answered lookup has combined to so far — the same combine the settle
+    /// runs, so what a person sees mid-run is what the verdict lands on, and a
+    /// row that has landed does not jump at settle.
     Triangulating {
         run: IdentifyRunView,
         groups: Vec<ReleaseGroup>,
@@ -193,6 +196,7 @@ pub enum IdentifyStateView {
     /// different releases give several, which is the same list of things to
     /// pick from either way.
     Found {
+        run: Option<IdentifyRunView>,
         /// The match list, folded into group cards in match order.
         groups: Vec<ReleaseGroup>,
         /// One per pressing; each carries its own `release_id`.
@@ -205,12 +209,17 @@ pub enum IdentifyStateView {
         provenance: Vec<(String, ResultProvenance)>,
     },
 
-    NotFoundAnywhere,
+    NotFoundAnywhere {
+        run: Option<IdentifyRunView>,
+    },
 
     /// No disc-ID artifact and no barcode source: nothing ran, so a surface
     /// offers manual search rather than claiming it looked and found nothing.
+    /// The run is there when extraction found catalog numbers the person can
+    /// still activate.
     ManualOnly {
         track_count: u32,
+        run: Option<IdentifyRunView>,
     },
 
     /// A lookup failed, with whatever the surviving evidence still combined
@@ -219,6 +228,7 @@ pub enum IdentifyStateView {
     /// when nothing answered, and for a failure resumed from its stored
     /// verdict.
     Failed {
+        run: Option<IdentifyRunView>,
         failures: Vec<super::IdentifyFailure>,
         groups: Vec<ReleaseGroup>,
         library_statuses: Vec<LibraryStatus>,
@@ -241,13 +251,7 @@ impl From<IdentifyState> for IdentifyStateView {
                     live_matches(&discid, &barcode, &catalog, &context);
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Triangulating {
-                    run: IdentifyRunView {
-                        providers: context.providers.clone(),
-                        disc_id: disc_id_step(discid, &context),
-                        artwork: artwork_step(&context),
-                        barcode: barcode_step(barcode),
-                        catalog: catalog_step(catalog, &context),
-                    },
+                    run: run_view(&discid, &barcode, &catalog, &context),
                     groups,
                     library_statuses,
                     provenance,
@@ -259,10 +263,11 @@ impl From<IdentifyState> for IdentifyStateView {
                 library_statuses,
                 track_count,
                 provenance,
-                context: _,
+                context,
             } => {
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Found {
+                    run: settled_run_view(&context),
                     groups,
                     library_statuses,
                     track_count,
@@ -270,12 +275,17 @@ impl From<IdentifyState> for IdentifyStateView {
                 }
             }
 
-            IdentifyState::NotFoundAnywhere { context: _ } => IdentifyStateView::NotFoundAnywhere,
+            IdentifyState::NotFoundAnywhere { context } => IdentifyStateView::NotFoundAnywhere {
+                run: settled_run_view(&context),
+            },
 
             IdentifyState::ManualOnly {
                 track_count,
-                context: _,
-            } => IdentifyStateView::ManualOnly { track_count },
+                context,
+            } => IdentifyStateView::ManualOnly {
+                track_count,
+                run: settled_run_view(&context),
+            },
 
             IdentifyState::Failed {
                 failures,
@@ -283,10 +293,11 @@ impl From<IdentifyState> for IdentifyStateView {
                 library_statuses,
                 provenance,
                 track_count: _,
-                context: _,
+                context,
             } => {
                 let (groups, provenance) = fold_matches(matches, provenance);
                 IdentifyStateView::Failed {
+                    run: settled_run_view(&context),
                     failures,
                     groups,
                     library_statuses,
@@ -309,7 +320,7 @@ fn live_matches(
     catalog: &CatalogProgress,
     context: &SignalsContext,
 ) -> (
-    Vec<crate::import::search::MetadataResult>,
+    Vec<MetadataResult>,
     Vec<LibraryStatus>,
     Vec<ResultProvenance>,
 ) {
@@ -332,7 +343,7 @@ fn live_matches(
 /// first: `combine` produces it index-aligned with the matches, and once the
 /// matches are inside the cards that alignment is no longer expressible.
 fn fold_matches(
-    matches: Vec<crate::import::search::MetadataResult>,
+    matches: Vec<MetadataResult>,
     provenance: Vec<ResultProvenance>,
 ) -> (Vec<ReleaseGroup>, Vec<(String, ResultProvenance)>) {
     let keyed = matches
@@ -340,12 +351,41 @@ fn fold_matches(
         .map(|result| result.release_id.clone())
         .zip(provenance)
         .collect();
-    (crate::import::release_group::group_results(matches), keyed)
+    (group_results(matches), keyed)
+}
+
+/// The ledger of a settled state: its pipes stood back up from the context,
+/// laid out as they settled. None when extraction handed the run nothing.
+fn settled_run_view(context: &SignalsContext) -> Option<IdentifyRunView> {
+    if !context.has_inputs() {
+        return None;
+    }
+    Some(run_view(
+        &super::state::settled_discid_progress(context),
+        &super::state::settled_barcode_progress(context),
+        &super::state::settled_catalog_progress(context),
+        context,
+    ))
+}
+
+fn run_view(
+    discid: &DiscidProgress,
+    barcode: &BarcodeProgress,
+    catalog: &CatalogProgress,
+    context: &SignalsContext,
+) -> IdentifyRunView {
+    let scanning = matches!(context.artwork, ArtworkScan::Reading { .. });
+    IdentifyRunView {
+        providers: context.providers.clone(),
+        disc_id: disc_id_step(discid, context),
+        barcode: barcode_step(barcode, context, scanning),
+        catalog: catalog_step(catalog, context, scanning),
+    }
 }
 
 /// The disc-ID step: what extraction read, from the context, and how far
 /// MusicBrainz's lookup of it has got, from the pipe.
-fn disc_id_step(progress: DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
+fn disc_id_step(progress: &DiscidProgress, context: &SignalsContext) -> DiscIdStepView {
     let (disc_id, source_file) = match &context.disc.signal {
         DiscIdSignal::Computed {
             disc_id,
@@ -368,261 +408,206 @@ fn disc_id_step(progress: DiscidProgress, context: &SignalsContext) -> DiscIdSte
         // The track count is a settled-state concern — it reaches a surface
         // through the terminal state, not through progress.
         DiscidProgress::Computing | DiscidProgress::LookingUp => LookupView::LookingUp,
-        DiscidProgress::Done { results, .. } => found_or_no_match(results.len()),
+        DiscidProgress::Done { results, .. } => found_or_no_match(results),
         DiscidProgress::Skipped { .. } => {
             unreachable!("a computed disc ID is never skipped")
         }
-        DiscidProgress::Failed { failure, .. } => LookupView::Failed { failure },
+        DiscidProgress::Failed { failure, .. } => LookupView::Failed {
+            failure: failure.clone(),
+        },
     };
     DiscIdStepView::Read {
         disc_id,
-        source_file,
+        source: source_file.map(disc_id_file),
         lookup,
     }
 }
 
-/// The artwork step: where the pass is, from the latest snapshot, and what
-/// the images read so far turned up — only what came off the artwork, since
-/// a CUE sheet's barcode or a folder name's catalog number is not its doing.
-fn artwork_step(context: &SignalsContext) -> ArtworkStepView {
-    let from_artwork = |values: &[crate::signals::SourcedValue]| {
-        values
-            .iter()
-            .filter(|v| v.origin == SignalOrigin::Artwork)
-            .count() as u32
-    };
-    let barcodes = from_artwork(&context.barcode.codes);
-    let catalogs = from_artwork(&context.catalog.numbers);
-    match &context.artwork {
-        ArtworkScan::Absent => ArtworkStepView::Absent,
-        ArtworkScan::Reading {
-            current,
-            position,
-            total,
-        } => ArtworkStepView::Reading {
-            current: current.clone(),
-            position: *position,
-            total: *total,
-            barcodes,
-            catalogs,
-        },
-        ArtworkScan::Done { total } => ArtworkStepView::Read {
-            images: *total,
-            barcodes,
-            catalogs,
-        },
-        ArtworkScan::Failed {
-            failure,
-            read,
-            total,
-        } => ArtworkStepView::Failed {
-            failure: failure.clone(),
-            read: *read,
-            total: *total,
-        },
-    }
-}
-
-fn barcode_step(progress: BarcodeProgress) -> BarcodeStepView {
-    match progress {
-        BarcodeProgress::Scanning => BarcodeStepView::AwaitingArtwork,
-        BarcodeProgress::NoCodes => BarcodeStepView::NoCodes,
-        BarcodeProgress::ScanFailed { failure } => BarcodeStepView::ScanFailed { failure },
-        BarcodeProgress::Skipped => BarcodeStepView::Absent,
-        BarcodeProgress::Lookups { codes, providers } => {
-            let total = codes.len() as u32;
-            let providers = providers
-                .into_iter()
-                .map(|provider| ProviderBarcodeLookupView {
-                    source: provider.source,
-                    state: match provider.state {
-                        BarcodeLookupState::Trying { index } => BarcodeLookupView::Trying {
-                            barcode: codes[index].clone(),
-                            position: index as u32 + 1,
-                            total,
-                        },
-                        BarcodeLookupState::Matched { code, results } => {
-                            BarcodeLookupView::Matched {
-                                barcode: code,
-                                count: results.len() as u32,
-                            }
-                        }
-                        BarcodeLookupState::Exhausted => BarcodeLookupView::Exhausted,
-                        BarcodeLookupState::Failed { failure } => {
-                            BarcodeLookupView::Failed { failure }
-                        }
-                    },
-                })
-                .collect();
-            BarcodeStepView::Lookups { codes, providers }
-        }
-    }
-}
-
-fn catalog_step(progress: CatalogProgress, context: &SignalsContext) -> CatalogStepView {
-    let Some(value) = &context.catalog.chosen else {
-        return if context.catalog.numbers.is_empty() {
-            CatalogStepView::NoneFound
+/// The file a disc ID was read off, by the kind of artifact it is. A disc ID
+/// is derived from a rip log or a cue sheet and nothing else, so a file that
+/// is not a log is a sheet.
+fn disc_id_file(file: String) -> DiscIdFile {
+    let is_log = std::path::Path::new(&file)
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("log"));
+    DiscIdFile {
+        kind: if is_log {
+            DiscIdFileKind::Log
         } else {
-            CatalogStepView::Unchosen {
-                available: context.catalog.numbers.len() as u32,
+            DiscIdFileKind::Cue
+        },
+        file,
+    }
+}
+
+fn barcode_step(
+    progress: &BarcodeProgress,
+    context: &SignalsContext,
+    scanning: bool,
+) -> BarcodeStepView {
+    match progress {
+        // The walks start once the codes settle: every code read so far is a
+        // row whose cells wait, and more rows may still come.
+        BarcodeProgress::Scanning => BarcodeStepView::Rows {
+            scanning: true,
+            rows: context
+                .barcode
+                .code_values()
+                .into_iter()
+                .map(|code| SignalValueRow {
+                    sources: sources_of(&context.barcode.codes, &code),
+                    cells: context
+                        .providers
+                        .iter()
+                        .map(|&source| ProviderCell {
+                            source,
+                            lookup: LookupView::Queued,
+                        })
+                        .collect(),
+                    value: code,
+                })
+                .collect(),
+        },
+        BarcodeProgress::NoCodes => BarcodeStepView::NoCodes,
+        BarcodeProgress::ScanFailed { failure } => BarcodeStepView::ScanFailed {
+            failure: failure.clone(),
+        },
+        BarcodeProgress::Skipped => BarcodeStepView::Absent,
+        BarcodeProgress::Lookups { codes, providers } => BarcodeStepView::Rows {
+            scanning,
+            rows: codes
+                .iter()
+                .enumerate()
+                .map(|(index, code)| SignalValueRow {
+                    value: code.clone(),
+                    sources: sources_of(&context.barcode.codes, code),
+                    cells: providers
+                        .iter()
+                        .map(|provider| ProviderCell {
+                            source: provider.source,
+                            lookup: barcode_cell(&provider.state, index, codes),
+                        })
+                        .collect(),
+                })
+                .collect(),
+        },
+    }
+}
+
+/// One provider's cell for the code at `index`, from where its walk is. A
+/// walk asks the codes in order and stops at the first match or failure, so
+/// where it is says what it did with every code: the ones before it missed,
+/// the one it is on it is asking about, and the ones after wait — or, once it
+/// has stopped, were never needed.
+fn barcode_cell(walk: &BarcodeLookupState, index: usize, codes: &[String]) -> LookupView {
+    match walk {
+        BarcodeLookupState::Trying { index: at } => match index.cmp(at) {
+            std::cmp::Ordering::Less => LookupView::NoMatch,
+            std::cmp::Ordering::Equal => LookupView::LookingUp,
+            std::cmp::Ordering::Greater => LookupView::Queued,
+        },
+        BarcodeLookupState::Matched { code, results } => {
+            let at = codes
+                .iter()
+                .position(|c| c == code)
+                .expect("a walk matches one of the codes it asks");
+            match index.cmp(&at) {
+                std::cmp::Ordering::Less => LookupView::NoMatch,
+                std::cmp::Ordering::Equal => found_or_no_match(results),
+                std::cmp::Ordering::Greater => LookupView::NotAsked,
             }
-        };
-    };
-    let lookups = match progress {
-        CatalogProgress::Skipped => Vec::new(),
-        CatalogProgress::Lookups { lookups } => lookups
-            .into_iter()
-            .map(|lookup| ProviderLookupView {
-                source: lookup.source,
-                state: match lookup.state {
+        }
+        BarcodeLookupState::Exhausted => LookupView::NoMatch,
+        BarcodeLookupState::Failed { failure, index: at } => match index.cmp(at) {
+            std::cmp::Ordering::Less => LookupView::NoMatch,
+            std::cmp::Ordering::Equal => LookupView::Failed {
+                failure: failure.clone(),
+            },
+            std::cmp::Ordering::Greater => LookupView::NotAsked,
+        },
+    }
+}
+
+fn catalog_step(
+    progress: &CatalogProgress,
+    context: &SignalsContext,
+    scanning: bool,
+) -> CatalogStepView {
+    let numbers = context.catalog.number_values();
+    if numbers.is_empty() && !scanning {
+        return CatalogStepView::NoneFound;
+    }
+    let rows = progress
+        .lookups()
+        .iter()
+        .map(|lookup| catalog_row(lookup, context))
+        .collect();
+    let candidates = numbers
+        .into_iter()
+        .filter(|value| !context.catalog.is_chosen(value))
+        .map(|value| CatalogCandidateView {
+            sources: sources_of(&context.catalog.numbers, &value),
+            value,
+        })
+        .collect();
+    CatalogStepView::Numbers {
+        scanning,
+        rows,
+        candidates,
+    }
+}
+
+fn catalog_row(lookup: &CatalogLookup, context: &SignalsContext) -> SignalValueRow {
+    SignalValueRow {
+        value: lookup.value.clone(),
+        sources: sources_of(&context.catalog.numbers, &lookup.value),
+        cells: lookup
+            .providers
+            .iter()
+            .map(|provider| ProviderCell {
+                source: provider.source,
+                lookup: match &provider.state {
                     LookupState::LookingUp => LookupView::LookingUp,
-                    LookupState::Done { results } => found_or_no_match(results.len()),
-                    LookupState::Failed { failure } => LookupView::Failed { failure },
+                    LookupState::Done { results } => found_or_no_match(results),
+                    LookupState::Failed { failure } => LookupView::Failed {
+                        failure: failure.clone(),
+                    },
                 },
             })
             .collect(),
-    };
-    CatalogStepView::Chosen {
-        value: value.clone(),
-        lookups,
     }
 }
 
-fn found_or_no_match(count: usize) -> LookupView {
-    if count == 0 {
-        LookupView::NoMatch
-    } else {
-        LookupView::Found {
-            count: count as u32,
-        }
+/// Every place `value` was read, in the order it was read there.
+fn sources_of(sightings: &[crate::signals::SourcedValue], value: &str) -> Vec<ValueSource> {
+    sightings
+        .iter()
+        .filter(|sighting| sighting.value == value)
+        .map(|sighting| ValueSource {
+            origin: sighting.origin,
+            file: sighting.origin_path.clone(),
+            region: sighting.region,
+        })
+        .collect()
+}
+
+/// What a settled lookup turned up: its releases folded into album cards, or
+/// nothing.
+fn found_or_no_match(results: &LookupResults) -> LookupView {
+    if results.is_empty() {
+        return LookupView::NoMatch;
+    }
+    let groups = group_results(results.iter().map(|(result, _)| result.clone()).collect());
+    LookupView::Found {
+        count: groups
+            .iter()
+            .map(|group| group.pressings.len() as u32)
+            .sum(),
+        groups,
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::db::LibraryStatus;
-    use crate::identify::state::{
-        BarcodeEvidence, BarcodeLookupState, CatalogEvidence, DiscIdEvidence, ProviderBarcodeLookup,
-    };
-    use crate::import::search::MetadataResult;
-    use crate::import::MetadataSource;
-    use crate::signals::{SignalOrigin, SourcedValue};
-
-    fn result(source: MetadataSource, release_id: &str) -> (MetadataResult, LibraryStatus) {
-        (
-            MetadataResult::for_test(source, release_id, Some("g")),
-            LibraryStatus::absent(release_id),
-        )
-    }
-
-    fn context() -> SignalsContext {
-        SignalsContext {
-            providers: vec![MetadataSource::MusicBrainz, MetadataSource::Discogs],
-            artwork: crate::signals::ArtworkScan::Absent,
-            disc: DiscIdEvidence {
-                signal: DiscIdSignal::Absent { track_count: 9 },
-                ..Default::default()
-            },
-            barcode: BarcodeEvidence {
-                codes: vec![SourcedValue::new("A".to_string(), SignalOrigin::Artwork)],
-                had_source: true,
-                ..Default::default()
-            },
-            catalog: CatalogEvidence::default(),
-            track_count: 9,
-        }
-    }
-
-    fn in_flight(context: SignalsContext) -> IdentifyState {
-        IdentifyState::Triangulating {
-            discid: DiscidProgress::Skipped { track_count: 9 },
-            barcode: BarcodeProgress::Lookups {
-                codes: vec!["A".to_string()],
-                providers: vec![
-                    ProviderBarcodeLookup {
-                        source: MetadataSource::MusicBrainz,
-                        state: BarcodeLookupState::Trying { index: 0 },
-                    },
-                    ProviderBarcodeLookup {
-                        source: MetadataSource::Discogs,
-                        state: BarcodeLookupState::Matched {
-                            code: Some("A".to_string()),
-                            results: vec![result(MetadataSource::Discogs, "dg-1")],
-                        },
-                    },
-                ],
-            },
-            catalog: CatalogProgress::Skipped,
-            context,
-        }
-    }
-
-    /// What one provider found shows while the other is still looking, with
-    /// the provenance the settled verdict will give it.
-    #[test]
-    fn a_landed_provider_s_matches_show_before_the_other_answers() {
-        let IdentifyStateView::Triangulating {
-            groups, provenance, ..
-        } = IdentifyStateView::from(in_flight(context()))
-        else {
-            panic!("a run in flight");
-        };
-        assert_eq!(groups.len(), 1);
-        assert_eq!(groups[0].pressings[0].releases[0].release_id, "dg-1");
-        assert_eq!(provenance.len(), 1);
-        assert_eq!(provenance[0].0, "dg-1");
-        assert!(provenance[0].1.by_barcode);
-    }
-
-    /// The artwork step counts only what came off the artwork: a barcode from
-    /// a CUE sheet or a catalog number from the folder name is not its doing.
-    #[test]
-    fn the_artwork_step_counts_only_what_the_artwork_turned_up() {
-        let mut context = context();
-        context.artwork = ArtworkScan::Reading {
-            current: Some("Back.jpg".to_string()),
-            position: 2,
-            total: 3,
-        };
-        context.barcode.codes = vec![
-            SourcedValue::new("A".to_string(), SignalOrigin::Artwork),
-            SourcedValue::new("B".to_string(), SignalOrigin::CueSheet),
-        ];
-        context.catalog.numbers = vec![
-            SourcedValue::new("LBL-1".to_string(), SignalOrigin::FolderName),
-            SourcedValue::new("LBL-2".to_string(), SignalOrigin::Artwork),
-            SourcedValue::new("LBL-3".to_string(), SignalOrigin::Artwork),
-        ];
-        let IdentifyStateView::Triangulating { run, .. } =
-            IdentifyStateView::from(in_flight(context))
-        else {
-            panic!("a run in flight");
-        };
-        assert_eq!(
-            run.artwork,
-            ArtworkStepView::Reading {
-                current: Some("Back.jpg".to_string()),
-                position: 2,
-                total: 3,
-                barcodes: 1,
-                catalogs: 2,
-            }
-        );
-    }
-
-    /// A signal the user unchecked contributes nothing mid-run, as it will
-    /// contribute nothing at settle.
-    #[test]
-    fn an_excluded_signal_s_matches_do_not_show() {
-        let mut context = context();
-        context.barcode.excluded = true;
-        let IdentifyStateView::Triangulating { groups, .. } =
-            IdentifyStateView::from(in_flight(context))
-        else {
-            panic!("a run in flight");
-        };
-        assert!(groups.is_empty());
-    }
-}
+#[path = "view_tests.rs"]
+mod tests;

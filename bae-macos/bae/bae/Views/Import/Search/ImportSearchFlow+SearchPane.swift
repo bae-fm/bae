@@ -19,7 +19,7 @@ extension ImportSearchFlow {
         let candidate: Candidate
         let key: String
         let selectedReleaseId: String?
-        /// What is in flight for this key: the run whose verdict and signals
+        /// What is in flight for this key: the run whose verdict and ledger
         /// the pane shows. `nil` when nothing is running for it.
         let runtime: BridgeCandidateRuntimeSnapshot?
         /// What extraction has found for this key so far, feeding the form's
@@ -63,21 +63,25 @@ extension ImportSearchFlow {
                     form: form
                 )
             },
-            onClearSearch: { services.importer.clearCandidateSearch(key) },
             onRetrySearch: { services.importer.retryCandidateSearch(key) },
             onOpenSettings: openSettings,
-            onToggleSignal: { signal in
-                services.importer.toggleSignalForCandidate(key, signal)
+            onToggleCatalog: { value in
+                services.importer.toggleSignalForCandidate(
+                    key,
+                    .catalog(value: value)
+                )
             },
             onIdentify: {
                 services.importer.identifyForExplicitLookup(key)
             },
-            onRerun: { services.importer.rerunIdentifyForCandidate(key) },
             onRetryFailed: {
                 services.importer.retryFailedIdentifyForCandidate(key)
             },
             onSelect: onSelect,
         )
+        // Which section is open is this candidate's: another candidate's
+        // pane starts on its own.
+        .id(key)
         // Every release the pane is offering is watched for library membership
         // while it is open: each provider lands its own part, so the set they
         // amount to changes as the run advances.
@@ -148,8 +152,10 @@ extension ImportSearchFlow {
             // and for a re-identify key — which has no row at all — it is the
             // only answer.
             signals: input.liveSignals ?? candidate.settledSignals,
-            signalsToolbar: input.runtime?.signalsToolbar
-                ?? BridgeSignalsToolbar(signals: []),
+            filePaths: Dictionary(
+                candidate.files.files.map { ($0.file.name, $0.file.localPath) },
+                uniquingKeysWith: { first, _ in first }
+            ),
         )
     }
 

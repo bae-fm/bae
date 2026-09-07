@@ -144,7 +144,7 @@ internal sealed partial class ImportMappingPane
             }
         }
 
-        if (search.NoMatches)
+        if (search.Status == BridgeSearchStatus.NoMatches)
         {
             column.Children.Add(ImportPaneUi.Cell(
                 Loc.Chrome("search.no_matches"), secondary: true));

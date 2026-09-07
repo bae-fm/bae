@@ -11,11 +11,12 @@
 //! pipe holds one entry per provider, and settles only once every one of them
 //! has.
 
-use super::{BarcodeEvidence, CatalogEvidence, Effect, SignalState, SignalsContext};
+use super::context::{RecordedWalk, WalkEnd};
+use super::{BarcodeEvidence, ChosenCatalog, Effect, SignalState, SignalsContext};
 use crate::db::LibraryStatus;
 use crate::import::search::{MetadataResult, SourceFailure};
 use crate::import::MetadataSource;
-use crate::signals::{DiscIdSignal, LookupFailure, SourcedValue};
+use crate::signals::{DiscIdSignal, LookupFailure};
 
 /// What one lookup produced: each match paired with its library status.
 pub type LookupResults = Vec<(MetadataResult, LibraryStatus)>;
@@ -60,7 +61,7 @@ impl DiscidProgress {
     }
 }
 
-/// One provider's part of a lookup with a single value to ask about — the
+/// One provider's part of a lookup with a single value to ask about — one
 /// chosen catalog number.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProviderLookup {
@@ -93,21 +94,19 @@ pub struct ProviderBarcodeLookup {
 #[derive(Clone, Debug, PartialEq)]
 pub enum BarcodeLookupState {
     /// Asking about the code at `index` in the pipe's list.
-    Trying {
-        index: usize,
-    },
-    /// A code matched. `code` is `None` for a pipe stood back up from a
-    /// settled context, which records what each provider found but not
-    /// which of several codes found it; the run's own matched code stands
-    /// for it then.
+    Trying { index: usize },
+    /// The walk stopped at `code`, which matched.
     Matched {
-        code: Option<String>,
+        code: String,
         results: LookupResults,
     },
     /// Every code tried, none matched.
     Exhausted,
+    /// The walk stopped at the code at `index`, which the provider could not
+    /// answer about.
     Failed {
         failure: LookupFailure,
+        index: usize,
     },
 }
 
@@ -173,7 +172,7 @@ impl BarcodeProgress {
             BarcodeProgress::Lookups { providers, .. } => providers
                 .iter()
                 .filter_map(|p| match &p.state {
-                    BarcodeLookupState::Failed { failure } => Some(SourceFailure {
+                    BarcodeLookupState::Failed { failure, .. } => Some(SourceFailure {
                         source: p.source,
                         failure: failure.clone(),
                     }),
@@ -193,81 +192,186 @@ impl BarcodeProgress {
     }
 
     /// Which code found the release: the earliest in the list that any
-    /// provider matched. A provider stood back up from a settled context
-    /// matched *some* code without saying which, so `previous` — the run's
-    /// matched code before the stand-up — competes on its behalf.
-    pub fn matched_barcode(&self, previous: Option<&str>) -> Option<String> {
+    /// provider matched.
+    pub fn matched_barcode(&self) -> Option<String> {
         let BarcodeProgress::Lookups { codes, providers } = self else {
             return None;
         };
-        let index_of = |code: &str| codes.iter().position(|c| c == code);
-        let mut candidates: Vec<&str> = Vec::new();
-        for provider in providers {
-            match &provider.state {
-                BarcodeLookupState::Matched {
-                    code: Some(code), ..
-                } => candidates.push(code),
-                BarcodeLookupState::Matched { code: None, .. } => {
-                    candidates.extend(previous);
-                }
-                _ => {}
-            }
-        }
-        candidates
-            .into_iter()
-            .min_by_key(|code| index_of(code).unwrap_or(usize::MAX))
+        providers
+            .iter()
+            .filter_map(|provider| match &provider.state {
+                BarcodeLookupState::Matched { code, .. } => Some(code.as_str()),
+                _ => None,
+            })
+            .min_by_key(|code| codes.iter().position(|c| c == code))
             .map(str::to_string)
+    }
+
+    /// Where every settled walk ended, for the evidence to record. A walk
+    /// still trying has nowhere to record yet, and the pipe is recorded only
+    /// once every walk has settled.
+    pub fn walks(&self) -> Vec<RecordedWalk> {
+        let BarcodeProgress::Lookups { codes, providers } = self else {
+            return Vec::new();
+        };
+        providers
+            .iter()
+            .filter_map(|provider| {
+                let end = match &provider.state {
+                    BarcodeLookupState::Trying { .. } => return None,
+                    BarcodeLookupState::Matched { code, .. } => {
+                        WalkEnd::Matched { code: code.clone() }
+                    }
+                    BarcodeLookupState::Exhausted => WalkEnd::Exhausted,
+                    BarcodeLookupState::Failed { index, .. } => WalkEnd::Failed {
+                        code: codes[*index].clone(),
+                    },
+                };
+                Some(RecordedWalk {
+                    source: provider.source,
+                    end,
+                })
+            })
+            .collect()
     }
 }
 
-/// The chosen catalog number's lookup. `Skipped` is the resting state: the
-/// catalog runs only once the user picks one of the extracted numbers.
+/// One chosen catalog number's lookup: every provider's part of it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct CatalogLookup {
+    pub value: String,
+    pub providers: Vec<ProviderLookup>,
+}
+
+impl CatalogLookup {
+    fn is_settled(&self) -> bool {
+        self.providers.iter().all(|l| l.state.is_settled())
+    }
+
+    fn results(&self) -> LookupResults {
+        self.providers
+            .iter()
+            .filter_map(|l| match &l.state {
+                LookupState::Done { results } => Some(results.clone()),
+                _ => None,
+            })
+            .flatten()
+            .collect()
+    }
+
+    fn failures(&self) -> Vec<SourceFailure> {
+        self.providers
+            .iter()
+            .filter_map(|l| match &l.state {
+                LookupState::Failed { failure } => Some(SourceFailure {
+                    source: l.source,
+                    failure: failure.clone(),
+                }),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+/// The chosen catalog numbers' lookups. `Skipped` is the resting state: the
+/// catalog runs only once the user picks out of the extracted numbers, and
+/// each picked number is looked up on its own.
 #[derive(Clone, Debug, PartialEq)]
 pub enum CatalogProgress {
     /// No catalog number chosen, so nothing to look up.
     Skipped,
-    /// Every provider's part of the chosen number's lookup. Settled once
-    /// every provider is.
-    Lookups { lookups: Vec<ProviderLookup> },
+    /// One lookup per chosen number, in the order they were chosen. Settled
+    /// once every provider's part of every one is.
+    Lookups { values: Vec<CatalogLookup> },
 }
 
 impl CatalogProgress {
     pub fn is_settled(&self) -> bool {
         match self {
             CatalogProgress::Skipped => true,
-            CatalogProgress::Lookups { lookups } => lookups.iter().all(|l| l.state.is_settled()),
+            CatalogProgress::Lookups { values } => values.iter().all(CatalogLookup::is_settled),
         }
     }
 
+    /// Every chosen number's results, in chosen order.
     pub fn results(&self) -> LookupResults {
         match self {
-            CatalogProgress::Lookups { lookups } => lookups
-                .iter()
-                .filter_map(|l| match &l.state {
-                    LookupState::Done { results } => Some(results.clone()),
-                    _ => None,
-                })
-                .flatten()
-                .collect(),
+            CatalogProgress::Lookups { values } => {
+                values.iter().flat_map(CatalogLookup::results).collect()
+            }
             CatalogProgress::Skipped => Vec::new(),
         }
     }
 
-    /// The providers that failed this lookup, whether or not any answered.
+    /// Every provider that failed any chosen number's lookup, whether or not
+    /// any answered.
     pub fn failures(&self) -> Vec<SourceFailure> {
         match self {
-            CatalogProgress::Lookups { lookups } => lookups
-                .iter()
-                .filter_map(|l| match &l.state {
-                    LookupState::Failed { failure } => Some(SourceFailure {
-                        source: l.source,
-                        failure: failure.clone(),
-                    }),
-                    _ => None,
-                })
-                .collect(),
+            CatalogProgress::Lookups { values } => {
+                values.iter().flat_map(CatalogLookup::failures).collect()
+            }
             CatalogProgress::Skipped => Vec::new(),
         }
+    }
+
+    fn lookup_of(&self, value: &str) -> Option<&CatalogLookup> {
+        match self {
+            CatalogProgress::Lookups { values } => values.iter().find(|l| l.value == value),
+            CatalogProgress::Skipped => None,
+        }
+    }
+
+    /// One chosen number's results.
+    pub fn results_for(&self, value: &str) -> LookupResults {
+        self.lookup_of(value)
+            .map(CatalogLookup::results)
+            .unwrap_or_default()
+    }
+
+    /// The providers that failed one chosen number's lookup.
+    pub fn failures_for(&self, value: &str) -> Vec<SourceFailure> {
+        self.lookup_of(value)
+            .map(CatalogLookup::failures)
+            .unwrap_or_default()
+    }
+
+    /// The chosen numbers' lookups, in chosen order; none when nothing is chosen.
+    pub fn lookups(&self) -> &[CatalogLookup] {
+        match self {
+            CatalogProgress::Lookups { values } => values,
+            CatalogProgress::Skipped => &[],
+        }
+    }
+
+    /// This progress without `value`'s lookup: what taking a number out of
+    /// the run leaves. Nothing left to look up is the resting state.
+    pub(super) fn without(self, value: &str) -> Self {
+        self.keeping(|lookup| lookup.value != value)
+    }
+
+    /// This progress with only the lookups `keep` admits.
+    pub(super) fn keeping(self, keep: impl Fn(&CatalogLookup) -> bool) -> Self {
+        match self {
+            CatalogProgress::Lookups { mut values } => {
+                values.retain(|lookup| keep(lookup));
+                if values.is_empty() {
+                    CatalogProgress::Skipped
+                } else {
+                    CatalogProgress::Lookups { values }
+                }
+            }
+            CatalogProgress::Skipped => CatalogProgress::Skipped,
+        }
+    }
+
+    /// This progress with one more number's lookup.
+    pub(super) fn with(self, lookup: CatalogLookup) -> Self {
+        let mut values = match self {
+            CatalogProgress::Lookups { values } => values,
+            CatalogProgress::Skipped => Vec::new(),
+        };
+        values.push(lookup);
+        CatalogProgress::Lookups { values }
     }
 }
 
@@ -339,7 +443,7 @@ fn settled_lookup_state(n_results: usize, failures: &[SourceFailure]) -> SignalS
 ///
 /// This is what a state that has left `Triangulating` re-enters it with when
 /// another signal starts a lookup, and what its badge state is read off.
-pub(super) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgress {
+pub(crate) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgress {
     let track_count = context.track_count;
     if let Some(failure) = &context.disc.failure {
         return DiscidProgress::Failed {
@@ -363,7 +467,7 @@ pub(super) fn settled_discid_progress(context: &SignalsContext) -> DiscidProgres
 /// The barcode pipe a settled context stands back up as: one entry per
 /// provider, each holding what the context recorded for it. Scanned and found
 /// nothing settles as `NoCodes`, while nothing to scan at all is a skip.
-pub(super) fn settled_barcode_progress(context: &SignalsContext) -> BarcodeProgress {
+pub(crate) fn settled_barcode_progress(context: &SignalsContext) -> BarcodeProgress {
     let barcode = &context.barcode;
     if let Some(failure) = &barcode.scan_failure {
         return BarcodeProgress::ScanFailed {
@@ -377,62 +481,94 @@ pub(super) fn settled_barcode_progress(context: &SignalsContext) -> BarcodeProgr
             BarcodeProgress::Skipped
         };
     }
+    let codes = barcode.code_values();
     BarcodeProgress::Lookups {
-        codes: code_values(&barcode.codes),
         providers: context
             .providers
             .iter()
             .map(|&source| ProviderBarcodeLookup {
                 source,
-                state: recorded_barcode_state(barcode, source),
+                state: recorded_barcode_state(barcode, &codes, source),
             })
             .collect(),
+        codes,
     }
 }
 
-/// What the evidence recorded for one provider's barcode walk.
-fn recorded_barcode_state(barcode: &BarcodeEvidence, source: MetadataSource) -> BarcodeLookupState {
-    if let Some(failure) = barcode.failures.iter().find(|f| f.source == source) {
-        return BarcodeLookupState::Failed {
-            failure: failure.failure.clone(),
-        };
-    }
-    let results = results_from(&barcode.results, source);
-    if results.is_empty() {
-        BarcodeLookupState::Exhausted
-    } else {
-        BarcodeLookupState::Matched {
-            code: None,
-            results,
+/// What the evidence recorded for one provider's barcode walk: where it
+/// ended, with what it found or why it stopped. Every provider in a settled
+/// run recorded a walk, so one without is a run that never settled with these
+/// providers — a defect, not a case.
+fn recorded_barcode_state(
+    barcode: &BarcodeEvidence,
+    codes: &[String],
+    source: MetadataSource,
+) -> BarcodeLookupState {
+    let walk = barcode
+        .walks
+        .iter()
+        .find(|walk| walk.source == source)
+        .unwrap_or_else(|| panic!("a settled barcode walk is recorded for {source:?}"));
+    let index_of = |code: &str| {
+        codes
+            .iter()
+            .position(|c| c == code)
+            .unwrap_or_else(|| panic!("a recorded walk ended at a code the run asks: {code:?}"))
+    };
+    match &walk.end {
+        WalkEnd::Matched { code } => BarcodeLookupState::Matched {
+            code: code.clone(),
+            results: results_from(&barcode.results, source),
+        },
+        WalkEnd::Exhausted => BarcodeLookupState::Exhausted,
+        WalkEnd::Failed { code } => {
+            let failure = barcode
+                .failures
+                .iter()
+                .find(|f| f.source == source)
+                .unwrap_or_else(|| panic!("a failed walk records its failure for {source:?}"));
+            BarcodeLookupState::Failed {
+                failure: failure.failure.clone(),
+                index: index_of(code),
+            }
         }
     }
 }
 
-/// The catalog pipe a settled context stands back up as.
-pub(super) fn settled_catalog_progress(context: &SignalsContext) -> CatalogProgress {
-    if context.catalog.chosen.is_none() {
+/// The catalog pipe a settled context stands back up as: one lookup per
+/// chosen number, each holding what the context recorded for it.
+pub(crate) fn settled_catalog_progress(context: &SignalsContext) -> CatalogProgress {
+    if context.catalog.chosen.is_empty() {
         return CatalogProgress::Skipped;
     }
     CatalogProgress::Lookups {
-        lookups: context
-            .providers
+        values: context
+            .catalog
+            .chosen
             .iter()
-            .map(|&source| ProviderLookup {
-                source,
-                state: recorded_catalog_state(&context.catalog, source),
+            .map(|chosen| CatalogLookup {
+                value: chosen.value.clone(),
+                providers: context
+                    .providers
+                    .iter()
+                    .map(|&source| ProviderLookup {
+                        source,
+                        state: recorded_catalog_state(chosen, source),
+                    })
+                    .collect(),
             })
             .collect(),
     }
 }
 
-fn recorded_catalog_state(catalog: &CatalogEvidence, source: MetadataSource) -> LookupState {
-    if let Some(failure) = catalog.failures.iter().find(|f| f.source == source) {
+fn recorded_catalog_state(chosen: &ChosenCatalog, source: MetadataSource) -> LookupState {
+    if let Some(failure) = chosen.failures.iter().find(|f| f.source == source) {
         return LookupState::Failed {
             failure: failure.failure.clone(),
         };
     }
     LookupState::Done {
-        results: results_from(&catalog.results, source),
+        results: results_from(&chosen.results, source),
     }
 }
 
@@ -501,8 +637,10 @@ pub(super) fn start_discid_progress(
 /// failed has no codes to walk and never gets a lookup, so it settles as the
 /// failure it is rather than as the no-match an empty list would otherwise
 /// read as — which is what a re-run over a failed scan used to produce.
+///
+/// `codes` is each code once, in the order the walks ask them.
 pub(super) fn start_barcode_progress(
-    codes: &[SourcedValue],
+    codes: Vec<String>,
     had_source: bool,
     scan_failure: Option<&LookupFailure>,
     providers: &[MetadataSource],
@@ -523,7 +661,6 @@ pub(super) fn start_barcode_progress(
             BarcodeProgress::Skipped
         };
     }
-    let codes = code_values(codes);
     let providers = providers
         .iter()
         .map(|&source| {
@@ -540,14 +677,15 @@ pub(super) fn start_barcode_progress(
     BarcodeProgress::Lookups { codes, providers }
 }
 
-/// Ask every provider about the chosen catalog number.
-pub(super) fn start_catalog_progress(
+/// Ask every provider about one chosen catalog number.
+pub(super) fn start_catalog_lookup(
     catalog: &str,
     providers: &[MetadataSource],
     effects: &mut Vec<Effect>,
-) -> CatalogProgress {
-    CatalogProgress::Lookups {
-        lookups: providers
+) -> CatalogLookup {
+    CatalogLookup {
+        value: catalog.to_string(),
+        providers: providers
             .iter()
             .map(|&source| {
                 effects.push(Effect::LookupCatalog {
@@ -559,6 +697,23 @@ pub(super) fn start_catalog_progress(
                     state: LookupState::LookingUp,
                 }
             })
+            .collect(),
+    }
+}
+
+/// Ask every provider about every chosen catalog number.
+pub(super) fn start_catalog_progress(
+    chosen: &[String],
+    providers: &[MetadataSource],
+    effects: &mut Vec<Effect>,
+) -> CatalogProgress {
+    if chosen.is_empty() {
+        return CatalogProgress::Skipped;
+    }
+    CatalogProgress::Lookups {
+        values: chosen
+            .iter()
+            .map(|value| start_catalog_lookup(value, providers, effects))
             .collect(),
     }
 }
@@ -585,22 +740,23 @@ pub(super) fn retry_failed_barcode_lookups(
     }
 }
 
-/// Ask every provider whose catalog lookup failed again.
+/// Ask again every provider whose lookup of any chosen number failed.
 pub(super) fn retry_failed_catalog_lookups(
     progress: &mut CatalogProgress,
-    catalog: &str,
     effects: &mut Vec<Effect>,
 ) {
-    let CatalogProgress::Lookups { lookups } = progress else {
+    let CatalogProgress::Lookups { values } = progress else {
         return;
     };
-    for lookup in lookups.iter_mut() {
-        if matches!(lookup.state, LookupState::Failed { .. }) {
-            effects.push(Effect::LookupCatalog {
-                source: lookup.source,
-                catalog: catalog.to_string(),
-            });
-            lookup.state = LookupState::LookingUp;
+    for lookup in values.iter_mut() {
+        for provider in lookup.providers.iter_mut() {
+            if matches!(provider.state, LookupState::Failed { .. }) {
+                effects.push(Effect::LookupCatalog {
+                    source: provider.source,
+                    catalog: lookup.value.clone(),
+                });
+                provider.state = LookupState::LookingUp;
+            }
         }
     }
 }
@@ -628,10 +784,6 @@ pub(super) fn retry_failed_discid_lookup(
         });
         *progress = DiscidProgress::LookingUp;
     }
-}
-
-fn code_values(codes: &[SourcedValue]) -> Vec<String> {
-    codes.iter().map(|c| c.value.clone()).collect()
 }
 
 /// The track count is whatever the disc-ID signal reported — every one of its

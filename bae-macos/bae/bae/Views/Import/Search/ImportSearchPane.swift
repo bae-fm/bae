@@ -1,13 +1,16 @@
 import BaeKit
 import SwiftUI
 
-/// Find online: one page. The header states what identification concluded and
-/// offers the one thing to do about it, the result area lists what there is to
-/// pick from, and the typed-search form stays docked at the bottom.
+/// Find online: two sections, one open at a time. AUTOMATIC lays the
+/// identify run out as a ledger and lists what it matched; SEARCH holds the
+/// typed-search form with what it turned up beneath. Each section's results
+/// render under the header that produced them, and each header carries one
+/// glyph saying how its part is going, open or collapsed.
 ///
-/// A submitted search takes over the result area only — the verdict above it
-/// does not move, and Clear gives the area back. Renders from
-/// `ImportSearchState` plus the form bindings and action callbacks.
+/// Opening SEARCH collapses AUTOMATIC without cancelling its run: the run
+/// carries on behind its header, and its results wait behind the glyph.
+/// Renders from `ImportSearchState` plus the form bindings and action
+/// callbacks.
 struct ImportSearchPane: View {
     let state: ImportSearchState
     /// Leave the pane. `nil` for a surface that owns its own way out.
@@ -18,82 +21,74 @@ struct ImportSearchPane: View {
     let onCommitForm: (CandidateSearchState) -> Void
     /// Search with the form as it stands.
     let onSearch: (CandidateSearchState) -> Void
-    /// Drop the submitted search, giving the result area back to identify.
-    let onClearSearch: () -> Void
     /// Re-ask only the providers whose part of the search failed.
     let onRetrySearch: () -> Void
     let onOpenSettings: () -> Void
-    /// Act on a signal — take the disc ID or barcode in or out of the run, or
-    /// pick which extracted catalog number the run looks up. The state the
-    /// import projection delivers is re-derived from what is left checked.
-    let onToggleSignal: (BridgeSignalToggle) -> Void
+    /// Take a catalog number in or out of the run. Core re-derives the state
+    /// the import projection delivers from what is chosen.
+    let onToggleCatalog: (String) -> Void
     /// Start identification for a folder whose run never began. Core owns
     /// whether this starts, resumes, or does nothing.
     let onIdentify: () -> Void
-    /// Run signal extraction and the lookups again.
-    let onRerun: () -> Void
     /// Re-ask only the lookups that failed, keeping what the others found.
     let onRetryFailed: () -> Void
     /// A pressing row was picked — the flow opens the docked confirm pane.
     let onSelect: (Pressing) -> Void
 
-    /// The form's first field takes the keyboard on every new value. A
-    /// person with nothing to pick is going to type, so an empty result area
-    /// hands the cursor over, and "Search instead" hands it over again.
+    /// Which section is open. AUTOMATIC to begin with — a candidate that
+    /// already has a search submitted opens on SEARCH, where its results are.
+    @State
+    private var openSection: FindOnlineSection = .automatic
+    /// The form's first field takes the keyboard on every new value: Search
+    /// manually hands the cursor over, and does so again after it has been
+    /// elsewhere.
     @State
     private var formFocusRequest = 0
 
-    private var verdict: FindOnlineVerdict {
-        FindOnlineVerdict(
-            state: state.identifyState,
-            toolbar: state.signalsToolbar
-        )
-    }
-
     private var area: FindOnlineResultArea {
-        FindOnlineResultArea(
-            identifyState: state.identifyState,
-            hasSearch: state.search != nil
-        )
+        FindOnlineResultArea(identifyState: state.identifyState)
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            FindOnlineHeader(
-                verdict: verdict,
-                toolbar: state.signalsToolbar,
-                onBack: onBack,
-                onIdentify: onIdentify,
-                onRetry: onRetryFailed,
-                onToggleSignal: onToggleSignal,
-                onRerun: onRerun,
-            )
+            FindOnlineHeader(onBack: onBack)
             Divider()
             errorLine
-            resultArea
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Divider()
-            ImportSearchFormView(
-                form: form,
-                onCommit: onCommitForm,
-                signals: state.signals,
-                focusRequest: formFocusRequest,
-                onSearch: onSearch,
+            FindOnlineSectionHeader(
+                section: .automatic,
+                isOpen: openSection == .automatic,
+                glyph: FindOnlineSectionGlyph(
+                    identifyState: state.identifyState
+                ),
+                onOpen: { openSection = .automatic }
             )
-        }
-        // A person looking at an empty result area is about to type: seed the
-        // Artist field from what was read off the folder and put the cursor
-        // in it. Only when the fields are untouched — never over typing.
-        .onChange(of: area, initial: true) { _, area in
-            guard area == .nothingFound || area == .noSignals else { return }
-            formFocusRequest += 1
-            guard form.searchArtist.isEmpty, form.searchAlbum.isEmpty else {
-                return
+            if openSection == .automatic {
+                automaticContent
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .top
+                    )
             }
-            if let seed = state.signals?.text.freeText.first {
-                var seeded = form
-                seeded.searchArtist = seed
-                onCommitForm(seeded)
+            Divider()
+            FindOnlineSectionHeader(
+                section: .search,
+                isOpen: openSection == .search,
+                glyph: FindOnlineSectionGlyph(search: state.search),
+                onOpen: { openSection = .search }
+            )
+            if openSection == .search {
+                searchContent
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .top
+                    )
+            }
+        }
+        .onAppear {
+            if state.search != nil {
+                openSection = .search
             }
         }
     }
@@ -110,62 +105,106 @@ struct ImportSearchPane: View {
             .foregroundStyle(.red)
             .padding(.horizontal, 14)
             .padding(.vertical, 6)
+            Divider()
         }
     }
 
-    // MARK: - Result area
+    // MARK: - AUTOMATIC
 
+    /// The ledger with what it matched beneath, scrolling together — or,
+    /// with nothing to lay out, one line saying so and the one thing to do.
     @ViewBuilder
-    private var resultArea: some View {
+    private var automaticContent: some View {
         switch area {
-        case .identifying:
-            identifying
-        case .groups:
-            ReleaseGroupListView(
-                groups: state.identifiedGroups,
-                isImporting: state.isImporting,
-                libraryStatuses: state.libraryStatuses,
-                provenance: state.identifiedProvenance,
-                selectedReleaseId: state.selectedReleaseId,
-                loadingReleaseId: state.loadingReleaseId,
-                releaseSelectionFailure: state.releaseSelectionFailure,
-                onSelect: onSelect,
-                trailing: {
-                    ForEach(missingSourceNotes, id: \.self) { note in
-                        MissingSourceNote(text: note)
-                    }
-                    finalizingLine
-                },
-            )
-        case .nothingFound:
+        case .notStarted:
             FindOnlineEmptyZone {
-                Text("No matches.")
-                    .foregroundStyle(.secondary)
-                searchInstead
+                IdentifyButton(action: onIdentify)
             }
         case .noSignals:
             FindOnlineEmptyZone {
-                Text("Nothing to identify.")
+                Text("No disc ID, barcode, or catalog number found")
                     .foregroundStyle(.secondary)
-                searchInstead
+                SearchManuallyButton(action: searchManually)
             }
-        case .notStarted:
-            FindOnlineEmptyZone {
-                IdentifyAutomaticallyButton(action: onIdentify)
+        case .identifying, .groups, .nothingFound, .awaitingCatalog,
+            .failureLines:
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if let run = state.run {
+                        IdentifyLedgerView(
+                            run: run,
+                            filePaths: state.filePaths,
+                            onToggleCatalog: onToggleCatalog,
+                            onRetryFailed: onRetryFailed
+                        )
+                        Divider()
+                            .padding(.horizontal, 14)
+                    }
+                    belowLedger
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-        case .failureLines:
-            failureLines
-        case .searchRun:
-            searchRun
         }
     }
 
-    /// The way out of an empty zone: the cursor goes to the form's first
-    /// field. Every press is a new request, so it works after the cursor has
-    /// been elsewhere.
-    private var searchInstead: some View {
-        Button("Search instead") { formFocusRequest += 1 }
-            .buttonStyle(.link)
+    @ViewBuilder
+    private var belowLedger: some View {
+        switch area {
+        case .identifying:
+            if !state.identifiedGroups.isEmpty {
+                identifiedList { EmptyView() }
+            }
+        case .groups:
+            identifiedList {
+                ForEach(missingSourceNotes, id: \.self) { note in
+                    MissingSourceNote(text: note)
+                }
+            }
+        case .nothingFound:
+            FindOnlineEmptyZone {
+                Text("No results")
+                    .foregroundStyle(.secondary)
+                SearchManuallyButton(action: searchManually)
+            }
+        case .failureLines:
+            failureLines
+        case .awaitingCatalog, .notStarted, .noSignals:
+            EmptyView()
+        }
+    }
+
+    private func identifiedList<Trailing: View>(
+        @ViewBuilder trailing: @escaping () -> Trailing
+    ) -> some View {
+        ReleaseGroupListContent(
+            groups: state.identifiedGroups,
+            isImporting: state.isImporting,
+            libraryStatuses: state.libraryStatuses,
+            provenance: state.identifiedProvenance,
+            selectedReleaseId: state.selectedReleaseId
+                ?? state.finalizingPressing?.lead.releaseId,
+            loadingReleaseId: state.loadingReleaseId
+                ?? state.finalizingPressing?.lead.releaseId,
+            releaseSelectionFailure: state.releaseSelectionFailure,
+            onSelect: onSelect,
+            trailing: trailing,
+        )
+    }
+
+    /// Open SEARCH with the cursor in its first field, seeded from what was
+    /// read off the folder — only when the fields are untouched, never over
+    /// typing.
+    private func searchManually() {
+        openSection = .search
+        formFocusRequest += 1
+        guard form.searchArtist.isEmpty, form.searchAlbum.isEmpty else {
+            return
+        }
+        if let seed = state.signals?.text.freeText.first {
+            var seeded = form
+            seeded.searchArtist = seed
+            onCommitForm(seeded)
+        }
     }
 
     /// Every lookup failed, so the reasons take the place of the results.
@@ -183,11 +222,7 @@ struct ImportSearchPane: View {
         .font(.system(size: 12.5))
         .padding(.horizontal, 18)
         .padding(.vertical, 22)
-        .frame(
-            maxWidth: .infinity,
-            maxHeight: .infinity,
-            alignment: .topLeading
-        )
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     /// One line per failed lookup whose results the list is missing, closing
@@ -208,79 +243,33 @@ struct ImportSearchPane: View {
         }
     }
 
-    /// What core is still doing after the verdict: a sole pressing has its
-    /// details fetched and applied as the pick, then the answer is stored.
-    /// The list is already final, so the line sits under it rather than
-    /// replacing it.
-    @ViewBuilder
-    private var finalizingLine: some View {
-        if state.isFinalizing {
-            let pressings = state.identifiedGroups.flatMap(\.pressings).count
-            HStack(spacing: 6) {
-                ProgressView()
-                    .controlSize(.small)
-                    .scaleEffect(0.7)
-                Text(
-                    pressings == 1
-                        ? String(localized: "Fetching release details\u{2026}")
-                        : String(localized: "Saving the result\u{2026}")
-                )
-            }
-            .font(.system(size: 12))
-            .foregroundStyle(.secondary)
-            .padding(.leading, 28)
-        }
-    }
+    // MARK: - SEARCH
 
-    /// The run as its steps, each provider's part settling on its own, with
-    /// whatever the answered lookups have combined to listed beneath. The
-    /// list scrolls under the steps, which stay put, so a person keeps the
-    /// run in view while the matches come in.
-    @ViewBuilder
-    private var identifying: some View {
-        if case .triangulating(let run, _, _, _) = state.identifyState {
-            VStack(alignment: .leading, spacing: 0) {
-                IdentifyRunStepsView(
-                    run: run,
-                    catalogOptions: state.signalsToolbar.signals
-                        .first { $0.kind == .catalog }?
-                        .options ?? [],
-                    onToggleSignal: onToggleSignal,
-                    onRetryFailed: onRetryFailed,
-                )
-                if !state.identifiedGroups.isEmpty {
-                    Divider()
-                    ReleaseGroupListView(
-                        groups: state.identifiedGroups,
-                        isImporting: state.isImporting,
-                        libraryStatuses: state.libraryStatuses,
-                        provenance: state.identifiedProvenance,
-                        selectedReleaseId: state.selectedReleaseId,
-                        loadingReleaseId: state.loadingReleaseId,
-                        releaseSelectionFailure: state.releaseSelectionFailure,
-                        onSelect: onSelect,
-                        trailing: { EmptyView() },
-                    )
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var searchRun: some View {
-        if let search = state.search {
-            FindOnlineSearchResults(
-                search: search,
-                isImporting: state.isImporting,
-                libraryStatuses: state.libraryStatuses,
-                selectedReleaseId: state.selectedReleaseId,
-                loadingReleaseId: state.loadingReleaseId,
-                releaseSelectionFailure: state.releaseSelectionFailure,
-                onClear: onClearSearch,
-                onRetry: onRetrySearch,
-                onOpenSettings: onOpenSettings,
-                onSelect: onSelect,
+    /// The form, with what it turned up beneath it.
+    private var searchContent: some View {
+        VStack(spacing: 0) {
+            ImportSearchFormView(
+                form: form,
+                onCommit: onCommitForm,
+                signals: state.signals,
+                focusRequest: formFocusRequest,
+                onSearch: onSearch,
             )
+            if let search = state.search {
+                Divider()
+                    .padding(.horizontal, 14)
+                FindOnlineSearchResults(
+                    search: search,
+                    isImporting: state.isImporting,
+                    libraryStatuses: state.libraryStatuses,
+                    selectedReleaseId: state.selectedReleaseId,
+                    loadingReleaseId: state.loadingReleaseId,
+                    releaseSelectionFailure: state.releaseSelectionFailure,
+                    onRetry: onRetrySearch,
+                    onOpenSettings: onOpenSettings,
+                    onSelect: onSelect,
+                )
+            }
         }
     }
 }
@@ -306,12 +295,10 @@ struct ImportSearchPane: View {
                 ),
                 onCommitForm: { _ in },
                 onSearch: { _ in },
-                onClearSearch: {},
                 onRetrySearch: {},
                 onOpenSettings: {},
-                onToggleSignal: { _ in },
+                onToggleCatalog: { _ in },
                 onIdentify: {},
-                onRerun: {},
                 onRetryFailed: {},
                 onSelect: { _ in },
             )
@@ -348,6 +335,12 @@ struct ImportSearchPane: View {
             .importPreviewEnvironment()
     }
 
+    #Preview("Find online — catalog numbers to activate") {
+        ImportSearchPane.preview(state: PreviewData.searchStateAwaitingCatalog)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
     #Preview("Find online — source failure, partial results") {
         ImportSearchPane.preview(state: PreviewData.searchStateSourceFailure)
             .frame(width: 900, height: 620)
@@ -362,6 +355,12 @@ struct ImportSearchPane: View {
 
     #Preview("Find online — not identified") {
         ImportSearchPane.preview(state: PreviewData.searchStateIdle)
+            .frame(width: 900, height: 620)
+            .importPreviewEnvironment()
+    }
+
+    #Preview("Find online — finalizing a sole match") {
+        ImportSearchPane.preview(state: PreviewData.searchStateFinalizing)
             .frame(width: 900, height: 620)
             .importPreviewEnvironment()
     }

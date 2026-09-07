@@ -39,11 +39,11 @@ desktop_only! {
     pub mod service;
     pub mod text;
 
-    pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer};
+    pub use analyzer::{ArtworkAnalysis, ArtworkAnalyzer, DetectedBarcode, RecognizedLine};
     pub use artwork::ArtworkScan;
     pub use barcode::{is_placeholder_code, BarcodeSignal};
     pub use disc_id::DiscIdSignal;
-    pub use origin::{SignalOrigin, SourcedValue};
+    pub use origin::{ImageRegion, SignalOrigin, SourcedValue};
     pub use service::{ExtractionService, ExtractionServiceHandle, ExtractionSource};
     pub use text::TextSignal;
 }

@@ -6,13 +6,44 @@ pub trait UiEventCallback: Send + Sync {
     fn on_event(&self, event: BridgeUiEvent);
 }
 
+/// Where on an image something was read: the detector's box around it, as
+/// fractions of the image's width and height with the origin at the top-left
+/// corner. Mirrors `bae_core::signals::ImageRegion`.
+#[derive(Debug, Clone, Copy, PartialEq, uniffi::Record)]
+pub struct BridgeImageRegion {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+/// One barcode the platform's detector found on an image. Mirrors
+/// `bae_core::signals::DetectedBarcode`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeDetectedBarcode {
+    pub payload: String,
+    /// Where the code sits on the image; absent from a detector that reports
+    /// payloads alone.
+    pub region: Option<BridgeImageRegion>,
+}
+
+/// One visual line the platform's recognizer read off an image. Mirrors
+/// `bae_core::signals::RecognizedLine`.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct BridgeRecognizedLine {
+    pub text: String,
+    /// Where the line sits on the image; absent from a recognizer that
+    /// reports text alone.
+    pub region: Option<BridgeImageRegion>,
+}
+
 /// Everything one Vision pass over an image surfaces — barcode payloads and
-/// recognized text lines from a single image decode. Mirrors
-/// `bae_core::signals::ArtworkAnalysis`.
+/// recognized text lines from a single image decode, each with where on the
+/// image it was read. Mirrors `bae_core::signals::ArtworkAnalysis`.
 #[derive(Debug, Clone, uniffi::Record)]
 pub struct BridgeArtworkAnalysis {
-    pub barcodes: Vec<String>,
-    pub text_lines: Vec<String>,
+    pub barcodes: Vec<BridgeDetectedBarcode>,
+    pub text_lines: Vec<BridgeRecognizedLine>,
 }
 
 /// Platform-provided artwork analyzer. One `analyze` pass over an image yields

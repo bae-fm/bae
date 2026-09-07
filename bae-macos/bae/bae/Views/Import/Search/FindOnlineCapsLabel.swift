@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// A zone's name, set in small caps: AUTOMATIC over an empty identify area,
-/// MANUAL beside the search form, RESULTS FOR over a submitted query. The
-/// zones share one page, so the label is what tells them apart.
+/// A section's name, set in small caps: AUTOMATIC and SEARCH on the
+/// accordion's headers. The sections share one page, so the label is what
+/// tells them apart.
 struct FindOnlineCapsLabel: View {
     let text: LocalizedStringKey
 

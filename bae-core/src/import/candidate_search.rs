@@ -48,6 +48,22 @@ impl SourceSearch {
     }
 }
 
+/// Where a candidate's typed search stands as a whole — the one glyph a
+/// surface heads it with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchStatus {
+    /// A source is still looking.
+    Searching,
+    /// Every source has landed and none failed; at least one named a release.
+    Found,
+    /// Every source has landed, none failed, and a source that answered named
+    /// no release. An unavailable provider is not an empty answer.
+    NoMatches,
+    /// Every source has landed and at least one failed, whatever the others
+    /// found.
+    Failed,
+}
+
 /// A candidate's typed search: the query, each source's part of it, and the
 /// result area derived from every part that has landed.
 #[derive(Debug, Clone, PartialEq)]
@@ -125,19 +141,32 @@ impl CandidateSearch {
     }
 
     /// Whether every source has landed — nothing is still looking.
-    pub fn is_settled(&self) -> bool {
+    fn is_settled(&self) -> bool {
         self.musicbrainz.is_settled() && self.discogs.is_settled()
     }
 
     /// A completed, successful lookup found no releases. An unavailable or
     /// failed provider is not an empty answer.
-    pub fn has_no_matches(&self) -> bool {
+    fn has_no_matches(&self) -> bool {
         self.is_settled()
             && self.groups.is_empty()
             && self.failed_sources().is_empty()
             && [&self.musicbrainz, &self.discogs]
                 .iter()
                 .any(|state| matches!(state, SourceSearch::Done { .. }))
+    }
+
+    /// Where the search stands as a whole.
+    pub fn status(&self) -> SearchStatus {
+        if !self.is_settled() {
+            SearchStatus::Searching
+        } else if !self.failed_sources().is_empty() {
+            SearchStatus::Failed
+        } else if self.has_no_matches() {
+            SearchStatus::NoMatches
+        } else {
+            SearchStatus::Found
+        }
     }
 
     /// The sources that failed, for the lines that name them and the Retry
@@ -215,12 +244,36 @@ mod tests {
     fn no_matches_requires_a_completed_successful_lookup() {
         let mut search = CandidateSearch::started(query(), false);
         assert!(!search.has_no_matches());
+        assert_eq!(search.status(), SearchStatus::Searching);
         search.record(MetadataSource::MusicBrainz, Err(LookupFailure::Network));
         assert!(!search.has_no_matches());
+        assert_eq!(search.status(), SearchStatus::Failed);
         search.restart_failed();
         assert!(!search.has_no_matches());
+        assert_eq!(search.status(), SearchStatus::Searching);
         search.record(MetadataSource::MusicBrainz, Ok(Vec::new()));
         assert!(search.has_no_matches());
+        assert_eq!(search.status(), SearchStatus::NoMatches);
+    }
+
+    /// One source failing heads the search with the failure, whatever the
+    /// other found: the gap is what a person has to know about.
+    #[test]
+    fn a_failed_source_heads_the_search_even_beside_matches() {
+        let mut search = CandidateSearch::started(query(), true);
+        search.record(
+            MetadataSource::MusicBrainz,
+            answer(MetadataSource::MusicBrainz, "mb-1", "group-x"),
+        );
+        assert_eq!(search.status(), SearchStatus::Searching);
+        search.record(MetadataSource::Discogs, Err(LookupFailure::Timeout));
+        assert_eq!(search.status(), SearchStatus::Failed);
+        search.restart_failed();
+        search.record(
+            MetadataSource::Discogs,
+            answer(MetadataSource::Discogs, "dg-1", "master-7"),
+        );
+        assert_eq!(search.status(), SearchStatus::Found);
     }
 
     #[test]

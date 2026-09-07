@@ -109,6 +109,7 @@
             name: "Album Title Five",
             trackCount: 12,
             identifyState: .found(
+                run: identifyRunFound,
                 groups: [searchGroupExact],
                 libraryStatuses: [:],
                 trackCount: 12,
@@ -148,6 +149,7 @@
             name: "Album Title Seven - Partial",
             trackCount: 1,
             identifyState: .found(
+                run: identifyRunFound,
                 groups: [trackMismatchGroup],
                 libraryStatuses: [:],
                 trackCount: 1,
@@ -169,6 +171,7 @@
             name: "Album Title Eight - Reissue",
             trackCount: 14,
             identifyState: .found(
+                run: identifyRunFound,
                 groups: [searchGroupExact],
                 libraryStatuses: [
                     releaseDetailBridge.releaseId:
